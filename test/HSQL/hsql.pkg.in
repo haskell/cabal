@@ -1,0 +1,17 @@
+Package
+    {name = "hsql",
+     auto=True,
+     import_dirs = ["@GHC_DIR@/imports"],
+     source_dirs = [],
+     library_dirs = [@LIB_DIRS@],
+     hs_libraries = ["HSsql"],
+     extra_libraries = [@DEP_LIBS@],
+     include_dirs = [],
+     c_includes = [],
+     package_deps = ["base"],
+     extra_ghc_opts = [],
+     extra_cc_opts = [],
+     extra_ld_opts = [],
+     framework_dirs = [],
+     extra_frameworks = []
+    }

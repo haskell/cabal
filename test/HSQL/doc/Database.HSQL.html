@@ -1,0 +1,3266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Database.HSQL</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      ></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Database.HSQL</FONT
+		></TD
+	      ><TD ALIGN = "right"
+	      ><TABLE CLASS = "narrow" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "infohead"
+		    >Portability</TD
+		    ><TD CLASS = "infoval"
+		    >  portable</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "infohead"
+		    >Stability</TD
+		    ><TD CLASS = "infoval"
+		    >  provisional</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "infohead"
+		    >Maintainer</TD
+		    ><TD CLASS = "infoval"
+		    >  ka2_mail@yahoo.com</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      ><B
+		>Contents</B
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD
+	      ><DL
+		><DT
+		  ><A HREF = "#1"
+		    >Connect/Disconnect</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#2"
+		    >Command Execution Functions</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#3"
+		    >Retrieving Statement values and types</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#4"
+		    >Transactions</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#5"
+		    >SQL Exceptions handling</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#6"
+		    >Utilities</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#7"
+		    >Metadata</A
+		    ></DT
+		  ><DT
+		  ><A HREF = "#8"
+		    >Extra types</A
+		    ></DT
+		  ></DL
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>The module provides an abstract database interface
+</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3AConnection"
+		>Connection</A
+		> </TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Adisconnect"
+		>disconnect</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Aexecute"
+		>execute</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; String -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3AStatement"
+		>Statement</A
+		> </TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Aquery"
+		>query</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; String -&gt; IO <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AcloseStatement"
+		>closeStatement</A
+		> :: <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Afetch"
+		>fetch</A
+		> :: <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO Bool</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#t%3AFieldDef"
+		>FieldDef</A
+		> = (String, <A HREF = "Database.HSQL.html#t%3ASqlType"
+		>SqlType</A
+		>, Bool)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#t%3ASqlType"
+		      >SqlType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#v%3ASqlChar"
+			    >SqlChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlVarChar"
+			    >SqlVarChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlLongVarChar"
+			    >SqlLongVarChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlText"
+			    >SqlText</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlWChar"
+			    >SqlWChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlWVarChar"
+			    >SqlWVarChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlWLongVarChar"
+			    >SqlWLongVarChar</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlDecimal"
+			    >SqlDecimal</A
+			    > Int Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlNumeric"
+			    >SqlNumeric</A
+			    > Int Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlSmallInt"
+			    >SqlSmallInt</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlMedInt"
+			    >SqlMedInt</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlInteger"
+			    >SqlInteger</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlReal"
+			    >SqlReal</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlFloat"
+			    >SqlFloat</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlDouble"
+			    >SqlDouble</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBit"
+			    >SqlBit</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlTinyInt"
+			    >SqlTinyInt</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBigInt"
+			    >SqlBigInt</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBinary"
+			    >SqlBinary</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlVarBinary"
+			    >SqlVarBinary</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlLongVarBinary"
+			    >SqlLongVarBinary</A
+			    > Int</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlDate"
+			    >SqlDate</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlTime"
+			    >SqlTime</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlTimeTZ"
+			    >SqlTimeTZ</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlAbsTime"
+			    >SqlAbsTime</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlRelTime"
+			    >SqlRelTime</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlTimeInterval"
+			    >SqlTimeInterval</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlAbsTimeInterval"
+			    >SqlAbsTimeInterval</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlTimeStamp"
+			    >SqlTimeStamp</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlDateTime"
+			    >SqlDateTime</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlDateTimeTZ"
+			    >SqlDateTimeTZ</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlYear"
+			    >SqlYear</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlSET"
+			    >SqlSET</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlENUM"
+			    >SqlENUM</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBLOB"
+			    >SqlBLOB</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlMoney"
+			    >SqlMoney</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlINetAddr"
+			    >SqlINetAddr</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlCIDRAddr"
+			    >SqlCIDRAddr</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlMacAddr"
+			    >SqlMacAddr</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlPoint"
+			    >SqlPoint</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlLSeg"
+			    >SqlLSeg</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlPath"
+			    >SqlPath</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBox"
+			    >SqlBox</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlPolygon"
+			    >SqlPolygon</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlLine"
+			    >SqlLine</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlCircle"
+			    >SqlCircle</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlUnknown"
+			    >SqlUnknown</A
+			    > Int</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>class</SPAN
+		> <A HREF = "#t%3ASqlBind"
+		>SqlBind</A
+		> a </TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AtoSqlValue"
+		>toSqlValue</A
+		> :: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a =&gt; a -&gt; String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AgetFieldValueMB"
+		>getFieldValueMB</A
+		> :: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a =&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; String -&gt; IO (Maybe a)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AgetFieldValue"
+		>getFieldValue</A
+		> :: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a =&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; String -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AgetFieldValue'"
+		>getFieldValue'</A
+		> :: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a =&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; String -&gt; a -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AgetFieldValueType"
+		>getFieldValueType</A
+		> :: <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; String -&gt; (<A HREF = "Database.HSQL.html#t%3ASqlType"
+		>SqlType</A
+		>, Bool)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AgetFieldsTypes"
+		>getFieldsTypes</A
+		> :: <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; [(String, <A HREF = "Database.HSQL.html#t%3ASqlType"
+		>SqlType</A
+		>, Bool)]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AinTransaction"
+		>inTransaction</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; (<A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; IO a) -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#t%3ASqlError"
+		      >SqlError</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#v%3ASqlError"
+			    >SqlError</A
+			    > {<TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+			    ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseState"
+				  >seState</A
+				  > :: String</TD
+				></TR
+			      ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseNativeError"
+				  >seNativeError</A
+				  > :: Int</TD
+				></TR
+			      ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseErrorMsg"
+				  >seErrorMsg</A
+				  > :: String</TD
+				></TR
+			      ></TABLE
+			    >}</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlNoData"
+			    >SqlNoData</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlInvalidHandle"
+			    >SqlInvalidHandle</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlStillExecuting"
+			    >SqlStillExecuting</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlNeedData"
+			    >SqlNeedData</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlBadTypeCast"
+			    >SqlBadTypeCast</A
+			    > {<TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+			    ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseFieldName"
+				  >seFieldName</A
+				  > :: String</TD
+				></TR
+			      ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseFieldType"
+				  >seFieldType</A
+				  > :: <A HREF = "Database.HSQL.html#t%3ASqlType"
+				  >SqlType</A
+				  ></TD
+				></TR
+			      ></TABLE
+			    >}</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlFetchNull"
+			    >SqlFetchNull</A
+			    > {<TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+			    ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseFieldName"
+				  >seFieldName</A
+				  > :: String</TD
+				></TR
+			      ></TABLE
+			    >}</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlUnknownField"
+			    >SqlUnknownField</A
+			    > {<TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+			    ><TR
+			      ><TD CLASS = "recfield"
+				><A HREF = "#v%3AseFieldName"
+				  >seFieldName</A
+				  > :: String</TD
+				></TR
+			      ></TABLE
+			    >}</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlUnsupportedOperation"
+			    >SqlUnsupportedOperation</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3ASqlClosedHandle"
+			    >SqlClosedHandle</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AcatchSql"
+		>catchSql</A
+		> :: IO a -&gt; (<A HREF = "Database.HSQL.html#t%3ASqlError"
+		>SqlError</A
+		> -&gt; IO a) -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AhandleSql"
+		>handleSql</A
+		> :: (<A HREF = "Database.HSQL.html#t%3ASqlError"
+		>SqlError</A
+		> -&gt; IO a) -&gt; IO a -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AsqlExceptions"
+		>sqlExceptions</A
+		> :: Exception -&gt; Maybe <A HREF = "Database.HSQL.html#t%3ASqlError"
+		>SqlError</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AforEachRow"
+		>forEachRow</A
+		> :: (<A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; s -&gt; IO s) -&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; s -&gt; IO s</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AforEachRow'"
+		>forEachRow'</A
+		> :: (<A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO ()) -&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3AcollectRows"
+		>collectRows</A
+		> :: (<A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO a) -&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; IO [a]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Atables"
+		>tables</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; IO [String]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#v%3Adescribe"
+		>describe</A
+		> :: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; String -&gt; IO [<A HREF = "Database.HSQL.html#t%3AFieldDef"
+		>FieldDef</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3APoint"
+		>Point</A
+		>  = <A HREF = "#v%3APoint"
+		>Point</A
+		> Double Double</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3ALine"
+		>Line</A
+		>  = <A HREF = "#v%3ALine"
+		>Line</A
+		> <A HREF = "Database.HSQL.html#t%3APoint"
+		>Point</A
+		> <A HREF = "Database.HSQL.html#t%3APoint"
+		>Point</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#t%3APath"
+		      >Path</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#v%3AOpenPath"
+			    >OpenPath</A
+			    > [<A HREF = "Database.HSQL.html#t%3APoint"
+			    >Point</A
+			    >]</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#v%3AClosedPath"
+			    >ClosedPath</A
+			    > [<A HREF = "Database.HSQL.html#t%3APoint"
+			    >Point</A
+			    >]</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3ABox"
+		>Box</A
+		>  = <A HREF = "#v%3ABox"
+		>Box</A
+		> Double Double Double Double</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3ACircle"
+		>Circle</A
+		>  = <A HREF = "#v%3ACircle"
+		>Circle</A
+		> <A HREF = "Database.HSQL.html#t%3APoint"
+		>Point</A
+		> Double</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#t%3APolygon"
+		>Polygon</A
+		>  = <A HREF = "#v%3APolygon"
+		>Polygon</A
+		> [<A HREF = "Database.HSQL.html#t%3APoint"
+		>Point</A
+		>]</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  >Connect/Disconnect</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3AConnection"
+	  ></A
+	  ><B
+	  >Connection</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      >A <TT
+		><A HREF = "Database.HSQL.html#t%3AConnection"
+		  >Connection</A
+		  ></TT
+		> type represents a connection to a database, through which you can operate on the it.
+In order to create the connection you need to use the <TT
+		>connect</TT
+		> function from the module for
+your prefered backend.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Adisconnect"
+	  ></A
+	  ><B
+	  >disconnect</B
+	  > :: <A HREF = "Database.HSQL.html#t%3AConnection"
+	  >Connection</A
+	  > -&gt; IO ()</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>Closes the connection. Performing <TT
+	  ><A HREF = "Database.HSQL.html#v%3Adisconnect"
+	    >disconnect</A
+	    ></TT
+	  > on a connection that has already been 
+closed has no effect. All other operations on a closed connection will fail.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "2"
+	  >Command Execution Functions</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>Once a connection to a database has been successfully established, 
+the functions described here are used to perform SQL queries and commands.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Aexecute"
+	  ></A
+	  ><B
+	  >execute</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >the database connection</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >the text of SQL command</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO ()</TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >Submits a command to the database.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3AStatement"
+	  ></A
+	  ><B
+	  >Statement</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      >The <TT
+		><A HREF = "Database.HSQL.html#t%3AStatement"
+		  >Statement</A
+		  ></TT
+		> type represents a result from the execution of given SQL query.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Aquery"
+	  ></A
+	  ><B
+	  >query</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >the database connection</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >the text of SQL query</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >the associated statement. Must be closed with 
+the <TT
+		><A HREF = "Database.HSQL.html#v%3AcloseStatement"
+		  >closeStatement</A
+		  ></TT
+		> function</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >Executes a query and returns a result set</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AcloseStatement"
+	  ></A
+	  ><B
+	  >closeStatement</B
+	  > :: <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO ()</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><TT
+	  ><A HREF = "Database.HSQL.html#v%3AcloseStatement"
+	    >closeStatement</A
+	    ></TT
+	  > stops processing associated with a specific statement, closes any open cursors
+associated with the statement, discards pending results, and frees all resources associated with
+the statement. Performing <TT
+	  ><A HREF = "Database.HSQL.html#v%3AcloseStatement"
+	    >closeStatement</A
+	    ></TT
+	  > on a statement that has already been 
+closed has no effect. All other operations on a closed statement will fail.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Afetch"
+	  ></A
+	  ><B
+	  >fetch</B
+	  > :: <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO Bool</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><TT
+	  ><A HREF = "Database.HSQL.html#v%3Afetch"
+	    >fetch</A
+	    ></TT
+	  > fetches the next rowset of data from the result set.
+The values from columns can be retrieved with <TT
+	  ><A HREF = "Database.HSQL.html#v%3AgetFieldValue"
+	    >getFieldValue</A
+	    ></TT
+	  > function.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "3"
+	  >Retrieving Statement values and types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "t%3AFieldDef"
+	  ></A
+	  ><B
+	  >FieldDef</B
+	  > = (String, <A HREF = "Database.HSQL.html#t%3ASqlType"
+	  >SqlType</A
+	  >, Bool)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3ASqlType"
+	  ></A
+	  ><B
+	  >SqlType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlChar"
+		      ></A
+		      ><B
+		      >SqlChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlVarChar"
+		      ></A
+		      ><B
+		      >SqlVarChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlLongVarChar"
+		      ></A
+		      ><B
+		      >SqlLongVarChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlText"
+		      ></A
+		      ><B
+		      >SqlText</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlWChar"
+		      ></A
+		      ><B
+		      >SqlWChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlWVarChar"
+		      ></A
+		      ><B
+		      >SqlWVarChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlWLongVarChar"
+		      ></A
+		      ><B
+		      >SqlWLongVarChar</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlDecimal"
+		      ></A
+		      ><B
+		      >SqlDecimal</B
+		      > Int Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlNumeric"
+		      ></A
+		      ><B
+		      >SqlNumeric</B
+		      > Int Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlSmallInt"
+		      ></A
+		      ><B
+		      >SqlSmallInt</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlMedInt"
+		      ></A
+		      ><B
+		      >SqlMedInt</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlInteger"
+		      ></A
+		      ><B
+		      >SqlInteger</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlReal"
+		      ></A
+		      ><B
+		      >SqlReal</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlFloat"
+		      ></A
+		      ><B
+		      >SqlFloat</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlDouble"
+		      ></A
+		      ><B
+		      >SqlDouble</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBit"
+		      ></A
+		      ><B
+		      >SqlBit</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlTinyInt"
+		      ></A
+		      ><B
+		      >SqlTinyInt</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBigInt"
+		      ></A
+		      ><B
+		      >SqlBigInt</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBinary"
+		      ></A
+		      ><B
+		      >SqlBinary</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlVarBinary"
+		      ></A
+		      ><B
+		      >SqlVarBinary</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlLongVarBinary"
+		      ></A
+		      ><B
+		      >SqlLongVarBinary</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlDate"
+		      ></A
+		      ><B
+		      >SqlDate</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlTime"
+		      ></A
+		      ><B
+		      >SqlTime</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlTimeTZ"
+		      ></A
+		      ><B
+		      >SqlTimeTZ</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlAbsTime"
+		      ></A
+		      ><B
+		      >SqlAbsTime</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlRelTime"
+		      ></A
+		      ><B
+		      >SqlRelTime</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlTimeInterval"
+		      ></A
+		      ><B
+		      >SqlTimeInterval</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlAbsTimeInterval"
+		      ></A
+		      ><B
+		      >SqlAbsTimeInterval</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlTimeStamp"
+		      ></A
+		      ><B
+		      >SqlTimeStamp</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlDateTime"
+		      ></A
+		      ><B
+		      >SqlDateTime</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlDateTimeTZ"
+		      ></A
+		      ><B
+		      >SqlDateTimeTZ</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlYear"
+		      ></A
+		      ><B
+		      >SqlYear</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlSET"
+		      ></A
+		      ><B
+		      >SqlSET</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlENUM"
+		      ></A
+		      ><B
+		      >SqlENUM</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBLOB"
+		      ></A
+		      ><B
+		      >SqlBLOB</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlMoney"
+		      ></A
+		      ><B
+		      >SqlMoney</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlINetAddr"
+		      ></A
+		      ><B
+		      >SqlINetAddr</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlCIDRAddr"
+		      ></A
+		      ><B
+		      >SqlCIDRAddr</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlMacAddr"
+		      ></A
+		      ><B
+		      >SqlMacAddr</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlPoint"
+		      ></A
+		      ><B
+		      >SqlPoint</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlLSeg"
+		      ></A
+		      ><B
+		      >SqlLSeg</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlPath"
+		      ></A
+		      ><B
+		      >SqlPath</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBox"
+		      ></A
+		      ><B
+		      >SqlBox</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlPolygon"
+		      ></A
+		      ><B
+		      >SqlPolygon</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlLine"
+		      ></A
+		      ><B
+		      >SqlLine</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlCircle"
+		      ></A
+		      ><B
+		      >SqlCircle</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlUnknown"
+		      ></A
+		      ><B
+		      >SqlUnknown</B
+		      > Int</TD
+		    ><TD CLASS = "rdoc"
+		    >HSQL returns <TT
+		      >SqlUnknown tp</TT
+		      > for all
+columns for which it cannot determine
+the right type. The <TT
+		      >tp</TT
+		      > here is the
+internal type code returned from the
+backend library</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3ASqlType"
+		      >SqlType</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3ASqlType"
+		      >SqlType</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >class</SPAN
+	  > <A NAME = "t%3ASqlBind"
+	  ></A
+	  ><B
+	  >SqlBind</B
+	  > a </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > Int</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > Int64</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > Integer</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > String</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > Bool</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > Double</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > ClockTime</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ALine"
+		      >Line</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APath"
+		      >Path</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ABox"
+		      >Box</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APolygon"
+		      >Polygon</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ACircle"
+		      >Circle</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3AINetAddr"
+		      >INetAddr</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3AMacAddr"
+		      >MacAddr</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AtoSqlValue"
+	  ></A
+	  ><B
+	  >toSqlValue</B
+	  > :: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+	  >SqlBind</A
+	  > a =&gt; a -&gt; String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AgetFieldValueMB"
+	  ></A
+	  ><B
+	  >getFieldValueMB</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a</TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >=&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >Field name</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO (Maybe a)</TD
+	      ><TD CLASS = "rdoc"
+	      >Field value or Nothing</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >Retrieves the value of field with the specified name.
+The returned value is Nothing if the field value is <TT
+		>null</TT
+		>.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AgetFieldValue"
+	  ></A
+	  ><B
+	  >getFieldValue</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a</TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >=&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >Field name</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO a</TD
+	      ><TD CLASS = "rdoc"
+	      >Field value</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >Retrieves the value of field with the specified name.
+If the field value is <TT
+		>null</TT
+		> then the function will throw <TT
+		><A HREF = "Database.HSQL.html#v%3ASqlFetchNull"
+		  >SqlFetchNull</A
+		  ></TT
+		> exception.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AgetFieldValue'"
+	  ></A
+	  ><B
+	  >getFieldValue'</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3ASqlBind"
+		>SqlBind</A
+		> a</TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >=&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >Field name</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; a</TD
+	      ><TD CLASS = "rdoc"
+	      >Default field value</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO a</TD
+	      ><TD CLASS = "rdoc"
+	      >Field value</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >Retrieves the value of field with the specified name.
+If the field value is <TT
+		>null</TT
+		> then the function will return the default value.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AgetFieldValueType"
+	  ></A
+	  ><B
+	  >getFieldValueType</B
+	  > :: <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; String -&gt; (<A HREF = "Database.HSQL.html#t%3ASqlType"
+	  >SqlType</A
+	  >, Bool)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>Returns the type and the <TT
+	  >nullable</TT
+	  > flag for field with specified name</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AgetFieldsTypes"
+	  ></A
+	  ><B
+	  >getFieldsTypes</B
+	  > :: <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; [(String, <A HREF = "Database.HSQL.html#t%3ASqlType"
+	  >SqlType</A
+	  >, Bool)]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>Returns the list of fields with their types and <TT
+	  >nullable</TT
+	  > flags</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "4"
+	  >Transactions</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AinTransaction"
+	  ></A
+	  ><B
+	  >inTransaction</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; (<A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		> -&gt; IO a)</TD
+	      ><TD CLASS = "rdoc"
+	      >an action</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO a</TD
+	      ><TD CLASS = "rdoc"
+	      >the returned value is the result returned from action</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >The <TT
+		><A HREF = "Database.HSQL.html#v%3AinTransaction"
+		  >inTransaction</A
+		  ></TT
+		> function executes the specified action in transaction mode.
+If the action completes successfully then the transaction will be commited.
+If the action completes with an exception then the transaction will be rolled back
+and the exception will be throw again.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "5"
+	  >SQL Exceptions handling</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3ASqlError"
+	  ></A
+	  ><B
+	  >SqlError</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "5" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlError"
+		      ></A
+		      ><B
+		      >SqlError</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body" COLSPAN = "2"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseState"
+			    ></A
+			    ><B
+			    >seState</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseNativeError"
+			    ></A
+			    ><B
+			    >seNativeError</B
+			    > :: Int</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseErrorMsg"
+			    ></A
+			    ><B
+			    >seErrorMsg</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlNoData"
+		      ></A
+		      ><B
+		      >SqlNoData</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlInvalidHandle"
+		      ></A
+		      ><B
+		      >SqlInvalidHandle</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlStillExecuting"
+		      ></A
+		      ><B
+		      >SqlStillExecuting</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlNeedData"
+		      ></A
+		      ><B
+		      >SqlNeedData</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlBadTypeCast"
+		      ></A
+		      ><B
+		      >SqlBadTypeCast</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body" COLSPAN = "2"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseFieldName"
+			    ></A
+			    ><B
+			    >seFieldName</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseFieldType"
+			    ></A
+			    ><B
+			    >seFieldType</B
+			    > :: <A HREF = "Database.HSQL.html#t%3ASqlType"
+			    >SqlType</A
+			    ></TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlFetchNull"
+		      ></A
+		      ><B
+		      >SqlFetchNull</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body" COLSPAN = "2"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseFieldName"
+			    ></A
+			    ><B
+			    >seFieldName</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlUnknownField"
+		      ></A
+		      ><B
+		      >SqlUnknownField</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body" COLSPAN = "2"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "v%3AseFieldName"
+			    ></A
+			    ><B
+			    >seFieldName</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlUnsupportedOperation"
+		      ></A
+		      ><B
+		      >SqlUnsupportedOperation</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ASqlClosedHandle"
+		      ></A
+		      ><B
+		      >SqlClosedHandle</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Typeable <A HREF = "Database.HSQL.html#t%3ASqlError"
+		      >SqlError</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3ASqlError"
+		      >SqlError</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AcatchSql"
+	  ></A
+	  ><B
+	  >catchSql</B
+	  > :: IO a -&gt; (<A HREF = "Database.HSQL.html#t%3ASqlError"
+	  >SqlError</A
+	  > -&gt; IO a) -&gt; IO a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AhandleSql"
+	  ></A
+	  ><B
+	  >handleSql</B
+	  > :: (<A HREF = "Database.HSQL.html#t%3ASqlError"
+	  >SqlError</A
+	  > -&gt; IO a) -&gt; IO a -&gt; IO a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AsqlExceptions"
+	  ></A
+	  ><B
+	  >sqlExceptions</B
+	  > :: Exception -&gt; Maybe <A HREF = "Database.HSQL.html#t%3ASqlError"
+	  >SqlError</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "6"
+	  >Utilities</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AforEachRow"
+	  ></A
+	  ><B
+	  >forEachRow</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: (<A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		> -&gt; s -&gt; IO s)</TD
+	      ><TD CLASS = "rdoc"
+	      >an action</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+		>Statement</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >the statement</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; s</TD
+	      ><TD CLASS = "rdoc"
+	      >initial state</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO s</TD
+	      ><TD CLASS = "rdoc"
+	      >final state</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >The <TT
+		><A HREF = "Database.HSQL.html#v%3AforEachRow"
+		  >forEachRow</A
+		  ></TT
+		> function iterates through the result set in <TT
+		><A HREF = "Database.HSQL.html#t%3AStatement"
+		  >Statement</A
+		  ></TT
+		> and
+executes the given action for each row in the set. The function closes the <TT
+		><A HREF = "Database.HSQL.html#t%3AStatement"
+		  >Statement</A
+		  ></TT
+		>
+after the last row processing or if the given action raises an exception.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AforEachRow'"
+	  ></A
+	  ><B
+	  >forEachRow'</B
+	  > :: (<A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO ()) -&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO ()</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>The <TT
+	  ><A HREF = "Database.HSQL.html#v%3AforEachRow"
+	    >forEachRow</A
+	    ></TT
+	  >' function is analogous to <TT
+	  ><A HREF = "Database.HSQL.html#v%3AforEachRow"
+	    >forEachRow</A
+	    ></TT
+	  > but doesn't provide state.
+The function closes the <TT
+	  ><A HREF = "Database.HSQL.html#t%3AStatement"
+	    >Statement</A
+	    ></TT
+	  > after the last row processing or if the given
+action raises an exception.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3AcollectRows"
+	  ></A
+	  ><B
+	  >collectRows</B
+	  > :: (<A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO a) -&gt; <A HREF = "Database.HSQL.html#t%3AStatement"
+	  >Statement</A
+	  > -&gt; IO [a]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	>The <TT
+	  ><A HREF = "Database.HSQL.html#v%3AcollectRows"
+	    >collectRows</A
+	    ></TT
+	  > function iterates through the result set in <TT
+	  ><A HREF = "Database.HSQL.html#t%3AStatement"
+	    >Statement</A
+	    ></TT
+	  > and
+executes the given action for each row in the set. The values returned from action
+are collected and returned as list. The function closes the <TT
+	  ><A HREF = "Database.HSQL.html#t%3AStatement"
+	    >Statement</A
+	    ></TT
+	  > after the
+last row processing or if the given action raises an exception.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "7"
+	  >Metadata</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Atables"
+	  ></A
+	  ><B
+	  >tables</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >Database connection</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO [String]</TD
+	      ><TD CLASS = "rdoc"
+	      >The names of all tables in the database.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >List all tables in the database.</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "v%3Adescribe"
+	  ></A
+	  ><B
+	  >describe</B
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >:: <A HREF = "Database.HSQL.html#t%3AConnection"
+		>Connection</A
+		></TD
+	      ><TD CLASS = "rdoc"
+	      >Database connection</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; String</TD
+	      ><TD CLASS = "rdoc"
+	      >Name of a database table</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      >-&gt; IO [<A HREF = "Database.HSQL.html#t%3AFieldDef"
+		>FieldDef</A
+		>]</TD
+	      ><TD CLASS = "rdoc"
+	      >The list of fields in the table</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "ndoc" COLSPAN = "2"
+	      >List all columns in a table along with their types and <TT
+		>nullable</TT
+		> flags</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "8"
+	  >Extra types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3APoint"
+	  ></A
+	  ><B
+	  >Point</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3APoint"
+		      ></A
+		      ><B
+		      >Point</B
+		      > Double Double</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3ALine"
+	  ></A
+	  ><B
+	  >Line</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ALine"
+		      ></A
+		      ><B
+		      >Line</B
+		      > <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      > <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ALine"
+		      >Line</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3ALine"
+		      >Line</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3ALine"
+		      >Line</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3APath"
+	  ></A
+	  ><B
+	  >Path</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3AOpenPath"
+		      ></A
+		      ><B
+		      >OpenPath</B
+		      > [<A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3AClosedPath"
+		      ></A
+		      ><B
+		      >ClosedPath</B
+		      > [<A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APath"
+		      >Path</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3APath"
+		      >Path</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3APath"
+		      >Path</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3ABox"
+	  ></A
+	  ><B
+	  >Box</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ABox"
+		      ></A
+		      ><B
+		      >Box</B
+		      > Double Double Double Double</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ABox"
+		      >Box</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3ABox"
+		      >Box</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3ABox"
+		      >Box</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3ACircle"
+	  ></A
+	  ><B
+	  >Circle</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3ACircle"
+		      ></A
+		      ><B
+		      >Circle</B
+		      > <A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      > Double</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3ACircle"
+		      >Circle</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3ACircle"
+		      >Circle</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3ACircle"
+		      >Circle</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "t%3APolygon"
+	  ></A
+	  ><B
+	  >Polygon</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "v%3APolygon"
+		      ></A
+		      ><B
+		      >Polygon</B
+		      > [<A HREF = "Database.HSQL.html#t%3APoint"
+		      >Point</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Database.HSQL.html#t%3ASqlBind"
+		      >SqlBind</A
+		      > <A HREF = "Database.HSQL.html#t%3APolygon"
+		      >Polygon</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Database.HSQL.html#t%3APolygon"
+		      >Polygon</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Database.HSQL.html#t%3APolygon"
+		      >Polygon</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock/"
+	  >Haddock</A
+	  > version 0.6</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>
