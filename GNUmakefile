@@ -125,5 +125,5 @@ dist: haddock
 	cp -r /tmp/pkg-spec{-html,.pdf} /tmp/cabal/doc
 
 	cd /tmp && tar -zcvf cabal-code.tgz cabal
-	rm -f /tmp/cabal.tar.gz
+	rm -f /tmp/Cabal.tar.gz
 	rm -rf /tmp/cabal
