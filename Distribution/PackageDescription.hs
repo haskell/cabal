@@ -299,7 +299,7 @@ unionLibrary l1 l2
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
     = b1{cSources          = combine cSources,
-         hsSourceDir       = combine hsSourceDir,
+         hsSourceDir       = override hsSourceDir "hs-source-dir" currentDir,
          extensions        = combine extensions,
          extraLibs         = combine extraLibs,
          extraLibDirs      = combine extraLibDirs,
@@ -310,7 +310,17 @@ unionBuildInfo b1 b2
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
       combine f = f b1 ++ f b2
-
+      override :: (Eq a)
+	=> (BuildInfo -> a)	-- ^ field extractor
+	-> String		-- ^ field name
+	-> a			-- ^ default value
+	-> a
+      override f s def
+	| v1 == def = v2
+	| v2 == def = v1
+	| otherwise = error $ "union: Two non-empty fields found in union attempt: " ++ s
+        where v1 = f b1
+	      v2 = f b2
 
 unionPackageIdent :: PackageIdentifier -> PackageIdentifier -> PackageIdentifier
 unionPackageIdent p1 p2
