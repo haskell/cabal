@@ -1,6 +1,0 @@
-#!/bin/sh -e
-
-ghc-pkg -g --add-package \
-   < /usr/share/doc/libhaskell-cabal-ghc6-dev/installed-pkg-config
-
-#DEBHELPER#

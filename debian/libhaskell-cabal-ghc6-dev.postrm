@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-ghc-pkg -r Cabal
-
-#DEBHELPER#
