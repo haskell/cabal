@@ -19,6 +19,9 @@
 ** test / port code for Hugs and nhc
 
 * Code
+
+** buildDepToDep in Configure doesn't set version dependency.
+
 ** Extensions -> flags interface (Misc.hs)
 
 ** Change mainModules to [(String, String)] for (Module, executable name)

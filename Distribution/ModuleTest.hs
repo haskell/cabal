@@ -64,11 +64,11 @@ import qualified Distribution.Simple.Register as D.S.R (hunitTests)
 -- base
 import Control.Monad(when)
 import Directory(setCurrentDirectory, doesFileExist,
-                 doesDirectoryExist)
+                 doesDirectoryExist, getCurrentDirectory)
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
-import HUnit(runTestTT, Test(..), Counts, assertBool, assertEqual)
+import HUnit(runTestTT, Test(..), Counts, assertBool, assertEqual, Assertion)
 
 label :: String -> String
 label t = "-= " ++ t ++ " =-"
@@ -96,8 +96,28 @@ checkTargetDir targetDir suffixes
                    | (e, f) <- zip allFilesE files]
          return ()
 
+-- |Run this command, and assert it returns a successful error code.
+assertCmd :: String -- ^Command
+          -> String -- ^Comment
+          -> Assertion
+assertCmd command comment
+    = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
+
 tests :: [Test]
-tests = [TestLabel "configure GHC, sdist" $ TestCase $
+tests = [TestLabel "testing the HUnit package" $ TestCase $ 
+         do oldDir <- getCurrentDirectory
+            setCurrentDirectory "test/HUnit-1.0"
+--            assertCmd "make semiclean" "make semiclean"
+            system "ghc-pkg --config-file=$HOME/.ghc-packages -r HUnit-1.0"
+            assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
+            assertCmd "./setup build" "hunit build"
+            assertCmd "./setup install --user" "hunit install"
+            assertCmd "ghc -package-conf $HOME/.ghc-packages  -package HUnit-1.0 HUnitTester.hs -o ./hunitTest" "compile w/ hunit"
+            assertCmd "./hunitTest" "hunit test"
+            assertCmd "ghc-pkg --config-file=$HOME/.ghc-packages -r HUnit-1.0" "package remove"
+            setCurrentDirectory oldDir,
+
+         TestLabel "configure GHC, sdist" $ TestCase $
          do system "ghc-pkg -r test-1.0 --config-file=$HOME/.ghc-packages"
             setCurrentDirectory "test/A"
             dirE1 <- doesDirectoryExist ",tmp"
