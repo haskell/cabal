@@ -1,16 +1,47 @@
 * Documentation
 ** Integrate SimonPJ's document into the "proposal"
-** Outline first priorities
 
 * Code
 ** Version (simonMar)
-** 
+** command-line parser (isaac)
 
 * Testing
 ** Parsing of command-lint opts
 ** use-cases based on SimonPJ's doc
-** 
 
 * Isaac
 - test cases for option parsing
 -- difference bt flags and opts...
+
+* Priorities for first beta release
+(basically what was in SPJ's document):
+
+** Basic command-line interface for configure, build, install,
+   register, info
+** Ability to wrap make
+** basic build system (think hmake)
+** binary distributions?
+
+* Priorities for 1.0
+** binary distributions?
+** basic pre-processor extensions
+
+* looking ahead
+** per-system source database
+** rebuild for new compiler
+
+* Orthogonal (layered?) tools
+
+** visual studio support
+
+** public database of packages
+
+** downloadable public database of packages (wget filename;tar xf
+   filename;cd filename;./setup install)
+
+   NOTE: such an interface might be implemented w/ xml-rpc, which is
+   there for Haskell now, though in general we'll probabliy want to be
+   careful here about dependencies.
+
+** debian package building (boilerplate) tool.  Other debian support
+   w/ rebuild-all-packages?
