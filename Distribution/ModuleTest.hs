@@ -108,7 +108,20 @@ assertCmd command comment
     = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
 tests :: [Test]
-tests = [TestLabel "testing the HUnit package" $ TestCase $ 
+tests = [TestLabel "testing the wash2hs package" $ TestCase $ 
+         do oldDir <- getCurrentDirectory
+            setCurrentDirectory "test/wash2hs"
+            system "make clean"
+            system "make"
+            assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
+            assertCmd "./setup build" "wash2hs build"
+            doesFileExist "dist/build/wash2hs"
+              >>= assertBool "wash2hs build didn't create executable!"
+            assertCmd "./setup install --user" "wash2hs install"
+            doesFileExist ",tmp/bin/wash2hs"
+              >>= assertBool "wash2hs didn't put executable into place."
+            setCurrentDirectory oldDir,
+         TestLabel "testing the HUnit package" $ TestCase $ 
          do oldDir <- getCurrentDirectory
             setCurrentDirectory "test/HUnit-1.0"
             (pkgConf, pkgConfExists) <- GHC.localPackageConfig

@@ -50,8 +50,8 @@ module Distribution.Simple.Build (
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
 import Distribution.Package (PackageDescription(..), BuildInfo(..),
-                             showPackageId, pkgName, Executable(..))
-import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
+                             showPackageId, pkgName, Executable(..), hasLibs)
+import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
@@ -106,7 +106,8 @@ buildGHC pref pkg_descr lbi = do
   unless pkgConfExists $ writeFile pkgConf "[]\n"
   let args = ["-package-conf", pkgConf]
           ++ constructGHCCmdLine pref pkg_descr lbi
-  rawSystemExit (compilerPath (compiler lbi)) args
+  when (not (null (maybe [] modules (library pkg_descr)))) $
+    rawSystemExit (compilerPath (compiler lbi)) args
 
   -- build any C sources
   when (not (null (maybe [] cSources (library pkg_descr)))) $
@@ -114,14 +115,22 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any executables
   sequence_ [rawSystemExit (compilerPath (compiler lbi))
-               ["--make", pathJoin [hsSourceDir bi, modPath], "-o", pathJoin [pref, exeName]]
-             | (Executable exeName modPath bi) <- executables pkg_descr]
+               (["--make", pathJoin [hsSourceDir exeBi, modPath],
+                 "-i" ++ (hsSourceDir exeBi), "-o", pathJoin [pref, exeName]]
+                ++ (concat [ ["-package", pkgName pkg] | pkg <- exeDeps exeName lbi]))
+             | Executable exeName modPath exeBi <- executables pkg_descr]
 
-  -- now, build the library
-  let hObjs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
-      cObjs = [file ++ objsuffix | (file, _) <- (map splitExt (maybe [] cSources (library pkg_descr)))]
-      lib  = mkLibName pref (showPackageId (package pkg_descr))
-  rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs])
+  when (hasLibs pkg_descr) (buildLibGhc (library pkg_descr) pkg_descr pref)
+
+buildLibGhc (Just l) pkg_descr pref
+    = do let hObjs = map (++objsuffix) (map dotToSep (modules l))
+             cObjs = [file ++ objsuffix | (file, _)
+                      <- (map splitExt (cSources l))]
+             lib  = mkLibName pref (showPackageId (package pkg_descr))
+         unless (null hObjs && null cObjs)
+           (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))
+buildLibGhc _ _ _ = return ()
+
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr lbi = 

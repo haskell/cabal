@@ -1,22 +1,31 @@
 * 0.1
-** if library is Nothing, then don't build the library. sanity check
-   for both library and executables == nothing.
+HIGH: 
+** grep for "FIX"
+** make installed binaries executable! (posix?)
+** under what conditions does library == Nothing?
+** make sure tests will work on other machines. why doesn't make work
+   in test/A on lex?
+** fix test cases so a single failure doesn't cascade
+** sanity check for both library and executables == nothing.
+- also, if they have Nothing, and yet BuildInfo is non-empty, this
+   should probably be a warning.
 *** add test case for no libraries
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
 - integrate suggestions from libraries@
-** grep for "FIX"
-** does clean remove installed-pkg-config and .setup-config or
-   whatever? 
-** should .installed-pkg-config be removed after successful register?
 ** Clean up field parsers (Martin: what else goes here?)
 *** license parser parses either known strings, or a filename.
+LOW
+** clean 
+- does clean remove installed-pkg-config and .setup-config or whatever? 
+- should .installed-pkg-config be removed after successful register?
 ** add "clean" to doc?
 ** add description file format to doc.
 ** Change name of Setup.description?
 ** the ./setup -h output should document which commands exist, and
    which options are relevant to which commands.
+** refactor createGhcCommandLine?
 
 * 1.0 
 ** HC-PKG (see "Depends on HC-PKG" below)

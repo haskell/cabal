@@ -50,6 +50,7 @@ module Distribution.Package (
         Executable(..),
 	emptyPackageDescription,
         parsePackageDesc,
+        hasLibs,
 #ifdef DEBUG        
         hunitTests,
         test
@@ -164,6 +165,14 @@ emptyBuildInfo = BuildInfo {
 setOptions :: CompilerFlavor -> [String] -> BuildInfo -> BuildInfo
 setOptions c xs desc@BuildInfo{options=opts}
     = desc{options=(c,xs):opts}
+
+-- |does this package have any libraries?
+hasLibs :: PackageDescription -> Bool
+hasLibs p = case library p of
+            Just l  -> if null (cSources l) && null (modules l)
+                       then False else True
+            Nothing -> False
+
 
 -- ------------------------------------------------------------
 -- * Parsing
