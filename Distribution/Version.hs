@@ -40,7 +40,24 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Version where
+module Distribution.Version (
+  -- * The Version type
+  Version(..),
+
+  -- * Package versions
+  showVersion,
+  parseVersion,
+
+  -- ** Version ranges
+  VersionRange(..), 
+  orLaterVersion, orEarlierVersion,
+  betweenVersionsInclusive,
+  withinRange,
+  showVersionRange,
+  parseVersionRange,
+ ) where
+
+import Data.List	( intersperse )
 
 import Time (Month(..))
 import Text.ParserCombinators.Parsec
@@ -49,49 +66,137 @@ import qualified Text.ParserCombinators.Parsec.Token as P
 
 import HUnit
 
-data Version = DateVersion {versionYear  :: Integer,
-                            versionMonth :: Month,
-                            versionDay   :: Integer}
-             | NumberedVersion {versionMajor      :: Integer,
-                                versionMinor      :: Integer,
-                                versionPatchLevel :: Integer}
-             | NoVersion
-               deriving (Read, Show, Eq, Ord)
+-- -----------------------------------------------------------------------------
+-- The Version type
 
--- |FIX: add between versions? striclyBetween, etc?
+{- |
+A 'Version' represents the version of a software entity.
+
+An instance 'Eq' is provided, which implements exact equality modulo
+reordering of the tags in the 'versionTags' field.  
+
+The interpretation of ordering is dependent on the entity being
+versioned, and perhaps the application.  For example, simple branch
+ordering is probably sufficient for many uses (see the 'versionBranch'
+field), but some versioning schemes may include pre-releases which
+have tags @"pre1"@, @"pre2"@, and so on, and these would need to be
+taken into account when determining ordering.  In some cases, date
+ordering may be more appropriate, so the application would have to
+look for @date@ tags in the 'versionTags' field and compare those.
+
+Similarly, concrete representations of versions may differ, so we leave
+parsing and printing up to the application.
+-}
+data Version = 
+  Version { versionBranch :: [Int],
+		-- ^ The numeric branch for this version.  This reflects the
+		-- fact that most software versions are tree-structured; there
+		-- is a main trunk which is tagged with versions at various
+		-- points (1,2,3...), and the first branch off the trunk after
+		-- version 3 is 3.1, the second branch off the trunk after
+		-- version 3 is 3.2, and so on.  The tree can be branched
+		-- arbitrarily, just by adding more digits.
+		-- 
+		-- We represent the branch as a list of 'Int', so
+		-- version 3.2.1 becomes [3,2,1].  Lexicographic ordering
+		-- (i.e. the default instance of 'Ord' for @[Int]@) gives
+		-- the natural ordering of branches.
+
+	   versionTags :: [String]  -- really a bag
+		-- ^ A version can be tagged with an arbitrary list of strings.
+		-- The interpretation of the list of tags is entirely dependent
+		-- on the entity that this version applies to, but the following
+		-- conventions are recommended:
+		--
+		--  * a tag can be of the form @"name=value"@ to specify a
+		--    property, or simply @name@ to specify a boolean property.
+		--
+		--  * released versions should have the tag @"release"@,
+		--
+		--  * the date of a release or snapshot can be included by
+		--    giving the tag @"date=@/date/@"@, where /date/ is a
+		--    date readable by the 'Read' instance for 'ClockTime'.
+	}
+  deriving (Read,Show)
+
+instance Eq Version where
+  v1 == v2  =  versionBranch v1 == versionBranch v2 
+		&& all (`elem` (versionTags v2)) (versionTags v1)
+		-- tags may be in any order
+
+-- -----------------------------------------------------------------------------
+-- Package Versions
+
+-- Todo: maybe move this to Distribution.Package.Version?
+-- (package-specific versioning scheme).
+
+-- Our conventions:
+--
+--	* Released versions have the tag "release", and are printed
+--	  with the branch only (e.g. 6.2.1)
+--	  
+--	* Snapshot versions have the tag "date=<date>" and are printed
+--	  with the branch followed by '-<date>' (e.g. 6.2-12-Nov-2004).
+
+showVersion :: Version -> String
+showVersion (Version branch tags)
+  | "release" `elem` tags
+  = branch_str
+  | otherwise 
+  = case getDate tags of
+	Just date -> branch_str  ++ '-' : date
+	_         -> error "Distribution.Version.showVer: release or date required"
+  where branch_str = concat (intersperse "." (map show branch))
+
+	getDate [] = Nothing
+	getDate (('d':'a':'t':'e':'=':date):_) = Just date	
+	getDate (_:rest) = getDate rest
+
+-- -----------------------------------------------------------------------------
+-- Version ranges
+
+-- Todo: maybe move this to Distribution.Package.Version?
+-- (package-specific versioning scheme).
+
 data VersionRange
   = AnyVersion
-  | ExactlyThisVersion     Version -- = version
-  | OrLaterVersion         Version -- >= version
-  | OrEarlierVersion       Version -- <= version
-  | StrictlyLaterVersion   Version -- > version
-  | StrictlyEarlierVersion Version -- < version
--- v1 < x <= v3, etc. Note exactly and any don't make sense here:
-  | Between VersionRange VersionRange
-    deriving (Read, Show, Eq)
+  | ThisVersion		   Version -- = version
+  | LaterVersion	   Version -- > version  (NB. not >=)
+  | EarlierVersion	   Version -- < version
+	-- ToDo: are these too general?
+  | UnionVersionRanges      VersionRange VersionRange
+  | IntersectVersionRanges  VersionRange VersionRange
+  deriving (Show,Read,Eq)
 
-number :: (Integral a, Read a) => Parser a
-number  = do{ ds <- many1 digit
-            ; return (read ds)
-            }
-        <?> "number"
+orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
+orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
 
-showVer :: Version -> String
-showVer (DateVersion yr mn day)
-    = (show yr) ++ "." ++ (show mn) ++ "." ++ (show day)
-showVer (NumberedVersion mj mn p)
-    = (show mj) ++ "." ++ (show mn) ++ "-" ++ (show p)
-showVer NoVersion = "none"
+betweenVersionsInclusive v1 v2 =
+  IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
+
+v1 `laterVersion`   v2 = versionBranch v1 > versionBranch v2
+v1 `earlierVersion` v2 = versionBranch v1 < versionBranch v2
 
 -- |Does this version fall within the given range?
 withinRange :: Version -> VersionRange -> Bool
-withinRange _  AnyVersion                  = True
-withinRange v1 (ExactlyThisVersion v2)     = v1 == v2
-withinRange v1 (OrLaterVersion v2)         = v2 <= v1
-withinRange v1 (OrEarlierVersion v2)       = v1 <= v2
-withinRange v1 (StrictlyEarlierVersion v2) = v1 < v2
-withinRange v1 (StrictlyLaterVersion v2)   = v2 < v1
-withinRange v  (Between v1 v2)   = (withinRange v v1) && (withinRange v v2)
+withinRange _  AnyVersion                = True
+withinRange v1 (ThisVersion v2) 	 = v1 == v2
+withinRange v1 (LaterVersion v2)         = v1 `laterVersion` v2
+withinRange v1 (EarlierVersion v2)       = v1 `earlierVersion` v2
+withinRange v1 (UnionVersionRanges v2 v3) 
+   = v1 `withinRange` v2 || v1 `withinRange` v3
+withinRange v1 (IntersectVersionRanges v2 v3) 
+   = v1 `withinRange` v2 && v1 `withinRange` v3
+
+showVersionRange :: VersionRange -> String
+showVersionRange AnyVersion = "-any"
+showVersionRange (ThisVersion v) = '=' : showVersion v
+showVersionRange (LaterVersion v) = '>' : showVersion v
+showVersionRange (EarlierVersion v) = '<' : showVersion v
+showVersionRange (UnionVersionRanges r1 r2) 
+  = showVersionRange r1 ++ "||" ++ showVersionRange r2
+showVersionRange (IntersectVersionRanges r1 r2) 
+  = showVersionRange r1 ++ "&&" ++ showVersionRange r2
 
 -- ------------------------------------------------------------
 -- * Parsing
@@ -103,20 +208,20 @@ word = many1 letter <?> "word"
 --  -----------------------------------------------------------
 parseVersionRange :: Parser VersionRange
 parseVersionRange = try (do reservedOp "<"
-                            v <- versionParser
-                            return $ StrictlyEarlierVersion v)
+                            v <- parseVersion
+                            return $ EarlierVersion v)
                     <|> (do reservedOp ">"
-                            v <- versionParser
-                            return $ StrictlyLaterVersion v)
+                            v <- parseVersion
+                            return $ LaterVersion v)
                     <|> (do reservedOp ">="
-                            v <- versionParser
-                            return $ OrLaterVersion v)
+                            v <- parseVersion
+                            return $ orLaterVersion v)
                     <|> (do reservedOp "<="
-                            v <- versionParser
-                            return $ OrEarlierVersion v)
+                            v <- parseVersion
+                            return $ orEarlierVersion v)
                     <|> (do reservedOp "=="
-                            v <- versionParser
-                            return $ ExactlyThisVersion v)
+                            v <- parseVersion
+                            return $ ThisVersion v)
                     <|> (do reservedOp "-"
                             reserved "any"
                             return $ AnyVersion)
@@ -124,25 +229,45 @@ parseVersionRange = try (do reservedOp "<"
 
 --  -----------------------------------------------------------
 -- |Parse any kind of version
-versionParser :: Parser Version
-versionParser
-    = do try numberedVersionParser
-         <|> dateVersionParser
-
+parseVersion :: Parser Version
+parseVersion
+    = do branch <- branchParser
+	 date <- dateParser
+	 return (Version{versionBranch=branch, versionTags=date})
 
 --  -----------------------------------------------------------
--- |Parse a version of the form 1.2-3
-numberedVersionParser :: Parser Version
-numberedVersionParser
-    = do n1 <- number
-         char '.'
-         n2 <- number
-         char '-'
-         n3 <- number
-         return $ NumberedVersion n1 n2 n3
+-- |Parse a version of the form 1.2.3
+branchParser :: Parser [Int]
+branchParser
+    = do n <- number
+	 bs <- branches
+	 return (n : bs)
 
+branches :: Parser [Int]
+branches
+    = option [] $ do
+	  char '.'
+	  n <- number
+          bs <- branches
+          return (n:bs)
 
--- ----------------------------------------------------------
+dateParser :: Parser [String]
+dateParser
+     = (try $ do char '-'; d <- many anyChar; return ["date="++d])
+       <|> (do notFollowedBy anyChar; return [])
+
+number :: (Integral a, Read a) => Parser a
+number  = do{ ds <- many1 digit
+            ; return (read ds)
+            }
+        <?> "number"
+
+-- -----------------------------------------------------------------------------
+-- Parsing dates
+
+{-
+-- Here is some code for parsing dates.  We might need this at some point.
+
 -- |Seperate the date with typically a '.' or a '-', /sep/
 dateSeparatedBy :: Char -> GenParser Char () Version
 dateSeparatedBy sep
@@ -171,9 +296,7 @@ dateSeparatedBy sep
                    day   <- number
                    return $ DateVersion year (read month) day)
 
--- ----------------------------------------------------------
--- |Parse a version in a variety of date formats
-dateVersionParser :: Parser Version
+dateVersionParser :: Parser String
 dateVersionParser 
     = try (dateSeparatedBy '.')
       <|> (dateSeparatedBy '-')
@@ -186,6 +309,7 @@ shortMonthParser = foldl1 (<|>) [do reserved a;return b | (a,b)
                                      ("Jul", July),      ("Aug", August),
                                      ("Sep", September), ("Oct", October),
                                      ("Nov", November),  ("Dec", December)]]
+-}
 
 lexer :: P.TokenParser ()
 lexer  = P.makeTokenParser 
@@ -226,15 +350,13 @@ reserved = P.reserved lexer
 reservedOp :: String -> CharParser () ()
 reservedOp = P.reservedOp lexer
 
-
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
--- Most of the testing is for version related stuff.  Move to Version?
 
 -- |Simple version parser wrapper
 doVersionParse :: String -> Either String Version
-doVersionParse input = let x = parse versionParser "" input
+doVersionParse input = let x = parse parseVersion "" input
                         in case x of
                            Left err -> Left (show err)
                            Right y  -> Right y
@@ -247,94 +369,66 @@ doVersionRangeParse input
              Left err -> Left (show err)
              Right y  -> Right y
 
-tDateVersion :: Version
-tDateVersion  = DateVersion 2003 October 31
-tDateVersion2 :: Version
-tDateVersion2 = DateVersion 2002 November 0
-tDateVersion3 :: Version
-tDateVersion3 = DateVersion 2002 March 0
-tDateVersion4 :: Version
-tDateVersion4 = DateVersion 2002 May 0
+branch1 = [1]
+branch2 = [1,2]
+branch3 = [1,2,3]
+branch4 = [1,2,3,4]
+
+release1 = Version{versionBranch=branch1, versionTags=["release"]}
+release2 = Version{versionBranch=branch2, versionTags=["release"]}
+release3 = Version{versionBranch=branch3, versionTags=["release"]}
+release4 = Version{versionBranch=branch4, versionTags=["release"]}
+snap     = Version{versionBranch=branch3, versionTags=["date=2003.10.31"]}
+snapdash = Version{versionBranch=branch3, versionTags=["date=2003-10-31"]}
 
 hunitTests :: [Test]
 hunitTests
     = [
-       "simple dot date" ~: "failed" ~: Right tDateVersion
-            ~=? doVersionParse "2003.10.31",
-       "simple dash date" ~: "failed" ~: Right tDateVersion
-            ~=? doVersionParse "2003-10-31",
-       "year short day dot" ~: "failed"
-            ~: Right tDateVersion ~=? doVersionParse "2003.Oct.31",
-       "year short day dash" ~: "failed"
-            ~: Right tDateVersion ~=? doVersionParse "2003-Oct-31",
-       "hugs style" ~: "failed"
-            ~: Right tDateVersion2 ~=? doVersionParse "Nov-2002",
-       "hugs style may" ~: "failed"
-            ~: Right tDateVersion3 ~=? doVersionParse "Mar-2002",
-       "hugs style mar" ~: "failed"
-            ~: Right tDateVersion4 ~=? doVersionParse "May-2002",
-       "hugs style dot" ~: "failed"
-            ~: Right tDateVersion2 ~=? doVersionParse "Nov.2002",
-       "year-longmonth-day dash"
-            ~: Right tDateVersion ~=? doVersionParse "2003-October-31",
-       "year-longmonth-day dot"
-            ~: Right tDateVersion ~=? doVersionParse "2003.October.31",
-       "numbered version" ~: "failed"
-            ~: (Right $ NumberedVersion 1 2 3) ~=? doVersionParse "1.2-3",
+       "released version 1" ~: "failed"
+            ~: (Right $ release1) ~=? doVersionParse "1",
+       "released version 3" ~: "failed"
+            ~: (Right $ release3) ~=? doVersionParse "1.2.3",
+       "simple dot date" ~: "failed" ~: Right snap
+            ~=? doVersionParse "1.2.3-2003.10.31",
+       "simple dash date" ~: "failed" ~: Right snapdash
+            ~=? doVersionParse "1.2.3-2003-10-31",
 
        -- Version ranges
-       "greater than hugsStyle" ~: "failed"
-            ~: (Right $ StrictlyLaterVersion tDateVersion2)
-            ~=? doVersionRangeParse "> Nov-2002",
-       "greater than hugsStyle nospace" ~: "failed"
-            ~: (Right $ StrictlyLaterVersion tDateVersion2)
-            ~=? doVersionRangeParse ">Nov-2002",
-       "OrEarlier year-longmonth-day dash" ~: "failed"
-            ~: (Right $ OrEarlierVersion tDateVersion)
-            ~=? doVersionRangeParse "<=2003-October-31",
-       "OrLater year-longmonth-day dash" ~: "failed"
-            ~: (Right $ OrLaterVersion tDateVersion)
-            ~=? doVersionRangeParse ">=2003-October-31",
-       "Exactly This year-longmonth-day dot" ~: "failed"
-            ~: (Right $ ExactlyThisVersion tDateVersion)
-            ~=? doVersionRangeParse "==2003.October.31",
        "Any version" ~: "failed"
             ~: (Right $ AnyVersion)
             ~=? doVersionRangeParse "-any",
        "Any version space" ~: "failed"
             ~: (Right $ AnyVersion)
             ~=? doVersionRangeParse "- any",
-       "range comparison OrLaterVersion" ~: "failed"
+       "range comparison LaterVersion 1" ~: "failed"
             ~: True
-            ~=? tDateVersion `withinRange` (OrLaterVersion tDateVersion2),
-       "range comparison Equal" ~: "failed"
-            ~: True
-            ~=? tDateVersion `withinRange` (ExactlyThisVersion tDateVersion),
-       "range comparison OrEarlierVersion1" ~: "failed"
-            ~: True
-            ~=? tDateVersion2 `withinRange` (OrEarlierVersion tDateVersion),
-       "range comparison OrEarlierVersion2" ~: "failed"
+            ~=? release3 `withinRange` (LaterVersion release2),
+       "range comparison LaterVersion 2" ~: "failed"
             ~: False
-            ~=? tDateVersion `withinRange` (OrEarlierVersion tDateVersion2),
-       "range comparison OrEarlierVersion3" ~: "failed"
+            ~=? release2 `withinRange` (LaterVersion release3),
+       "range comparison EarlierVersion 1" ~: "failed"
             ~: True
-            ~=? tDateVersion `withinRange` (OrEarlierVersion tDateVersion),
-       "range comparison OrEarlierVersion4" ~: "failed"
-            ~: True
-            ~=? (NumberedVersion 1 2 3)
-                    `withinRange` (OrLaterVersion $ NumberedVersion 0 0 0),
-       "range comparison StrictlyGreaterVersion" ~: "failed"
+            ~=? release3 `withinRange` (LaterVersion release2),
+       "range comparison EarlierVersion 2" ~: "failed"
             ~: False
-            ~=? (NumberedVersion 2 1 0)
-                    `withinRange` (StrictlyLaterVersion $ NumberedVersion 3 0 0),
-       "range comparison StrictlyGreaterVersion 2" ~: "failed"
+            ~=? release2 `withinRange` (LaterVersion release3),
+       "range comparison orLaterVersion 1" ~: "failed"
             ~: True
-            ~=? (NumberedVersion 10 0 0)
-                    `withinRange` (StrictlyLaterVersion $ NumberedVersion 3 0 0),
-       -- Comparing versions
-       "Different kinds" ~: "failed"
-            ~: True ~=? (NumberedVersion 1 2 3 > tDateVersion),
-       "Two dates" ~: "failed"
-            ~: True ~=? (tDateVersion > tDateVersion2)
+            ~=? release3 `withinRange` (orLaterVersion release3),
+       "range comparison orLaterVersion 2" ~: "failed"
+            ~: True
+            ~=? release3 `withinRange` (orLaterVersion release2),
+       "range comparison orLaterVersion 3" ~: "failed"
+            ~: False
+            ~=? release2 `withinRange` (orLaterVersion release3),
+       "range comparison orEarlierVersion 1" ~: "failed"
+            ~: True
+            ~=? release2 `withinRange` (orEarlierVersion release2),
+       "range comparison orEarlierVersion 2" ~: "failed"
+            ~: True
+            ~=? release2 `withinRange` (orEarlierVersion release3),
+       "range comparison orEarlierVersion 3" ~: "failed"
+            ~: False
+            ~=? release3 `withinRange` (orEarlierVersion release2)
       ]
 
