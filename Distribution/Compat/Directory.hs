@@ -13,7 +13,7 @@ module Distribution.Compat.Directory (
 
 #if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
 
-import System.Directory 	( findExecutable, copyFile, getHomeDirectory,createDirectoryIfMissing,removeDirectoryRecursive )
+import System.Directory
 
 #else /* to end of file... */
 
