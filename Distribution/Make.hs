@@ -82,7 +82,7 @@ UnregisterCmd: We assume there is an unregister target
 -}
 
 configureArgs :: ConfigFlags -> String
-configureArgs (flavour, mb_hc_path, mb_hc_pkg_path, mb_prefix)
+configureArgs (flavour, mb_hc_path, mb_hc_pkg_path, mb_prefix, mb_haddock)
   = unwords (hc_flag ++ hc_pkg_flag ++ prefix_flag)
   where
 	hc_flag = case (flavour, mb_hc_path) of

@@ -47,6 +47,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       localBuildInfoFile,
                                       exeDeps,
 				      buildDepToDep,
+                                      findHaddock,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -121,7 +122,7 @@ localBuildInfoFile = "./.setup-config"
 -- -----------------------------------------------------------------------------
 
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
-configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
+configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix, maybe_haddock)
   = do
 	setupMessage "Configuring" pkg_descr
 	removeInstalledConfig
@@ -143,19 +144,27 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
         unless (null exts) $ putStrLn $ -- Just warn, FIXME: Should this be an error?
             "Warning: " ++ show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
-
+        had <- findHaddock maybe_haddock
         -- FIXME: maybe this should only be printed when verbose?
         message $ "Using install prefix: " ++ pref
         message $ "Using compiler: " ++ p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
+        message $ maybe "No haddock found" ((++) "Using haddock: ") had
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
                               packageDeps=map buildDepToDep (buildDepends pkg_descr),
+                              withHaddock=had,
                               executableDeps = [(n, map buildDepToDep (buildDepends pkg_descr))
                                                 | Executable n _ _ _ <- executables pkg_descr]
                              }
+
+-- |If configure has been given the with-haddock argument, return
+-- that, otherwise look in the path for it.
+findHaddock :: Maybe FilePath -> IO (Maybe FilePath)
+findHaddock p@(Just _) = return p
+findHaddock Nothing    = findExecutable "haddock"
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
 -- set any version information - will need to query HC-PKG for this.

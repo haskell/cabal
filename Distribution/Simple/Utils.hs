@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Utils (
 	die,
 	rawSystemPath,
+        rawSystemVerbose,
 	rawSystemExit,
         maybeExit,
 	rawSystemPathExit,
@@ -117,6 +118,12 @@ rawSystemPath verbose prog args = do
       when (verbose > 0) $
         putStrLn (path ++ concatMap (' ':) args)
       rawSystem path args
+
+rawSystemVerbose :: Int -> String -> [String] -> IO ExitCode
+rawSystemVerbose verbose prog args = do
+      when (verbose > 0) $
+        putStrLn (prog ++ concatMap (' ':) args)
+      rawSystem prog args
 
 maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
