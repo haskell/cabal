@@ -102,9 +102,9 @@ installHugs pref buildPref pkg_descr
 mkImportDir :: PackageDescription -> LocalBuildInfo -> FilePath
 mkImportDir pkg_descr lbi = 
 #ifdef mingw32_TARGET_OS
-	prefix lbi ++ '/':pkg_name
+	pathJoin [prefix lbi, pkg_name
 #else
-	prefix lbi ++ "/lib/" ++ pkg_name
+	pathJoin [prefix lbi, "lib", pkg_name]
 #endif
   where 
 	pkg_name = showPackageId (package pkg_descr)
