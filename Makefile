@@ -30,7 +30,8 @@ build-stamp: config
 install: build-stamp
 	./setup install $(USER_FLAG)
 
-# FIX: doesn't work because of preprocsesing.
+# Lame for now. I don't mind though, because cabal itself should be
+# able to do this soon.  Needs cpphs.
 haddock:
 	rm -rf dist/doc
 	mkdir -p dist/doc/Distribution/Simple
@@ -115,7 +116,14 @@ check: tests
 pushall:
 	darcs push --all ijones@cvs.haskell.org:/home/darcs/cabal
 
-dist: pushall
+dist: pushall haddock
 	darcs dist
-	scp cabal.tar.gz ijones@www.haskell.org:~/libraryInfrastructure/libraryInfrastructure-code.tgz
-	rm -f cabal.tar.gz
+	mv cabal.tar.gz /tmp
+	cd /tmp && tar -zxvf cabal.tar.gz
+	mkdir -p /tmp/cabal/doc/html
+	cp -r dist/doc/html /tmp/cabal/doc/html
+	cd /tmp && tar -zcvf cabal-code.tgz cabal
+	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
+	rm -f /tmp/cabal-code.tgz
+	rm -f /tmp/cabal.tar.gz
+	rm -rf /tmp/cabal
