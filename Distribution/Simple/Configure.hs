@@ -54,7 +54,6 @@ import Distribution.Simple.Utils
 import Distribution.Package	( PackageIdentifier )
 
 import System.IO hiding (catch)
-import System.Exit
 import System.Directory
 import Control.Monad		( when )
 import Control.Exception	( catch, evaluate )

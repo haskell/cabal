@@ -47,8 +47,6 @@ import Distribution.Package(PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
 
-import System.IO ()
-import System.Exit (ExitCode(..), exitWith)
 import System.Cmd (system)
 
 -- |Create a source distribution. FIX: Calls tar directly (won't work
@@ -73,4 +71,5 @@ distSrc = "dist/src"
 tarBallName :: PackageDescription -> FilePath
 tarBallName p = (nameVersion p) ++ ".tgz"
 
+nameVersion :: PackageDescription -> String
 nameVersion = showPackageId . package
