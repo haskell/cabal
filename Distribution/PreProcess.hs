@@ -47,7 +47,7 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
 
 import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-                                        BuildInfo(..), Executable(..),
+                                        BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
@@ -105,7 +105,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
 			    modu <- libModules pkg_descr] -- FIX: output errors?
     when (not (null (executables pkg_descr))) $
         setupMessage "Preprocessing executables for" pkg_descr
-    foreachExe pkg_descr $ \ theExe -> do
+    withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
@@ -156,7 +156,7 @@ removePreprocessedPackage  pkg_descr r suff
     = do withLib pkg_descr () (\lib -> do
                      let bi = libBuildInfo lib
                      removePreprocessed (r `joinFileName` hsSourceDir bi) (libModules pkg_descr) suff)
-         foreachExe pkg_descr (\theExe -> do
+         withExe pkg_descr (\theExe -> do
                      let bi = buildInfo theExe
                      removePreprocessed (r `joinFileName` hsSourceDir bi) (otherModules bi) suff)
 
@@ -174,12 +174,6 @@ removePreprocessed searchLoc mods suffixesIn
 	    hs <- moduleToFilePath [searchLoc] m ["hs"]
 	    when (not (null fs)) (mapM_ removeFile hs)
 	otherSuffixes = filter (/= "hs") suffixesIn
-
--- | Perform the action on each 'Executable' in the package description.
-foreachExe :: PackageDescription
-           -> (Executable -> IO a)
-           -> IO ()
-foreachExe pkg_descr action = mapM_ action (executables pkg_descr)
 
 -- ------------------------------------------------------------
 -- * known preprocessors

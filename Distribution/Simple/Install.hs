@@ -62,7 +62,7 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..), Library (..),
-	setupMessage, hasLibs, withLib, libModules, exeModules,
+	setupMessage, hasLibs, withLib, libModules, withExe, exeModules,
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
@@ -107,8 +107,8 @@ installExeGhc :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installExeGhc verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
-         sequence_ [copyFileVerbose verbose (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
-                    | Executable e _ b <- executables pkg_descr]
+         withExe pkg_descr $ \ (Executable e _ b) ->
+             copyFileVerbose verbose (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: Int      -- ^verbose
@@ -149,7 +149,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
 	try $ removeDirectoryRecursive progInstallDir
 	smartCopySources verbose progBuildDir progInstallDir
 	    (exeModules pkg_descr) hugsInstallSuffixes
-	flip mapM_ (executables pkg_descr) $ \ exe -> do
+	withExe pkg_descr $ \ exe -> do
 	    let fname = hugsMainFilename exe
 	    let installName = progInstallDir `joinFileName` fname
 	    copyFileVerbose verbose (progBuildDir `joinFileName` fname) installName

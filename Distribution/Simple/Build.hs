@@ -50,7 +50,8 @@ import Distribution.Extension (Extension(..),
 				extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
-			     		setupMessage, withLib, Executable(..),
+			     		setupMessage, withLib,
+                                        Executable(..), withExe,
                                         Library(..), libModules, hcOptions)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
@@ -162,7 +163,8 @@ buildGHC pkg_descr lbi verbose = do
         rawSystemPathExit verbose "ar" arArgs
 
   -- build any executables
-  sequence_ [ do createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
+  withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
+                 createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True exeDir
@@ -179,7 +181,6 @@ buildGHC pkg_descr lbi verbose = do
 			 ++ ldOptions exeBi
 			 ++ (if verbose > 4 then ["-v"] else [])
                  rawSystemExit verbose ghcPath binArgs
-             | Executable exeName' modPath exeBi <- executables pkg_descr]
 
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
@@ -202,8 +203,7 @@ buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 buildHugs pkg_descr lbi verbose = do
     let pref = buildDir lbi
     withLib pkg_descr () $ (\l -> compileBuildInfo pref Nothing (libModules pkg_descr) (libBuildInfo l))
-    mapM_ (compileExecutable (pref `joinFileName` "programs"))
-	(executables pkg_descr)
+    withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
   where
 	compileExecutable :: FilePath -> Executable -> IO ()
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
