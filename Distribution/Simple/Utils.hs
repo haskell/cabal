@@ -89,7 +89,12 @@ import System.Exit
 import Compat.RawSystem (rawSystem)
 import Compat.Exception (bracket)
 import System.Environment
-import System.Directory hiding (copyFile)
+
+import System.Directory (getDirectoryContents, removeDirectory,
+                        setCurrentDirectory, getCurrentDirectory,
+                        doesDirectoryExist, doesFileExist, removeFile,
+                        createDirectory)
+
 import Foreign.Marshal (allocaBytes)
 import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes, fileMode, setFileMode)
 
