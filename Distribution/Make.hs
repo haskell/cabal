@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Make (
 	module Distribution.Package,
 	License(..), Version(..),
-	defaultMain,
+	defaultMain, defaultMainNoRead
   ) where
 
 -- local
@@ -83,6 +83,10 @@ RegisterCmd:   We assume there is a register target and a variable $(user)
 UnregisterCmd: We assume there is an unregister target
 -}
 
+-- I'm not happy about this being here. I just copied it from Simple.hs,
+-- but it should be in a utility module.
+defaultPackageDesc :: FilePath
+defaultPackageDesc = "Setup.description"
 
 configureArgs :: ConfigFlags -> String
 configureArgs (_, Just hc_path, maybe_prefix)
@@ -98,8 +102,11 @@ configureArgs (Nothing, Nothing, maybe_prefix)
 exec :: String -> IO a
 exec cmd = system cmd >>= exitWith
 
-defaultMain :: PackageDescription -> IO ()
-defaultMain pkg_descr
+defaultMain :: IO ()
+defaultMain = parsePackageDesc defaultPackageDesc >>= defaultMainNoRead
+
+defaultMainNoRead :: PackageDescription -> IO ()
+defaultMainNoRead pkg_descr
     = do args <- getArgs
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
