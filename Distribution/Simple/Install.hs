@@ -52,14 +52,14 @@ import Distribution.Package
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage)
 
+import Control.Monad(when)
 import Data.List(inits, nub, intersperse, findIndices)
-import Data.Maybe(Maybe, listToMaybe)
+import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust)
 import System.Cmd(system)
 import System.Directory(doesDirectoryExist, createDirectory, doesFileExist)
 import System.Exit
 
 import HUnit ((~:), (~=?), Test(..))
-
 
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
@@ -68,7 +68,6 @@ install :: PackageDescription -> LocalBuildInfo -> IO ()
 install pkg_descr lbi = do
   setupMessage "Installing" pkg_descr
   moveSources (prefix lbi) (allModules pkg_descr) (mainModules pkg_descr)
-  exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
@@ -86,20 +85,27 @@ mkImportDir pkg_descr lbi =
 -- |Put the source files into the right directory in preperation for
 -- something like sdist or installHugs.
 moveSources :: FilePath   -- ^Target directory
-            -> [FilePath] -- ^sources
-            -> [FilePath] -- ^Main modules
+            -> [String] -- ^Modules
+            -> [String] -- ^Main modules
             -> IO ()
 moveSources _targetDir sources mains
     = do let targetDir = maybeAddSep _targetDir
          createIfNotExists True targetDir
 	 -- Create parent directories for everything:
+         sourceLocs <- sequence $ map moduleToFPErr (sources ++ mains)
 	 mapM (createIfNotExists True)
 		  $ nub [(removeFilename $ targetDir ++ x)
-		   | x <- (sources ++ mains), (removeFilename x /= "")]
+		   | x <- sourceLocs, (removeFilename x /= "")]
 	 -- Put sources into place:
 	 mapM system ["cp -r " ++ x ++ " " ++ targetDir ++ x
-				  | x <- sources ++ mains]
+				  | x <- sourceLocs]
 	 return ()
+    where moduleToFPErr m
+              = do p <- moduleToFilePath m
+                   when (isNothing p)
+                            (putStrLn ("Error: Could not find module: " ++ m)
+                             >> exitWith (ExitFailure 1))
+                   return $ fromJust p
 
 -- ------------------------------------------------------------
 -- * utility functions
@@ -107,7 +113,10 @@ moveSources _targetDir sources mains
 
 -- |FIX: Do we actually have to make something differnet for windows,
 -- or does this work?
+pathSeperator :: Char
 pathSeperator = '/'
+
+pathSeperatorStr :: String
 pathSeperatorStr = [pathSeperator]
 
 createIfNotExists :: Bool     -- ^Create its parents too?
@@ -151,6 +160,7 @@ removeFilename path
 
 -- |If this filename doesn't end in the path separator, add it.
 maybeAddSep :: FilePath -> FilePath
+maybeAddSep [] = []
 maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr
 
 -- |Get the file path for this particular module.  In the IO monad
@@ -174,18 +184,31 @@ moduleToPossiblePaths s
     =  let splitted = mySplit '.' s
            lastElem = last splitted
            possibleSuffixes = [".hs", ".lhs"]
-        in [(concat (intersperse pathSeperatorStr (init splitted))) ++ pathSeperatorStr ++ x
-            | x <- map (lastElem++) possibleSuffixes]
+           pref = if (not $ null $ init splitted)
+                  then concat (intersperse pathSeperatorStr (init splitted))
+                           ++ pathSeperatorStr
+                  else ""
+        in [pref ++ x | x <- map (lastElem++) possibleSuffixes]
 
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
 
 hunitTests :: IO Test
 hunitTests
-    = do mp1 <- moduleToFilePath "Simple.Build" --exists
+    = do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
          mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
          return $ TestLabel "Install Tests" $ TestList
-             ["moduleToPossiblePaths" ~: "failed" ~:
+             ["moduleToPossiblePaths 1" ~: "failed" ~:
               ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
                 ~=? (moduleToPossiblePaths "Foo.Bar.Bang"),
-              "existing not found" ~: "failed" ~: (Just "Simple/Build.hs") ~=? mp1,
+              "moduleToPossiblePaths2 " ~: "failed" ~:
+                (moduleToPossiblePaths "Foo")
+                ~=? ["Foo.hs", "Foo.lhs"],
+
+
+              "existing not found" ~: "failed" ~:
+                   (Just "Distribution/Simple/Build.hs") ~=? mp1,
               "not existing not nothing" ~: "failed" ~: Nothing ~=? mp2
              ]
