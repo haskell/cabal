@@ -19,7 +19,7 @@ set -e
 
 case "$1" in
     configure)
-        /usr/share/doc/libghc6-cabal-dev/register.sh
+        source /usr/share/doc/libghc6-cabal-dev/register.sh
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
