@@ -245,7 +245,7 @@ parseFilePath :: GenParser Char st [FilePath]
 parseFilePath
     = parseCommaList (many1 (do try word
                                 <|> toStr digit
-                                <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{")
+                                <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{.")
                             ) >>= return . concat)
         <?> "parseFilePath"
 
@@ -295,32 +295,32 @@ parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
-testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-foo-bar-bang\nLicense: LGPL\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-foo\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: foo/bar/bang.c, bong/boing.h\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: foo/bar, fang/fong\nIncludes: /foo/bar, jedi/night\nOptions: ghc: -fTH, hugs: +TH"
+testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-rain\nLicense: LGPL\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-rain\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: not/even/rain.c, such/small/hands\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: your/slightest, look/will\nIncludes: /easily/unclose, /me\nOptions: ghc: -fTH, hugs: +TH"
 
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
                                                  pkgVersion = Version {versionBranch = [0,1,1,1,1],
-                                                 versionTags = ["date=foo"]}},
+                                                 versionTags = ["date=rain"]}},
                     license = LGPL,
                     copyright = "Free Text String",
                     maintainer = "",
                     stability = "Free Text String",
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                     Dependency "HUnit"
-                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["date=foo"]))
-                                       (LaterVersion (Version [1,0,0] ["date=foo"])))],
+                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["date=rain"]))
+                                      (LaterVersion (Version [1,0,0] ["date=rain"])))],
 
                     allModules = ["Distribution.Package","Distribution.Version",
                                   "Distribution.Simple.GHCPackageConfig"],
 
                     mainModules = ["Distribution.Main"],
-                    cSources = ["foo/bar/bang"],
+                    cSources = ["not/even/rain.c", "such/small/hands"],
                     hsSourceDir = "src",
                     exposedModules = ["Distribution.Void", "Foo.Bar"],
                     extensions = [],
                     extraLibs = ["libfoo", "bar", "bang"],
-                    includeDirs = ["foo/bar", "fang/fong"],
-                    includes = ["/foo/bar", "jedi/night"],
+                    includeDirs = ["your/slightest", "look/will"],
+                    includes = ["/easily/unclose", "/me"],
                     options = []
 }
 
