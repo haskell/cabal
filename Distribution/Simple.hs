@@ -225,8 +225,8 @@ defaultMainWorker pkg_descr_in action args hooks
 		install buildPref pkg_descr localbuildinfo mprefix
                 postHook postCopy
 
-            InstallCmd mprefix uInst -> do
-                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+            InstallCmd uInst -> do
+                (uInst, _, args) <- parseInstallArgs uInst args []
                 pkg_descr <- hookOrInArgs preInst uInst
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
@@ -234,7 +234,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
                       (die "Hugs cannot yet install user-only packages.")
 		install buildPref pkg_descr localbuildinfo Nothing
-                when (isNothing mprefix && hasLibs pkg_descr)
+                when (hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo uInst)
                 postHook postInst
 
