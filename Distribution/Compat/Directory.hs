@@ -20,8 +20,10 @@ import Foreign
 import System.Directory
 import Distribution.Compat.Exception (bracket)
 import Control.Monad (when)
+#ifndef mingw32_TARGET_OS
 import System.Posix (getFileStatus,setFileMode,fileMode,accessTime,
 		     setFileMode,modificationTime,setFileTimes)
+#endif
 
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary = do
