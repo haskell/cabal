@@ -83,537 +83,219 @@
     </abstract>
   </artheader>
 
-<!-- Overview ------------------------------------------------ -->
-  <section id="lip-overview"><title>What we are trying to achieve</title>
-
-  <para>On a high level, we say that we want the system to help the
-  user to install packages (whether they be libraries or applications)
-  and their dependencies.  The system should work
-  <emphasis>with</emphasis> operating-system-level package managers
-  (such as &dpkg;, &rpm;, and FreeBSD's Ports system) rather than
-  replacing them.  For operating systems without the luxury of a
-  package manager, we propose to add a Haskell-specific package
-  manager.</para>
-
-  <para>To accomplish this, we propose a system similar to Python's
-  &distutils; (<xref linkend="lip-appendix-distutils">) where each
-  Haskell tool is distributed with a script (<xref
-  linkend="lip-script-example">) that has a standard command-line
-  interface.  This script will provide a familiar user interface
-  (<xref linkend="lip-command">) for compiling, installing, and
-  removing packages and their dependencies.</para>
-
-  <para>For instance, to install the &hunit; package, the user might
-  install it with their package manager, if available
-  (<command>apt-get install hunit-hugs</command> for instance) or
-  download the source code from the web site, change into the &hunit;
-  directory, and type <command>./Setup.lhs install default</command>,
-  which would build and install the &hunit; package for the default
-  compiler.  Similarly, he might type <command>./Setup.lhs install
-  nhc</command> to install the package for &nhc;.</para>
-
-  <para>Other tasks might be necessary to make the package known to
-  the system, such as registering it with the &impl; of interest
-  (<xref linkend="lip-packaging">).  Such tasks would also be
-  performed by this Setup program.</para>
-
-<!-- Problems ------------------------------------------------ -->
-  <section id="lip-problems"><title>Issues Facing Developers</title>
-
-  <para>There are a number of issues facing developers of Haskell
-  software when they decide to deploy their work.  </para>
-
-  <itemizedlist>
-
-  <listitem><para>Binary incompatibility between Haskell
-  Implementations and between versions of some implementations make it
-  very difficult to distribute binary libraries: if they are expected
-  to work together, all of the libraries on a user's system need to be
-  built with the same compiler.  This makes it a virtual necessity
-  that the source code for a Haskell library be distributed to the end
-  user of that library, although other options exist for systems like
-  Debian (<xref linkend="lip-appendix-debian">) which have
-  auto-builders. </para></listitem>
-
-  <listitem><para>Compilation is difficult: It was noted above that it
-  is usually necessary to distribute the source code for Haskell tools
-  to the end user.  The end user has to compile each Haskell tool they
-  use, but the task of compilation is complicated by a plethora of
-  preprocessors (such as arrowp and greencard) and interfaces with
-  non-Haskell libraries (such as Java, X, C, and GTK).  Further, there
-  is no way to formally express dependencies between Haskell tools, so
-  the users have to visit the home pages of the projects they're
-  interested in and find the dependencies.  </para></listitem>
-
-  <listItem><para>The &impls; are not completely compatible either:
-  They support different extensions, different libraries, different
-  binary formats, different flags, and different packaging
-  systems.</para></listitem>
-
-  <listitem><para>Given that compilation is difficult in and of
-  itself, it is further complicated by a wide variety of target
-  platforms that it is desirable to support.  These systems may treat
-  files differently (copying of files, path names) or have different
-  defaults for where to put compiled files or source code to make them
-  available to the user.  The variety of &impls; and target platforms
-  make writing of a generic build system that "just works" very
-  difficult.</para></listitem>
-  
-  <listitem><para>Having managed to compile and install all of the
-  Haskell software they need, if a user installs a new compiler (or
-  version thereof), all this work needs to be redone.  All of the
-  libraries on the system will have to be recompiled to match the
-  version of that compiler (this is apparently a bigger problem with
-  GHC than with NHC, and not much of a problem with
-  Hugs.)</para></listitem>
-
-  </itemizedlist>
-
-  <para>Compare this to the experience of installing a typical library
-  or tool written in C or C++ on a Debian GNU/Linux system: The user
-  consults a database of known programs (which is stored on her
-  computer) and runs a single command to install that package.  The
-  package management tool figures out the dependencies, downloads all
-  dependencies downloads the package, and installs them in the proper
-  order.  The packages are already compiled by a set of central
-  servers.  In fact, there is no reason that this kind of interface
-  can't be available to the end user except for the difficulty of
-  creating binary packages. (See <xref linkEnd =
-  "lip-problems-packagers">) </para>
-
-  <section id="lip-problems-packagers"><title>Issues Facing Packagers</title>
-
-  <para>There are roughly speaking, three different kinds of
-  operating-system package systems: source distributions (FreeBSD,
-  Gentoo), binary distributions (Debian, RPM), and language-specific
-  distributions (CPAN, XEmacs).  What we are proposing to create is a
-  language-specific distribution that assists in the creation of both
-  source and binary packages for other operating systems.</para>
-
-  <para>As mentioned above, it is possible to create an operating
-  system package for a Haskell library.  Indeed, its no harder to
-  create a Haskell package than any other kind of package; Haskell
-  packages are harder to maintain, however.  For instance, in the
-  Debian GNU/Linux system (<xref linkend="lip-appendix-debian">),
-  which is a binary distribution, there is currently no way to express
-  that a library needs to be recompiled when a new compiler is
-  uploaded to the autobuilders.  Currently, the only solution is to
-  re-upload library packages to the autobuilders at the same time you
-  upload a new &impl;.  Similarly for Redhat, binary packages have to
-  include the version number for &ghc; that they were compiled
-  with. </para>
-
-  <para> In a source distribution like FreeBSD (<xref
-  linkend="lip-appendix-freebsd">), this isn't a problem, since the
-  end user compiles all of their software themselves.  However, when the
-  end user compiles and installs a new &impl;, all of the libraries
-  compiled with the old &impl; will no longer work and need to be
-  recompiled.  As I understand it, there is currently no means of
-  performing this operation automatically.</para>
-
-  <para>Emacs / XEmacs presents packagers with some of the same
-  issues; they are both, practically speaking, Lisp compilers, and
-  incompatible, much like different versions of &impls;.  When an
-  elisp package is installed on Debian, it gets compiled automatically
-  (on the end user's machine) for each version of Emacs / XEmacs that
-  is installed.  This procedure is orthogonal to the XEmacs Packaging
-  System (<xref linkend="lip-appendix-xemacs">) and is a duplication
-  of effort in some cases, but that is really the only way to make it
-  work with Debian.  This has some ugly properties from Debian's
-  standpoint: once compiled, there are files in the operating system
-  that the packaging system doesn't know about.  These are similar to
-  issues that Haskell packagers for Debian will have to face.</para>
-
-</section>
-
-  <section id="lip-problems-solve"><title>Why We Should Solve This</title>
-
-<itemizedList>
-
-  <listItem><para>We need to evolve a decentralized way of
-  distributing libraries.  The current model of distributing them with
-  the &impls; puts too much strain upon the &impl; authors, and is not
-  sustainable in the long-term.  If this continues, availability and
-  reliability of libraries will suffer, and Haskell itself will suffer
-  in the long-term as a rich set of libraries is becoming the standard
-  for successful programming languages.</para></listItem>
-
-  <listItem><para>If we can help operating system packagers build
-  packages (Debian, RPM, etc.), then we'll have more happy end
-  users.</para></listItem>
-
-  <listItem><para>If we lower the cost of evaluating Haskell and
-  Haskell tools, more people might try them out.</para></listItem>
-
-  <listItem><para>Many Haskell programs are developed as research
-  prototypes and abandoned.  The subsequent bitrot makes it difficult
-  for the community to take over the projects.  Formally specifying
-  versioned dependencies and creating a central repository for Haskell
-  tools can help solve this problem.</para></listItem>
-
-  <listItem><para>Active participation with the rest of the Free
-  Software community (inclusion of Haskell in OS distributions,
-  interoperability between Haskell tools and external libraries) can
-  bring attention to Haskell and perhaps bring more talented
-  developers into The Flock.</para></listItem>
-
-</itemizedList>
-
-
-</section>
-
-</section>
-</section>
-
-
 
 <!-- Solution ------------------------------------------------- -->
 
-<section id=hli><title>The Haskell Library Infrastructure</title>
+<sect1 id=hli-goals><title>The Haskell Library Infrastructure: goals</title>
 
-<para>The Haskell Library Infrastructure (HLI) is a framework and supporting
-code aimed at the above problem. It is Haskell-specific, but independent of
-any particular Haskell implementation (Hugs, GHC, etc) or platform (Unix, Windows, etc).</para>
+<para>The Haskell Library Infrastructure (HLI) has the following main goal:
+to specify a standard way in which a Haskell library can be packaged, so that it is
+easy for consumers to use it, or re-package it, 
+regardless of the Haskell implementation or installation platform.</para>  
 
-<para>We use the term ``compiler'' to mean GHC, Hugs, nhc, hbc, etc.  Even though
-Hugs isn't really a compiler, the term is less clumsy than ``Haskell implementation''.</para>
+<para>The HLI also
+supports library authors by providing an instrastructure that automates the
+process of building and packaging simple libraries.  It is not necessary to use
+this code --- indeed complex libraries may exceed its abilities --- but it should
+handle 75% of the cases with no trouble.</para>
 
-<section><title>Packages</title>
-
-<para>A package is the unit of distribution. 
-A package has explicit dependencies on other packages.</para>
-
-</section>
-
-<section><title>What the compilers must implement</title>
-
-<para>The HLI requires that the Haskell implementations be somewhat package-aware.
-This section documents those requirements</para>
-
-<section><title>Registering a package</title>
-
-<para>Installing a package ultimately involves these steps:
+<para>The HLI serves a number of different people:
 <itemizedlist>
-<listitem> <para>
- Compiling the source files, by invoking the compiler.  Even Hugs may require 
-     some processing (e.g running cpp)
-</para></listitem>
+<listitem><para>
+ <emphasis>Joe User</emphasis> is simply a Haskell user.  He does not download new pacakges.  Nevertheless,
+he needs to know about his Haskell compiler's <function>-package</function> flag <xref linkend="compiler-reqts">.
+	    </para>
+	  </listitem>
+<listitem><para>
+ <emphasis>Bob the Builder</emphasis> and <emphasis>Sam Sysadmin</emphasis> both download, build,
+  and install new pacakges. The only difference between the two is that Sam has root permission,
+  and can install pacakges in more globally-visible places.
+	    </para>
+	  </listitem>
+<listitem><para>
+ <emphasis>Roland RPM</emphasis>, <emphasis>Donald Debian</emphasis>, and <emphasis>Willie Windows</emphasis> 
+  build Linux RPM, Debian, and Windows installer packages respectively.  (This list is not exhaustive.)
+  They do this as a service for Angela Author, and may know little or nothing about the internal details 
+  of the Haskell packages they are wrapping up.
+	    </para>
+	  </listitem>
+<listitem><para>
+ <emphasis>Angela Author</emphasis> wants to write a simple Haskell library, and distribute it with 
+minimum fuss, in such a way that all the above folk can easily use it.
+	    </para>
+	  </listitem>
+<listitem><para>
+ <emphasis>Marcus Makefile</emphasis> is like Angela, but more sophisticated.  He has a complicated library,
+and uses makefiles.  Still, he wants to arrange that Roland, Donald, Bob, Sam, and Joe don't need to know
+about his internal complexity.
+	    </para>
+	  </listitem>
+	</itemizedlist>
+We describe Angela and Marcus as <emphasis>producers</emphasis> of their packages, and all the others
+as package <emphasis>consumers</emphasis>.  
+      </para>
+  </sect1>
 
-<listitem> <para>
-  Copying the compiled files into some place.  Typically the compiler
-     places no pre-conditions on where "some place" is; instead one
-     usually follows the conventions of the host operating system.
-</para></listitem>
 
-<listitem> <para>
-  Registering the package: telling the compiler about the 
-     existence of the package, and where its files are.
-</para></listitem>
-</itemizedlist>
-In step (c), the compiler records the package information in some
-implementation-specific way; how it does so is not constrained by the HLI.
-To register the package one invokes a compiler-specific program (<function>ghc-pkg</function>, 
-<function>hugs-pkg</function> etc), passing it a file describing the package.  The format of this
-file is independent of the compiler.</para>
+<sect1 id=hli-overview><title>The Haskell Library Infrastructure: overview</title>
 
-<para>It must be possible to register many versions of the same package.</para>
+<para>This section summarises the vocabulary and main features of the Haskell Library Infrastructure.</para>
 
-<para>A complete program
-can include more than one version of the same package.  For example, the user might use
-package <function>A:2.1</function> and <function>B:1.0</function>; but <function>B</function> might use <function>A:1.9</function>.  </para>
-</section>
+<sect2><title>Packages</title>
 
-<section><title>Module imports</title>
-
-<para>
-Installing a package means that subsequent invocations of the compiler will use a module namespace
-augmented by the newly-installed package.</para>
-
-<para>
-By default, the module namespace is populated only by the latest version of a particular package.
-This can be overridden using the <function>-package</function> flag.  (Question: what does <function>-package hunit:1.2 -package hunit:1.3</function> do?
-Does the second override the first?  Or are they both in scope?  I think the former.)
-</para>
-<para>
-An attempt to import a module that is defined by more than one installed package yields an ambiguous-import
-error, rather like an attempt to use an identifier that is defined by more than one imported module.
-(Comment: there ought be some way to resolve such ambiguities. Per-import qualification?  <function>-disable-package X</function>?
-<function>-package Y</function> specifies winner?)
-</para>
-</section>
-
-<section><title>The interface to <function>X-pkg</function></title>
-
-<para>Each Haskell implementation <function>X</function> must provide an associated program <function>X-pkg</function> which 
-allows a user to make a new package known to the compiler, and to ask what packages it knows.
+<para>A <emphasis>package</emphasis> is the unit of distribution for HLI.
+Each package has a <emphasis>package description (PD)</emphasis>
+that consists of:
 <itemizedlist>
-<listitem><para> <function>X-pkg register hunit-config</function>
-or
-  <function>X-pkg register &lt; hunit-config</function>.</para>
-
-<para>  The syntax of the package install configuration, here <function>hunit-config</function>, is given below.</para>
+<listitem><para>A globally-unique <emphasis>package name</emphasis>, containing no spaces. Chaos will result
+if two distinct packages with the same name are installed on the same system.</para>  <note><para>We need a 
+global web server where authors can claim and record package names.</para> </note>
 </listitem>
-
-<listitem><para>
- <function>X-pkg query "hunit"</function>
-</para><para>
-  returns the version(s) of all <function>hunit</function> packages, latest version first.
+<listitem><para>A <emphasis>version</emphasis>, consisting of a sequence of one or more integers.
 </para></listitem>
 
 <listitem><para>
-<function>X-pkg query "hunit" 4.3.1</function>
-</para><para>
-  returns the package install configuration of <function>hunit 4.3.1</function>, in the same syntax
-  understood by <function>X-pkg register</function>, if it exists; or 
-  the empty string otherwise.
-</para></listitem>
-</itemizedlist></para>
-</section>
-
-<section><title>Syntax of package install configuration</title>
-
-<para>...include the list of ``externally visible modules''.</para>
-</section>
-</section> <!-- End of compiler requirements --> 
-
-
-<section><title>Installing a package: the end user viewpoint</title>
-
-<para>Joe User wants to install a new Haskell library, say <function>HUnit</function>, for GHC.  How he does this depends on
-how the library is packaged:
-<variablelist>
-<varlistentry><term>Debian:</term>
-<listitem> <para> Joe says:
-<programlisting>
-  apt-get install hunit-ghc
-</programlisting>
-And that's all.
-Any packages that <function>hunit-ghc</function> depends on are automatically installed as well.
-</para></listitem></varlistentry>
-
-<varlistentry><term>Linux RPM:</term>
-<listitem> <para> Joe says:
-...
-(Dependencies?)
-</para></listitem></varlistentry>
-
-<varlistentry><term>Windows installer:</term>
-<listitem> <para>
-Joe downloads <function>hunit-ghc.msi</function>, and double-clicks on it.
-(Dependencies?)
-</para></listitem></varlistentry>
-
-<varlistentry><term>Binary tar-ball:</term>
-<listitem> <para>
-A binary tarball is a bunch of files, already precompiled and ready to install.
-Joe downloads <function>hunit-ghc.tar</function>, unpacks the tarball in some temporary location, <function>cd</function>'s to the root directory 
-and says
-<programlisting>
-  ./setup.hs install
-</programlisting>
-or
-<programlisting>
-  runhugs setup.hs install
-</programlisting>
-(or whatever is necessary to run the <function>setup.hs</function> Haskell script).
-The script <function>setup.hs</function> does whatever is necessary to install the library.
-</para>
-<para>
-(Dependencies?)
-</para></listitem></varlistentry>
-
-<varlistentry><term>Source tar-ball:</term>
-<listitem> <para>
-A source tarball contains the library sources, which may need to be
-compiled before being installed.  The same source tarball may well be installable for several
-Haskell implementations. Joe downloads and unpacks the tarball <function>hunit-src.tar</function>, and then says
-<programlisting>
-  ./setup.hs configure ghc
-  ./setup.hs build
-  ./setup.hs install
-</programlisting>
-The configuration step checks at least that (a) the package author indeed intends the package to be buildable
-with GHC, and that a sufficiently up-to-date GHC is available, and (b) checks that the packages on which
-<function>hunit</function> depends are already installed for GHC.  After that the <function>build</function> and <function>install</function> steps know what 
-compiler they are using.
-</para><para>
-Question: can you abbreviate to <function>setup install ghc</function>?
-</para></listitem></varlistentry>
-</variablelist>
+A list of explicit dependencies on other packages.  These are typically not exact; e.g. "I need <function>hunit</function> version
+greater than 2.4".
+	    </para>
+	  </listitem>
+<listitem><para>
+A list of exposed modules.  Not all of the modules that comprise a package implementation are necessarily
+exposed to a pacakge client.
+The ability to expose some, but not all, of the modules making up a package
+is rather like using an explicit export list on a Haskell module.</para>
+	  </listitem>
+<listitem><para>
+More detailed information about the make-up of the package and how to build it.
+The full details are given in <xref linkend="pkg-descr">.
+	    </para>
+	  </listitem></itemizedlist>
+The first two components can be combined to form a single text string called the <emphasis>package ID</emphasis>, 
+using a hyphen to separate the version
+from the name, and dots to separate the version components.  For example, "hunit-2.3".
 </para>
 
-<section><title> <function>setup</function> targets </title>
+</sect2>
 
-<para>
-Here is a specification of the complete command-line interface for the <function>setup.hs</function> program
-that must be delivered with a package:
+<sect2><title>Package distributions</title>
+
+<para>A HLI package can be distributed in several forms:
 <itemizedlist>
-<listitem>
-<para> <function>setup configure</function>
-   --with-compiler=ghc/hugs/nhc
-   --with-compiler-flags=-O
-   --prefix = xxx
-   -- what else?
-</para></listitem>
-
 <listitem><para>
-<function>setup build</function>
-</para></listitem>
-
+A <emphasis>HLI source distribution</emphasis> is a tree of files (tar-ball, zip file etc)
+containing the library sources, which may need to be
+compiled before being installed.  The same source tarball may well be installable for several
+Haskell implementations. 
+	    </para>
+<para>A source distribution may contain fewer files than appear in the developer's CVS repository; for example,
+design notes may be omitted.  It may also contain some derived files, that do not appear in the
+the developer's repository; for example, ones made by a somewhat exotic pre-processor where it
+seems simpler to ship the derived file than to ensure that all consumers have the pre-processor.</para>
+	  </listitem>
 <listitem><para>
-<function>setup install</function>
+A <emphasis>HLI binary distribution</emphasis> is a tree of files that contains a pre-compiled library, ready
+for installation.  The pre-compilation means that the distribution will be Haskell-compiler-specific.
+	    </para>
+	  </listitem>
+<listitem><para>
+The library may be packaged as an <emphasis>RPM</emphasis>, <emphasis>Debian</emphasis> distribution, 
+or <emphasis>Windows installer</emphasis>.  (This list is not exhaustive.)
+In that case, the way it is installed is prescribed by the respective distribution mechanism;
+the only role of the HLI is to make it easy to construct such distributions. All three are
+compiler-specific binary distributions.
+	    </para>
+	  </listitem>
+	</itemizedlist></para>
+    </sect2>
+
+<sect2><title>Compilers</title>
+
+<para>We use the term ``compiler'' to mean GHC, Hugs, nhc, hbc, etc.  (Even though
+Hugs isn't really a compiler, the term is less clumsy than ``Haskell implementation''.)</para>
+
+<para> The
+HLI requires that a conforming Haskell compiler is somewhat package aware.
+In summary, the requirements are these:
+<itemizedlist>
+<listitem><para>Each compiler <function>hc</function> must provide an associated package-management
+program <function>hc-pkg</function>.  A compiler user installs a package by placing the package's 
+supporting files somewhere, and then using <function>hc-pkg</function> to make the compiler aware
+of the new package.
+</para></listitem>
+<listitem><para>Subsequent invocations of <function>hc</function> will include modules from the
+new package in the module name space (i.e. visible to <function>imnport</function> statements).
+</para></listitem>
+<listitem><para>
+The compiler should support a <function>-package</function> flag for finer-grain control
+of package visibility.
 </para></listitem>
 </itemizedlist>
-It is expected that <function>setup.hs</function> will record the results of <function>setup configure</function> 
-in a file (and in a format) of its choosing.</para>
-</section>
-</section> <!-- End of end user view -->
+A complete specification of these requirements is given in <xref linkend="compiler-reqts">.
+</para> 
+</sect2>
 
-<section><title>Building a package: the author's viewpoint</title>
+<sect2><title>The Setup script</title>
 
-<para>Angela Author has written a bunch of Haskell modules that she wants to package as a library.
-What does she have to do?
-She must simply build a package that can be installed as described above: nothing else is prescribed.
-However, the HLI provides support for library authors to make it easy to fulfil these requirements.
+<para>The key question is this: how should Angela Author present her HLI package so that her consumers (from
+Bob, Sam, Willie, etc) can conveniently use it?</para>
+
+<para>Answer: she provides a tree of files, with the file <function>Setup.lhs</function> in the
+root directory of the tree.  <function>Setup.lhs</function> is an executable Haskell program 
+which conforms to a particular specification, given in detail in <xref linkend="setup">.
+In summary, though, <function>Setup.lhs</function> allows a consumer to configure, build,
+install, register, and un-register a package.  </para>
+<para> For example, consider a package <function>hunit-2.3</function>.
+Bob the Builder downloads and unpacks a source tar-ball into a temporary directory, 
+<function>cd</function>'s to root directory, and 
+<programlisting>
+  ./Setup.lhs configure --ghc
+  ./Setup.lhs build
+  ./Setup.lhs install
+</programlisting>
+The configuration step checks, for example, that the package author indeed intends the package to be buildable
+with GHC, that a sufficiently up-to-date GHC is available, that the packages on which
+<function>hunit-2.3</function> depends are already installed for GHC, and so on.
+After that the <function>build</function> and <function>install</function> steps know what 
+compiler they are using.</para>
+<note><para>
+Question: can you abbreviate to <function>Setup install ghc</function>?
+	</para></note>
+<para>In principle, the <function>Setup</function> program
+could be written in any language; see <xref linkend="lip-why-haskell"> for why we use Haskell.
+      </para>
+
+    </sect2>
+
+<sect2><title>Help for building packages</title>
+
+<para>The HLI allows a package author to write the setup script in any way she pleases, provided
+it conforms to the speciication of <xref linkend="setup">.  However, many Haskell packages consist
+of little more than a bunch of Haskell modules, and for these the HLI provides a library that does
+all the work.</para>
+<para>For example, suppose Angela Author has a bunch of Haskell modules <function>Angela.Set</function>, 
+<function>Angela.Bag</function>, and <function>Angela.Internals</function>, that she wants to 
+turn into a package.  All she need do is write the setup script
+<programlisting>
+  #! runhugs
+  import Distribution.Simple
+  
+  pkgDescr = PD { name = "angela",
+                  version = [1],
+                  modules = ["Angela.Set", "Angela.Bag"] }
+
+  main = setup pkgDescr 
+</programlisting>
+She tar's it up and that's her source distribution.
 </para>
+<para>The details of <function>Distribution.Simple</function> are given in <xref linkend="simple">.
+      </para>
+    </sect2>
 
-<section><title>The Makefile route</title>
-
-<para>If Angela is happy with <function>make</function>, then she can build the library entirely using <function>make</function>.</para>
-
-<para>To support this, HLI provides a trivial implementation of <function>setup.hs</function>, <function>setup-make.hs</function>, which
-simply parses the command line arguments and shells out into <function>make</function>.  Thus, 
-<programlisting>
-  setup configure --with-compiler=ghc
-</programlisting>
-invokes
-<programlisting>
-  make configure HC=ghc
-</programlisting>
-Similarly
-<function>setup build</function>
-invokes
-<function>make build</function> And so on.</para>
-
-<para>Angela simply arranges that when her makefiles build a distribution, they include this simple <function>setup.hs</function> in
-the root of the distribution, where the Joe User expects to find it.</para>
-</section>
-
-<section><title>The simple build infrastructure</title>
-
-<para>
-In many cases, though, a Haskell package will consist of nothing more than a bunch of Haskell modules,
-with perhaps the odd C file.  In that case, the HLI provides a simple build infrastructure that
-completely replaces make.  (Think <function>hmake</function>.)  The emphasis is on ``simple'': it deals with the 90\% case only.
-If you want something more elaborate, you can (a) modify the simple build infrastructure (which is written in Haskell)
-(b) use makefiles, or (c) implement something else entirely.
-</para><para>
-The simple build infrastructure works as follows.  Angela puts the following Hasell file <function>setup.hs</function> in the
-root of her tree:
-<programlisting>
-  module Main where
-    import Distribution.Setup.Simple
-
-    pkgInfo :: PkgInfo
-    pkgInfo = ....
-
-    main = setup pkgInfo 
-</programlisting>
-Here <function>PkgInfo</function> is a data structure that describes the package: its name, version, dependencies, and so on (Section ...).
-It is not the same as the package install configuration described in Section XXX; the latter describes a particular
-installation (e.g. where the files are), while <function>PkgInfo</function> gives only installation-independent information.
-</para><para>
-Now Angela can build her package by saying
-<programlisting>
-  setup.hs build
-</programlisting>
-She can even install it on her ownn machine by saying
-<programlisting>
-  setup.hs install
-</programlisting>
-She can build a source tarball:
-<programlisting>
-  setup.hs source-tarball
-</programlisting>
-The full details are given in Section YYYY.  
-</para><para>
-It is no coincidence that the interface is very similar to that described for a package tarball (Section ZZZ).
-In fact, <function>Distribution.Setup.Simple.setup</function> conforms to the specification of Section ZZZ, and when it builds
-a tarball, it includes <function>./setup.hs</function> in the tarball, ready to be run by Joe User.
-However, <function>Distribution.Setup.Simple.setup</function> of course implements a richer interface than that required by
-Section ZZZ, becuase it's intended to support Angela as well as Joe.
-The full specification is in Section SSSS.
-</para>
-
-<section><title><function>PkgInfo</function></title>
-
-<para>...describe PkgInfo...</para>
-
-<para>Which compiler flags does she put in the compiler-flags part of <function>PkgInfo</function>, and which does she
-pass to <function>setup configure</function>?  Answer: the package should compile in a sensible way using only the
-former.  The latter are just for build-specific modification (e.g. make a debug build).</para>
-</section>
-
-<section><title><function>Distribution.Setup.Simpl.setup</function></title>
-
-<para>Command line interface to the simple build infrastructure.</para>
-</section>
-
-</section>
-
-<section><title>RPMs and Debian packages</title>
-
-<para>How do we build these?</para>
-</section>
-</section>
-</section>
-
-
-  <section id="lip-in-haskell"><title>A Solution for Haskell in Haskell</title>
-
-  <para>As mentioned above, the foremost user interface for this
-  system will be a Haskell program to be executed by the default
-  &impl;. This Haskell program, <command>Setup.lhs</command>, will
-  perform the tasks of building the package (where necessary),
-  installing the package, and making the package available to the
-  system.</para>
-
-<!-- Module Overview ---------------------------- -->
-  <section id="lip-modules"><title>The Module Design</title>
-  <para>I propose a set of modules based on these three major tasks:</para>
-
-<itemizedList>
-
-  <listItem><para>&DistBuild;: For tasks of preparing the package for
-  installation, including tasking compilers and creating packages for
-  systems like Debian (<xref linkend="lip-build">).</para></listItem>
-
-  <listItem><para>&DistInstall;: For moving the distribution files
-  into place (<xref linkend="lip-install">).</para></listItem>
-
-  <listItem><para>&DistPackage;: For
-  accessing the database of installed packages, versions, etc. Might
-  also be responsible for removing packages (<xref
-  linkend="lip-packaging">).</para></listItem>
-
-  <listItem><para>&DistConfigure;: For discovering details about the
-  configuration of the target system not covered by the database of
-  installed packages.  These are tasks typically performed by tools
-  such as &autoconf; (<xref
-  linkend="lip-configure">).</para></listItem>
-
-  <listItem><para><className>Distribution</className>: For general
-  purpose elements that don't fit into any of the above
-  categories.</para></listItem>
-</itemizedList>
-</section>
 
 <!-- Why Haskell ---------------------------- -->
-  <section id="lip-why-haskell"><title>But Why Should We Use Haskell?</title>
+  <sect2 id="lip-why-haskell"><title>But Why Should We Use Haskell?</title>
 
-<para>It is very appropriate that this solution be implemented in
-Haskell:</para>
-
+<para>The setup script, <function>Setup.lhs</function>, is written in Haskell.  Why?
 <itemizedList>
 
 <listItem><para>Haskell runs on all the systems of interest.</para></listItem>
@@ -646,620 +328,509 @@ the past.</para></listItem>
 develop, is a healthy policy.</para></listItem>
 
 </itemizedList>
-</section>
+It is convenient for consumers to execute <function>Setup.lhs</function> directly, thus:
+<programlisting>
+  ./Setup.lhs ...
+</programlisting>
+This can be achieved by starting <function>Setup.lhs</function> with "<function>#! runhugs</function>".
+Since it's a literate Haskell script (<function>.lhs</function> file), the Haskell compiler will ignore
+this line.
+However, nothing stops a consumer from running the script interactively, or compiling it and running 
+the compiled binary.  Any implementation of Haskell should suffice to run the script, provided 
+the implementation has the HLI libraries installed.
+	</para>
+ <note><para>We should provide <function>runghc</function>.</para></note>
+      </sect2>
+  </sect1>
 
-<!-- Setup.lhs ---------------------------- -->
-  <section id="lip-command"><title>Setup.lhs Command-Line Interface</title>
+<!-- Setup script -->
 
-     <para>The purpose of the Setup script is to provide a standard
-     interface to end users and layered tools.  For any particular
-     application, the script may be implemented in a variety of ways:
-     For pure Haskell applications, the &distMod; should perform all
-     of the heavy lifting, requiring only a few lines of code from the
-     developer.  For applications that feel they need a complete and
-     robust make-based system, the Setup script can wrap such a
-     system.</para>
+<sect1 id=setup><title>Package consumers and the setup script</title>
 
-     <para>One of the early design tasks of this project should be to decide
-     on a format for the command-line interface of the Setup script,
-     but here is an example of how it might behave:</para>
-     
-     <table frame=all><title>Setup.lhs interface</title>
+<para>
+The sole requirement of an HLI package is that it should contain a setup script, <function>Setup.lhs</function>,
+in the root of its file structure.  This section
+specifies the complete command-line interface for the setup script, and how it satisfies the needs of
+package consumers.</para>
+
+<sect2 id=setup-spec><title>The setup script specification</title>
+
+<para>Here is the command-line interface the setup script must satisfy.
+     <table frame=all><title>setup.lhs interface</title>
 
      <tgroup cols=2 align=left colsep=1 rowsep=1>     <tbody>
 
      <row><Entry><command>./Setup.lhs info</command></entry>
-                    <Entry><para>Output package configuration
-                    information</para></entry></row>
+                    <Entry><para>Output the package description.
+ </para></entry></row>
 
 
-     <row><Entry><command>./Setup.lhs build all</command></entry>
-                    <Entry><para>Compile / prepare this package for
-                    all installed &impls;</para></entry></row>
+     <row><Entry><command>./Setup.lhs configure </command></entry>
+         <Entry><para> Prepare to build the package.  Typically, this step checks
+		that the target platform is capable of building the package, and
+		discovers platform-specific features that are needed during the build. 
+		</para></entry></row>
 
 
-     <row><Entry><command>./Setup.lhs build default</command></entry>
-                    <Entry><para>Compile / prepare this package for
-                    the default &impl;</para></entry></row>
+     <row><Entry><command>./Setup.lhs build</command></entry>
+                    <Entry><para>Build the package, ready for installation.  For a true compiler,
+		  this step involves compiling the Haskell source code.  Even for an interpreter, however, 
+		  it may involve running a pre-processor.</para></entry></row>
 
-     <row><Entry><command>./Setup.lhs build {&nhc;,&ghc;,&hugs;, ...}
-     </command></entry>
 
-                    <Entry><para>Compile / prepare this package for
-                    the given &impl;</para></entry></row>
+     <row><Entry><command>./Setup.lhs install</command></entry>
+                    <Entry><para>Copy the files into the install locations, and register
+		  the package with the compiler.</para></entry></row>
 
-     <row><Entry><command>./Setup.lhs install {all,default,&nhc;,&ghc;,&hugs;,...}</command></entry>
-                    <Entry><para>Install this package.</para></entry></row>
-
-     <row><Entry><command>./Setup.lhs register
-                    {all,default,&nhc;,&ghc;,&hugs;,...}</command></entry>
-                    <Entry><para>Register this package with the
-                    package management system (making it available to
-                    the given &impl;.)</para></entry></row>
-
-     <row><Entry><command>./Setup.lhs bdist_{deb,rpm,...}</command></entry>
-                    <Entry><para>Create a binary distribution package
-                    for Debian, RPM, etc.</para></entry></row>
-
-     <row><Entry><command>./Setup.lhs sdist</command></entry>
-                    <Entry><para>Create a source distribution
-                    archive.</para></entry></row>
+     <row><Entry><cmdsynopsis>
+		  <command>./Setup.lhs register</command><sbr>
+		  <command>./Setup.lhs unregister</command>
+	      </cmdsynopsis>
+	      </entry>
+                    <Entry><para>Register (or un-register) this package with the
+                    compiler.  (NB: registration is also done automatically by <function>install</function>.)
+		</para></entry></row>
 
      <row><Entry><command>./Setup.lhs test</command></entry>
                     <Entry><para>Run the package's test suite.</para></entry></row>
 
      </tbody></tgroup>
      </table>
+    </para>
 
-     <para>Other commands may be available, and it is important to
-     anticipate commands that may some day be desirable.</para>
+<sect3 id=pkg-descr><title><function>setup info</function></title>
 
-  </section>
-
-<!-- Script Example ---------------------------- -->
-
-  <section id="lip-script-example"><title>An Example Setup.lhs Script</title>
-
-  <para>Here's what the setup script might look like for HUnit, which
-  has no complex dependencies.</para>
-
-<programListing>#!/usr/bin/env haskell
-import Distribution.Core
-import Distribution.Package
-
-toolInfo = (defaultPackage "HUnit"
-                           (NumberedVersion 1 0 0))
-	   {haskellSources=[
-                    "HUnitLang98.lhs","HUnitLangExc.lhs", "Info.lhs",
-                    "Terminal.lhs", "HUnitTest98.lhs", "TerminalTest.lhs",
-                    "HUnit.lhs", "HUnitTestBase.lhs", "HUnitBase.lhs",
-                    "HUnitTestExc.lhs", "HUnitLang.lhs", "HUnitText.lhs",
-                    "Setup.lhs"],
-	    docs = ["Example.hs", "Guide.html", "License", "README"]}
-
-main = defaultMain toolInfo id id
--- Those last to parameters might be pre-install and post-install functions
-</programListing>
-
-<para><function>defaultMain</function> would implement all of the
-standard command-line flags, and defaultPackage is a template with
-sane default values for most fields.</para>
-
-  </section>
-
-</section>
-
-  <section id="lip-distribution"><title>Distribution Module</title>
-
-<!-- Building ---------------------------- -->
-
-<section id="lip-build"><title>&DistBuild;</title>
-
-<para>The basic strategy we will take for the actual task of building
-Haskell tools is as follows:</para>
-
-<itemizedlist>
-
-  <listitem><para>For simple tools like Haskell modules, leverage
-  &hmake;'s (<xref
-  linkend="lip-appendix-hmake">) abilities and create a Haskell-based
-  system (which will evolve to do more complex
-  tasks.)</para></listitem>
-
-  <listitem><para>Tools that require something more complex can use
-  ``fptools'' or Yale's Make-based system (<xref
-  linkend="lip-appendix-make-based">), or use their own build
-  system.</para></listitem>
-
-  <listitem><para>All systems will be wrapped in a common veneer
-  (<xref linkend="lip-command">) so they look the same to the average
-  user and to layered tools (<xref linkend="lip-distribution-means">)
-  and so that once &DistBuild; evolves to be a more robust tool,
-  packages can transition to using it without effecting the interface
-  to their build system.  </para></listitem>
-
-</itemizedlist>
+<para>The command <function>./Setup.lhs info</function> outputs the package description on the
+standard output, in the format given below. This the only concrete way in which the package
+descrption appears in the HLI: Angela Author does not write a file containing the package description.
+</para>
+<note><para>Insert package desription syntax here.</para></note>
 <para>
-Since it is obviously the compilers that do the actual compilation,
-the task of &DistBuild; is more one of coordination among tools
-outside the compiler.  We hope to offer support for preprocessors
-(both existing and those yet to come).  &DistBuild; will handle the
-task of compiling for a particular &impl;, or for all installed
-&impls;, and help to abstract-away differences between command-line
-flags.</para>
-
-<para>&DistBuild; could also be used to recompile all of the installed
-libraries once a new &impl; is installed.  This is an important
-function, as it solves the problem of binary incompatibility between
-&impls; and versions thereof.  Another very useful function that
-&DistBuild; could offer is the implementation of a generic
-<filename>/usr/bin/haskell</filename> that either executes a Haskell
-program using the default compiler or throws the user into the default
-interpreter, depending upon how it is invoked.  This allows Haskell
-scripts (such as Setup.lhs) to be distributed with a
-<command>#!/usr/bin/env haskell</command> annotation that has reasonable
-behavior.</para>
-
-</section>
-
-<!-- Installing ------------------------------------------------ -->
-  <section id="lip-install"><title>&DistInstall;</title>
-
-  <para>The &DistInstall; module performs the task of moving files
-  into place.  Presumably, this is the last task before package
-  registration.  &DistInstall; will have to understand configuration
-  options for the operating systems that Haskell modules are being
-  installed on. (For instance, different operating systems have different
-  policies for where to put documentation, source code, binary files,
-  and libraries.)  Such information will most likely be read from a
-  file that can be edited by the system administrator (<xref
-  linkend="lip-haskell-config">).  </para>
-
-  <para>Not only will this module have to support standards on
-  different operating systems, but it must have access to filesystem
-  functionality like <command>copy</command> and
-  <command>move</command>, as well as permission-related operations.
-  Such functions should be offered by a library such as
-  <classname>System.Posix.Files</classname> and
-  <classname>System.Directory</classname>, but the
-  <classname>System.Posix</classname> module is not available on all
-  operating systems.  To some extent, &DistInstall; should handle the
-  differences between operating systems (file permissions for
-  instance), but Haskell should offer a more robust set of file
-  operations in order to encourage the use of Haskell for common
-  scripting tasks. (One issue that the author has noticed is that
-  <function>System.Directory.renameDirectory</function> is not
-  implemented the same in GHC and Hugs, which forces &DistInstall; to
-  find a way to abstract the differences.)</para>
-
- </section>
-
-<!-- Packaging ------------------------------------------------- -->
-  <section id="lip-packaging"><title>&DistPackage;</title>
-
-  <para>The complex task of packaging requires a lot of attention.
-  The proposed solution is not only a module to access the packaging
-  information, but also an application to assist external systems with
-  the same task:</para>
-
-  <para>The main features of this system are:</para>
-
-<orderedList>
-
-  <listItem><para>To let the &impls; know how to use a package,
-   whether its available by default (or whether it requires a -package
-   flag), and where the root of its hierarchy is.</para></listItem>
-
-   <listItem><para>To store other information about a package,
-   including information such as its license, home page, version
-   number, and dependencies, to be used by other tools in the
-   <className>Distribution</className> hierarchy.</para></listItem>
-
-   <listItem><para>All information will be made available through the
-   &DistPackage; module.  The information can be made available to
-   non-haskell tools by way of a command-line tool, &haskellConfig;
-   (<xref linkend="lip-haskell-config">) with easily parsable output
-   (similar to <ulink
-   url="http://www.freedesktop.org/software/pkgconfig/">package-config</ulink>)
-   though a different solution may be necessary for
-   windows.</para></listItem>
-
-</orderedList>
-
-<para>Some secondary features are:</para>
-
-<orderedList> <listitem><para>Let other tools, such as debuggers and
-   editors know where the source code for a module / package
-   is.</para></listitem>
-
-   <listItem><para>When new Haskell implementations are installed,
-   allow them to find the source code and import it into their own
-   library tree (perhaps through other features of the
-   L.I.P.)</para></listItem>
-
-   <listItem><para>For Haskell implementations that don't conform to
-   the new packaging interface, implement a wrapper so that it can
-   still utilize other important features of the Library
-   Infrastructure Project.</para></listItem> </orderedList>
-
-<para>The information would be held in a file, such as
-<filename>/etc/haskell/packages.conf</filename><footnote><para>or
-<filename>/usr/local/etc/haskell/packages.conf</filename> or wherever the
-default location for config files is.</para></footnote> and
-<fileName>~/.haskell/packages.conf</fileName>.</para>
-
-<section id="lip-PackageConfig"><Title>PackageConfig Data Structure</title>
-
-<para>The package data structure might look something like this (based
-on GHC's Package class)</para>
-
-<programListing>data PkgIdentifier
-    = PkgIdentifier {pkgName::String, pkgVersion::Version}
-{- ^Often need name and version since multiple versions of a single
-    package can exist on a system. -}
-
-data PackageConfig
-   = Package {
-        pkgIdent        :: PkgIdentifier,
-        license         :: License,
-        auto            :: Bool,
-
-
-        import_dirs     :: [FilePath],
-        source_dirs     :: [FilePath],
-        library_dirs    :: [FilePath],
-        include_dirs    :: [FilePath],
-        hs_libraries    :: [String],
-        extra_libraries :: [String],
-        c_includes      :: [String],
-        build_deps      :: [Dependency], -- build dependencies
-        depends         :: [Dependency], -- use dependencies
-<!--         extra_ghc_opts  :: [String], -->
-        extra_cc_opts   :: [String],
-        extra_ld_opts   :: [String],
-        framework_dirs  :: [String],
-        haddock_html_root :: String,
-        haddock_interface :: String,
-        default_grafting_point :: String,
--- ^Related to new packages proposal
-        vars            :: [(String, String)],
--- ^Variable, value pairs, whatever author wants here
-        extra_frameworks:: [String]}
-
-data Version = DateVersion {versionYear  :: Integer,
-                            versionMonth :: Month,
-                            versionDay   :: Integer}
-             | NumberedVersion {versionMajor      :: Integer,
-                                versionMinor      :: Integer,
-                                versionPatchLevel :: Integer}
-
-data License = GPL | LGPL | BSD | {- ... | -} OtherLicense FilePath
-
-data Dependency = Dependency String VersionRange
-
-data VersionRange
-  = AnyVersion
-  | OrLaterVersion     Version
-  | ExactlyThisVersion Version
-  | OrEarlierVersion   Version
-
-type PackageMap = FiniteMap PkgIdentifier PackageConfig
-</programListing>
-
-<para>But perhaps we'll need to be even more flexible: some
-implementations might not be interested in certain fields, and others
-might want their own fields.  I propose that implementation-specific
-fields be prepended with the implementation name:
-<varname>ghc_interpreter_flags</varname>,
-<varname>hugs_interpreter_flags</varname>, etc.  In general it would
-certainly be desirable to have a flexible parser so that we can add
-more fields later and maintain backward compatibility.</para>
-
-<para>The &DistPackage; API might look like so:</para>
-
-<programListing>userPkgConfigLocation   :: FilePath
-systemPkgConfigLocation :: FilePath
-getSystemPkgConfig  :: IO [PackageMap] -- ^Query /etc/haskell/packages.conf
-getUserPkgConfig    :: IO [PackageMap] -- ^Query ~/.haskell/packages.conf
-getPkgConfig        :: FilePath -> IO [PackageMap]
-addUserPackage   :: PackageConfig -> IO ()
-addSystemPackage :: PackageConfig -> IO ()
-delUserPackage   :: PkgIdentifier -> IO ()
-delSystemPackage :: PkgIdentifier -> IO ()
-basicPackage     :: PackageConfig          -- provides sensible defaults
-checkLicense     :: PackageConfig -> Bool
-{- Just for fun, check to see if the licences that this package uses
-   conflicts with any of the licences of the packages it depends on -}</programListing>
-
-</section>
-
-  </section>
-
-<!-- haskell-config ---------------------------- -->
-
-  <section id="lip-haskell-config"><title>&haskellConfig; Command-line
-  interface</title>
-
-<para>The &haskellConfig; <footnote><para>Because of the confusion
-between different kinds of configuration (the kinds offered by
-&DistPackage; and &DistConfigure;) I am torn about the name of this
-program.  There is the further confusion between package management
-(the actual installation and removal of the programs themselves) and
-interfacing with the packaging system.  Further there is one more bit
-of confusion between packages in the Haskell system (i.e. a set of
-modules distributed together by an author) and a package on the
-operating system.  If anyone has an idea to straighten all of this
-out, I'd be glad to hear it :) </para></footnote> tool is a
-command-line interface to the packaging system.  It will presumably be
-written in Haskell and import the &DistPackage; module.  The purpose
-of this tool is to give non-Haskell systems the ability to interact
-with the packaging system, since they won't be able to import
-&DistPackage;.  This tool serves a purpose similar to ghc-pkg and
-package-config.</para>
-
-<programlisting>% haskell-config [--user] register < packageFile
-% haskell-config [--user] unregister packageName
-# add or remove packages from the package database.  --user indicates
-# that we should add it to the package database in the user's home
-# directory, not to the system-wide package database.
-
-% haskell-config packageName c_includes
-# would output this list in a way that a C compiler could use directly
-
-% haskell-config list-packages
-% haskell-config list-user-packages
-% haskell-config list-system-packages
-# Query the database in a variety of ways</programlisting>
-
-  </section>
-
-
-<!-- haskell-config ---------------------------- -->
-
-  <section id="lip-haskell-package"><title>haskell-pkg?</title>
-
-  <para>The &haskellConfig; tool brings up an interesting question.
-  Should the functionality of &DistInstall; also be made available as
-  a command-line tool, perhaps called <command>haskell-pkg</command>
-  ("Haskell package")?  In this sense, "package" would refer to that
-  word in the sense that <application>dpkg</application> and the 'P'
-  in <application>RPM</application> mean it:
-  <command>haskell-pkg</command> could be used for installing and
-  removing Haskell programs when supplied with the package metadata
-  that is defined by &DistPackage;.  This would conflict with &ghc;'s
-  terminology for <application>ghc-pkg</application>.</para>
-
-</section>
-<!-- Configure ------------------------------------------------- -->
-  <section id="lip-configure"><title>&DistConfigure;</title>
-
-  <para>The information available through the &DistPackage; module is
-  not all of the information that could possibly be needed to prepare
-  a package for installation.  Typically, tools such as &autoconf; are
-  used to discover useful information about the system.  The author
-  has not given a lot of thought to the configuration problem, but he
-  sees a few possible paths:</para>
-  
-<itemizedList>
-
-  <listitem><para>A module, &DistConfigure; can act as an interface to
-  configuration information.  This is the approach that Python has
-  taken.</para></listitem>
-
-  <listitem><para>Some information can be written by the end user or
-  maintained on the system in a standard file format.  The file could
-  reside, for example in 
- <filename>~/.haskell/distributionConfig</filename>,
-  <filename>/etc/haskell/distributionConfig</filename>, and
-  <filename>distributionConfig</filename> within the package
-  directory.  This information can be made available through the
-  &DistConfigure; module.</para></listitem>
-
-  <listitem><para>Certain pieces of information are available when the
-  &impls; themselves are installed.  This information can be made
-  available to installing scripts once again through the
-  <filename>distributionConfig</filename> file.</para></listitem>
-
-  <listItem><para>Shortcomings in the &DistConfigure; module can be
-  made up by using &autoconf; itself, which can output information to
-  the above mentioned <filename>distributionConfig</filename>
-  file.</para></listItem></itemizedList>
-
-  </section>
-
-</section> <!-- Distribution module -->
-
-<!-- Use Cases ------------------------------------------------- -->
-  <section id="lip-use-cases"><title>Use Cases</title>
-
-  <para><emphasis>End User:</emphasis> The end user has identified a
-  Haskell package (tool or library) that she wants to use.</para>
-
-  <itemizedList><listitem><para>The end user installs packages with a
-  operating-system-specific package management system like RPM, dpkg,
-  or FreeBSD's Ports collection.</para></listitem>
-
-  <listitem><para>If no such packaging system is available on her
-  system, she, can run <command>./Setup.lhs install nhc</command> or
-  <command>./Setup.lhs install hugs</command> to build, install, and
-  register an &nhc; or &hugs; version of the program (for
-  instance).</para></listitem>
-
-</itemizedList>
-
-<para><emphasis>Packager:</emphasis> A packager is someone who makes
-operating-system-specific packages so that an end-user can have an
-easier time installing them on her own system.  For each platform,
-there should be one or more packager.</para>
-
-<itemizedList><listitem><para>The packager can run
-  <command>./Setup.lhs bdist_deb</command> to build a skeleton Debian
-  package (for instance) for each of the installed &impls;.  This
-  might generate Debian packages like <emphasis>hunit-hugs</emphasis>,
-  <emphasis>hunit-ghc</emphasis>, <emphasis>hunit-prof-ghc</emphasis>,
-  <emphasis>hunit-prof-nhc</emphasis>.</para></listItem>
-
-</itemizedList>
-
-<para><emphasis>3rd Party Author:</emphasis> A 3rd party author is a
-Haskell developer (distinct from the &impl; authors or end users) who
-wishes to distribute a library or application that he has developed in
-Haskell.</para>
-
-<itemizedList><listitem><para>The 3rd Party Author writes a
-  <command>Setup.lhs</command> program.  <command>Setup.lhs</command>
-  imports elements from the &distMod; which does most of the hard
-  work.  A very common case, which should be our first priority, is a
-  pure Haskell 98 module that needn't interface with any external
-  systems.  In this case the author only has to include the name of
-  the program, the version, and the source files.  He can then call
-  <function>Distribution.defaultMain</function> to create an
-  executable script with the proper command-line flags that knows how
-  to interface with the &DistPackage; module.</para></listitem>
-
-<listitem><para>Should he have a more complex program (one which
-  perhaps depends on systems external to Haskell), then the &distMod;
-  could output a Makefile to be used in 'fptools' or Yale's system
-  (see <xref linkend="lip-appendix-make-based">). </para></listitem>
-
-<listitem><para>Should he not want to migrate from his own build
-  system, he could write a <command>Setup.lhs</command> script to wrap
-  the build system so that it conforms to the standard command-line
-  interface.</para></listitem>
-
-</itemizedList>
-
-<para><emphasis>&impl; Authors</emphasis>:</para>
-
-<itemizedList><listitem><para>&impl; authors must conform to an
-  agreed-upon &DistPackage; interface.</para></listitem>
-
- <listitem><para>This may include writing functionality so the
-    compiler can be asked questions about itself.</para></listitem>
-
- <listitem><para>This may also include altering compilers to read
-    <filename>/etc/haskellPackages.conf</filename> (for instance) to
-    discover what packages are installed or where to look for
-    imports.</para></listitem>
-
-<listitem><para>Include the &distMod; with the &impls; (in exchange, we
-  can hopefully remove some libraries that are currently included with
-  the &impls;).</para></listitem></itemizedList>
-
-<para><emphasis>Random Haskell Programmer</emphasis>:</para>
-
-<itemizedList><listitem><para>A random Haskell programmer can use the
-  &distMod; as a means to create layered tools that download, build,
-  or install packages.  For instance:
-
-<itemizedList>
-  <listItem><para>&haskellConfig; is an example of a layered tool which interfaces with
-  the &distMod;.  This tool gives the end user access to the database
-  of installed applications.</para></listItem>
-
-  <listItem><para>A Graphical User Interface could be layered on top
-  of the Setup script to give installation a better look-and-feel
-  according to the target platform.</para></listItem>
-
-  <listItem><para>The &distMod; could be augmented with an online
-  repository of libraries (see <xref
-  linkend="lip-appendix-cpan-boost">), and a layered tool might
-  perform the searching and downloading functionality of the
-  installation process.</para></listItem>
-
-  <listItem><para>Debuggers often need to locate the source code to a
-  library module in order to instrument them.</para></listItem>
-
-  <listItem><para>Source code editors or browsers could benefit from
-  being able to locate related source code on the user's
-  system.</para></listItem>
-
-</itemizedList>
-
+NB: the package descrpition is not the same as an installed package description (<xref linkend="compiler-reqts">); 
+the latter describes a particular
+installation (e.g. where the files are), while <function>PkgDescr</function> gives only installation-independent information.
+</para>
+
+</sect3>
+
+<sect3><title><function>setup configure</function></title>
+
+<para>The command <function>./Setup.lhs configure</function> prepares
+to build the package.  For sophisticated packages, the configure step
+may perform elaborate checks, to gather information about the target
+system.  It may write a file to record its results, but the name and
+format of the file are not part of the specification.
+      </para>
+<para>
+All flags are optional.  The flags are these:
+<itemizedlist>
+<listitem><para><function>--with-compiler=</function><replaceable>path</replaceable>, 
+<function>--ghc</function>, 
+<function>--nhc</function>, 
+<function>--hugs</function>: 
+specifies which compiler to use.  At most one of these flags may be specified.
+The configure step checks
+that the compiler is available, in a sufficiently up-to-date form for the package, and that the package
+expects to work with that compiler.  If the compiler name
+is not specified, <function>setup</function> will choose one; some packages will come with one compiler baked in.
+</para>
+	  </listitem>
+<listitem><para><function>--prefix=</function><replaceable>path</replaceable>: specifies where the installed files
+for the package should be installed.  Typically on Unix this will be <function>/usr/local</function> and
+on Windows it will be <function>Program Files</function>.  The setup script will use a sensible default
+(often platform-specific) if the flag is not specified.
+	    </para>
+	  </listitem>
+        </itemizedlist>
+It is OK for these flags to be "baked into" the compiled library.  In particular, the build system may
+bake the installation path into the compiled files.  There is no provision for installing the compiled
+files anywhere other than the place specified in the <function>configure</function> step.
+      </para>
+    </sect3>
+
+<sect3><title><function>setup build</function></title>
+
+<para>The command <function>./Setup.lhs build</function> builds the
+package, ready for installation.  It takes no flags.</para>
+
+    </sect3>
+
+<sect3><title><function>setup install</function></title>
+
+<para>The command <function>./Setup.lhs install</function> copies files from the built package to
+the right location for installed files, specified in the configure step.  Then it registers the new package with
+the compiler, using the <function>hc-pkg</function> command.
+<itemizedlist>
+<listitem><para><function>--install-prefix=</function><replaceable>path</replaceable> has three effects. 
+First, it over-rides the <function>--prefix</function> flag specified in the <function>configure</function> step,
+providing an alternative location.  Second, it does not call <function>hc-pkg</function> to register the package.
+Instead, third, it creates an installed package description file, <filename>installed-pkg-descr</filename>, 
+which can later be fed to <function>hc-pkg</function>.
+	    </para>
+<para>The reason for all this is that Roland RPM wants to create an exact installation tree, all ready
+to bundle up for the target machine, <emphasis>but in a temporary location</emphasis>. He cannot use
+this location for <function>--prefix</function> in the <function>configure</function> step, because that
+might bake the wrong path into some compiled files.  Nor does he want to register this temporary tree with the compiler
+on his machine. Instead, he bundles up the temporary installation tree, plus the <filename>installed-pkg-descr</filename>,
+and ships them all to the target machine.  When they are installed there, the post-installation script runs
+<function>hc-pkg</function> on the <filename>installed-pkg-descr</filename> file.
+	    </para>
+	  </listitem>
+
+<listitem><para><function>--shared</function>: if present, this flag is passed to <function>hc-pkg</function> 
+so that the package is registed as shared.  This flag has no effect if <function>--install-prefix</function> is
+used, because in that case <function>hc-pkg</function> is not called.
+	    </para>
+	  </listitem>
+	</itemizedlist>
+
+</para>
+
+    </sect3>
+
+<sect3><title><function>setup register</function> and <function>setup unregister</function></title>
+
+<para>The command <function>./Setup.lhs register</function> registers the now-installed package with the compiler.
+Similarly, <function>./Setup.lhs unregister</function> un-registers the package.
+<itemizedlist>
+<listitem><para><function>--shared</function>: registers/un-registers a shared package as shared.  
+The default is to treat the package as a user package.
+	    </para>
+	  </listitem>
+	</itemizedlist></para>
+
+    </sect3>
+    </sect2>
+
+<sect2><title>Bob the Builder and Sam Sysadmin</title>
+
+<para>Bob the Builder can install a HLI source distribution thus.
+He downloads the source distribution and unpacks it into a temporary directory,
+<function>cd</function>'s to that directory, and says
+<programlisting>
+  ./Setup.lhs configure --ghc
+  ./Setup.lhs build
+  ./Setup.lhs install
+</programlisting>
+Similarly, Sam Sysadmin does exactly the same, except that he says 
+<programlisting>
+  ./Setup.lhs install --shared
+</programlisting>
+in the final step, so that the package is installed where all users will see it.
+      </para>
+<para>For a binary distribution, both Bob and Sam would omit the first two steps, and just do the install step.</para>
+</sect2>
+
+<sect2><title>System packagers (Debian, RPM etc)</title>
+
+<para>System packagers, such as Donald Debian, will run the configure and build steps just like Bob and Sam.
+A that point, Donald will say
+<programlisting>
+  ./Setup.lhs install --install-prefix=/tmp/donald
+</programlisting>
+to construct a ready-to-zip tree of all the installed files, plus a file <filename>installed-pkg-descr</filename>
+that describes the installed package.  He arranges to deliver both these components to the target machine,
+and then feed <filename>installed-pkg-descr</filename> to <function>hc-pkg</function> on the target machine.
+      </para>
+<para>
+The file <filename>installed-pkg-descr</filename> also contains information he needs for building
+his Debian distribution, namely the
+package name, version, and (exact) dependencies.
+      </para>
+    </sect2>
+</sect1>
+
+<sect1><title>HLI support for building a package: the author's viewpoint</title>
+
+<para>Angela Author has written a bunch of Haskell modules that she wants to package as a library.
+What does she have to do?
+She must simply build a package that can be installed as described above: nothing else is prescribed.
+However, the HLI provides support for library authors to make it easy to fulfil these requirements.
+</para>
+
+<sect2><title>The Makefile route</title>
+
+<para>Marcus Makefile is happy with <function>make</function>, 
+and he can build the library entirely using <function>make</function>.</para>
+
+<para>To support this, HLI provides a trivial setup library <function>Distribution.Make</function>, which
+simply parses the command line arguments and shells out into <function>make</function>.  Marcus uses the following
+<function>Setup.lhs</function>
+<programlisting>
+  module Main where
+  import Distribution.Make
+  main = setup
+</programlisting>
+All the package description information is assumed to be known to the makefile system, and so does not
+appear in the setup script.
+Thus, 
+<programlisting>
+  setup configure --ghc
+</programlisting>
+invokes
+<programlisting>
+  ./configure --with-hc=ghc
+</programlisting>
+Similarly
+<function>setup build</function>
+invokes
+<function>make all</function> And so on.</para>
+
+<para>Marcus simply arranges that when his makefiles build a distribution, they include this simple setup script in
+the root of the distribution, where the Bob the Builder expects to find it.</para>
+</sect2>
+
+<sect2 id=simple><title>The simple build infrastructure</title>
+
+<para>
+In many cases, though, a Haskell package will consist of nothing more than a bunch of Haskell modules,
+with perhaps the odd C file.  In that case, the HLI provides a simple build infrastructure that
+completely replaces make.  (Think <function>hmake</function>.)  The emphasis is on ``simple'': it deals with the 90% case only.
+If you want something more elaborate, you can (a) modify the simple build infrastructure (which is written in Haskell)
+(b) use makefiles, or (c) implement something else entirely.
+</para><para>
+The simple build infrastructure works as follows.  Angela puts the following Hasell file <function>setup.hs</function> in the
+root of her tree:
+<programlisting>
+  module Main where
+    import Distribution.Simple
+
+    pkgDescr :: PkgDescr
+    pkgDescr = ....
+
+    main = setup pkgDescr
+</programlisting>
+Here <function>PkgDescr</function> is a Haskell data structure that describes the package: its name, version, dependencies.
+It contains precisely the information that is output by <function>setup info</function> -- see <xref linkend="pkg-descr">.
+</para><para>
+Now Angela can build her package by saying
+<programlisting>
+  setup.hs build
+</programlisting>
+She can even install it on her ownn machine by saying
+<programlisting>
+  setup.hs install
+</programlisting>
+She can build a HLI source distribution:
+<programlisting>
+  setup.hs source-dist
+</programlisting>
+The full details are given in <xref linkend="simple-build">.  
+</para><para>
+It is no coincidence that the interface is very similar to that for the setup script
+for an HLI package distribution (<xref linkend="setup">).
+In fact, <function>Distribution.Simple.setup</function> conforms to the specification of <xref linkend="setup-spec">, and when it builds
+a distribution, it includes <function>./Setup.lhs</function> in the tarball, ready to be run by Bob the Builder.
+However, <function>Distribution.Simple.setup</function> of course implements a richer interface than that required by
+<xref linkend="setup-spec">, becuase it's intended to support Angela as well as Bob.
+The full specification is in <xref linkend="simple-build">.
+</para>
+
+<sect3><title><function>PkgInfo</function></title>
+
+<note><para>...describe PkgInfo...</para>
+<para>Which compiler flags does she put in the compiler-flags part of <function>PkgInfo</function>, and which does she
+pass to <function>setup configure</function>?  Answer: the package should compile in a sensible way using only the
+former.  The latter are just for build-specific modification (e.g. make a debug build).</para></note>
+
+</sect3>
+
+<sect3 id="simple-build"><title><function>Distribution.Simple.setup</function></title>
+
+<para>Command line interface to the simple build infrastructure.</para>
+</sect3>
+
+</sect2>
+
+</sect1>
+
+<!-- COMPILER REQUIREMENTS ---------------------------- -->
+
+<sect1 id="compiler-reqts"><title>What the compilers must implement</title>
+
+<para>The HLI requires that the Haskell implementations be somewhat package-aware.
+This section documents those requirements</para>
+
+<sect2><title>Registering a package</title>
+
+<para>Installing a package ultimately involves these steps:
+<itemizedlist>
+<listitem> <para>
+ Compiling the source files, by invoking the compiler.  Even Hugs may require 
+     some processing (e.g running cpp).
 </para></listitem>
 
-</itemizedList>
+<listitem> <para>
+  Copying the compiled files into some place.  Typically the compiler
+     places no pre-conditions on where "some place" is; instead one
+     usually follows the conventions of the host operating system.
+</para></listitem>
 
-</section>
+<listitem> <para>
+  Registering the package: telling the compiler about the 
+     existence of the package, and where its files are.
+  To register the package one invokes a compiler-specific program <function>hc-pkg</function> (i.e. <function>ghc-pkg</function>, 
+  <function>hugs-pkg</function> etc), passing it an <emphasis>installed package description (IPD)</emphasis>
+  describing the package.
+</para></listitem>
+</itemizedlist>
+</para>
+<para>It must be possible to register many versions of the same package.</para>
 
-<!-- Means of dist--------------------------------- -->
-
-  <section id="lip-distribution-means"><title>Means of Distribution
-  and Layered Tools</title>
-
-  <para>Most of the discussion here has been about giving the user
-  tools to build, install, and manage libraries and tools written in
-  Haskell.  There is another important component to this which
-  deserves attention, and that is the distribution of these tools.
-  </para>
+<sect3><title>Shared packages and user packages</title>
 
 <para>
-  For C++ and Perl (and likely many other programming languages) there
-  are central repositories of libraries and tools (<xref
-  linkend="lip-appendix-cpan-boost">).  In a way, Haskell has this
-  also, bit it is centrally maintained rather than being a
-  free-for-all where nearly anyone can get their package distributed.
-  The author feels that both approaches are appropriate, and libraries
-  can graduate from one to the other.</para>
+A package can be registered either as a <emphasis>shared package</emphasis> or as a <emphasis>user package</emphasis>.
+The former means that anyone invoking <function>hc</function> will see the new package.  The latter means
+that only the user who installed the package will see it.
+</para>
+<para>
+User packages <emphasis>shadow</emphasis> shared packages, in the following sense:
+	  <itemizedlist><listitem><para>
+		A Haskell <function>import</function> for module M will seek M in a user package first.
+	      </para>
+	    </listitem><listitem><para>
+		The <function>hc-pkg</function> commands that take package IDs will look for a user package first.
+	      </para>
+	    </listitem>
+	  </itemizedlist></para>
+<note><para>Hmm.  If there are several ghc's around, can their user packages get mixed up?  I hope not.</para></note>
 
-<para> Having a standard interface for installing packages allows us
-  to layer tools upon it.  For instance, it would be nice to be able
-  to download and install Haskell libraries and all their dependencies
-  with one command.  For Perl (by virtue of CPAN) this is already
-  possible.  Other layered tools are discussed in the Use Cases (<xref
-  linkend="lip-use-cases">).</para>
+</sect3>
 
-</section>
+<sect3><title>Exposed packages and hidden packages</title>
 
-<!-- Development Plan --------------------------------- -->
-<section id="lip-plan"><title>Development Plan</title>
+<para>
+An installed package can be <emphasis>exposed</emphasis> or <emphasis>hidden</emphasis>.  An exposed package
+populates the module name space, while a hidden package does not.  Hidden packages are nevertheless necessary.
+For example, the user might use
+package A-2.1 and B-1.0; 
+but B-1.0 might depend on A-1.9. So the latter must be installed (else B-1.0 could not be), but
+should be hidden, so that user imports see A-2.1. </para>
+<para>The registration program <function>hc-pkg</function> provides operations to expose or hide an 
+already-installed package.
+	  </para>
+</sect3>
 
-<para>On a high level, this is the order in which we should approach
-the tasks:</para>
+<sect3><title>Registration invariants</title>
 
-<itemizedList>
+<para>The registration program <function>hc-pkg</function> checks the following invariants:
+<itemizedlist>
+<listitem> <para>
+Before registering a package P, check all the packages that P depends on are already registered.
+If P is being registered as a shared package, P's dependencies must also be shared packages.
+</para></listitem>
+<listitem> <para>
+Before registering an exposed user package P, check that the modules that are exposed by P do not have the same
+names (in the hierarchical module name space) as any other module in an exposed user package Q.  Similarly
+for system packages.  (However, a system package may expose a module with the same name as a user package.
+</para></listitem>
+<listitem> <para>
+Before un-registering a package P, check that no package that depends on P is registered.
+The exception is that when un-registering a shared package, <function>hc-pkg</function> cannot
+check that no user has a user package depending on P.</para>
+	    </listitem>
+</itemizedlist>
+	</para>
+      </sect3>
+    </sect2
 
-<listItem><para>We should agree first on the high-level design of the
-<emphasis>packaging system</emphasis> (<xref
-linkend="lip-packaging">), since this will require a consensus from
-the &impl; authors.  Details such as the format of the database and
-the exact API will evolve over the course of the project.  The author
-views this as the top priority.</para></listItem>
+<sect2><title>The <function>-package</function> compiler flag</title>
 
-<listItem><para>In parallel, we should decide on the command-line interface for the
-Setup script (<xref linkend="lip-command">), and the particulars of
-how it is invoked on various systems.</para></listItem>
+<para>
+Registering a package means that subsequent invocations of the compiler will use a module namespace
+augmented by the newly-installed package.</para>
 
-<listItem><para>The first priority for Build and Install support
-should be pure Haskell modules, and reasonable support for wrapping
-make-based systems that are currently more highly evolved.</para></listItem>
+<para>
+By default, the module namespace is populated only by the latest version of a particular package.
+This can be overridden using the <function>-package</function> flag.</para>  
+<note><para>Question: what does <function>-package hunit-1.2 -package hunit-1.3</function> do?
+Does the second override the first?  Or are they both in scope?  I think the former.</para></note>
+<para>
+An attempt to import a module that is defined by more than one installed package yields an ambiguous-import
+error, rather like an attempt to use an identifier that is defined by more than one imported module.
+(Comment: there ought be some way to resolve such ambiguities. Per-import qualification?  <function>-disable-package X</function>?
+<function>-package Y</function> specifies winner?)
+</para>
+</sect2>
 
-<listItem><para>At this point, it may be possible to collect
-libraries, convert them to use the Library Infrastructure Project, and
-make them available at a central repository.</para></listItem>
+<sect2><title>The interface to <function>X-pkg</function></title>
 
-<listItem><para>The next priority should be tools to assist in the
-creation and maintenance of operating-system packages (Debian and RPM
-for instance).</para></listItem>
+<para>Registering a package with a compiler records the package information in some
+implementation-specific way; how it does so is not constrained by the HLI.
+Much of an IPD is independent of the compiler, but it may also include compiler-specific
+fields.</para>
 
-<listItem><para>Once these features are in place, it makes sense to
-augment the &distMod; with more complex tool support like
-preprocessors and external libraries.</para></listItem>
+<para>Each Haskell implementation <function>hc</function> must provide an associated program <function>hc-pkg</function> which 
+allows a user to make a new package known to the compiler, and to ask what packages it knows. Here is a summary of its interface
 
-<listItem><para>Now we can add more fun features like GUI front-ends,
-downloading tools, package security tools, etc.</para></listItem>
+     <table frame=all><title><function>hc-pkg</function> interface</title>
 
-</itemizedList>
+     <tgroup cols=2 align=left colsep=1 rowsep=1>     <tbody>
 
-<para>The author has implemented a "toy" prototype system that fulfills
-many of the features outlined above.  It uses &hmake; by running it as
-an external command.  It can build Debian packages and interfaces with
-the Common Debian Build System.  It can prepare installations for Hugs
-and GHC.  The author decided to stop implementation, however, until
-details about the Packaging system (<xref linkend="lip-packaging">)
-are worked through.</para>
+     <row><Entry><cmdsynopsis><command>hc-pkg register</command> <group choice=req>
+		      <arg><replaceable>filename</replaceable></arg>
+		      <arg><option>-</option></arg></group>
+		  <arg choice=opt><option>-user</option></arg>
+		</cmdsynopsis></entry>
+                    <Entry><para>Register the package using the specified installed package description.
+		  The syntax for the latter is given in <xref linkend="ipd">.</para></entry></row>
 
-</section>
+
+     <row><Entry><cmdsynopsis><command>hc-pkg unregister</command> 
+		<arg><replaceable>pkg-id</replaceable></arg>
+		  </cmdsynopsis></entry>
+                    <Entry><para>Unregister the specified package.</para></entry></row>
+
+     <row><Entry><cmdsynopsis><command>hc-pkg expose</command> 
+		<arg><replaceable>pkg-id</replaceable></arg>
+		  </cmdsynopsis></entry>
+                    <Entry><para>Expose the specified package.</para></entry></row>
+
+     <row><Entry><cmdsynopsis><command>hc-pkg hide</command> 
+		<arg><replaceable>pkg-id</replaceable></arg>
+		  </cmdsynopsis></entry>
+                    <Entry><para>Hide the specified package.</para></entry></row>
+
+     <row><Entry><command>hc-pkg list</command></entry>
+                    <Entry><para>List all registered packages, both shared and user, hidden and exposed. </para></entry></row>
+
+
+     <row><Entry><cmdsynopsis><command>hc-pkg describe</command> <arg choice=req><replaceable>pkg-id</replaceable> </arg>
+		  </cmdsynopsis></entry>
+         <Entry><para>Give the registered description for the specified package.
+		    The description is returned in precisely the syntax required by 
+		    <command>hc-pkg register</command>.  
+		</para></entry></row>
+
+     <row><Entry><cmdsynopsis><command>hc-pkg field</command> <arg choice=req><replaceable>pkg-id</replaceable> </arg>
+		<arg choice=req><replaceable>field</replaceable> </arg>
+		  </cmdsynopsis></entry>
+
+         <Entry><para>Extract the specifed field of the package description for the specified package.
+		</para></entry></row>
+
+     </tbody></tgroup>
+     </table>
+A <replaceable>pkg</replaceable> argument can be a package ID, such as "<function>hunit-2.3</function>", or just a package name, 
+such as "<function>hunit</function>".  To determine which package is meant, <function>hc-pkg</function> searches first the
+registered user packages and then the shared packages.  If no such package exists, the command fails; that is, it does nothing, 
+returning a non-zero error code.
+If only a name is specified, <function>hc-pkg</function> fails
+unless the name identifies a unique package among the user packages, or among the shared pacakges.  As usual, the
+user packages win.
+      </para>
+<note><para>Can we give the <option>-user</option> flag to <command>hide</command>, <command>expose</command>,
+<command>describe</command>?  Can we register a package that is already registered?  What if it's registered
+as a shared package and we register it as a user package?</para>
+      </note>
+</sect2>
+
+<sect2 id=ipd><title>Syntax of installed package description</title>
+
+<note><para>...include the list of ``externally visible modules''.</para></note>
+</sect2>
+</sect1> <!-- End of compiler requirements --> 
 
 
 <!-- Appendix: Related Systems --------------------------------- -->
