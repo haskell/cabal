@@ -49,14 +49,16 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
     where
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
-import Distribution.Package(PackageConfig(..))
+import Distribution.Package(PackageDescription(..))
 import Distribution.Simple.Utils (splitFilenameDir, die, split)
 
-import System.IO
+import System.IO hiding (catch)
 import System.Exit
 import System.Directory
 import System.Environment	( getEnv )
 import Control.Monad		( when )
+import Control.Exception	( catch, evaluate )
+import Prelude hiding (catch)
 
 #ifdef DEBUG
 import HUnit
@@ -73,7 +75,10 @@ emptyLocalBuildInfo = undefined
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   str <- readFile localBuildInfoFile
-  return (read str)
+  let bi = read str
+  evaluate bi `catch` \e -> 
+	die "error reading .setup-config; perhaps run ./Setup.lhs configure?"
+  return bi
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
@@ -85,7 +90,7 @@ localBuildInfoFile = "./.setup-config"
 -- -----------------------------------------------------------------------------
 -- Configuration
 
-configure :: PackageConfig -> ConfigFlags -> IO LocalBuildInfo
+configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkgconfig (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
   = do
 	-- prefix
@@ -101,7 +106,7 @@ configure pkgconfig (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=prefix, compiler=compiler}
 
-system_default_prefix PackageConfig{package=package} = 
+system_default_prefix PackageDescription{package=package} = 
 #ifdef mingw32_TARGET_OS
   "C:\Program Files\" ++ pkgName package
 #else
@@ -111,7 +116,7 @@ system_default_prefix PackageConfig{package=package} =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageConfig
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageDescription
   -> IO Compiler
 
 configCompiler (Just flavor) (Just path) pkgconfig
@@ -195,7 +200,7 @@ message s = putStrLn $ "configure: " ++ s
 hunitTests :: IO [Test]
 hunitTests = do
    let simonMarGHCLoc = "/home/simonmar/fp/bin/i386-unknown-linux/ghc"
-   simonMarGHC <- configure PackageConfig{} (Just GHC,
+   simonMarGHC <- configure PackageDescription{} (Just GHC,
 				       Just simonMarGHCLoc,
 				       Nothing)
    return $ [TestLabel "Configure Testing" $ TestList [

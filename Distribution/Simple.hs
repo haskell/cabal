@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple (
 	module Distribution.Package,
 	License(..), Version(..),
-	defaultMain, emptyPackageConfig,
+	defaultMain,
   ) where
 
 -- Base
@@ -53,7 +53,10 @@ import System(getArgs)
 import Distribution.Package
 import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
-import Distribution.Simple.Build(build)
+import Distribution.Simple.Build	( build )
+import Distribution.Simple.SrcDist	( sdist )
+import Distribution.Simple.Register	( register, unregister )
+
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
@@ -66,52 +69,57 @@ import Control.Monad	( when )
 import Data.List	( intersperse )
 
 -- |Reads local build info, executes function
-doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
-               -> PackageConfig
+doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function to apply
+               -> PackageDescription
                -> IO ()
 doBuildInstall f pkgConf
     = do lbi <- getPersistBuildConfig
          f pkgConf lbi
 
-defaultMain :: PackageConfig -> IO ()
-defaultMain pkgconfig
+defaultMain :: PackageDescription -> IO ()
+defaultMain pkg_descr
     = do args <- getArgs
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
 
 	     Right (ConfigCmd flags, extra_flags) -> do
-		when (not (null extra_flags)) $ do
-		   die ("Unrecognised flags: " ++ 
-			  concat (intersperse "," (extra_flags)))
-		localbuildinfo <- configure pkgconfig flags
+		no_extra_flags extra_flags
+		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig localbuildinfo
+
+             Right (BuildCmd, extra_flags) -> do
+		no_extra_flags extra_flags
+		localbuildinfo <- getPersistBuildConfig
+		build pkg_descr localbuildinfo
+
+             Right (InstallCmd maybe_install_prefix, extra_flags) -> do
+		no_extra_flags extra_flags
+		localbuildinfo <- getPersistBuildConfig
+		install pkg_descr localbuildinfo
+
+             Right (SDistCmd, extra_flags) -> do
+		no_extra_flags extra_flags
+		localbuildinfo <- getPersistBuildConfig
+		sdist pkg_descr localbuildinfo
+
+             Right (RegisterCmd, extra_flags) -> do
+		no_extra_flags extra_flags
+		localbuildinfo <- getPersistBuildConfig
+		register pkg_descr localbuildinfo
+
+             Right (UnregisterCmd, extra_flags) -> do
+		no_extra_flags extra_flags
+		localbuildinfo <- getPersistBuildConfig
+		unregister pkg_descr localbuildinfo
 
              Left err -> do 
 		hPutStr stderr (unlines err)
 		hPutStr stderr (optionHelpString helpprefix)
-
---           (BuildCmd,       _) -> doBuildInstall build p
---           (InstallCmd _,   _) -> doBuildInstall install p
-
-	     _other -> die "unimplemented command\n"
          return ()
 
-emptyPackageConfig :: PackageConfig
-emptyPackageConfig
-    =  PackageConfig {package      = undefined,
-                      licenese     = AllRightsReserved,
-                      copyright    = "",
-                      maintainer   = "",
-                      stability    = "",
-                      buildDepends = [],
-                      sources      = [],
-                      extensions   = [],
-                      library      = "",
-                      extraLibs    = [],
-                      includeDirs  = [],
-                      includes     = [],
-                      options      = []
-                     }
+no_extra_flags [] = return ()
+no_extra_flags extra_flags  = 
+  die ("Unrecognised flags: " ++ concat (intersperse "," (extra_flags)))
 
 helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"

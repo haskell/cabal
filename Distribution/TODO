@@ -1,17 +1,14 @@
-* Documentation
-** Integrate SimonPJ's document into the "proposal" (simonpj)
-** x-pkg command-line interface
-
 * Code
+** parse pkg.desc
 ** build
 ** install
 ** register
 ** generate InstalledPackageInfo
 ** read & write config-droppings
+** configure: check for presence of build dependencies
 
 * later todo
 ** writePersistBuildConfig robustify + diagnostics
-** command-line parsing errors
 ** elaborate command-line help text
 
 * Testing

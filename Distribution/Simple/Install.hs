@@ -43,8 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install(install) where
 
-import Distribution.Package(PackageConfig)
+import Distribution.Package(PackageDescription)
 import Distribution.Simple.Configure(LocalBuildInfo)
 
-install :: PackageConfig -> LocalBuildInfo -> IO ()
+install :: PackageDescription -> LocalBuildInfo -> IO ()
 install _ _ = return ()

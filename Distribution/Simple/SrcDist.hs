@@ -1,16 +1,14 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.Register
--- Copyright   :  Isaac Jones 2003-2004
+-- Module      :  Distribution.Simple.SrcDist
+-- Copyright   :  Simon Marlow 2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
 
-{- Copyright (c) 2003-2004, Isaac Jones
+{- Copyright (c) 2003-2004, Simon Marlow
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -41,24 +39,17 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.Register (
-	register,
-	unregister,
-  ) where
+module Distribution.Simple.SrcDist (
+	sdist
+  )  where
 
-import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Package(PackageDescription)
-import Distribution.InstalledPackageInfo(InstalledPackageInfo)
+import Distribution.Simple.Configure(LocalBuildInfo)
 
 import System.IO
 import System.Exit
 
-register :: PackageDescription -> LocalBuildInfo -> IO ()
-register pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: registering..."
-  exitWith (ExitFailure 1)
-
-unregister :: PackageDescription -> LocalBuildInfo -> IO ()
-unregister pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: unregistering..."
+sdist :: PackageDescription -> LocalBuildInfo -> IO ()
+sdist pkg_descr lbi = do
+  hPutStrLn stderr "ToDo: sdisting..."
   exitWith (ExitFailure 1)

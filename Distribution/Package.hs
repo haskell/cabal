@@ -41,32 +41,62 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Package(PackageIdentifier(..),
-                            PackageConfig(..))
-
-where
+module Distribution.Package (
+	PackageIdentifier(..),
+	PackageDescription(..),
+	emptyPackageDescription
+  ) where
 
 import Distribution.Version(Version)
-import Distribution.Misc(License, Dependency, Extension)
+import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
       deriving (Read, Show, Eq)
 
-data PackageConfig
-    =  PackageConfig {package      :: PackageIdentifier,
-                      licenese     :: License,
-                      copyright    :: String,
-                      maintainer   :: String,
-                      stability    :: String,
-                      buildDepends :: [ Dependency ],
-                      sources      :: [ FilePath ],
-                      extensions   :: [ Extension ],
-                      library      :: String,      -- library name
-                      extraLibs    :: [ String ],
-                      includeDirs  :: [ FilePath ],
-                      includes     :: [ FilePath ],
-                      options      :: [ (CompilerFlavor, [String]) ]
+-- | This data type is the internal representation of the file @pkg.descr@.
+-- It contains two kinds of information about the package: information
+-- which is needed for all packages, such as the package name and version, and 
+-- information which is needed for the simple build system only, such as 
+-- the compiler options and library name.
+-- 
+data PackageDescription
+    =  PackageDescription {
+	-- the following are required by all packages:
+	package        :: PackageIdentifier,
+        licenese       :: License,
+        copyright      :: String,
+        maintainer     :: String,
+        stability      :: String,
+
+	-- the following are required by the simple build infrastructure only:
+        buildDepends   :: [ Dependency ],
+        allModules     :: [ String ],
+	exposedModules :: [ String ],
+        extensions     :: [ Extension ],
+        library        :: String,      -- library name
+        extraLibs      :: [ String ],
+        includeDirs    :: [ FilePath ],
+        includes       :: [ FilePath ],
+        options        :: [ (CompilerFlavor, [String]) ]
+    }
+    deriving (Show)
+
+emptyPackageDescription :: PackageDescription
+emptyPackageDescription
+    =  PackageDescription {package      = undefined,
+                      licenese     = AllRightsReserved,
+                      copyright    = "",
+                      maintainer   = "",
+                      stability    = "",
+                      buildDepends = [],
+                      allModules   = [],
+		      exposedModules = [],
+                      extensions   = [],
+                      library      = "",
+                      extraLibs    = [],
+                      includeDirs  = [],
+                      includes     = [],
+                      options      = []
                      }
-       deriving Show
