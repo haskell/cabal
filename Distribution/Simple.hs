@@ -82,11 +82,11 @@ import System.Environment(getArgs)
 import System.Exit(ExitCode(..))
 import System.Directory(removeFile, doesFileExist)
 
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (try)
-import System.Console.GetOpt
+import Distribution.GetOpt
 import Distribution.Compat.FilePath(joinFileName, joinPaths)
 
 #ifdef DEBUG
@@ -183,7 +183,6 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
                 pkg_descr <- hookOrInArgs preConf args flags
-                no_extra_flags args
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf
@@ -191,7 +190,6 @@ defaultMainWorker pkg_descr_in action args hooks
             BuildCmd -> do
                 (_, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInput preBuild args
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo knownSuffixHandlers
                 writeInstalledConfig pkg_descr localbuildinfo
@@ -200,7 +198,6 @@ defaultMainWorker pkg_descr_in action args hooks
             CleanCmd -> do
                 (_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInput preClean args
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		let buildPref = buildDir localbuildinfo
 		try $ removeFileRecursive buildPref
@@ -212,7 +209,6 @@ defaultMainWorker pkg_descr_in action args hooks
             CopyCmd mprefix -> do
                 (mprefix, _, args) <- parseCopyArgs mprefix args []
                 pkg_descr <- hookOrInArgs preCopy args mprefix
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		install pkg_descr localbuildinfo (mJoinPaths mprefix (prefix localbuildinfo))
                 postHook postCopy
@@ -220,7 +216,6 @@ defaultMainWorker pkg_descr_in action args hooks
             InstallCmd uInst -> do
                 (uInst, _, args) <- parseInstallArgs uInst args []
                 pkg_descr <- hookOrInArgs preInst args uInst
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
                 -- FIX (HUGS): fix 'die' checks commands below.
                 when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
@@ -235,14 +230,12 @@ defaultMainWorker pkg_descr_in action args hooks
                 let srcPref   = distPref `joinFileName` "src"
                 (_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInput preSDist args
-                no_extra_flags args
 		sdist srcPref distPref knownSuffixHandlers pkg_descr
                 postHook postSDist
 
             RegisterCmd uInst -> do
                 (uInst, _, args) <- parseRegisterArgs uInst args []
                 pkg_descr <- hookOrInArgs preReg args uInst
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo uInst)
                 postHook postReg
@@ -250,7 +243,6 @@ defaultMainWorker pkg_descr_in action args hooks
             UnregisterCmd -> do
                 (_, args) <- parseUnregisterArgs args []
                 pkg_descr <- hookOrInput preUnreg args
-                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo
                 postHook postUnreg
@@ -268,13 +260,13 @@ defaultMainWorker pkg_descr_in action args hooks
                                  case maybeDesc of
                                   Nothing -> return pkg_descr_in
                                   Just x  -> return (unionPackageDescription pkg_descr_in x)
-        hookOrInArgs :: (UserHooks -> (a -> b -> IO (Maybe PackageDescription)))
-                     -> a
+        hookOrInArgs :: (UserHooks -> ([String] -> b -> IO (Maybe PackageDescription)))
+                     -> [String]
                      -> b
                      -> IO PackageDescription
         hookOrInArgs f a i
                  = case hooks of
-                    Nothing -> return pkg_descr_in
+                    Nothing -> no_extra_flags a >> return pkg_descr_in
                     Just h -> do maybeDesc <- (f h) a i
                                  case maybeDesc of
                                   Nothing -> return pkg_descr_in
@@ -337,19 +329,27 @@ defaultUserHooks
        preConf   = defaultPreConf,
        preBuild  = readHook,
        preClean  = readHook,
-       preCopy   = \_ -> readHook,
-       preInst   = \_ -> readHook,
+       preCopy   = readHook2,
+       preInst   = readHook2,
        preSDist  = readHook,
-       preReg    = \_ -> readHook,
+       preReg    = readHook2,
        preUnreg  = readHook
       }
-    where readHook _ = readPackageDescription hookedPackageDesc >>= (return . Just)
+    where readHook a = no_extra_flags a
+                       >> readPackageDescription hookedPackageDesc
+                       >>= (return . Just)
+          readHook2 a _ = no_extra_flags a
+                          >> readPackageDescription hookedPackageDesc
+                          >>= (return . Just)
           defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
           defaultPreConf args (_, _, _, mb_prefix)
               = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
-	           whenM (doesFileExist "configure") $
-	                 rawSystem "./configure"
+                   confExists <- doesFileExist "configure"
+	           when confExists
+	                 (rawSystem "./configure"
 	                   (maybe id prefix_opt mb_prefix args)
+                           >> return ())
+                   unless confExists (no_extra_flags args)
                    outDesc <- readPackageDescription hookedPackageDesc
                    return $ Just outDesc
 
