@@ -16,6 +16,7 @@
 - if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
+- why does it need configure first?
 
 ** clarify description filename issues
 - allow foo.hsproj?
