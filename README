@@ -16,11 +16,6 @@ http://www.haskell.org/cabal
 * HUnit is included both as a test case for Cabal, and because Cabal
   uses HUnit for testing.  Don't panic.
 
-* HUnit also uses the standard setup script interface, and has to get
-  installed and registered before you can build the setup for Cabal.
-  The install target of the GNUmakefile does everything in the right
-  order.
-
 -= Your Help =-
 
 Portability is one of the most important things about this project.
@@ -46,11 +41,12 @@ dependencies...
 -= Credits (in alphabetical order) =-
 
 Cabal Coders:
+- Krasimir Angelov
 - Bjorn Bringert
 - Isaac Jones
 - Simon Marlow
+- Ross Patterson
 - Martin Sjögren
-- Krasimir Angelov
 - Malcolm Wallace (via hmake)
 
 Cabal proposal:
