@@ -80,7 +80,7 @@ module Distribution.PackageDescription (
 
 import Control.Monad(liftM, foldM, when)
 import Data.Char
-import Data.Maybe(fromMaybe, fromJust, isNothing)
+import Data.Maybe(fromMaybe, fromJust, isNothing, catMaybes)
 import Text.PrettyPrint.HughesPJ
 import System.Directory(doesFileExist)
 
@@ -637,13 +637,17 @@ testPkgDesc = unlines [
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
         "GHC-Options: -fTH -fglasgow-exts",
         "Hugs-Options: +TH",
+        "Nhc-Options: ",
         "",
         "-- Next is an executable",
         "Executable: somescript",
         "Main-is: SomeFile.hs",
         "Other-Modules: Foo1, Util, Main",
         "HS-Source-Dir: scripts",
-        "Extensions: OverlappingInstances"
+        "Extensions: OverlappingInstances",
+        "GHC-Options: ",
+        "Hugs-Options: ",
+        "Nhc-Options: "
         ]
 
 testPkgDescAnswer :: PackageDescription
@@ -686,14 +690,15 @@ testPkgDescAnswer =
                            includeDirs = ["your/slightest", "look/will"],
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
                            -- Note reversed order:
-                           options = [(Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
+                           options = [(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
                     executables = [Executable "somescript" 
                        "SomeFile.hs" (
                       emptyBuildInfo{
                         otherModules=["Foo1","Util","Main"],
                         hsSourceDir = "scripts",
-                        extensions = [OverlappingInstances]
+                        extensions = [OverlappingInstances],
+                        options = [(NHC,[]),(Hugs,[]),(GHC,[])]
                       })]
 }
 
@@ -731,11 +736,36 @@ hunitTests = [
              TestLabel "Package description pretty" $ TestCase $ 
                 case parseDescription testPkgDesc of
                  ParseFailed _ -> assertBool "can't parse description" False
-                 ParseOk d -> assertParseOk "parse . show . parse not identity"
-                             testPkgDescAnswer (parseDescription $ showPackageDescription d)
-             ]
+                 ParseOk d -> case parseDescription $ showPackageDescription d of
+                                ParseFailed _ ->
+                                    assertBool "can't parse description after pretty print!" False
+                                ParseOk d' -> 
+                                    assertBool ("parse . show . parse not identity."
+                                                ++"   Incorrect fields:"
+                                                ++ (show $ comparePackageDescriptions d d'))
+                                               (d == d')
+                                            
+            ]
+
+-- |Compare two package descriptions and see which fields aren't the same.
+comparePackageDescriptions :: PackageDescription
+                           -> PackageDescription
+                           -> [String]      -- ^Errors
+comparePackageDescriptions p1 p2
+    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": []
 
 
+      where myCmp :: (Eq a, Show a) => (PackageDescription -> a)
+                  -> String       -- Error message
+                  -> Maybe String -- 
+            myCmp f er = let e1 = f p1
+                             e2 = f p2
+                          in if e1 == e2
+                              then Nothing
+                              else Just (er ++ " Expected: " ++ show e1
+                                            ++ " Got: " ++ show e2)
+
+-- |Assert that the 2nd value parses correctly and matches the first value
 assertParseOk :: (Eq val) => String -> val -> ParseResult val -> Assertion
 assertParseOk mes expected actual
     =  assertBool mes
