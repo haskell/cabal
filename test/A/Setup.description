@@ -1,0 +1,4 @@
+Name: test
+Version: 1.0
+Modules: A, B.A
+Exposed-Modules: A
