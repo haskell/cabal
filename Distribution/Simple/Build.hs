@@ -81,7 +81,7 @@ build :: FilePath -- ^Build location
          -> PackageDescription -> LocalBuildInfo -> IO ()
 build pref pkg_descr lbi = do
   createIfNotExists True pref
-  preprocessSources pkg_descr lbi pref
+  preprocessSources pkg_descr lbi [] pref
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi

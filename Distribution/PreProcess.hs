@@ -37,7 +37,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.PreProcess (preprocessSources) where
+module Distribution.PreProcess (preprocessSources, knownSuffixes,
+                                PPSuffixHandler, PreProcessor(..))
+    where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
@@ -62,11 +64,11 @@ preprocessSources pkg_descr _ _ pref =
 
 data PreProcessor = PreProcessor
 	{ ppExecutableName   :: String,
-          ppDefaultOptions   :: [String]
+          ppDefaultOptions   :: [String],
         -- |How to construct the output option
 	  ppOutputFileOption :: FilePath -> String,
         -- |Whether the pp produces source appropriate for this compiler.
-	  ppSuitable         :: CompilerFlavor -> Bool,
+	  ppSuitable         :: CompilerFlavor -> Bool
 	}
      | PreProcessAction (FilePath -> IO ())
 
@@ -82,19 +84,19 @@ knownSuffixes =
   , ("hsc",    plain, ppHsc2hs)
   , ("y",      plain, ppHappy)
   , ("ly",     unlit, ppHappy)
---  , ("hs.cpp", plain, ppCpp)
+  , ("cpphs",  plain, ppCpp)
   , ("gc",     plain, ppNone)	-- note, for nhc98 only
   , ("hs",     plain, ppNone)
 --  , ("lhs",    unlit, ppNone)
   ] 
 
-ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
--- ppCpp = PreProcessor
--- 	{ ppExecutableName = "gcc -E -traditional"
--- 	, ppDefaultOptions = \d-> "-x c" : map ("-D"++) (defs d++zdefs d)
--- 	, ppOutputFileOption = \f-> "> "++f
--- 	, ppSuitable = \hc-> True
--- 	}
+ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
+ppCpp = PreProcessor
+ 	{ ppExecutableName = "cpphs"
+ 	, ppDefaultOptions = []
+ 	, ppOutputFileOption = \f-> "-O"++f
+ 	, ppSuitable = \_-> True
+ 	}
 ppGreenCard = PreProcessor
 	{ ppExecutableName = "green-card"
 	, ppDefaultOptions = ["-tffi"]	-- + includePath of compiler?
@@ -117,7 +119,7 @@ ppHappy = PreProcessor
 	{ ppExecutableName = "happy"
 	, ppDefaultOptions = []
 	, ppOutputFileOption = \_-> ""
-	, ppSuitable = \hc-> True
+	, ppSuitable = \_-> True
 	}
 ppNone = PreProcessor
 	{ ppExecutableName = ""
