@@ -557,8 +557,12 @@ hunitTests = [
 
              TestLabel "Package description" $ TestCase $ 
                 assertRight "entire package description" testPkgDescAnswer
-                                                         (parseDescription testPkgDesc)
-
+                                                         (parseDescription testPkgDesc),
+             TestLabel "Package description pretty" $ TestCase $ 
+                case parseDescription testPkgDesc of
+                 Left  _ -> assertBool "can't parse description" False
+                 Right d -> assertRight "parse . show . parse not identity"
+                             testPkgDescAnswer (parseDescription $ showPackageDescription d)
              ]
 
 
