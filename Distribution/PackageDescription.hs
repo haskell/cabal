@@ -110,6 +110,12 @@ data PackageDescription
 	pkgUrl         :: String,
 	description    :: String,
 	category       :: String,
+	-- possibly system-dependent build parameters
+	buildPackage   :: Bool,		-- ^ package is buildable here
+	ccOptions      :: [String],	-- ^ options for C compiler
+	ldOptions      :: [String],	-- ^ options for linker
+	frameworks     :: [String],
+	-- components
         library        :: Maybe BuildInfo,
         executables    :: [Executable]
     }
@@ -128,6 +134,10 @@ emptyPackageDescription
 		      pkgUrl       = "",
 		      description  = "",
 		      category     = "",
+		      buildPackage = True,
+		      ccOptions    = [],
+		      ldOptions    = [],
+		      frameworks   = [],
                       library      = Nothing,
                       executables  = []
                      }
@@ -280,6 +290,18 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
+ , simpleField "build-package"
+                           (text . show)          parseReadS
+                           buildPackage           (\val pkg -> pkg{buildPackage=val})
+ , simpleField "cc-options"
+                           (fsep . map text)      (fmap words (munch (const True)))
+                           ccOptions              (\val pkg -> pkg{ccOptions=val})
+ , simpleField "ld-options"
+                           (fsep . map text)      (fmap words (munch (const True)))
+                           ldOptions              (\val pkg -> pkg{ldOptions=val})
+ , simpleField "frameworks"
+                           (fsep . map text)      (fmap words (munch (const True)))
+                           frameworks             (\val pkg -> pkg{frameworks=val})
 
  ]
 
@@ -431,6 +453,10 @@ testPkgDesc = unlines [
         "Package-url: http://www.haskell.org/foo",
         "Description: a nice package!",
         "Category: tools",
+        "Build-Package: True",
+        "CC-OPTIONS: -g -o",
+        "LD-OPTIONS: -BStatic -dn",
+        "Frameworks: foo",
         "Tested-with: GHC",
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
@@ -466,6 +492,10 @@ testPkgDescAnswer =
                     pkgUrl   = "http://www.haskell.org/foo",
                     description = "a nice package!",
                     category = "tools",
+                    buildPackage = True,
+                    ccOptions = ["-g", "-o"],
+                    ldOptions = ["-BStatic", "-dn"],
+                    frameworks = ["foo"],
                     testedWith=[(GHC, AnyVersion)],
                     maintainer = "",
                     stability = "Free Text String",

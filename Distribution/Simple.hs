@@ -84,6 +84,7 @@ import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (try)
+import System.Console.GetOpt
 import Distribution.Compat.FilePath(joinFileName)
 
 #ifdef DEBUG
@@ -98,7 +99,7 @@ hookedPackageDesc = "Setup.buildinfo"
 
 data UserHooks = UserHooks
     {
-     runTests :: Bool -> IO ExitCode, -- ^Used for './setup test'
+     runTests :: Bool -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
 
      preConf  :: ConfigFlags -> IO (Maybe PackageDescription),
@@ -172,7 +173,6 @@ defaultMainWorker :: PackageDescription
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
     = do let distPref = "dist"
-         let buildPref = distPref `joinFileName` "build"
          let srcPref   = distPref `joinFileName` "src"
          let hookOrInput f = case hooks of
                               Nothing -> return pkg_descr_in
@@ -191,11 +191,12 @@ defaultMainWorker pkg_descr_in action args hooks
                            Just h  -> f h
          case action of
             ConfigCmd flags -> do
-                (flags, _, args) <- parseConfigureArgs flags args []
                 pkg_descr <- hookOrInArgs preConf flags
+                (flags, optFns, args) <-
+			parseConfigureArgs flags args [buildDirOpt]
                 no_extra_flags args
 		localbuildinfo <- configure pkg_descr flags
-		writePersistBuildConfig localbuildinfo
+		writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf
 
             BuildCmd -> do
@@ -203,6 +204,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInput preBuild
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
+		let buildPref = buildDir localbuildinfo
 		build buildPref pkg_descr localbuildinfo knownSuffixHandlers
                 writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild
@@ -211,6 +213,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 (_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInput preClean
                 no_extra_flags args
+		localbuildinfo <- getPersistBuildConfig
+		let buildPref = buildDir localbuildinfo
 		try $ removeFileRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
@@ -222,6 +226,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preCopy mprefix
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
+		let buildPref = buildDir localbuildinfo
 		install buildPref pkg_descr localbuildinfo mprefix
                 postHook postCopy
 
@@ -230,6 +235,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preInst uInst
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
+		let buildPref = buildDir localbuildinfo
                 -- FIX (HUGS): fix 'die' checks commands below.
                 when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
                       (die "Hugs cannot yet install user-only packages.")
@@ -265,6 +271,11 @@ no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
   die ("Unrecognised flags: " ++ concat (intersperse "," (extra_flags)))
+
+buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
+buildDirOpt = Option "b" ["builddir"] (ReqArg setBuildDir "DIR")
+		"directory to receive the built package [dist/build]"
+  where setBuildDir dir lbi = lbi { buildDir = dir }
 
 helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"
