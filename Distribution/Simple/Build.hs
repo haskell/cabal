@@ -49,7 +49,7 @@ module Distribution.Simple.Build (
 
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
-import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId, pkgName)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
@@ -121,13 +121,13 @@ constructGHCCmdLine pref pkg_descr lbi =
         in if null unsupported
            then [
                  "--make", "-odir " ++ pref, "-hidir " ++ pref,
-                 "-package-name", showPackageId (package pkg_descr)
+                 "-package-name", pkgName (package pkg_descr)
                 ] 
                 ++ flags
                 ++ [ opt | (GHC,opts) <- maybe [] options (library pkg_descr),
                            opt <- opts ]
                 ++ [ "-i" ++ pref ]
-                ++ [ "-package " ++ showPackageId pkg | pkg <- packageDeps lbi ] 
+                ++ [ "-package " ++ pkgName pkg | pkg <- packageDeps lbi ] 
                 ++ maybe [] modules (library pkg_descr)
            else error $ "Unsupported extension for GHC: "
                       ++ (concat $ intersperse ", " (map show unsupported))

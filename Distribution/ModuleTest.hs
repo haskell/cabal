@@ -112,7 +112,7 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
          do oldDir <- getCurrentDirectory
             setCurrentDirectory "test/HUnit-1.0"
             pkgConf <- GHC.localPackageConfig
-            system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0"
+            system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
@@ -126,14 +126,14 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
 
             assertCmd "./setup build" "hunit build"
             assertCmd "./setup install --user" "hunit install"
-            assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit-1.0 HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
+            assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
-            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0") "package remove"
+            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove"
             setCurrentDirectory oldDir,
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf <- GHC.localPackageConfig
-            system $ "ghc-pkg -r test-1.0 --config-file=" ++ pkgConf
+            system $ "ghc-pkg -r test --config-file=" ++ pkgConf
             setCurrentDirectory "test/A"
             system "make clean"
             system "make"

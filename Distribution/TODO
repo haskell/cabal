@@ -5,9 +5,10 @@
    name)
 ** Build executables for mainModules
 ** Extensions
-- add as many as possible
 - complain if their use makes the code non-portable
 
+** does clean remove installed-pkg-config and .setup-config or
+   whatever? should the former be a . file?
 ** license parser parses either known strings, or a filename.
 ** port code to windows
 ** ./Setup.lhs build for nhc
