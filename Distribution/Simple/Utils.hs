@@ -294,7 +294,7 @@ createDirectoryParents file
     = mapM_ (createIfNotExists False) (pathInits file)
 
 -- |Give a list of lists breaking apart elements who match the given criteria
---  > mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
+--  mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
 mySplit :: Eq a => a -> [a] -> [[a]]
 mySplit a l = let (upto, rest) = break (== a) l
 		  in if null rest
