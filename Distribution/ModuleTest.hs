@@ -46,7 +46,7 @@ module Main where
 -- Import everything, since we want to test the compilation of them:
 
 import Distribution.Version()
-import Distribution.UseConfig()
+import Distribution.InstalledPackageInfo()
 import Distribution.Misc()
 import Distribution.Package()
 import qualified Distribution.Setup(hunitTests)
