@@ -49,8 +49,7 @@ import System(getArgs)
 -- Local
 import Distribution.Build(build)
 import Distribution.Install(install)
-import Distribution.Misc(CommandLineOpts(..), Action(..),
-                         LocalBuildInfo, getPersistBuildConfig)
+import Distribution.Misc(LocalBuildInfo, getPersistBuildConfig)
 import Distribution.Package(PackageConfig)
 
 -- |Reads local build info, executes function
@@ -73,6 +72,13 @@ defaultMain p
           (InstallCmd,     _) -> doBuildInstall install p
           (PackageInfoCmd, _) -> print p
          return ()
+
+
+
+-- ------------------------------------------------------------
+-- * command line
+-- ------------------------------------------------------------
+
 
 type CommandLineOpts = (Action,
                         [String]) -- The un-parsed remainder

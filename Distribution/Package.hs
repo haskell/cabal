@@ -48,7 +48,7 @@ module Distribution.Package(PackageIdentifier(..),
 where
 
 import Distribution.Version(Version)
-import Distribution.Misc(License, Dependency, Extension, Compiler)
+import Distribution.Misc(License, Dependency, Extension, CompilerFlavor)
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
