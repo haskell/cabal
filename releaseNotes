@@ -4,11 +4,12 @@ http://www.haskell.org/cabal
 
 IMPORTANT INFORMATION:
 
-See both the README file and the changelog.
+See both the README file and the changelog for important interface
+changes.
 
 DOWNLOAD:
 
-The Haskell Cabal has reached pre-release stage, with a 0.3 version
+The Haskell Cabal has reached pre-release stage, with a 0.4 version
 The community should use this release to evaluate the interfaces and
 explore the concepts of these tools.
 
