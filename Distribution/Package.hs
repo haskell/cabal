@@ -60,6 +60,7 @@ data PackageDescription
                            copyright    :: String,
                            maintainer   :: String,
                            stability    :: String}
+      deriving Show
 
 data PackageConfig
     =  PackageConfig {packageDescription :: PackageDescription,
@@ -72,3 +73,4 @@ data PackageConfig
                       includes     :: [ FilePath ],
                       options      :: [ (Compiler, [String]) ]
                      }
+       deriving Show
