@@ -83,7 +83,7 @@ install buildPref pkg_descr lbi install_prefixM = do
   return ()
   -- register step should be performed by caller.
 
--- |Install executables for GHC.  FIX: doesn't make it executable!
+-- |Install executables for GHC.
 installExeGhc :: FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()

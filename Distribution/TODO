@@ -5,6 +5,8 @@ RC:
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types?
+** add description file format to doc. - esp field descriptions
+** Look over rest of TODO list.  Should anything be promoted?
 
 HIGH: 
 ** Question: under what conditions does library == Nothing?
@@ -17,12 +19,6 @@ LOW
 ** Change name of Setup.description?
 ** the ./setup -h output should document which commands exist, and
    which options are relevant to which commands.
-
-** DOC
-*** add "clean" to doc?
-*** add description file format to doc.
-*** add note to doc that we're going to chase dependencies and make the
-   "modules" field unnecessary in the future.
 
 * 1.0 
 ** HC-PKG (see "Depends on HC-PKG" below)

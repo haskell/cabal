@@ -71,7 +71,7 @@ import HUnit (Test)
 -- Registration
 
 register :: PackageDescription -> LocalBuildInfo
-         -> Bool -- ^Install in the user's database? FIX: doesn't use this yet.
+         -> Bool -- ^Install in the user's database?
          -> IO ()
 register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
