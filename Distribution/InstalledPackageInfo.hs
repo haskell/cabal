@@ -57,8 +57,8 @@ module Distribution.InstalledPackageInfo (
 import Distribution.ParseUtils (
 	StanzaField(..), singleStanza, PError(..),
 	simpleField, listField, licenseField,
-	parseFilePath, parseLibName, parseModuleName,
-	showFilePath, parseReadS, parseOptVersion )
+	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
+	showFilePath, parseReadS, parseOptVersion, parseQuoted)
 import Distribution.License 	( License(..) )
 import Distribution.Extension 	( Opt )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
@@ -181,7 +181,7 @@ fields = basicStanzaFields ++ installedStanzaFields
 basicStanzaFields :: [StanzaField InstalledPackageInfo]
 basicStanzaFields =
  [ simpleField "name"
-                           text                   parsePackageName
+                           text                   parsePackageNameQ
                            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
                            (text . showVersion)   parseOptVersion 
@@ -222,52 +222,53 @@ installedStanzaFields = [
 	(text.show) 	   parseReadS
 	exposed     	   (\val pkg -> pkg{exposed=val})
  , listField   "exposed-modules"
-	text               parseModuleName
+	text               parseModuleNameQ
 	exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
  , listField   "hidden-modules"
-	text               parseModuleName
+	text               parseModuleNameQ
 	hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
  , listField   "import-dirs"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	importDirs         (\xs pkg -> pkg{importDirs=xs})
  , listField   "library-dirs"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
  , listField   "hs-libraries"
-	showFilePath       parseLibName
+	showFilePath       parseLibNameQ
 	hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})
  , listField   "extra-libs"
-	text               parseLibName
+	text               parseLibNameQ
 	extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
  , listField   "include-dirs"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	includeDirs        (\xs pkg -> pkg{includeDirs=xs})
  , listField   "includes"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	includes           (\xs pkg -> pkg{includes=xs})
  , listField   "depends"
-	(text.showPackageId)  parsePackageId
+	(text.showPackageId)  parsePackageId'
 	depends            (\xs pkg -> pkg{depends=xs})
  , listField   "extra-hugs-opts"
-	text		   parseFilePath
+	text		   parseFilePathQ
 	extraHugsOpts      (\path  pkg -> pkg{extraHugsOpts=path})
  , listField   "extra-cc-opts"
-	text		   parseFilePath
+	text		   parseFilePathQ
 	extraCcOpts        (\path  pkg -> pkg{extraCcOpts=path})
  , listField   "extra-ld-opts"
-	text		   parseFilePath
+	text		   parseFilePathQ
 	extraLdOpts        (\path  pkg -> pkg{extraLdOpts=path})
  , listField   "framework-dirs"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	frameworkDirs      (\xs pkg -> pkg{frameworkDirs=xs})
  , listField   "extra-frameworks"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	extraFrameworks    (\xs pkg -> pkg{extraFrameworks=xs})
  , listField   "haddock-interfaces"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	haddockInterfaces  (\xs pkg -> pkg{haddockInterfaces=xs})
  , listField   "haddock-html"
-	showFilePath       parseFilePath
+	showFilePath       parseFilePathQ
 	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
+parsePackageId' = parseQuoted parsePackageId <++ parsePackageId
