@@ -53,7 +53,7 @@ import Distribution.Misc()
 import Distribution.Package()
 
 main :: IO ()
-main = do putStrLn "compile successful"
+main = putStrLn "compile successful"
        
 
 -- Local Variables:

@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Misc(Compiler, License(..), Dependency,
                          Extension, Opt, LocalBuildInfo,
-                         Action(..), CommandLineOpts,
+                         CompilerFlavor(..),
                          writePersistBuildConfig, getPersistBuildConfig)
     where
 
