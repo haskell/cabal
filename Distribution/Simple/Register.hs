@@ -119,7 +119,7 @@ register pkg_descr lbi userInst = do
 	let register_flags 
 		| ghc_63_plus = ["register", installedPkgConfigFile]
 		| otherwise   = ["--update-package",
-				 "--input_file="++installedPkgConfigFile]
+				 "--input-file="++installedPkgConfigFile]
 
         rawSystemExit (compilerPkgTool (compiler lbi))
 	                     (["--auto-ghci-libs"]
