@@ -102,11 +102,14 @@ data Action = ConfigCmd ConfigFlags       -- config
 type ConfigFlags = (Maybe CompilerFlavor,
                     Maybe FilePath, -- given compiler location
                     Maybe FilePath, -- given hc-pkg location
-                    Maybe FilePath) -- prefix
+                    Maybe FilePath, -- prefix
+                    Maybe FilePath -- Haddock path
+                   ) 
 
 -- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
-          | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
+          | WithCompiler FilePath | WithHaddock FilePath
+          | WithHcPkg FilePath | Prefix FilePath
           | UserFlag | GlobalFlag
           | HelpFlag
           -- For install:
@@ -212,12 +215,14 @@ configureCmd = Cmd {
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
                "give the path to a particular compiler",
-           Option "w" ["with-hc-pkg"] (ReqArg WithHcPkg "PATH")
+           Option "" ["with-hc-pkg"] (ReqArg WithHcPkg "PATH")
                "give the path to the package tool",
            Option "" ["prefix"] (ReqArg Prefix "DIR")
-               "bake this prefix in preparation of installation"
+               "bake this prefix in preparation of installation",
+           Option "" ["with-haddock"] (ReqArg WithHaddock "PATH")
+               "give the path to haddock"
            ],
-        cmdAction      = ConfigCmd (Nothing, Nothing, Nothing, Nothing)
+        cmdAction      = ConfigCmd (Nothing, Nothing, Nothing, Nothing, Nothing)
         }
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
@@ -232,14 +237,15 @@ parseConfigureArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) t@(mcf, mpath, mhcpkg, mprefix) = updateCfg flags $
+  where updateCfg (fl:flags) t@(mcf, mpath, mhcpkg, mprefix, mHaddockPath) = updateCfg flags $
           case fl of
-            GhcFlag  -> (Just GHC,  mpath, mhcpkg, mprefix)
-            NhcFlag  -> (Just NHC,  mpath, mhcpkg, mprefix)
-            HugsFlag -> (Just Hugs, mpath, mhcpkg, mprefix)
-            WithCompiler path -> (mcf, Just path, mhcpkg, mprefix)
-            WithHcPkg path    -> (mcf, mpath, Just path, mprefix)
-            Prefix path       -> (mcf, mpath, mhcpkg, Just path)
+            GhcFlag  -> (Just GHC,  mpath, mhcpkg, mprefix, mHaddockPath)
+            NhcFlag  -> (Just NHC,  mpath, mhcpkg, mprefix, mHaddockPath)
+            HugsFlag -> (Just Hugs, mpath, mhcpkg, mprefix, mHaddockPath)
+            WithCompiler path -> (mcf, Just path, mhcpkg, mprefix, mHaddockPath)
+            WithHaddock path -> (mcf, mpath, mhcpkg, mprefix, Just path)
+            WithHcPkg path    -> (mcf, mpath, Just path, mprefix, mHaddockPath)
+            Prefix path       -> (mcf, mpath, mhcpkg, Just path, mHaddockPath)
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
