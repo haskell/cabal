@@ -49,8 +49,8 @@ module Distribution.Simple.Build (
 
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
-import Distribution.Package (PackageDescription(..), BuildInfo(..),
-                             showPackageId, pkgName, Executable(..), hasLibs)
+import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
+                             BuildInfo(..), showPackageId, Executable(..), hasLibs)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
@@ -60,7 +60,8 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 
 
 import Control.Monad (when, unless)
-import Data.List(intersperse)
+import Data.List(intersperse, nub)
+import Data.Maybe(fromJust)
 import System.Environment (getEnv)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
@@ -87,7 +88,7 @@ build pref pkg_descr lbi = do
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
   let (unsupported, flags) = extensionsToNHCFlag (maybe [] extensions (library pkg_descr))
-  when (not $ null unsupported)
+  unless (null unsupported)
            (die $ "Unsupported extension for NHC: "
                   ++ (concat $ intersperse ", " (map show unsupported)))
   rawSystemExit (compilerPath (compiler lbi))
@@ -100,52 +101,47 @@ buildNHC pkg_descr lbi = do
 -- |Building for GHC
 buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildGHC pref pkg_descr lbi = do
-
-  -- first, build the modules
+  let ghcPath = compilerPath (compiler lbi)
   (pkgConf, pkgConfExists) <- GHC.localPackageConfig
   unless pkgConfExists $ writeFile pkgConf "[]\n"
-  let args = ["-package-conf", pkgConf]
-          ++ constructGHCCmdLine pref pkg_descr lbi
-  when (not (null (maybe [] modules (library pkg_descr)))) $
-    rawSystemExit (compilerPath (compiler lbi)) args
+  -- Build lib
+  withLib pkg_descr $ \build -> do
+      let args = ["-package-conf", pkgConf,
+                  "-package-name", pkgName (package pkg_descr),
+                  "-odir", pref, "-hidir", pref
+                 ]
+              ++ constructGHCCmdLine pref build (packageDeps lbi)
+              ++ modules build
+      unless (null (modules build)) $
+        rawSystemExit ghcPath args
 
-  -- build any C sources
-  when (not (null (maybe [] cSources (library pkg_descr)))) $
-     rawSystemExit (compilerPath (compiler lbi)) (maybe [] cSources (library pkg_descr) ++ ["-odir " ++ pref, "-hidir " ++ pref, "-c"])
+      -- build any C sources
+      unless (null (cSources build)) $
+         rawSystemExit ghcPath (cSources build ++ ["-odir", pref, "-hidir", pref, "-c"])
+
+      let hObjs = map (++objsuffix) (map dotToSep (modules build))
+          cObjs = [file ++ objsuffix | (file, _)
+                   <- (map splitExt (cSources build))]
+          lib  = mkLibName pref (showPackageId (package pkg_descr))
+      unless (null hObjs && null cObjs)
+        (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))
 
   -- build any executables
-  sequence_ [rawSystemExit (compilerPath (compiler lbi))
-               (["--make", pathJoin [hsSourceDir exeBi, modPath],
-                 "-i" ++ (hsSourceDir exeBi), "-o", pathJoin [pref, exeName]]
-                ++ (concat [ ["-package", pkgName pkg] | pkg <- exeDeps exeName lbi]))
+  sequence_ [ do let args = ["-package-conf", pkgConf,
+                             "-o", pathJoin [pref, exeName]
+                            ]
+                         ++ constructGHCCmdLine pref exeBi (exeDeps exeName lbi)
+                         ++ [pathJoin [pref, modPath]]
+                 rawSystemExit ghcPath args
              | Executable exeName modPath exeBi <- executables pkg_descr]
 
-  when (hasLibs pkg_descr) (buildLibGhc (library pkg_descr) pkg_descr pref)
-
-buildLibGhc (Just l) pkg_descr pref
-    = do let hObjs = map (++objsuffix) (map dotToSep (modules l))
-             cObjs = [file ++ objsuffix | (file, _)
-                      <- (map splitExt (cSources l))]
-             lib  = mkLibName pref (showPackageId (package pkg_descr))
-         unless (null hObjs && null cObjs)
-           (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))
-buildLibGhc _ _ _ = return ()
-
-
-constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
-constructGHCCmdLine pref pkg_descr lbi = 
-    let (unsupported, flags) = extensionsToGHCFlag (maybe [] extensions (library pkg_descr))
+constructGHCCmdLine :: FilePath -> BuildInfo -> [PackageIdentifier] -> [String]
+constructGHCCmdLine pref build deps = 
+    let (unsupported, flags) = extensionsToGHCFlag (extensions build)
         in if null unsupported
-           then [
-                 "--make", "-odir", pref, "-hidir", pref,
-                 "-package-name", pkgName (package pkg_descr)
-                ] 
-                ++ flags
-                ++ [ opt | (GHC,opts) <- maybe [] options (library pkg_descr),
-                           opt <- opts ]
-                ++ [ "-i" ++ pref ]
-                ++ (concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ] )
-                ++ maybe [] modules (library pkg_descr)
+           then [ "--make", "-i" ++ pref ]
+                ++ nub (flags ++ [ opt | (GHC,opts) <- options build, opt <- opts ])
+                ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ] )
            else error $ "Unsupported extension for GHC: "
                       ++ (concat $ intersperse ", " (map show unsupported))
 
@@ -168,11 +164,17 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr lbi pref = 
     do
     setupMessage "Preprocessing" pkg_descr
-    case library pkg_descr of
-      Just lib -> moveSources (hsSourceDir lib) pref (modules lib) ["hs","lhs"] 
-      Nothing  -> return ()
+    withLib pkg_descr $ \lib ->
+        moveSources (hsSourceDir lib) pref (modules lib) ["hs","lhs"] 
+    sequence_ [ moveSources (hsSourceDir exeBi) pref (modules exeBi) ["hs","lhs"]
+              | Executable exeName modPath exeBi <- executables pkg_descr]
 
   -- Todo: includes, includeDirs
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.
+withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
+withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
 
 -- ------------------------------------------------------------
 -- * Testing
