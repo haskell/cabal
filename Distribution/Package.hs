@@ -70,7 +70,7 @@ import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor(..))
 
 import Compat.H98
-import Compat.ReadP
+import Compat.ReadP hiding (get)
 
 #ifdef DEBUG
 import HUnit (Test(..), (~:), (~=?), assertEqual, assertBool, Assertion, runTestTT)
@@ -295,7 +295,7 @@ listField name showF readF get set = StanzaField name
         [] -> empty
         (value:values) ->
            text name <> vcat (               colon <+> showF value:
-                              map (\value -> comma <+> showF value) values))
+                              map (\value' -> comma <+> showF value') values))
    (\lineNo val st -> do
        xs <- runP lineNo name (parseCommaList readF) val
        return (set xs st))
@@ -305,7 +305,7 @@ licenseField name flag get set = StanzaField name
    (\st -> case get st of
              OtherLicense path | flag      -> text name <> colon <+> showFilePath path
                                | otherwise -> empty
-             license           | not flag  -> text name <> colon <+> text (show license)
+             license'          | not flag  -> text name <> colon <+> text (show license')
                                | otherwise -> empty)
    (\lineNo val st ->
        if flag 
@@ -321,7 +321,7 @@ optsField name flavor get set = StanzaField name
    (\st -> case lookup flavor (get st) of
         Just args -> text name <> colon <+> hsep (map text args)
         Nothing   -> empty)
-   (\lineNo val st -> 
+   (\_ val st -> 
        let
          old_val  = get st
          old_args = case lookup flavor old_val of
@@ -348,7 +348,7 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza ((StanzaField name get set):fields) pkg (lineNo, f, val)
+        parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
         parseBasicStanza [] pkg (lineNo, f, val) = do
@@ -356,29 +356,29 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
 	  lib' <- parseBInfoField binfoFields lib (lineNo, f, val)
           return pkg{library=Just lib'}
 
-        parseExecutableStanza st@((lineNo, f@"executable",eName):st1) =
+        parseExecutableStanza st@((_, "executable",eName):_) =
           case lookupField "main-is" st of
-	    Just (lineNo,val) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
+	    Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
 	    Nothing           -> fail $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
         parseExecutableStanza ((lineNo, f,_):_) = 
           myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
-        parseExecutableField ((StanzaField name get set):fields) exe (lineNo, f, val)
+        parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
 	  | name == f = set lineNo val exe
 	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
 	parseExecutableField [] exe (lineNo, f, val) = do
 	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
-        parseBInfoField ((StanzaField name get set):fields) binfo (lineNo, f, val)
+        parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
 	  | name == f = set lineNo val binfo
 	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
-	parseBInfoField [] binfo (lineNo, f, val) =
+	parseBInfoField [] _ (lineNo, f, _) =
 	  myError lineNo $ "Unknown field '" ++ f ++ "'"
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
-        lookupField x [] = Nothing
+        lookupField _ [] = Nothing
         lookupField x ((n,f,v):st)
           | x == f      = Just (n,v)
           | otherwise   = lookupField x st
@@ -416,7 +416,7 @@ splitStanzas = map merge . groupStanzas . filter validLine . zip [1..] . lines
         merge []         = []
         brk n xs = case break (==':') xs of
                      (fld, ':':val) -> (n, map toLower fld, dropWhile isSpace val)
-                     (fld, _)       -> error $ "Line "++show n++": Invalid syntax (no colon after field name)"
+                     (_, _)       -> error $ "Line "++show n++": Invalid syntax (no colon after field name)"
 
 -- |parse a module name
 parseModuleName :: ReadP r String
@@ -483,9 +483,9 @@ showPackageDescription pkg = render $
       ppFields exe executableStanzaFields $$
       ppFields (buildInfo exe) binfoFields
 
-    ppFields pkg [] = empty
-    ppFields pkg ((StanzaField name get set):flds) =
-           get pkg $$ ppFields pkg flds
+    ppFields _ [] = empty
+    ppFields pkg' ((StanzaField _ get _):flds) =
+           get pkg' $$ ppFields pkg' flds
         
 showDependency :: Dependency -> Doc
 showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
