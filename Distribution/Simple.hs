@@ -336,7 +336,7 @@ defaultMainWorker pkg_descr_in action args hooks
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
-                    then ppCpp' inputArgs pkg_descr bi lbi file targetFile verbose
+                    then ppCpp' inputArgs bi lbi file targetFile verbose
                     else copyFile file targetFile >> return ExitSuccess
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
