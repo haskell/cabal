@@ -326,6 +326,8 @@ emptyUserHooks
 -- 'hookedPackageDesc'.  It's likely that unless you have a very
 -- basic /configure/ script, you will want to override preConf.
 
+-- FIXME: do something sensible for windows, or do nothing in preConf.
+
 defaultUserHooks :: UserHooks
 defaultUserHooks
     = emptyUserHooks
