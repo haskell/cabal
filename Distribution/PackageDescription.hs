@@ -162,6 +162,7 @@ data BuildInfo = BuildInfo {
         hsSourceDir     :: FilePath,
         extensions      :: [Extension],
         extraLibs       :: [String],
+        extraLibDirs    :: [String],
         includeDirs     :: [FilePath],
         includes        :: [FilePath],
         options         :: [(CompilerFlavor,[String])]
@@ -177,6 +178,7 @@ emptyBuildInfo = BuildInfo {
 		      hsSourceDir    = currentDir,
                       extensions     = [],
                       extraLibs      = [],
+                      extraLibDirs   = [],
                       includeDirs    = [],
                       includes       = [],
                       options        = []
@@ -292,6 +294,9 @@ binfoFields =
  , listField   "extra-libs"
                            text               parseLibNameQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
+ , listField   "extra-lib-dirs"
+                           text               parseLibName
+                           extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
  , listField   "includes"
                            showFilePath       parseFilePathQ
                            includes           (\paths binfo -> binfo{includes=paths})
