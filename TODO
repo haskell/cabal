@@ -23,7 +23,6 @@
 ** Rename moveSources
 
 ** Preprocessors
-*** hscpp extensions
 *** chain of preprocessors
 *** what other preprocessors can't unlit?
 
@@ -40,9 +39,6 @@
   - if GHC is present and hscpp is not, we can use 'ghc -E -cpp'.  This
     also unlits.
 
-  - hscpp need to define __HADDOCK__ when preprocessing for haddock.
-    This means we have to preprocess seprately for haddock.
-
   - haddock should be passed the names of the interface files for the
     dependent packages (gotten from haddock_interfaces field of the
     dependent packages, query ghc-pkg).
@@ -54,9 +50,6 @@
 - if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
-
-** clarify description filename issues
-- allow foo.hsproj?
 
 ** grep for "FIX"
 
