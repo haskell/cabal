@@ -225,7 +225,9 @@ tests currDir
             doesFileExist "dist/build/withHooks" >>= 
               assertBool "build did not create the executable: withHooks"
             doesFileExist "dist/build/C.o" >>=
-              assertBool "C.testSuffix did not get compiled to C.o.",
+              assertBool "C.testSuffix did not get compiled to C.o."
+            doesFileExist "dist/build/D.o" >>=
+              assertBool "D.gc did not get compiled to D.o this is an overriding test",
          TestLabel "package withHooks: GHC and copy" $ TestCase $
          do let targetDir = ",tmp"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir

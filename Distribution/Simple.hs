@@ -89,7 +89,7 @@ import System.Directory(removeFile, doesFileExist)
 
 import Distribution.License
 import Control.Monad(when, unless)
-import Data.List	( intersperse )
+import Data.List	( intersperse, unionBy )
 import Data.Maybe       ( isNothing, fromJust, maybeToList )
 import System.IO.Error (try)
 import Distribution.GetOpt
@@ -183,12 +183,13 @@ defaultMainWorker :: PackageDescription
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
     = do let pps = maybe knownSuffixHandlers
-                         (\h -> knownSuffixHandlers ++ hookedPreProcessors h)
+                         (\h -> overridesPP (hookedPreProcessors h) knownSuffixHandlers)
                          hooks
          case action of
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
+                putStrLn $ "Suffix Handlers are: " ++ concatMap (show . fst) pps
                 pkg_descr <- hookOrInArgs preConf args flags
                 sanityCheckPackage pkg_descr
 		localbuildinfo <- configure pkg_descr flags
@@ -353,7 +354,10 @@ defaultMainWorker pkg_descr_in action args hooks
         needsCpp :: PackageDescription -> Bool
         needsCpp p | not (hasLibs p) = False
                    | otherwise = any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
-
+        overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
+        overridesPP = unionBy (\x y -> fst x == fst y)
+-- (filter (\x -> notElem x overriders) overridden) ++ overriders
+        
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
