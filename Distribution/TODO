@@ -1,4 +1,9 @@
 * misc
+** use HUnit as a packaging test. Doesn't work currently because:
+*** multiple mains
+*** multiple HUnitLang modules
+*** maybe this can be solved w/ not using --make?
+
 ** Possibly create a (native?) zib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
