@@ -21,7 +21,7 @@ case "$1" in
     remove|upgrade|deconfigure)
         chmod +x /usr/share/doc/libghc6-cabal-dev/unregister.sh
         /usr/share/doc/libghc6-cabal-dev/unregister.sh
-        rm -f /usr/lib/haskell-packages/ghc6/lib/Cabal-0.5/HSCabal*.o
+        rm -f /usr/lib/haskell-packages/ghc6/lib/Cabal-0.6/HSCabal*.o
 
 #       install-info --quiet --remove /usr/info/missingh.info.gz
         ;;

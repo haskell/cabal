@@ -1,4 +1,4 @@
-CABALVERSION=0.5
+CABALVERSION=0.6
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
