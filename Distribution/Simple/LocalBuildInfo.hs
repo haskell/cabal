@@ -62,6 +62,10 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
         withHaddock :: Maybe FilePath, -- ^Might be the location of the Haddock executable.
+        withHappy   :: Maybe FilePath, -- ^Might be the location of the Happy executable.
+        withAlex    :: Maybe FilePath, -- ^Might be the location of the Alex executable.
+        withHsc2hs  :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
+        withCpphs   :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
         executableDeps :: [(String,[PackageIdentifier])] -- FIX: No longer used?!
   }
   deriving (Show, Read, Eq)

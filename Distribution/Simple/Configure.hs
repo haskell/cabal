@@ -47,7 +47,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       localBuildInfoFile,
                                       exeDeps,
 				      buildDepToDep,
-                                      findHaddock,
+                                      findProgram,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Extension(extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
-import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
+import Distribution.Setup(ConfigFlags(..),CompilerFlavor(..), Compiler(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
@@ -126,17 +126,15 @@ localBuildInfoFile = "./.setup-config"
 -- -----------------------------------------------------------------------------
 
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
-configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix, maybe_haddock)
+configure pkg_descr cfg
   = do
 	setupMessage "Configuring" pkg_descr
 	removeInstalledConfig
         let lib = library pkg_descr
 	-- prefix
-	let pref = case maybe_prefix of
-			Just path -> path
-			Nothing   -> system_default_prefix pkg_descr
+        let pref = fromMaybe (system_default_prefix pkg_descr) (configPrefix cfg)
 	-- detect compiler
-	comp@(Compiler f' ver p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr
+	comp@(Compiler f' ver p' pkg) <- configCompiler (configHcFlavor cfg) (configHcPath cfg) (configHcPkg cfg) pkg_descr
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ _ exeBi <- executables pkg_descr ]
@@ -148,27 +146,44 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix,
         unless (null exts) $ putStrLn $ -- Just warn, FIXME: Should this be an error?
             "Warning: " ++ show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
-        had <- findHaddock maybe_haddock
+        haddock <- findProgram "haddock" (configHaddock cfg)
+        happy   <- findProgram "happy"   (configHappy cfg)
+        alex    <- findProgram "alex"    (configAlex cfg)
+        hsc2hs  <- findProgram "hsc2hs"  (configHsc2hs cfg)
+        cpphs   <- findProgram "cpphs"   (configCpphs cfg)
         -- FIXME: maybe this should only be printed when verbose?
         message $ "Using install prefix: " ++ pref
         message $ "Using compiler: " ++ p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
-        message $ maybe "No haddock found" ((++) "Using haddock: ") had
+        reportProgram "haddock" haddock
+        reportProgram "happy"   happy
+        reportProgram "alex"    alex
+        reportProgram "hsc2hs"  hsc2hs
+        reportProgram "cpphs"   cpphs
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
                               packageDeps=map buildDepToDep (buildDepends pkg_descr),
-                              withHaddock=had,
+                              withHaddock=haddock,
+                              withHappy=happy, withAlex=alex,
+                              withHsc2hs=hsc2hs, withCpphs=cpphs,
                               executableDeps = [(n, map buildDepToDep (buildDepends pkg_descr))
                                                 | Executable n _ _ _ <- executables pkg_descr]
                              }
 
--- |If configure has been given the with-haddock argument, return
--- that, otherwise look in the path for it.
-findHaddock :: Maybe FilePath -> IO (Maybe FilePath)
-findHaddock p@(Just _) = return p
-findHaddock Nothing    = findExecutable "haddock"
+-- |Return the explicit path if given, otherwise look for the program
+-- name in the path.
+findProgram
+    :: String              -- ^ program name
+    -> Maybe FilePath      -- ^ optional explicit path
+    -> IO (Maybe FilePath)
+findProgram name Nothing = findExecutable name
+findProgram _ p = return p
+
+reportProgram :: String -> Maybe FilePath -> IO ()
+reportProgram name Nothing = message ("No " ++ name ++ " found")
+reportProgram name (Just p) = message ("Using " ++ name ++ ": " ++ p)
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
 -- set any version information - will need to query HC-PKG for this.

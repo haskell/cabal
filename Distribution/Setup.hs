@@ -41,7 +41,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (--parseArgs,
-                           Action(..), ConfigFlags,
+                           Action(..), ConfigFlags(..),
                            CompilerFlavor(..), Compiler(..),
 			   --optionHelpString,
 #ifdef DEBUG
@@ -99,17 +99,37 @@ data Action = ConfigCmd ConfigFlags       -- config
 --            | NoCmd -- error case?
     deriving (Show, Eq)
 
-type ConfigFlags = (Maybe CompilerFlavor,
-                    Maybe FilePath, -- given compiler location
-                    Maybe FilePath, -- given hc-pkg location
-                    Maybe FilePath, -- prefix
-                    Maybe FilePath -- Haddock path
-                   ) 
+data ConfigFlags = ConfigFlags {
+        configHcFlavor :: Maybe CompilerFlavor,
+        configHcPath   :: Maybe FilePath, -- ^given compiler location
+        configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
+        configHaddock  :: Maybe FilePath, -- ^Haddock path
+        configHappy    :: Maybe FilePath, -- ^Happy path
+        configAlex     :: Maybe FilePath, -- ^Alex path
+        configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
+        configCpphs    :: Maybe FilePath, -- ^Cpphs path
+        configPrefix   :: Maybe FilePath  -- ^installation prefix
+    }
+    deriving (Show, Eq)
+
+emptyConfigFlags :: ConfigFlags
+emptyConfigFlags = ConfigFlags {
+        configHcFlavor = Nothing,
+        configHcPath   = Nothing,
+        configHcPkg    = Nothing,
+        configHaddock  = Nothing,
+        configHappy    = Nothing,
+        configAlex     = Nothing,
+        configHsc2hs   = Nothing,
+        configCpphs    = Nothing,
+        configPrefix   = Nothing
+    }
 
 -- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
-          | WithCompiler FilePath | WithHaddock FilePath
-          | WithHcPkg FilePath | Prefix FilePath
+          | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
+          | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
+          | WithHsc2hs FilePath | WithCpphs FilePath
           | UserFlag | GlobalFlag
           | HelpFlag
           -- For install:
@@ -219,9 +239,17 @@ configureCmd = Cmd {
            Option "" ["prefix"] (ReqArg Prefix "DIR")
                "bake this prefix in preparation of installation",
            Option "" ["with-haddock"] (ReqArg WithHaddock "PATH")
-               "give the path to haddock"
+               "give the path to haddock",
+           Option "" ["with-happy"] (ReqArg WithHappy "PATH")
+               "give the path to happy",
+           Option "" ["with-alex"] (ReqArg WithAlex "PATH")
+               "give the path to alex",
+           Option "" ["with-hsc2hs"] (ReqArg WithHsc2hs "PATH")
+               "give the path to hsc2hs",
+           Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
+               "give the path to cpphs"
            ],
-        cmdAction      = ConfigCmd (Nothing, Nothing, Nothing, Nothing, Nothing)
+        cmdAction      = ConfigCmd emptyConfigFlags
         }
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
@@ -236,15 +264,19 @@ parseConfigureArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) t@(mcf, mpath, mhcpkg, mprefix, mHaddockPath) = updateCfg flags $
+  where updateCfg (fl:flags) t = updateCfg flags $
           case fl of
-            GhcFlag  -> (Just GHC,  mpath, mhcpkg, mprefix, mHaddockPath)
-            NhcFlag  -> (Just NHC,  mpath, mhcpkg, mprefix, mHaddockPath)
-            HugsFlag -> (Just Hugs, mpath, mhcpkg, mprefix, mHaddockPath)
-            WithCompiler path -> (mcf, Just path, mhcpkg, mprefix, mHaddockPath)
-            WithHaddock path -> (mcf, mpath, mhcpkg, mprefix, Just path)
-            WithHcPkg path    -> (mcf, mpath, Just path, mprefix, mHaddockPath)
-            Prefix path       -> (mcf, mpath, mhcpkg, Just path, mHaddockPath)
+            GhcFlag           -> t { configHcFlavor = Just GHC }
+            NhcFlag           -> t { configHcFlavor = Just NHC }
+            HugsFlag          -> t { configHcFlavor = Just Hugs }
+            WithCompiler path -> t { configHcPath   = Just path }
+            WithHcPkg path    -> t { configHcPkg    = Just path }
+            WithHaddock path  -> t { configHaddock  = Just path }
+            WithHappy path    -> t { configHappy    = Just path }
+            WithAlex path     -> t { configAlex     = Just path }
+            WithHsc2hs path   -> t { configHsc2hs   = Just path }
+            WithCpphs path    -> t { configCpphs    = Just path }
+            Prefix path       -> t { configPrefix   = Just path }
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
