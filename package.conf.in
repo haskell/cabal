@@ -5,6 +5,7 @@ maintainer:	Isaac Jones <ijones@syntaxpolice.org>
 exposed:	True
 
 exposed-modules:
+	Distribution.Compat.ReadP,
 	Distribution.Extension,
 	Distribution.GetOpt,
 	Distribution.InstalledPackageInfo,
@@ -31,8 +32,7 @@ hidden-modules:
 	Distribution.Compat.Exception,
 	Distribution.Compat.RawSystem,
 	Distribution.Compat.FilePath,
-	Distribution.Compat.Directory,
-	Distribution.Compat.ReadP
+	Distribution.Compat.Directory
 
 import-dirs:	IMPORT_DIR
 library-dirs:	LIB_DIR
@@ -47,6 +47,5 @@ extra-cc-opts:
 extra-ld-opts:
 framework-dirs:
 extra-frameworks:
-haddock-interfaces:
-haddock-html:
-
+haddock-interfaces:	HADDOCK_IFACE
+haddock-html:		HTML_DIR
