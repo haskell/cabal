@@ -78,7 +78,8 @@ mkGHCPackageConfig pkg_descr lbi
 	name	        = pkg_name,
 	auto	        = False,
 	import_dirs     = [mkLibDir pkg_descr lbi Nothing],
-	library_dirs    = [mkLibDir pkg_descr lbi Nothing],
+	library_dirs    = (mkLibDir pkg_descr lbi Nothing : 
+			   maybe [] extraLibDirs (library pkg_descr)),
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
 	extra_libraries = maybe [] extraLibs (library pkg_descr),
 	include_dirs    = maybe [] includeDirs (library pkg_descr),
