@@ -1,19 +1,19 @@
 * 0.1
-HIGH: 
+RC:
 ** grep for "FIX"
 ** make installed binaries executable! (posix?)
-** under what conditions does library == Nothing?
-** make sure tests will work on other machines. why doesn't make work
-   in test/A on lex?
-** fix test cases so a single failure doesn't cascade
 ** sanity check for both library and executables == nothing.
 - also, if they have Nothing, and yet BuildInfo is non-empty, this
    should probably be a warning.
-*** add test case for no libraries
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
 - integrate suggestions from libraries@
+HIGH: 
+** under what conditions does library == Nothing?
+** make sure tests will work on other machines. why doesn't make work
+   in test/A on lex?
+** fix test cases so a single failure doesn't cascade
 ** Clean up field parsers (Martin: what else goes here?)
 *** license parser parses either known strings, or a filename.
 LOW
