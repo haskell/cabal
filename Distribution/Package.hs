@@ -272,13 +272,6 @@ splitStanzas = map merge . groupStanzas . filter validLine . lines
 -- |parse a module name
 moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
 
-mainModule = do filename <- word
-                skipMany parseWhite
-                char ':'
-                skipMany parseWhite
-                modname <- moduleName
-                return (filename,modname)
-
 -- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st FilePath
 parseFilePath = liftM concat (many1 (
