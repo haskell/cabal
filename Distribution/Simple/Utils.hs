@@ -229,7 +229,7 @@ copyFileVerbose verbose src dest = do
   copyFile src dest
 
 -- |The path name that represents the current directory.  May be
--- system-specific.  In Unix, it's @\".\"@. FIX: What about other arches?
+-- system-specific.  In Unix, it's @\".\"@.
 currentDir :: FilePath
 currentDir = "."
 
