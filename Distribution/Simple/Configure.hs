@@ -57,11 +57,11 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 #include "config.h"
 #endif
 
-import Distribution.Misc(Dependency(..), Extension(..),
-                         extensionsToGHCFlag, extensionsToNHCFlag, extensionsToHugsFlag)
+import Distribution.Misc(Dependency(..), extensionsToGHCFlag,
+                         extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
-import Distribution.Package(PackageDescription(..), emptyPackageDescription,
-                            PackageIdentifier(..), BuildInfo(..), Executable(..)
+import Distribution.Package(PackageDescription(..), PackageIdentifier(..),
+                            BuildInfo(..), Executable(..)
                            )
 import Distribution.Simple.Utils (die, setupMessage, findBinary, 
                                   splitFilePath, joinFilenameDir,  joinExt)
@@ -102,9 +102,6 @@ data LocalBuildInfo = LocalBuildInfo {
 exeDeps :: String -> LocalBuildInfo -> [PackageIdentifier]
 exeDeps s d = fromJust $ lookup s (executableDeps d)
 
-emptyLocalBuildInfo :: LocalBuildInfo
-emptyLocalBuildInfo = undefined
-
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   str <- readFile localBuildInfoFile
@@ -134,11 +131,11 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
 	setupMessage "Configuring" pkg_descr
         let lib = library pkg_descr
 	-- prefix
-	let prefix = case maybe_prefix of
+	let pref = case maybe_prefix of
 			Just path -> path
 			Nothing   -> system_default_prefix pkg_descr
 	-- detect compiler
-	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
+	comp@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
         -- check extensions
         let extlist = nub $ maybe [] extensions lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -152,11 +149,11 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
             concat (intersperse ", " (map show exts))
 
         -- FIXME: maybe this should only be printed when verbose?
-        message $ "Using build prefix: " ++ prefix
+        message $ "Using build prefix: " ++ pref
         message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
-	return LocalBuildInfo{prefix=prefix, compiler=compiler,
+	return LocalBuildInfo{prefix=pref, compiler=comp,
                               packageDeps=map buildDepToDep (maybe [] buildDepends lib),
                               executableDeps = [(n, map buildDepToDep (buildDepends exeBi))
                                                 | Executable n _ exeBi <- executables pkg_descr]
@@ -174,10 +171,11 @@ buildDepToDep (Dependency s (ThisVersion v)) = PackageIdentifier s v
 buildDepToDep (Dependency s _) = PackageIdentifier s (Version [] [])
 
 system_default_prefix :: PackageDescription -> String
-system_default_prefix PackageDescription{package=package} = 
 #ifdef mingw32_TARGET_OS
-  "C:\\Program Files\\" ++ pkgName package
+system_default_prefix PackageDescription{package=pkg} = 
+  "C:\\Program Files\\" ++ pkgName pkg
 #else
+system_default_prefix _ = 
   "/usr"
 #endif
 
@@ -188,7 +186,7 @@ configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
   -> PackageDescription -> IO Compiler
 
 configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
-  = do compiler <- 
+  = do comp <- 
 	 case maybe_compiler of
 	   Just path -> return path
 	   Nothing   -> findCompiler flavor
@@ -196,16 +194,17 @@ configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
        pkgtool <-
 	 case maybe_pkgtool of
 	   Just path -> return path
-	   Nothing   -> guessPkgToolFromHCPath flavor compiler
+	   Nothing   -> guessPkgToolFromHCPath flavor comp
 
        return (Compiler{compilerFlavor=flavor,
-			compilerPath=compiler,
+			compilerPath=comp,
 			compilerPkgTool=pkgtool})
 
 configCompiler Nothing maybe_path maybe_hc_pkg pkg_descr
   = configCompiler (Just defaultCompilerFlavor) 
 	maybe_path maybe_hc_pkg pkg_descr
 
+defaultCompilerFlavor :: CompilerFlavor
 defaultCompilerFlavor =
 #if defined(__GLASGOW_HASKELL__)
    GHC
@@ -241,7 +240,7 @@ compilerPkgToolName Hugs = "hugs-package"
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
-           (dir,fname,ext) = splitFilePath path
+           (dir,_,ext) = splitFilePath path
            pkgtool         = dir `joinFilenameDir` pkgToolName `joinExt` ext
        message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
