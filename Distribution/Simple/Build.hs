@@ -89,7 +89,7 @@ build pref pkg_descr lbi suffixes = do
    Hugs -> buildHugs pref pkg_descr lbi
    _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
 
--- |FIX: For now, the target must contain a main module :( Not used
+-- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
@@ -102,7 +102,7 @@ buildNHC pkg_descr lbi = do
                            opt <- opts ]
                 ++ maybe [] modules (library pkg_descr))
 
--- |Building for GHC.  If ~/.ghc-packages exists and is readable, add
+-- |Building for GHC.  If .ghc-packages exists and is readable, add
 -- it to the command-line.
 buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildGHC pref pkg_descr lbi = do

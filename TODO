@@ -24,8 +24,6 @@
 
 ** find a real test case that uses a preprocessor
 
-** is cpp ever run yet? NO!
-
 ** for a source tarball:?
 - if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
