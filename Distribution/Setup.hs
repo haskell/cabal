@@ -67,11 +67,7 @@ import System.Console.GetOpt
 import System.Exit
 import System.Environment
 
-#ifdef __NHC__
-import Compat.H98
-#else
-import Control.Monad.Error
-#endif
+import Compat.H98 ()
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports

@@ -56,12 +56,6 @@ module Distribution.Package (
   ) where
 
 import Control.Monad(foldM)
-#ifdef __NHC__
--- nhc doesn't have C.M.Error (which defines Monad (Either String))
-import Compat.H98
-#else
-import Control.Monad.Error
-#endif
 import Data.Char
 import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
@@ -73,6 +67,7 @@ import Distribution.Setup(CompilerFlavor(..))
 
 import System.IO(openFile, IOMode(..), hGetContents)
 
+import Compat.H98
 import Compat.ReadP
 
 #ifdef DEBUG

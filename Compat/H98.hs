@@ -1,6 +1,11 @@
-{-# OPTIONS_COMPILE -prelude #-}
-module Compat.H98 where
+{-# OPTIONS -cpp #-}
+module Compat.H98 (Error(..)) where
 
+#ifndef __NHC__
+import Control.Monad.Error (Error(..))
+#endif
+
+#ifdef __NHC__
 class Error e where
         strMsg :: String -> e
 
@@ -16,3 +21,4 @@ instance Error e => Monad (Either e) where
         fail   = Left . strMsg
         Left e  >>= f = Left e
         Right x >>= f = f x
+#endif

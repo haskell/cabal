@@ -71,16 +71,21 @@ import Distribution.Package (PackageDescription(..), showPackageId)
 import Control.Monad(when, unless, liftM, mapM)
 import Data.List(inits, nub, intersperse, findIndices, partition)
 import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
-import System.IO (hPutStr, stderr)
+import System.IO (hPutStr, stderr
+#ifndef __NHC__
+                 , openBinaryFile, IOMode(..), hGetBuf, hPutBuf, hClose
+#endif
+                 )
 import System.IO.Error
 import System.Exit
-#ifdef __GLASGOW_HASKELL__
-import System.Cmd (rawSystem)
-#else
 import Compat.RawSystem (rawSystem)
-#endif
+import Compat.Exception (bracket)
 import System.Environment
 import System.Directory
+import Foreign.Marshal (allocaBytes)
+#ifdef HAVE_UNIX_PACKAGE
+import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes)
+#endif
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -318,13 +323,32 @@ mkLibName pref lib = pathJoin [pref, ("libHS" ++ lib ++ ".a")]
 pathJoin :: [String] -> FilePath
 pathJoin = concat . intersperse pathSeparatorStr
 
--- |Preserves permissions, FIX: does not preserve dates
+-- |Preserves permissions and, if possible, atime+mtime
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
+#ifdef __NHC__
     | otherwise = do readFile src >>= writeFile dest
-                     p <- getPermissions src
-                     setPermissions dest p
+                     try (getPermissions src >>= setPermissions dest)
+                     return ()
+#else
+    | otherwise = bracket (openBinaryFile src ReadMode) hClose $ \hSrc ->
+                  bracket (openBinaryFile src WriteMode) hClose $ \hDest ->
+                  do allocaBytes bufSize $ \buffer -> copyContents hSrc hDest buffer
+                     try (getPermissions src >>= setPermissions dest)
+#ifdef HAVE_UNIX_PACKAGE
+                     try $ do st <- getFileStatus src
+                              let atime = accessTime st
+                                  mtime = modificationTime st
+                              setFileTimes dest atime mtime
+#endif
+                     return ()
+  where bufSize = 1024
+        copyContents hSrc hDest buffer
+           = do count <- hGetBuf hSrc buffer bufSize
+                when (count > 0) $ do hPutBuf hDest buffer count
+                                      copyContents hSrc hDest buffer
+#endif
 
 partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
 partitionIO f l
