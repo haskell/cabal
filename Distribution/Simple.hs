@@ -206,6 +206,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       let bi = libBuildInfo lib
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
+                      createDirectoryIfMissing True tmpDir
                       createDirectoryIfMissing True targetDir
                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]

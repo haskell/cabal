@@ -2,9 +2,9 @@ Name: test
 Version: 1.0
 
 Executable: testA
-Executable-Modules: MainA
+Hidden-Modules: MainA
 Main-is: MainA.hs
 
 Executable: testB
-Executable-Modules: MainB
+Hidden-Modules: MainB
 Main-is: MainB.hs

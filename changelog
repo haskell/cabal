@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+0.6  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 2 2005
+	* No more executable-modules.  Use "hidden-modules" instead.
+
+	
 0.4  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
 
 	* Much thanks to all the awesome fptools hackers who have been
