@@ -50,6 +50,10 @@ module Distribution.Simple.Install (
 #endif
   ) where
 
+#if __GLASGOW_HASKELL__ < 603 
+#include "config.h"
+#endif
+
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..),
                              showPackageId, hasLibs)
 import Distribution.Simple.Configure(LocalBuildInfo(..))

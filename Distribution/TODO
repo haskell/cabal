@@ -88,6 +88,7 @@
 ** configure should check for 'ar' args + properties (see fptools/aclocal.m4)
 ** most commands should accept a -v flag to show command lines?
 ** configure should check sanity of PackageDescription, eg. library /= "" ?
+** configure should check version of compiler
 
 ------------------------------------------------------------
 * Setup Command-line interface

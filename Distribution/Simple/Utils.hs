@@ -68,12 +68,16 @@ module Distribution.Simple.Utils (
 #endif
   ) where
 
+#if __GLASGOW_HASKELL__ < 603 
+#include "config.h"
+#endif
+
 import Distribution.Package (PackageDescription(..), showPackageId)
 
 import Control.Monad(when, unless, liftM, mapM)
 import Data.List(inits, nub, intersperse, findIndices, partition)
 import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
-import System.IO (hPutStr, stderr
+import System.IO (hPutStr, stderr, hFlush, stdout
 #ifdef __GLASGOW_HASKELL__
                  , openBinaryFile, IOMode(..), hGetBuf, hPutBuf, hClose
 #endif
@@ -228,7 +232,7 @@ setupMessage msg pkg_descr =
    putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 die :: String -> IO a
-die msg = do hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
+die msg = do hFlush stdout; hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
