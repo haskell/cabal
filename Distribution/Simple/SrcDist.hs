@@ -50,7 +50,8 @@ module Distribution.Simple.SrcDist (
   )  where
 
 import Distribution.PackageDescription
-	(PackageDescription(..), BuildInfo(..), Executable(buildInfo), setupMessage, biModules)
+	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
+         setupMessage, libModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Utils(moveSources, die)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
@@ -77,9 +78,10 @@ sdist tmpDir targetPref pps pkg_descr = do
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
   -- maybe move the library files into place
-  maybe (return ()) (prepareDir targetDir pps) (library pkg_descr)
+  maybe (return ()) (\l -> prepareDir targetDir pps (libModules pkg_descr) (libBuildInfo l))
+                    (library pkg_descr)
   -- move the executables into place
-  mapM_ (prepareDir targetDir pps) (map buildInfo (executables pkg_descr))
+  sequence_ [prepareDir targetDir pps exeM exeBi | (Executable _ exeM _ exeBi) <- executables pkg_descr]
   -- setup isn't listed in the description file.
   moveSources ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
@@ -91,13 +93,14 @@ sdist tmpDir targetPref pps pkg_descr = do
 -- |Move the sources into place based on buildInfo
 prepareDir :: FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
+           -> [String] -- ^Modules
            -> BuildInfo
            -> IO ()
-prepareDir inPref pps bi@BuildInfo{hsSourceDir=srcDir}
+prepareDir inPref pps mods bi@BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         moveSources srcDir pref (biModules bi) (suff ++ ["hs", "lhs"])
-         removePreprocessed pref (biModules bi) (suff ++ ["hs", "lhs"])
+         moveSources srcDir pref mods (suff ++ ["hs", "lhs"])
+         removePreprocessed pref mods (suff ++ ["hs", "lhs"])
 
 ------------------------------------------------------------
 

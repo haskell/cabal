@@ -57,7 +57,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-					BuildInfo(..))
+					BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Version (Version(..))
 import Distribution.InstalledPackageInfo
@@ -181,11 +181,11 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.importDirs        = [mkLibDir pkg_descr lbi Nothing],
         IPI.libraryDirs       = [mkLibDir pkg_descr lbi Nothing],
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
-        IPI.extraLibraries    = extraLibs lib,
-        IPI.includeDirs       = includeDirs lib,
-        IPI.includes	      = includes lib,
+        IPI.extraLibraries    = extraLibs $ libBuildInfo lib,
+        IPI.includeDirs       = includeDirs $ libBuildInfo lib,
+        IPI.includes	      = includes $ libBuildInfo lib,
         IPI.depends           = packageDeps lbi,
-        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options lib],
+        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options $ libBuildInfo lib],
         IPI.extraCcOpts       = ccOptions pkg_descr,
         IPI.extraLdOpts       = ldOptions pkg_descr,
         IPI.frameworkDirs     = [],

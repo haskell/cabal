@@ -188,14 +188,15 @@ defaultMainWorker pkg_descr_in action args hooks
             HaddockCmd -> do
                 (_, args) <- parseHaddockArgs args []
                 pkg_descr <- hookOrInput preBuild args
-                withLib pkg_descr ExitSuccess (\bi ->
+                withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
+                      let bi = libBuildInfo lib
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
                       createDirectoryIfMissing True targetDir
                       preprocessSources pkg_descr lbi knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
-                                             | m <- exposedModules bi] >>= return . concat
+                                             | m <- exposedModules lib] >>= return . concat
                       mapM (mockCpp pkg_descr bi lbi tmpDir) inFiles
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)

@@ -49,9 +49,9 @@ module Distribution.Simple.Build (
 import Distribution.Extension (Extension(..),
 				extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
-import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), 
+import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 			     		setupMessage, withLib, Executable(..),
-                                        libModules, biModules, hcOptions)
+                                        Library(..), libModules, hcOptions)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.PreProcess.Unlit (unlit)
@@ -103,11 +103,11 @@ build pkg_descr lbi suffixes = do
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
   -- Unsupported extensions have already been checked by configure
-  let flags = snd $ extensionsToNHCFlag (maybe [] extensions (library pkg_descr))
+  let flags = snd $ extensionsToNHCFlag (maybe [] (extensions . libBuildInfo) (library pkg_descr))
   rawSystemExit (compilerPath (compiler lbi))
                 (["-nhc98"]
                 ++ flags
-                ++ maybe [] (hcOptions NHC . options) (library pkg_descr)
+                ++ maybe [] (hcOptions NHC . options . libBuildInfo) (library pkg_descr)
                 ++ (libModules pkg_descr))
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
@@ -119,7 +119,8 @@ buildGHC pkg_descr lbi = do
   pkgConf <- GHC.localPackageConfig
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
-  withLib pkg_descr () $ \buildInfo' -> do
+  withLib pkg_descr () $ \lib -> do
+      let buildInfo' = libBuildInfo lib
       createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir buildInfo'))
       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
               ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
@@ -129,8 +130,8 @@ buildGHC pkg_descr lbi = do
                   "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
                  ]
               ++ constructGHCCmdLine Nothing buildInfo' (packageDeps lbi)
-              ++ (exposedModules buildInfo' ++ hiddenModules buildInfo')
-      unless (null (hiddenModules buildInfo' ++ exposedModules buildInfo')) $
+              ++ (libModules pkg_descr)
+      unless (null (libModules pkg_descr)) $
         rawSystemExit ghcPath args
 
       -- build any C sources
@@ -145,7 +146,7 @@ buildGHC pkg_descr lbi = do
 
       -- link:
       let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objExtension
-                  | x <- exposedModules buildInfo' ++ hiddenModules buildInfo' ]
+                  | x <- libModules pkg_descr ]
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
@@ -165,12 +166,12 @@ buildGHC pkg_descr lbi = do
                              "-hidir", exeDir,
                              "-o",     targetDir `joinFileName` exeName'
                             ]
-                         ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir)
+                         ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
                                                 exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions pkg_descr
                  rawSystemExit ghcPath args
-             | Executable exeName' modPath exeBi <- executables pkg_descr]
+             | Executable exeName' exeMods modPath exeBi <- executables pkg_descr]
 
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
@@ -192,28 +193,30 @@ constructGHCCmdLine mSrcLoc buildInfo' deps =
 buildHugs :: PackageDescription -> LocalBuildInfo -> IO ()
 buildHugs pkg_descr lbi = do
     let pref = buildDir lbi
-    withLib pkg_descr () $ compileBuildInfo pref Nothing
+    withLib pkg_descr () $ (\l -> compileBuildInfo pref Nothing (libModules pkg_descr) (libBuildInfo l))
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
 	(executables pkg_descr)
   where
 	compileExecutable :: FilePath -> Executable -> IO ()
-	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
+	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi,
+                                                   executableModules=exeMods}) = do
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
 	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-	    compileBuildInfo destDir (library pkg_descr >>= Just . hsSourceDir) bi
+	    compileBuildInfo destDir (library pkg_descr >>= Just . hsSourceDir . libBuildInfo) exeMods bi
 	    compileFFI bi destMainFile
 	
 	compileBuildInfo :: FilePath
                          -> Maybe FilePath -- ^The library source dir, if building exes
+                         -> [String] -- ^Modules
                          -> BuildInfo -> IO ()
-	compileBuildInfo destDir mLibSrcDir bi = do
+	compileBuildInfo destDir mLibSrcDir mods bi = do
 	    -- Pass 1: copy or cpp files from src directory to build directory
 	    let useCpp = CPP `elem` extensions bi
             let srcDir = hsSourceDir bi
 	    let srcDirs = srcDir:(maybeToList mLibSrcDir)
 	    fileLists <- sequence [moduleToFilePath srcDirs mod suffixes |
-			mod <- biModules bi]
+			mod <- mods]
 	    let trimSrcDir
 		  | null srcDir || srcDir == currentDir = id
 		  | otherwise = drop (length srcDir + 1)
@@ -222,7 +225,7 @@ buildHugs pkg_descr lbi = do
 	    mapM_ copy_or_cpp (concat fileLists)
 	    -- Pass 2: compile foreign stubs in build directory
 	    fileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
-			mod <- biModules bi]
+			mod <- mods]
 	    mapM_ (compileFFI bi) (concat fileLists)
 
 	suffixes = ["hs", "lhs"]

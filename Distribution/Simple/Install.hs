@@ -57,8 +57,8 @@ module Distribution.Simple.Install (
 #endif
 
 import Distribution.PackageDescription (
-	PackageDescription(..), BuildInfo(..), Executable(..),
-	setupMessage, hasLibs, withLib, libModules, exeModules, biModules,
+	PackageDescription(..), BuildInfo(..), Executable(..), Library (..),
+	setupMessage, hasLibs, withLib, libModules, exeModules,
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
@@ -103,7 +103,7 @@ installExeGhc :: FilePath -- ^install location
 installExeGhc pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
          sequence_ [copyFile (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
-                    | Executable e _ b <- executables pkg_descr]
+                    | Executable e _ _ b <- executables pkg_descr]
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: FilePath -- ^install location
@@ -111,7 +111,7 @@ installLibGHC :: FilePath -- ^install location
               -> PackageDescription -> IO ()
 installLibGHC pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
-    = do moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (libModules pd) ["hi"]
+    = do moveSources (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
 installLibGHC _ _ PackageDescription{library=Nothing}
@@ -133,7 +133,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
 	try $ removeDirectoryRecursive pkgDir
-	moveSources buildPref pkgDir (biModules libInfo) hugsInstallSuffixes
+	moveSources buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
     unless (null (executables pkg_descr)) $ do
 	let progBuildDir = buildPref `joinFileName` "programs"
 	let progInstallDir = hugsInstallDir `joinFileName` "programs"

@@ -20,7 +20,7 @@ module Distribution.Simple.GHCPackageConfig (
         canWriteLocalPackageConfig, canReadLocalPackageConfig
   ) where
 
-import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..))
+import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
@@ -83,11 +83,11 @@ mkGHCPackageConfig pkg_descr lbi
 	auto	        = False,
 	import_dirs     = [mkLibDir pkg_descr lbi Nothing],
 	library_dirs    = (mkLibDir pkg_descr lbi Nothing : 
-			   maybe [] extraLibDirs (library pkg_descr)),
+			   maybe [] (extraLibDirs . libBuildInfo) (library pkg_descr)),
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
-	extra_libraries = maybe [] extraLibs (library pkg_descr),
-	include_dirs    = maybe [] includeDirs (library pkg_descr),
-	c_includes      = maybe [] includes (library pkg_descr),
+	extra_libraries = maybe [] (extraLibs . libBuildInfo)  (library pkg_descr),
+	include_dirs    = maybe [] (includeDirs . libBuildInfo) (library pkg_descr),
+	c_includes      = maybe [] (includes . libBuildInfo) (library pkg_descr),
 	package_deps    = map pkgName (packageDeps lbi)
     }
  where

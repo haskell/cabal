@@ -64,7 +64,7 @@ import Distribution.Extension(extensionsToGHCFlag,
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription(
- 	PackageDescription(..),
+ 	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage)
 import Distribution.Simple.Utils (die, withTempFile,maybeExit)
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
@@ -131,10 +131,10 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
 			Just path -> path
 			Nothing   -> system_default_prefix pkg_descr
 	-- detect compiler
-	comp@(Compiler f' ver p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
+	comp@(Compiler f' ver p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr
         -- check extensions
-        let extlist = nub $ maybe [] extensions lib ++
-                      concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
+        let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
+                      concat [ extensions exeBi | Executable _ _ _ exeBi <- executables pkg_descr ]
         let exts = case f' of
                      GHC  -> fst $ extensionsToGHCFlag extlist
                      NHC  -> fst $ extensionsToNHCFlag extlist
@@ -152,9 +152,9 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
-                              packageDeps=map buildDepToDep (maybe [] buildDepends lib),
-                              executableDeps = [(n, map buildDepToDep (buildDepends exeBi))
-                                                | Executable n _ exeBi <- executables pkg_descr]
+                              packageDeps=map buildDepToDep (buildDepends pkg_descr),
+                              executableDeps = [(n, map buildDepToDep (buildDepends pkg_descr))
+                                                | Executable n _ _ _ <- executables pkg_descr]
                              }
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
