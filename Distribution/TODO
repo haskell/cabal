@@ -1,4 +1,5 @@
 * misc
+** clean target
 ** license parser parses either known strings, or a filename.
 ** Possibly create a (native?) zlib library?
 ** port code to windows

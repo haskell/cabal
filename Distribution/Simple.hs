@@ -58,6 +58,7 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build	( build )
+import Distribution.Simple.Clean	( clean )
 import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister )
 
@@ -114,6 +115,10 @@ defaultMainNoRead pkg_descr
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
 		build buildPref pkg_descr localbuildinfo
+
+             Right (CleanCmd, extra_flags) -> do
+		no_extra_flags extra_flags
+		clean buildPref pkg_descr
 
              Right (InstallCmd install_prefixM userInst, extra_flags) -> do
 		no_extra_flags extra_flags

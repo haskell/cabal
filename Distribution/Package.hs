@@ -50,7 +50,7 @@ module Distribution.Package (
         parsePackageDesc,
 #ifdef DEBUG        
         hunitTests,
-        main
+        test
 #endif
   ) where
 
@@ -403,5 +403,5 @@ assertRight mes expected actual
 isError (Left _) = True
 isError _        = False
 
-main = runTestTT (TestList hunitTests)
+test = runTestTT (TestList hunitTests)
 #endif

@@ -55,6 +55,7 @@ module Distribution.Simple.Utils (
         maybeExit,
 	rawSystemPathExit,
         moveSources,
+        moduleToFilePath,
         hunitTests,
         createIfNotExists,
         mkLibName,
