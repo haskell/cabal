@@ -7,9 +7,8 @@
 -- Stability   :  alpha
 -- Portability :  GHC, Hugs
 --
--- Explanation: Perform the ".\/setup register" action.  Uses a
--- drop-file for HC-PKG. See also InstalledPackageInfo
-
+-- Explanation: Perform the \"@.\/setup register@\" action.
+-- Uses a drop-file for HC-PKG.  See also "Distribution.InstalledPackageInfo".
 
 {- Copyright (c) 2003-2004, Isaac Jones
 All rights reserved.
