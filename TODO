@@ -13,12 +13,13 @@
 
 ** integrate w/ GHC distro
 
-** what other preprocessors can't unlit?
+** Preprocessors
+*** hscpp extensions
+*** chain of preprocessors
+*** what other preprocessors can't unlit?
 
 ** Hugs
 - look for "FIX (HUGS)"
-- can't handle cabal's OPTIONS pragmas at the top. this requires
-  getting cpp to work from the Setup.description file.
 - no way to tell Hugs to turn packages on or off
 - no register / unregister for hugs
 
@@ -36,7 +37,7 @@
 
 ** Compatibility
 *** add information for compiling w/ nhc
-*** add install target for hugs & nhc
+*** add install target for nhc
 *** Make runhugs stuff work
 *** verify windows test suite
 *** Better way to find 'tar'; is there a library? what does darcs do?
