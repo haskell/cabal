@@ -168,6 +168,11 @@ tests currDir
               assertBool "build did not create the executable: testA"
             doesFileExist "dist/build/testB" >>= 
               assertBool "build did not create the executable: testB"
+            doesFileExist "dist/build/C.o" >>=
+              assertBool "C.testSuffix did not get compiled to C.o."
+            doesFileExist "C.hs" >>=
+              assertEqual "C.hs (a generated file) should not be in the top-level of the source tree"
+                          False
             assertCmd "./setup sdist"
              "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 

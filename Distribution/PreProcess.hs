@@ -37,7 +37,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.PreProcess (preprocessSources, knownSuffixes,
+module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 PPSuffixHandler, PreProcessor)
     where
 
@@ -45,8 +45,11 @@ import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
-                                  withLib, rawSystemPath, splitFilePath)
+                                  withLib, rawSystemPath, splitFilePath,
+                                  joinFilenameDir, joinExt, moduleToFilePath)
 import System.Exit (ExitCode(..))
+
+import Data.Maybe(catMaybes)
 
 -- |A preprocessor must fulfill this basic interface.  It can be an
 -- external program, or just a function.
@@ -71,19 +74,23 @@ preprocessSources :: PackageDescription
 				             sources in -}
 		  -> IO ()
 
-preprocessSources pkg_descr _ _ pref = 
+preprocessSources pkg_descr _ handlers pref = 
     do
     setupMessage "Preprocessing" pkg_descr
+    -- preprocess all sources before moving them
+    allSources <- findAllSourceFiles pkg_descr [a | (a, _, _) <- knownSuffixHandlers]
+    sequence [dispatchPP src handlers | src <- allSources] -- FIX: output errors?
+    -- move sources into place
     withLib pkg_descr $ \lib ->
         moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
     sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable _ _ exeBi <- executables pkg_descr]
 
-dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ()
+dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ExitCode
 dispatchPP p handlers
     = do let (dir, file, ext) = splitFilePath p
          let (Just (lit, pp)) = findPP ext handlers
-         return ()
+         pp p (joinFilenameDir dir (joinExt file "hs"))
 
 findPP :: String -- ^Extension
        -> [PPSuffixHandler]
@@ -93,6 +100,28 @@ findPP ext ((e2, lit, pp):t)
     | otherwise = findPP ext t
 findPP _ [] = Nothing
 
+
+-- |Locate the source files based on the module names, the search
+-- pathes (both in PackageDescription) and the suffixes we might be
+-- interested in.
+findAllSourceFiles :: PackageDescription
+                   -> [String] -- ^search suffixes
+                   -> IO [FilePath]
+findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixes
+    = do exeFiles <- sequence [buildInfoSources (buildInfo e) allSuffixes | e <- execs]
+         libFiles <- case lib of 
+                       Just bi -> buildInfoSources bi allSuffixes
+                       Nothing -> return []
+         return $ catMaybes ((concat exeFiles) ++ libFiles)
+
+        where buildInfoSources :: BuildInfo -> [String] -> IO [Maybe FilePath]
+              buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} allSuffixes
+                  = sequence [moduleToFilePath dir mod allSuffixes | mod <- mods]
+
+
+-- ------------------------------------------------------------
+-- * known preprocessors
+-- ------------------------------------------------------------
 
 ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
 
@@ -106,14 +135,19 @@ ppC2hs inFile outFile
 ppHappy = standardPP "happy"
 ppNone _ _  = return ExitSuccess
 
+ppTestHandler inFile outFile
+    = do stuff <- readFile inFile
+         writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
+         return ExitSuccess
+
 standardPP :: String -> PreProcessor
 standardPP eName inFile outFile
     = rawSystemPath eName ["-o" ++ outFile, inFile]
 
 -- |Leave in unlit since some preprocessors can't handle literated
 -- source?
-knownSuffixes :: [ PPSuffixHandler ]
-knownSuffixes =
+knownSuffixHandlers :: [ PPSuffixHandler ]
+knownSuffixHandlers =
   [ ("gc",     plain, ppGreenCard)
   , ("chs",    plain, ppC2hs)
   , ("hsc",    plain, ppHsc2hs)
@@ -123,4 +157,5 @@ knownSuffixes =
   , ("gc",     plain, ppNone)	-- note, for nhc98 only
   , ("hs",     plain, ppNone)
   , ("lhs",    unlit, ppNone)
+  , ("testSuffix", plain, ppTestHandler)
   ] 

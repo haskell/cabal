@@ -1,7 +1,11 @@
+** integrate w/ GHC distro
 ** Preprocessing
-- move files to output location
-- integrate into preprocessSources function
 - what other preprocessors can't unlit?
+
+- right now, preprocessors just stick files into the current
+  directory, then copies them into the destination.  this is no good
+  since we now won't be able to tell them from real source files the
+  next time around.  clean is broken here...
 
 ** clarify description filename issues
 - allow foo.hsproj?
