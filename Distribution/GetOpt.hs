@@ -1,14 +1,12 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.GetOpt
--- Copyright   :  (c) Sven Panne Oct. 1996 (small changes Feb. 2003)
+-- Copyright   :  (c) Sven Panne 2002-2005
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
---
--- Edited by Isaac Jones to allow non-options to pass through.
 --
 -- This library provides facilities for parsing the command-line options
 -- in a standalone program.  It is essentially a Haskell port of the GNU 
@@ -40,20 +38,21 @@ over 1100 lines, we need only 195 here, including a 46 line example!
 -}
 
 module Distribution.GetOpt (
-	-- * GetOpt
-	getOpt,
-	usageInfo,
-	ArgOrder(..),
-	OptDescr(..),
-	ArgDescr(..),
+   -- * GetOpt
+   getOpt, getOpt',
+   usageInfo,
+   ArgOrder(..),
+   OptDescr(..),
+   ArgDescr(..),
 
-	-- * Example
-		
-	-- $example
-  ) where
+   -- * Example
 
-import Prelude
-import Data.List 	( isPrefixOf )
+   -- $example
+) where
+
+import Prelude -- necessary to get dependencies right
+
+import Data.List ( isPrefixOf )
 
 -- |What to do with options following non-options
 data ArgOrder a
@@ -101,19 +100,22 @@ usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
           -> String                    -- nicely formatted decription of options
 usageInfo header optDescr = unlines (header:table)
-   where (ss,ls,ds)     = (unzip3 . map fmtOpt) optDescr
+   where (ss,ls,ds)     = (unzip3 . concatMap fmtOpt) optDescr
          table          = zipWith3 paste (sameLen ss) (sameLen ls) ds
          paste x y z    = "  " ++ x ++ "  " ++ y ++ "  " ++ z
          sameLen xs     = flushLeft ((maximum . map length) xs) xs
          flushLeft n xs = [ take n (x ++ repeat ' ') | x <- xs ]
 
-fmtOpt :: OptDescr a -> (String,String,String)
-fmtOpt (Option sos los ad descr) = (sepBy ',' (map (fmtShort ad) sos),
-                                    sepBy ',' (map (fmtLong  ad) los),
-                                    descr)
+fmtOpt :: OptDescr a -> [(String,String,String)]
+fmtOpt (Option sos los ad descr) =
+   case lines descr of
+     []     -> [(sosFmt,losFmt,"")]
+     (d:ds) ->  (sosFmt,losFmt,d) : [ ("","",d') | d' <- ds ]
    where sepBy _  []     = ""
          sepBy _  [x]    = x
          sepBy ch (x:xs) = x ++ ch:' ':sepBy ch xs
+         sosFmt = sepBy ',' (map (fmtShort ad) sos)
+         losFmt = sepBy ',' (map (fmtLong  ad) los)
 
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg  _   ) so = "-" ++ [so]
@@ -136,28 +138,39 @@ Process the command-line, and return the list of values that matched
 * The actual command line arguments (presumably got from 
   'System.Environment.getArgs').
 
-'getOpt' returns a triple, consisting of the argument values, a list
-of non-option (commands, files, etc), a list of options that didn\'t
-match, and a list of error messages.-}
-
+'getOpt' returns a triple consisting of the option arguments, a list
+of non-options, and a list of error messages.
+-}
 getOpt :: ArgOrder a                   -- non-option handling
        -> [OptDescr a]                 -- option descriptors
-       -> [String]                     -- the commandline arguments
-       -> ([a],[String], [String] ,[String])      -- (options,non-options,unrecognized,error messages)
-getOpt _        _        []         =  ([],[],[],[])
-getOpt ordering optDescr (arg:args) = procNextOpt opt ordering
-   where procNextOpt (Opt o)    _                 = (o:os,xs,ur,es)
-         procNextOpt (UnreqOpt u) _               = (os,xs,u:ur,es)
-         procNextOpt (NonOpt x) RequireOrder      = ([],x:rest,ur,[])
-         procNextOpt (NonOpt x) Permute           = (os,x:xs,ur,es)
-         procNextOpt (NonOpt x) (ReturnInOrder f) = (f x :os, xs,ur,es)
-         procNextOpt EndOfOpts  RequireOrder      = ([],rest,ur,[])
-         procNextOpt EndOfOpts  Permute           = ([],rest,ur,[])
-         procNextOpt EndOfOpts  (ReturnInOrder f) = (map f rest,[],ur,[])
-         procNextOpt (OptErr e) _                 = (os,xs,ur,e:es)
+       -> [String]                     -- the command-line arguments
+       -> ([a],[String],[String])      -- (options,non-options,error messages)
+getOpt ordering optDescr args = (os,xs,es ++ map errUnrec us)
+   where (os,xs,us,es) = getOpt' ordering optDescr args
+
+{-|
+This is almost the same as 'getOpt', but returns a quadruple
+consisting of the option arguments, a list of non-options, a list of
+unrecognized options, and a list of error messages.
+-}
+getOpt' :: ArgOrder a                         -- non-option handling
+        -> [OptDescr a]                       -- option descriptors
+        -> [String]                           -- the command-line arguments
+        -> ([a],[String], [String] ,[String]) -- (options,non-options,unrecognized,error messages)
+getOpt' _        _        []         =  ([],[],[],[])
+getOpt' ordering optDescr (arg:args) = procNextOpt opt ordering
+   where procNextOpt (Opt o)      _                 = (o:os,xs,us,es)
+         procNextOpt (UnreqOpt u) _                 = (os,xs,u:us,es)
+         procNextOpt (NonOpt x)   RequireOrder      = ([],x:rest,us,[])
+         procNextOpt (NonOpt x)   Permute           = (os,x:xs,us,es)
+         procNextOpt (NonOpt x)   (ReturnInOrder f) = (f x :os, xs,us,es)
+         procNextOpt EndOfOpts    RequireOrder      = ([],rest,us,[])
+         procNextOpt EndOfOpts    Permute           = ([],rest,us,[])
+         procNextOpt EndOfOpts    (ReturnInOrder f) = (map f rest,[],us,[])
+         procNextOpt (OptErr e)   _                 = (os,xs,us,e:es)
 
          (opt,rest) = getNext arg args optDescr
-         (os,xs,ur,es) = getOpt ordering optDescr rest
+         (os,xs,us,es) = getOpt' ordering optDescr rest
 
 -- take a look at the next cmd line arg and decide what to do with it
 getNext :: String -> [String] -> [OptDescr a] -> (OptKind a,[String])
@@ -213,8 +226,8 @@ errAmbig ods optStr = OptErr (usageInfo header ods)
 errReq :: String -> String -> OptKind a
 errReq d optStr = OptErr ("option `" ++ optStr ++ "' requires an argument " ++ d ++ "\n")
 
--- errUnrec :: String -> OptKind a
--- errUnrec optStr = OptErr ("unrecognized option `" ++ optStr ++ "'\n")
+errUnrec :: String -> String
+errUnrec optStr = "unrecognized option `" ++ optStr ++ "'\n"
 
 errNoArg :: String -> OptKind a
 errNoArg optStr = OptErr ("option `" ++ optStr ++ "' doesn't allow an argument\n")
@@ -273,13 +286,13 @@ compiler:
 
 >    module Opts where
 >    
->    import GetOpt -- (not System.Console.GetOpt)
+>    import Distribution.GetOpt
 >    import Data.Maybe ( fromMaybe )
 >    
 >    data Flag 
 >     = Verbose  | Version 
 >     | Input String | Output String | LibDir String
->    	deriving Show
+>       deriving Show
 >    
 >    options :: [OptDescr Flag]
 >    options =
@@ -292,13 +305,13 @@ compiler:
 >    
 >    inp,outp :: Maybe String -> Flag
 >    outp = Output . fromMaybe "stdout"
->    inp  = Input  . fromMaybe "stdout"
+>    inp  = Input  . fromMaybe "stdin"
 >    
->    compilerOpts :: [String] -> IO ([Flag], [String], [String])
+>    compilerOpts :: [String] -> IO ([Flag], [String])
 >    compilerOpts argv = 
->    	case (getOpt Permute options argv) of
->    	   (o,n,no,[]  ) -> return (o,n,no)
->    	   (_,_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
+>       case getOpt Permute options argv of
+>          (o,n,[]  ) -> return (o,n)
+>          (_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
 >      where header = "Usage: ic [OPTION...] files..."
 
 -}
