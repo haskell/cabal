@@ -99,7 +99,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
                                      modu verbose builtinSuffixes biHandlers |
-			    modu <- executableModules theExe] -- FIX: output errors?
+			    modu <- hiddenModules bi] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -146,7 +146,7 @@ removePreprocessedPackage  pkg_descr r suff
                      removePreprocessed (r `joinFileName` hsSourceDir bi) (libModules pkg_descr) suff)
          foreachExe pkg_descr (\theExe -> do
                      let bi = buildInfo theExe
-                     removePreprocessed (r `joinFileName` hsSourceDir bi) (executableModules theExe) suff)
+                     removePreprocessed (r `joinFileName` hsSourceDir bi) (hiddenModules bi) suff)
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location
@@ -197,19 +197,19 @@ ppCppHaddock forHaddock pkg_descr bi lbi
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
         extraArgs = "--noline" : compOrHaddock ++ sysDefines ++
-                incOptions ++ ccOptions pkg_descr
+                incOptions ++ ccOptions bi
 	hc = compiler lbi
         compOrHaddock = if forHaddock then ["-D__HADDOCK__"] else hcDefines hc
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
-        locations = ["HOST", "TARGET"]
+        locations = ["BUILD", "HOST"]
         incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
 ppHsc2hs :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs pkg_descr bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n (hcDefines hc ++ incOptions ++ ccOptions pkg_descr)
+  where pp n = standardPP n (hcDefines hc ++ incOptions ++ ccOptions bi)
         hc = compiler lbi
 	incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
