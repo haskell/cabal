@@ -1,5 +1,6 @@
 Name: test
 Version: 1.0
+synopsis: this package is really awesome.
 Other-Modules: B.A
 Exposed-Modules: A
 C-Sources: hello.c, c_src/hello.c

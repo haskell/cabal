@@ -58,9 +58,10 @@ import Distribution.License (License(..))
 import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)
-
+import Distribution.GetOpt(OptDescr)
+import Control.Monad (unless)
 import Data.List  ( intersperse )
-import System.IO (hPutStr, stderr)
+import System.IO (hPutStrLn, stderr)
 import System.Cmd
 import System.Exit
 
@@ -93,15 +94,16 @@ configureArgs flags
 			Just hc_pkg_path -> ["--with-hc-pkg=" ++ hc_pkg_path]
 			Nothing          -> []
 	prefix_flag = case configPrefix flags of
-			Just p  -> ["--with-hc=" ++ p]
+			Just p  -> ["--prefix=" ++ p]
 			Nothing -> []
 
   	showHC GHC = "ghc"
         showHC NHC = "nhc98"
         showHC Hugs = "hugs"
 
-exec :: String -> IO a
-exec cmd = system cmd >>= exitWith
+exec :: String -> IO ExitCode
+exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
+           >> system cmd
 
 defaultMain :: IO ()
 defaultMain = defaultPackageDesc >>= readPackageDescription >>= defaultMainNoRead
@@ -114,17 +116,29 @@ defaultMainNoRead pkg_descr
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs flags args []
                 no_extra_flags args
-                exec $ "./configure " ++ configureArgs flags
+                retVal <- exec $ "./configure " ++ configureArgs flags
+                if (retVal == ExitSuccess)
+                  then putStrLn "Configure Succeeded."
+                  else putStrLn "Configure failed."
+                exitWith retVal
 
             BuildCmd -> do
                 (_, _, args) <- parseBuildArgs args []
                 no_extra_flags args
-                exec "make"
+                retVal <- exec "make"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Build Succeeded."
+                  else putStrLn "Build failed."
+                exitWith retVal
 
             CleanCmd -> do
                 (_, _, args) <- parseCleanArgs args []
                 no_extra_flags args
-                exec "make clean"
+                retVal <- exec "make clean"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Clean Succeeded."
+                  else putStrLn "Clean failed."
+                exitWith retVal
 
             CopyCmd mprefix -> do
                 ((mprefix,verbose), _, args) <- parseCopyArgs (mprefix,0) args []
@@ -136,25 +150,43 @@ defaultMainNoRead pkg_descr
                 ((uInst,verbose), _, args) <- parseInstallArgs (uInst,0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
-                exec "make register"
+                retVal <- exec "make register"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Install Succeeded."
+                  else putStrLn "Install failed."
+                exitWith retVal
 
             SDistCmd -> do
                 (_, _, args) <- parseSDistArgs args []
                 no_extra_flags args
-                exec "make dist"
+                retVal <- exec "make dist"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Sdist Succeeded."
+                  else putStrLn "Sdist failed."
+                exitWith retVal
 
             RegisterCmd uInst -> do
                 ((uInst,0), _, args) <- parseRegisterArgs (uInst,0) args []
                 no_extra_flags args
-                exec "make register"
+                retVal <- exec "make register"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Register Succeeded."
+                  else putStrLn "Register failed."
+                exitWith retVal
 
             UnregisterCmd -> do
                 (_, _, args) <- parseUnregisterArgs args []
                 no_extra_flags args
-                exec "make unregister"
+                retVal <- exec "make unregister"
+                if (retVal == ExitSuccess)
+                  then putStrLn "Unregister Succeeded."
+                  else putStrLn "Unregister failed."
+                exitWith retVal
+            cmd -> do 
+                error $ "Simple Cabal Makefile interface doesn't support command: " ++ (show cmd)
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
-  do hPutStr stderr $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))
+  do hPutStrLn stderr $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))
      exitWith (ExitFailure 1)
