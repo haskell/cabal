@@ -1,5 +1,13 @@
 * misc
 
+> > Is it sufficient to put License: BSD3 in the package description?
+> > Or should License-File be mandatory, and License just an optional
+> > hint?
+
+* Write semantic checker for package description file.  start w/
+   sanity checker.  give error if buildInfo field given when no
+   exposed or hidden modules for a library.
+
 ** add hooks to haddock cmd
 
 ** make debian watchfile
