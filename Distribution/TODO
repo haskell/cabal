@@ -5,6 +5,7 @@ RC:
 ** doc
 *** add description file format to doc. - esp field descriptions
 *** Fix section on "why must we list hidden modules?"
+*** add information about executable stanzas
 ** Look over rest of TODO list.  Should anything be promoted?
 ** add haddock generated stuff to .deb.
 

@@ -196,7 +196,7 @@ rawSystemPathExit prog args = do
 -- ------------------------------------------------------------
 
 
--- |FIX: Do we actually have to make something differnet for windows,
+-- |FIX: Do we actually have to make something different for windows,
 -- or does this work?
 pathSeparator :: Char
 #ifdef mingw32_TARGET_OS

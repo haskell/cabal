@@ -167,7 +167,7 @@ preprocessSources pkg_descr lbi pref =
     sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable exeName modPath exeBi <- executables pkg_descr]
 
-  -- Todo: includes, includeDirs
+  -- FIX: includes, includeDirs
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
