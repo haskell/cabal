@@ -4,7 +4,10 @@ GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
-
+#HCBASE=/tmp/ghc/bin/
+HCBASE=/usr/bin/
+HC=$(HCBASE)ghc
+HC_PKG=$(HCBASE)/ghc-pkg
 # Comment out this line if your system doesn't have System.Posix.
 ISPOSIX=-DHAVE_UNIX_PACKAGE
 
@@ -23,7 +26,7 @@ all: moduleTest
 
 setup::
 	mkdir -p dist/tmp
-	ghc $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
+	$(HC) $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
@@ -75,10 +78,10 @@ clean-test:
 
 remove: remove-cabal remove-hunit
 remove-cabal:
-	-ghc-pkg $(GHCPKGFLAGS) -r Cabal
+	-$(HC_PKG) $(GHCPKGFLAGS) -r Cabal
 	-rm -rf $(PREF)/lib/Cabal-0.1
 remove-hunit:
-	-ghc-pkg $(GHCPKGFLAGS) -r HUnit
+	-$(HC_PKG) $(GHCPKGFLAGS) -r HUnit
 	-rm -rf $(PREF)/lib/HUnit-1.0
 
 # dependencies (included):
@@ -97,7 +100,7 @@ hunitInstall-stamp: hunit-stamp
 
 moduleTest:
 	mkdir -p dist/debug
-	ghc $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest 
+	$(HC) $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest 
 
 tests: moduleTest clean
 	cd tests/A && make clean

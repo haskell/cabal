@@ -201,14 +201,28 @@ mkInstalledPackageInfo pkg_descr lbi
 -- -----------------------------------------------------------------------------
 -- Unregistration
 
-unregister :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
-unregister pkg_descr lbi verbose = do
+unregister :: PackageDescription -> LocalBuildInfo -> (Bool,Int) -> IO ()
+unregister pkg_descr lbi (user_unreg, verbose) = do
   setupMessage "Unregistering" pkg_descr
-
+  let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
+  let theName = pkgName (package pkg_descr)
   case compilerFlavor (compiler lbi) of
-    GHC ->
+    GHC -> do
+	config_flags <-
+	   if user_unreg
+		then if ghc_63_plus
+			then return ["--user"]
+			else do
+                          instConfExists <- doesFileExist installedPkgConfigFile
+		          localConf <- GHC.localPackageConfig
+		          unless instConfExists (userPkgConfErr localConf)
+			  return ["--config-file=" ++ localConf]
+		else return []
+        let removeCmd = if ghc_63_plus
+                        then ["unregister",theName]
+                        else ["--remove-package="++theName]
 	rawSystemExit verbose (compilerPkgTool (compiler lbi))
-	    ["--remove-package=" ++ pkgName (package pkg_descr)]
+	    (removeCmd++config_flags)
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
 	return ()

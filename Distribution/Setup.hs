@@ -92,7 +92,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
-            | UnregisterCmd               -- unregister
+            | UnregisterCmd Bool          -- unregister (--user flag)
 	    | HelpCmd			  -- help
 --            | NoCmd -- error case, help case.
 --             | TestCmd 1.0?
@@ -473,12 +473,18 @@ unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose],
-        cmdAction      = UnregisterCmd
+        cmdOptions     = [cmd_help, cmd_verbose,
+           Option "" ["user"] (NoArg UserFlag)
+               "unregister this package in the user's local package database",
+           Option "" ["global"] (NoArg GlobalFlag)
+               "(default) unregister this package in the system-wide package database"
+           ],
+        cmdAction      = UnregisterCmd False
         }
 
-parseUnregisterArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseUnregisterArgs = parseNoArgs unregisterCmd
+parseUnregisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
+                       IO (RegisterFlags, [a], [String])
+parseUnregisterArgs = parseRegisterArgs
 
 -- |Helper function for commands with no arguments except for verbose
 -- and help.

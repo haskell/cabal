@@ -277,5 +277,4 @@ installedStanzaFields = [
 	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
-parsePackageId' :: ReadP.Parser r Char PackageIdentifier
 parsePackageId' = parseQuoted parsePackageId <++ parsePackageId
