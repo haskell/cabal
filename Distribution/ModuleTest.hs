@@ -45,17 +45,19 @@ module Main where
 
 -- Import everything, since we want to test the compilation of them:
 
-import Distribution.Install()
-import Distribution.Build()
 import Distribution.Version()
 import Distribution.UseConfig()
 import Distribution.Misc()
 import Distribution.Package()
+
+import Distribution.Simple.Default()
+import Distribution.Simple.Install()
+import Distribution.Simple.Build()
 
 main :: IO ()
 main = putStrLn "compile successful"
        
 
 -- Local Variables:
--- compile-command: "ghc --make ModuleTest.hs -o moduleTest"
+-- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
 -- End:

@@ -1,14 +1,12 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Setup
+-- Module      :  Distribution.Simple.Build
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
 
 {- Copyright (c) 2003-2004, Isaac Jones
 All rights reserved.
@@ -41,36 +39,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Setup (parseArgs, Action(..)) where
+module Distribution.Simple.Build where
 
--- Local
+import Distribution.Package(PackageConfig)
 import Distribution.Misc(LocalBuildInfo)
 
--- |Parse the standard command-line arguments
-parseArgs :: [String] -> CommandLineOpts
-parseArgs _ = (BuildCmd, [])
-
--- ------------------------------------------------------------
--- * command line
--- ------------------------------------------------------------
-
-
-type CommandLineOpts = (Action,
-                        [String]) -- The un-parsed remainder
-
-data Action = ConfigCmd LocalBuildInfo
-            | BuildCmd
-            | InstallCmd
-            | SDistCmd
-            | PackageInfoCmd
-            | UseInfoCmd
-            | TestCmd
---             | Register
---             | BDist
-
-
--- options :: [ OptDescr (Options -> IO Options) ]
--- options = 
---     [Option "p" ["prefix"]
---        (OptArg
---           (\arg opt -> return opt{command=useinfo...
+build :: PackageConfig -> LocalBuildInfo -> IO ()
+build _ _ = return ()
