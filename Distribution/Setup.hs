@@ -331,11 +331,11 @@ parseInstallArgs cfg args customOpts =
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) t@(mprefix, uFlag) = updateCfg flags $
           case fl of
-            InstPrefix path -> error "--install-prefix is deprecated. Use copy command instead."
-            UserFlag        -> (mprefix, True)
-            GlobalFlag      -> (mprefix, False)
-            Lift _          -> t
-            _               -> error $ "Unexpected flag!"
+            InstPrefix _ -> error "--install-prefix is deprecated. Use copy command instead."
+            UserFlag     -> (mprefix, True)
+            GlobalFlag   -> (mprefix, False)
+            Lift _       -> t
+            _            -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
 sdistCmd :: Cmd a

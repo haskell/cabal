@@ -77,17 +77,19 @@ import HUnit (Test)
 -- |FIX: nhc isn't implemented yet.
 install :: FilePath  -- ^build location
         -> PackageDescription -> LocalBuildInfo
+        -> Maybe FilePath -- ^install-prefix FIX: Is this now unused?
         -> IO ()
-install buildPref pkg_descr lbi = do
-  let libPref = mkLibDir pkg_descr lbi Nothing
-  let binPref = mkBinDir pkg_descr lbi Nothing
+install buildPref pkg_descr lbi install_prefixM = do
+  let libPref = mkLibDir pkg_descr lbi install_prefixM
+  let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
      Hugs -> do withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
                                      do let targetDir = buildPref `joinFileName` srcDir
-                                        let args = [targetDir]
+                                        let args = targetDir
+                                                    : (maybeToList install_prefixM)
                                         let hugsPkg = compilerPkgTool $ compiler $ lbi
                                         rawSystemExit hugsPkg args)
                 -- FIX (HUGS): Install executables, still needs work in build step
