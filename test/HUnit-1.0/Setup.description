@@ -1,0 +1,21 @@
+PackageDescription {package = PackageIdentifier
+                               {pkgName = "HUnit",
+                                pkgVersion = Version {versionBranch = [1,0],
+                                versionTags = []}},
+                    license = AllRightsReserved,
+                    copyright = "",
+                    maintainer = "",
+                    stability = "",
+                    buildDepends = [Dependency "haskell-src" AnyVersion],
+                    allModules = ["HUnitText","HUnit","HUnitLang","HUnitTestBase",
+                                  "Terminal","HUnitBase"],
+                    mainModules = [],
+                    cSources = [],
+                    hsSourceDir = "src",
+                    exposedModules = ["HUnit"],
+                    extensions = [],
+                    extraLibs = [],
+                    includeDirs = [],
+                    includes = [],
+                    options = []
+}

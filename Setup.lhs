@@ -14,7 +14,7 @@
 >                     "Distribution.Make",
 >
 >                     "Distribution.Simple",
->                     "Distribution/Simple.Build",
+>                     "Distribution.Simple.Build",
 >                     "Distribution.Simple.Install",
 >                     "Distribution.Simple.SrcDist",
 >                     "Distribution.Simple.Configure",
@@ -29,4 +29,4 @@
 >   }
 
 > main :: IO ()
-> main = do defaultMain pkg_descr
+> main = defaultMain

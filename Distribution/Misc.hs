@@ -74,7 +74,7 @@ data Extension =
 	       OverlappingInstances
 	       | TypeSynonymInstances
 	       | TemplateHaskell
-	       deriving Show
+	       deriving (Show, Read)
 
 type Opt = String
 
