@@ -1,15 +1,25 @@
+* Quick
+** fix "Seperator" - use pathJoin
+** use copyFile instead of "cp"
+
 * misc
-** setup test suite to run on --push?
 ** Possibly create a (native?) zib library?
 ** port code to windows
-** test / port code for Hugs and nhc
 ** ./Setup.lhs build for nhc
 ** nhc-pkg (see old package manager code)
 ** hugs-pkg
 ** better command-line parsing interface
 ** ./Setup.lhs bdist
 
+* testing
+** count errors and output.
+** setup test suite to run on --push?
+** redirect non-hunit outputs to a file?
+** test / port code for Hugs and nhc
+
 * Code
+** FIX: does it try to register when we have "install --inst-prefix"?
+   (write test case)
 ** FIX: install currently moves .hs, .hi, and .o files for any target.
    make it do the right thing for hugs (just move .hs) and {g,n}hc
    (move .hi and .o)

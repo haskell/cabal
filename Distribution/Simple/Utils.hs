@@ -57,6 +57,8 @@ module Distribution.Simple.Utils (
         hunitTests,
         createIfNotExists,
         mkLibName,
+        copyFile,
+        pathJoin
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
@@ -297,6 +299,16 @@ mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
 mkLibName pref lib = pref ++ pathSeperatorStr ++ "libHS" ++ lib ++ ".a"
+
+-- | Create a path from a list of path elements
+pathJoin :: [String] -> FilePath
+pathJoin = concat . intersperse pathSeperatorStr
+
+-- FIX: does not preserve dates, does not set permissions
+copyFile :: FilePath -> FilePath -> IO ()
+copyFile src dest 
+    | dest == src = fail "copyFile: source and destination are the same file"
+    | otherwise = readFile src >>= writeFile dest
 
 -- ------------------------------------------------------------
 -- * Testing

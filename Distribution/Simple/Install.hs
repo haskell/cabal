@@ -53,7 +53,10 @@ module Distribution.Simple.Install (
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources,
-                                 pathSeperatorStr, mkLibName)
+                                 pathSeperatorStr, mkLibName, pathJoin,
+                                 copyFile, die
+                                )
+import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import System.Cmd(system)
 
@@ -61,26 +64,36 @@ import System.Cmd(system)
 import HUnit (Test)
 #endif
 
--- |FIX: for now, only works with hugs or sdist-style
--- installation... must implement for .hi files and such...  how do we
--- know which files to expect?
+-- |FIX: nhc isn't implemented yet.
 install :: FilePath  -- ^build location
         -> PackageDescription -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
 install buildPref pkg_descr lbi install_prefixM = do
-  let pref = (maybe (prefix lbi) id install_prefixM) ++
-             pathSeperatorStr ++ "lib" ++ pathSeperatorStr ++ (showPackageId $ package pkg_descr)
-  setupMessage "Installing" pkg_descr
-  -- FIX: For hugs only
-  moveSources "" pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
-  -- FIX: for GHC and NHC only
-  moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["hi"]
-  moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["o"]
-  system $ "cp " ++ mkLibName buildPref (showPackageId (package pkg_descr))
-                 ++ " " ++ mkLibName pref (showPackageId (package pkg_descr))
+  let pref = pathJoin [(maybe (prefix lbi) id install_prefixM), "lib",
+                       (showPackageId $ package pkg_descr)]
+  setupMessage ("Installing: " ++ pref) pkg_descr
+  case compilerFlavor (compiler lbi) of
+     GHC  -> installGHC pref buildPref pkg_descr
+     Hugs -> installHugs pref pkg_descr
+     _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
+
+-- |Install for ghc, .hi and .a
+installGHC :: FilePath -- ^install location
+           -> FilePath -- ^Build location
+           -> PackageDescription -> IO ()
+installGHC pref buildPref pkg_descr
+    = do moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["hi"]
+         copyFile (mkLibName buildPref (showPackageId (package pkg_descr)))
+                    (mkLibName pref (showPackageId (package pkg_descr)))
+
+-- |Install for hugs, .lhs and .hs
+installHugs :: FilePath -- ^Install location
+            -> PackageDescription -> IO ()
+installHugs pref pkg_descr
+    = moveSources "" pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
