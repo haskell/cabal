@@ -49,9 +49,11 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.Package(PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
+import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr, die)
 
+import Control.Monad(when)
 import System.Cmd (system)
+import System.Directory (doesDirectoryExist)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -59,21 +61,22 @@ import HUnit (Test)
 
 -- |Create a source distribution. FIX: Calls tar directly (won't work
 -- on windows).
-sdist :: PackageDescription -> LocalBuildInfo -> IO ()
-sdist pkg_descr _ = do
+sdist :: FilePath -- ^build prefix
+      -> FilePath -- ^TargetPrefix
+      -> PackageDescription -> LocalBuildInfo -> IO ()
+sdist srcPref targetPref pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
-  moveSources (distSrc++pathSeperatorStr++nameVersion pkg_descr)
+  ex <- doesDirectoryExist srcPref
+  when ex (die $ "Source distribution already in place. please move: " ++ srcPref)
+  moveSources  srcPref (srcPref++pathSeperatorStr++nameVersion pkg_descr)
               (allModules pkg_descr) (mainModules pkg_descr)
-  system $ "tar --directory=" ++ distSrc ++ " -zcf"
-	     ++ " dist/" ++ (tarBallName pkg_descr)
+  system $ "tar --directory=" ++ srcPref ++ " -zcf "
+	     ++ targetPref ++ pathSeperatorStr ++ (tarBallName pkg_descr)
 		    ++ " " ++ (nameVersion pkg_descr)
-  system $ "rm -rf " ++ distSrc
+  system $ "rm -rf " ++ srcPref
   putStrLn "Source tarball created."
 
 ------------------------------------------------------------
-
-distSrc :: FilePath
-distSrc = "dist/src"
 
 -- |The file name of the tarball
 tarBallName :: PackageDescription -> FilePath

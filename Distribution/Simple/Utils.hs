@@ -55,7 +55,8 @@ module Distribution.Simple.Utils (
 	rawSystemPathExit,
         moveSources,
         hunitTests,
-        createIfNotExists
+        createIfNotExists,
+        mkLibName,
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
@@ -135,7 +136,7 @@ setupMessage msg pkg_descr =
    putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 die :: String -> IO a
-die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
+die msg = do hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -257,11 +258,12 @@ moduleToPossiblePaths s
 
 -- |Put the source files into the right directory in preperation for
 -- something like sdist or installHugs.
-moveSources :: FilePath   -- ^Target directory
+moveSources :: FilePath -- ^build prefix (location of objects)
+            -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^Main modules
             -> IO ()
-moveSources _targetDir sources mains
+moveSources buildPref _targetDir sources mains
     = do let targetDir = maybeAddSep _targetDir
          createIfNotExists True targetDir
 	 -- Create parent directories for everything:
@@ -279,6 +281,12 @@ moveSources _targetDir sources mains
                             (putStrLn ("Error: Could not find module: " ++ m)
                              >> exitWith (ExitFailure 1))
                    return $ fromJust p
+
+
+mkLibName :: FilePath -- ^file Prefix
+          -> String   -- ^library name.
+          -> String
+mkLibName pref lib = pref ++ pathSeperatorStr ++ "libHS" ++ lib ++ ".a"
 
 -- ------------------------------------------------------------
 -- * Testing

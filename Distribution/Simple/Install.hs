@@ -52,7 +52,10 @@ module Distribution.Simple.Install (
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
-import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
+import Distribution.Simple.Utils(setupMessage, moveSources,
+                                 pathSeperatorStr, mkLibName)
+
+import System.Cmd(system)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -61,15 +64,19 @@ import HUnit (Test)
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
 -- know which files to expect?
-install :: PackageDescription -> LocalBuildInfo
+install :: FilePath  -- ^build location
+        -> PackageDescription -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
-install pkg_descr lbi install_prefixM = do
+install buildPref pkg_descr lbi install_prefixM = do
   let pref = (maybe (prefix lbi) id install_prefixM) ++
              pathSeperatorStr ++ "lib" ++ pathSeperatorStr ++ (showPackageId $ package pkg_descr)
   setupMessage "Installing" pkg_descr
-  moveSources pref (allModules pkg_descr) (mainModules pkg_descr)
-  -- installation step should be performed by caller.
+  moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr)
+  system $ "cp " ++ mkLibName buildPref (showPackageId (package pkg_descr))
+                 ++ " " ++ mkLibName pref (showPackageId (package pkg_descr))
+  return ()
+  -- register step should be performed by caller.
 
 -- -----------------------------------------------------------------------------
 -- Installation policies

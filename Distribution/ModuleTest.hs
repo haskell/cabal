@@ -67,7 +67,7 @@ import Directory(setCurrentDirectory, doesFileExist,
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
-import HUnit(runTestTT, Test(..), Counts, assertBool)
+import HUnit(runTestTT, Test(..), Counts, assertBool, assertEqual)
 
 label :: String -> String
 label t = "-= " ++ t ++ " =-"
@@ -83,22 +83,32 @@ tests = [TestCase $
          do setCurrentDirectory "test"
             dirE1 <- doesDirectoryExist ",tmp"
             when dirE1 (system "rm -r ,tmp">>return())
+            dirE2 <- doesDirectoryExist "dist"
+            when dirE2 (system "rm -r dist">>return())
 --            system "ls"
             system "./setup configure --prefix=,tmp"
             let targetDir = ",tmp/lib/test-1.0/"
             system "./setup build"
             instRetCode <- system "./setup install --user"
-            dirE <- doesDirectoryExist targetDir
-            assertBool "target dir exists" dirE
-            let files = ["A.hs", "B/A.hs", "libHStest-1.0.a"]
+            doesDirectoryExist targetDir >>=
+              assertBool "target dir exists"
+            let files = "libHStest-1.0.a":[x++y |
+                                           x <- ["A", "B/A"],
+                                           y <- [".o", ".hi", ".hs"]]
             allFilesE <- sequence [doesFileExist (targetDir ++ t)
                                      | t <- files]
 
             sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
                        | (e, f) <- zip allFilesE files]
-            assertBool "install returned error code" (instRetCode == ExitSuccess)
+            assertEqual "install returned error code" ExitSuccess instRetCode
+            system "./setup sdist"
+            doesFileExist "dist/test-1.0.tgz" >>= 
+              assertBool "sdist did not put the expected file in place"
+            doesFileExist "dist/src" >>=
+              assertEqual "dist/src exists" False
+            doesFileExist "dist/build" >>=
+              assertBool "dist/build doesn't exists"
         ]
-
 
 main :: IO ()
 main = do putStrLn "compile successful"
