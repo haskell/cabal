@@ -17,8 +17,11 @@ setup:
 	mkdir -p dist/tmp
 	ghc $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
 
+Setup-nhc:
+	hmake -nhc98 -package base -prelude Setup
+
 config: setup
-	./setup configure --prefix=$(PREF)
+	./setup configure --ghc --prefix=$(PREF)
 
 build: build-stamp
 build-stamp: config
