@@ -300,15 +300,15 @@ testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-rain\nLicense: LGPL\
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
                                                  pkgVersion = Version {versionBranch = [0,1,1,1,1],
-                                                 versionTags = ["date=rain"]}},
+                                                 versionTags = ["rain"]}},
                     license = LGPL,
                     copyright = "Free Text String",
                     maintainer = "",
                     stability = "Free Text String",
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                     Dependency "HUnit"
-                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["date=rain"]))
-                                      (LaterVersion (Version [1,0,0] ["date=rain"])))],
+                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
+                                      (LaterVersion (Version [1,0,0] ["rain"])))],
 
                     allModules = ["Distribution.Package","Distribution.Version",
                                   "Distribution.Simple.GHCPackageConfig"],
@@ -347,7 +347,7 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
 --                                    w2 <- parseField "Bar" True word
 --                                    return (w1, w2)
 --                                ) ""
---                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["date=one"]},"boo")
+--                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["one"]},"boo")
 --                 assertRight "basic spaces 1"
 --                   knownVal1 (p1 "Foo: 3.2-one\nBar: boo")
 --                 assertRight "basic spaces 2"
@@ -371,18 +371,18 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
               TestLabel "Required fields" $ TestCase $
                  do assertRight "some fields"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0] ["date=asdf"]))}
+                                                        (Version [0,0] ["asdf"]))}
                        (parseDescription "Name: foo\nVersion: 0.0-asdf")
 
                     assertRight "more fields foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0]["date=asdf"])),
+                                                        (Version [0,0]["asdf"])),
                                                license=GPL}
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
 
                     assertRight "required fields for foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0]["date=asdf"])),
+                                                        (Version [0,0]["asdf"])),
                                         license=GPL, copyright="2004 isaac jones"}
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
                                           

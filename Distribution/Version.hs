@@ -220,8 +220,8 @@ parseVersionRange = try (do reservedOp "<"
 parseVersion :: GenParser Char st Version
 parseVersion
     = do branch <- branchParser
-	 date   <- option [] dateParser
-	 return (Version{versionBranch=branch, versionTags=date})
+         tags   <- many (char '-' >> word)
+         return Version{versionBranch=branch, versionTags=tags}
 
 --  -----------------------------------------------------------
 -- |Parse a version of the form 1.2.3
@@ -236,11 +236,6 @@ branches
     = do char '.'
 	 n <- number
          return (n)
-
-dateParser :: GenParser Char st [String]
-dateParser
-     = (try $ do char '-'; d <- word; return ["date="++d])
-       <|> (do notFollowedBy anyChar; return [])
 
 number :: (Integral a, Read a) => GenParser Char st a
 number  = do{ ds <- many1 digit
