@@ -1,10 +1,8 @@
-** bug in srcDist where it doesn't move exe sources into place
-
 ** change all concat $ map to concatMap and sequence $ map to
    sequenceMap
 
-** sdist remove file probably doesn't look in the right place, doesn't
-   put in the files for executables
+** sdist probably doesn't look in the right place, doesn't put in the
+   files for executables
 
 ** where are we using allModules, is this the right place?
 
@@ -12,13 +10,9 @@
    "." there.
 
 ** integrate w/ GHC distro
-** Preprocessing
-- what other preprocessors can't unlit?
 
-- right now, preprocessors just stick files into the current
-  directory, then copies them into the destination.  this is no good
-  since we now won't be able to tell them from real source files the
-  next time around.  clean is broken here...
+** what other preprocessors can't unlit?
+
 ** several solutions to above problem:
 -- remember the source files to remove somehow
 -- move them into place first, then preprocess them, leave source
@@ -26,6 +20,7 @@
 -- preprocess them, and put them in place in the new
    location. best solution, but not set up well for that right now,
    since we concat together the entire filename (including module name)
+
 ** is cpp ever run yet?
 
 

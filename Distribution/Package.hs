@@ -61,6 +61,7 @@ module Distribution.Package (
 
 import Control.Monad(foldM, liftM)
 import Data.Char
+import Data.List(concatMap)
 import Data.Maybe(fromMaybe)
 import Text.PrettyPrint.HughesPJ
 
@@ -120,7 +121,7 @@ emptyPackageDescription
 -- |Get all the module names from this package
 allModules :: PackageDescription -> [String]
 allModules PackageDescription{executables=execs, library=lib}
-    = (concat $ map (\e -> modules $ buildInfo e) execs)
+    = (concatMap (\e -> modules $ buildInfo e) execs)
          ++ (maybe [] modules lib)
 
 -- |Set the name for this package. Convenience function.

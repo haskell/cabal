@@ -264,14 +264,14 @@ maybeExit cmd = do
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: FilePath -> [String] -> IO ()
 rawSystemExit path args = do
-  putStrLn (path ++ concat (map (' ':) args))
+  putStrLn (path ++ concatMap (' ':) args)
 	--ToDo: make command display conditional on -v flag?
   maybeExit $ rawSystem path args
 
 -- Exit with the same exitcode if the subcommand fails
 rawSystemPathExit :: String -> [String] -> IO ()
 rawSystemPathExit prog args = do
-  putStrLn (prog ++ concat (map (' ':) args))
+  putStrLn (prog ++ concatMap (' ':) args)
 	--ToDo: make command display conditional on -v flag?
   maybeExit $ rawSystemPath prog args
 
@@ -336,7 +336,7 @@ moduleToFilePath :: FilePath -- ^search location
 
 moduleToFilePath pref s possibleSuffixes
     = do let possiblePaths = moduleToPossiblePaths pref s possibleSuffixes
-         matchList <- sequence $ map (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
+         matchList <- sequenceMap (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
          return [x | (x, True) <- matchList]
 
 -- |Get the possible file paths based on this module name.
@@ -366,7 +366,7 @@ moveSources pref _targetDir sources searchSuffixes
     = do let targetDir = maybeAddSep _targetDir
          createIfNotExists True targetDir
 	 -- Create parent directories for everything:
-         sourceLocs' <- sequence $ map moduleToFPErr sources
+         sourceLocs' <- sequenceMap moduleToFPErr sources
          let sourceLocs = concat sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref then sourceLocs
@@ -444,7 +444,7 @@ copyFile src dest
 
 partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
 partitionIO f l
-    = do bools <- sequence $ map f l
+    = do bools <- sequenceMap f l
          let both = zip l bools
          return ([x | (x, True) <- both], [y | (y, False) <- both])
 
@@ -474,7 +474,7 @@ removeFileRecursive startLoc
          curDir <- getCurrentDirectory
          setCurrentDirectory startLoc
          dirs <- removeFiles cont
-         sequence $ map removeFileRecursive dirs
+         sequenceMap removeFileRecursive dirs
          setCurrentDirectory curDir
          removeDirectory startLoc
 
