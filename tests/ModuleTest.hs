@@ -67,15 +67,25 @@ import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 -- base
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory,
                  getPermissions, Permissions(..))
+import Distribution.Compat.Directory (removeDirectoryRecursive)
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
 import HUnit(runTestTT, Test(..), Counts(..), assertBool,
              assertEqual, Assertion, showCounts)
+
+
+-- ------------------------------------------------------------
+-- * Helpers
+-- ------------------------------------------------------------
+
+combineCounts :: Counts -> Counts -> Counts
+combineCounts (Counts a b c d) (Counts a' b' c' d')
+    = Counts (a + a') (b + b') (c + c') (d + d')
 
 label :: String -> String
 label t = "-= " ++ t ++ " =-"
@@ -110,6 +120,7 @@ assertCmd :: String -- ^Command
 assertCmd command comment
     = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
+-- |like assertCmd, but separates command and args
 assertCmd' :: String -- ^Command
            -> String -- ^args
            -> String -- ^Comment
@@ -126,157 +137,100 @@ assertCmdFail command comment
     = do code <- system command
          assertBool (command ++ ":" ++ comment) (code /= ExitSuccess)
 
-tests :: FilePath -> [Test]
-tests currDir
-    = let testdir = currDir `joinFileName` "tests" in
-      [
+
+-- ------------------------------------------------------------
+-- * Integration Tests
+-- ------------------------------------------------------------
+
+tests :: FilePath       -- ^Currdir
+      -> CompilerFlavor -- ^build setup with compiler
+      -> CompilerFlavor -- ^configure with which compiler
+      -> [Test]
+tests currDir comp compConf = [
+-- A
+         TestLabel ("package A: " ++ compIdent) $ TestCase $
+         do let targetDir=",tmp"
+            setCurrentDirectory $ (testdir `joinFileName` "A")
+            testPrelude
+            assertConfigure targetDir
+            assertHaddock
+            assertBuild
+            when (comp == GHC) -- are these tests silly?
+              (do doesDirectoryExist "dist/build" >>=
+                    assertBool "dist/build doesn't exist"
+                  doesFileExist "dist/build/testA" >>= 
+                    assertBool "build did not create the executable: testA"
+                  doesFileExist "dist/build/testB" >>= 
+                    assertBool "build did not create the executable: testB")
+            assertCopy
+            libForA targetDir
+            doesFileExist ",tmp/bin/testA" >>=
+              assertBool "testA not produced"
+            doesFileExist ",tmp/bin/testB" >>=
+              assertBool "testB not produced"
+            assertCmd' compCmd "sdist" "setup sdist returned error code"
+            doesFileExist "dist/test-1.0.tgz" >>= 
+              assertBool "sdist did not put the expected file in place"
+            doesFileExist "dist/src" >>=
+              assertEqual "dist/src exists" False
+         ,TestLabel ("package A copy-prefix: " ++ compIdent) $ TestCase $ -- (uses above config)
+         do let targetDir = ",tmp2"
+            assertCmd' compCmd ("copy --copy-prefix=" ++ targetDir) "copy --copy-prefix failed"
+            doesFileExist ",tmp2/bin/testA" >>=
+              assertBool "testA not produced"
+            doesFileExist ",tmp2/bin/testB" >>=
+              assertBool "testB not produced"
+            libForA ",tmp2"
+         ,TestLabel ("package A and install w/ no prefix: " ++ compIdent) $ TestCase $
+         do let targetDir = ",tmp/lib/test-1.0/"
+            removeDirectoryRecursive ",tmp"
+            assertCmd' compCmd "install --user" "install --user failed"
+            libForA ",tmp"
+            assertCmd "./setup unregister --user" "unregister failed"
 -- HUnit
-         TestLabel "testing the HUnit package" $ TestCase $ 
+         ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
-            pkgConf <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
             system "make clean"
             system "make"
+            assertCmd' compCmd "configure" "configure failed"
             system "setup unregister --user"
+
+
             system $ "touch " ++ D.S.C.localBuildInfoFile
             system $ "touch " ++ D.S.R.installedPkgConfigFile
             doesFileExist D.S.C.localBuildInfoFile >>= 
               assertBool ("touch " ++ D.S.C.localBuildInfoFile ++ " failed")
-            assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
-            assertCmd "./setup haddock" "setup haddock returned error code."
 
             -- Test clean:
-            assertCmd "./setup build" "hunit build"
+            assertBuild
             doesDirectoryExist "dist/build" >>= 
               assertBool "HUnit build did not create build directory"
-            assertCmd "./setup clean" "hunit clean"
+            assertCmd' compCmd "clean" "hunit clean"
             doesDirectoryExist "dist/build" >>= 
               assertEqual "HUnit clean did not get rid of build directory" False
+
             doesFileExist D.S.C.localBuildInfoFile >>= 
               assertEqual ("clean " ++ D.S.C.localBuildInfoFile ++ " failed") False
             doesFileExist D.S.R.installedPkgConfigFile >>= 
               assertEqual ("clean " ++ D.S.R.installedPkgConfigFile ++ " failed") False
 
-            assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
-            assertCmd "./setup haddock" "setup haddock returned error code."
-            assertCmd "./setup build" "hunit build"
-            assertCmd "./setup install --user" "hunit install"
-            assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
-            assertCmd "./hunitTest" "hunit test"
-            assertCmd "./setup unregister --user" "unregister failed"
-            assertCmd "./setup clean" "clean failed"
+            assertConfigure ",tmp"
+            assertHaddock
+            assertBuild
+            when (comp == GHC) -- tests building w/ an installed -package
+                 (do pkgConf <- GHC.localPackageConfig
+                     assertCmd' compCmd "install --user" "hunit install"
+                     assertCmd ("ghc -package-conf " ++ pkgConf
+                                ++ " -package HUnit HUnitTester.hs -o ./hunitTest")
+                                "compile w/ hunit"
+                     assertCmd "./hunitTest" "hunit test"
+                     assertCmd' compCmd "unregister --user" "unregister failed")
+            assertClean
             assertCmd "make clean" "make clean failed"
--- A
-         ,TestLabel "package A: configure GHC, sdist" $ TestCase $
-         do pkgConf  <- GHC.localPackageConfig
-            GHC.maybeCreateLocalPackageConfig
-            system $ "ghc-pkg -r test --config-file=" ++ pkgConf
-            setCurrentDirectory $ (testdir `joinFileName` "A")
-            system "make clean"
-            system "make"
-            assertCmd "./setup configure --ghc --prefix=,tmp"
-              "configure returned error code"
-            assertCmd "./setup haddock" "setup haddock returned error code."
 
-            assertCmd "./setup build"
-              "build returned error code"
-            doesFileExist "dist/build/testA" >>= 
-              assertBool "build did not create the executable: testA"
-            doesFileExist "dist/build/testB" >>= 
-              assertBool "build did not create the executable: testB"
-            assertCmd "./setup sdist"
-             "setup sdist returned error code"
-            doesFileExist "dist/test-1.0.tgz" >>= 
-              assertBool "sdist did not put the expected file in place"
-            doesFileExist "dist/src" >>=
-              assertEqual "dist/src exists" False
-            doesDirectoryExist "dist/build" >>=
-              assertBool "dist/build doesn't exists"
-         ,TestLabel "package A: GHC and copy-prefix" $ TestCase $ -- (uses above config)
-         do let targetDir = ",tmp2"
-            instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
-            checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
-            doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
-              >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
-         ,TestLabel "package A: GHC and copy to configure loc." $ TestCase $
-        -- (uses above config)
-         do instRetCode <- system $ "./setup copy"
-            checkTargetDir ",tmp/lib/test-1.0/" [".hi"]
-            doesFileExist (",tmp/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
-              >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
-         ,TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
-         do let targetDir = ",tmp/lib/test-1.0/"
-            instRetCode <- system $ "./setup install --user"
-            checkTargetDir targetDir [".hi"]
-            doesFileExist (targetDir `joinFileName` "libHStest-1.0.a")
-              >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
-            assertCmd "./setup unregister --user" "unregister failed"
--- A - Hugs
-         ,TestLabel "package A: configure Hugs" $ TestCase $
-         do let targetDir=",tmp"
-            setCurrentDirectory $ (testdir `joinFileName` "A")
-            system "make clean"
-            system "make"
-            assertCmd ("runhugs -98 Setup.lhs configure --prefix=" ++ targetDir)
-              "configure returned error code"
-            assertCmd "runhugs -98 Setup.lhs build"
-              "build returned error code"
-            assertCmd "runhugs -98 Setup.lhs copy"
-              "copy returned error code"
-            doesFileExist ",tmp/lib/hugs/packages/test/A.hs" >>=
-              assertBool "A.hs not produced"
-            doesFileExist ",tmp/bin/testA" >>=
-              assertBool "testA not produced"
-            doesFileExist ",tmp/bin/testB" >>=
-              assertBool "testB not produced"
--- HSQL
-         ,TestLabel "package HSQL (make-based): GHC building" $ TestCase $
-         do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
-            system "make distclean"
-            system "rm -rf /tmp/lib/HSQL"
-            system "ghc -cpp --make -i../.. Setup.lhs -o setup 2>out.build"
-            assertCmd "./setup configure --ghc --prefix=/tmp"
-              "configure returned error code"
-            doesFileExist "config.mk" >>=
-              assertBool "config.mk not generated after configure"
-            assertCmd "./setup build" "build hsql returned error code"
-            assertCmd "./setup copy" "copy hsql returned error code"
-            doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
-              assertBool "libHSsql.a doesn't exist. copy failed."
-
---          ,TestLabel "package A:no install-prefix and hugs" $ TestCase $
---          do assertCmd "./setup configure --hugs --prefix=,tmp"
---              "Hugs configure returned error code"
---             assertCmd "./setup build"
---              "Hugs build returned error code"
---             instRetCode <- system "./setup install --user"
---             let targetDir = ",tmp/lib/test-1.0/"
---             checkTargetDir targetDir [".hs"]
---             assertEqual "install Hugs returned error code" ExitSuccess instRetCode
-         ]
-
-genericTests :: FilePath       -- ^Currdir
-             -> CompilerFlavor -- ^Which compiler
-             -> String         -- compiler configure flag
-             -> [Test]
-genericTests currDir comp compFlag
-    = let testdir = currDir `joinFileName` "tests"
-          compStr = show comp
-          compCmd = command comp
-          compIdent = compStr ++ "/" ++ compFlag
-          testPrelude = system "make clean >> out.build" >> system "make >> out.build"
-          assertConfigure pref
-              = assertCmd' compCmd ("configure --prefix=" ++ pref ++ " " ++ compFlag)
-                           "configure returned error code"
-          assertBuild = assertCmd' compCmd "build" "build returned error code"
-          assertCopy  = assertCmd' compCmd "copy"  "copy returned error code"
-          assertHaddock = assertCmd' compCmd "haddock" "setup haddock returned error code."
-       in [
 -- twoMains
-         TestLabel ("package twoMains: building " ++ compIdent) $ TestCase $
+         ,TestLabel ("package twoMains: building " ++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
             testPrelude
             assertConfigure ",tmp"
@@ -319,7 +273,7 @@ genericTests currDir comp compFlag
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
             assertBool "wash2hs isn't +x" (executable perms)
-            assertCmd' compCmd "clean" "clean failed"
+            assertClean
             -- no unregister, because it has no libs!
 -- withHooks
          ,TestLabel ("package withHooks: "++compIdent) $ TestCase $
@@ -330,7 +284,7 @@ genericTests currDir comp compFlag
             assertHaddock
             assertBuild
             assertCopy
-            when (comp == GHC)
+            when (comp == GHC) -- FIX: come up with good test for Hugs
                  (do doesFileExist "dist/build/C.o" >>=
                        assertBool "C.testSuffix did not get compiled to C.o."
                      doesFileExist "dist/build/D.o" >>=
@@ -340,37 +294,71 @@ genericTests currDir comp compFlag
 
             doesFileExist ",tmp/bin/withHooks" >>= 
               assertBool "copy did not create the executable: withHooks"
-            assertCmd' compCmd  "clean" "withHooks clean failed"
+            assertClean
             doesFileExist "C.hs" >>=
                assertEqual "C.hs (a generated file) not cleaned." False
+-- HSQL
+         ,TestLabel ("package HSQL (make-based): " ++ show compIdent) $
+         TestCase $ unless (compFlag == "--hugs") $ -- FIX: won't compile w/ hugs
+         do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
+            system "make distclean"
+            system "rm -rf /tmp/lib/HSQL"
+            when (comp== GHC)
+                 (system "ghc -cpp --make -i../.. Setup.lhs -o setup 2>out.build" >> return())
+            assertConfigure "/tmp"
+            doesFileExist "config.mk" >>=
+              assertBool "config.mk not generated after configure"
+            assertBuild
+            assertCopy
+            when (comp == GHC) -- FIX: do something for hugs
+                 (doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
+                   assertBool "libHSsql.a doesn't exist. copy failed.")
       ]
-      where command GHC = "./setup"
-            command Hugs = "runhugs -98 Setup.lhs"
-
+    where testdir = currDir `joinFileName` "tests"
+          compStr = show comp
+          compCmd = command comp
+          compFlag = case compConf of
+                      GHC -> "--ghc"
+                      Hugs -> "--hugs"
+          compIdent = compStr ++ "/" ++ compFlag
+          testPrelude = system "make clean >> out.build" >> system "make >> out.build"
+          assertConfigure pref
+              = assertCmd' compCmd ("configure --prefix=" ++ pref ++ " " ++ compFlag)
+                           "configure returned error code"
+          assertBuild = assertCmd' compCmd "build" "build returned error code"
+          assertCopy  = assertCmd' compCmd "copy"  "copy returned error code"
+          assertClean  = assertCmd' compCmd "clean"  "clean returned error code"
+          assertHaddock = assertCmd' compCmd "haddock" "setup haddock returned error code."
+          command GHC = "./setup"
+          command Hugs = "runhugs -98 Setup.lhs"
+          libForA pref  -- checks to see if the lib exists, for tests/A
+              = let ghcTargetDir = pref ++ "/lib/test-1.0/" in
+                 case compConf of
+                  Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs"]
+                  GHC  -> do checkTargetDir ghcTargetDir [".hi"]
+                             doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
+                               >>= assertBool "library doesn't exist"
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
-{-          count1 <- runTestTT' $ TestList $
+          setupCount <- runTestTT' $ TestList $
                         (TestLabel "Utils Tests" $ TestList D.S.U.hunitTests):
                         (TestLabel "Setup Tests" $ TestList D.Setup.hunitTests):
                         (TestLabel "config Tests" $ TestList D.S.C.hunitTests):
                           (D.S.R.hunitTests ++ D.V.hunitTests ++
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                           D.PD.hunitTests ++ D.E.hunitTests) -}
+                           D.PD.hunitTests ++ D.E.hunitTests)
           dir <- getCurrentDirectory
---          count2 <- runTestTT' $ TestList (tests dir)
-          count3 <- runTestTT' $ TestList (genericTests dir Hugs "--hugs")
---          count3' <- runTestTT' $ TestList (genericTests dir Hugs "--ghc")
-          count4 <- runTestTT' $ TestList (genericTests dir GHC "")
+--          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
+          globalTests <- sequence [runTestTT' $ TestList (tests dir x x)
+                                       | x <- [GHC, Hugs]]
           putStrLn "-------------"
           putStrLn "Test Summary:"
-          putStrLn $ showCounts $ foldl1 combineCounts [count3, count4]
+          putStrLn $ showCounts $
+                      foldl1 combineCounts (setupCount:globalTests)
           return ()
 
-combineCounts :: Counts -> Counts -> Counts
-combineCounts (Counts a b c d) (Counts a' b' c' d')
-    = Counts (a + a') (b + b') (c + c') (d + d')
 #endif
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
