@@ -59,8 +59,8 @@ import qualified Distribution.Simple.Build as D.S.B (hunitTests)
 import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
 import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
 import Distribution.Simple.Utils(pathJoin)
-import qualified Distribution.Simple.Configure as D.S.C (hunitTests)
-import qualified Distribution.Simple.Register as D.S.R (hunitTests)
+import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildInfoFile)
+import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
 
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
@@ -115,6 +115,10 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
+            system $ "touch " ++ D.S.C.localBuildInfoFile
+            system $ "touch " ++ D.S.R.installedPkgConfigFile
+            doesFileExist D.S.C.localBuildInfoFile >>= 
+              assertBool ("touch " ++ D.S.C.localBuildInfoFile ++ " failed")
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
             -- Test clean:
             assertCmd "./setup build" "hunit build"
@@ -123,7 +127,12 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             assertCmd "./setup clean" "hunit clean"
             doesDirectoryExist "dist/build" >>= 
               assertEqual "HUnit clean did not get rid of build directory" False
+            doesFileExist D.S.C.localBuildInfoFile >>= 
+              assertEqual ("clean " ++ D.S.C.localBuildInfoFile ++ " failed") False
+            doesFileExist D.S.R.installedPkgConfigFile >>= 
+              assertEqual ("clean " ++ D.S.R.installedPkgConfigFile ++ " failed") False
 
+            assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
             assertCmd "./setup build" "hunit build"
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"

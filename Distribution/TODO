@@ -5,8 +5,8 @@
 - constructorless data-types
 ** grep for "FIX"
 ** does clean remove installed-pkg-config and .setup-config or
-   whatever? should the former be a . file?  should it be removed
-   after successful register?
+   whatever? 
+** should .installed-pkg-config be removed after successful register?
 ** Clean up field parsers (Martin: what else goes here?)
 *** license parser parses either known strings, or a filename.
 ** add "clean" to doc?

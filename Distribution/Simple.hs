@@ -59,10 +59,10 @@ import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build	( build )
 import Distribution.Simple.SrcDist	( sdist )
-import Distribution.Simple.Register	( register, unregister )
+import Distribution.Simple.Register	( register, unregister, installedPkgConfigFile )
 
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
-				     configure, writePersistBuildConfig)
+				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, pathJoin, removeFileRecursive)
 import Distribution.Misc (License(..), Extension(..), Dependency(..))
@@ -72,7 +72,9 @@ import Distribution.Version (Version(..), VersionRange(..),
 
 -- Base
 import System(getArgs)
+import System.Directory(removeFile)
 
+import Control.Exception(try)
 import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
@@ -117,7 +119,10 @@ defaultMainNoRead pkg_descr
 
              Right (CleanCmd, extra_flags) -> do
 		no_extra_flags extra_flags
-		removeFileRecursive buildPref
+		try $ removeFileRecursive buildPref
+                try $ removeFile installedPkgConfigFile
+                try $ removeFile localBuildInfoFile
+                return ()
 
              Right (InstallCmd install_prefixM userInst, extra_flags) -> do
 		no_extra_flags extra_flags
