@@ -9,6 +9,7 @@ Extensions: ForeignFunctionInterface
 Executable: testA
 Other-Modules: A
 Main-is: MainA.hs
+C-Sources: c_src/hello.c
 Extensions: OverlappingInstances
 
 Executable: testB

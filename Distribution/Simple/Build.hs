@@ -75,7 +75,7 @@ import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
-				searchPathSeparator, objExtension, joinPaths)
+				searchPathSeparator, objExtension, joinPaths, splitFileName)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -158,7 +158,7 @@ buildGHC pkg_descr lbi verbose = do
         try (removeFile libName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
-                ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]                
+                ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
         rawSystemPathExit verbose "ar" arArgs
 
   -- build any executables
@@ -167,6 +167,19 @@ buildGHC pkg_descr lbi verbose = do
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True exeDir
+                 -- build executables
+                 unless (null (cSources exeBi)) $
+                  sequence_ [do let cSrcODir = exeDir `joinFileName` (fst $ splitFileName c)
+                                createDirectoryIfMissing True cSrcODir
+		                let cArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
+			                    ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
+			                    ++ ["-odir", cSrcODir, "-hidir", pref, "-c"]
+			                    ++ (if verbose > 4 then ["-v"] else [])
+                                rawSystemExit verbose ghcPath (cArgs ++ [c])
+                                    | c <- cSources exeBi]
+
+                 let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
+                                   | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
                  let binArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
                          ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
@@ -176,6 +189,7 @@ buildGHC pkg_descr lbi verbose = do
                             ]
                          ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
                                                 exeBi (packageDeps lbi)
+                         ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions exeBi
 			 ++ (if verbose > 4 then ["-v"] else [])
@@ -223,6 +237,7 @@ buildHugs pkg_descr lbi verbose = do
 	    let useCpp = CPP `elem` extensions bi
             let srcDir = hsSourceDir bi
 	    let srcDirs = srcDir:(maybeToList mLibSrcDir)
+            when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
 	    fileLists <- sequence [moduleToFilePath srcDirs modu suffixes |
 			modu <- mods]
 	    let trimSrcDir
@@ -255,6 +270,7 @@ buildHugs pkg_descr lbi verbose = do
 	    -- Only compile FFI stubs for a file if it contains some FFI stuff
 	    inp <- readHaskellFile file
 	    when ("foreign" `elem` symbols (stripComments False inp)) $ do
+                when (verbose > 2) (putStrLn "Compiling FFI stubs")
 		(_, opts, file_incs) <- getOptionsFromSource file
 		let ghcOpts = hcOptions GHC opts
 		let srcDir = hsSourceDir bi

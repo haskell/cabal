@@ -147,8 +147,17 @@ tests :: FilePath       -- ^Currdir
       -> CompilerFlavor -- ^configure with which compiler
       -> [Test]
 tests currDir comp compConf = [
+-- executableWithC
+         TestLabel ("package exeWithC: " ++ compIdent) $ TestCase $
+         do let targetDir =",tmp"
+            setCurrentDirectory $ (testdir `joinFileName` "exeWithC")
+            testPrelude
+            assertConfigure targetDir
+            assertBuild
+            assertCopy
+            assertCmd ",tmp/bin/tt" "exeWithC failed"
 -- A
-         TestLabel ("package A: " ++ compIdent) $ TestCase $
+         ,TestLabel ("package A: " ++ compIdent) $ TestCase $
          do let targetDir=",tmp"
             setCurrentDirectory $ (testdir `joinFileName` "A")
             testPrelude
@@ -161,7 +170,12 @@ tests currDir comp compConf = [
                   doesFileExist "dist/build/testA" >>= 
                     assertBool "build did not create the executable: testA"
                   doesFileExist "dist/build/testB" >>= 
-                    assertBool "build did not create the executable: testB")
+                    assertBool "build did not create the executable: testB"
+                  doesFileExist "dist/build/testA-tmp/hello.o" >>=
+                    assertBool "build did not build c source for testA"
+                  doesFileExist "dist/build/hello.o" >>=
+                    assertBool "build did not build c source for A library"
+              )
             assertCopy
             libForA targetDir
             doesFileExist ",tmp/bin/testA" >>=
