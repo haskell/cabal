@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -42,11 +43,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
-	install
+	install,
+	mkImportDir
   ) where
 
-import Distribution.Package(PackageDescription)
-import Distribution.Simple.Configure(LocalBuildInfo)
+import Distribution.Package
+import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage)
 
 import System.Exit
@@ -55,4 +57,18 @@ install :: PackageDescription -> LocalBuildInfo -> IO ()
 install pkg_descr localbuildinfo = do
   setupMessage "Installing" pkg_descr
   exitWith (ExitFailure 1)
+
+
+-- -----------------------------------------------------------------------------
+-- Installation policies
+
+mkImportDir :: PackageDescription -> LocalBuildInfo -> FilePath
+mkImportDir pkg_descr lbi = 
+#ifdef mingw32_TARGET_OS
+	prefix lbi ++ '/':pkg_name
+#else
+	prefix lbi ++ "/lib/" ++ pkg_name
+#endif
+  where 
+	pkg_name = showPackageId (package pkg_descr)
 

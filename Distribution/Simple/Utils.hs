@@ -62,6 +62,9 @@ import System.Cmd
 import System.Environment
 import System.Directory
 
+-- -----------------------------------------------------------------------------
+-- Pathname-related utils
+
 -- "foo/bar/xyzzy.ext" -> ("foo/bar", "xyzzy.ext")
 splitFilenameDir :: String -> (String,String)
 splitFilenameDir str
@@ -91,13 +94,6 @@ isPathSeparator ch =
   ch == '/'
 #endif
 
-setupMessage :: String -> PackageDescription -> IO ()
-setupMessage msg pkg_descr = 
-   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
-
-die :: String -> IO a
-die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
-
 -- ToDo: add cacheing?
 findBinary :: String -> IO (Maybe FilePath)
 findBinary binary = do
@@ -120,6 +116,16 @@ parsePath path = split pathSep path
 #else
 	pathSep = ':'
 #endif
+
+-- -----------------------------------------------------------------------------
+-- Utils for setup
+
+setupMessage :: String -> PackageDescription -> IO ()
+setupMessage msg pkg_descr = 
+   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+
+die :: String -> IO a
+die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
