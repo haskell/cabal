@@ -59,7 +59,6 @@ module Distribution.Version (
 
 import Data.List	( intersperse )
 
-import Time (Month(..))
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as P
@@ -148,13 +147,21 @@ data VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
 
+orLaterVersion :: Version -> VersionRange
 orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
+
+orEarlierVersion :: Version -> VersionRange
 orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
 
+
+betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
 
+laterVersion :: Version -> Version -> Bool
 v1 `laterVersion`   v2 = versionBranch v1 > versionBranch v2
+
+earlierVersion :: Version -> Version -> Bool
 v1 `earlierVersion` v2 = versionBranch v1 < versionBranch v2
 
 -- |Does this version fall within the given range?
@@ -348,15 +355,28 @@ doVersionRangeParse input
           in case x of
              Left err -> Left (show err)
              Right y  -> Right y
-
+branch1 :: [Int]
 branch1 = [1]
+
+branch2 :: [Int]
 branch2 = [1,2]
+
+branch3 :: [Int]
 branch3 = [1,2,3]
+
+branch4 :: [Int]
 branch4 = [1,2,3,4]
 
+release1 :: Version
 release1 = Version{versionBranch=branch1, versionTags=[]}
+
+release2 :: Version
 release2 = Version{versionBranch=branch2, versionTags=[]}
+
+release3 :: Version
 release3 = Version{versionBranch=branch3, versionTags=[]}
+
+release4 :: Version
 release4 = Version{versionBranch=branch4, versionTags=[]}
 
 hunitTests :: [Test]
