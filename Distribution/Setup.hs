@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (parseArgs, Action(..), ConfigFlags,
                            CompilerFlavor(..), Compiler(..),
+			   optionHelpString,
 #ifdef DEBUG
                            hunitTests,
 #endif
@@ -85,10 +86,11 @@ data Action = ConfigCmd ConfigFlags       -- config
             | InfoCmd                     -- info
             | RegisterCmd                 -- register
             | UnregisterCmd               -- unregister
-            | NoCmd -- error case?
+	    | HelpCmd			  -- help
 --             | TestCmd 1.0?
 --             | BDist -- 1.0
 --            | CleanCmd                 -- clean
+--            | NoCmd -- error case?
     deriving (Show, Eq)
 
 type ConfigFlags = (Maybe CompilerFlavor,
@@ -101,10 +103,12 @@ parseArgs args
     = let (flags, commands', unkFlags, ers) = getOpt Permute options args
           in case ers of
              _:_ -> Left ers
-             []  -> case commands' of
-                     []  -> Left ["No command detected"]
-                     [h] -> parseCommands h flags unkFlags
-                     _:_ -> Left ["More than one command detected"]
+             []  -> if HelpFlag `elem` flags then
+			Right (HelpCmd, unkFlags)
+		    else case commands' of
+                     		[]  -> Left ["No command detected"]
+                     		[h] -> parseCommands h flags unkFlags
+                     		_:_ -> Left ["More than one command detected"]
     where
     parseCommands :: String -- command
                   -> [Flag]

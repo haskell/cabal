@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -43,10 +44,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
-                                      LocalBuildInfo(..))
+                                      LocalBuildInfo(..),
+ 			  	      configure)
     where
 
-import Distribution.Setup(CompilerFlavor, Compiler)
+import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
+import Distribution.Package(PackageConfig(..))
+
+import System.IO
+import System.Exit
+import System.Directory
+import System.Environment	( getEnv )
+import Control.Monad		( when )
+
+#ifdef DEBUG
+import HUnit
+#endif
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {prefix :: String,
@@ -62,10 +75,147 @@ getPersistBuildConfig = return emptyLocalBuildInfo -- FIX
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig _ = return () --FIX
 
--- Locate the compiler based on the flavor
-exeLoc :: CompilerFlavor -> IO FilePath
-exeLoc _ = return "error, not yet implemented" -- FIX
+-- -----------------------------------------------------------------------------
+-- Configuration
 
-pkgLoc :: CompilerFlavor -> IO FilePath
-pkgLoc _ = return "error, not yet implemented" -- FIX
+configure :: PackageConfig -> ConfigFlags -> IO LocalBuildInfo
+configure pkgconfig (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
+  = do
+	-- prefix
+	let prefix = case maybe_prefix of
+			Just path -> path
+			Nothing   -> system_default_prefix pkgconfig
 
+	-- detect compiler
+	compiler <- configCompiler maybe_hc_flavor maybe_hc_path pkgconfig 
+	return LocalBuildInfo{prefix=prefix, compiler=compiler}
+
+system_default_prefix PackageConfig{package=package} = 
+#ifdef mingw32_TARGET_OS
+  "C:\Program Files\" ++ pkgName package
+#else
+  "/usr"
+#endif
+
+-- -----------------------------------------------------------------------------
+-- Determining the compiler details
+
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageConfig
+  -> IO Compiler
+
+configCompiler (Just flavor) (Just path) pkgconfig
+  = do pkgtool <- guessPkgToolFromHCPath flavor path
+       return (Compiler{compilerFlavor=flavor,
+			compilerPath=path,
+			compilerPkgTool=pkgtool})
+
+configCompiler (Just flavor) Nothing pkgconfig
+  = do path <- findCompiler flavor
+       pkgtool <- guessPkgToolFromHCPath flavor path
+       return (Compiler{compilerFlavor=flavor,
+			compilerPath=path,
+			compilerPkgTool=pkgtool})
+
+configCompiler Nothing maybe_path pkgconfig
+  = configCompiler (Just defaultCompilerFlavor) maybe_path pkgconfig
+
+defaultCompilerFlavor =
+#if defined(__GLASGOW_HASKELL__)
+   GHC
+#elif defined(__NHC__)
+   NHC
+#elif defined(__HUGS__)
+   Hugs
+#endif
+
+findCompiler :: CompilerFlavor -> IO FilePath
+findCompiler flavor = findBinary (compilerBinaryName flavor)
+   -- ToDo: check that compiler works? check compiler version?
+
+compilerBinaryName GHC  = "ghc"
+compilerBinaryName NHC  = "nhc98"
+compilerBinaryName Hugs = "hugs"
+
+compilerPkgToolName GHC  = "ghc-pkg"
+compilerPkgToolName NHC  = "nhc98-pkg"
+compilerPkgToolName Hugs = "hugs-pkg"
+
+guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
+guessPkgToolFromHCPath flavor path
+  = do let (dir,_) = splitFilenameDir path
+           pkgtool = dir ++ '/':compilerPkgToolName flavor
+       exists <- doesFileExist pkgtool
+       when (not exists) $
+	  die ("Cannot find package tool: " ++ pkgtool)
+       return pkgtool
+
+findBinary :: String -> IO FilePath
+findBinary binary = do
+  path <- getEnv "PATH"
+  search (parsePath path)
+  where
+    search :: [FilePath] -> IO FilePath
+    search [] = die ("Cannot find compiler for " ++ binary)
+    search (d:ds) = do
+	let path = d ++ '/':binary
+	b <- doesFileExist path
+	if b  then return path else search ds
+
+parsePath :: String -> [FilePath]
+parsePath path = split pathSep path
+  where
+#ifdef mingw32_TARGET_OS
+	pathSep = ';'
+#else
+	pathSep = ':'
+#endif
+
+-- -----------------------------------------------------------------------------
+-- Utils
+
+-- "foo/bar/xyzzy.ext" -> ("foo/bar", "xyzzy.ext")
+splitFilenameDir :: String -> (String,String)
+splitFilenameDir str
+  = let (dir, rest) = split_longest_prefix str isPathSeparator
+  	real_dir | null dir  = "."
+		 | otherwise = dir
+    in  (real_dir, rest)
+
+split :: Char -> String -> [String]
+split c s = case rest of
+		[]     -> [chunk] 
+		_:rest -> chunk : split c rest
+  where (chunk, rest) = break (==c) s
+
+split_longest_prefix :: String -> (Char -> Bool) -> (String,String)
+split_longest_prefix s pred
+  = case pre of
+	[]      -> ([], reverse suf)
+	(_:pre) -> (reverse pre, reverse suf)
+  where (suf,pre) = break pred (reverse s)
+
+isPathSeparator :: Char -> Bool
+isPathSeparator ch =
+#ifdef mingw32_TARGET_OS
+  ch == '/' || ch == '\\'
+#else
+  ch == '/'
+#endif
+
+die :: String -> IO a
+die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
+
+#ifdef DEBUG
+hunitTests :: IO [Test]
+hunitTests = do
+   let simonMarGHCLoc = "/home/simonmar/fp/bin/i386-unknown-linux/ghc"
+   simonMarGHC <- configure PackageConfig{} (Just GHC,
+				       Just simonMarGHCLoc,
+				       Nothing)
+   return $ [TestLabel "Configure Testing" $ TestList [
+	     "finding ghc, etc on simonMar's machine" ~: "failed" ~:
+             (LocalBuildInfo "/usr" (Compiler GHC 
+	                    simonMarGHCLoc
+ 			    (simonMarGHCLoc ++ "-pkg")))
+             ~=? simonMarGHC]]
+#endif
