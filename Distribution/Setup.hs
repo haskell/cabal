@@ -294,7 +294,7 @@ copyCmd = Cmd {
         cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the copy-prefix flag, configure determines location.\n",
         cmdOptions     = [cmd_help,
            Option "" ["copy-prefix"] (ReqArg InstPrefix "DIR")
-               "specify the directory in which to place installed files, prepended to configure-time install path"
+               "specify the directory in which to place installed files"
            ],
         cmdAction      = CopyCmd Nothing
         }
@@ -336,8 +336,8 @@ parseInstallArgs cfg args customOpts =
             UserFlag     -> True
             GlobalFlag   -> False
             Lift _       -> uFlag
-            _            -> error $ "Unexpected flag!"
-        updateCfg [] t = t
+            _            -> error $ "Internal Error: Unexpected flag!"
+    updateCfg [] t = t
 
 sdistCmd :: Cmd a
 sdistCmd = Cmd {
