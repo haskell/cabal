@@ -1,6 +1,7 @@
 Name: Cabal
 Version: 0.3
 Copyright: 2003-2005, Isaac Jones
+Build-Depends: posix
 License: BSD3
 Author: Isaac Jones <ijones@syntaxpolice.org>
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
