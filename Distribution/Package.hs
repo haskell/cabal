@@ -182,17 +182,17 @@ parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines i
              return pkg{buildDepends=xs}
         -- Paths and stuff
         parseDescHelp pkg (f@"c-sources", val) =
-          do path <- runP f parseFilePath val
-             return pkg{cSources=path}
+          do paths <- runP f (parseCommaList parseFilePath) val
+             return pkg{cSources=paths}
         parseDescHelp pkg (f@"include-dirs", val) =
-          do path <- runP f parseFilePath val
-             return pkg{includeDirs=path}
+          do paths <- runP f (parseCommaList parseFilePath) val
+             return pkg{includeDirs=paths}
         parseDescHelp pkg (f@"includes", val) =
-          do path <- runP f parseFilePath val
-             return pkg{includes=path}
+          do paths <- runP f (parseCommaList parseFilePath) val
+             return pkg{includes=paths}
         parseDescHelp pkg (f@"hs-source-dir", val) =
           do path <- runP f parseFilePath val
-             return pkg{hsSourceDir=head path}
+             return pkg{hsSourceDir=path}
         -- Module related
         parseDescHelp pkg (f@"main-modules", val) =
           do xs <- runP f (parseCommaList moduleName) val
@@ -241,12 +241,12 @@ anyOf (h:t) = foldl ((<|>) . try) (try h) t
 moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
 
 -- |FIX: must learn to escape whitespace
-parseFilePath :: GenParser Char st [FilePath]
-parseFilePath
-    = parseCommaList (many1 (do try word
-                                <|> toStr digit
-                                <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{.")
-                            ) >>= return . concat)
+parseFilePath :: GenParser Char st FilePath
+parseFilePath = liftM concat (many1 (
+                        do try word
+                           <|> toStr digit
+                           <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{.")
+                       ))
         <?> "parseFilePath"
 
 parseLicense :: GenParser Char st License
