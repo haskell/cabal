@@ -58,7 +58,8 @@ import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Distribution.Package (setupMessage, PackageDescription(..), PackageIdentifier(..))
 import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
-import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
+import qualified Distribution.Simple.GHCPackageConfig
+    as GHC (localPackageConfig, canWritePackageConfig, maybeCreatePackageConfig)
 
 import System.Directory(doesFileExist)
 
@@ -79,14 +80,20 @@ register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
 
   case compilerFlavor (compiler lbi) of
-   GHC -> do (localConf, pkgConfExists) <- GHC.localPackageConfig
-             unless pkgConfExists $ writeFile localConf "[]\n"
+   GHC -> do GHC.maybeCreatePackageConfig
+             localConf <- GHC.localPackageConfig
+             pkgConfWriteable <- GHC.canWritePackageConfig
+             when (userInst && (not pkgConfWriteable))
+                (die ("--user flag passed, but cannot write to local package config: "
+                      ++ localConf))
              instConfExists <- doesFileExist installedPkgConfigFile
              unless instConfExists (writeInstalledConfig pkg_descr lbi)
              rawSystemExit (compilerPkgTool (compiler lbi))
 	                     (["--auto-ghci-libs", "--update-package",
                                "--input-file="++installedPkgConfigFile]
-                              ++ (if userInst then ["--config-file=" ++ localConf] else []))
+                              ++ (if userInst
+                                  then ["--config-file=" ++ localConf]
+                                  else []))
    _   -> die ("only registering with GHC is implemented")
 
 -- |Register doesn't drop the register info file, it must be done in a separate step.

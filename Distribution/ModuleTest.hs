@@ -60,7 +60,8 @@ import Distribution.Simple.Utils(pathJoin)
 import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildInfoFile)
 import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
 
-import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
+import qualified Distribution.Simple.GHCPackageConfig
+    as GHC (localPackageConfig, maybeCreatePackageConfig)
 
 -- base
 import Control.Monad(when, unless)
@@ -123,8 +124,8 @@ tests currDir
             assertBool "wash2hs isn't +x" (executable perms),
          TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ pathJoin [currDir, "test", "HUnit-1.0"]
-            (pkgConf, pkgConfExists) <- GHC.localPackageConfig
-            unless pkgConfExists $ writeFile pkgConf "[]\n"
+            pkgConf <- GHC.localPackageConfig
+            GHC.maybeCreatePackageConfig
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
@@ -153,8 +154,8 @@ tests currDir
             assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove",
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
-         do (pkgConf, pkgConfExists) <- GHC.localPackageConfig
-            unless pkgConfExists $ writeFile pkgConf "[]\n"
+         do pkgConf  <- GHC.localPackageConfig
+            GHC.maybeCreatePackageConfig
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
             setCurrentDirectory $ pathJoin [currDir, "test", "A"]
             system "make clean"

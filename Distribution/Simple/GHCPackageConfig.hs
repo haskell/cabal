@@ -15,7 +15,9 @@ module Distribution.Simple.GHCPackageConfig (
 	mkGHCPackageConfig,
 	defaultGHCPackageConfig,
 	showGHCPackageConfig,
-        localPackageConfig
+
+        localPackageConfig, maybeCreatePackageConfig,
+        canWritePackageConfig, canReadPackageConfig
   ) where
 
 import Distribution.Package (PackageDescription(..), BuildInfo(..),
@@ -24,17 +26,47 @@ import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
 import Distribution.Simple.Utils(pathJoin)
 
+import Control.Exception (try)
+import Control.Monad(liftM, unless)
 import Text.PrettyPrint.HughesPJ
 import System(getEnv)
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, getPermissions, Permissions (..))
 
 
--- |Where ghc keeps the --user files, the bool is for whether it exists
-localPackageConfig :: IO (FilePath, Bool)
+-- |Where ghc keeps the --user files.
+-- |return the file, whether it exists, and whether it's readable
+
+localPackageConfig :: IO FilePath
 localPackageConfig = do u <- getEnv "HOME"
-                        let f = pathJoin [u, ".ghc-packages"]
-                        b <- doesFileExist f
-                        return (f, b)
+                        return $ pathJoin [u, ".ghc-packages"]
+
+-- |If the package file doesn't exist, we should try to create it.  If
+-- it already exists, do nothing and return true.  This does not take
+-- into account whether it is readable or writeable.
+maybeCreatePackageConfig :: IO Bool  -- ^success?
+maybeCreatePackageConfig
+    = do f <- localPackageConfig
+         exists <- doesFileExist f
+         unless exists $ (try (writeFile f "[]\n") >> return ())
+         doesFileExist f
+
+
+-- |Helper function for canReadPackageConfig and canWritePackageConfig
+checkPermission perm
+    = do f <- localPackageConfig
+         exists <- doesFileExist f
+         if exists
+            then getPermissions f >>= (return . perm)
+            else return False
+
+-- |Check for read permission on the localPackageConfig
+canReadPackageConfig :: IO Bool
+canReadPackageConfig = checkPermission readable
+
+-- |Check for write permission on the localPackageConfig
+canWritePackageConfig :: IO Bool
+canWritePackageConfig = checkPermission writable
+
 -- -----------------------------------------------------------------------------
 -- GHC 6.2 PackageConfig type
 
