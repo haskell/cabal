@@ -52,7 +52,7 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.PackageDescription
 import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
 
-import Distribution.Simple.Utils (maybeExit)
+import Distribution.Simple.Utils (maybeExit, defaultPackageDesc)
 
 import Distribution.License (License(..))
 import Distribution.Version (Version(..))
@@ -83,11 +83,6 @@ RegisterCmd:   We assume there is a register target and a variable $(user)
 UnregisterCmd: We assume there is an unregister target
 -}
 
--- I'm not happy about this being here. I just copied it from Simple.hs,
--- but it should be in a utility module.
-defaultPackageDesc :: FilePath
-defaultPackageDesc = "Setup.description"
-
 configureArgs :: ConfigFlags -> String
 configureArgs (flavour, mb_hc_path, mb_hc_pkg_path, mb_prefix)
   = unwords (hc_flag ++ hc_pkg_flag ++ prefix_flag)
@@ -111,7 +106,7 @@ exec :: String -> IO a
 exec cmd = system cmd >>= exitWith
 
 defaultMain :: IO ()
-defaultMain = readPackageDescription defaultPackageDesc >>= defaultMainNoRead
+defaultMain = defaultPackageDesc >>= readPackageDescription >>= defaultMainNoRead
 
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr

@@ -59,6 +59,9 @@ module Distribution.Simple.Utils (
 	withTempFile,
 	getOptionsFromSource,
 	stripComments,
+        defaultPackageDesc,
+        hookedPackageDesc,
+        findPackageDesc,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -104,6 +107,9 @@ import HUnit ((~:), (~=?), Test(..), assertEqual)
 
 die :: String -> IO a
 die msg = do hFlush stdout; hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
+
+warn :: String -> IO ()
+warn msg = do hFlush stdout; hPutStr stderr ("Warning: " ++ msg++"\n")
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -379,6 +385,64 @@ stripComments keepPragmas = stripCommentsLevel 0
 	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
 	copyPragma (c:cs) = c : copyPragma cs
 	copyPragma [] = []
+
+
+
+
+-- ------------------------------------------------------------
+-- * Finding the description file
+-- ------------------------------------------------------------
+
+oldDescFile = "Setup.description"
+cabalExt = "cabal"
+
+matchesDescFile :: FilePath -> Bool
+matchesDescFile p = (snd $ splitFileExt p) == cabalExt
+                    || p == oldDescFile
+
+noDesc = die $ "No description file found, please create a cabal-formatted description file with the name <pkgname>." ++ cabalExt
+
+multiDesc l = die $ "Multiple description files found.  Please use only one of : "
+                      ++ show (filter (/= oldDescFile) l)
+
+-- |A list of possibly correct description files.  Should be pre-filtered.
+descriptionCheck :: [FilePath] -> IO FilePath
+descriptionCheck [] = noDesc
+descriptionCheck [x]
+    | x == oldDescFile
+        = do warn $ "The filename \"Setup.description\" is deprecated, please move to <pkgname>." ++ cabalExt
+             return x
+    | matchesDescFile x = return x
+    | otherwise = noDesc
+descriptionCheck [x,y]
+    | x == oldDescFile
+        = do warn $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
+                  ++ y ++ "\""
+             return y
+    | y == oldDescFile
+        = do warn $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
+                  ++ x ++ "\""
+             return x
+
+    | otherwise = multiDesc [x,y]
+descriptionCheck l = multiDesc l
+
+-- |Package description file (@<pkgname>.cabal@)
+defaultPackageDesc :: IO FilePath
+defaultPackageDesc = getCurrentDirectory >>= findPackageDesc
+
+-- |Find a package description file in the given directory.  Looks for
+-- .cabal files.
+findPackageDesc :: FilePath    -- ^Where to look
+                -> IO FilePath -- <pkgname>.cabal
+findPackageDesc p = do ls <- getDirectoryContents p
+                       let descs = filter matchesDescFile ls
+                       descriptionCheck descs
+
+-- |Package build information file (@Setup.buildinfo@) used by
+-- 'defaultUserHooks'.
+hookedPackageDesc :: FilePath
+hookedPackageDesc = "Setup.buildinfo"
 
 -- ------------------------------------------------------------
 -- * Testing

@@ -68,7 +68,8 @@ import Distribution.Simple.Register	( register, unregister,
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, removeFileRecursive, currentDir)
+import Distribution.Simple.Utils (die, removeFileRecursive, currentDir,
+                                     defaultPackageDesc, hookedPackageDesc)
 import Distribution.License (License(..))
 import Distribution.Extension (Extension(..))
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
@@ -91,15 +92,6 @@ import Distribution.Compat.FilePath(joinFileName, joinPaths)
 #ifdef DEBUG
 import HUnit (Test)
 #endif
-
--- |Package description file (@Setup.description@)
-defaultPackageDesc :: FilePath
-defaultPackageDesc = "Setup.description"
-
--- |Package build information file (@Setup.buildinfo@) used by
--- 'defaultUserHooks'.
-hookedPackageDesc :: FilePath
-hookedPackageDesc = "Setup.buildinfo"
 
 type Args = [String]
 
@@ -149,7 +141,7 @@ doBuildInstall f pkgConf
 defaultMain :: IO ()
 defaultMain = do args <- getArgs
                  (action, args) <- parseGlobalArgs args
-                 pkg_descr <- readPackageDescription defaultPackageDesc
+                 pkg_descr <- defaultPackageDesc >>= readPackageDescription
                  defaultMainWorker pkg_descr action args Nothing
                  return ()
 
@@ -161,7 +153,7 @@ defaultMainWithHooks hooks
          maybeDesc <- readDesc hooks
          case maybeDesc of
           Just pkg_descr -> defaultMainWorker pkg_descr action args (Just hooks) >> return ()
-          Nothing        -> do pkg_descr <- readPackageDescription defaultPackageDesc
+          Nothing        -> do pkg_descr <- defaultPackageDesc >>= readPackageDescription
                                defaultMainWorker pkg_descr action args (Just hooks)
                                return ()
 
