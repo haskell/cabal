@@ -246,7 +246,19 @@ tests currDir
             doesFileExist "dist/build/testB" >>= 
               assertBool "build did not create the executable: testB"
             assertCmd "./dist/build/testA isA" "A is not A"
-            assertCmd "./dist/build/testB isB" "B is not B"
+            assertCmd "./dist/build/testB isB" "B is not B",
+         TestLabel "package depOnLib: GHC building (executable depending on its lib)" $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
+            system "make clean"
+            system "make"
+            assertCmd "./setup configure --ghc --prefix=,tmp"
+              "configure returned error code"
+            assertCmd "./setup build"
+              "build returned error code"
+            doesFileExist "dist/build/mainForA" >>= 
+              assertBool "build did not create the executable: mainForA"
+            doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
+              >>= assertBool "library doesn't exist"
 
 --          TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
