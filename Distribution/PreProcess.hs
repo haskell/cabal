@@ -63,6 +63,7 @@ import Distribution.Compat.FilePath
 -- external program, or just a function.
 type PreProcessor = FilePath  -- Location of the source file in need of preprocessing
                   -> FilePath -- Output filename
+                  -> Int      -- verbose
                   -> IO ExitCode
 
 
@@ -75,16 +76,17 @@ type PPSuffixHandler
 -- a Haskell source file for each module.
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 
+		  -> Int                -- ^ verbose
                   -> [PPSuffixHandler]  -- ^ preprocessors to try
 		  -> IO ()
 
-preprocessSources pkg_descr lbi handlers = do
+preprocessSources pkg_descr lbi verbose handlers = do
     setupMessage "Preprocessing library" pkg_descr
 
     withLib pkg_descr () $ \ lib -> do
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
-	sequence_ [preprocessModule [hsSourceDir bi] mod builtinSuffixes biHandlers |
+	sequence_ [preprocessModule [hsSourceDir bi] mod verbose builtinSuffixes biHandlers |
 			    mod <- libModules pkg_descr] -- FIX: output errors?
     setupMessage "Preprocessing executables for" pkg_descr
     foreachExe pkg_descr $ \ theExe -> do
@@ -92,7 +94,7 @@ preprocessSources pkg_descr lbi handlers = do
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
-                                     mod builtinSuffixes biHandlers |
+                                     mod verbose builtinSuffixes biHandlers |
 			    mod <- executableModules theExe] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
@@ -105,10 +107,11 @@ preprocessSources pkg_descr lbi handlers = do
 preprocessModule
     :: [FilePath]			-- ^source directories
     -> String				-- ^module name
+    -> Int				-- ^verbose
     -> [String]				-- ^builtin suffixes
     -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ExitCode
-preprocessModule searchLoc mod builtinSuffixes handlers = do
+preprocessModule searchLoc mod verbose builtinSuffixes handlers = do
     bsrcFiles <- moduleToFilePath searchLoc mod builtinSuffixes
     psrcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
     case psrcFiles of
@@ -126,7 +129,7 @@ preprocessModule searchLoc mod builtinSuffixes handlers = do
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)
 	    if recomp
-	      then pp psrcFile (srcStem `joinFileExt` "hs")
+	      then pp psrcFile (srcStem `joinFileExt` "hs") verbose
 	      else return ExitSuccess
 
 removePreprocessedPackage :: PackageDescription
@@ -168,23 +171,23 @@ foreachExe pkg_descr action = mapM_ action (executables pkg_descr)
 
 ppGreenCard, ppC2hs :: PreProcessor
 
-ppGreenCard inFile outFile
-    = rawSystemPath "green-card" ["-tffi", "-o" ++ outFile, inFile]
-ppC2hs inFile outFile
-    = rawSystemPath "c2hs" ["-o " ++ outFile, inFile]
+ppGreenCard inFile outFile verbose
+    = rawSystemPath verbose "green-card" ["-tffi", "-o" ++ outFile, inFile]
+ppC2hs inFile outFile verbose
+    = rawSystemPath verbose "c2hs" ["-o " ++ outFile, inFile]
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
 ppUnlit :: PreProcessor
-ppUnlit inFile outFile = do
+ppUnlit inFile outFile verbose = do
     contents <- readFile inFile
     writeFile outFile (unlit inFile contents)
     return ExitSuccess
 
 ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp pkg_descr bi lbi = pp
-  where pp inFile outFile
-	  = rawSystemPath "cpphs" (extraArgs ++ ["-O" ++ outFile, inFile])
+  where pp inFile outFile verbose
+	  = rawSystemPath verbose "cpphs" (extraArgs ++ ["-O" ++ outFile, inFile])
 	extraArgs = "--noline":hcFlags hc ++
 		["-I" ++ dir | dir <- includeDirs bi] ++ ccOptions pkg_descr
 	hc = compilerFlavor (compiler lbi)
@@ -220,15 +223,18 @@ ppAlex _ _ lbi
 
 ppTestHandler :: FilePath -- ^InFile
               -> FilePath -- ^OutFile
+              -> Int      -- ^verbose
               -> IO ExitCode
-ppTestHandler inFile outFile
-    = do stuff <- readFile inFile
+ppTestHandler inFile outFile verbose
+    = do when (verbose > 0) $
+           putStrLn (inFile++" has been preprocessed as a test to "++outFile)
+         stuff <- readFile inFile
          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
          return ExitSuccess
 
 standardPP :: String -> [String] -> PreProcessor
-standardPP eName args inFile outFile
-    = rawSystemPath eName (args ++ ["-o" ++ outFile, inFile])
+standardPP eName args inFile outFile verbose
+    = rawSystemPath verbose eName (args ++ ["-o" ++ outFile, inFile])
 
 -- |Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [ PPSuffixHandler ] -> [String]

@@ -108,12 +108,15 @@ warn msg = do hFlush stdout; hPutStr stderr ("Warning: " ++ msg++"\n")
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
-rawSystemPath :: String -> [String] -> IO ExitCode
-rawSystemPath prog args = do
+rawSystemPath :: Int -> String -> [String] -> IO ExitCode
+rawSystemPath verbose prog args = do
   r <- findExecutable prog
   case r of
     Nothing -> die ("Cannot find: " ++ prog)
-    Just path -> rawSystem path args
+    Just path -> do
+      when (verbose > 0) $
+        putStrLn (path ++ concatMap (' ':) args)
+      rawSystem path args
 
 maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
@@ -123,18 +126,16 @@ maybeExit cmd = do
 	else return ()
 
 -- Exit with the same exitcode if the subcommand fails
-rawSystemExit :: FilePath -> [String] -> IO ()
-rawSystemExit path args = do
-  putStrLn (path ++ concatMap (' ':) args)
-	--ToDo: make command display conditional on -v flag?
+rawSystemExit :: Int -> FilePath -> [String] -> IO ()
+rawSystemExit verbose path args = do
+  when (verbose > 0) $
+    putStrLn (path ++ concatMap (' ':) args)
   maybeExit $ rawSystem path args
 
 -- Exit with the same exitcode if the subcommand fails
-rawSystemPathExit :: String -> [String] -> IO ()
-rawSystemPathExit prog args = do
-  putStrLn (prog ++ concatMap (' ':) args)
-	--ToDo: make command display conditional on -v flag?
-  maybeExit $ rawSystemPath prog args
+rawSystemPathExit :: Int -> String -> [String] -> IO ()
+rawSystemPathExit verbose prog args = do
+  maybeExit $ rawSystemPath verbose prog args
 
 
 -- ------------------------------------------------------------

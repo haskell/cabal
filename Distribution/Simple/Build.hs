@@ -87,24 +87,25 @@ import HUnit (Test)
 
 build :: PackageDescription
          -> LocalBuildInfo
+         -> Int                 -- verbose
          -> [ PPSuffixHandler ]
          -> IO ()
-build pkg_descr lbi suffixes = do
+build pkg_descr lbi verbose suffixes = do
   createDirectoryIfMissing True (buildDir lbi)
-  preprocessSources pkg_descr lbi suffixes
+  preprocessSources pkg_descr lbi verbose suffixes
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
-   GHC -> buildGHC pkg_descr lbi
-   Hugs -> buildHugs pkg_descr lbi
+   GHC -> buildGHC pkg_descr lbi verbose
+   Hugs -> buildHugs pkg_descr lbi verbose
    _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
 
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
-buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
-buildNHC pkg_descr lbi = do
+buildNHC :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
+buildNHC pkg_descr lbi verbose = do
   -- Unsupported extensions have already been checked by configure
   let flags = snd $ extensionsToNHCFlag (maybe [] (extensions . libBuildInfo) (library pkg_descr))
-  rawSystemExit (compilerPath (compiler lbi))
+  rawSystemExit verbose (compilerPath (compiler lbi))
                 (["-nhc98"]
                 ++ flags
                 ++ maybe [] (hcOptions NHC . options . libBuildInfo) (library pkg_descr)
@@ -112,8 +113,8 @@ buildNHC pkg_descr lbi = do
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
 -- it to the command-line.
-buildGHC :: PackageDescription -> LocalBuildInfo -> IO ()
-buildGHC pkg_descr lbi = do
+buildGHC :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
+buildGHC pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
   pkgConf <- GHC.localPackageConfig
@@ -132,7 +133,7 @@ buildGHC pkg_descr lbi = do
               ++ constructGHCCmdLine Nothing buildInfo' (packageDeps lbi)
               ++ (libModules pkg_descr)
       unless (null (libModules pkg_descr)) $
-        rawSystemExit ghcPath args
+        rawSystemExit verbose ghcPath args
 
       -- build any C sources
       unless (null (cSources buildInfo')) $
@@ -141,7 +142,7 @@ buildGHC pkg_descr lbi = do
 		       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
 			       ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
-                       rawSystemExit ghcPath (args ++ [c])
+                       rawSystemExit verbose ghcPath (args ++ [c])
                                    | c <- cSources buildInfo']
 
       -- link:
@@ -152,7 +153,7 @@ buildGHC pkg_descr lbi = do
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
         try (removeFile lib) -- first remove library if it exists
-        rawSystemPathExit "ar" (["q", lib] ++ [pref `joinFileName` x | x <- hObjs ++ cObjs])
+        rawSystemPathExit verbose "ar" (["q", lib] ++ [pref `joinFileName` x | x <- hObjs ++ cObjs])
 
   -- build any executables
   sequence_ [ do createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
@@ -170,7 +171,7 @@ buildGHC pkg_descr lbi = do
                                                 exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions pkg_descr
-                 rawSystemExit ghcPath args
+                 rawSystemExit verbose ghcPath args
              | Executable exeName' exeMods modPath exeBi <- executables pkg_descr]
 
 dirOf :: FilePath -> FilePath
@@ -190,8 +191,8 @@ constructGHCCmdLine mSrcLoc buildInfo' deps =
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 -- |
-buildHugs :: PackageDescription -> LocalBuildInfo -> IO ()
-buildHugs pkg_descr lbi = do
+buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
+buildHugs pkg_descr lbi verbose = do
     let pref = buildDir lbi
     withLib pkg_descr () $ (\l -> compileBuildInfo pref Nothing (libModules pkg_descr) (libBuildInfo l))
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
@@ -243,7 +244,7 @@ buildHugs pkg_descr lbi = do
 
 	{- FIX (HUGS): assumes gcc -}
 	cppFile bi inFile outFile =
-	    rawSystemExit "cpp"
+	    rawSystemExit verbose "cpp"
 		(["-traditional", "-P", "-D__HUGS__"] ++
 			["-I" ++ dir | dir <- includeDirs bi] ++
 			ccOptions pkg_descr ++ [inFile, outFile])
@@ -269,7 +270,7 @@ buildHugs pkg_descr lbi = do
 			ldOptions pkg_descr ++
 			["-l" ++ lib | lib <- extraLibs bi] ++
 			concat [["-framework", f] | f <- frameworks pkg_descr]
-		rawSystemExit ffihugs (hugsArgs ++ file : cArgs)
+		rawSystemExit verbose ffihugs (hugsArgs ++ file : cArgs)
 
 	ffihugs = compilerPath (compiler lbi)
 

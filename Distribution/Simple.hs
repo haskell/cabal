@@ -69,7 +69,7 @@ import Distribution.Simple.Register	( register, unregister,
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, currentDir,
+import Distribution.Simple.Utils (die, currentDir, rawSystemPath,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
 import Distribution.License (License(..))
@@ -182,14 +182,14 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postConf
 
             BuildCmd -> do
-                (_, args) <- parseBuildArgs args []
+                (verbose, _, args) <- parseBuildArgs 0 args []
                 pkg_descr <- hookOrInput preBuild args
 		localbuildinfo <- getPersistBuildConfig
-		build pkg_descr localbuildinfo knownSuffixHandlers
+		build pkg_descr localbuildinfo verbose knownSuffixHandlers
                 writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild
             HaddockCmd -> do
-                (_, args) <- parseHaddockArgs args []
+                (verbose, _, args) <- parseHaddockArgs 0 args []
                 pkg_descr <- hookOrInput preBuild args
                 withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
@@ -197,13 +197,13 @@ defaultMainWorker pkg_descr_in action args hooks
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
                       createDirectoryIfMissing True targetDir
-                      preprocessSources pkg_descr lbi knownSuffixHandlers
+                      preprocessSources pkg_descr lbi verbose knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
-                      mapM (mockCpp pkg_descr bi lbi tmpDir) inFiles
+                      mapM (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)
-                      code <- rawSystem "haddock" (["-h", "-o" ++ targetDir] ++ outFiles)
+                      code <- rawSystemPath verbose "haddock" (["-h", "-o", targetDir] ++ outFiles)
                       removeDirectoryRecursive tmpDir
                       when (code /= ExitSuccess) (exitWith code)
                       return code)
@@ -289,15 +289,15 @@ defaultMainWorker pkg_descr_in action args hooks
         postHook f = case hooks of
                       Nothing -> return ExitSuccess
                       Just h  -> f h
-        mockCpp pkg_descr bi lbi pref file
+        mockCpp pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
                  let targetFile = joinFileName targetDir fileName
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
-                 ret <- ppCpp pkg_descr bi lbi file targetFile
+                 ret <- ppCpp pkg_descr bi lbi file targetFile verbose
                  when (targetFileExt == "lhs")
-                       (ppUnlit targetFile (joinFileExt targetFileNoext "hs") >> return ())
+                       (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
                  
 
 no_extra_flags :: [String] -> IO ()
