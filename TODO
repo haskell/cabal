@@ -104,6 +104,7 @@
 ** SDist for windows machines, or machines without tar.
 ** sanity checking tool for configuration; are all the .hs files
    included, etc.
+** add sanity checking command?
 
 * testing
 ** setup test suite to run on --push?
@@ -141,7 +142,6 @@
 ** elaborate command-line help text
 ** configure should check for 'ar' args + properties (see fptools/aclocal.m4)
 ** most commands should accept a -v flag to show command lines?
-** configure should check sanity of PackageDescription, eg. library /= "" ?
 ** configure should check version of compiler
 
 ------------------------------------------------------------
