@@ -255,6 +255,7 @@ unionPackageDescription p1 p2
 	 category      = override category "category",
 	 buildPackage  = override buildPackage "build-package",
          -- combine fields:
+         buildDepends  = combine buildDepends,
 	 ccOptions     = combine ccOptions,
 	 ldOptions     = combine ldOptions,
 	 frameworks    = combine frameworks,
