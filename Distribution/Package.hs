@@ -151,7 +151,7 @@ parseCommaList p
     where separator = skipMany1 (space <|> char ',')
 
 parseWhite = try parseSpaceNotNewline
-            <|> (char '\n' >> parseWhite)
+            <|> (try (char '\n' >> parseWhite))
 
 parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
     where isSpaceNotNewline :: Char -> Bool
@@ -175,19 +175,21 @@ parseField s newline p
 -- ------------------------------------------------------------
 #ifdef DEBUG
 hunitTests :: [Test]
-hunitTests = [TestLabel "newline before word" $ TestCase $
-                    assertRight "newline before word"
-                     "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n  \nfoo"),
+hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
+              do assertRight "newline before word 1"
+                  "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n  \nfoo")
+                 assertRight "newline before word 2"
+                  "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n \t    \n  \nfoo"),
 
               TestLabel "skip spaces not newlines" $ TestCase $
-                 do assertRight "spaces with newlines"
-                     "foo" (parse (skipMany parseWhite>>word) "" "   \n  foo")
-                    assertRight "spaces with newlines"
-                     "foo" (parse (skipMany parseWhite>>word) "" "   \n \t\n   foo")
-                    assertRight "no preceding spaces"
-                     "foo" (parse (skipMany parseWhite>>word) "" "foo")
-                    assertBool "newline before data without in-between spaces"
-                     (isError (parse (skipMany parseWhite>>word) "" "   \n  \nfoo")),
+              do assertRight "spaces with newlines"
+                  "foo" (parse (skipMany parseWhite>>word) "" "   \n  foo")
+                 assertRight "spaces with newlines"
+                  "foo" (parse (skipMany parseWhite>>word) "" "   \n \t\n   foo")
+                 assertRight "no preceding spaces"
+                  "foo" (parse (skipMany parseWhite>>word) "" "foo")
+                 assertBool "newline before data without in-between spaces"
+                  (isError (parse (skipMany parseWhite>>word) "" "   \n  \nfoo")),
 
               TestLabel "basic fields" $ TestCase $
               do let p1 = parse (do w1 <- parseField "Foo" False parseVersion
