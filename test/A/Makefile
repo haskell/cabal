@@ -7,6 +7,7 @@ clean:
 	find . -name "*.hi" |xargs rm -f
 check: all
 	./setup configure --user --prefix=/tmp/foo
+	./setup build
 	./setup install --install-prefix=/tmp/bar
 	ls /tmp/bar*
 	# install w/ register!

@@ -55,6 +55,7 @@ import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Distribution.Package (PackageDescription, package, showPackageId)
 import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
+import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
 import System(getEnv)
 
@@ -75,11 +76,11 @@ register pkg_descr lbi userInst = do
 
   case compilerFlavor (compiler lbi) of
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
+             localConf <- GHC.localPackageConfig
              writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
-             home <- getEnv "HOME"
              rawSystemExit (compilerPkgTool (compiler lbi))
 	                     (["--add-package", "--input-file="++installedPkgConfigFile]
-                              ++ (if userInst then ["--config-file=" ++ home ++ "/.ghc-packages"] else []))
+                              ++ (if userInst then ["--config-file=" ++ localConf] else []))
    _   -> die ("only registering with GHC is implemented")
 
 installedPkgConfigFile :: String

@@ -61,6 +61,7 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 import Control.Monad (when)
 import Data.List(intersperse, nub)
 import System.Environment (getEnv)
+import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -95,8 +96,8 @@ buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildGHC pref pkg_descr lbi = do
 
   -- first, build the modules
-  home <- getEnv "HOME"
-  let args = ["-package-conf", home ++ "/.ghc-packages"]
+  pkgConf <- GHC.localPackageConfig
+  let args = ["-package-conf", pkgConf]
           ++ constructGHCCmdLine pref pkg_descr lbi
   rawSystemExit (compilerPath (compiler lbi)) args
 

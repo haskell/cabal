@@ -1,7 +1,7 @@
 * misc
 ** make a library from the FileUtils, look at Python's os.path.
 ** add en.wikipedia.org/wiki/Cabal to web page
-** clean up ~/.ghc-packages location...
+** if the configure with --user make sure it installs with --user!
 ** Possibly create a (native?) zib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
