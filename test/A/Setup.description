@@ -2,3 +2,8 @@ Name: test
 Version: 1.0
 Modules: A, B.A
 Exposed-Modules: A
+Extensions: ForeignFunctionInterface
+
+Executable: testA
+Modules: A, Main
+Extensions: OverlappingInstances
