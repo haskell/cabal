@@ -546,7 +546,9 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
 -- * Sanity Checking
 -- ------------------------------------------------------------
 
--- |Fix: checking for required fields and such
+-- |Sanity check this description file.
+
+-- FIX: add a sanity check for missing haskell files?
 sanityCheckPackage :: PackageDescription -> IO Bool
 sanityCheckPackage pkg_descr
     = do libSane <- sanityCheckLib (library pkg_descr)
