@@ -121,7 +121,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
 system_default_prefix :: PackageDescription -> String
 system_default_prefix PackageDescription{package=package} = 
 #ifdef mingw32_TARGET_OS
-  "C:\Program Files\" ++ pkgName package
+  "C:\\Program Files\\" ++ pkgName package
 #else
   "/usr"
 #endif
