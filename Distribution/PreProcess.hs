@@ -241,17 +241,6 @@ ppAlex _ lbi
 	hcFlags GHC = ["-g"]
 	hcFlags _ = []
 
-ppTestHandler :: FilePath -- ^InFile
-              -> FilePath -- ^OutFile
-              -> Int      -- ^verbose
-              -> IO ExitCode
-ppTestHandler inFile outFile verbose
-    = do when (verbose > 0) $
-           putStrLn (inFile++" has been preprocessed as a test to "++outFile)
-         stuff <- readFile inFile
-         writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
-         return ExitSuccess
-
 standardPP :: String -> [String] -> PreProcessor
 standardPP eName args inFile outFile verbose
     = rawSystemVerbose verbose eName (args ++ ["-o" ++ outFile, inFile])
@@ -274,5 +263,4 @@ knownSuffixHandlers =
   , ("y",      ppHappy)
   , ("ly",     ppHappy)
   , ("cpphs",  ppCpp)
-  , ("testSuffix", \ _ _ -> ppTestHandler)
   ]
