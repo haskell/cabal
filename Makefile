@@ -29,6 +29,7 @@ clean:
 	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
+	-rm -f hunit-stamp hunitInstall-stamp
 
 remove:
 	-ghc-pkg $(GHCPKGFLAGS) -r Cabal-0.1

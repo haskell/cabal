@@ -58,7 +58,7 @@ import Distribution.Package(PackageDescription(..), emptyPackageDescription,
 import Distribution.Simple.Utils (die, setupMessage,
                                   findBinary, splitFilenameDir)
 import Distribution.Package	( PackageIdentifier )
-import Distribution.Version (Version(..))
+import Distribution.Version (Version(..), VersionRange(..))
 
 import System.IO hiding (catch)
 import System.Directory
@@ -129,6 +129,12 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
 -- set any version information.
 buildDepToDep :: Dependency -> PackageIdentifier
+
+-- if they specify the exact version, use that:
+buildDepToDep (Dependency s (ThisVersion v)) = PackageIdentifier s v
+
+-- otherwise, calculate it from the installed module. FIX: not
+-- implemented because HC-PKG doesn't yet do this.
 buildDepToDep (Dependency s _) = PackageIdentifier s (Version [] [])
 
 system_default_prefix :: PackageDescription -> String
