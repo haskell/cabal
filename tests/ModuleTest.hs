@@ -173,6 +173,14 @@ tests currDir comp compConf = [
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False
+            assertCmd' compCmd "register --user" "pkg A, register failed"
+            assertCmd' compCmd "unregister --user" "pkg A, unregister failed"
+            assertCmd' compCmd ("register --user "++dumpScriptFlag)
+                               "pkg A, register dump script failed"
+            assertCmd' compCmd ("unregister --user "++dumpScriptFlag)
+                               "pkg A, register dump script failed"
+            assertCmd' "source" "register.sh" "reg script failed"  -- FIX: chmod +x instead of source
+            assertCmd' "source" "unregister.sh" "unreg script failed" -- FIX: chmod +x instead of source
          ,TestLabel ("package A copy-prefix: " ++ compIdent) $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             assertCmd' compCmd ("copy --copy-prefix=" ++ targetDir) "copy --copy-prefix failed"
@@ -186,7 +194,7 @@ tests currDir comp compConf = [
             removeDirectoryRecursive ",tmp"
             assertCmd' compCmd "install --user" "install --user failed"
             libForA ",tmp"
-            assertCmd "./setup unregister --user" "unregister failed"
+            assertCmd' compCmd "unregister --user" "unregister failed"
 -- HUnit
          ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
@@ -263,7 +271,7 @@ tests currDir comp compConf = [
        ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
             testPrelude
-            assertCmdFail "./setup configure --someUnknownFlag"
+            assertCmdFail (compCmd ++ " configure --someUnknownFlag")
                           "wash2hs configure with unknown flag"
             assertConfigure ",tmp"
             assertHaddock
@@ -303,7 +311,7 @@ tests currDir comp compConf = [
          do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
             system "make distclean"
             system "rm -rf /tmp/lib/HSQL"
-            when (comp== GHC)
+            when (comp == GHC)
                  (system "ghc -cpp --make -i../.. Setup.lhs -o setup 2>out.build" >> return())
             assertConfigure "/tmp"
             doesFileExist "config.mk" >>=
@@ -338,6 +346,7 @@ tests currDir comp compConf = [
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
                              doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
+          dumpScriptFlag = "-v11"
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"

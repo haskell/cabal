@@ -73,7 +73,9 @@ import Distribution.Setup
 import Distribution.Simple.Build	( build )
 import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister,
-                                          writeInstalledConfig, installedPkgConfigFile )
+                                          writeInstalledConfig, installedPkgConfigFile,
+                                          regScriptLocation, unregScriptLocation
+                                        )
 
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, findProgram,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
@@ -278,6 +280,8 @@ defaultMainWorker pkg_descr_in action args hooks
 		try $ removeDirectoryRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
+                try $ removeFile regScriptLocation
+                try $ removeFile unregScriptLocation
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
                 postHook postClean args verbose localbuildinfo
 
