@@ -1,7 +1,7 @@
-all:
+setup:
 	ghc -cpp --make -i../.. Setup.lhs -o setup
 clean:
-	rm -f setup a.out
+	rm -f setup a.out .setup-config
 	rm -rf ,tmp* dist
 	find . -name "*.o" |xargs rm -f
 	find . -name "*.hi" |xargs rm -f
