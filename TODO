@@ -1,7 +1,5 @@
 * misc
 
-* make preprocessors in hooks override the built-in ones
-
 * Fix up sdist! 
 * Write tests for make and hugs
 

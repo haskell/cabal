@@ -45,6 +45,7 @@ module Distribution.PackageDescription (
 	emptyPackageDescription,
         readPackageDescription,
 	parseDescription,
+        basicStanzaFields,
         writePackageDescription,
 	showPackageDescription,
         sanityCheckPackage,
