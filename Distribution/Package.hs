@@ -55,10 +55,9 @@ module Distribution.Package (
 #endif
   ) where
 
-import Control.Monad.State
 import Control.Monad(when, foldM)
 import Control.Monad.Error
-import Data.Char(isSpace, toLower)
+import Data.Char
 import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
 
@@ -69,7 +68,7 @@ import Distribution.Setup(CompilerFlavor(..))
 
 import System.IO(openFile, IOMode(..), hGetContents)
 
-import Text.ParserCombinators.Parsec
+import Compat.ReadP
 
 #ifdef DEBUG
 import HUnit (Test(..), (~:), (~=?), assertEqual, assertBool, Assertion, runTestTT)
@@ -190,13 +189,14 @@ parsePackageDesc p = do h <- openFile p ReadMode
                               -> error "no library listed, and no executable stanza."
                           Right x -> return x
 
-data PError = Parsec ParseError | FromString String
+data PError = AmbigousParse | NoParse | FromString String
         deriving Show
 
 instance Error PError where
         strMsg = FromString
 
-showError (Parsec pe)    = show pe
+showError AmbigousParse  = "Ambigous parse"
+showError NoParse        = "No parse"
 showError (FromString s) = s
 
 parseDescription :: String -> Either PError PackageDescription
@@ -207,14 +207,14 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
   where -- The basic stanza, with library building info
         parseBasicStanza pkg (f@"name",      val) = return (setPkgName val pkg)
         parseBasicStanza pkg (f@"version",   val) =
-          do v <- runP f parseVersion val
+          do v <- runP parseVersion val
              return (setPkgVersion v pkg)
         parseBasicStanza pkg (f@"copyright", val) = return pkg{copyright=val}
         parseBasicStanza pkg (f@"license",   val) =
-          do l <- runP f parseLicense val
+          do l <- runP parseLicense val
              return pkg{license=l}
         parseBasicStanza pkg (f@"license-file", val) =
-          do path <- runP f parseFilePath val
+          do path <- runP parseFilePath val
              return pkg{license=OtherLicense path}
         parseBasicStanza pkg (f@"maintainer", val) = return pkg{maintainer=val}
         parseBasicStanza pkg (f@"stability",  val) = return pkg{stability=val}
@@ -225,54 +225,57 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
         -- Stanzas for executables
         parseExecutableStanza (("executable",exeName):st) =
           case lookup "main-is" st of
-            Just xs -> do path <- runP "main-is" parseFilePath xs
+            Just xs -> do path <- runP parseFilePath xs
                           binfo <- foldM parseExeHelp emptyBuildInfo st
                           return $ Executable exeName path binfo
-            Nothing -> throwError $ strMsg $
+            Nothing -> fail $
                 "No 'Main-Is' field found for " ++ exeName ++ " stanza"
-        parseExecutableStanza ((f,_):st) = throwError $ strMsg $
+        parseExecutableStanza ((f,_):st) = fail $
                 "'Executable' stanza starts with field '" ++ f ++ "'"
         parseExeHelp binfo (f@"main-is", _) = return binfo
         parseExeHelp binfo (f@"extra-libs", val) =
-          do xs <- runP f (parseCommaList word) val
+          do xs <- runP (parseCommaList word) val
              return binfo{extraLibs=xs}
         parseExeHelp binfo (f@"build-depends", val) =
-          do xs <- runP f (parseCommaList parseDependency) val
+          do xs <- runP (parseCommaList parseDependency) val
              return binfo{buildDepends=xs}
         -- Paths and stuff
         parseExeHelp binfo (f@"c-sources", val) =
-          do paths <- runP f (parseCommaList parseFilePath) val
+          do paths <- runP (parseCommaList parseFilePath) val
              return binfo{cSources=paths}
         parseExeHelp binfo (f@"include-dirs", val) =
-          do paths <- runP f (parseCommaList parseFilePath) val
+          do paths <- runP (parseCommaList parseFilePath) val
              return binfo{includeDirs=paths}
         parseExeHelp binfo (f@"includes", val) =
-          do paths <- runP f (parseCommaList parseFilePath) val
+          do paths <- runP (parseCommaList parseFilePath) val
              return binfo{includes=paths}
         parseExeHelp binfo (f@"hs-source-dir", val) =
-          do path <- runP f parseFilePath val
+          do path <- runP parseFilePath val
              return binfo{hsSourceDir=path}
         -- Module related
         parseExeHelp binfo (f@"modules", val) =
-          do xs <- runP f (parseCommaList moduleName) val
+          do xs <- runP (parseCommaList parseModuleName) val
              return binfo{modules=xs}
         parseExeHelp binfo (f@"exposed-modules", val) =
-          do xs <- runP f (parseCommaList moduleName) val
+          do xs <- runP (parseCommaList parseModuleName) val
              return binfo{exposedModules=xs}
         parseExeHelp binfo (f@"extensions", val) =
-          do exts <- runP f (parseCommaList parseExtension) val
+          do exts <- runP (parseCommaList parseExtension) val
              return binfo{extensions=exts}
         parseExeHelp binfo (f, val) | "options-" `isPrefixOf` f =
           let compilers = [("ghc",GHC),("nhc",NHC),("hugs",Hugs)] -- FIXME
            in case lookup (drop 8 f) compilers of
-                Just c -> do xs <- runP f (parseCommaList parseOption) val
+                Just c -> do xs <- runP (parseCommaList parseOption) val
                              return (setOptions c xs binfo)
                 Nothing -> error $ "Unknown compiler (" ++ drop 8 f ++ ")"
         parseExeHelp binfo (field, val) = error $ "Unknown field :: " ++ field
         -- ...
-        runP f p s = case parse p f s of
-                       Left pe -> Left (Parsec pe)
-                       Right a -> Right a
+
+runP :: ReadP a a -> String -> Either PError a
+runP p s = case [ x | (x,"") <- readP_to_S p s ] of
+             [a] -> Right a
+             []  -> Left NoParse
+             _   -> Left AmbigousParse
 
 type Stanza = [(String,String)]
 
@@ -296,54 +299,40 @@ splitStanzas = map merge . groupStanzas . filter validLine . lines
                    (fld, "")      -> error "FIXME"
 
 -- |parse a module name
-moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
+parseModuleName :: ReadP r String
+parseModuleName = do x <- satisfy isUpper
+                     xs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
+                     return (x:xs)
 
-parseFilePath :: GenParser Char st FilePath
-parseFilePath = parseReadS <|> (many1 (alphaNum <|> oneOf "-+/_."))
-        <?> "parseFilePath"
+parseFilePath :: ReadP r FilePath
+parseFilePath = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
 
-parseReadS :: Read a => GenParser Char st a
-parseReadS = do toks <- getInput
-                case reads toks of
-                  [(str,toks')] -> do setInput toks'
-                                      return str
-                  _             -> fail "Bad String"
+parseReadS :: Read a => ReadP r a
+parseReadS = readS_to_P reads
 
-parseDependency :: GenParser Char st Dependency
-parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
-                     skipMany parseWhite
-                     ver <- parseVersionRange <|> return AnyVersion
-                     skipMany parseWhite
+parseDependency :: ReadP r Dependency
+parseDependency = do name <- munch1 (\x -> isAlphaNum x || x `elem` "-_")
+                     skipSpaces
+                     ver <- parseVersionRange <++ return AnyVersion
+                     skipSpaces
                      return $ Dependency name ver
-        <?> "parseDependency"
 
-parseLicense :: GenParser Char st License
+parseLicense :: ReadP r License
 parseLicense = parseReadS
 
-parseExtension :: GenParser Char st Extension
+parseExtension :: ReadP r Extension
 parseExtension = parseReadS
 
-parseOption = many1 (letter <|> digit <|> oneOf "-+/\\._") -- FIXME
+parseOption = munch1 (\x -> isAlphaNum x || x `elem` "-+/\\._") -- FIXME
 
-toStr c = c >>= \x -> return [x]
+word :: ReadP r String
+word = munch1 isAlpha
 
-word :: GenParser Char st String
-word = many1 letter <?> "word"
+parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
+               -> ReadP r [a]
+parseCommaList p = sepBy1 p separator
+    where separator = skipSpaces >> char ',' >> skipSpaces
 
-parseCommaList :: GenParser Char st a -- ^The parser for the stuff between commas
-               -> GenParser Char st [a]
-parseCommaList p
-    = do words <- sepBy1 p separator
-         return words
-    where separator = spaces >> char ',' >> spaces
-
-parseWhite = try parseSpaceNotNewline
-            <|> (try (char '\n' >> parseWhite))
-
-parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
-    where isSpaceNotNewline :: Char -> Bool
-          isSpaceNotNewline '\n' = False
-          isSpaceNotNewline n    = isSpace n
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -413,45 +402,10 @@ testPkgDescAnswer =
 }
 
 hunitTests :: [Test]
-hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
-              do assertRight "newline before word 1"
-                  "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n  \nfoo")
-                 assertRight "newline before word 2"
-                  "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n \t    \n  \nfoo"),
-
-              TestLabel "skip spaces not newlines" $ TestCase $
-              do assertRight "spaces with newlines"
-                  "foo" (parse (skipMany parseWhite>>word) "" "   \n  foo")
-                 assertRight "spaces with newlines"
-                  "foo" (parse (skipMany parseWhite>>word) "" "   \n \t\n   foo")
-                 assertRight "no preceding spaces"
-                  "foo" (parse (skipMany parseWhite>>word) "" "foo")
-                 assertBool "newline before data without in-between spaces"
-                  (isError (parse (skipMany parseWhite>>word) "" "   \n  \nfoo")),
-
---              TestLabel "basic fields" $ TestCase $
---              do let p1 = parse (do w1 <- parseField "Foo" False parseVersion
---                                    skipMany parseWhite
---                                    w2 <- parseField "Bar" True word
---                                    return (w1, w2)
---                                ) ""
---                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["one"]},"boo")
---                 assertRight "basic spaces 1"
---                   knownVal1 (p1 "Foo: 3.2-one\nBar: boo")
---                 assertRight "basic spaces 2"
---                   knownVal1 (p1 "Foo: 3.2-one \t   \nBar: boo")
---                 assertRight "basic spaces 3"
---                   knownVal1 (p1 "Foo : 3.2-one \t   \nBar:    boo  ")
---                 assertRight "basic spaces 3"
---                   knownVal1 (p1 "Foo:3.2-one \t   \nBar:    boo  ")
---                 assertRight "basic spaces with newline"
---                   knownVal1 (p1 "Foo:\n 3.2-one \t   \nBar:    boo  ")
---                 assertRight "basic spaces with newline"
---                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
-
+hunitTests = [
               TestLabel "license parsers" $ TestCase $
                  sequence_ [assertRight ("license " ++ show lVal) lVal
-                                        (parse parseLicense "" (show lVal))
+                                        (runP parseLicense (show lVal))
                            | lVal <- [GPL,LGPL,BSD3,BSD4]],
 
               TestLabel "Required fields" $ TestCase $
