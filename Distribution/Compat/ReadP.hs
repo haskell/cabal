@@ -18,7 +18,7 @@
 -- (<http://www.cs.chalmers.se/~koen/publications.html>).
 --
 -- This version of ReadP has been locally hacked to make it H98, by
--- Martin Sjögren <msjogren@gmail.com>
+-- Martin Sj&#xF6;gren <msjogren@gmail.com>
 --
 -----------------------------------------------------------------------------
 
