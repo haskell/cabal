@@ -17,7 +17,8 @@
 
 ** Hugs
 - look for "FIX (HUGS)"
-- can't handle cabal's OPTIONS pragmas at the top.
+- can't handle cabal's OPTIONS pragmas at the top. this requires
+  getting cpp to work from the Setup.description file.
 - no way to tell Hugs to turn packages on or off
 - no register / unregister for hugs
 
