@@ -413,7 +413,7 @@ copyFileTimes src dest
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
-#ifndef __GLASGOW_HASKELL__
+#if (!(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 600))
     | otherwise = do readFile src >>= writeFile dest
                      try (copyPermissions src dest)
                      return ()
