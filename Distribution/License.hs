@@ -1,13 +1,19 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.License
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- The License datatype.
+-- The License datatype.  For more information about these and other
+-- open-source licenses, you may visit <http://www.opensource.org/>.
+--
+-- I am not a lawyer, but as a general guideline, most Haskell
+-- software seems to be released under a BSD3 license, which is very
+-- open and free.  If you don't want to restrict the use of your
+-- software or its source code, use BSD3 or PublicDomain.
 
 {- All rights reserved.
 
@@ -43,7 +49,20 @@ module Distribution.License (
 	License(..)
   ) where
 
+-- |This datatype indicates the license under which your package is
+-- released.  It is also wise to add your license to each source file.
+-- The "AllRightsReserved" constructor is not actually a license, but
+-- states that you are not giving anyone else a license to use or
+-- distribute your work.  The comments below are general guidelines.
+-- Please read the licenses themselves and consult a lawyer if you are
+-- unsure of your rights to release the software.
 
-data License = GPL | LGPL | BSD3 | BSD4 | PublicDomain | AllRightsReserved
+data License = GPL  -- ^GNU Public License. Source code must accompany alterations.
+             | LGPL -- ^Lesser GPL, Less restrictive than GPL, useful for libraries.
+             | BSD3 -- ^3-clause BSD license, newer, no advertising clause. Very free license.
+             | BSD4 -- ^4-clause BSD license, older, with advertising clause.
+             | PublicDomain -- ^Holder makes no claim to ownership, least restrictive license.
+             | AllRightsReserved -- ^No rights are granted to others. Undistributable. Most restrictive.
              | {- ... | -} OtherLicense FilePath
+             -- ^Use another license by listing the relative path to your license file.
                deriving (Read, Show, Eq)

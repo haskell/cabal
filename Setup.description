@@ -1,6 +1,6 @@
 Name: Cabal
 Version: 0.2
-License: AllRightsReserved
+License: BSD3
 build-depends: haskell-src, posix
 Extensions: CPP
 Exposed-Modules:
