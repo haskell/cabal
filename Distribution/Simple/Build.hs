@@ -128,14 +128,14 @@ constructGHCCmdLine pref pkg_descr lbi =
     let (unsupported, flags) = extensionsToGHCFlag (maybe [] extensions (library pkg_descr))
         in if null unsupported
            then [
-                 "--make", "-odir " ++ pref, "-hidir " ++ pref,
+                 "--make", "-odir", pref, "-hidir", pref,
                  "-package-name", pkgName (package pkg_descr)
                 ] 
                 ++ flags
                 ++ [ opt | (GHC,opts) <- maybe [] options (library pkg_descr),
                            opt <- opts ]
                 ++ [ "-i" ++ pref ]
-                ++ [ "-package " ++ pkgName pkg | pkg <- packageDeps lbi ] 
+                ++ (concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ] )
                 ++ maybe [] modules (library pkg_descr)
            else error $ "Unsupported extension for GHC: "
                       ++ (concat $ intersperse ", " (map show unsupported))
