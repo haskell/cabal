@@ -60,7 +60,14 @@ import qualified Distribution.Simple.Utils(hunitTests)
 import Distribution.Simple.Configure()
 import Distribution.Simple.Register()
 
-import HUnit(runTestTT, Test(..))
+-- base
+import Control.Monad(when)
+import Directory(setCurrentDirectory, doesFileExist,
+                 doesDirectoryExist, removeDirectory)
+import System.Cmd(system)
+import System.Exit(ExitCode(..))
+
+import HUnit(runTestTT, Test(..), assertBool)
 
 label t = "-= " ++ t ++ " =-"
 
@@ -69,13 +76,34 @@ runTestTT'  (TestLabel l t)
     = putStrLn (label l) >> runTestTT t
 runTestTT' t = runTestTT t
 
+tests = [TestCase $
+         do setCurrentDirectory "test"
+            dirE1 <- doesDirectoryExist ",tmp"
+            when dirE1 (system "rm -r ,tmp">>return())
+            system "ls"
+            system "./setup configure --prefix=,tmp"
+            let targetDir = ",tmp/lib/test-1.0/"
+            system "./setup build"
+            instRetCode <- system "./setup install --user"
+            dirE <- doesDirectoryExist targetDir
+            assertBool "target dir exists" dirE
+            let files = ["A.hs", "B/A.hs", "libHStest-1.0.a"]
+            allFilesE <- sequence [doesFileExist (targetDir ++ t)
+                                     | t <- files]
+
+            sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
+                       | (e, f) <- zip allFilesE files]
+            assertBool "install returned error code" (instRetCode == ExitSuccess)
+        ]
+
+
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupTests <- Distribution.Setup.hunitTests
           mapM runTestTT' setupTests
           Distribution.Simple.Utils.hunitTests >>= runTestTT'
-          
+          runTestTT' $ TestList tests
           return ()
 
 -- Local Variables:

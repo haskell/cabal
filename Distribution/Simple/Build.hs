@@ -49,9 +49,12 @@ import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
-                                  die, rawSystemPathExit)
+                                  die, rawSystemPathExit,
+                                  pathSeperatorStr, split, createIfNotExists)
+
 
 import Control.Monad (when)
+import Data.List(intersperse)
 
 -- -----------------------------------------------------------------------------
 -- Build the library
@@ -59,9 +62,10 @@ import Control.Monad (when)
 build :: PackageDescription -> LocalBuildInfo -> IO ()
 build pkg_descr lbi = do
   setupMessage "Building" pkg_descr
-
+  let pref = ("dist" ++ pathSeperatorStr ++ "build")
+  createIfNotExists True pref
   case compilerFlavor (compiler lbi) of
-   GHC -> buildGHC pkg_descr lbi
+   GHC -> buildGHC pref pkg_descr lbi
    NHC -> buildNHC pkg_descr lbi
    _   -> die ("only building with GHC is implemented")
 
@@ -75,11 +79,11 @@ buildNHC pkg_descr lbi = do
                 ++ allModules pkg_descr)
 
 -- |Building for GHC
-buildGHC :: PackageDescription -> LocalBuildInfo -> IO ()
-buildGHC pkg_descr lbi = do
+buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
+buildGHC pref pkg_descr lbi = do
 
   -- first, build the modules
-  let args = constructGHCCmdLine pkg_descr lbi
+  let args = constructGHCCmdLine pref pkg_descr lbi
   rawSystemExit (compilerPath (compiler lbi)) args
 
   -- build any C sources
@@ -87,14 +91,14 @@ buildGHC pkg_descr lbi = do
      rawSystemExit (compilerPath (compiler lbi)) (cSources pkg_descr)
 
   -- now, build the library
-  let objs = map (++objsuffix) (allModules pkg_descr)
+  let objs = map (++objsuffix) (map dotToSep (allModules pkg_descr))
       lib  = mkLibName (showPackageId (package pkg_descr))
-  rawSystemPathExit "ar" (["q", lib] ++ objs)
+  rawSystemPathExit "ar" (["q", lib] ++ (map (pref ++) objs))
 
-constructGHCCmdLine :: PackageDescription -> LocalBuildInfo -> [String]
-constructGHCCmdLine pkg_descr _ = 
+constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
+constructGHCCmdLine pref pkg_descr _ = 
   [
-    "--make",
+    "--make", "-odir " ++ pref, "-hidir " ++ pref,
     "-package-name", showPackageId (package pkg_descr)
   ] 
   ++ extensionsToGHCFlag (extensions pkg_descr)
@@ -117,4 +121,7 @@ objsuffix = ".o"
 mkLibName :: String -> String
 mkLibName lib = "libHS" ++ lib ++ ".a"
 
-  -- ToDo: includes, includeDirs
+dotToSep :: String -> String
+dotToSep s = concat $ intersperse pathSeperatorStr (split '.' s)
+
+  -- Todo: includes, includeDirs
