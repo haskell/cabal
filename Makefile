@@ -1,5 +1,13 @@
 GHCFLAGS= -itest/HUnit-1.0/src --make -Wall
 PREF=/usr/local
+USER_FLAG =
+GHCPKGFLAGS = 
+
+ifdef USER
+USER_FLAG = --user
+GHCPKGFLAGS = -f ~/.ghc-packages
+GHCFLAGS += -package-conf ~/.ghc-packages
+endif
 
 all: moduleTest
 
@@ -15,7 +23,7 @@ config: setup
 	./setup configure --prefix=$(PREF)
 
 install: build
-	./setup install
+	./setup install $(USER_FLAG)
 
 clean:
 	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
@@ -23,17 +31,21 @@ clean:
 	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
 
 remove:
-	ghc-pkg -r Cabal-0.1
-	ghc-pkg -r HUnit-1.0
-	rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
+	-ghc-pkg $(GHCPKGFLAGS) -r Cabal-0.1
+	-ghc-pkg $(GHCPKGFLAGS) -r HUnit-1.0
+	-rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
 
 # dependencies (included):
 
-hunit:
+hunit: hunit-stamp
+hunit-stamp:
 	cd test/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
+	touch $@
 
-hunitInstall: hunit
-	cd test/HUnit-1.0 && ./setup install
+hunitInstall: hunit-stamp hunitInstall-stamp
+hunitInstall-stamp:
+	cd test/HUnit-1.0 && ./setup install $(USER_FLAG)
+	touch $@
 
 # testing...
 
