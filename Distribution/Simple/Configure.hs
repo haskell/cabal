@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -DDEBUG #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -46,9 +46,11 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       LocalBuildInfo(..),
  			  	      configure,
-                                      hunitTests,
                                       localBuildInfoFile,
-                                      exeDeps
+                                      exeDeps,
+#ifdef DEBUG
+                                      hunitTests
+#endif
                                      )
     where
 

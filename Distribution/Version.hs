@@ -55,7 +55,9 @@ module Distribution.Version (
   withinRange,
   showVersionRange,
   parseVersionRange,
+#ifdef DEBUG
   hunitTests
+#endif
  ) where
 
 import Data.List	( intersperse )
@@ -64,7 +66,9 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as P
 
+#ifdef DEBUG
 import HUnit
+#endif
 
 -- -----------------------------------------------------------------------------
 -- The Version type
@@ -328,6 +332,7 @@ reserved = P.reserved lexer
 reservedOp :: String -> CharParser st ()
 reservedOp = P.reservedOp lexer
 
+#ifdef DEBUG
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
@@ -409,4 +414,5 @@ hunitTests
             ~: False
             ~=? release3 `withinRange` (orEarlierVersion release2)
       ]
+#endif
 

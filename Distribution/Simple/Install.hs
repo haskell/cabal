@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -DDEBUG #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -46,7 +46,7 @@ module Distribution.Simple.Install (
 	install,
 	mkImportDir,
 #ifdef DEBUG        
-        ,hunitTests
+        hunitTests
 #endif
   ) where
 

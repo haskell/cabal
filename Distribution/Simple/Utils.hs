@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -DDEBUG #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -56,13 +56,15 @@ module Distribution.Simple.Utils (
 	rawSystemPathExit,
         moveSources,
         moduleToFilePath,
-        hunitTests,
         createIfNotExists,
         mkLibName,
         copyFile,
         pathJoin,
         removeFileRecursive,
-        splitExt
+        splitExt,
+#ifdef DEBUG
+        hunitTests
+#endif
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
