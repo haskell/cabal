@@ -96,16 +96,29 @@ doBuildInstall f pkgConf
     = do lbi <- getPersistBuildConfig
          f pkgConf lbi
 
+-- |Reads the package description file using IO.
 defaultMain :: IO ()
-defaultMain = readPackageDescription defaultPackageDesc >>= defaultMainNoRead
+defaultMain = do args <- getArgs
+                 (action, args) <- parseGlobalArgs args
+                 pkg_descr <- readPackageDescription defaultPackageDesc
+                 defaultMainWorker pkg_descr action args
 
+-- |Accept description as input rather than using IO to read it.
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         let distPref = "dist"
+         (action, args) <- parseGlobalArgs args
+         defaultMainWorker pkg_descr action args
+
+-- |Helper function for /defaultMain/ and /defaultMainNoRead/
+defaultMainWorker :: PackageDescription
+                  -> Action
+                  -> [String] -- ^args1
+                  -> IO ()
+defaultMainWorker pkg_descr action args
+    = do let distPref = "dist"
          let buildPref = pathJoin [distPref, "build"]
          let srcPref = pathJoin [distPref, "src"]
-         (action, args) <- parseGlobalArgs args
          case action of
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs flags args []
