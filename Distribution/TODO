@@ -1,7 +1,7 @@
 * 0.1
-** Build executables for mainModules
 ** if library is Nothing, then don't build the library. sanity check
    for both library and executables == nothing.
+*** add test case for no libraries
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types

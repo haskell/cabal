@@ -114,8 +114,8 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any executables
   sequence_ [rawSystemExit (compilerPath (compiler lbi))
-               ["--make", modPath, "-o", pathJoin [pref, exeName]]
-             | (Executable exeName modPath _) <- executables pkg_descr]
+               ["--make", pathJoin [hsSourceDir bi, modPath], "-o", pathJoin [pref, exeName]]
+             | (Executable exeName modPath bi) <- executables pkg_descr]
 
   -- now, build the library
   let hObjs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
