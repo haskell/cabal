@@ -5,3 +5,7 @@ tests:
 
 check: tests
 	./moduleTest
+
+pushall:
+	darcs push --all ijones@monk.syntaxpolice.org:/home/ijones/public_html/darcs_repos/library-infrastructure
+	darcs push --all ijones@cvs.haskell.org:/home/ijones/library-infrastructure
