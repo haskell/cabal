@@ -49,7 +49,7 @@ module Distribution.Package (
 	emptyPackageDescription,
         parsePackageDesc,
         hasLibs,
-#ifdef DEBUG        
+#ifdef DEBUG
         hunitTests,
         test
 #endif

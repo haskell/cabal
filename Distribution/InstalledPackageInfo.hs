@@ -8,7 +8,11 @@
 -- Portability :  portable
 --
 -- Explanation: Information on how to USE an installed package,
--- consumed by HC-PKG (ghc-pkg, for instance).
+-- consumed by HC-PKG (ghc-pkg, for instance).  THIS MODULE IS NOT YET
+-- USED.  HC-PKG is not yet implemented, and ghc-pkg has its own file
+-- format, so this module is very much subject to change once HC-PKG
+-- is implemented.
+
 
 {- All rights reserved.
 
