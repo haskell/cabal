@@ -16,8 +16,8 @@ module Distribution.Simple.GHCPackageConfig (
 	defaultGHCPackageConfig,
 	showGHCPackageConfig,
 
-        localPackageConfig, maybeCreatePackageConfig,
-        canWritePackageConfig, canReadPackageConfig
+        localPackageConfig, maybeCreateLocalPackageConfig,
+        canWriteLocalPackageConfig, canReadLocalPackageConfig
   ) where
 
 import Distribution.Package (PackageDescription(..), BuildInfo(..),
@@ -43,8 +43,8 @@ localPackageConfig = do u <- getEnv "HOME"
 -- |If the package file doesn't exist, we should try to create it.  If
 -- it already exists, do nothing and return true.  This does not take
 -- into account whether it is readable or writeable.
-maybeCreatePackageConfig :: IO Bool  -- ^success?
-maybeCreatePackageConfig
+maybeCreateLocalPackageConfig :: IO Bool  -- ^success?
+maybeCreateLocalPackageConfig
     = do f <- localPackageConfig
          exists <- doesFileExist f
          unless exists $ (try (writeFile f "[]\n") >> return ())
@@ -60,12 +60,12 @@ checkPermission perm
             else return False
 
 -- |Check for read permission on the localPackageConfig
-canReadPackageConfig :: IO Bool
-canReadPackageConfig = checkPermission readable
+canReadLocalPackageConfig :: IO Bool
+canReadLocalPackageConfig = checkPermission readable
 
 -- |Check for write permission on the localPackageConfig
-canWritePackageConfig :: IO Bool
-canWritePackageConfig = checkPermission writable
+canWriteLocalPackageConfig :: IO Bool
+canWriteLocalPackageConfig = checkPermission writable
 
 -- -----------------------------------------------------------------------------
 -- GHC 6.2 PackageConfig type

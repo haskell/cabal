@@ -66,7 +66,7 @@ import Control.Exception (try)
 import Data.List(nub)
 import System.Directory (removeFile)
 import qualified Distribution.Simple.GHCPackageConfig
-    as GHC (localPackageConfig, maybeCreatePackageConfig, canReadPackageConfig)
+    as GHC (localPackageConfig, canReadLocalPackageConfig)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -102,13 +102,13 @@ buildNHC pkg_descr lbi = do
                            opt <- opts ]
                 ++ maybe [] modules (library pkg_descr))
 
--- |Building for GHC
+-- |Building for GHC.  If ~/.ghc-packages exists and is readable, add
+-- it to the command-line.
 buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildGHC pref pkg_descr lbi = do
   let ghcPath = compilerPath (compiler lbi)
-  GHC.maybeCreatePackageConfig
   pkgConf <- GHC.localPackageConfig
-  pkgConfReadable <- GHC.canReadPackageConfig
+  pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr $ \buildInfo' -> do
       createIfNotExists True (pathJoin [pref, hsSourceDir buildInfo'])
