@@ -125,7 +125,9 @@ tests: moduleTest clean
 	cd test/A && make
 	cd test/HUnit-1.0 && make
 
-check: tests
+check:
+	rm moduleTest
+	make moduleTest
 	./moduleTest
 
 # distribution...
