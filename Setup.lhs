@@ -1,4 +1,4 @@
-#!/usr/bin/runhugs
+#!/usr/bin/runhugs -98
 
 > module Main where
 

@@ -33,6 +33,19 @@ build-stamp: config
 install: build-stamp
 	./setup install $(USER_FLAG)
 
+hugsbootstrap:
+	rm -rf dist/tmp
+	mkdir -p dist/tmp
+	mkdir dist/hugs
+	cp -r Distribution Compat dist/tmp
+	hugs-package dist/tmp dist/hugs
+	cp Setup.lhs Setup.description dist/hugs
+
+hugsinstall: hugsbootstrap
+	cd dist/hugs && ./Setup.lhs configure --hugs
+	cd dist/hugs && ./Setup.lhs build
+	cd dist/hugs && ./Setup.lhs install
+
 # Lame for now. I don't mind though, because cabal itself should be
 # able to do this soon.  Needs cpphs.
 haddock:
@@ -69,6 +82,7 @@ clean-cabal:
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.o *.hi moduleTest dist installed-pkg-config
 	-rm -f build-stamp
+	-rm -rf dist/hugs
 
 clean-hunit:
 	-rm -f hunit-stamp hunitInstall-stamp
