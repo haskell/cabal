@@ -1,3 +1,5 @@
+{-# OPTIONS -cpp -DDEBUG #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Setup
@@ -41,7 +43,11 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Setup (parseArgs, Action(..), hunitTests) where
+module Distribution.Setup (parseArgs, Action(..), ConfigFlags,
+#ifdef DEBUG
+                           hunitTests,
+#endif
+                           ) where
 
  -- Local
 import Distribution.Misc(LocalBuildInfo, CompilerFlavor(..),
@@ -124,6 +130,7 @@ parseArgs args
     isInstallPrefix (InstPrefix m) = True
     isInstallPrefix _              = False
 
+-- Converts the abstract "flag" type to a more concrete type.
 getConfigFlags :: [Flag] -> Either String ConfigFlags
 getConfigFlags flags
     = do flavor  <- getOneOpt [f | Just f <- map convert flags]
