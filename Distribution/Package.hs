@@ -120,7 +120,7 @@ setPkgVersion v desc@PackageDescription{package=pkgIdent}
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
-    =  PackageDescription {package      = undefined,
+    =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
                       license      = AllRightsReserved,
                       copyright    = "",
                       maintainer   = "",
@@ -143,30 +143,60 @@ emptyPackageDescription
 -- * Parsing
 -- ------------------------------------------------------------
 
+notImp :: String -> a
+notImp s = error $ s ++ " not yet implemented"
+
 -- |Parse the given package file.  FIX: don't use read / show.
 parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p
     = openFile p ReadMode >>= hGetContents >>= return . read
 
-
 parseDesc :: GenParser Char st PackageDescription
-parseDesc = error "not yet implemented"
+parseDesc = notImp "parseDesc"
 
--- |Parse the required fields. FIX: implmenet.  We'll basically run
--- through these a bunch of times updating the state as we go along,
--- as is noted.
--- parseReqFields 
---     = try (do v <- parseField "Version" True parseVersion
---               updateState(setPkgVersion v)
---           )
---       <|> (parseField "Name" False 
---               updateState (setPkgName n)
---       <|> (parseField 
+--doParseReqFields :: String -> Either PackageDescription a
+doParseReqFields = runParser parseReqFields emptyPackageDescription ""
 
--- |Must know when to stop ... :)
-parseFreeText = error "not implemented"
+-- |Parse the required fields. We'll basically run through these a
+-- bunch of times updating the state as we go along, as is noted.
 
-word :: Parser String
+parseReqFields = do many1 parseReqFieldsHelp
+                    getState
+    where
+    parseReqFieldsHelp :: GenParser Char PackageDescription ()
+    parseReqFieldsHelp
+        = try (parseField "Version" True parseVersion
+               >>= (updateState . setPkgVersion))
+          <|> try (parseField "Name" False word
+               >>= (updateState . setPkgName))
+          <|> try (parseField "Copyright" True parseFreeText
+               >>= (updateState . (\l pkgD -> pkgD{copyright=l})))
+          <|> try (parseField "License" True parseLicense
+               >>= (updateState . (\c pkgD -> pkgD{license=c})))
+
+-- |A parser for any of the given parsers.  This actually seems to
+-- behave differently from "choice".
+
+anyOf :: [GenParser tok st a] -> GenParser tok st a
+anyOf [a] = a
+anyOf (h:t) = foldl ((<|>) . try) (try h) t
+
+parseLicense :: GenParser Char st License
+parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
+
+-- |Mapping between the licenses and their names
+licenses :: [(String, License)]
+licenses= [("GPL", GPL),
+           ("LGPL", LGPL),
+           ("BSD3", BSD3),
+           ("BSD4", BSD4),
+           ("PublicDomain", PublicDomain),
+           ("AllRightsReserved", AllRightsReserved)]
+
+-- |Must know when to stop, but still not eat the next field!
+parseFreeText = notImp "parseFreeText"
+
+word :: GenParser Char st String
 word = many1 letter <?> "word"
 
 --parseWordCommaList :: GenParser Char st [t]
@@ -202,13 +232,13 @@ parseField s newline p
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
-testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-foo-bar-bang\nLicense: AllRightsReserved\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-foo\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: foo/bar/bang.c, bong/boing.h\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: foo/bar, fang/fong\nIncludes: /foo/bar, jedi/night\nOptions: ghc: -fTH, hugs: +TH"
+testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-foo-bar-bang\nLicense: LGPL\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-foo\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: foo/bar/bang.c, bong/boing.h\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: foo/bar, fang/fong\nIncludes: /foo/bar, jedi/night\nOptions: ghc: -fTH, hugs: +TH"
 
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
                                                  pkgVersion = Version {versionBranch = [0,1],
                                                  versionTags = []}},
-                    license = AllRightsReserved,
+                    license = LGPL,
                     copyright = "",
                     maintainer = "",
                     stability = "",
@@ -274,10 +304,36 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                  assertRight "basic spaces with newline"
                    knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
 
+              TestCase (assertRight "BSD4" BSD4 (parse parseLicense "" "BSD4")),
+
+              TestLabel "license parsers" $ 
+                        TestCase (sequence_ [assertRight ("license " ++ lName) lVal
+                                                    (parse parseLicense "" lName)
+                                             | (lName, lVal) <- licenses]),
+
+              TestLabel "Required fields" $ TestCase $
+                 do assertRight "some fields"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0] ["date=asdf"]))}
+                       (doParseReqFields "Name: foo\nVersion: 0.0-asdf")
+                    assertRight "more fields foo"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0]["date=asdf"])),
+                                               license=GPL}
+                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+                                          
+                    assertRight "required fields for foo"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0]["date=asdf"])),
+                                        license=GPL, copyright="2004 isaac jones"}
+                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
+                                          
+
               TestLabel "Package description" $ TestCase $ 
                  assertRight "entire package description" testPkgDescAnswer
                                                           (parse parseDesc "" testPkgDesc)
              ]
+
 
 assertRight :: (Eq val) => String -> val -> (Either a val) -> Assertion
 assertRight mes expected actual

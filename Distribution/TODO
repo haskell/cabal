@@ -1,5 +1,5 @@
 * misc
-** version parser is probably too greedy.
+** license parser parses either known strings, or a filename.
 ** Possibly create a (native?) zlib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
