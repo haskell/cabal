@@ -56,7 +56,7 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
                                   mkLibName, moveSources, pathJoin, 
-                                  splitExt, joinExt
+                                  splitFilePath, joinFilenameDir, joinExt
                                  )
 
 
@@ -121,8 +121,8 @@ buildGHC pref pkg_descr lbi = do
 
       let hObjs = [ pathJoin [hsSourceDir build, dotToSep x `joinExt` objsuffix]
                   | x <- modules build ]
-          cObjs = [ file `joinExt` objsuffix
-                  | (file, _) <- (map splitExt (cSources build)) ]
+          cObjs = [ path `joinFilenameDir` file `joinExt` objsuffix
+                  | (path, file, _) <- (map splitFilePath (cSources build)) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs)
         (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))

@@ -42,11 +42,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
-	splitFilenameDir,
+	splitFilePath,
 	joinFilenameDir,
-	split,
+        joinExt,	
 	isPathSeparator,
         pathSeparatorStr,
+        split,
 	setupMessage,
 	die,
 	findBinary,
@@ -61,8 +62,6 @@ module Distribution.Simple.Utils (
         copyFile,
         pathJoin,
         removeFileRecursive,
-        splitExt,
-        joinExt,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -96,43 +95,30 @@ import HUnit ((~:), (~=?), Test(..), assertEqual)
 -- -----------------------------------------------------------------------------
 -- Pathname-related utils
 
--- "foo/bar/xyzzy.ext" -> ("foo/bar", "xyzzy.ext")
-splitFilenameDir :: String -> (String,String)
-splitFilenameDir str
-  = let (dir, rest) = split_longest_prefix str isPathSeparator
-  	real_dir | null dir  = "."
-		 | otherwise = dir
-    in  (real_dir, rest)
-
--- "foo/bar" "xyzzy.ext" -> "foo/bar/xyzzy.ext"
-joinFilenameDir :: String -> String -> FilePath
-joinFilenameDir dir fname = dir++pathSeparator:fname
-
-split :: Char -> String -> [String]
-split c s = case rest of
-		[]     -> [chunk] 
-		_:rest' -> chunk : split c rest'
-  where (chunk, rest) = break (==c) s
-
-split_longest_prefix :: String -> (Char -> Bool) -> (String,String)
-split_longest_prefix s pred'
-  = case pre of
-	[]      -> ([], reverse suf)
-	(_:pre') -> (reverse pre', reverse suf)
-  where (suf,pre) = break pred' (reverse s)
-
 -- | Split the path into filename and extension
-splitExt :: FilePath -> (String, String)
-splitExt p
-  = case pre of
-	[]       -> (reverse suf, [])
-	(_:pre') -> (reverse pre', reverse suf)
-  where (suf,pre) = break (== '.') (reverse p)
+splitFilePath :: FilePath -> (String, String, String)
+splitFilePath p =
+  case pre of
+    []      -> (reverse real_dir, reverse suf, [])
+    (_:pre) -> (reverse real_dir, reverse pre, reverse suf)
+  where
+    (file,dir) = break isPathSeparator (reverse p)
+    (suf,pre)  = break (== '.') file
+    
+    real_dir = case dir of
+      []      -> "."
+      [_]     -> pathSeparatorStr
+      (_:dir) -> dir
 
--- |Split the path into filename and extension
+-- | Join extension to file path
 joinExt :: FilePath -> String -> String
 joinExt path ""  = path
-joinExt path ext = path ++ '.':ext
+joinExt path ext = path++'.':ext
+
+-- Join file name to directory
+joinFilenameDir :: String -> String -> FilePath
+joinFilenameDir dir ""    = dir
+joinFilenameDir dir fname = dir++pathSeparator:fname
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =
@@ -141,6 +127,22 @@ isPathSeparator ch =
 #else
   ch == '/'
 #endif
+
+pathSeparator :: Char
+#ifdef mingw32_TARGET_OS
+pathSeparator = '\\'
+#else
+pathSeparator = '/'
+#endif
+
+pathSeparatorStr :: String
+pathSeparatorStr = [pathSeparator]
+
+split :: Char -> String -> [String]
+split c s = case rest of
+		[]     -> [chunk] 
+		_:rest' -> chunk : split c rest'
+  where (chunk, rest) = break (==c) s
 
 -- ToDo: add cacheing?
 findBinary :: String -> IO (Maybe FilePath)
@@ -217,18 +219,6 @@ rawSystemPathExit prog args = do
 -- * File Utilities
 -- ------------------------------------------------------------
 
-
--- |FIX: Do we actually have to make something different for windows,
--- or does this work?
-pathSeparator :: Char
-#ifdef mingw32_TARGET_OS
-pathSeparator = '\\'
-#else
-pathSeparator = '/'
-#endif
-
-pathSeparatorStr :: String
-pathSeparatorStr = [pathSeparator]
 
 createIfNotExists :: Bool     -- ^Create its parents too?
 		  -> FilePath -- ^The path to the directory you want to make
@@ -437,8 +427,22 @@ hunitTests
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
-        TestLabel "splitExt" $ TestList 
-          ["simpleCase" ~: "failed" ~: ("/foo/bar", ".txt") ~=? (splitExt"/foo/bar.txt"), 
-           "dotInDirName" ~: "failed" ~: ("/foo.txt/bar","") ~=? (splitExt "/foo.txt/bar")]
-        ]
+        TestLabel "splitFilePath" $ TestList 
+           ["simpleCase"   ~: ("/foo",     "bar", "txt") ~=? (splitFilePath "/foo/bar.txt"),
+            "dotInDirName" ~: ("/foo.txt", "bar",    "") ~=? (splitFilePath "/foo.txt/bar"),
+            "justName"     ~: (".",        "bar",    "") ~=? (splitFilePath "bar"),
+            "justExt"      ~: (".",           "", "txt") ~=? (splitFilePath ".txt"),
+            "rootDir"      ~: ("/",        "foo",    "") ~=? (splitFilePath "/foo"),
+            "noFile"       ~: ("/foo/bar",    "",    "") ~=? (splitFilePath "/foo/bar/"),
+            "curDir"       ~: (".",           "",    "") ~=? (splitFilePath "."),
+	    "root"         ~: ("/",           "",    "") ~=? (splitFilePath "/")
+	   ],
+        TestLabel "joinFilenameDir&joinExt" $ TestList
+           ["simpleCase"   ~: ("/foo/bar.txt") ~=? ("/foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
+            "justDir"      ~: ("/foo")         ~=? ("/foo" `joinFilenameDir` (""    `joinExt` "")),
+            "justExt"      ~: ("./.txt")       ~=? ("."    `joinFilenameDir` (""    `joinExt` "txt")),
+            "curDir"       ~: ("/")            ~=? ("/"    `joinFilenameDir` (""    `joinExt` "")),
+            "root"         ~: (".")            ~=? ("."    `joinFilenameDir` (""    `joinExt` ""))
+	   ]
+          ]
 #endif
