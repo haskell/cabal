@@ -54,7 +54,7 @@ import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
-                                  mkLibName, moveSources, pathJoin
+                                  mkLibName, moveSources, pathJoin, splitExt
                                  )
 
 
@@ -109,12 +109,13 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any C sources
   when (not (null (maybe [] cSources (library pkg_descr)))) $
-     rawSystemExit (compilerPath (compiler lbi)) (maybe [] cSources (library pkg_descr))
+     rawSystemExit (compilerPath (compiler lbi)) (maybe [] cSources (library pkg_descr) ++ ["-odir " ++ pref, "-hidir " ++ pref, "-c"])
 
   -- now, build the library
-  let objs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
+  let hObjs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
+      cObjs = [file ++ objsuffix | (file, _) <- (map splitExt (maybe [] cSources (library pkg_descr)))]
       lib  = mkLibName pref (showPackageId (package pkg_descr))
-  rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- objs])
+  rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs])
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr lbi = 

@@ -2,6 +2,7 @@ Name: test
 Version: 1.0
 Modules: A, B.A
 Exposed-Modules: A
+C-Sources: hello.c
 Extensions: ForeignFunctionInterface
 
 Executable: testA

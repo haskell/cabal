@@ -61,7 +61,8 @@ module Distribution.Simple.Utils (
         mkLibName,
         copyFile,
         pathJoin,
-        removeFileRecursive
+        removeFileRecursive,
+        splitExt
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
@@ -103,6 +104,10 @@ split_longest_prefix s pred'
 	[]      -> ([], reverse suf)
 	(_:pre') -> (reverse pre', reverse suf)
   where (suf,pre) = break pred' (reverse s)
+
+-- |Split the path into filename and extension
+splitExt :: FilePath -> (String, String)
+splitExt p = split_longest_prefix p (== '.')
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =
