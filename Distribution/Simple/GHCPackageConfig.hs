@@ -17,9 +17,9 @@ module Distribution.Simple.GHCPackageConfig (
 	showGHCPackageConfig
   ) where
 
-import Distribution.Package
-import Distribution.Simple.Configure
-import Distribution.Simple.Install
+import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Simple.Configure (LocalBuildInfo(..))
+import Distribution.Simple.Install (mkImportDir)
 
 import Text.PrettyPrint.HughesPJ
 

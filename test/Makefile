@@ -3,8 +3,11 @@ all:
 clean:
 	rm *.o setup *.hi
 check: all
-	./setup configure --prefix=/tmp/foo
+	./setup configure --user --prefix=/tmp/foo
+	./setup install --install-prefix=/tmp/bar
+	ls /tmp/bar*
+	# install w/ register!
 	./setup install
-	ls /tmp/foo*
+#	ls /tmp/foo*
 	./setup sdist
 	ls dist

@@ -47,7 +47,7 @@ module Distribution.Simple.Install (
 	mkImportDir,
   ) where
 
-import Distribution.Package
+import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources)
 
@@ -58,10 +58,14 @@ import System.Exit
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
 -- know which files to expect?
-install :: PackageDescription -> LocalBuildInfo -> IO ()
-install pkg_descr lbi = do
+install :: PackageDescription -> LocalBuildInfo
+        -> Maybe FilePath -- ^install-prefix
+        -> IO ()
+install pkg_descr lbi install_prefixM = do
+  let pref = maybe (prefix lbi) id install_prefixM
   setupMessage "Installing" pkg_descr
-  moveSources (prefix lbi) (allModules pkg_descr) (mainModules pkg_descr)
+  moveSources pref (allModules pkg_descr) (mainModules pkg_descr)
+  -- installation step should be performed by caller.
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
