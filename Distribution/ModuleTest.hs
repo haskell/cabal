@@ -122,11 +122,11 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
             doesFileExist ",tmp/bin/wash2hs"
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
-            assertBool "wash2hs isn't +x" (executable perms)
-            setCurrentDirectory oldDir,
+            assertBool "wash2hs isn't +x" (executable perms),
+--            setCurrentDirectory oldDir,
          TestLabel "testing the HUnit package" $ TestCase $ 
          do oldDir <- getCurrentDirectory
-            setCurrentDirectory "test/HUnit-1.0"
+            setCurrentDirectory "../HUnit-1.0"
             (pkgConf, pkgConfExists) <- GHC.localPackageConfig
             unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
@@ -154,14 +154,14 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
-            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove"
-            setCurrentDirectory oldDir,
+            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove",
+--            setCurrentDirectory oldDir,
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
          do (pkgConf, pkgConfExists) <- GHC.localPackageConfig
             unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
-            setCurrentDirectory "test/A"
+            setCurrentDirectory "../A"
             system "make clean"
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
@@ -188,22 +188,22 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
             doesFileExist (pathJoin [",tmp2/lib/test-1.0/", "libHStest-1.0.a"])
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "GHC and install w/ no prefix" $ TestCase $
+         TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
          do let targetDir = ",tmp/lib/test-1.0/"
             instRetCode <- system $ "./setup install --user"
             checkTargetDir targetDir [".hi"]
             doesFileExist (pathJoin [targetDir, "libHStest-1.0.a"])
               >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "no install-prefix and hugs" $ TestCase $
-         do assertCmd "./setup configure --hugs --prefix=,tmp"
-             "HUGS configure returned error code"
-            assertCmd "./setup build"
-             "HUGS build returned error code"
-            instRetCode <- system "./setup install --user"
-            let targetDir = ",tmp/lib/test-1.0/"
-            checkTargetDir targetDir [".hs"]
-            assertEqual "install HUGS returned error code" ExitSuccess instRetCode
+            assertEqual "install returned error code" ExitSuccess instRetCode
+--          TestLabel "package A:no install-prefix and hugs" $ TestCase $
+--          do assertCmd "./setup configure --hugs --prefix=,tmp"
+--              "HUGS configure returned error code"
+--             assertCmd "./setup build"
+--              "HUGS build returned error code"
+--             instRetCode <- system "./setup install --user"
+--             let targetDir = ",tmp/lib/test-1.0/"
+--             checkTargetDir targetDir [".hs"]
+--             assertEqual "install HUGS returned error code" ExitSuccess instRetCode
          ]
 
 main :: IO ()

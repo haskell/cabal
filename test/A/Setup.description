@@ -6,11 +6,10 @@ C-Sources: hello.c
 Extensions: ForeignFunctionInterface
 
 Executable: testA
-Modules: A, Main
+Modules: A, MainA
 Main-is: MainA.hs
 Extensions: OverlappingInstances
 
 Executable: testB
-Modules: B, Main
-Main-is: MainB.hs
-hs-source-dir: B
+Modules: B.A, B.MainB
+Main-is: B/MainB.hs

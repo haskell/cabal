@@ -1,5 +1,5 @@
 all:
-	ghc -Wall --make -i../../:src Setup.lhs -o setup
+	ghc -DDEBUG -Wall --make -i../../:src Setup.lhs -o setup
 semiclean:
 	rm -rf ,tmp dist
 	find . -name "*.o" |xargs rm -f
