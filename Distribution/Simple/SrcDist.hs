@@ -40,6 +40,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
+-- NOTE: FIX: we don't have a great way of testing this module, since
+-- we can't easily look inside a tarball once its created.
+
 module Distribution.Simple.SrcDist (
 	sdist
 #ifdef DEBUG        
@@ -47,10 +50,10 @@ module Distribution.Simple.SrcDist (
 #endif
   )  where
 
-import Distribution.Package(PackageDescription(..), BuildInfo(..), showPackageId)
+import Distribution.Package(PackageDescription(..), BuildInfo(..), showPackageId, allModules)
 import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin)
-import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, knownSuffixHandlers)
+import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, knownSuffixHandlers, removePreprocessed)
 
 import Control.Monad(when)
 import System.Cmd (system)
@@ -73,9 +76,13 @@ sdist tmpDir targetPref pps pkg_descr _  = do
   case library pkg_descr of
     Just lib -> let srcDir = hsSourceDir lib
                     tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
-                 in moveSources srcDir tmpLoc1 (modules lib)
-                        (ppSuffixes (knownSuffixHandlers ++ pps))
+                 in do moveSources srcDir tmpLoc1 (modules lib)
+                         (ppSuffixes (knownSuffixHandlers ++ pps))
+                       removePreprocessed tmpLoc1 (modules lib) (ppSuffixes pps)
+
     Nothing  -> return ()
+-- FIX: move executables!  
+--  removePreprocessed tmpLoc1 (allModules pkg_descr) (ppSuffixes pps) (for execs)
   let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
   moveSources ""     tmpLoc2 ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
