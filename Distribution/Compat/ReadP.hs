@@ -74,7 +74,7 @@ module Distribution.Compat.ReadP
   )
  where
 
-#if __GLASGOW_HASKELL__ >= 603
+#if __GLASGOW_HASKELL__ >= 603 || __HUGS__
 
 import Text.ParserCombinators.ReadP hiding (ReadP)
 import qualified Text.ParserCombinators.ReadP as ReadP
@@ -193,7 +193,7 @@ look = R Look
 -- ^ Always fails.
 pfail = R (\_ -> Fail)
 
---(+++) :: ReadP a -> ReadP a -> ReadP a
+--(+++) :: ReadP r a -> ReadP r a -> ReadP r a
 -- ^ Symmetric choice.
 R f1 +++ R f2 = R (\k -> f1 k `mplus` f2 k)
 

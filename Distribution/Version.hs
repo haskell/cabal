@@ -63,7 +63,7 @@ module Distribution.Version (
 #endif
  ) where
 
-#if __GLASGOW_HASKELL__ >= 603
+#if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ >= 603
 import Data.Version	( Version(..), showVersion, parseVersion )
 #endif
 
@@ -80,7 +80,7 @@ import HUnit
 -- -----------------------------------------------------------------------------
 -- The Version type
 
-#if __GLASGOW_HASKELL__ < 603
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
 
 -- Code copied from Data.Version in GHC 6.3+ :
 

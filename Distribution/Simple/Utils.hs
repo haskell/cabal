@@ -62,7 +62,7 @@ module Distribution.Simple.Utils (
 #endif
   ) where
 
-#if __GLASGOW_HASKELL__ < 603 
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603 
 #include "config.h"
 #endif
 
@@ -75,7 +75,7 @@ import Data.Maybe(Maybe, catMaybes)
 import System.IO (hPutStr, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
-#if defined(__GLASGOW_HASKELL__) && !defined(mingw32_TARGET_OS)
+#if (__GLASGOW_HASKELL__ || __HUGS__) && !defined(mingw32_TARGET_OS)
 import System.Posix.Internals (c_getpid)
 #endif
 
@@ -294,9 +294,10 @@ withTempFile tmp_dir extn action
 	   if b then findTempName tmp_dir (x+1)
 		else action filename `finally` try (removeFile filename)
 
-#ifdef mingw32_HOST_OS
-foreign import ccall unsafe "_getpid" getProcessID :: IO Int -- relies on Int == Int32 on Windows
-#elif defined(__GLASGOW_HASKELL__)
+#ifdef mingw32_TARGET_OS
+foreign import ccall unsafe "_getpid" getProcessID :: IO Int
+		 -- relies on Int == Int32 on Windows
+#elif __GLASGOW_HASKELL__ || __HUGS__
 getProcessID :: IO Int
 getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 #else

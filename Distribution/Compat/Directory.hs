@@ -3,11 +3,11 @@ module Distribution.Compat.Directory (
  	findExecutable, copyFile
   ) where
 
-#if __GLASGOW_HASKELL__ < 603
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
 #include "config.h"
 #endif
 
-#if __GLASGOW_HASKELL__ > 602
+#if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
 
 import System.Directory 	( findExecutable, copyFile )
 

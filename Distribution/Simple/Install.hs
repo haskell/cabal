@@ -50,7 +50,7 @@ module Distribution.Simple.Install (
 #endif
   ) where
 
-#if __GLASGOW_HASKELL__ < 603 
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603 
 #include "config.h"
 #endif
 
@@ -58,7 +58,7 @@ import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..),
 	setupMessage, hasLibs, withLib)
 import Distribution.Package (showPackageId)
-import Distribution.Simple.Configure(LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(moveSources, rawSystemExit,
                                  mkLibName,
                                  die, createIfNotExists

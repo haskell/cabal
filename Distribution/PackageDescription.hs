@@ -257,7 +257,7 @@ basicStanzaFields =
                            text                   (munch (const True))
                            author                 (\val pkg -> pkg{author=val})
  , listField "tested-with"
-                           showTestedWith         parseTestedWith
+                           showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
 
  ]
@@ -268,7 +268,7 @@ executableStanzaFields =
                            text               (munch (const True))
                            exeName            (\xs    exe -> exe{exeName=xs})
  , simpleField "main-is"
-                           showFilePath       parseFilePath
+                           showFilePath       parseFilePathQ
                            modulePath         (\xs    exe -> exe{modulePath=xs})
  ]
 
@@ -278,28 +278,28 @@ binfoFields =
                            showDependency     parseDependency
                            buildDepends       (\xs    binfo -> binfo{buildDepends=xs})
  , listField   "modules"         
-                           text               parseModuleName
+                           text               parseModuleNameQ
                            modules            (\xs    binfo -> binfo{modules=xs})
  , listField   "exposed-modules"
-                           text               parseModuleName
+                           text               parseModuleNameQ
                            exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
  , listField   "c-sources"
-                           showFilePath       parseFilePath
+                           showFilePath       parseFilePathQ
                            cSources           (\paths binfo -> binfo{cSources=paths})
  , listField   "extensions"
-                           (text . show)      parseExtension
+                           (text . show)      parseExtensionQ
                            extensions         (\exts  binfo -> binfo{extensions=exts})
  , listField   "extra-libs"
-                           text               parseLibName
+                           text               parseLibNameQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "includes"
-                           showFilePath       parseFilePath
+                           showFilePath       parseFilePathQ
                            includes           (\paths binfo -> binfo{includes=paths})
  , listField   "include-dirs"
-                           showFilePath       parseFilePath
+                           showFilePath       parseFilePathQ
                            includes           (\paths binfo -> binfo{includeDirs=paths})
  , simpleField "hs-source-dir"
-                           showFilePath       parseFilePath
+                           showFilePath       parseFilePathQ
                            hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
  , optsField   "options-ghc"  GHC
                            options            (\path  binfo -> binfo{options=path})

@@ -22,7 +22,7 @@ module Distribution.Simple.GHCPackageConfig (
 
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Simple.Configure (LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
 
 import Control.Exception (try)

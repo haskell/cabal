@@ -46,11 +46,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.ParseUtils (
 	LineNo, PError(..), showError, myError, runP,
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
-	parseFilePath, parseLibName,
-	parseModuleName, parseReadS, parseDependency, parseOptVersion,
-	parseTestedWith, parseLicense, parseExtension, parseCommaList,
+	parseFilePathQ, parseLibNameQ,
+	parseModuleNameQ, parseDependency, parseOptVersion,
+	parsePackageNameQ, parseVersionRangeQ,
+	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList,
 	showFilePath, showTestedWith, showDependency,
-	simpleField, listField, licenseField, optsField,
+	simpleField, listField, licenseField, optsField, 
+	parseReadS, parseQuoted,
   ) where
 
 import Text.PrettyPrint.HughesPJ
@@ -141,10 +143,10 @@ licenseField name flag get set = StanzaField name
    (\lineNo val st ->
        if flag 
          then do 
-            path <- runP lineNo name parseFilePath val
+            path <- runP lineNo name parseFilePathQ val
             return (set (OtherLicense path) st)
          else do
-            x <- runP lineNo name parseLicense val
+            x <- runP lineNo name parseLicenseQ val
             return (set x st))
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> StanzaField b
@@ -199,48 +201,63 @@ brk (n,xs) = case break (==':') xs of
              (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"
 
 -- |parse a module name
-parseModuleName :: ReadP r String
-parseModuleName = do c <- satisfy isUpper
-                     cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
-                     return (c:cs)
+parseModuleNameQ :: ReadP r String
+parseModuleNameQ = parseQuoted mod <++ mod
+ where mod = do 
+	  c <- satisfy isUpper
+	  cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
+	  return (c:cs)
 
-parseFilePath :: ReadP r FilePath
-parseFilePath = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
+parseFilePathQ :: ReadP r FilePath
+parseFilePathQ = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
 
 parseDependency :: ReadP r Dependency
-parseDependency = do name <- parsePackageName
+parseDependency = do name <- parsePackageNameQ
                      skipSpaces
-                     ver <- parseVersionRange <++ return AnyVersion
+                     ver <- parseVersionRangeQ <++ return AnyVersion
                      skipSpaces
                      return $ Dependency name ver
 
+parsePackageNameQ = parseQuoted parsePackageName <++ parsePackageName 
+parseVersionRangeQ = parseQuoted parseVersionRange <++ parseVersionRange
+
 parseOptVersion :: ReadP r Version
-parseOptVersion = parseVersion <++ return noVersion
-  where noVersion = Version{ versionBranch=[], versionTags=[] }
+parseOptVersion = parseQuoted ver <++ ver
+  where ver = parseVersion <++ return noVersion
+	noVersion = Version{ versionBranch=[], versionTags=[] }
 
-parseTestedWith :: ReadP [(CompilerFlavor,VersionRange)] (CompilerFlavor,VersionRange)
-parseTestedWith = do compiler <- parseReadS
-		     skipSpaces
-		     version <- parseVersionRange <++ return AnyVersion
-		     skipSpaces
-		     return (compiler,version)
+parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
+parseTestedWithQ = parseQuoted tw <++ tw
+  where tw = do compiler <- parseReadS
+		skipSpaces
+		version <- parseVersionRange <++ return AnyVersion
+		skipSpaces
+		return (compiler,version)
 
-parseLicense :: ReadP r License
-parseLicense = parseReadS
+parseLicenseQ :: ReadP r License
+parseLicenseQ = parseQuoted parseReadS <++ parseReadS
 
-parseExtension :: ReadP r Extension
-parseExtension = parseReadS
+-- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
+-- because the "compat" version of ReadP isn't quite powerful enough.  In
+-- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
+-- Hence the trick above to make 'lic' polymorphic.
 
-parseLibName :: ReadP r String
-parseLibName = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
+parseExtensionQ :: ReadP r Extension
+parseExtensionQ = parseQuoted parseReadS <++ parseReadS
+
+parseLibNameQ :: ReadP r String
+parseLibNameQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
 parseCommaList p = sepBy p separator
     where separator = skipSpaces >> ReadP.char ',' >> skipSpaces
+
+parseQuoted :: ReadP r a -> ReadP r a
+parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
 
 -- --------------------------------------------
 -- ** Pretty printing

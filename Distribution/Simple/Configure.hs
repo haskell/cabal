@@ -54,10 +54,12 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                      )
     where
 
-#if __GLASGOW_HASKELL__ < 603 
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603 
 #include "config.h"
 #endif
 
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Extension(extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
@@ -88,23 +90,6 @@ import Prelude hiding (catch)
 #ifdef DEBUG
 import HUnit
 #endif
-
--- |Data cached after configuration step.
-data LocalBuildInfo = LocalBuildInfo {
-  	prefix	    :: FilePath,
-		-- ^ The installation directory (eg. @/usr/local@, or
-		-- @C:/Program Files/foo-1.2@ on Windows.
-	compiler    :: Compiler,
-		-- ^ The compiler we're building with
-	packageDeps :: [PackageIdentifier],
-		-- ^ Which packages we depend on, *exactly*,  The
-		-- 'PackageDescription' specifies a set of build dependencies
-		-- that must be satisfied in terms of version ranges.  This
-		-- field fixes those dependencies to the specific versions
-		-- available on this machine for this compiler.
-        executableDeps :: [(String,[PackageIdentifier])]
-  }
-  deriving (Show, Read, Eq)
 
 -- |Throws an error if it's not found.
 exeDeps :: String -> LocalBuildInfo -> [PackageIdentifier]
@@ -140,6 +125,7 @@ configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
   = do
 	setupMessage "Configuring" pkg_descr
+	removeInstalledConfig
         let lib = library pkg_descr
 	-- prefix
 	let pref = case maybe_prefix of

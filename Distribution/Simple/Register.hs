@@ -47,24 +47,34 @@ module Distribution.Simple.Register (
 	register,
 	unregister,
         writeInstalledConfig,
+	removeInstalledConfig,
         installedPkgConfigFile,
 #ifdef DEBUG
         hunitTests
 #endif
   ) where
 
-import Distribution.Simple.Configure (LocalBuildInfo, compiler)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.Install (mkLibDir)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
-import Distribution.PackageDescription (setupMessage, PackageDescription(..))
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.PackageDescription (setupMessage, PackageDescription(..),
+					BuildInfo(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Version (Version(..))
+import Distribution.InstalledPackageInfo
+	(InstalledPackageInfo, showInstalledPackageInfo, 
+	 emptyInstalledPackageInfo)
+import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 
-import System.Directory(doesFileExist)
+import System.Directory(doesFileExist, removeFile)
+import System.IO (try)
 
 import Control.Monad (when, unless)
+import Data.Maybe (isNothing, fromJust)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -82,37 +92,109 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
+  if isNothing (library pkg_descr)
+	then do setupMessage "No package to register" pkg_descr 
+	        return ()
+	else do
 
   case compilerFlavor (compiler lbi) of
-   GHC -> do when userInst (GHC.maybeCreateLocalPackageConfig >> return() )
-             localConf <- GHC.localPackageConfig
-             pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-             when (userInst && (not pkgConfWriteable))
-                (die ("--user flag passed, but cannot write to local package config: "
-                      ++ localConf))
-             instConfExists <- doesFileExist installedPkgConfigFile
-             unless instConfExists (writeInstalledConfig pkg_descr lbi)
-             rawSystemExit (compilerPkgTool (compiler lbi))
-	                     (["--auto-ghci-libs", "--update-package",
-                               "--input-file="++installedPkgConfigFile]
-                              ++ (if userInst
-                                  then ["--config-file=" ++ localConf]
-                                  else []))
+   GHC -> do 
+     	let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
+
+	config_flags <-
+	   if userInst
+		then if ghc_63_plus
+			then return ["--user"]
+			else do 
+			  GHC.maybeCreateLocalPackageConfig
+		          localConf <- GHC.localPackageConfig
+			  pkgConfWriteable <- GHC.canWriteLocalPackageConfig
+		          when (not pkgConfWriteable) $ userPkgConfErr localConf
+			  return ["--config-file=" ++ localConf]
+		else return []
+
+        instConfExists <- doesFileExist installedPkgConfigFile
+        unless instConfExists (writeInstalledConfig pkg_descr lbi)
+
+	let register_flags 
+		| ghc_63_plus = ["register", installedPkgConfigFile]
+		| otherwise   = ["--update-package",
+				 "--input_file="++installedPkgConfigFile]
+
+        rawSystemExit (compilerPkgTool (compiler lbi))
+	                     (["--auto-ghci-libs"]
+			      ++ register_flags
+                              ++ config_flags)
    -- FIX (HUGS):
    Hugs -> setupMessage "Warning: Hugs has no packaging tool\nLibrary files will just be moved into place." pkg_descr
    _   -> die ("only registering with GHC is implemented")
 
+userPkgConfErr local_conf = 
+  die ("--user flag passed, but cannot write to local package config: "
+    	++ local_conf )
+
 -- |Register doesn't drop the register info file, it must be done in a separate step.
 writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> IO ()
 writeInstalledConfig pkg_descr lbi = do
-  case compilerFlavor (compiler lbi) of
-   GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
-             writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+  let hc = compiler lbi
+  case compilerFlavor hc of
+   GHC ->
+     let pkg_config 
+	   | compilerVersion hc >= Version [6,3] []
+	   = showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
+	   | otherwise
+	   = showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
+     in
+     writeFile installedPkgConfigFile ( pkg_config)
    Hugs -> return ()
    _   -> die ("only registering with GHC is implemented")
 
+removeInstalledConfig :: IO ()
+removeInstalledConfig = try (removeFile installedPkgConfigFile) >> return ()
+
 installedPkgConfigFile :: String
 installedPkgConfigFile = ".installed-pkg-config"
+
+-- -----------------------------------------------------------------------------
+-- Making the InstalledPackageInfo
+
+mkInstalledPackageInfo
+	:: PackageDescription
+	-> LocalBuildInfo
+	-> InstalledPackageInfo
+mkInstalledPackageInfo pkg_descr lbi
+  = let 
+	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
+    in
+    emptyInstalledPackageInfo{
+        IPI.package           = package pkg_descr,
+        IPI.license           = license pkg_descr,
+        IPI.copyright         = copyright pkg_descr,
+        IPI.maintainer        = maintainer pkg_descr,
+	IPI.author	      = author pkg_descr,
+        IPI.stability         = stability pkg_descr,
+	IPI.homepage	      = homepage pkg_descr,
+	IPI.pkgUrl	      = pkgUrl pkg_descr,
+	IPI.description	      = description pkg_descr,
+	IPI.category	      = category pkg_descr,
+        IPI.exposed           = True,
+	IPI.exposedModules    = exposedModules lib,
+	IPI.hiddenModules     = filter (`notElem` exposedModules lib) (modules lib),
+        IPI.importDirs        = [mkLibDir pkg_descr lbi Nothing],
+        IPI.libraryDirs       = [mkLibDir pkg_descr lbi Nothing],
+        IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
+        IPI.extraLibraries    = extraLibs lib,
+        IPI.includeDirs       = includeDirs lib,
+        IPI.includes	      = includes lib,
+        IPI.depends           = packageDeps lbi,
+        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options lib],
+        IPI.extraCcOpts       = [],
+        IPI.extraLdOpts       = [],
+        IPI.frameworkDirs     = [],
+        IPI.extraFrameworks   = [],
+	IPI.haddockInterfaces = [],
+	IPI.haddockHTMLs      = []
+  }	
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
