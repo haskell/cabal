@@ -47,7 +47,7 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Misc (Extension(..))
+import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
@@ -59,7 +59,7 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 
 
 import Control.Monad (when)
-import Data.List(intersperse, nub)
+import Data.List(intersperse)
 import System.Environment (getEnv)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
@@ -85,9 +85,13 @@ build pref pkg_descr lbi = do
 -- |FIX: For now, the target must contain a main module :(
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
+  let (unsupported, flags) = extensionsToNHCFlag (extensions pkg_descr)
+  when (not $ null unsupported)
+           (die $ "Unsupported extension for NHC: "
+                  ++ (concat $ intersperse ", " (map show unsupported)))
   rawSystemExit (compilerPath (compiler lbi))
                 (["-nhc98"]
-                ++ extensionsToNHCFlag (extensions pkg_descr)
+                ++ flags
                 ++ [ opt | (NHC,opts) <- options pkg_descr, opt <- opts ]
                 ++ allModules pkg_descr)
 
@@ -112,25 +116,19 @@ buildGHC pref pkg_descr lbi = do
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr lbi = 
-  [
-    "--make", "-odir " ++ pref, "-hidir " ++ pref,
-    "-package-name", showPackageId (package pkg_descr)
-  ] 
-  ++ extensionsToGHCFlag (extensions pkg_descr)
-  ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
-  ++ [ "-i" ++ pref ]
-  ++ [ "-package " ++ showPackageId pkg | pkg <- packageDeps lbi ] 
-  ++ allModules pkg_descr
-
-extensionsToGHCFlag :: [ Extension ] -> [String]
-extensionsToGHCFlag = nub . map extensionToGHCFlag
-    where
-    extensionToGHCFlag OverlappingInstances = "-fallow-overlapping-instances"
-    extensionToGHCFlag TypeSynonymInstances = "-fglasgow-exts"
-    extensionToGHCFlag TemplateHaskell = "-fth"
-
-extensionsToNHCFlag :: [ Extension ] -> [String]
-extensionsToNHCFlag _ = [] -- ToDo
+    let (unsupported, flags) = extensionsToGHCFlag (extensions pkg_descr)
+        in if null unsupported
+           then [
+                 "--make", "-odir " ++ pref, "-hidir " ++ pref,
+                 "-package-name", showPackageId (package pkg_descr)
+                ] 
+                ++ flags
+                ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
+                ++ [ "-i" ++ pref ]
+                ++ [ "-package " ++ showPackageId pkg | pkg <- packageDeps lbi ] 
+                ++ allModules pkg_descr
+           else error $ "Unsupported extension for GHC: "
+                      ++ (concat $ intersperse ", " (map show unsupported))
 
 objsuffix :: String
 #ifdef mingw32_TARGET_OS

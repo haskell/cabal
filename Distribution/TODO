@@ -1,41 +1,42 @@
-* misc
-** clean target
+* priorities
+** Change mainModules to [(String, String)] for (Module, executable
+   name)
+** Build executables for mainModules
+** Extensions
+- add as many as possible
+- complain if their use makes the code non-portable
+
 ** license parser parses either known strings, or a filename.
-** Possibly create a (native?) zlib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
 ** nhc-pkg (see old package manager code)
 ** hugs-pkg
 ** better command-line parsing interface
 ** ./Setup.lhs bdist
-** integrate hscpp, use it for preprocessing step.
 ** add more layered tools to appendix?
 ** make reference to "layered tools" appendix where approprote
+** add "clean" to doc?
+
+* ideas
+** Possibly create a (native?) zlib library?
+** integrate hscpp, use it for preprocessing step.
+** sign flag?
+
 
 * testing
 ** setup test suite to run on --push?
 ** redirect non-hunit outputs to a file?
 ** test / port code for Hugs and nhc
 
-* Code
+* Misc
 
 ** buildDepToDep in Configure doesn't set version dependency.
-
-** Extensions -> flags interface (Misc.hs)
-
-** Change mainModules to [(String, String)] for (Module, executable
-   name)
-** Build executables for mainModules
-
-** parser for Setup.description
 
 ** for fields like allModules, allow user to specify "Foo.Bar.*" or
    something to indicate all haskell modules under that?
 
 ** SDist for windows machines, or machines without tar.
 *** Better way to find 'tar'; is there a library?
-
-** sign flag?
 
 ** grep for "FIX".
 
