@@ -2,8 +2,10 @@ module Main where
 
 import Distribution.Simple
 
-pkgconfig = emptyPackageConfig {
-  package = PackageIdentifier "test" (Version [1,0] [])
+pkg_descr = emptyPackageDescription {
+  package = PackageIdentifier "test" (Version [1,0] []),
+  allModules     = ["A"],
+  exposedModules = ["A"]
   }
 
-main = defaultMain pkgconfig
+main = defaultMain pkg_descr
