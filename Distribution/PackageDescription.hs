@@ -240,8 +240,10 @@ emptyExecutable = Executable {
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
-withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
-withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
+withLib :: PackageDescription -> a -> (BuildInfo -> IO a) -> IO a
+withLib pkg_descr a f = if hasLibs pkg_descr
+                        then f (fromJust (library pkg_descr))
+                        else return a
 
 setupMessage :: String -> PackageDescription -> IO ()
 setupMessage msg pkg_descr = 

@@ -49,6 +49,7 @@ module Distribution.Setup (--parseArgs,
 #endif
                            parseGlobalArgs, commandList,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
+                           parseHaddockArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
                            parseUnregisterArgs, parseCopyArgs
                            ) where
@@ -84,6 +85,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | CleanCmd                    -- clean
             | CopyCmd (Maybe FilePath)    -- copy
+            | HaddockCmd                  -- haddock
             | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
@@ -141,7 +143,7 @@ data Cmd a = Cmd {
 
 commandList :: [Cmd a]
 commandList = [configureCmd, buildCmd, cleanCmd, installCmd,
-               copyCmd, sdistCmd, registerCmd, unregisterCmd]
+               copyCmd, sdistCmd, haddockCmd, registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
 lookupCommand name = find ((==name) . cmdName)
@@ -244,42 +246,35 @@ buildCmd = Cmd {
         }
 
 parseBuildArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
-parseBuildArgs args customOpts =
-  case getCmdOpt buildCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp buildCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
+parseBuildArgs = parseNoArgs buildCmd
+
+haddockCmd :: Cmd a
+haddockCmd = Cmd {
+        cmdName        = "haddock",
+        cmdHelp        = "Generate Haddock HTML code from Exposed-Modules.",
+        cmdDescription = "Requires cpphs and haddock.",
+        cmdOptions     = [cmd_help],
+        cmdAction      = HaddockCmd
+        }
+
+parseHaddockArgs = parseNoArgs haddockCmd
 
 cleanCmd :: Cmd a
 cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
-        cmdDescription = "This is the long description for clean.\n", -- Multi-line!
+        cmdDescription = "Removes .hi, .o, preprocessed sources, etc.\n", -- Multi-line!
         cmdOptions     = [cmd_help],
         cmdAction      = CleanCmd
         }
 
 parseCleanArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
-parseCleanArgs args customOpts =
-  case getCmdOpt cleanCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp cleanCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
+parseCleanArgs = parseNoArgs cleanCmd
 
 installCmd :: Cmd a
 installCmd = Cmd {
         cmdName        = "install",
-        cmdHelp        = "Copy the files into the install locations.",
+        cmdHelp        = "Copy the files into the install locations. Run register.",
         cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
         cmdOptions     = [cmd_help,
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
@@ -354,16 +349,7 @@ sdistCmd = Cmd {
         }
 
 parseSDistArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
-parseSDistArgs args customOpts =
-  case getCmdOpt sdistCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp sdistCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
+parseSDistArgs = parseNoArgs sdistCmd
 
 registerCmd :: Cmd a
 registerCmd = Cmd {
@@ -409,10 +395,14 @@ unregisterCmd = Cmd {
         }
 
 parseUnregisterArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
-parseUnregisterArgs args customOpts =
-  case getCmdOpt unregisterCmd customOpts args of
+parseUnregisterArgs = parseNoArgs unregisterCmd
+
+-- |Helper function for commands with no arguments
+parseNoArgs :: (Cmd a) -> [String] -> [OptDescr a] -> IO ([a], [String])
+parseNoArgs cmd args customOpts =
+  case getCmdOpt cmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp unregisterCmd customOpts
+      printCmdHelp cmd customOpts
       exitWith ExitSuccess
     (flags, args', []) ->
       return (unliftFlags flags, args')

@@ -6,7 +6,7 @@
 -- Stability   :  alpha
 -- Portability :  GHC, Hugs
 --
-{- Copyright (c) 2003-2004, Isaac Jones, Malcolm Wallace
+{- Copyright (c) 2003-2005, Isaac Jones, Malcolm Wallace
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
-                                removePreprocessed, removePreprocessedPackage)
+                                removePreprocessed, removePreprocessedPackage,
+                                ppCpp, ppGreenCard, ppC2hs, ppHsc2hs, ppHappy, ppUnlit
+                               )
     where
 
 import Distribution.PreProcess.Unlit(unlit)
@@ -58,8 +60,8 @@ import Distribution.Compat.FilePath
 
 -- |A preprocessor must fulfill this basic interface.  It can be an
 -- external program, or just a function.
-type PreProcessor = FilePath  -- ^Location of the source file in need of preprocessing
-                  -> FilePath -- ^Output filename
+type PreProcessor = FilePath  -- Location of the source file in need of preprocessing
+                  -> FilePath -- Output filename
                   -> IO ExitCode
 
 
@@ -78,7 +80,7 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr lbi handlers = do
     setupMessage "Preprocessing library" pkg_descr
 
-    withLib pkg_descr $ \ bi -> do
+    withLib pkg_descr () $ \ bi -> do
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule [hsSourceDir bi] mod biHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
@@ -143,7 +145,7 @@ foreachBuildInfo :: Bool -- Including the library?
                  -> PackageDescription -> (BuildInfo -> IO a)
                  -> IO ()
 foreachBuildInfo includeLib pkg_descr action = do
-    when includeLib (withLib pkg_descr (\ bi -> action bi >> return ()))
+    when includeLib (withLib pkg_descr () (\ bi -> action bi >> return ()))
     mapM_ (action . buildInfo) (executables pkg_descr)
 
 -- ------------------------------------------------------------
@@ -169,7 +171,7 @@ ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp pkg_descr bi lbi = pp
   where pp inFile outFile
 	  = rawSystemPath "cpphs" (extraArgs ++ ["-O" ++ outFile, inFile])
-	extraArgs = hcFlags hc ++
+	extraArgs = "--noline":hcFlags hc ++
 		["-I" ++ dir | dir <- includeDirs bi] ++ ccOptions pkg_descr
 	hc = compilerFlavor (compiler lbi)
 
