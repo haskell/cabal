@@ -241,7 +241,7 @@ branches
 
 dateParser :: Parser [String]
 dateParser
-     = (try $ do char '-'; d <- many anyChar; return ["date="++d])
+     = (try $ do char '-'; d <- word; return ["date="++d])
        <|> (do notFollowedBy anyChar; return [])
 
 number :: (Integral a, Read a) => Parser a
