@@ -1,0 +1,19 @@
+-- © 2001, 2002 Peter Thiemann
+module Main where
+
+import Prelude hiding (map, span, head, div)
+import CGI
+
+main = 
+  run $ counter 0
+
+dialog = "dialog"
+
+counter n =
+  standardQuery "Counter" $
+  <p class=<% dialog %> >Current counter value <% text (show n) %>
+     <br />
+     <% submit0 (counter (n + 1)) <[value="Increment"]> %>
+     <% submit0 (counter (n - 1)) <[value="Decrement"]> %>
+  </p>
+

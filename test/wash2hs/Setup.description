@@ -1,0 +1,12 @@
+Name: Wash_2hs
+Version: 1.4.34
+License: BSD3
+hs-source-dir: hs
+
+executable: wash2hs
+Build-Depends: text
+hs-source-dir: hs
+Modules: WASHClean,  WASHExpression,  WASHGenerator,  WASHOut,
+         WASHData,   WASHFlags,       WASHMain,       WASHParser,
+         WASHUtil
+main-is: WASHMain.hs
