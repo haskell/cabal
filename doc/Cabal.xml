@@ -922,7 +922,7 @@ main = defaultMain</programlisting>
       argument selects a particular step in the build/install process.
       You can also get a summary of the command syntax with</para>
     <cmdsynopsis>
-      <command>runhaskell Setup.hs</command> <option>--help</option>
+      <command>runhaskell Setup.hs <option>--help</option></command>
     </cmdsynopsis>
 
     <example>
