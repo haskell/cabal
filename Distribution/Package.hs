@@ -61,7 +61,7 @@ import Data.Char(isSpace, toLower)
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, parseVersionRange)
-import Distribution.Misc(License(..), Dependency(..), Extension)
+import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor)
 
 import System.IO(openFile, IOMode(..), hGetContents)
@@ -204,8 +204,8 @@ parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines i
           do xs <- runP f (parseCommaList moduleName) val
              return pkg{allModules=xs}
         parseDescHelp pkg (f@"extensions", val) =
-          do -- ...
-             return pkg
+          do exts <- runP f (parseCommaList parseExtension) val
+             return pkg{extensions=exts}
         parseDescHelp pkg (f@"options", val) =
           do -- ...
              return pkg
@@ -263,6 +263,15 @@ licenses= [("GPL", GPL),
            ("PublicDomain", PublicDomain),
            ("AllRightsReserved", AllRightsReserved)]
 
+parseExtension :: GenParser Char st Extension
+parseExtension = choice [ try (string s >> return e) | (s,e) <- extensionsMap ]
+        <?> "parseExtension"
+
+-- |Mapping between extensions and their names
+extensionsMap = [("OverlappingInstances", OverlappingInstances),
+                 ("TypeSynonymInstances", TypeSynonymInstances),
+                 ("TemplateHaskell", TemplateHaskell)]
+
 toStr c = c >>= \x -> return [x]
 
 word :: GenParser Char st String
@@ -301,7 +310,7 @@ testPkgDesc = unlines [
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dir: src",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
-        "Extensions: {some known extensions}",
+        "Extensions: OverlappingInstances, TypeSynonymInstances",
         "Extra-Libs: libfoo, bar, bang",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me",
@@ -328,7 +337,7 @@ testPkgDescAnswer =
                     cSources = ["not/even/rain.c", "such/small/hands"],
                     hsSourceDir = "src",
                     exposedModules = ["Distribution.Void", "Foo.Bar"],
-                    extensions = [],
+                    extensions = [OverlappingInstances, TypeSynonymInstances],
                     extraLibs = ["libfoo", "bar", "bang"],
                     includeDirs = ["your/slightest", "look/will"],
                     includes = ["/easily/unclose", "/me"],
