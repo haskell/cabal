@@ -86,7 +86,7 @@ register pkg_descr lbi userInst = do
              instConfExists <- doesFileExist installedPkgConfigFile
              unless instConfExists (writeInstalledConfig pkg_descr lbi)
              rawSystemExit (compilerPkgTool (compiler lbi))
-	                     (["--auto-ghci-libs", "--add-package",
+	                     (["--auto-ghci-libs", "--update-package",
                                "--input-file="++installedPkgConfigFile]
                               ++ (if userInst then ["--config-file=" ++ localConf] else []))
    _   -> die ("only registering with GHC is implemented")
