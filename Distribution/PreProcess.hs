@@ -89,7 +89,7 @@ preprocessSources pkg_descr _ handlers pref =
 dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ExitCode
 dispatchPP p handlers
     = do let (dir, file, ext) = splitFilePath p
-         let (Just (lit, pp)) = findPP ext handlers
+         let (Just (lit, pp)) = findPP ext handlers --FIX: Nothing case?
          pp p (joinFilenameDir dir (joinExt file "hs"))
 
 findPP :: String -- ^Extension
@@ -115,8 +115,8 @@ findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixe
          return $ catMaybes ((concat exeFiles) ++ libFiles)
 
         where buildInfoSources :: BuildInfo -> [String] -> IO [Maybe FilePath]
-              buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} allSuffixes
-                  = sequence [moduleToFilePath dir mod allSuffixes | mod <- mods]
+              buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} suffixes
+                  = sequence [moduleToFilePath dir modu suffixes | modu <- mods]
 
 
 -- ------------------------------------------------------------
@@ -135,6 +135,9 @@ ppC2hs inFile outFile
 ppHappy = standardPP "happy"
 ppNone _ _  = return ExitSuccess
 
+ppTestHandler :: FilePath -- ^InFile
+              -> FilePath -- ^OutFile
+              -> IO ExitCode
 ppTestHandler inFile outFile
     = do stuff <- readFile inFile
          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
