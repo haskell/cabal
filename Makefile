@@ -3,7 +3,7 @@ PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
 
-ifdef USER
+ifdef user
 USER_FLAG = --user
 GHCPKGFLAGS = -f ~/.ghc-packages
 GHCFLAGS += -package-conf ~/.ghc-packages
