@@ -59,6 +59,7 @@ import Control.Monad(when, foldM)
 import Control.Monad.Error
 import Data.Char(isSpace, toLower)
 import Data.List(isPrefixOf)
+import Data.Maybe(fromMaybe)
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, parseVersionRange)
@@ -96,21 +97,24 @@ data PackageDescription
         copyright      :: String,
         maintainer     :: String,
         stability      :: String,
-
-	-- the following are required by the simple build infrastructure only:
-        buildDepends   :: [ Dependency ],
-        allModules     :: [ String ],
-        mainModules    :: [ (String, String) ],
-        cSources       :: [ FilePath ],
-	hsSourceDir    :: FilePath,
-	exposedModules :: [ String ],
-        extensions     :: [ Extension ],
-        extraLibs      :: [ String ],
-        includeDirs    :: [ FilePath ],
-        includes       :: [ FilePath ],
-        options        :: [ (CompilerFlavor, [String]) ]
+        library        :: Maybe BuildInfo,
+        executables    :: [(String,BuildInfo)]
     }
     deriving (Show, Read, Eq)
+
+data BuildInfo = BuildInfo {
+        buildDepends    :: [Dependency],
+        modules         :: [String],
+	exposedModules  :: [String],
+        cSources        :: [FilePath],
+        hsSourceDir     :: FilePath,
+        extensions      :: [Extension],
+        extraLibs       :: [String],
+        includeDirs     :: [FilePath],
+        includes        :: [FilePath],
+        options         :: [(CompilerFlavor,[String])]
+    }
+    deriving (Show,Read,Eq)
 
 -- |Set the name for this package. Convenience function.
 setPkgName :: String -> PackageDescription -> PackageDescription
@@ -122,11 +126,6 @@ setPkgVersion :: Version -> PackageDescription -> PackageDescription
 setPkgVersion v desc@PackageDescription{package=pkgIdent}
     = desc{package=pkgIdent{pkgVersion=v}}
 
--- |Add options for a specific compiler. Convenience function.
-setPkgOptions :: CompilerFlavor -> [String] -> PackageDescription -> PackageDescription
-setPkgOptions c xs desc@PackageDescription{options=opts}
-    = desc{options=(c,xs):opts}
-
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
@@ -134,19 +133,28 @@ emptyPackageDescription
                       copyright    = "",
                       maintainer   = "",
                       stability    = "",
-                      buildDepends = [],
-                      allModules   = [],
-                      mainModules   = [],
-		      cSources     = [],
-		      hsSourceDir  = ".", -- FIX: FileUtils.currentDir
-		      exposedModules = [],
-                      extensions   = [],
-                      extraLibs    = [],
-                      includeDirs  = [],
-                      includes     = [],
-                      options      = []
+                      library      = Nothing,
+                      executables  = []
                      }
 
+emptyBuildInfo :: BuildInfo
+emptyBuildInfo = BuildInfo {
+                      buildDepends   = [],
+                      modules        = [],
+		      exposedModules = [], -- Only used for libs
+		      cSources       = [],
+		      hsSourceDir    = ".", -- FIX: FileUtils.currentDir
+                      extensions     = [],
+                      extraLibs      = [],
+                      includeDirs    = [],
+                      includes       = [],
+                      options        = []
+                     }
+                        
+-- |Add options for a specific compiler. Convenience function.
+setOptions :: CompilerFlavor -> [String] -> BuildInfo -> BuildInfo
+setOptions c xs desc@BuildInfo{options=opts}
+    = desc{options=(c,xs):opts}
 
 -- ------------------------------------------------------------
 -- * Parsing
@@ -167,69 +175,82 @@ instance Error PError where
         strMsg = FromString
 
 parseDescription :: String -> Either PError PackageDescription
-parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines inp)
-  where -- Required fields
-        parseDescHelp pkg (f@"name",      val) = return (setPkgName val pkg)
-        parseDescHelp pkg (f@"version",   val) =
+parseDescription inp = do let (st:sts) = splitStanzas inp
+                          pkg <- foldM parseBasicStanza emptyPackageDescription st
+                          exes <- mapM parseExecutableStanza sts
+                          return pkg{executables=exes}
+  where -- The basic stanza, with library building info
+        parseBasicStanza pkg (f@"name",      val) = return (setPkgName val pkg)
+        parseBasicStanza pkg (f@"version",   val) =
           do v <- runP f parseVersion val
              return (setPkgVersion v pkg)
-        parseDescHelp pkg (f@"copyright", val) = return pkg{copyright=val}
-        parseDescHelp pkg (f@"license",   val) =
+        parseBasicStanza pkg (f@"copyright", val) = return pkg{copyright=val}
+        parseBasicStanza pkg (f@"license",   val) =
           do l <- runP f parseLicense val
              return pkg{license=l}
-        -- Misc.
-        parseDescHelp pkg (f@"maintainer", val) = return pkg{maintainer=val}
-        parseDescHelp pkg (f@"stability",  val) = return pkg{stability=val}
-        parseDescHelp pkg (f@"extra-libs", val) =
+        parseBasicStanza pkg (f@"maintainer", val) = return pkg{maintainer=val}
+        parseBasicStanza pkg (f@"stability",  val) = return pkg{stability=val}
+        parseBasicStanza pkg (field, val) =
+          do let lib = fromMaybe emptyBuildInfo (library pkg)
+             lib' <- parseExeHelp lib (field, val)
+             return pkg{library=Just lib'}
+        -- Stanzas for executables
+        parseExecutableStanza (("executable",exeName):st) =
+          do binfo <- foldM parseExeHelp emptyBuildInfo st
+             return (exeName,binfo)
+        parseExeHelp binfo (f@"extra-libs", val) =
           do xs <- runP f (parseCommaList word) val
-             return pkg{extraLibs=xs}
-        parseDescHelp pkg (f@"build-depends", val) =
+             return binfo{extraLibs=xs}
+        parseExeHelp binfo (f@"build-depends", val) =
           do xs <- runP f (parseCommaList parseDependency) val
-             return pkg{buildDepends=xs}
+             return binfo{buildDepends=xs}
         -- Paths and stuff
-        parseDescHelp pkg (f@"c-sources", val) =
+        parseExeHelp binfo (f@"c-sources", val) =
           do paths <- runP f (parseCommaList parseFilePath) val
-             return pkg{cSources=paths}
-        parseDescHelp pkg (f@"include-dirs", val) =
+             return binfo{cSources=paths}
+        parseExeHelp binfo (f@"include-dirs", val) =
           do paths <- runP f (parseCommaList parseFilePath) val
-             return pkg{includeDirs=paths}
-        parseDescHelp pkg (f@"includes", val) =
+             return binfo{includeDirs=paths}
+        parseExeHelp binfo (f@"includes", val) =
           do paths <- runP f (parseCommaList parseFilePath) val
-             return pkg{includes=paths}
-        parseDescHelp pkg (f@"hs-source-dir", val) =
+             return binfo{includes=paths}
+        parseExeHelp binfo (f@"hs-source-dir", val) =
           do path <- runP f parseFilePath val
-             return pkg{hsSourceDir=path}
+             return binfo{hsSourceDir=path}
         -- Module related
-        parseDescHelp pkg (f@"main-modules", val) =
-          do xs <- runP f (parseCommaList mainModule) val
-             return pkg{mainModules=xs}
-        parseDescHelp pkg (f@"exposed-modules", val) =
+        parseExeHelp binfo (f@"modules", val) =
           do xs <- runP f (parseCommaList moduleName) val
-             return pkg{exposedModules=xs}
-        parseDescHelp pkg (f@"modules", val) =
+             return binfo{modules=xs}
+        parseExeHelp binfo (f@"exposed-modules", val) =
           do xs <- runP f (parseCommaList moduleName) val
-             return pkg{allModules=xs}
-        parseDescHelp pkg (f@"extensions", val) =
+             return binfo{exposedModules=xs}
+        parseExeHelp binfo (f@"extensions", val) =
           do exts <- runP f (parseCommaList parseExtension) val
-             return pkg{extensions=exts}
-        parseDescHelp pkg (f, val) | "options-" `isPrefixOf` f =
+             return binfo{extensions=exts}
+        parseExeHelp binfo (f, val) | "options-" `isPrefixOf` f =
           let compilers = [("ghc",GHC),("nhc",NHC),("hugs",Hugs)] -- FIXME
            in case lookup (drop 8 f) compilers of
                 Just c -> do xs <- runP f (parseCommaList parseOption) val
-                             return (setPkgOptions c xs pkg)
+                             return (setOptions c xs binfo)
                 Nothing -> error $ "Unknown compiler (" ++ drop 8 f ++ ")"
-        parseDescHelp pkg (field, val) = error $ "Unknown field :: " ++ field
+        parseExeHelp binfo (field, val) = error $ "Unknown field :: " ++ field
         -- ...
         runP f p s = case parse p f s of
                        Left pe -> Left (Parsec pe)
                        Right a -> Right a
 
-splitLines :: String -> [(String,String)]
-splitLines = merge . filter validLine . lines
+type Stanza = [(String,String)]
+
+-- |Split a string into blank line-separated stanzas of
+-- "Field: value" groups
+splitStanzas :: String -> [Stanza]
+splitStanzas = map merge . groupStanzas . filter validLine . lines
   where validLine s = case dropWhile isSpace s of
-                        ""        -> False      -- Empty line
                         '-':'-':_ -> False      -- Comment
                         _         -> True
+        groupStanzas [] = []
+        groupStanzas xs = let (ys,zs) = break (all isSpace) xs
+                           in ys : groupStanzas (dropWhile (all isSpace) zs)
         merge (x:(' ':s):ys) = case dropWhile isSpace s of
                                  "." -> merge ((x++"\n"):ys)
                                  s'  -> merge ((x++"\n"++s'):ys)
@@ -324,7 +345,6 @@ testPkgDesc = unlines [
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Modules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig",
-        "Main-Modules: cabal: Distribution.Main",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dir: src",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
@@ -333,7 +353,13 @@ testPkgDesc = unlines [
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me",
         "Options-ghc: -fTH",
-        "Options-hugs: +TH"
+        "Options-hugs: +TH",
+        "",
+        "-- Next is an executable",
+        "Executable: somescript",
+        "Modules: Foo1, Util, Main",
+        "HS-Source-Dir: scripts",
+        "Extensions: OverlappingInstances"
         ]
 
 testPkgDescAnswer = 
@@ -344,23 +370,30 @@ testPkgDescAnswer =
                     copyright = "Free Text String",
                     maintainer = "",
                     stability = "Free Text String",
-                    buildDepends = [Dependency "haskell-src" AnyVersion,
-                                    Dependency "HUnit"
-                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
-                                      (LaterVersion (Version [1,0,0] ["rain"])))],
 
-                    allModules = ["Distribution.Package","Distribution.Version",
-                                  "Distribution.Simple.GHCPackageConfig"],
+                    library = Just $ BuildInfo {
+                        buildDepends = [Dependency "haskell-src" AnyVersion,
+                                        Dependency "HUnit"
+                                         (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
+                                          (LaterVersion (Version [1,0,0] ["rain"])))],
 
-                    mainModules = [("cabal","Distribution.Main")],
-                    cSources = ["not/even/rain.c", "such/small/hands"],
-                    hsSourceDir = "src",
-                    exposedModules = ["Distribution.Void", "Foo.Bar"],
-                    extensions = [OverlappingInstances, TypeSynonymInstances],
-                    extraLibs = ["libfoo", "bar", "bang"],
-                    includeDirs = ["your/slightest", "look/will"],
-                    includes = ["/easily/unclose", "/me"],
-                    options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
+                        modules = ["Distribution.Package","Distribution.Version",
+                                      "Distribution.Simple.GHCPackageConfig"],
+
+                        cSources = ["not/even/rain.c", "such/small/hands"],
+                        hsSourceDir = "src",
+                        exposedModules = ["Distribution.Void", "Foo.Bar"],
+                        extensions = [OverlappingInstances, TypeSynonymInstances],
+                        extraLibs = ["libfoo", "bar", "bang"],
+                        includeDirs = ["your/slightest", "look/will"],
+                        includes = ["/easily/unclose", "/me"],
+                        options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
+                    },
+                    executables = [("somescript", emptyBuildInfo{
+                        modules = ["Foo1","Util","Main"],
+                        hsSourceDir = "scripts",
+                        extensions = [OverlappingInstances]
+                      })]
 }
 
 hunitTests :: [Test]
@@ -425,6 +458,8 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                                         license=GPL, copyright="2004 isaac jones"}
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
                                           
+             TestCase $ assertRight "no library" Nothing
+                        (library `liftM` parseDescription "Name: foo\nVersion: 1\nLicense: GPL\nMaintainer: someone\n\nExecutable: script\n"),
 
              TestLabel "Package description" $ TestCase $ 
                 assertRight "entire package description" testPkgDescAnswer
