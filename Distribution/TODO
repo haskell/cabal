@@ -1,5 +1,9 @@
 * 0.2
-** add simple (cpphs) preprocessing?
+** Preprocessing
+- add simple (cpphs) preprocessing?
+- what other preprocessors can't unlit?
+- 
+
 ** clarify description filename issues
 - allow foo.hsproj?
 
