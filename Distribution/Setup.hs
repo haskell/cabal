@@ -59,6 +59,7 @@ module Distribution.Setup (--parseArgs,
 import HUnit (Test(..))
 #endif
 
+import Control.Monad(when)
 import Distribution.Version (Version)
 import Data.List(find)
 import Distribution.GetOpt
@@ -316,7 +317,7 @@ installCmd = Cmd {
         cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
         cmdOptions     = [cmd_help,
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
-               "[deprecated, use copy] specify the directory in which to place installed files",
+               "[DEPRECATED, use copy]",
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -364,11 +365,13 @@ parseInstallArgs cfg args customOpts =
       printCmdHelp installCmd customOpts
       exitWith ExitSuccess
     (flags, args', []) ->
+      when (any isInstallPref flags) (error "--install-prefix is deprecated. Use copy command instead.") >>
       return (updateCfg flags cfg, unliftFlags flags, args')
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) uFlag = updateCfg flags $
+  where updateCfg :: [Flag a] -> Bool -> Bool
+        updateCfg (fl:flags) uFlag = updateCfg flags $
           case fl of
             InstPrefix _ -> error "--install-prefix is deprecated. Use copy command instead."
             UserFlag     -> True
@@ -376,6 +379,8 @@ parseInstallArgs cfg args customOpts =
             Lift _       -> uFlag
             _            -> error $ "Unexpected flag!"
         updateCfg [] t = t
+        isInstallPref (InstPrefix _) = True
+        isInstallPref _              = False
 
 sdistCmd :: Cmd a
 sdistCmd = Cmd {

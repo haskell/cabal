@@ -241,7 +241,7 @@ foreign import ccall unsafe "_getpid" getProcessID :: IO Int
 getProcessID :: IO Int
 getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 #else
--- #error ToDo: getProcessID
+-- error ToDo: getProcessID
 foreign import ccall unsafe "getpid" getProcessID :: IO Int
 #endif
 
