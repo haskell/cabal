@@ -195,6 +195,9 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
         parseBasicStanza pkg (f@"license",   val) =
           do l <- runP f parseLicense val
              return pkg{license=l}
+        parseBasicStanza pkg (f@"license-file", val) =
+          do path <- runP f parseFilePath val
+             return pkg{license=OtherLicense path}
         parseBasicStanza pkg (f@"maintainer", val) = return pkg{maintainer=val}
         parseBasicStanza pkg (f@"stability",  val) = return pkg{stability=val}
         parseBasicStanza pkg (field, val) =
@@ -292,7 +295,7 @@ parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
         <?> "parseDependency"
 
 parseLicense :: GenParser Char st License
-parseLicense = try parseReadS <|> liftM OtherLicense parseFilePath
+parseLicense = parseReadS
 
 parseExtension :: GenParser Char st Extension
 parseExtension = parseReadS
