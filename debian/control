@@ -4,7 +4,7 @@ Maintainer: Isaac Jones <ijones@debian.org>
 Build-Depends: debhelper (>= 4.0.0), ghc6 (> 6.2)
 Standards-Version: 3.6.0
 
-Package: libhaskell-cabal-ghc6-dev
+Package: libghc6-cabal-dev
 Section: devel
 Architecture: any
 Description: Haskell Common Architecture for Building Applications and Libraries

@@ -10,6 +10,7 @@
 
 
 CFLAGS = -Wall -g
+CABAL_BIN=libghc6-cabal-dev
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
@@ -62,10 +63,10 @@ install: build
 	dh_clean -k 
 	dh_installdirs
 
-	# Add here commands to install the package into debian/libhaskell-cabal-ghc6-dev
-	mkdir -p $(CURDIR)/debian/libhaskell-cabal-ghc6-dev/usr/share/doc/libhaskell-cabal-ghc6-dev
-	./setup install --install-prefix=$(CURDIR)/debian/libhaskell-cabal-ghc6-dev/usr
-	cp .installed-pkg-config $(CURDIR)/debian/libhaskell-cabal-ghc6-dev/usr/share/doc/libhaskell-cabal-ghc6-dev/installed-pkg-config
+	# Add here commands to install the package into debian/$(CABAL_BIN)
+	mkdir -p $(CURDIR)/debian/$(CABAL_BIN)/usr/share/doc/$(CABAL_BIN)
+	./setup install --install-prefix=$(CURDIR)/debian/$(CABAL_BIN)/usr
+	cp .installed-pkg-config $(CURDIR)/debian/$(CABAL_BIN)/usr/share/doc/$(CABAL_BIN)/installed-pkg-config
 
 
 # Build architecture-independent files here.
