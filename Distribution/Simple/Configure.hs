@@ -73,7 +73,7 @@ import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
 
 import Data.List (intersperse, nub)
 import Data.Char (isSpace)
-import Data.Maybe(fromJust)
+import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt)
 import System.Cmd		( system )
@@ -93,7 +93,7 @@ import HUnit
 
 -- |Throws an error if it's not found.
 exeDeps :: String -> LocalBuildInfo -> [PackageIdentifier]
-exeDeps s d = fromJust $ lookup s (executableDeps d)
+exeDeps s d = fromMaybe (error "Incorrect executableDeps in .setup-config file.  Re-run configure?") (lookup s (executableDeps d))
 
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
