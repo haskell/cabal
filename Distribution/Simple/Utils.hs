@@ -64,6 +64,9 @@ module Distribution.Simple.Utils (
         pathJoin,
         removeFileRecursive,
         withLib,
+        sequenceMap,
+        removeFiles,
+        hasExt,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -491,6 +494,9 @@ filesWithExtensions dir extension
 --  function with the library build info as argument.
 withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
 withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
+
+sequenceMap :: (Monad m) => (a -> m b) -> [a] -> m [b]
+sequenceMap f l = sequence $ map f l
 
 -- ------------------------------------------------------------
 -- * Testing
