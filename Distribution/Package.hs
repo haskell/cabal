@@ -268,9 +268,8 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
              return binfo{extensions=exts}
         parseExeHelp binfo (f, val) | "options-" `isPrefixOf` f =
           let compilers = [("ghc",GHC),("nhc",NHC),("hugs",Hugs)] -- FIXME
-           in case lookup (drop 8 f) compilers of
-                Just c -> do xs <- runP (parseCommaList parseOption) val
-                             return (setOptions c xs binfo)
+           in case lookup (drop (length "options-") f) compilers of
+                Just c  -> return (setOptions c (words val) binfo)
                 Nothing -> error $ "Unknown compiler (" ++ drop 8 f ++ ")"
         parseExeHelp _binfo (field, _val) = error $ "Unknown field :: " ++ field
         -- ...
@@ -328,13 +327,6 @@ parseLicense = parseReadS
 parseExtension :: ReadP r Extension
 parseExtension = parseReadS
 
--- FIXME
--- Which characters are valid for arbitrary options to the compilers?
--- Couldn't this be basically anything? Maybe we should have a generic
--- parseAnything (that looks just like parseLibName, see below)
-parseOption :: ReadP r String
-parseOption = munch1 (\x -> isAlphaNum x || x `elem` "-+/\\._")
-
 parseLibName :: ReadP r String
 parseLibName = munch1 (\x -> not (isSpace x) && x /= ',')
 
@@ -365,7 +357,7 @@ testPkgDesc = unlines [
         "Extra-Libs: libfoo, bar, bang",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
-        "Options-ghc: -fTH",
+        "Options-ghc: -fTH -fglasgow-exts",
         "Options-hugs: +TH",
         "",
         "-- Next is an executable",
@@ -401,7 +393,8 @@ testPkgDescAnswer =
                         extraLibs = ["libfoo", "bar", "bang"],
                         includeDirs = ["your/slightest", "look/will"],
                         includes = ["/easily/unclose", "/me", "funky, path\\name"],
-                        options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
+                        -- Note reversed order:
+                        options = [(Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]
                     },
                     executables = [Executable "somescript" "SomeFile.hs" (
                       emptyBuildInfo{
