@@ -47,6 +47,7 @@ module Distribution.Simple.Install (
 	mkLibDir,
 	hugsPackageDir,
 	hugsProgramsDir,
+	hugsMainFilename,
 #ifdef DEBUG        
         hunitTests
 #endif
@@ -70,8 +71,10 @@ import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Control.Monad(when, unless)
 import Data.Maybe(maybeToList, fromMaybe)
 import Distribution.Compat.Directory(copyFile)
-import Distribution.Compat.FilePath(joinFileName, dllExtension)
+import Distribution.Compat.FilePath(joinFileName, dllExtension,
+				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
+import System.Directory(Permissions(..), getPermissions, setPermissions)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -85,12 +88,13 @@ install :: PackageDescription
 install pkg_descr lbi install_prefixM = do
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi install_prefixM
+  let targetLibPref = mkLibDir pkg_descr lbi Nothing
   let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
-     Hugs -> installHugs libPref binPref buildPref pkg_descr
+     Hugs -> installHugs libPref binPref targetLibPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
@@ -118,41 +122,64 @@ installLibGHC pref buildPref pd@PackageDescription{library=Just l,
 installHugs
     :: FilePath -- ^Library install location
     -> FilePath -- ^Executable install location
+    -> FilePath -- ^Library location on target system
     -> FilePath -- ^Build location
     -> PackageDescription
     -> IO ()
-installHugs libPref binPref buildPref pkg_descr = do
-    let hugsDir = libPref `joinFileName` "hugs"
+installHugs libPref binPref targetLibPref buildPref pkg_descr = do
+    let hugsInstallDir = libPref `joinFileName` "hugs"
+    let hugsTargetDir = targetLibPref `joinFileName` "hugs"
     let pkg_name = pkgName (package pkg_descr)
     withLib pkg_descr $ \ libInfo -> do
-	let pkgDir = hugsDir `joinFileName` "packages"
+	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
 	try $ removeFileRecursive pkgDir
 	moveSources buildPref pkgDir (biModules libInfo) hugsInstallSuffixes
     unless (null (executables pkg_descr)) $ do
 	let progBuildDir = buildPref `joinFileName` "programs"
-	let progInstallDir = hugsDir `joinFileName` "programs"
+	let progInstallDir = hugsInstallDir `joinFileName` "programs"
+		    `joinFileName` pkg_name
+	let progTargetDir = hugsTargetDir `joinFileName` "programs"
 		    `joinFileName` pkg_name
 	try $ removeFileRecursive progInstallDir
 	moveSources progBuildDir progInstallDir
 	    (exeModules pkg_descr) hugsInstallSuffixes
-	flip mapM_ (executables pkg_descr) $ \ Executable {modulePath=e} ->
-	    copyFile (progBuildDir `joinFileName` e)
-		    (progInstallDir `joinFileName` e)
-	-- FIX (HUGS): Install executables, still needs work (in build step?)
+	flip mapM_ (executables pkg_descr) $ \ exe -> do
+	    let fname = hugsMainFilename exe
+	    let installName = progInstallDir `joinFileName` fname
+	    let targetName = progTargetDir `joinFileName` fname
+	    copyFile (progBuildDir `joinFileName` fname) installName
+	    let exeFile = binPref `joinFileName` exeName exe
+	    -- FIX (HUGS): works for Unix only
+	    -- FIX (HUGS): supply language options for runhugs?
+	    let script = unlines [
+		    "#! /bin/sh", 
+		    "runhugs " ++ targetName]
+	    writeFile exeFile script
+	    perms <- getPermissions exeFile
+	    setPermissions exeFile perms { executable = True, readable = True }
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = ["hs", "lhs", drop 1 dllExtension]
 
+-- |Prefix for Hugs package directories
 hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
 hugsPackageDir pkg_descr lbi =
     prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
 	`joinFileName` "packages" `joinFileName` pkgName (package pkg_descr)
 
+-- |Prefix for Hugs program directories
 hugsProgramsDir :: PackageDescription -> LocalBuildInfo -> FilePath
 hugsProgramsDir pkg_descr lbi =
     prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
 	`joinFileName` "programs" `joinFileName` pkgName (package pkg_descr)
+
+-- |Filename used by Hugs for the main module of an executable.
+-- This is a simple filename, so that Hugs will look for any auxiliary
+-- modules it uses relative to the directory it's in.
+hugsMainFilename :: Executable -> FilePath
+hugsMainFilename exe = (exeName exe ++ "-Main") `joinFileExt` ext
+  where (_, ext) = splitFileExt (modulePath exe)
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
