@@ -94,7 +94,7 @@ defaultPackageDesc :: FilePath
 defaultPackageDesc = "Setup.description"
 
 hookedPackageDesc :: FilePath
-hookedPackageDesc = ".Setup.description.hooked"
+hookedPackageDesc = "Setup.buildinfo"
 
 data UserHooks = UserHooks
     {
@@ -183,16 +183,16 @@ defaultMainWorker pkg_descr_in action args hooks
                            Just h  -> f h
          case action of
             ConfigCmd flags -> do
-                pkg_descr <- hookOrInput preConf
                 (flags, _, args) <- parseConfigureArgs flags args []
+                pkg_descr <- hookOrInput preConf
                 no_extra_flags args
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig localbuildinfo
                 postHook postConf
 
             BuildCmd -> do
-                pkg_descr <- hookOrInput preBuild
                 (_, args) <- parseBuildArgs args []
+                pkg_descr <- hookOrInput preBuild
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		build buildPref pkg_descr localbuildinfo knownSuffixHandlers
@@ -200,8 +200,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postBuild
 
             CleanCmd -> do
-                pkg_descr <- hookOrInput preClean
                 (_, args) <- parseCleanArgs args []
+                pkg_descr <- hookOrInput preClean
                 no_extra_flags args
 		try $ removeFileRecursive buildPref
                 try $ removeFile installedPkgConfigFile
@@ -210,16 +210,16 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postClean
 
             CopyCmd mprefix -> do
-                pkg_descr <- hookOrInput preCopy
                 (mprefix, _, args) <- parseCopyArgs mprefix args []
+                pkg_descr <- hookOrInput preCopy
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		install buildPref pkg_descr localbuildinfo mprefix
                 postHook postCopy
 
             InstallCmd mprefix uInst -> do
-                pkg_descr <- hookOrInput preInst
                 ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+                pkg_descr <- hookOrInput preInst
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
                 -- FIX (HUGS): fix 'die' checks commands below.
@@ -231,23 +231,23 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postInst
 
             SDistCmd -> do
-                pkg_descr <- hookOrInput preSDist
                 (_, args) <- parseSDistArgs args []
+                pkg_descr <- hookOrInput preSDist
                 no_extra_flags args
 		sdist srcPref distPref knownSuffixHandlers pkg_descr
                 postHook postSDist
 
             RegisterCmd uInst -> do
-                pkg_descr <- hookOrInput preReg
                 (uInst, _, args) <- parseRegisterArgs uInst args []
+                pkg_descr <- hookOrInput preReg
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo uInst)
                 postHook postReg
 
             UnregisterCmd -> do
-                pkg_descr <- hookOrInput preUnreg
                 (_, args) <- parseUnregisterArgs args []
+                pkg_descr <- hookOrInput preUnreg
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo
