@@ -1,3 +1,5 @@
+{-# OPTIONS -fffi #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -89,6 +91,10 @@ import Control.Exception	( catch, evaluate )
 #endif
 import Data.Char (isDigit)
 import Prelude hiding (catch)
+#ifdef mingw32_TARGET_OS
+import Foreign
+import Foreign.C
+#endif
 
 
 #ifdef DEBUG
@@ -132,12 +138,13 @@ configure pkg_descr cfg
 	removeInstalledConfig
         let lib = library pkg_descr
 	-- prefix
-        let pref = fromMaybe (system_default_prefix pkg_descr) (configPrefix cfg)
+	defPrefix <- system_default_prefix pkg_descr
+        let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompiler (configHcFlavor cfg) (configHcPath cfg) (configHcPkg cfg) pkg_descr
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
-                      concat [ extensions exeBi | Executable _ _ _ exeBi <- executables pkg_descr ]
+                      concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
         let exts = case f' of
                      GHC  -> fst $ extensionsToGHCFlag extlist
                      NHC  -> fst $ extensionsToNHCFlag extlist
@@ -169,7 +176,7 @@ configure pkg_descr cfg
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withCpphs=cpphs,
                               executableDeps = [(n, map buildDepToDep (buildDepends pkg_descr))
-                                                | Executable n _ _ _ <- executables pkg_descr]
+                                                | Executable n _ _ <- executables pkg_descr]
                              }
 
 -- |Return the explicit path if given, otherwise look for the program
@@ -196,13 +203,27 @@ buildDepToDep (Dependency s (ThisVersion v)) = PackageIdentifier s v
 -- implemented because HC-PKG doesn't yet do this.
 buildDepToDep (Dependency s _) = PackageIdentifier s (Version [] [])
 
-system_default_prefix :: PackageDescription -> String
+system_default_prefix :: PackageDescription -> IO String
 #ifdef mingw32_TARGET_OS
-system_default_prefix PackageDescription{package=pkg} = 
-  "C:\\Program Files\\" ++ pkgName pkg
+system_default_prefix PackageDescription{package=pkg} =
+  allocaBytes long_path_size $ \pPath -> do
+     r <- c_SHGetFolderPath nullPtr csidl_PROGRAM_FILES nullPtr 0 pPath
+     s <- peekCString pPath
+     return (s++'\\':pkgName pkg)
+  where
+    csidl_PROGRAM_FILES = 0x0026
+    long_path_size      = 1024
+
+foreign import stdcall unsafe "SHGetFolderPath" 
+            c_SHGetFolderPath :: Ptr () 
+                              -> CInt 
+                              -> Ptr () 
+                              -> CInt 
+                              -> CString 
+                              -> IO CInt
 #else
 system_default_prefix _ = 
-  "/usr/local"
+  return "/usr/local"
 #endif
 
 -- -----------------------------------------------------------------------------

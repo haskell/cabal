@@ -1,3 +1,5 @@
+#include "ghcconfig.h"
+
 name:		PACKAGE
 version:	VERSION
 license:	BSD3
@@ -38,6 +40,9 @@ import-dirs:	IMPORT_DIR
 library-dirs:	LIB_DIR
 hs-libraries:   "HSCabal"
 extra-libs:
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__) || defined(_MSC_VER)
+	     "shell32"
+#endif
 
 include-dirs:
 includes:

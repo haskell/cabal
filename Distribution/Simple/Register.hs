@@ -121,7 +121,7 @@ register pkg_descr lbi (userInst,verbose)
           writeInstalledConfig pkg_descr lbi
 
 	let register_flags 
-		| ghc_63_plus = ["register", installedPkgConfigFile]
+		| ghc_63_plus = ["update", installedPkgConfigFile]
 		| otherwise   = ["--update-package",
 				 "--input-file="++installedPkgConfigFile]
 
@@ -166,6 +166,7 @@ mkInstalledPackageInfo
 mkInstalledPackageInfo pkg_descr lbi
   = let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
+        bi = libBuildInfo lib
     in
     emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
@@ -180,19 +181,19 @@ mkInstalledPackageInfo pkg_descr lbi
 	IPI.category	      = category pkg_descr,
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
-	IPI.hiddenModules     = hiddenModules lib,
+	IPI.hiddenModules     = hiddenModules bi,
         IPI.importDirs        = [mkLibDir pkg_descr lbi Nothing],
         IPI.libraryDirs       = [mkLibDir pkg_descr lbi Nothing],
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
-        IPI.extraLibraries    = extraLibs $ libBuildInfo lib,
-        IPI.includeDirs       = includeDirs $ libBuildInfo lib,
-        IPI.includes	      = includes $ libBuildInfo lib,
+        IPI.extraLibraries    = extraLibs bi,
+        IPI.includeDirs       = includeDirs bi,
+        IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,
-        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options $ libBuildInfo lib],
-        IPI.extraCcOpts       = ccOptions pkg_descr,
-        IPI.extraLdOpts       = ldOptions pkg_descr,
+        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options bi],
+        IPI.extraCcOpts       = ccOptions bi,
+        IPI.extraLdOpts       = ldOptions bi,
         IPI.frameworkDirs     = [],
-        IPI.extraFrameworks   = frameworks pkg_descr,
+        IPI.extraFrameworks   = frameworks bi,
 	IPI.haddockInterfaces = [],
 	IPI.haddockHTMLs      = []
   }	

@@ -122,37 +122,37 @@ buildGHC pkg_descr lbi verbose = do
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr () $ \lib -> do
-      let buildInfo' = libBuildInfo lib
-      createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir buildInfo'))
-      let ghcArgs = ["-I" ++ dir | dir <- includeDirs buildInfo']
-              ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
+      let libBi = libBuildInfo lib
+      createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir libBi))
+      let ghcArgs = ["-I" ++ dir | dir <- includeDirs libBi]
+              ++ ["-optc" ++ opt | opt <- ccOptions libBi]
               ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
-                  "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
-                  "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
+                  "-odir",  pref `joinFileName` (hsSourceDir libBi),
+                  "-hidir", pref `joinFileName` (hsSourceDir libBi)
                  ]
-              ++ constructGHCCmdLine Nothing buildInfo' (packageDeps lbi)
+              ++ constructGHCCmdLine Nothing libBi (packageDeps lbi)
               ++ (libModules pkg_descr)
               ++ (if verbose > 4 then ["-v"] else [])
       unless (null (libModules pkg_descr)) $
         rawSystemExit verbose ghcPath ghcArgs
 
       -- build any C sources
-      unless (null (cSources buildInfo')) $
+      unless (null (cSources libBi)) $
          sequence_ [do let odir = pref `joinFileName` dirOf c
                        createDirectoryIfMissing True odir
-		       let cArgs = ["-I" ++ dir | dir <- includeDirs buildInfo']
-			       ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
+		       let cArgs = ["-I" ++ dir | dir <- includeDirs libBi]
+			       ++ ["-optc" ++ opt | opt <- ccOptions libBi]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
 			       ++ (if verbose > 4 then ["-v"] else [])
                        rawSystemExit verbose ghcPath (cArgs ++ [c])
-                                   | c <- cSources buildInfo']
+                                   | c <- cSources libBi]
 
       -- link:
-      let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objExtension
+      let hObjs = [ (hsSourceDir libBi) `joinFileName` (dotToSep x) `joinFileExt` objExtension
                   | x <- libModules pkg_descr ]
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
-                  | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
+                  | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
           libName  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
         try (removeFile libName) -- first remove library if it exists
@@ -167,7 +167,7 @@ buildGHC pkg_descr lbi verbose = do
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True exeDir
                  let binArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
-                         ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
+                         ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
                          ++ ["-odir",  exeDir,
                              "-hidir", exeDir,
@@ -176,10 +176,10 @@ buildGHC pkg_descr lbi verbose = do
                          ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
                                                 exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
-			 ++ ldOptions pkg_descr
+			 ++ ldOptions exeBi
 			 ++ (if verbose > 4 then ["-v"] else [])
                  rawSystemExit verbose ghcPath binArgs
-             | Executable exeName' exeMods modPath exeBi <- executables pkg_descr]
+             | Executable exeName' modPath exeBi <- executables pkg_descr]
 
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
@@ -188,13 +188,13 @@ constructGHCCmdLine :: Maybe FilePath  -- If we're building an executable, we ne
                     -> BuildInfo
                     -> [PackageIdentifier]
                     -> [String]
-constructGHCCmdLine mSrcLoc buildInfo' deps = 
+constructGHCCmdLine mSrcLoc bi deps = 
     -- Unsupported extensions have already been checked by configure
-    let flags = snd $ extensionsToGHCFlag (extensions buildInfo')
-     in [ "--make", "-i" ++ hsSourceDir buildInfo' ]
+    let flags = snd $ extensionsToGHCFlag (extensions bi)
+     in [ "--make", "-i" ++ hsSourceDir bi ]
      ++ maybe []  (\l -> ["-i" ++ l]) mSrcLoc
-     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes buildInfo' ]
-     ++ nub (flags ++ hcOptions GHC (options buildInfo'))
+     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
+     ++ nub (flags ++ hcOptions GHC (options bi))
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 -- |
@@ -206,8 +206,8 @@ buildHugs pkg_descr lbi verbose = do
 	(executables pkg_descr)
   where
 	compileExecutable :: FilePath -> Executable -> IO ()
-	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi,
-                                                   executableModules=exeMods}) = do
+	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
+            let exeMods = hiddenModules bi
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
 	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
@@ -254,7 +254,7 @@ buildHugs pkg_descr lbi verbose = do
 	    rawSystemExit verbose "cpp"
 		(["-traditional", "-P"] ++ defines ++
 			["-I" ++ dir | dir <- includeDirs bi] ++
-			ccOptions pkg_descr ++ [inFile, outFile])
+			ccOptions bi ++ [inFile, outFile])
 
 	defines = "-D__HUGS__" :
 		["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
@@ -276,12 +276,12 @@ buildHugs pkg_descr lbi verbose = do
 		cfiles <- getCFiles file
 		let cArgs =
 			["-I" ++ dir | dir <- includeDirs bi] ++
-			ccOptions pkg_descr ++
+			ccOptions bi ++
 			map (joinFileName srcDir) cfiles ++
 			["-L" ++ dir | dir <- extraLibDirs bi] ++
-			ldOptions pkg_descr ++
+			ldOptions bi ++
 			["-l" ++ lib | lib <- extraLibs bi] ++
-			concat [["-framework", f] | f <- frameworks pkg_descr]
+			concat [["-framework", f] | f <- frameworks bi]
 		rawSystemExit verbose ffihugs (hugsArgs ++ file : cArgs)
 
 	ffihugs = compilerPath (compiler lbi)
