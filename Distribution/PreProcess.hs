@@ -68,7 +68,7 @@ type PreProcessor = FilePath  -- ^Location of the source file in need of preproc
 type PPSuffixHandler
     = (String, PackageDescription -> LocalBuildInfo -> PreProcessor)
 
--- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
+-- |Apply preprocessors to the sources from 'hsSourceDir', to obtain
 -- a Haskell source file for each module.
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 

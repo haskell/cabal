@@ -58,6 +58,7 @@ module Distribution.PackageDescription (
         libModules,
         exeModules,
         biModules,
+        hcOptions,
 #ifdef DEBUG
         hunitTests,
         test
@@ -342,6 +343,10 @@ unionPackageIdent p1 p2
           | f p1 == f emptyIdent = f p2
           | otherwise = f p1
       emptyIdent = PackageIdentifier "" (Version [] [])
+
+-- |Select options for a particular Haskell compiler.
+hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
+hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
 
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing

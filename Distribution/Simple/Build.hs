@@ -51,7 +51,7 @@ import Distribution.Extension (Extension(..),
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), 
 			     		setupMessage, withLib, Executable(..),
-                                        libModules, biModules)
+                                        libModules, biModules, hcOptions)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.PreProcess.Unlit (unlit)
@@ -67,13 +67,12 @@ import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
 
 import Control.Monad (unless, when)
 import Control.Exception (try)
-import Data.Char (isAlpha, isAlphaNum)
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
 import System.Exit (ExitCode(..))
 import Distribution.Compat.Directory (copyFile)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
-				searchPathSeparator)
+				searchPathSeparator, objExtension)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -106,8 +105,7 @@ buildNHC pkg_descr lbi = do
   rawSystemExit (compilerPath (compiler lbi))
                 (["-nhc98"]
                 ++ flags
-                ++ [ opt | (NHC,opts) <- maybe [] options (library pkg_descr),
-                           opt <- opts ]
+                ++ maybe [] (hcOptions NHC . options) (library pkg_descr)
                 ++ (libModules pkg_descr))
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
@@ -142,9 +140,9 @@ buildGHC pkg_descr lbi = do
                                    | c <- cSources buildInfo']
 
       -- link:
-      let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objsuffix
+      let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objExtension
                   | x <- exposedModules buildInfo' ++ hiddenModules buildInfo' ]
-          cObjs = [ path `joinFileName` file `joinFileExt` objsuffix
+          cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
@@ -175,7 +173,7 @@ constructGHCCmdLine buildInfo' deps =
     let flags = snd $ extensionsToGHCFlag (extensions buildInfo')
      in [ "--make", "-i" ++ hsSourceDir buildInfo' ]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes buildInfo' ]
-     ++ nub (flags ++ [ opt | (GHC,opts) <- options buildInfo', opt <- opts ])
+     ++ nub (flags ++ hcOptions GHC (options buildInfo'))
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 -- |
@@ -235,7 +233,7 @@ buildHugs pkg_descr lbi = do
 	compileFFI bi file = do
 	    -- Only compile FFI stubs for a file if it contains some FFI stuff
 	    inp <- readHaskellFile file
-	    when ("foreign" `elem` identifiers (stripComments False inp)) $ do
+	    when ("foreign" `elem` symbols (stripComments False inp)) $ do
 		(_, opts) <- getOptionsFromSource file
 		let ghcOpts = hcOptions GHC opts
 		let srcDir = hsSourceDir bi
@@ -270,15 +268,11 @@ buildHugs pkg_descr lbi = do
 		last rest == "#-}",
 		cfile <- init rest]
 
-	-- List of variable identifiers (and reserved words) in a source file.
-	identifiers :: String -> [String]
-	identifiers cs = case dropWhile (not . isStartChar) cs of
-	    [] -> []
-	    rest -> ident : identifiers cs'
-	      where (ident, cs') = span isFollowChar rest
-
-	isStartChar c = c == '_' || isAlpha c
-	isFollowChar c = c == '_' || c == '\'' || isAlphaNum c
+	-- List of terminal symbols in a source file.
+	symbols :: String -> [String]
+	symbols cs = case lex cs of
+	    (sym, cs'):_ | not (null sym) -> sym : symbols cs'
+	    _ -> []
 
 	-- Get the non-literate source of a Haskell module.
 	readHaskellFile :: FilePath -> IO String
@@ -286,15 +280,9 @@ buildHugs pkg_descr lbi = do
 	    text <- readFile file
 	    return $ if ".lhs" `isSuffixOf` file then unlit file text else text
 
-hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
-hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
-
 uniq :: Ord a => [a] -> [a]
 uniq [] = []
 uniq (x:xs) = x : uniq (dropWhile (== x) xs)
-
-objsuffix :: String
-objsuffix = "o"
 
 -- ------------------------------------------------------------
 -- * Testing

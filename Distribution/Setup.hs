@@ -195,7 +195,7 @@ configureCmd :: Cmd a
 configureCmd = Cmd {
         cmdName        = "configure",
         cmdHelp        = "Prepare to build the package.",
-        cmdDescription = "This is the long description for configure.\nMulti-line!\n",
+        cmdDescription = "This is the long description for configure.\n", -- Multi-line!
         cmdOptions     = [cmd_help,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
@@ -238,7 +238,7 @@ buildCmd :: Cmd a
 buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
-        cmdDescription = "This is the long description for build.\nMulti-line!\n",
+        cmdDescription = "This is the long description for build.\n", -- Multi-line!
         cmdOptions     = [cmd_help],
         cmdAction      = BuildCmd
         }
@@ -259,7 +259,7 @@ cleanCmd :: Cmd a
 cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
-        cmdDescription = "This is the long description for clean.\nMulti-line!\n",
+        cmdDescription = "This is the long description for clean.\n", -- Multi-line!
         cmdOptions     = [cmd_help],
         cmdAction      = CleanCmd
         }
@@ -348,7 +348,7 @@ sdistCmd :: Cmd a
 sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
-        cmdDescription = "This is the long description for sdist.\nMulti-line!\n",
+        cmdDescription = "This is the long description for sdist.\n", -- Multi-line!
         cmdOptions     = [cmd_help],
         cmdAction      = SDistCmd
         }
@@ -369,7 +369,7 @@ registerCmd :: Cmd a
 registerCmd = Cmd {
         cmdName        = "register",
         cmdHelp        = "Register this package with the compiler.",
-        cmdDescription = "This is the long description for register.\nMulti-line!\n",
+        cmdDescription = "This is the long description for register.\n", -- Multi-line!
         cmdOptions     = [cmd_help,
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
@@ -403,7 +403,7 @@ unregisterCmd :: Cmd a
 unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
-        cmdDescription = "This is the long description for unregister.\nMulti-line!\n",
+        cmdDescription = "This is the long description for unregister.\n", -- Multi-line!
         cmdOptions     = [cmd_help],
         cmdAction      = UnregisterCmd
         }
