@@ -214,6 +214,58 @@ Other-Modules:  A, C, Utils</programlisting>
       <para>Lines beginning with <quote><literal>--</literal></quote>
         are treated as comments and ignored.</para>
 
+      <para>The syntax of the value depends on the field.  Field types
+        include:</para>
+
+      <variablelist>
+        <varlistentry>
+          <term>
+            <replaceable>token</replaceable>
+          </term>
+          <term>
+            <replaceable>filename</replaceable>
+          </term>
+          <term>
+            <replaceable>directory</replaceable>
+          </term>
+          <listitem>
+            <para>Either a sequence of one or more non-space non-comma
+              characters, or a quoted string in Haskell 98 lexical
+              syntax.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <replaceable>freeform</replaceable>
+          </term>
+          <term>
+            <replaceable>URL</replaceable>
+          </term>
+          <term>
+            <replaceable>address</replaceable>
+          </term>
+          <listitem>
+            <para>An arbitrary, uninterpreted string.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <replaceable>identifier</replaceable>
+          </term>
+          <listitem>
+            <para>A letter followed by zero or more alphanumerics
+              or underscores.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+
+      <para>Some fields take lists of values, which
+        are optionally separated by commas, except for the
+        <literal>build-depends</literal> field, where the commas are
+        mandatory.</para>
+
       <para>The first stanza describes the package
         as a whole, as well as the library it contains (if any), using
         the following fields:</para>
@@ -230,7 +282,7 @@ Other-Modules:  A, C, Utils</programlisting>
 
         <varlistentry>
           <term>
-            <literal>version:</literal> <replaceable>string</replaceable>
+            <literal>version:</literal> <replaceable>numbers</replaceable>
           </term>
           <listitem>
             <para>The package version number, usually consisting of
@@ -241,7 +293,7 @@ Other-Modules:  A, C, Utils</programlisting>
 
         <varlistentry>
           <term>
-            <literal>license:</literal> <replaceable>string</replaceable>
+            <literal>license:</literal> <replaceable>identifier</replaceable>
           </term>
           <listitem>
             <para>The type of license under which this package is distributed.
@@ -263,7 +315,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>copyright:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>The name of the holder of the copyright on the package.</para>
@@ -273,7 +325,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>author:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>The original author of the package.</para>
@@ -283,7 +335,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>maintainer:</literal>
-            <replaceable>email address</replaceable>
+            <replaceable>address</replaceable>
           </term>
           <listitem>
             <para>The current maintainer of the package, if different
@@ -294,7 +346,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>stability:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>The stability level of the package, e.g.
@@ -325,7 +377,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>synopsis:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>A very short description of the package,
@@ -339,7 +391,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>description:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>Description of the package.  This may be several
@@ -351,7 +403,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>category:</literal>
-            <replaceable>freeform text</replaceable>
+            <replaceable>freeform</replaceable>
           </term>
           <listitem>
             <para>A classification category for future use by the package
@@ -388,7 +440,7 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>exposed-modules:</literal>
-            <replaceable>module list</replaceable>
+            <replaceable>identifier list</replaceable>
           </term>
           <listitem>
             <para>A list of modules added by this package (required if
@@ -428,7 +480,8 @@ Other-Modules:  A, C, Utils</programlisting>
         <variablelist>
           <varlistentry>
             <term>
-              <literal>executable:</literal> <replaceable>string</replaceable>
+              <literal>executable:</literal>
+              <replaceable>freeform</replaceable>
             </term>
             <listitem>
               <para>The name of the executable program (required).</para>
@@ -475,7 +528,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>other-modules:</literal>
-              <replaceable>module list</replaceable>
+              <replaceable>identifier list</replaceable>
             </term>
             <listitem>
               <para>A list of modules used by the component
@@ -500,7 +553,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>extensions:</literal>
-              <replaceable>string list</replaceable>
+              <replaceable>identifier list</replaceable>
             </term>
             <listitem>
               <para>A list of Haskell extensions used by every module.
@@ -519,8 +572,8 @@ Other-Modules:  A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>options-ghc:</literal>
-              <replaceable>string list</replaceable>
+              <literal>ghc-options:</literal>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>Additional options for GHC.  You can often achieve
@@ -535,8 +588,8 @@ Other-Modules:  A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>options-hugs:</literal>
-              <replaceable>string list</replaceable>
+              <literal>hugs-options:</literal>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>Additional options for Hugs.  You can often achieve
@@ -551,8 +604,8 @@ Other-Modules:  A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>options-nhc:</literal>
-              <replaceable>string list</replaceable>
+              <literal>nhc-options:</literal>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>Additional options for nhc98.  You can often achieve
@@ -568,7 +621,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>includes:</literal>
-              <replaceable>string list</replaceable>
+              <replaceable>filename list</replaceable>
             </term>
             <listitem>
               <para>A list of header files, typically
@@ -608,8 +661,8 @@ Other-Modules:  A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>extra-libs:</literal>
-              <replaceable>string list</replaceable>
+              <literal>extra-libraries:</literal>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>A list of extra libraries to link with.</para>
@@ -619,7 +672,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>extra-lib-dirs:</literal>
-              <replaceable>string list</replaceable>
+              <replaceable>directory list</replaceable>
             </term>
             <listitem>
               <para>A list of directories to search for libraries.</para>
@@ -629,7 +682,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>cc-options:</literal>
-              <replaceable>space separated list</replaceable>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>Command-line arguments to be passed to the C compiler.
@@ -642,7 +695,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>ld-options:</literal>
-              <replaceable>space separated list</replaceable>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>Command-line arguments to be passed to the linker.
@@ -655,7 +708,7 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>frameworks:</literal>
-              <replaceable>space separated list</replaceable>
+              <replaceable>token list</replaceable>
             </term>
             <listitem>
               <para>On Darwin/MacOS X, a list of

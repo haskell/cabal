@@ -171,7 +171,7 @@ tests currDir comp compConf = [
                     assertBool "build did not create the executable: testA"
                   doesFileExist "dist/build/testB" >>= 
                     assertBool "build did not create the executable: testB"
-                  doesFileExist "dist/build/testA-tmp/hello.o" >>=
+                  doesFileExist "dist/build/testA-tmp/c_src/hello.o" >>=
                     assertBool "build did not build c source for testA"
                   doesFileExist "dist/build/hello.o" >>=
                     assertBool "build did not build c source for A library"
