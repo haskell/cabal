@@ -46,7 +46,7 @@ module Main where
 
 -- Import everything, since we want to test the compilation of them:
 
-import qualified Distribution.Version as D.V (hunitTests) 
+import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
 import qualified Distribution.Misc as D.M (hunitTests)
 import qualified Distribution.Package as D.P (hunitTests)
@@ -57,6 +57,7 @@ import qualified Distribution.Simple.Install as D.S.I (hunitTests)
 import qualified Distribution.Simple.Build as D.S.B (hunitTests)
 import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
 import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
+import Distribution.Simple.Utils(pathJoin)
 import qualified Distribution.Simple.Configure as D.S.C (hunitTests)
 import qualified Distribution.Simple.Register as D.S.R (hunitTests)
 
@@ -78,6 +79,23 @@ runTestTT'  (TestLabel l t)
     = putStrLn (label l) >> runTestTT t
 runTestTT' t = runTestTT t
 
+
+checkTargetDir :: FilePath
+               -> [String] -- ^suffixes
+               -> IO ()
+checkTargetDir targetDir suffixes
+    = do doesDirectoryExist targetDir >>=
+           assertBool "target dir exists"
+         let files = [x++y |
+                      x <- ["A", "B/A"],
+                      y <- suffixes]
+         allFilesE <- sequence [doesFileExist (targetDir ++ t)
+                                | t <- files]
+
+         sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
+                   | (e, f) <- zip allFilesE files]
+         return ()
+
 tests :: [Test]
 tests = [TestCase $
          do setCurrentDirectory "test"
@@ -85,30 +103,36 @@ tests = [TestCase $
             when dirE1 (system "rm -r ,tmp">>return())
             dirE2 <- doesDirectoryExist "dist"
             when dirE2 (system "rm -r dist">>return())
---            system "ls"
-            system "./setup configure --prefix=,tmp"
-            let targetDir = ",tmp/lib/test-1.0/"
+            system "./setup configure --ghc --prefix=,tmp"
+             >>= assertEqual "configure returned error code" ExitSuccess
             system "./setup build"
-            instRetCode <- system "./setup install --user"
-            doesDirectoryExist targetDir >>=
-              assertBool "target dir exists"
-            let files = "libHStest-1.0.a":[x++y |
-                                           x <- ["A", "B/A"],
-                                           y <- [".o", ".hi", ".hs"]]
-            allFilesE <- sequence [doesFileExist (targetDir ++ t)
-                                     | t <- files]
+             >>= assertEqual "build returned error code" ExitSuccess
 
-            sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
-                       | (e, f) <- zip allFilesE files]
             system "./setup sdist"
+             >>= assertEqual "setup sdist returned error code" ExitSuccess
             doesFileExist "dist/test-1.0.tgz" >>= 
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False
             doesDirectoryExist "dist/build" >>=
-              assertBool "dist/build doesn't exists"
+              assertBool "dist/build doesn't exists",
+         TestCase $ -- GHC and --install-prefix (uses above config)
+         do let targetDir = ",tmp2"
+            instRetCode <- system $ "./setup install --install-prefix=" ++ targetDir
+            checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
+            doesFileExist (pathJoin [",tmp2/lib/test-1.0/", "libHStest-1.0.a"])
+              >>= assertBool "library doesn't exist"
+            assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestCase $ -- no intsall-prefix and hugs
+         do system "./setup configure --hugs --prefix=,tmp"
+             >>= assertEqual "HUGS configure returned error code" ExitSuccess
+            system "./setup build"
+             >>= assertEqual "HUGS build returned error code" ExitSuccess
+            instRetCode <- system "./setup install --user"
+            let targetDir = ",tmp/lib/test-1.0/"
+            checkTargetDir targetDir [".hs"]
             assertEqual "install returned error code" ExitSuccess instRetCode
-        ]
+         ]
 
 main :: IO ()
 main = do putStrLn "compile successful"
