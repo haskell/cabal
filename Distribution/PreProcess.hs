@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
-                                ppCpp, ppGreenCard, ppC2hs, ppHsc2hs,
+                                ppCpp, ppCppHaddock, ppGreenCard, ppC2hs, ppHsc2hs,
 				ppHappy, ppAlex, ppUnlit
                                )
     where
@@ -89,8 +89,8 @@ preprocessSources pkg_descr lbi verbose handlers = do
         setupMessage "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
-	sequence_ [preprocessModule [hsSourceDir bi] mod verbose builtinSuffixes biHandlers |
-			    mod <- libModules pkg_descr] -- FIX: output errors?
+	sequence_ [preprocessModule [hsSourceDir bi] modu verbose builtinSuffixes biHandlers |
+			    modu <- libModules pkg_descr] -- FIX: output errors?
     when (not (null (executables pkg_descr))) $
         setupMessage "Preprocessing executables for" pkg_descr
     foreachExe pkg_descr $ \ theExe -> do
@@ -98,8 +98,8 @@ preprocessSources pkg_descr lbi verbose handlers = do
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
-                                     mod verbose builtinSuffixes biHandlers |
-			    mod <- executableModules theExe] -- FIX: output errors?
+                                     modu verbose builtinSuffixes biHandlers |
+			    modu <- executableModules theExe] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -115,12 +115,12 @@ preprocessModule
     -> [String]				-- ^builtin suffixes
     -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ExitCode
-preprocessModule searchLoc mod verbose builtinSuffixes handlers = do
-    bsrcFiles <- moduleToFilePath searchLoc mod builtinSuffixes
-    psrcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
+preprocessModule searchLoc modu verbose builtinSuffixes handlers = do
+    bsrcFiles <- moduleToFilePath searchLoc modu builtinSuffixes
+    psrcFiles <- moduleToFilePath searchLoc modu (map fst handlers)
     case psrcFiles of
 	[] -> case bsrcFiles of
-	          [] -> die ("can't find source for " ++ mod ++ " in " ++ show searchLoc)
+	          [] -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
 	          _  -> return ExitSuccess
 	(psrcFile:_) -> do
 	    let (srcStem, ext) = splitFileExt psrcFile
@@ -189,13 +189,17 @@ ppUnlit inFile outFile verbose = do
     return ExitSuccess
 
 ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp pkg_descr bi lbi
+ppCpp = ppCppHaddock False
+
+ppCppHaddock :: Bool -> PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCppHaddock forHaddock pkg_descr bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
-        extraArgs = "--noline" : hcDefines hc ++ sysDefines ++
+        extraArgs = "--noline" : compOrHaddock ++ sysDefines ++
                 incOptions ++ ccOptions pkg_descr
 	hc = compiler lbi
+        compOrHaddock = if forHaddock then ["-D__HADDOCK__"] else hcDefines hc
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
