@@ -187,6 +187,9 @@ parsePackageDesc p = do h <- openFile p ReadMode
                         str <- hGetContents h
                         case parseDescription str of
                           Left  e -> error (showError e) -- FIXME
+                          Right x@PackageDescription{library=Nothing,
+                                                     executables=[]}
+                              -> error "no library listed, and no executable stanza."
                           Right x -> return x
 
 data PError = Parsec ParseError | FromString String
