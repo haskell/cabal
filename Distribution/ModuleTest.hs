@@ -207,7 +207,25 @@ tests currDir
          TestLabel "package A: GHC and clean" $ TestCase $
          do system "./setup clean"
             doesFileExist "C.hs" >>=
-               assertEqual "C.hs (a generated file) not cleaned." False
+               assertEqual "C.hs (a generated file) not cleaned." False,
+         TestLabel "package withHooks: GHC building" $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
+            system "make clean"
+            system "make"
+            assertCmd "./setup configure --ghc --prefix=,tmp"
+              "configure returned error code"
+            assertCmd "./setup build"
+              "build returned error code"
+            doesFileExist "dist/build/withHooks" >>= 
+              assertBool "build did not create the executable: withHooks",
+         TestLabel "package withHooks: GHC and copy" $ TestCase $
+         do let targetDir = ",tmp"
+            instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
+            doesFileExist (",tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
+              >>= assertBool "library doesn't exist"
+            doesFileExist ",tmp/bin/withHooks"
+              >>= assertBool "executable doesn't exist"
+            assertEqual "install returned error code" ExitSuccess instRetCode
 
 --          TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"

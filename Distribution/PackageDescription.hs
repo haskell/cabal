@@ -47,6 +47,7 @@ module Distribution.PackageDescription (
 	parseDescription,
         writePackageDescription,
 	showPackageDescription,
+        unionPackageDescription,
 	basicStanzaFields,
         setupMessage,
         withLib,
@@ -245,6 +246,103 @@ withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr)
 setupMessage :: String -> PackageDescription -> IO ()
 setupMessage msg pkg_descr = 
    putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+
+-- |This isn't quite the right way to go about this.  For one thing,
+-- the Right Thing for excutables isn't exactly clear.  For another
+-- thing, it's hard to tell whether or not the field was provided at
+-- all in /p1/.  The only way to guess (as the parser is currently
+-- implemented) is to compare it with the 'emptyPackageDescription'
+-- variable, though it's possible that they will be equal, but the
+-- user actually did provide that field.  Another question is what to
+-- do about the "required," static fields which should not be in /p2/.
+-- We should definitely check to be sure they're in /p1/, and not in
+-- /p2/, though not in this function.
+-- FIXME: executables not implemented correctly, library (buildinfo)
+-- not yet implemented.
+
+unionPackageDescription :: PackageDescription -> PackageDescription -> PackageDescription
+unionPackageDescription p1 p2
+    = p1{ -- simple fields
+         license       = override license "license",
+         copyright     = override copyright "copyright",
+         maintainer    = override maintainer "maintainer",
+	 author        = override author "author",
+         stability     = override stability "stability",
+	 homepage      = override homepage "homepage",
+	 pkgUrl        = override pkgUrl "package-url",
+	 description   = override description "description",
+	 category      = override category "category",
+	 buildPackage  = override buildPackage "build-package",
+         -- combine fields:
+	 ccOptions     = combine ccOptions,
+	 ldOptions     = combine ldOptions,
+	 frameworks    = combine frameworks,
+         testedWith    = combine testedWith,
+         -- it's not obvious what to do with executables:
+         executables   = combine executables,
+
+         -- complex fields
+         package       = unionPackageIdent (package p1) (package p2),
+         library       = makeLib (library p1) (library p2)
+--      library        :: Maybe BuildInfo,
+        }
+      where
+      override :: (Eq a) => (PackageDescription -> a)
+               -> String -- Field name
+               -> a
+      override f s
+          | f p1 == f p2 = f p1
+          | f p1 /= f emptyPackageDescription
+            && f p2 /= f emptyPackageDescription
+                = error $ "union: Two non-empty fields found in union attempt:" ++ s
+          | f p1 == f emptyPackageDescription = f p2
+          | otherwise = f p1
+      combine :: (Eq a) => (PackageDescription -> [a])
+               -> [a]
+      combine f = f p1 ++ f p2
+      makeLib :: Maybe BuildInfo -> Maybe BuildInfo -> Maybe BuildInfo
+      makeLib Nothing Nothing     = Nothing
+      makeLib Nothing j           = j
+      makeLib j Nothing           = j
+      makeLib (Just b1) (Just b2) = Just $ unionBuildInfo b1 b2
+
+unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
+unionBuildInfo b1 b2
+    = b1{buildDepends      = combine buildDepends,
+         executableModules = combine executableModules,
+	 exposedModules    = combine exposedModules,
+	 hiddenModules     = combine hiddenModules,
+         cSources          = combine cSources,
+         hsSourceDir       = combine hsSourceDir,
+         extensions        = combine extensions,
+         extraLibs         = combine extraLibs,
+         extraLibDirs      = combine extraLibDirs,
+         includeDirs       = combine includeDirs,
+         includes          = combine includes,
+         options           = combine options
+        }
+      where
+      combine :: (Eq a) => (BuildInfo -> [a])
+              -> [a]
+      combine f = f b1 ++ f b2
+
+
+unionPackageIdent :: PackageIdentifier -> PackageIdentifier -> PackageIdentifier
+unionPackageIdent p1 p2
+    = p1{pkgName = override pkgName "name",
+         pkgVersion = override pkgVersion "version"}
+      where
+      override :: (Eq a) => (PackageIdentifier -> a)
+               -> String -- Field name
+               -> a
+      override f s
+          | f p1 == f p2 = f p1
+          | f p1 /= f emptyIdent
+            && f p2 /= f emptyIdent
+                = error $ "union: Two non-empty fields found in union attempt:" ++ s
+          | f p1 == f emptyIdent = f p2
+          | otherwise = f p1
+      emptyIdent = PackageIdentifier "" (Version [] [])
 
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing
