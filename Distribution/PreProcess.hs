@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
-                                removePreprocessed)
+                                removePreprocessed, removePreprocessedPackage)
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
@@ -47,7 +47,7 @@ import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(.
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage, rawSystemPath, splitFilePath,
                                   joinFilenameDir, joinExt, moduleToFilePath,
-                                  sequenceMap, removeFiles, hasExt)
+                                  sequenceMap, removeFiles, hasExt, pathJoin)
 import Control.Monad(when)
 import System.Exit (ExitCode(..), exitWith)
 
@@ -112,6 +112,18 @@ findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixe
         where buildInfoSources :: BuildInfo -> [String] -> IO [FilePath]
               buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} suffixes
                   = sequence [moduleToFilePath dir modu suffixes | modu <- mods] >>= return . concat
+
+removePreprocessedPackage :: PackageDescription
+                          -> FilePath -- ^root of source tree (where to look for hsSources)
+                          -> [String] -- ^suffixes
+                          -> IO ()
+removePreprocessedPackage pkg_descr r suff
+    = do maybe (return ()) removePPBuildInfo (library pkg_descr)
+         sequenceMap removePPBuildInfo (map buildInfo (executables pkg_descr))
+         return ()
+    where removePPBuildInfo :: BuildInfo -> IO ()
+          removePPBuildInfo bi
+              = removePreprocessed (pathJoin [r, (hsSourceDir bi)]) (modules bi) suff
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location

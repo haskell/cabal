@@ -155,13 +155,16 @@ data BuildInfo = BuildInfo {
     }
     deriving (Show,Read,Eq)
 
+currentDir :: FilePath
+currentDir = "."-- FIX: FileUtils.currentDir
+
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
                       buildDepends   = [],
                       modules        = [],
 		      exposedModules = [], -- Only used for libs
 		      cSources       = [],
-		      hsSourceDir    = ".", -- FIX: FileUtils.currentDir
+		      hsSourceDir    = currentDir,
                       extensions     = [],
                       extraLibs      = [],
                       includeDirs    = [],
