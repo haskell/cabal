@@ -53,6 +53,10 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                      )
     where
 
+#if __GLASGOW_HASKELL__ < 603 
+#include "config.h"
+#endif
+
 import Distribution.Misc(Dependency(..), Extension(..),
                          extensionsToGHCFlag, extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
@@ -125,7 +129,7 @@ localBuildInfoFile = "./.setup-config"
 -- -----------------------------------------------------------------------------
 
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
-configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
+configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
   = do
 	setupMessage "Configuring" pkg_descr
         let lib = library pkg_descr
@@ -134,7 +138,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
 			Just path -> path
 			Nothing   -> system_default_prefix pkg_descr
 	-- detect compiler
-	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path pkg_descr 
+	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
         -- check extensions
         let extlist = nub $ maybe [] extensions lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -180,24 +184,27 @@ system_default_prefix PackageDescription{package=package} =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageDescription
-  -> IO Compiler
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
+  -> PackageDescription -> IO Compiler
 
-configCompiler (Just flavor) (Just path) _
-  = do pkgtool <- guessPkgToolFromHCPath flavor path
+configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
+  = do compiler <- 
+	 case maybe_compiler of
+	   Just path -> return path
+	   Nothing   -> findCompiler flavor
+
+       pkgtool <-
+	 case maybe_pkgtool of
+	   Just path -> return path
+	   Nothing   -> guessPkgToolFromHCPath flavor compiler
+
        return (Compiler{compilerFlavor=flavor,
-			compilerPath=path,
+			compilerPath=compiler,
 			compilerPkgTool=pkgtool})
 
-configCompiler (Just flavor) Nothing _
-  = do path <- findCompiler flavor
-       pkgtool <- guessPkgToolFromHCPath flavor path
-       return (Compiler{compilerFlavor=flavor,
-			compilerPath=path,
-			compilerPkgTool=pkgtool})
-
-configCompiler Nothing maybe_path pkg_descr
-  = configCompiler (Just defaultCompilerFlavor) maybe_path pkg_descr
+configCompiler Nothing maybe_path maybe_hc_pkg pkg_descr
+  = configCompiler (Just defaultCompilerFlavor) 
+	maybe_path maybe_hc_pkg pkg_descr
 
 defaultCompilerFlavor =
 #if defined(__GLASGOW_HASKELL__)

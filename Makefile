@@ -13,7 +13,7 @@ all: moduleTest
 
 # build the library itself
 
-setup:
+setup::
 	mkdir -p dist/tmp
 	ghc $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
 

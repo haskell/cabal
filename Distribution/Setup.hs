@@ -101,11 +101,12 @@ data Action = ConfigCmd ConfigFlags       -- config
 
 type ConfigFlags = (Maybe CompilerFlavor,
                     Maybe FilePath, -- given compiler location
+                    Maybe FilePath, -- given hc-pkg location
                     Maybe FilePath) -- prefix
 
 -- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
-          | WithCompiler FilePath | Prefix FilePath
+          | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | UserFlag | GlobalFlag
           | HelpFlag
           -- For install:
@@ -199,10 +200,12 @@ configureCmd = Cmd {
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
                "give the path to a particular compiler",
+           Option "w" ["with-hc-pkg"] (ReqArg WithHcPkg "PATH")
+               "give the path to the package tool",
            Option "" ["prefix"] (ReqArg Prefix "DIR")
                "bake this prefix in preparation of installation"
            ],
-        cmdAction      = ConfigCmd (Nothing, Nothing, Nothing)
+        cmdAction      = ConfigCmd (Nothing, Nothing, Nothing, Nothing)
         }
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
@@ -216,13 +219,14 @@ parseConfigureArgs cfg args customOpts =
       return (updateCfg flags cfg, unliftFlags flags, args')
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) t@(mcf, mpath, mprefix) = updateCfg flags $
+  where updateCfg (fl:flags) t@(mcf, mpath, mhcpkg, mprefix) = updateCfg flags $
           case fl of
-            GhcFlag  -> (Just GHC,  mpath, mprefix)
-            NhcFlag  -> (Just NHC,  mpath, mprefix)
-            HugsFlag -> (Just Hugs, mpath, mprefix)
-            WithCompiler path -> (mcf, Just path, mprefix)
-            Prefix path       -> (mcf, mpath, Just path)
+            GhcFlag  -> (Just GHC,  mpath, mhcpkg, mprefix)
+            NhcFlag  -> (Just NHC,  mpath, mhcpkg, mprefix)
+            HugsFlag -> (Just Hugs, mpath, mhcpkg, mprefix)
+            WithCompiler path -> (mcf, Just path, mhcpkg, mprefix)
+            WithHcPkg path    -> (mcf, mpath, Just path, mprefix)
+            Prefix path       -> (mcf, mpath, mhcpkg, Just path)
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
