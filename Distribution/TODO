@@ -13,6 +13,7 @@
 ** add "clean" to doc?
 ** add description file format to doc.
 ** Change name of Setup.description?
+** build ghci libraries
 
 * 1.0 
 ** HC-PKG (see "Depends on HC-PKG" below)
@@ -25,6 +26,8 @@
 ** integrate hscpp, use it for preprocessing step.
 ** SDist for windows machines, or machines without tar.
 ** Better way to find 'tar'; is there a library?
+** sanity checking tool for configuration; are all the .hs files
+   included, etc.
 
 * testing
 ** setup test suite to run on --push?
