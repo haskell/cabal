@@ -1,10 +1,10 @@
 {-# OPTIONS -cpp #-}
-module Compat.Exception (bracket) where
+module Distribution.Compat.Exception (bracket,finally) where
 
 #ifdef __NHC__
 import System.IO.Error (catch, ioError)
 #else
-import Control.Exception (bracket)
+import Control.Exception (bracket,finally)
 #endif
 
 #ifdef __NHC__
@@ -15,4 +15,7 @@ bracket before after thing
                                      ioError e
        after a
        return r
+
+finally :: IO a -> IO b -> IO a
+finally thing after = bracket (return ()) (const after) thing
 #endif

@@ -20,25 +20,24 @@ module Distribution.Simple.GHCPackageConfig (
         canWriteLocalPackageConfig, canReadLocalPackageConfig
   ) where
 
-import Distribution.Package (PackageDescription(..), BuildInfo(..),
-                             PackageIdentifier(..), showPackageId)
+import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
-import Distribution.Simple.Utils(pathJoin)
 
 import Control.Exception (try)
-import Control.Monad(liftM, unless)
+import Control.Monad(unless)
 import Text.PrettyPrint.HughesPJ
-import System(getEnv)
+import System.Environment(getEnv)
 import System.Directory (doesFileExist, getPermissions, Permissions (..))
-
+import Distribution.Compat.FilePath (joinFileName)
 
 -- |Where ghc keeps the --user files.
 -- |return the file, whether it exists, and whether it's readable
 
 localPackageConfig :: IO FilePath
 localPackageConfig = do u <- getEnv "HOME"
-                        return $ pathJoin [u, ".ghc-packages"]
+                        return $ (u `joinFileName` ".ghc-packages")
 
 -- |If the package file doesn't exist, we should try to create it.  If
 -- it already exists, do nothing and return true.  This does not take

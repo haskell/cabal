@@ -43,16 +43,15 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
-import Distribution.Package (setupMessage, PackageDescription(..),
+import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                              BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemPath, splitFilePath,
-                                  joinFilenameDir, joinExt, moduleToFilePath,
-                                  sequenceMap, removeFiles, hasExt, pathJoin)
+import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath,
+                                  sequenceMap, removeFiles)
 import Control.Monad(when)
 import System.Exit (ExitCode(..), exitWith)
-
-import Data.Maybe(catMaybes)
+import Distribution.Compat.FilePath
+	(splitFilePath, splitFileExt, joinFileName, joinFileExt)
 
 -- |A preprocessor must fulfill this basic interface.  It can be an
 -- external program, or just a function.
@@ -86,7 +85,7 @@ dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ExitCode
 dispatchPP p handlers
     = do let (dir, file, ext) = splitFilePath p
          let (Just (lit, pp)) = findPP ext handlers --FIX: Nothing case?
-         pp p (joinFilenameDir dir (joinExt file "hs"))
+         pp p (joinFileName dir (joinFileExt file "hs"))
 
 findPP :: String -- ^Extension
        -> [PPSuffixHandler]
@@ -124,7 +123,7 @@ removePreprocessedPackage pkg_descr r suff
          return ()
     where removePPBuildInfo :: BuildInfo -> IO ()
           removePPBuildInfo bi
-              = removePreprocessed (pathJoin [r, (hsSourceDir bi)]) (modules bi) suff
+              = removePreprocessed (r `joinFileName` (hsSourceDir bi)) (modules bi) suff
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location
@@ -142,7 +141,7 @@ removePreprocessed searchLoc mods suffixesIn
                removeIfDup l = do when (not $ extensionProp l)
                                     (putStrLn "Internal Error: attempt to remove source with no matching preprocessed element."
                                      >> exitWith (ExitFailure 1))
-                                  let hsFiles = (filter (\x -> hasExt x "hs") l)
+                                  let hsFiles = (filter (\x -> fst (splitFileExt x) == "hs") l)
                                   when (length hsFiles > 1)
                                     (putStrLn "Internal Error: multiple \".hs\" files found while removing preprocessed element."
                                      >> exitWith (ExitFailure 1))

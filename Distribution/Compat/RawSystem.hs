@@ -1,5 +1,5 @@
 {-# OPTIONS -cpp #-}
-module Compat.RawSystem (rawSystem) where
+module Distribution.Compat.RawSystem (rawSystem) where
 
 #if (!(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 600))
 import Data.List (intersperse)

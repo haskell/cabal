@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -55,6 +56,7 @@ module Distribution.Simple (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
+import Distribution.PackageDescription
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, removePreprocessedPackage)
 import Distribution.Setup
 
@@ -66,9 +68,10 @@ import Distribution.Simple.Register	( register, unregister,
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, pathJoin, removeFileRecursive, currentDir)
-import Distribution.Misc (License(..), Extension(..), Dependency(..))
-import Distribution.Version (Version(..), VersionRange(..), 
+import Distribution.Simple.Utils (die, removeFileRecursive, currentDir)
+import Distribution.License (License(..))
+import Distribution.Extension (Extension(..))
+import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
 			     orLaterVersion, orEarlierVersion,
 			     betweenVersionsInclusive)
 
@@ -79,7 +82,8 @@ import System.Directory(removeFile)
 import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
-import System.IO (hPutStr, stderr, try)
+import System.IO (try)
+import Distribution.Compat.FilePath(joinFileName)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -117,8 +121,8 @@ defaultMainWorker :: PackageDescription
                   -> IO ()
 defaultMainWorker pkg_descr action args
     = do let distPref = "dist"
-         let buildPref = pathJoin [distPref, "build"]
-         let srcPref = pathJoin [distPref, "src"]
+         let buildPref = distPref `joinFileName` "build"
+         let srcPref   = distPref `joinFileName` "src"
          case action of
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs flags args []

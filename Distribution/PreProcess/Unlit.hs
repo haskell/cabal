@@ -16,7 +16,7 @@
 
 module Distribution.PreProcess.Unlit(unlit,plain) where
 
-import Char
+import Data.Char
 
 -- exports:
 

@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -53,17 +54,21 @@ module Distribution.Simple.Install (
 #include "config.h"
 #endif
 
-import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..),
-                             showPackageId, setupMessage, hasLibs, withLib)
+import Distribution.PackageDescription (
+	PackageDescription(..), BuildInfo(..), Executable(..),
+	setupMessage, hasLibs, withLib)
+import Distribution.Package (showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(moveSources, rawSystemExit,
-                                 mkLibName, pathJoin,
-                                 copyFile, die, createIfNotExists
+                                 mkLibName,
+                                 die, createIfNotExists
                                 )
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when)
-import Data.Maybe(maybeToList)
+import Data.Maybe(maybeToList, fromMaybe)
+import Distribution.Compat.Directory(copyFile)
+import Distribution.Compat.FilePath(joinFileName)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -85,8 +90,7 @@ install buildPref pkg_descr lbi install_prefixM uInst = do
      Hugs -> do -- FIX (HUGS): fix 'die' checks commands below.
                 when uInst (die "Hugs cannot yet install user-only packages.")
                 withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
-                                     do let targetDir = pathJoin [buildPref,
-                                                                  srcDir]
+                                     do let targetDir = buildPref `joinFileName` srcDir
                                         let args = targetDir
                                                     : (maybeToList install_prefixM)
                                         let hugsPkg = compilerPkgTool $ compiler $ lbi
@@ -102,7 +106,7 @@ installExeGhc :: FilePath -- ^install location
               -> PackageDescription -> IO ()
 installExeGhc pref buildPref pkg_descr
     = do createIfNotExists True pref
-         sequence_ [copyFile (pathJoin [buildPref, hsSourceDir b, e]) (pathJoin [pref, e])
+         sequence_ [copyFile (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
                     | Executable e _ b <- executables pkg_descr]
 
 -- |Install for ghc, .hi and .a
@@ -111,7 +115,7 @@ installLibGHC :: FilePath -- ^install location
               -> PackageDescription -> IO ()
 installLibGHC pref buildPref PackageDescription{library=Just l,
                                                 package=p}
-    = do moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["hi"]
+    = do moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (modules l) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
 
@@ -120,23 +124,22 @@ installHugs :: FilePath -- ^Install location
             -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
 installHugs pref buildPref PackageDescription{library=Just l}
-    = moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["lhs", "hs"]
+    = moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (modules l) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
 
 mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkLibDir pkg_descr lbi install_prefixM = 
-	pathJoin [ maybe (prefix lbi) id install_prefixM
+  (fromMaybe (prefix lbi) install_prefixM) `joinFileName`
 #ifndef mingw32_TARGET_OS
-                 , "lib"
+                 "lib" `joinFileName`
 #endif
-	         , showPackageId (package pkg_descr)
-	         ]
+	         showPackageId (package pkg_descr)
 
 mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkBinDir _ lbi install_prefixM = 
-	pathJoin [(maybe (prefix lbi) id install_prefixM), "bin"]
+  (fromMaybe (prefix lbi) install_prefixM) `joinFileName` "bin"
 
 -- ------------------------------------------------------------
 -- * Testing

@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -57,26 +58,32 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 #include "config.h"
 #endif
 
-import Distribution.Misc(Dependency(..), extensionsToGHCFlag,
+import Distribution.Extension(extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
-import Distribution.Package(PackageDescription(..), PackageIdentifier(..),
-                            BuildInfo(..), Executable(..), setupMessage,
-                            emptyPackageDescription
-                           )
-import Distribution.Simple.Utils (die, findBinary, splitFilePath,
-                                  joinFilenameDir, joinExt)
-import Distribution.Package	( PackageIdentifier )
-import Distribution.Version (Version(..), VersionRange(..))
+import Distribution.Package (PackageIdentifier(..))
+import Distribution.PackageDescription(
+ 	PackageDescription(..),
+	BuildInfo(..), Executable(..), setupMessage)
+import Distribution.Simple.Utils (die, withTempFile,maybeExit)
+import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
+			     parseVersion, showVersion)
 
 import Data.List (intersperse, nub)
+import Data.Char (isSpace)
 import Data.Maybe(fromJust)
 import System.Directory
+import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt)
+import System.Cmd		( system )
 import Control.Monad		( when, unless )
+import Distribution.Compat.ReadP
+import Distribution.Compat.Directory (findExecutable)
 #ifndef __NHC__
 import Control.Exception	( catch, evaluate )
 #endif
+import Data.Char (isDigit)
 import Prelude hiding (catch)
+
 
 #ifdef DEBUG
 import HUnit
@@ -139,7 +146,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
 			Just path -> path
 			Nothing   -> system_default_prefix pkg_descr
 	-- detect compiler
-	comp@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
+	comp@(Compiler f' ver p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path maybe_hc_pkg pkg_descr 
         -- check extensions
         let extlist = nub $ maybe [] extensions lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -154,8 +161,9 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
 
         -- FIXME: maybe this should only be printed when verbose?
         message $ "Using build prefix: " ++ pref
-        message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
+        message $ "Compiler flavor: " ++ (show f')
+        message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=pref, compiler=comp,
                               packageDeps=map buildDepToDep (maybe [] buildDepends lib),
@@ -195,12 +203,15 @@ configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
 	   Just path -> return path
 	   Nothing   -> findCompiler flavor
 
+       ver <- configCompilerVersion flavor comp
+
        pkgtool <-
 	 case maybe_pkgtool of
 	   Just path -> return path
 	   Nothing   -> guessPkgToolFromHCPath flavor comp
 
        return (Compiler{compilerFlavor=flavor,
+			compilerVersion=ver,
 			compilerPath=comp,
 			compilerPkgTool=pkgtool})
 
@@ -224,7 +235,7 @@ findCompiler :: CompilerFlavor -> IO FilePath
 findCompiler flavor = do
   let prog = compilerBinaryName flavor
   message $ "searching for " ++ prog ++ " in path."
-  res <- findBinary prog
+  res <- findExecutable prog
   case res of
    Nothing   -> die ("Cannot find compiler for " ++ prog)
    Just path -> do message ("found " ++ prog ++ " at "++ path)
@@ -239,16 +250,28 @@ compilerBinaryName Hugs = "hugs"
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
-
 -- FIX (HUGS): This tool doesn't actually implement the HC-PKG
 -- spec. it does something different.
 compilerPkgToolName Hugs = "hugs-package"
+
+configCompilerVersion :: CompilerFlavor -> FilePath -> IO Version
+configCompilerVersion GHC compiler =
+  withTempFile "." "" $ \tmp -> do
+    maybeExit $ system (compiler ++ " --version >" ++ tmp)
+    str <- readFile tmp
+    case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
+	[v] -> return v
+	_   -> die ("cannot determine version of " ++ compiler ++ ":\n  "
+			++ str)
+configCompilerVersion _ _ = return Version{ versionBranch=[],versionTags=[] }
+
+pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
            (dir,_,ext) = splitFilePath path
-           pkgtool         = dir `joinFilenameDir` pkgToolName `joinExt` ext
+           pkgtool         = dir `joinFileName` pkgToolName `joinFileExt` ext
        message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
        when (not exists) $
@@ -266,7 +289,8 @@ message s = putStrLn $ "configure: " ++ s
 packageID = PackageIdentifier "Foo" (Version [1] [])
 
 hunitTests :: [Test]
-hunitTests
+hunitTests = []
+{- Too specific:
     = [TestCase $
        do let simonMarGHCLoc = "/usr/bin/ghc"
           simonMarGHC <- configure emptyPackageDescription {package=packageID}
@@ -275,8 +299,9 @@ hunitTests
 				       Nothing, Nothing)
 	  assertEqual "finding ghc, etc on simonMar's machine failed"
              (LocalBuildInfo "/usr" (Compiler GHC 
-	                    simonMarGHCLoc
+	                    (Version [6,2,2] []) simonMarGHCLoc 
  			    (simonMarGHCLoc ++ "-pkg")) [] [])
              simonMarGHC
       ]
+-}
 #endif

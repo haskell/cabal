@@ -1,4 +1,5 @@
-GHCFLAGS= --make -Wall -cpp
+GHCFLAGS= --make -W -fno-warn-unused-matches -cpp
+# later: -Wall
 PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 

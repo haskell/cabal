@@ -1,14 +1,14 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Misc
+-- Module      :  Distribution.Extension
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  
+-- Portability :  portable
 --
--- Explanation: Misc stuff that doesn't fit elsewhere. License,
--- Dependencies, extensions.
+-- Haskell language extensions
 
 {- All rights reserved.
 
@@ -40,16 +40,14 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Misc(License(..), Dependency(..), Extension(..), Opt
-                         ,extensionsToNHCFlag, extensionsToGHCFlag
-                         ,extensionsToHugsFlag
+module Distribution.Extension (
+	Extension(..), Opt,
+	extensionsToNHCFlag, extensionsToGHCFlag, extensionsToHugsFlag,
 #ifdef DEBUG        
-        ,hunitTests
+        hunitTests
 #endif
-                        )
-    where
+  ) where
 
-import Distribution.Version(VersionRange)
 import Data.List(nub)
 
 #ifdef DEBUG
@@ -57,16 +55,8 @@ import HUnit (Test)
 #endif
 
 -- ------------------------------------------------------------
--- * Misc
+-- * Extension
 -- ------------------------------------------------------------
-
-data License = GPL | LGPL | BSD3 | BSD4 | PublicDomain | AllRightsReserved
-             | {- ... | -} OtherLicense FilePath
-               deriving (Read, Show, Eq)
-
--- |Maybe move to Distribution.Version?
-data Dependency = Dependency String VersionRange
-                  deriving (Read, Show, Eq)
 
 -- |This represents non-standard compiler extensions which each
 -- package might employ.

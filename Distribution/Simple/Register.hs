@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Register
@@ -54,7 +55,8 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
-import Distribution.Package (setupMessage, PackageDescription(..), PackageIdentifier(..))
+import Distribution.PackageDescription (setupMessage, PackageDescription(..))
+import Distribution.Package (PackageIdentifier(..))
 import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
