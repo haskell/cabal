@@ -358,14 +358,14 @@ tests currDir comp compConf = [
           dumpScriptFlag = "--gen-script"
           registerAndExecute comp comment = do
             assertCmd' compCmd ("register --user "++dumpScriptFlag) comment
-            if comp == GHC   -- FIX: chmod +x instead of source
-               then assertCmd' "source" "register.sh" "reg script failed" 
+            if comp == GHC
+               then assertCmd' "./register.sh" "" "reg script failed" 
                else do ex <- doesFileExist "register.sh"
                        assertBool "hugs should not produce register.sh" (not ex) 
           unregisterAndExecute comp comment = do
             assertCmd' compCmd ("unregister --user "++dumpScriptFlag) comment
-            if comp == GHC   -- FIX: chmod +x instead of source
-               then assertCmd' "source" "unregister.sh" "reg script failed"
+            if comp == GHC
+               then assertCmd' "./unregister.sh" "" "reg script failed"
                else do ex <- doesFileExist "unregister.sh" 
                        assertBool "hugs should not produce unregister.sh" (not ex)
 
