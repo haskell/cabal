@@ -56,7 +56,7 @@ module Distribution.Simple (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
-import Distribution.Setup(parseArgs, Action(..), optionHelpString)
+import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
 import Distribution.Simple.SrcDist	( sdist )
@@ -72,7 +72,7 @@ import Distribution.Version (Version(..), VersionRange(..),
 			     betweenVersionsInclusive)
 
 -- Base
-import System(getArgs)
+import System.Environment(getArgs)
 import System.Directory(removeFile)
 
 import Control.Exception(try)
@@ -105,52 +105,53 @@ defaultMainNoRead pkg_descr
          let distPref = "dist"
          let buildPref = pathJoin [distPref, "build"]
          let srcPref = pathJoin [distPref, "src"]
-         case parseArgs args of
-	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
-
-	     Right (ConfigCmd flags, extra_flags) -> do
-		no_extra_flags extra_flags
+         (action, args) <- parseGlobalArgs args
+         case action of
+            ConfigCmd flags -> do
+                (flags, _, args) <- parseConfigureArgs flags args []
+                no_extra_flags args
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig localbuildinfo
 
-             Right (BuildCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            BuildCmd -> do
+                (_, args) <- parseBuildArgs args []
+                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		build buildPref pkg_descr localbuildinfo
 
-             Right (CleanCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            CleanCmd -> do
+                (_, args) <- parseCleanArgs args []
+                no_extra_flags args
 		try $ removeFileRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
                 return ()
 
-             Right (InstallCmd install_prefixM userInst, extra_flags) -> do
-		no_extra_flags extra_flags
+            InstallCmd mprefix uInst -> do
+                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		install buildPref pkg_descr localbuildinfo install_prefixM
-                when (isNothing install_prefixM && hasLibs pkg_descr)
-                         (register pkg_descr localbuildinfo userInst)
+		install buildPref pkg_descr localbuildinfo mprefix
+                when (isNothing mprefix && hasLibs pkg_descr)
+                         (register pkg_descr localbuildinfo uInst)
 
-             Right (SDistCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            SDistCmd -> do
+                (_, args) <- parseSDistArgs args []
+                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		sdist srcPref distPref pkg_descr localbuildinfo
 
-             Right (RegisterCmd userFlag, extra_flags) -> do
-		no_extra_flags extra_flags
+            RegisterCmd uInst -> do
+                (uInst, _, args) <- parseRegisterArgs uInst args []
+                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo userFlag)
+		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo uInst)
 
-             Right (UnregisterCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            UnregisterCmd -> do
+                (_, args) <- parseUnregisterArgs args []
+                no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo
-
-             Left err -> do 
-		hPutStr stderr (unlines err)
-		hPutStr stderr (optionHelpString helpprefix)
-         return ()
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()

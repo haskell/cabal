@@ -56,8 +56,7 @@ import Distribution.Simple.Utils (maybeExit)
 import Distribution.Misc (License(..))
 import Distribution.Version (Version(..))
 
--- Base
-import System(getArgs)
+import System.Environment(getArgs)
 
 import Control.Monad (when)
 import Data.Maybe (isNothing, maybe)
@@ -108,39 +107,44 @@ defaultMain = parsePackageDesc defaultPackageDesc >>= defaultMainNoRead
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         case parseArgs args of
-	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
-
-	     Right (ConfigCmd flags, extra_flags) -> do
-		no_extra_flags extra_flags
+         (action, args) <- parseGlobalArgs args
+         case action of
+            ConfigCmd flags -> do
+                (flags, _, args) <- parseConfigureArgs flags args []
+                no_extra_flags args
                 exec $ "./configure " ++ configureArgs flags
 
-             Right (BuildCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            BuildCmd -> do
+                (_, args) <- parseBuildArgs args []
+                no_extra_flags args
                 exec "make"
 
-             Right (InstallCmd install_prefixM userInst, extra_flags) -> do
-		no_extra_flags extra_flags
-                maybeExit $ system $ "make install" ++
-                                     maybe "" (" prefix="++) install_prefixM
-                when (isNothing install_prefixM) (exec "make register")
+            CleanCmd -> do
+                (_, args) <- parseCleanArgs args []
+                no_extra_flags args
+                exec "make clean"
 
-             Right (SDistCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            InstallCmd mprefix uInst -> do
+                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+                no_extra_flags args
+                maybeExit $ system $ "make install" ++
+                                     maybe "" (" prefix="++) mprefix
+                when (isNothing mprefix) (exec "make register")
+
+            SDistCmd -> do
+                (_, args) <- parseSDistArgs args []
+                no_extra_flags args
                 exec "make dist"
 
-             Right (RegisterCmd userFlag, extra_flags) -> do
-		no_extra_flags extra_flags
+            RegisterCmd uInst -> do
+                (uInst, _, args) <- parseRegisterArgs uInst args []
+                no_extra_flags args
                 exec "make register"
 
-             Right (UnregisterCmd, extra_flags) -> do
-		no_extra_flags extra_flags
+            UnregisterCmd -> do
+                (_, args) <- parseUnregisterArgs args []
+                no_extra_flags args
                 exec "make unregister"
-
-             Left err -> do 
-		hPutStr stderr (unlines err)
-		hPutStr stderr (optionHelpString helpprefix)
-         return ()
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
