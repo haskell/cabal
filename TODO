@@ -19,8 +19,9 @@
 ** Which fields are required
 ** which Distribution.* things won't change?
 
-* unregistering the package, etc
-** --user flag to unregister
+* un/registering the package on the target
+** dump shell scripts for registering and unregistering?
+** dry run, just to dump the .installed-pkg-config?
 
 ** think about HC-PKG's role here. maybe HC-PKG should do all this instead
 
