@@ -8,4 +8,4 @@ pkg_descr = emptyPackageDescription {
   exposedModules = ["A"]
   }
 
-main = defaultMain pkg_descr
+main = defaultMainNoRead pkg_descr

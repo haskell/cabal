@@ -55,14 +55,13 @@ moduleTest:
 tests: moduleTest
 	cd test/A && make
 
-check: tests main
+check: tests
 	./moduleTest
 
 # distribution...
 
 pushall:
-	darcs push --all ijones@monk.syntaxpolice.org:/home/ijones/public_html/darcs_repos/library-infrastructure
-	darcs push --all ijones@cvs.haskell.org:/home/ijones/library-infrastructure
+	darcs push --all ijones@cvs.haskell.org:/home/darcs/cabal
 
 dist: pushall
 	darcs dist

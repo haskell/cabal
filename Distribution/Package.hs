@@ -47,6 +47,7 @@ module Distribution.Package (
 	showPackageId,
 	PackageDescription(..),
 	emptyPackageDescription,
+        parsePackageDesc,
 #ifdef DEBUG        
         hunitTests
 #endif
@@ -55,6 +56,8 @@ module Distribution.Package (
 import Distribution.Version(Version(..), showVersion)
 import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
+
+import System.IO(openFile, IOMode(..), hGetContents)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -97,7 +100,7 @@ data PackageDescription
         includes       :: [ FilePath ],
         options        :: [ (CompilerFlavor, [String]) ]
     }
-    deriving (Show)
+    deriving (Show, Read)
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
@@ -118,6 +121,12 @@ emptyPackageDescription
                       includes     = [],
                       options      = []
                      }
+
+-- |Parse the given package file.  FIX: don't use read / show.
+parsePackageDesc :: FilePath -> IO PackageDescription
+parsePackageDesc p
+    = openFile p ReadMode >>= hGetContents >>= return . read
+
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------

@@ -47,7 +47,7 @@ module Distribution.Simple (
 	License(..), Version(..), VersionRange(..), 
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
-	defaultMain,
+	defaultMain, defaultMainNoRead,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -82,6 +82,9 @@ import System.IO (hPutStr, stderr)
 import HUnit (Test)
 #endif
 
+defaultPackageDesc :: FilePath
+defaultPackageDesc = "Setup.description"
+
 -- |Reads local build info, executes function
 doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function to apply
                -> PackageDescription
@@ -90,8 +93,11 @@ doBuildInstall f pkgConf
     = do lbi <- getPersistBuildConfig
          f pkgConf lbi
 
-defaultMain :: PackageDescription -> IO ()
-defaultMain pkg_descr
+defaultMain :: IO ()
+defaultMain = parsePackageDesc defaultPackageDesc >>= defaultMainNoRead
+
+defaultMainNoRead :: PackageDescription -> IO ()
+defaultMainNoRead pkg_descr
     = do args <- getArgs
          let distPref = "dist"
          let buildPref = pathJoin [distPref, "build"]
