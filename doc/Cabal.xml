@@ -2,6 +2,7 @@
 <!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
   "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
     <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution.Simple.html">Distribution.Simple</ulink>'>
+    <!ENTITY PreProcess    '<ulink url="../libraries/Cabal/Distribution.PreProcess.html">Distribution.PreProcess</ulink>'>
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
     <!ENTITY Extension '<ulink url="../libraries/Cabal/Distribution.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
@@ -630,7 +631,7 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
       <itemizedlist>
         <listitem>
           <para>Customizing the simple build infrastructure using
-            <firstterm>hooks</firstterm>.  See &Simple; for details.</para>
+            <firstterm>hooks</firstterm>.  See <xref linkend="customization"/> for details.</para>
         </listitem>
 
         <listitem>
@@ -958,6 +959,77 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
         <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
         which can be distributed to package builders.  When unpacked,
         the commands listed in this section will be available.</para>
+    </section>
+  </section>
+
+  <section id="customization">
+    <title>Preprocessors and Customization</title>
+
+    <para>As mentioned in <xref linkend="complex-packages"/>, there
+    are a number of ways to customize your packages.  Preprocessors
+    like cpp allow you to call out to external programs to alter your
+    source files.  "User Hooks" allow you to add your own
+    functionality before and after a command is run. (see also
+    &Simple;) </para>
+
+    <section id="preprocessors">
+      <title>PreProcessors</title>
+
+      <para>Some more complex packages may require the use of
+      preprocessors.  There is a set of "built-in" preprocessors in
+      the module Distribution.PreProcess, including Greencard, C2hs,
+      Hsc2hs, Alex, Happy, and cpphs.</para>
+
+      <para>The behavior of preprocessors is pretty straightforward.
+      If your package includes module "P", Cabal will first try to
+      find P.hs or P.lhs.  Failing that, it looks for suffixes
+      relating to known preprocessors, such as P.cpphs.  If it finds
+      P.cpphs, Cabal will generate P.hs from that and build it.</para>
+
+      <para>If you want to use a preprocessor that's not defined in
+      Distribution.PreProcess.knownSuffixHandlers, you may define your
+      own and provide them as hooks (see <xref linkend="hooks"/>).  A
+      "SuffixHandler" has the following type.
+<programlisting>
+type PPSuffixHandler
+    = (String, -- The extension
+       BuildInfo -> LocalBuildInfo -> PreProcessor)
+
+type PreProcessor = FilePath  -- Location of source to preprocess
+                  -> FilePath -- Output filename
+                  -> Int      -- verbose
+                  -> IO ExitCode
+</programlisting>
+
+      For more information see &PreProcess;. </para>
+
+      <para>You might therefore create your own preprocessor which,
+      for example prepends a comment to the given source file.  This
+      definition would appear in your Setup.lhs file.
+
+      <example>
+        <title>A Custom PreProcessor</title>
+<programlisting>
+ppTestHandler :: FilePath -- ^InFile
+              -> FilePath -- ^OutFile
+              -> Int      -- ^verbose
+              -> IO ExitCode
+ppTestHandler inFile outFile verbose
+    = do when (verbose > 0) $
+           putStrLn (inFile++" has been preprocessed to "++outFile)
+         stuff <- readFile inFile
+         writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
+         return ExitSuccess
+</programlisting></example></para>
+
+       <para>This preprocessor must then be hooked into your Setup
+       file with the function <varname>defaultMainWithHooks</varname>.
+       See <xref linkend="hooks"/> for more details.</para>
+
+    </section>             
+    <section id="hooks">
+      <title>Hooks</title>
+      <para>...</para>
     </section>
   </section>
 
