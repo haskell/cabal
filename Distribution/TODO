@@ -1,7 +1,6 @@
 * 0.1
 RC:
 ** grep for "FIX"
-** make installed binaries executable! (posix?)
 ** sanity check for both library and executables == nothing.
 - also, if they have Nothing, and yet BuildInfo is non-empty, this
    should probably be a warning.

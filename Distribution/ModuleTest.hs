@@ -67,7 +67,8 @@ import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig
 -- base
 import Control.Monad(when, unless)
 import Directory(setCurrentDirectory, doesFileExist,
-                 doesDirectoryExist, getCurrentDirectory)
+                 doesDirectoryExist, getCurrentDirectory,
+                 getPermissions, Permissions(..))
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
@@ -120,6 +121,8 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
             assertCmd "./setup install --user" "wash2hs install"
             doesFileExist ",tmp/bin/wash2hs"
               >>= assertBool "wash2hs didn't put executable into place."
+            perms <- getPermissions ",tmp/bin/wash2hs"
+            assertBool "wash2hs isn't +x" (executable perms)
             setCurrentDirectory oldDir,
          TestLabel "testing the HUnit package" $ TestCase $ 
          do oldDir <- getCurrentDirectory
