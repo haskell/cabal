@@ -48,12 +48,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple (
 	module Distribution.Package,
+	module Distribution.Version,
 	module Distribution.License,
-	Version(..), VersionRange(..), 
-	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
-	Extension(..), Dependency(..),
-	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        UserHooks(..), Args, defaultUserHooks, emptyUserHooks,
+	module Distribution.Extension,
+        -- * Simple interface
+	defaultMain, defaultMainNoRead,
+        -- * Customization
+        UserHooks(..), Args,
+        defaultMainWithHooks, defaultUserHooks, emptyUserHooks,
         defaultHookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
@@ -80,10 +82,8 @@ import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
 import Distribution.License
-import Distribution.Extension (Extension(..))
-import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
-			     orLaterVersion, orEarlierVersion,
-			     betweenVersionsInclusive)
+import Distribution.Extension
+import Distribution.Version
 
 -- Base
 import System.Cmd	(rawSystem)
@@ -107,11 +107,14 @@ import HUnit (Test)
 
 type Args = [String]
 
+-- | Hooks allow authors to add specific functionality before and after
+-- a command is run, and also to specify additional preprocessors.
 data UserHooks = UserHooks
     {
      runTests :: Args -> Bool -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
-     hookedPreProcessors :: [ PPSuffixHandler ], -- ^Add custom preprocessors
+     hookedPreProcessors :: [ PPSuffixHandler ],
+        -- ^Custom preprocessors in addition to 'knownSuffixHandlers'.
 
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      postConf :: Args -> LocalBuildInfo -> IO ExitCode,
@@ -142,7 +145,9 @@ data UserHooks = UserHooks
      postUnreg :: Args -> LocalBuildInfo -> IO ExitCode
     }
 
--- |Reads the package description file using IO.
+-- |A simple implementation of @main@ for a Cabal setup script.
+-- It reads the package description file using IO, and performs the
+-- action specified on the command line.
 defaultMain :: IO ()
 defaultMain = do args <- getArgs
                  (action, args) <- parseGlobalArgs args
@@ -150,6 +155,7 @@ defaultMain = do args <- getArgs
                  defaultMainWorker pkg_descr action args Nothing
                  return ()
 
+-- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks
                      -> IO ()
 defaultMainWithHooks hooks
@@ -162,7 +168,8 @@ defaultMainWithHooks hooks
                                defaultMainWorker pkg_descr action args (Just hooks)
                                return ()
 
--- |Accept description as input rather than using IO to read it.
+-- |Like 'defaultMain', but accepts the package description as input
+-- rather than using IO to read it.
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs

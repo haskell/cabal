@@ -2,7 +2,6 @@
 <!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
   "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
     <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution.Simple.html">Distribution.Simple</ulink>'>
-    <!ENTITY PreProcess    '<ulink url="../libraries/Cabal/Distribution.PreProcess.html">Distribution.PreProcess</ulink>'>
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
     <!ENTITY Extension '<ulink url="../libraries/Cabal/Distribution.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
@@ -41,9 +40,9 @@
       </listitem>
     </itemizedlist>
     <para>However having both a library and executables in a package
-    does not work very well; if the executables depend on the library,
-    they must explicitly list the modules they use from that
-    library.</para>
+      does not work very well; if the executables depend on the library,
+      they must explicitly list all the modules they directly or
+      indirectly import from that library.</para>
 
     <para>Internally, the package may consist of much more than a
     bunch of Haskell modules: it may also have C source code and
@@ -78,9 +77,10 @@
 
   <section id="authors">
     <title>Creating a package</title>
-    <para>Suppose you have a directory hierarchy containing the files
-      that make up your package.  You will need to add two more files
-      to the root directory of the package:</para>
+
+    <para>Suppose you have a directory hierarchy containing the source
+      files that make up your package.  You will need to add two more
+      files to the root directory of the package:</para>
     <variablelist>
       <varlistentry>
         <term><filename><replaceable>package</replaceable>.cabal</filename></term>
@@ -132,6 +132,26 @@ main = defaultMain</programlisting>
     </example>
 
     <example id="simple-executable-example">
+      <title>A package containing executable programs</title>
+      <programlisting>
+Name:           TestPackage
+Version:        0.0
+License:        BSD3
+Author:         Angela Author
+Build-Depends:  HUnit
+
+Executable:     program1
+Main-Is:        Main.hs
+Hs-Source-Dir:  prog1
+
+Executable:     program2
+Main-Is:        Main.hs
+Hs-Source-Dir:  prog2
+Hidden-Modules: Utils</programlisting>
+      <para>with <filename>Setup.hs</filename> the same as above.</para>
+    </example>
+
+    <example id="simple-library-executable-example">
       <title>A package containing a library and executable programs</title>
       <programlisting>
 Name:            TestPackage
@@ -143,14 +163,13 @@ Exposed-Modules: A, B, C
 
 Executable:     program1
 Main-Is:        Main.hs
-Hidden-Modules: A, B
 Hs-Source-Dir:  prog1
+Hidden-Modules: A, B
 
 Executable:     program2
 Main-Is:        Main.hs
-Hidden-Modules: C
 Hs-Source-Dir:  prog2
-Hidden-Modules: Utils</programlisting>
+Hidden-Modules: A, C, Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -316,15 +335,36 @@ Hidden-Modules: Utils</programlisting>
               this package contains a library).</para>
           </listitem>
         </varlistentry>
-
       </variablelist>
+
+      <note>
+        <para>Module names may correspond to Haskell source files, i.e.
+          with names ending in <quote><literal>.hs</literal></quote>
+          or <quote><literal>.lhs</literal></quote>, or to inputs for
+          various Haskell preprocessors.  The simple build infrastructure
+          understands
+          <quote><literal>.gc</literal></quote> (GreenCard),
+          <quote><literal>.chs</literal></quote> (<command>c2hs</command>),
+          <quote><literal>.hsc</literal></quote> (<command>hsc2hs</command>),
+          <quote><literal>.y</literal></quote> and
+          <quote><literal>.ly</literal></quote> (<command>happy</command>),
+          <quote><literal>.x</literal></quote> (<command>alex</command>)
+          and
+          <quote><literal>.cpphs</literal></quote> (<command>cpphs</command>).
+          In such cases the appropriate preprocessor will be run
+          automatically as required.</para>
+      </note>
+
       <para>This stanza may also contain build information fields relating
         to the library (see <xref linkend="buildinfo"/>).</para>
+
       <section id="executable">
         <title>Executables</title>
+
         <para>Subsequent stanzas (if present) describe executable programs
           contained in the package, using the following fields, as well as
           build information fields (see <xref linkend="buildinfo"/>).</para>
+
         <variablelist>
           <varlistentry>
             <term><literal>executable:</literal> <replaceable>string</replaceable></term>
@@ -630,15 +670,17 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
 
       <itemizedlist>
         <listitem>
-          <para>Customizing the simple build infrastructure using
-            <firstterm>hooks</firstterm>.  See <xref linkend="customization"/> for details.</para>
+          <para>You can customize the simple build infrastructure using
+            <firstterm>hooks</firstterm>.  These allow you to perform
+            additional actions before and after each command is run,
+            and also to specify additional preprocessors.  See &Simple;
+            for the details.</para>
         </listitem>
 
         <listitem>
           <para>You could delegate all the work to <command>make</command>,
-            though this is unlikely to be very portable.</para>
-
-          <para>Cabal supports this with a trivial setup library &Make;,
+            though this is unlikely to be very portable.
+            Cabal supports this with a trivial setup library &Make;,
             which simply parses the command line arguments and invokes
             <command>make</command>.  Here <filename>Setup.hs</filename>
             looks like</para>
@@ -654,11 +696,11 @@ main = defaultMain</programlisting>
         </listitem>
 
         <listitem>
-          <para>Writing your own setup script conforming to the
-          interface of <xref linkend="builders"/>, possibly using the
-          Cabal library for part of the work.  One option is to copy
-          the source of Distribution.Simple, and alter it for your
-          needs.  Good luck.</para>
+          <para>You can write your own setup script conforming to the
+            interface of <xref linkend="builders"/>, possibly using the
+            Cabal library for part of the work.  One option is to copy the
+            source of Distribution.Simple, and alter it for your needs.
+            Good luck.</para>
         </listitem>
       </itemizedlist>
     </section>
@@ -959,77 +1001,6 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
         <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
         which can be distributed to package builders.  When unpacked,
         the commands listed in this section will be available.</para>
-    </section>
-  </section>
-
-  <section id="customization">
-    <title>Preprocessors and Customization</title>
-
-    <para>As mentioned in <xref linkend="complex-packages"/>, there
-    are a number of ways to customize your packages.  Preprocessors
-    like cpp allow you to call out to external programs to alter your
-    source files.  "User Hooks" allow you to add your own
-    functionality before and after a command is run. (see also
-    &Simple;) </para>
-
-    <section id="preprocessors">
-      <title>PreProcessors</title>
-
-      <para>Some more complex packages may require the use of
-      preprocessors.  There is a set of "built-in" preprocessors in
-      the module Distribution.PreProcess, including Greencard, C2hs,
-      Hsc2hs, Alex, Happy, and cpphs.</para>
-
-      <para>The behavior of preprocessors is pretty straightforward.
-      If your package includes module "P", Cabal will first try to
-      find P.hs or P.lhs.  Failing that, it looks for suffixes
-      relating to known preprocessors, such as P.cpphs.  If it finds
-      P.cpphs, Cabal will generate P.hs from that and build it.</para>
-
-      <para>If you want to use a preprocessor that's not defined in
-      Distribution.PreProcess.knownSuffixHandlers, you may define your
-      own and provide them as hooks (see <xref linkend="hooks"/>).  A
-      "SuffixHandler" has the following type.
-<programlisting>
-type PPSuffixHandler
-    = (String, -- The extension
-       BuildInfo -> LocalBuildInfo -> PreProcessor)
-
-type PreProcessor = FilePath  -- Location of source to preprocess
-                  -> FilePath -- Output filename
-                  -> Int      -- verbose
-                  -> IO ExitCode
-</programlisting>
-
-      For more information see &PreProcess;. </para>
-
-      <para>You might therefore create your own preprocessor which,
-      for example prepends a comment to the given source file.  This
-      definition would appear in your Setup.lhs file.
-
-      <example>
-        <title>A Custom PreProcessor</title>
-<programlisting>
-ppTestHandler :: FilePath -- ^InFile
-              -> FilePath -- ^OutFile
-              -> Int      -- ^verbose
-              -> IO ExitCode
-ppTestHandler inFile outFile verbose
-    = do when (verbose > 0) $
-           putStrLn (inFile++" has been preprocessed to "++outFile)
-         stuff <- readFile inFile
-         writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
-         return ExitSuccess
-</programlisting></example></para>
-
-       <para>This preprocessor must then be hooked into your Setup
-       file with the function <varname>defaultMainWithHooks</varname>.
-       See <xref linkend="hooks"/> for more details.</para>
-
-    </section>             
-    <section id="hooks">
-      <title>Hooks</title>
-      <para>...</para>
     </section>
   </section>
 
