@@ -1,4 +1,4 @@
-GHCFLAGS= -itest/HUnit-1.0/src --make -Wall
+GHCFLAGS= --make -Wall
 PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
@@ -14,23 +14,27 @@ all: moduleTest
 # build the library itself
 
 setup:
-	ghc $(GHCFLAGS) Setup -o setup
-
-build: hunitInstall-stamp config
-	./setup build
+	mkdir -p dist/tmp
+	ghc $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
 
 config: setup
 	./setup configure --prefix=$(PREF)
 
-install: build
+build: build-stamp
+build-stamp: config
+	./setup build
+
+install: build-stamp
 	./setup install $(USER_FLAG)
 
 clean: clean-cabal clean-hunit clean-test
 
 clean-cabal:
 	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
+	-rm -f Compat/*.{o,hi}
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
+	-rm -f build-stamp
 
 clean-hunit:
 	-rm -f hunit-stamp hunitInstall-stamp
@@ -59,7 +63,9 @@ hunitInstall-stamp: hunit-stamp
 # testing...
 
 moduleTest:
-	ghc $(GHCFLAGS) -DDEBUG Distribution/ModuleTest -o moduleTest
+	-rm -rf dist/debug
+	mkdir -p dist/debug
+	ghc $(GHCFLAGS) -DDEBUG -odir dist/debug -hidir dist/debug -i.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
 
 tests: moduleTest clean
 	cd test/A && make clean

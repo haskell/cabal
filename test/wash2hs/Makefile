@@ -1,5 +1,6 @@
 all:
-	ghc -Wall --make -i../../:../HUnit-1.0/src Setup.lhs -o setup
+	mkdir -p dist/tmp
+	ghc -Wall --make -odir dist/tmp -hidir dist/tmp -i../..:../HUnit-1.0/src Setup.lhs -o setup
 clean:
 	rm -f setup
 	rm -rf ,tmp dist ,tmp2
