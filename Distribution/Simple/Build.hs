@@ -58,8 +58,9 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                  )
 
 
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Data.List(intersperse)
+import System.Directory (doesFileExist)
 import System.Environment (getEnv)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
@@ -102,6 +103,8 @@ buildGHC pref pkg_descr lbi = do
 
   -- first, build the modules
   pkgConf <- GHC.localPackageConfig
+  pkgConfExists <- doesFileExist pkgConf
+  unless pkgConfExists $ writeFile pkgConf "[]\n"
   let args = ["-package-conf", pkgConf]
           ++ constructGHCCmdLine pref pkg_descr lbi
   rawSystemExit (compilerPath (compiler lbi)) args
