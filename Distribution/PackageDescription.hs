@@ -459,16 +459,23 @@ binfoFields =
 -- --------------------------------------------
 -- ** Parsing
 
+-- | Given a parser and a filename, return the parse of the file,
+-- after checking if the file exists.
+readAndParseFile ::  (String -> ParseResult a) -> FilePath -> IO a
+readAndParseFile parser fpath = do 
+  exists <- doesFileExist fpath
+  when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
+  str <- readFile fpath
+  case parser str of
+    ParseFailed e -> error (showError e) -- FIXME
+    ParseOk x -> return x
+
 -- |Parse the given package file.
 readPackageDescription :: FilePath -> IO PackageDescription
-readPackageDescription fpath = do 
-  exists <- doesFileExist fpath
-  when (not exists) (die $ "Error: description file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
-  str <- readFile fpath
-  case parseDescription str of
-    ParseFailed e -> error (showError e) -- FIXME
---    ParseOk PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
-    ParseOk x -> return x
+readPackageDescription = readAndParseFile parseDescription 
+
+readBuildInfo :: FilePath -> IO [BuildInfo]
+readBuildInfo = readAndParseFile parseBuildInfo
 
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription inp = do (st:sts) <- splitStanzas inp
@@ -499,18 +506,27 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
 	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
-        parseBInfoField ((StanzaField name _ _ set):fields) binfo (lineNo, f, val)
-	  | name == f = set lineNo val binfo
-	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
-	parseBInfoField [] _ (lineNo, f, _) =
-	  myError lineNo $ "Unknown field '" ++ f ++ "'"
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
-        lookupField _ [] = Nothing
+
         lookupField x ((n,f,v):st)
           | x == f      = Just (n,v)
           | otherwise   = lookupField x st
+        lookupField _ [] = Nothing
 
+
+parseBuildInfo :: String -> ParseResult [BuildInfo]
+parseBuildInfo inp = splitStanzas inp >>= mapM parseBI
+    where
+    parseBI :: Stanza -> ParseResult BuildInfo
+    parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
+
+parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
+parseBInfoField ((StanzaField name _ _ set):fields) binfo (lineNo, f, val)
+	  | name == f = set lineNo val binfo
+	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
+parseBInfoField [] _ (lineNo, f, _) =
+	  myError lineNo $ "Unknown field '" ++ f ++ "'"
 
 -- --------------------------------------------
 -- ** Pretty printing
