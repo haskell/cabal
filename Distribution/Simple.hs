@@ -48,11 +48,13 @@ where
 import System(getArgs)
 
 import Distribution.Package(PackageConfig(..))
-import Distribution.Setup(parseArgs, Action(..))
+import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build(build)
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig)
 import Distribution.Simple.Install(install)
+
+import System.IO
 
 -- |Reads local build info, executes function
 doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
@@ -65,8 +67,13 @@ doBuildInstall f pkgConf
 defaultMain :: PackageConfig -> IO ()
 defaultMain p
     = do args <- getArgs
---          case parseArgs args of
+         case parseArgs args of
+	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
+
 --           (BuildCmd,       _) -> doBuildInstall build p
 --           (InstallCmd _,   _) -> doBuildInstall install p
 --           (InfoCmd, _) -> print p
          return ()
+
+helpprefix :: String
+helpprefix = "Syntax: ./Setup.hs command [flags]\n"

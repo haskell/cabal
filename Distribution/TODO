@@ -3,9 +3,9 @@
 ** x-pkg command-line interface
 
 * Code
+** make "configure" more verbose
 ** configure step
 ** cross-platform compiler location(simonmar?)
-** help action without command... help command?
 ** build
 ** install
 ** register
@@ -14,6 +14,7 @@
 
 * later todo
 ** command-line parsing errors
+** elaborate command-line help text
 
 * Testing
 ** error cases for parsing command-line args
