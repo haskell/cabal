@@ -1,25 +1,25 @@
-* 0.1
-RC:
-** look carefully at "rawSystem" and error handing stuff for nhc.
-** grep for "FIX"
-** doc
-*** add description file format to doc. - esp field descriptions
-*** Fix section on "why must we list hidden modules?"
-*** add information about executable stanzas
-** Look over rest of TODO list.  Should anything be promoted?
-** add haddock generated stuff to .deb.
-
-HIGH: 
-** Fix example for angela, expose Data.Set, etc, not A, B, etc.
-
-LOW
-** clean 
-- should .installed-pkg-config be removed after successful register?
-** Change name of Setup.description?
-** add over-all license file.
-
 * 0.2
-** elimintate need for cpphs in haddock makefile rule.
+** add simple (cpphs) preprocessing?
+
+** grep for "FIX"
+** Compatibility
+*** add information for compiling w/ nhc
+*** add install target for hugs & nhc
+*** Make runhugs stuff work
+*** verify windows test suite
+*** Better way to find 'tar'; is there a library? what does darcs do?
+
+** Doc
+*** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
+*** add over-all license file.
+*** add information about executable stanzas
+*** elimintate need for cpphs in haddock makefile rule.
+
+** Change name of Setup.description?
+- allow foo.hsproj?
+
+** look carefully at "rawSystem" and error handing stuff for nhc.
+
 ** It actually makes sense to have several libraries ("hs-packages")
    in one package ("cabal-package"), look at wxhaskell for example.
    - So, Library stanzas, I suppose
@@ -30,26 +30,26 @@ LOW
 ** Extensions
 - complain if their use makes the code non-portable?
 -- but what does this mean? ghc & hugs?
-** Parse error reporting
+
 ** Reorganize compiler dependent code into Distribution.Compiler.*
-** Allow quoting in the options fields, to allow things like
+
+** Parsing
+*** Parser error reporting
+*** Allow quoting in the options fields, to allow things like
    -f"something with spaces"
-** Instead of freaking out on unknown fields, the parser should return
-   a list of those unknown fields so a warning can be printed. Or not.
+*** Instead of freaking out on unknown fields, the parser should return
+    a list of those unknown fields so a warning can be printed. Or not.
 
 
 * 1.0 
 ** add a make target or command for tests we know will fail?
 ** HC-PKG (see "Depends on HC-PKG" below)
-** port code to windows
 ** ./Setup.lhs build for nhc
-** better command-line parsing interface
 ** ./Setup.lhs bdist
 ** add more layered tools to appendix?
 ** make reference to "layered tools" appendix where approprote
 ** integrate hscpp, use it for preprocessing step.
 ** SDist for windows machines, or machines without tar.
-** Better way to find 'tar'; is there a library?
 ** sanity checking tool for configuration; are all the .hs files
    included, etc.
 
