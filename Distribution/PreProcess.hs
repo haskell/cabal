@@ -54,7 +54,7 @@ import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
                                   moduleToFilePath, die)
 import Distribution.Version (Version(..))
-import Control.Monad (when)
+import Control.Monad (unless)
 import Data.Maybe (fromMaybe, maybeToList)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
@@ -101,17 +101,23 @@ preprocessSources pkg_descr lbi verbose handlers = do
         setupMessage "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
-	sequence_ [preprocessModule [hsSourceDir bi] modu verbose builtinSuffixes biHandlers |
-			    modu <- libModules pkg_descr] -- FIX: output errors?
-    when (not (null (executables pkg_descr))) $
+	sequence_ [do retVal <- preprocessModule [hsSourceDir bi] modu
+                                                 verbose builtinSuffixes biHandlers
+                      unless (retVal == ExitSuccess)
+                             (error $ "got error code while preprocessing: " ++ modu)
+                   | modu <- libModules pkg_descr]
+    unless (null (executables pkg_descr)) $
         setupMessage "Preprocessing executables for" pkg_descr
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
-	sequence_ [preprocessModule ((hsSourceDir bi)
-                                     :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
-                                     modu verbose builtinSuffixes biHandlers |
-			    modu <- otherModules bi] -- FIX: output errors?
+	sequence_ [do retVal <- preprocessModule ((hsSourceDir bi)
+                                     :(maybeToList (library pkg_descr
+                                                     >>= Just . hsSourceDir . libBuildInfo)))
+                                     modu verbose builtinSuffixes biHandlers
+                      unless (retVal == ExitSuccess)
+                             (error $ "got error code while preprocessing: " ++ modu)
+                   | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -172,7 +178,7 @@ removePreprocessed searchLoc mods suffixesIn
 	    fs <- moduleToFilePath [searchLoc] m otherSuffixes
 	    -- does M.hs also exist?
 	    hs <- moduleToFilePath [searchLoc] m ["hs"]
-	    when (not (null fs)) (mapM_ removeFile hs)
+	    unless (null fs) (mapM_ removeFile hs)
 	otherSuffixes = filter (/= "hs") suffixesIn
 
 -- ------------------------------------------------------------
