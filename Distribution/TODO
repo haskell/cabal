@@ -1,9 +1,4 @@
 * misc
-** use HUnit as a packaging test. Doesn't work currently because:
-*** multiple mains
-*** multiple HUnitLang modules
-*** maybe this can be solved w/ not using --make?
-
 ** Possibly create a (native?) zib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
@@ -19,6 +14,8 @@
 ** test / port code for Hugs and nhc
 
 * Code
+
+** BUG: sdist forgets to include the Setup.lhs file :)
 
 ** buildDepToDep in Configure doesn't set version dependency.
 
