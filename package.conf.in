@@ -6,6 +6,7 @@ exposed:	True
 
 exposed-modules:
 	Distribution.Extension,
+	Distribution.GetOpt,
 	Distribution.InstalledPackageInfo,
 	Distribution.License,
 	Distribution.Make,
