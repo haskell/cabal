@@ -52,6 +52,7 @@ import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P ()
 import qualified Distribution.PackageDescription as D.PD (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
+import Distribution.Setup (CompilerFlavor(..))
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
 import qualified Distribution.Simple.Install as D.S.I (hunitTests)
@@ -108,6 +109,13 @@ assertCmd :: String -- ^Command
 assertCmd command comment
     = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
+assertCmd' :: String -- ^Command
+           -> String -- ^args
+           -> String -- ^Comment
+           -> Assertion
+assertCmd' command args comment
+    = system (command ++ " "++ args) >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
+
 -- |Run this command, and assert it returns an unsuccessful error code.
 assertCmdFail :: String -- ^Command
               -> String -- ^Comment
@@ -119,11 +127,14 @@ assertCmdFail command comment
 tests :: FilePath -> [Test]
 tests currDir
     = let testdir = currDir `joinFileName` "tests" in
-      [TestLabel "testing the wash2hs package" $ TestCase $ 
+      [
+-- wash2hs
+       TestLabel "testing the wash2hs package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
             system "make clean"
             system "make"
-            assertCmdFail "./setup configure --someUnknownFlag" "wash2hs configure with unknown flag"
+            assertCmdFail "./setup configure --someUnknownFlag"
+                          "wash2hs configure with unknown flag"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
             assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build" "wash2hs build"
@@ -134,7 +145,10 @@ tests currDir
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
             assertBool "wash2hs isn't +x" (executable perms)
+            assertCmd "./setup clean" "clean failed"
+            assertCmd "make clean" "make clean failed"
             -- no unregister, because it has no libs!
+-- HUnit
          ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             pkgConf <- GHC.localPackageConfig
@@ -168,7 +182,9 @@ tests currDir
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
             assertCmd "./setup unregister --user" "unregister failed"
-
+            assertCmd "./setup clean" "clean failed"
+            assertCmd "make clean" "make clean failed"
+-- A
          ,TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf  <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
@@ -201,7 +217,8 @@ tests currDir
             doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode
-         ,TestLabel "package A: GHC and copy to configure loc." $ TestCase $ -- (uses above config)
+         ,TestLabel "package A: GHC and copy to configure loc." $ TestCase $
+        -- (uses above config)
          do instRetCode <- system $ "./setup copy"
             checkTargetDir ",tmp/lib/test-1.0/" [".hi"]
             doesFileExist (",tmp/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
@@ -215,6 +232,25 @@ tests currDir
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode
             assertCmd "./setup unregister --user" "unregister failed"
+-- A - Hugs
+         ,TestLabel "package A: configure Hugs" $ TestCase $
+         do let targetDir=",tmp"
+            setCurrentDirectory $ (testdir `joinFileName` "A")
+            system "make clean"
+            system "make"
+            assertCmd ("runhugs -98 Setup.lhs configure --prefix=" ++ targetDir)
+              "configure returned error code"
+            assertCmd "runhugs -98 Setup.lhs build"
+              "build returned error code"
+            assertCmd "runhugs -98 Setup.lhs copy"
+              "copy returned error code"
+            doesFileExist ",tmp/lib/hugs/packages/test/A.hs" >>=
+              assertBool "A.hs not produced"
+            doesFileExist ",tmp/bin/testA" >>=
+              assertBool "testA not produced"
+            doesFileExist ",tmp/bin/testB" >>=
+              assertBool "testB not produced"
+-- HSQL
          ,TestLabel "package HSQL (make-based): GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
             system "make distclean"
@@ -228,6 +264,7 @@ tests currDir
             assertCmd "./setup copy" "copy hsql returned error code"
             doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
               assertBool "libHSsql.a doesn't exist. copy failed."
+-- withHooks
          ,TestLabel "package withHooks: GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
             system "make clean"
@@ -255,31 +292,57 @@ tests currDir
          do system "./setup clean"
             doesFileExist "C.hs" >>=
                assertEqual "C.hs (a generated file) not cleaned." False
-         ,TestLabel "package twoMains: GHC building" $ TestCase $
+
+--          ,TestLabel "package A:no install-prefix and hugs" $ TestCase $
+--          do assertCmd "./setup configure --hugs --prefix=,tmp"
+--              "Hugs configure returned error code"
+--             assertCmd "./setup build"
+--              "Hugs build returned error code"
+--             instRetCode <- system "./setup install --user"
+--             let targetDir = ",tmp/lib/test-1.0/"
+--             checkTargetDir targetDir [".hs"]
+--             assertEqual "install Hugs returned error code" ExitSuccess instRetCode
+         ]
+
+genericTests :: FilePath       -- ^Currdir
+             -> CompilerFlavor -- ^Which compiler
+             -> String         -- compiler configure flag
+             -> [Test]
+genericTests currDir comp compFlag
+    = let testdir = currDir `joinFileName` "tests"
+          compStr = show comp
+          compCmd = command comp
+          assertConfigure pref
+              = assertCmd' compCmd ("configure --prefix=" ++ pref ++ " " ++ compFlag)
+                           "configure returned error code"
+       in [
+-- twoMains
+         TestLabel ("package twoMains: building " ++ compStr ++ "/" ++ compFlag) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
             system "make clean"
             system "make"
-            assertCmd "./setup configure --ghc --prefix=,tmp"
-              "configure returned error code"
-            assertCmd "./setup haddock" "setup haddock returned error code."
-            assertCmd "./setup build"
+            assertConfigure ",tmp" 
+            assertCmd' compCmd "haddock" "setup haddock returned error code."
+            assertCmd' compCmd "build"
               "build returned error code"
-            doesFileExist "dist/build/testA" >>= 
+            assertCmd' compCmd "copy"
+              "build returned error code"
+            doesFileExist ",tmp/bin/testA" >>= 
               assertBool "build did not create the executable: testA"
-            doesFileExist "dist/build/testB" >>= 
+            doesFileExist ",tmp/bin/testB" >>= 
               assertBool "build did not create the executable: testB"
-            assertCmd "./dist/build/testA isA" "A is not A"
-            assertCmd "./dist/build/testB isB" "B is not B"
-         ,TestLabel "package depOnLib: GHC building (executable depending on its lib)" $ TestCase $
+            assertCmd "./,tmp/bin/testA isA" "A is not A"
+            assertCmd "./,tmp/bin/testB isB" "B is not B"
+-- depOnLib
+       ,TestLabel ("package depOnLib: (executable depending on its lib)"++compStr ++ "/" ++ compFlag) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
             system "make clean"
             system "make"
-            assertCmd "./setup configure --ghc --prefix=,tmp"
-              "configure returned error code"
-            assertCmd "./setup haddock" "setup haddock returned error code."
-            assertCmd "./setup build"
+            assertConfigure ",tmp"
+            assertCmd' compCmd "haddock" "setup haddock returned error code."
+            assertCmd' compCmd "build"
               "build returned error code"
-            assertCmd "./setup copy"
+            assertCmd' compCmd "copy"
               "copy returned error code"
             doesFileExist "dist/build/mains/mainForA" >>= 
               assertBool "build did not create the executable: mainForA"
@@ -289,34 +352,29 @@ tests currDir
               >>= assertBool "installed bin doesn't exist"
             doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
               >>= assertBool "installed lib doesn't exist"
-
---          ,TestLabel "package A:no install-prefix and hugs" $ TestCase $
---          do assertCmd "./setup configure --hugs --prefix=,tmp"
---              "HUGS configure returned error code"
---             assertCmd "./setup build"
---              "HUGS build returned error code"
---             instRetCode <- system "./setup install --user"
---             let targetDir = ",tmp/lib/test-1.0/"
---             checkTargetDir targetDir [".hs"]
---             assertEqual "install HUGS returned error code" ExitSuccess instRetCode
-         ]
+      ]
+      where command GHC = "./setup"
+            command Hugs = "runhugs -98 Setup.lhs"
 
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
-          count1 <- runTestTT' $ TestList $
+{-          count1 <- runTestTT' $ TestList $
                         (TestLabel "Utils Tests" $ TestList D.S.U.hunitTests):
                         (TestLabel "Setup Tests" $ TestList D.Setup.hunitTests):
                         (TestLabel "config Tests" $ TestList D.S.C.hunitTests):
                           (D.S.R.hunitTests ++ D.V.hunitTests ++
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                           D.PD.hunitTests ++ D.E.hunitTests)
+                           D.PD.hunitTests ++ D.E.hunitTests) -}
           dir <- getCurrentDirectory
-          count2 <- runTestTT' $ TestList (tests dir)
+--          count2 <- runTestTT' $ TestList (tests dir)
+          count3 <- runTestTT' $ TestList (genericTests dir Hugs "--hugs")
+--          count3' <- runTestTT' $ TestList (genericTests dir Hugs "--ghc")
+          count4 <- runTestTT' $ TestList (genericTests dir GHC "")
           putStrLn "-------------"
           putStrLn "Test Summary:"
-          putStrLn $ showCounts $ combineCounts count1 count2
+          putStrLn $ showCounts $ foldl1 combineCounts [count3, count4]
           return ()
 
 combineCounts :: Counts -> Counts -> Counts

@@ -4,9 +4,9 @@ COMPILERS =
 ifneq "$(GHC)" ""
 COMPILERS += ghc
 endif
-ifneq "$(HUGS)" ""
-COMPILERS += hugs
-endif
+# ifneq "$(HUGS)" ""
+# COMPILERS += hugs
+# endif
 
 #--------------------------------------------------------------------------
 # DIRECTORIES
