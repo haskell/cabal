@@ -3,6 +3,7 @@
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
+- parsing for the options isn't yet implemented?
 ** grep for "FIX"
 ** does clean remove installed-pkg-config and .setup-config or
    whatever? 
