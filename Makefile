@@ -14,3 +14,7 @@ check: tests
 pushall:
 	darcs push --all ijones@monk.syntaxpolice.org:/home/ijones/public_html/darcs_repos/library-infrastructure
 	darcs push --all ijones@cvs.haskell.org:/home/ijones/library-infrastructure
+
+dist: pushall
+	darcs dist
+	scp library-infrastructure--darcs.tar.gz ijones@www.haskell.org:~/libraryInfrastructure/libraryInfrastructure-code.tgz
