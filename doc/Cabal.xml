@@ -396,8 +396,11 @@ Hidden-Modules: A, C, Utils</programlisting>
       <section id="buildinfo">
         <title>Build information</title>
         <para>The following fields may be present in any stanza, and
-          give information for the building of the corresponding library
-          or executable.  All are optional.</para>
+        give information for the building of the corresponding library
+        or executable.  They may also be present in a
+        <replaceable>package</replaceable><literal>.buildinfo</literal>
+        file.  See <xref linkend="system-dependent"/> for more
+        details. All are optional.</para>
         <variablelist>
           <varlistentry>
             <term><literal>buildable:</literal> <replaceable>Boolean</replaceable></term>
@@ -567,7 +570,13 @@ Hidden-Modules: A, C, Utils</programlisting>
 
     <section id="system-dependent">
       <title>System-dependent parameters</title>
-      <para>For this you need a slightly extended
+
+      <para>Some packages may require a configuration step to set
+      certain fields.  The fields in build information (see <xref
+      linkend="buildinfo"/>) can be generated and put into
+      <replaceable>package</replaceable><literal>.buildinfo</literal>.
+      For this you need a slightly extended
+
         <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
@@ -732,7 +741,7 @@ main = defaultMain</programlisting>
       argument selects a particular step in the build/install process.
       You can also get a summary of the command syntax with</para>
     <cmdsynopsis>
-      <command>runhaskell Setup.hs</command> <option>--help</option>
+      <command>runhaskell Setup.hs <option>--help</option></command>
     </cmdsynopsis>
 
     <example>
@@ -995,6 +1004,23 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <section>
       <title>setup unregister</title>
       <para>Deregister this package with the compiler.</para>
+      <variablelist>
+        <varlistentry>
+          <term><option>--global</option></term>
+          <listitem>
+            <para>Deregister this package in the system-wide database.
+              (This is the default.)</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--user</option></term>
+          <listitem>
+            <para>Deregister this package in the user's local package
+              database.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </section>
 
     <section>
