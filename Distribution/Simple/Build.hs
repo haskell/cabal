@@ -117,7 +117,7 @@ buildGHC pkg_descr lbi = do
   pkgConf <- GHC.localPackageConfig
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
-  withLib pkg_descr $ \buildInfo' -> do
+  withLib pkg_descr () $ \buildInfo' -> do
       createIfNotExists True (pref `joinFileName` (hsSourceDir buildInfo'))
       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
               ++ ccOptions pkg_descr
@@ -190,7 +190,7 @@ constructGHCCmdLine mSrcLoc buildInfo' deps =
 buildHugs :: PackageDescription -> LocalBuildInfo -> IO ()
 buildHugs pkg_descr lbi = do
     let pref = buildDir lbi
-    withLib pkg_descr $ compileBuildInfo pref Nothing
+    withLib pkg_descr () $ compileBuildInfo pref Nothing
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
 	(executables pkg_descr)
   where

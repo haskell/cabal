@@ -130,7 +130,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
     let hugsInstallDir = libPref `joinFileName` "hugs"
     let hugsTargetDir = targetLibPref `joinFileName` "hugs"
     let pkg_name = pkgName (package pkg_descr)
-    withLib pkg_descr $ \ libInfo -> do
+    withLib pkg_descr () $ \ libInfo -> do
 	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
 	try $ removeFileRecursive pkgDir

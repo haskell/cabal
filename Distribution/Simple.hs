@@ -57,7 +57,8 @@ module Distribution.Simple (
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, removePreprocessedPackage)
+import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp, ppUnlit,
+                                removePreprocessedPackage, preprocessSources)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
@@ -69,7 +70,8 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, removeFileRecursive, currentDir,
-                                     defaultPackageDesc, hookedPackageDesc)
+                                  defaultPackageDesc, hookedPackageDesc,
+                                  createIfNotExists, moduleToFilePath, rawSystemPath)
 import Distribution.License (License(..))
 import Distribution.Extension (Extension(..))
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
@@ -79,7 +81,7 @@ import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
 -- Base
 import System.Cmd	(rawSystem)
 import System.Environment(getArgs)
-import System.Exit(ExitCode(..))
+import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad(when, unless)
@@ -87,7 +89,9 @@ import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (try)
 import Distribution.GetOpt
-import Distribution.Compat.FilePath(joinFileName, dropAbsolutePrefix)
+import Distribution.Compat.FilePath(joinFileName, dropAbsolutePrefix,
+                                    joinPaths, splitFileName, joinFileExt,
+                                    splitFileExt, changeFileExt)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -188,7 +192,24 @@ defaultMainWorker pkg_descr_in action args hooks
 		build pkg_descr localbuildinfo knownSuffixHandlers
                 writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild
-
+            HaddockCmd -> do
+                (_, args) <- parseHaddockArgs args []
+                pkg_descr <- hookOrInput preBuild args
+                withLib pkg_descr ExitSuccess (\bi ->
+                   do lbi <- getPersistBuildConfig
+                      let targetDir = joinPaths (buildDir lbi) (joinPaths "doc" "html")
+                      let tmpDir = joinPaths (buildDir lbi) "tmp"
+                      createIfNotExists True targetDir
+                      preprocessSources pkg_descr lbi knownSuffixHandlers
+                      inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
+                                             | m <- exposedModules bi] >>= return . concat
+                      mapM (mockCpp pkg_descr bi lbi tmpDir) inFiles
+                      let outFiles = map (joinFileName tmpDir)
+                                     (map ((flip changeFileExt) "hs") inFiles)
+                      code <- rawSystem "haddock" (["-h", "-o" ++ targetDir] ++ outFiles)
+                      removeFileRecursive tmpDir
+                      when (code /= ExitSuccess) (exitWith code)
+                      return code)
             CleanCmd -> do
                 (_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInput preClean args
@@ -269,6 +290,16 @@ defaultMainWorker pkg_descr_in action args hooks
         postHook f = case hooks of
                       Nothing -> return ExitSuccess
                       Just h  -> f h
+        mockCpp pkg_descr bi lbi pref file
+            = do let (filePref, fileName) = splitFileName file
+                 let targetDir = joinPaths pref filePref
+                 let targetFile = joinFileName targetDir fileName
+                 let (targetFileNoext, targetFileExt) = splitFileExt targetFile
+                 createIfNotExists True targetDir
+                 ret <- ppCpp pkg_descr bi lbi file targetFile
+                 when (targetFileExt == "lhs")
+                       (ppUnlit targetFile (joinFileExt targetFileNoext "hs") >> return ())
+                 
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()

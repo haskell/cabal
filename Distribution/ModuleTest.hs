@@ -126,6 +126,7 @@ tests currDir
             system "make"
             assertCmdFail "./setup configure --someUnknownFlag" "wash2hs configure with unknown flag"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
+            assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build" "wash2hs build"
             doesFileExist "dist/build/hs/wash2hs"
               >>= assertBool "wash2hs build didn't create executable!"
@@ -146,6 +147,8 @@ tests currDir
             doesFileExist D.S.C.localBuildInfoFile >>= 
               assertBool ("touch " ++ D.S.C.localBuildInfoFile ++ " failed")
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
+            assertCmd "./setup haddock" "setup haddock returned error code."
+
             -- Test clean:
             assertCmd "./setup build" "hunit build"
             doesDirectoryExist "dist/build" >>= 
@@ -159,6 +162,7 @@ tests currDir
               assertEqual ("clean " ++ D.S.R.installedPkgConfigFile ++ " failed") False
 
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
+            assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build" "hunit build"
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
@@ -174,6 +178,7 @@ tests currDir
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
               "configure returned error code"
+            assertCmd "./setup haddock" "setup haddock returned error code."
 
             assertCmd "./setup build"
               "build returned error code"
@@ -221,6 +226,7 @@ tests currDir
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp --woohoo"
               "configure returned error code"
+            assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build"
               "build returned error code"
             doesFileExist "dist/build/withHooks" >>= 
@@ -239,6 +245,7 @@ tests currDir
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
               "configure returned error code"
+            assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build"
               "build returned error code"
             doesFileExist "dist/build/testA" >>= 
@@ -253,6 +260,7 @@ tests currDir
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
               "configure returned error code"
+            assertCmd "./setup haddock" "setup haddock returned error code."
             assertCmd "./setup build"
               "build returned error code"
             assertCmd "./setup copy"
