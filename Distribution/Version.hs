@@ -209,7 +209,7 @@ parseVersionRange = choice [ string s >> liftM f parseVersion
 -- |Parse any kind of version
 parseVersion :: ReadP r Version
 parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
-                  tags   <- many (char '-' >> munch1 isAlpha)
+                  tags   <- many (char '-' >> munch1 isAlphaNum)
                   return Version{versionBranch=branch, versionTags=tags}
 
 #ifdef DEBUG
