@@ -7,10 +7,14 @@
 > import Distribution.Compat.Directory (copyFile)
 > import System.Directory (removeFile)
 > import System.Exit(ExitCode(..))
+> import Control.Monad(when)
 
-> myPreConf _ _ = do copyFile "Setup.buildinfo.in" "Setup.buildinfo"
->                    d <- readPackageDescription hookedPackageDesc
->                    return $ Just d
+> myPreConf (h:_) _ = do when (h /= "--woohoo")
+>                         (error "--woohoo flag (for testing) not passed to ./setup configure.")
+>                        copyFile "Setup.buildinfo.in" "Setup.buildinfo"
+>                        d <- readPackageDescription hookedPackageDesc
+>                        return $ Just d
+> myPreConf [] _ = error "--woohoo flag (for testing) not passed to ./setup configure."
 
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
