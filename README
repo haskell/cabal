@@ -30,6 +30,15 @@ The codebase is a very manageable size.
 You can get the code from the web page; the version control system we
 use is very open and welcoming to new developers.
 
+-= Debian Templates =-
+
+Build a Debian source tree with:
+
+dh_make -d -t /full/path/to/debiantemplates
+
+After, you just need to edit the copyright, description, and
+dependencies...
+
 -= Credits (in alphabetical order) =-
 
 Cabal Coders:
