@@ -233,7 +233,21 @@ tests currDir
               >>= assertBool "library doesn't exist"
             doesFileExist ",tmp/,tmp/bin/withHooks"
               >>= assertBool "executable doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
+            assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestLabel "package twoMains: GHC building" $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
+            system "make clean"
+            system "make"
+            assertCmd "./setup configure --ghc --prefix=,tmp"
+              "configure returned error code"
+            assertCmd "./setup build"
+              "build returned error code"
+            doesFileExist "dist/build/testA" >>= 
+              assertBool "build did not create the executable: testA"
+            doesFileExist "dist/build/testB" >>= 
+              assertBool "build did not create the executable: testB"
+            assertCmd "./dist/build/testA isA" "A is not A"
+            assertCmd "./dist/build/testB isB" "B is not B"
 
 --          TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
