@@ -124,7 +124,7 @@ buildGHC pkg_descr lbi verbose = do
   withLib pkg_descr () $ \lib -> do
       let buildInfo' = libBuildInfo lib
       createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir buildInfo'))
-      let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
+      let ghcArgs = ["-I" ++ dir | dir <- includeDirs buildInfo']
               ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
               ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
@@ -135,17 +135,17 @@ buildGHC pkg_descr lbi verbose = do
               ++ (libModules pkg_descr)
               ++ (if verbose > 4 then ["-v"] else [])
       unless (null (libModules pkg_descr)) $
-        rawSystemExit verbose ghcPath args
+        rawSystemExit verbose ghcPath ghcArgs
 
       -- build any C sources
       unless (null (cSources buildInfo')) $
          sequence_ [do let odir = pref `joinFileName` dirOf c
                        createDirectoryIfMissing True odir
-		       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
+		       let cArgs = ["-I" ++ dir | dir <- includeDirs buildInfo']
 			       ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
 			       ++ (if verbose > 4 then ["-v"] else [])
-                       rawSystemExit verbose ghcPath (args ++ [c])
+                       rawSystemExit verbose ghcPath (cArgs ++ [c])
                                    | c <- cSources buildInfo']
 
       -- link:
@@ -153,20 +153,20 @@ buildGHC pkg_descr lbi verbose = do
                   | x <- libModules pkg_descr ]
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
-          lib  = mkLibName pref (showPackageId (package pkg_descr))
+          libName  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
-        try (removeFile lib) -- first remove library if it exists
-        let args = ["q"++ (if verbose > 4 then "v" else "")]
-                ++ [lib]
+        try (removeFile libName) -- first remove library if it exists
+        let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
+                ++ [libName]
                 ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]                
-        rawSystemPathExit verbose "ar" args
+        rawSystemPathExit verbose "ar" arArgs
 
   -- build any executables
   sequence_ [ do createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True exeDir
-                 let args = ["-I" ++ dir | dir <- includeDirs exeBi]
+                 let binArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
                          ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
                          ++ ["-odir",  exeDir,
@@ -178,7 +178,7 @@ buildGHC pkg_descr lbi verbose = do
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions pkg_descr
 			 ++ (if verbose > 4 then ["-v"] else [])
-                 rawSystemExit verbose ghcPath args
+                 rawSystemExit verbose ghcPath binArgs
              | Executable exeName' exeMods modPath exeBi <- executables pkg_descr]
 
 dirOf :: FilePath -> FilePath
@@ -223,8 +223,8 @@ buildHugs pkg_descr lbi verbose = do
 	    let useCpp = CPP `elem` extensions bi
             let srcDir = hsSourceDir bi
 	    let srcDirs = srcDir:(maybeToList mLibSrcDir)
-	    fileLists <- sequence [moduleToFilePath srcDirs mod suffixes |
-			mod <- mods]
+	    fileLists <- sequence [moduleToFilePath srcDirs modu suffixes |
+			modu <- mods]
 	    let trimSrcDir
 		  | null srcDir || srcDir == currentDir = id
 		  | otherwise = drop (length srcDir + 1)
@@ -232,9 +232,9 @@ buildHugs pkg_descr lbi verbose = do
 		    copyModule useCpp bi f (destDir `joinFileName` trimSrcDir f)
 	    mapM_ copy_or_cpp (concat fileLists)
 	    -- Pass 2: compile foreign stubs in build directory
-	    fileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
+	    stubsFileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
 			mod <- mods]
-	    mapM_ (compileFFI bi) (concat fileLists)
+	    mapM_ (compileFFI bi) (concat stubsFileLists)
 
 	suffixes = ["hs", "lhs"]
 
