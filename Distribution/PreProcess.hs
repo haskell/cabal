@@ -48,7 +48,7 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
 import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..),
-					biModules, withLib)
+					Library(..), withLib, libModules)
 import Distribution.Setup (CompilerFlavor(..), Compiler(compilerFlavor))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
@@ -81,17 +81,19 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr lbi handlers = do
     setupMessage "Preprocessing library" pkg_descr
 
-    withLib pkg_descr () $ \ bi -> do
+    withLib pkg_descr () $ \ lib -> do
+        let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule [hsSourceDir bi] mod builtinSuffixes biHandlers |
-			    mod <- biModules bi] -- FIX: output errors?
+			    mod <- libModules pkg_descr] -- FIX: output errors?
     setupMessage "Preprocessing executables for" pkg_descr
-    foreachBuildInfo False pkg_descr $ \ bi -> do
+    foreachExe pkg_descr $ \ theExe -> do
+        let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
-                                     :(maybeToList (library pkg_descr >>= Just . hsSourceDir)))
+                                     :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
                                      mod builtinSuffixes biHandlers |
-			    mod <- biModules bi] -- FIX: output errors?
+			    mod <- executableModules theExe] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -132,8 +134,12 @@ removePreprocessedPackage :: PackageDescription
                           -> [String] -- ^suffixes
                           -> IO ()
 removePreprocessedPackage  pkg_descr r suff
-    = foreachBuildInfo True pkg_descr $ \ bi ->
-	removePreprocessed (r `joinFileName` hsSourceDir bi) (biModules bi) suff
+    = do withLib pkg_descr () (\lib -> do
+                     let bi = libBuildInfo lib
+                     removePreprocessed (r `joinFileName` hsSourceDir bi) (libModules pkg_descr) suff)
+         foreachExe pkg_descr (\theExe -> do
+                     let bi = buildInfo theExe
+                     removePreprocessed (r `joinFileName` hsSourceDir bi) (executableModules theExe) suff)
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location
@@ -150,13 +156,11 @@ removePreprocessed searchLoc mods suffixesIn
 	    when (not (null fs)) (mapM_ removeFile hs)
 	otherSuffixes = filter (/= "hs") suffixesIn
 
--- | Perform the action on each 'BuildInfo' in the package description.
-foreachBuildInfo :: Bool -- Including the library?
-                 -> PackageDescription -> (BuildInfo -> IO a)
-                 -> IO ()
-foreachBuildInfo includeLib pkg_descr action = do
-    when includeLib (withLib pkg_descr () (\ bi -> action bi >> return ()))
-    mapM_ (action . buildInfo) (executables pkg_descr)
+-- | Perform the action on each 'Executable' in the package description.
+foreachExe :: PackageDescription
+           -> (Executable -> IO a)
+           -> IO ()
+foreachExe pkg_descr action = mapM_ action (executables pkg_descr)
 
 -- ------------------------------------------------------------
 -- * known preprocessors

@@ -2,9 +2,9 @@ Name: Wash-2hs
 Version: 1.4.34
 License: BSD3
 hs-source-dir: hs
+Build-Depends: text
 
 executable: wash2hs
-Build-Depends: text
 hs-source-dir: hs
 Executable-Modules: WASHClean,  WASHExpression,  WASHGenerator,  WASHOut,
                     WASHData,   WASHFlags,       WASHMain,       WASHParser,

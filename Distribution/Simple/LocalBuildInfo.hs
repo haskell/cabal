@@ -61,7 +61,7 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
-        executableDeps :: [(String,[PackageIdentifier])]
+        executableDeps :: [(String,[PackageIdentifier])] -- FIX: No longer used?!
   }
   deriving (Show, Read, Eq)
 

@@ -54,10 +54,10 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         Executable(..),
+        Library(..),
         emptyExecutable,
-        libModules,
         exeModules,
-        biModules,
+        libModules,
         hcOptions,
 #ifdef DEBUG
         hunitTests,
@@ -110,16 +110,25 @@ data PackageDescription
 	pkgUrl         :: String,
 	description    :: String,
 	category       :: String,
+        buildDepends      :: [Dependency],
 	-- possibly system-dependent build parameters
 	buildPackage   :: Bool,		-- ^ package is buildable here
 	ccOptions      :: [String],	-- ^ options for C compiler
 	ldOptions      :: [String],	-- ^ options for linker
 	frameworks     :: [String],
 	-- components
-        library        :: Maybe BuildInfo,
+        library        :: Maybe Library,
         executables    :: [Executable]
     }
     deriving (Show, Read, Eq)
+
+data Library = Library { exposedModules    :: [String],
+	                 hiddenModules     :: [String],
+                         libBuildInfo      :: BuildInfo }
+             deriving (Show, Eq, Read)
+
+emptyLibrary :: Library
+emptyLibrary = Library [] [] emptyBuildInfo
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
@@ -130,6 +139,7 @@ emptyPackageDescription
 		      author       = "",
                       stability    = "",
 		      testedWith   = [],
+                      buildDepends = [],
 		      homepage     = "",
 		      pkgUrl       = "",
 		      description  = "",
@@ -142,13 +152,6 @@ emptyPackageDescription
                       executables  = []
                      }
 
--- |All the modules listed in this BuildInfo.
-biModules :: BuildInfo -> [String]
-biModules BuildInfo{executableModules=exeMods,
-                    exposedModules=expMods,
-                    hiddenModules=hMods}
-    = exeMods ++ hMods ++ expMods
-
 -- |Get all the module names from the libraries in this package
 libModules :: PackageDescription -> [String]
 libModules PackageDescription{library=lib}
@@ -158,24 +161,19 @@ libModules PackageDescription{library=lib}
 -- |Get all the module names from the exes in this package
 exeModules :: PackageDescription -> [String]
 exeModules PackageDescription{executables=execs}
-    = concatMap (\e -> executableModules $ buildInfo e) execs
+    = concatMap executableModules execs
 
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = case library p of
-            Just l  -> if null (cSources l)
+            Just l  -> if null (cSources $ libBuildInfo l)
                           && null (hiddenModules l)
                           && null (exposedModules l)
                        then False else True
             Nothing -> False
-
             
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
-        buildDepends      :: [Dependency],
-        executableModules :: [String], -- Only used for executables
-	exposedModules    :: [String], -- Only used for libs
-	hiddenModules     :: [String], -- Only used for libs
         cSources          :: [FilePath],
         hsSourceDir       :: FilePath,
         extensions        :: [Extension],
@@ -189,10 +187,6 @@ data BuildInfo = BuildInfo {
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
-                      buildDepends      = [],
-                      executableModules = [], -- Only used for executables
-		      exposedModules    = [], -- Only used for libs
-		      hiddenModules     = [], -- Only used for libs
 		      cSources          = [],
 		      hsSourceDir       = currentDir,
                       extensions        = [],
@@ -202,9 +196,10 @@ emptyBuildInfo = BuildInfo {
                       includes          = [],
                       options           = []
                      }
-                     
+
 data Executable = Executable {
         exeName    :: String,
+        executableModules :: [String],
         modulePath :: FilePath,
         buildInfo  :: BuildInfo
     }
@@ -214,7 +209,8 @@ emptyExecutable :: Executable
 emptyExecutable = Executable {
                       exeName = "",
                       modulePath = "",
-                      buildInfo = emptyBuildInfo
+                      buildInfo = emptyBuildInfo,
+                      executableModules=[]
                      }
 
 -- ------------------------------------------------------------
@@ -223,7 +219,7 @@ emptyExecutable = Executable {
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
-withLib :: PackageDescription -> a -> (BuildInfo -> IO a) -> IO a
+withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
 withLib pkg_descr a f = if hasLibs pkg_descr
                         then f (fromJust (library pkg_descr))
                         else return a
@@ -269,7 +265,6 @@ unionPackageDescription p1 p2
          -- complex fields
          package       = unionPackageIdent (package p1) (package p2),
          library       = makeLib (library p1) (library p2)
---      library        :: Maybe BuildInfo,
         }
       where
       override :: (Eq a) => (PackageDescription -> a)
@@ -285,19 +280,25 @@ unionPackageDescription p1 p2
       combine :: (Eq a) => (PackageDescription -> [a])
                -> [a]
       combine f = f p1 ++ f p2
-      makeLib :: Maybe BuildInfo -> Maybe BuildInfo -> Maybe BuildInfo
+      makeLib :: Maybe Library -> Maybe Library -> Maybe Library
       makeLib Nothing Nothing     = Nothing
       makeLib Nothing j           = j
       makeLib j Nothing           = j
-      makeLib (Just b1) (Just b2) = Just $ unionBuildInfo b1 b2
+      makeLib (Just b1) (Just b2) = Just $ unionLibrary b1 b2
+
+unionLibrary :: Library -> Library -> Library
+unionLibrary l1 l2
+    = l1{ exposedModules    = combine exposedModules,
+	  hiddenModules     = combine hiddenModules,
+          libBuildInfo      = unionBuildInfo (libBuildInfo l1) (libBuildInfo l2)
+        }
+      where 
+      combine :: (Eq a) => (Library -> [a]) -> [a]
+      combine f = f l1 ++ f l2
 
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
-    = b1{buildDepends      = combine buildDepends,
-         executableModules = combine executableModules,
-	 exposedModules    = combine exposedModules,
-	 hiddenModules     = combine hiddenModules,
-         cSources          = combine cSources,
+    = b1{cSources          = combine cSources,
          hsSourceDir       = combine hsSourceDir,
          extensions        = combine extensions,
          extraLibs         = combine extraLibs,
@@ -306,9 +307,8 @@ unionBuildInfo b1 b2
          includes          = combine includes,
          options           = combine options
         }
-      where
-      combine :: (Eq a) => (BuildInfo -> [a])
-              -> [a]
+      where 
+      combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
       combine f = f b1 ++ f b2
 
 
@@ -355,6 +355,9 @@ basicStanzaFields =
  , simpleField "maintainer"
                            showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
+ , listField   "build-depends"   
+                           showDependency         parseDependency
+                           buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
                            showFreeText           (munch (const True))
                            stability              (\val pkg -> pkg{stability=val})
@@ -389,6 +392,16 @@ basicStanzaFields =
                            (fsep . map text)      (fmap words (munch (const True)))
                            frameworks             (\val pkg -> pkg{frameworks=val})
 
+ , listField   "hidden-modules"         
+                           text               parseModuleNameQ
+                           (\p -> maybe [] hiddenModules (library p))
+                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
+                                              pkg{library = Just lib{hiddenModules=xs}})
+ , listField   "exposed-modules"
+                           text               parseModuleNameQ
+                           (\p -> maybe [] exposedModules (library p))
+                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
+                                              pkg{library = Just lib{exposedModules=xs}})
  ]
 
 executableStanzaFields :: [StanzaField Executable]
@@ -399,23 +412,14 @@ executableStanzaFields =
  , simpleField "main-is"
                            showFilePath       parseFilePathQ
                            modulePath         (\xs    exe -> exe{modulePath=xs})
+ , listField   "executable-modules"
+                           text               parseModuleNameQ
+                           executableModules  (\xs    exe -> exe{executableModules=xs})
  ]
 
 binfoFields :: [StanzaField BuildInfo]
 binfoFields =
- [ listField   "build-depends"   
-                           showDependency     parseDependency
-                           buildDepends       (\xs    binfo -> binfo{buildDepends=xs})
- , listField   "hidden-modules"         
-                           text               parseModuleNameQ
-                           hiddenModules      (\xs    binfo -> binfo{hiddenModules=xs})
- , listField   "exposed-modules"
-                           text               parseModuleNameQ
-                           exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
- , listField   "executable-modules"
-                           text               parseModuleNameQ
-                           executableModules  (\xs    binfo -> binfo{executableModules=xs})
- , listField   "c-sources"
+ [ listField   "c-sources"
                            showFilePath       parseFilePathQ
                            cSources           (\paths binfo -> binfo{cSources=paths})
  , listField   "extensions"
@@ -468,9 +472,9 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
         parseBasicStanza [] pkg (lineNo, f, val) = do
-          let lib = fromMaybe emptyBuildInfo (library pkg)
-	  lib' <- parseBInfoField binfoFields lib (lineNo, f, val)
-          return pkg{library=Just lib'}
+          let lib = fromMaybe emptyLibrary (library pkg)
+	  bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
+          return pkg{library=Just lib{libBuildInfo=bi}}
 
         parseExecutableStanza st@((_, "executable",eName):_) =
           case lookupField "main-is" st of
@@ -490,7 +494,7 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
         parseBInfoField ((StanzaField name _ _ set):fields) binfo (lineNo, f, val)
 	  | name == f = set lineNo val binfo
 	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
-	parseBInfoField [] binfo (lineNo, f, _) =
+	parseBInfoField [] _ (lineNo, f, _) =
 	  myError lineNo $ "Unknown field '" ++ f ++ "'"
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
@@ -511,7 +515,7 @@ showPackageDescription pkg = render $
   ppFields pkg basicStanzaFields $$
   (case library pkg of
      Nothing  -> empty
-     Just lib -> ppFields lib binfoFields) $$
+     Just lib -> ppFields (libBuildInfo lib) binfoFields) $$
   vcat (map ppExecutable (executables pkg))
   where
     ppExecutable exe =
@@ -579,6 +583,10 @@ testPkgDescAnswer =
                     description = "a nice package!",
                     category = "tools",
                     buildPackage = True,
+                     buildDepends = [Dependency "haskell-src" AnyVersion,
+                                     Dependency "HUnit"
+                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
+                                      (LaterVersion (Version [1,0,0] ["rain"])))],
                     ccOptions = ["-g", "-o"],
                     ldOptions = ["-BStatic", "-dn"],
                     frameworks = ["foo"],
@@ -586,29 +594,25 @@ testPkgDescAnswer =
                     maintainer = "",
                     stability = "Free Text String",
 
-                    library = Just $ BuildInfo {
-                        buildDepends = [Dependency "haskell-src" AnyVersion,
-                                        Dependency "HUnit"
-                                         (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
-                                          (LaterVersion (Version [1,0,0] ["rain"])))],
-
+                    library = Just $ Library {
                         hiddenModules = ["Distribution.Package","Distribution.Version",
                                          "Distribution.Simple.GHCPackageConfig"],
-                        executableModules=[],
-                        cSources = ["not/even/rain.c", "such/small/hands"],
-                        hsSourceDir = "src",
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
-                        extensions = [OverlappingInstances, TypeSynonymInstances],
-                        extraLibs = ["libfoo", "bar", "bang"],
-                        extraLibDirs = ["/usr/local/libs"],
-                        includeDirs = ["your/slightest", "look/will"],
-                        includes = ["/easily/unclose", "/me", "funky, path\\name"],
-                        -- Note reversed order:
-                        options = [(Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]
+                        libBuildInfo=BuildInfo {
+                           cSources = ["not/even/rain.c", "such/small/hands"],
+                           hsSourceDir = "src",
+                           extensions = [OverlappingInstances, TypeSynonymInstances],
+                           extraLibs = ["libfoo", "bar", "bang"],
+                           extraLibDirs = ["/usr/local/libs"],
+                           includeDirs = ["your/slightest", "look/will"],
+                           includes = ["/easily/unclose", "/me", "funky, path\\name"],
+                           -- Note reversed order:
+                           options = [(Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
-                    executables = [Executable "somescript" "SomeFile.hs" (
+                    executables = [Executable "somescript" 
+                       ["Foo1","Util","Main"] "SomeFile.hs" (
                       emptyBuildInfo{
-                        executableModules = ["Foo1","Util","Main"],
+                        
                         hsSourceDir = "scripts",
                         extensions = [OverlappingInstances]
                       })]
