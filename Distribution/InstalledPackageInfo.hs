@@ -2,7 +2,7 @@
 
 module Distribution.InstalledPackageInfo where
 
-import Distribution.Misc(License(..), Dependency, Opt, LocalBuildInfo)
+import Distribution.Misc(License(..), Dependency, Opt)
 import Distribution.Package(PackageIdentifier(..), PackageConfig)
 
 data InstalledPackageInfo
@@ -32,6 +32,3 @@ emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo = InstalledPackageInfo (PackageIdentifier "" (error "no version"))
                    AllRightsReserved "" "" "" False [] [] [] [] [] []
                    [] [] [] [] [] [] []
-
-getUseInfo :: LocalBuildInfo -> PackageConfig -> InstalledPackageInfo
-getUseInfo _ _ = emptyInstalledPackageInfo -- FIX

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.Default
+-- Module      :  Distribution.Simple.Configure
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -41,32 +41,31 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.Default (defaultMain)
-where
+module Distribution.Simple.Configure (writePersistBuildConfig,
+                                      getPersistBuildConfig,
+                                      LocalBuildInfo(..))
+    where
 
--- Base
-import System(getArgs)
+import Distribution.Setup(CompilerFlavor, Compiler)
 
-import Distribution.Package(PackageConfig(..))
-import Distribution.Setup(parseArgs, Action(..))
-import Distribution.Misc(LocalBuildInfo(..), getPersistBuildConfig)
+-- |Data cached after configuration step.
+data LocalBuildInfo = LocalBuildInfo {prefix :: String,
+                                      compiler :: Compiler}
+     deriving (Show, Eq)
 
-import Distribution.Simple.Build(build)
-import Distribution.Simple.Install(install)
+emptyLocalBuildInfo :: LocalBuildInfo
+emptyLocalBuildInfo = undefined
 
--- |Reads local build info, executes function
-doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
-               -> PackageConfig
-               -> IO ()
-doBuildInstall f pkgConf
-    = do lbi <- getPersistBuildConfig
-         f pkgConf lbi
+getPersistBuildConfig :: IO LocalBuildInfo
+getPersistBuildConfig = return emptyLocalBuildInfo -- FIX
 
-defaultMain :: PackageConfig -> IO ()
-defaultMain p
-    = do args <- getArgs
---          case parseArgs args of
---           (BuildCmd,       _) -> doBuildInstall build p
---           (InstallCmd _,   _) -> doBuildInstall install p
---           (InfoCmd, _) -> print p
-         return ()
+writePersistBuildConfig :: LocalBuildInfo -> IO ()
+writePersistBuildConfig _ = return () --FIX
+
+-- Locate the compiler based on the flavor
+exeLoc :: CompilerFlavor -> IO FilePath
+exeLoc _ = return "error, not yet implemented" -- FIX
+
+pkgLoc :: CompilerFlavor -> IO FilePath
+pkgLoc _ = return "error, not yet implemented" -- FIX
+

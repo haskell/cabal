@@ -1,11 +1,11 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Package
+-- Module      :  Distribution.Simple
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  
+-- Portability :  GHC
 --
 -- Explanation: <FIX>
 -- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
@@ -41,32 +41,32 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Package(PackageIdentifier(..),
-                            PackageConfig(..))
-
+module Distribution.Simple (defaultMain)
 where
 
-import Distribution.Version(Version)
-import Distribution.Misc(License, Dependency, Extension)
-import Distribution.Setup(CompilerFlavor)
+-- Base
+import System(getArgs)
 
-data PackageIdentifier
-    = PackageIdentifier {pkgName::String, pkgVersion::Version}
-      deriving (Read, Show, Eq)
+import Distribution.Package(PackageConfig(..))
+import Distribution.Setup(parseArgs, Action(..))
 
-data PackageConfig
-    =  PackageConfig {package      :: PackageIdentifier,
-                      licenese     :: License,
-                      copyright    :: String,
-                      maintainer   :: String,
-                      stability    :: String,
-                      buildDepends :: [ Dependency ],
-                      sources      :: [ FilePath ],
-                      extensions   :: [ Extension ],
-                      library      :: String,      -- library name
-                      extraLibs    :: [ String ],
-                      includeDirs  :: [ FilePath ],
-                      includes     :: [ FilePath ],
-                      options      :: [ (CompilerFlavor, [String]) ]
-                     }
-       deriving Show
+import Distribution.Simple.Build(build)
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig)
+import Distribution.Simple.Install(install)
+
+-- |Reads local build info, executes function
+doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
+               -> PackageConfig
+               -> IO ()
+doBuildInstall f pkgConf
+    = do lbi <- getPersistBuildConfig
+         f pkgConf lbi
+
+defaultMain :: PackageConfig -> IO ()
+defaultMain p
+    = do args <- getArgs
+--          case parseArgs args of
+--           (BuildCmd,       _) -> doBuildInstall build p
+--           (InstallCmd _,   _) -> doBuildInstall install p
+--           (InfoCmd, _) -> print p
+         return ()
