@@ -11,6 +11,8 @@ module Distribution.Compat.FilePath
          , isRootedPath
          , isAbsolutePath
          , dropAbsolutePrefix
+         , breakFilePath
+         , dropPrefix
 
          , pathParents
          , commonParent
@@ -220,6 +222,24 @@ dropAbsolutePrefix (_:':':cs)                       = cs
 #endif
 dropAbsolutePrefix cs = cs
 
+-- | Split the path into a list of strings constituting the filepath
+-- >  breakFilePath "/usr/bin/ls" == ["/","usr","bin","ls"]
+breakFilePath :: FilePath -> [String]
+breakFilePath = worker []
+    where worker ac path
+              | less == path = less:ac
+              | otherwise = worker (current:ac) less
+              where (less,current) = splitFileName path
+
+-- | Drops a specified prefix from a filepath.
+-- >  stripPrefix "." "Src/Test.hs" == "Src/Test.hs"
+-- >  stripPrefix "Src" "Src/Test.hs" == "Test.hs"
+dropPrefix :: FilePath -> FilePath -> FilePath
+dropPrefix prefix path
+    = worker (breakFilePath prefix) (breakFilePath path)
+    where worker (x:xs) (y:ys)
+              | x == y = worker xs ys
+          worker _ ys = foldr1 joinPaths ys
 -- | Gets this path and all its parents.
 -- The function is useful in case if you want to create 
 -- some file but you aren\'t sure whether all directories 

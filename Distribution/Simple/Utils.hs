@@ -76,6 +76,7 @@ module Distribution.Simple.Utils (
 
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally)
+import Distribution.Compat.FilePath (dropPrefix)
 import Distribution.Extension (Extension)
 import Distribution.Setup (CompilerFlavor(..))
 import Distribution.PreProcess.Unlit (unlit)
@@ -206,7 +207,7 @@ smartCopySources verbose pref targetDir sources searchSuffixes
          let sourceLocs = concat sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref || pref == currentDir then sourceLocs
-                   else map (drop ((length pref) +1)) sourceLocs
+                   else map (dropPrefix pref) sourceLocs
 	 mapM (createDirectoryIfMissing True)
 		  $ nub [fst (splitFileName (targetDir `joinFileName` x))
 		   | x <- sourceLocsNoPref, fst (splitFileName x) /= "."]
