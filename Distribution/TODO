@@ -1,43 +1,60 @@
 * Documentation
 ** Integrate SimonPJ's document into the "proposal" (simonpj)
+** x-pkg command-line interface
 
 * Code
 ** Version (simonMar)
 ** command-line parser (isaac)
+** cross-platform compiler location(simonmar?)
+** build
+** install
+** register
+** generate InstalledPackageInfo
+** read & write config-droppings
 
 * Testing
 ** Parsing of command-lint opts
+** passing unknown options through.
+** reading & writing configuration-dropping
+
 ** use-cases based on SimonPJ's doc
+** discovering the location of the given flavor of compiler and pkg tool
 
 * Isaac
-- map over "compFlavMap" with config testing.
 -- difference bt flags and opts...
 
 ------------------------------------------------------------
-* Command-line interface
+* Setup Command-line interface
 ** Actions
 - build
-- install
+- install (+maybe installprefix, maybe system)
 - configure (+flags)
 - packageinfo
 - sdist
-
-* 1.0
-** actions
-- bdist
-- ...
-** flags
---{,with-}{hbc,helium}
---with-compiler=
-
-
+- register (maybe system)
+- unregister (maybe system)
 
 ** flags
 --help
 --ghc
 --nhc
 --hugs
---with-{ghc,nhc,hugs}
+--with-compiler=
+--prefix=
+--instprefix=
+--help (for compatibility? it's really more of an action)
+
+* 1.0
+** actions
+- bdist
+- clean
+- doc stuff?
+
+** flags
+--hbc
+--helium
+--with-compiler=
+
 
 
 ------------------------------------------------------------
@@ -46,7 +63,7 @@
 (basically what was in SPJ's document):
 
 ** Basic command-line interface for configure, build, install,
-   register, info
+   register, unregister, info
 ** Ability to wrap make
 ** basic build system (think hmake)
 ** binary distributions?
@@ -54,6 +71,9 @@
 * Priorities for 1.0
 ** binary distributions?
 ** basic pre-processor extensions
+** hat support
+** haddock support
+** user use configuration vs system use configuration
 
 * looking ahead
 ** per-system source database
