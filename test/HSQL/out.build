@@ -14,6 +14,6 @@ Skipping  Distribution.Setup ( ../../Distribution/Setup.hs, ../../Distribution/S
 Skipping  Distribution.Simple.Utils ( ../../Distribution/Simple/Utils.hs, ../../Distribution/Simple/Utils.o )
 Skipping  Distribution.ParseUtils ( ../../Distribution/ParseUtils.hs, ../../Distribution/ParseUtils.o )
 Skipping  Distribution.PackageDescription ( ../../Distribution/PackageDescription.hs, ../../Distribution/PackageDescription.o )
-Compiling Distribution.Make ( ../../Distribution/Make.hs, ../../Distribution/Make.o )
+Skipping  Distribution.Make ( ../../Distribution/Make.hs, ../../Distribution/Make.o )
 Skipping  Main             ( Setup.lhs, Setup.o )
 Linking ...
