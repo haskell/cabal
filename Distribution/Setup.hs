@@ -52,7 +52,7 @@ import HUnit (Test, (~:), (~=?))
 
 -- |Parse the standard command-line arguments
 parseArgs :: [String] -> CommandLineOpts
-parseArgs _ = (BuildCmd, [])
+parseArgs _ = (NoCmd, [])
 
 -- ------------------------------------------------------------
 -- * command line
@@ -67,10 +67,10 @@ data Action = ConfigCmd LocalBuildInfo
             | InstallCmd
             | SDistCmd
             | PackageInfoCmd
-            | UseInfoCmd
-            | TestCmd
---             | Register
---             | BDist
+            | RegisterCmd
+            | NoCmd -- error case?
+--             | TestCmd 1.0?
+--             | BDist -- 1.0
     deriving (Show, Eq)
 
 
@@ -81,17 +81,18 @@ data Action = ConfigCmd LocalBuildInfo
 --           (\arg opt -> return opt{command=useinfo...
 
 
-
 hunitTests :: IO [Test]
 hunitTests =
     do let basicGhcConfig = (ConfigCmd (LocalBuildInfo "/lib"
                                      (Compiler GHC "/bin/ghc"
                                                    "/bin/ghc-pkg")), [])
        let realGhcConfig = (ConfigCmd (LocalBuildInfo "" (Compiler Hugs "" "")), [])
-       return ["config prefix hugs given package tool" ~: "failed" ~:
+       let compFlavMap = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
+       return $ [-- Config:
+                "config prefix ghc given package tool" ~: "failed" ~:
                         basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
                                                         "--with-compiler=/bin/ghc",
-                                                        "--with-pkg=/bin/hugs/ghc-pkg",
+                                                        "--with-pkg=/bin/ghc-pkg",
                                                         "configure"]),
                "find package tool" ~: "failed" ~:
                         basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
@@ -100,8 +101,15 @@ hunitTests =
                "locate compiler and package tool" ~: "failed" ~: 
                         realGhcConfig ~=? (parseArgs ["configure", "--ghc"]),
                "should we default to the current compiler?" ~: "failed" ~:
-                        realGhcConfig ~=? (parseArgs ["configure"])
-              ]
+                        realGhcConfig ~=? (parseArgs ["configure"])]
+               -- simpler commands:
+               ++ [flag ~: "failed" ~: (flagCmd, []) ~=? (parseArgs [flag])
+                   | (flag, flagCmd) <- [("build", BuildCmd),
+                                         ("install", InstallCmd),
+                                         ("sdist", SDistCmd),
+                                         ("packageinfo", PackageInfoCmd),
+                                         ("register", RegisterCmd)]
+                  ]
 
 {- Testing ideas:
    * IO to look for hugs and hugs-pkg (which hugs, etc)

@@ -1,5 +1,5 @@
 * Documentation
-** Integrate SimonPJ's document into the "proposal"
+** Integrate SimonPJ's document into the "proposal" (simonpj)
 
 * Code
 ** Version (simonMar)
@@ -10,8 +10,37 @@
 ** use-cases based on SimonPJ's doc
 
 * Isaac
-- test cases for option parsing
+- map over "compFlavMap" with config testing.
 -- difference bt flags and opts...
+
+------------------------------------------------------------
+* Command-line interface
+** Actions
+- build
+- install
+- configure (+flags)
+- packageinfo
+- sdist
+
+* 1.0
+** actions
+- bdist
+- ...
+** flags
+--{,with-}{hbc,helium}
+--with-compiler=
+
+
+
+** flags
+--help
+--ghc
+--nhc
+--hugs
+--with-{ghc,nhc,hugs}
+
+
+------------------------------------------------------------
 
 * Priorities for first beta release
 (basically what was in SPJ's document):
