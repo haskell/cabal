@@ -61,9 +61,11 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 
 
 import Control.Monad (when, unless)
+import Control.Exception (try)
 import Data.List(intersperse, nub)
 import Data.Maybe(fromJust)
 import System.Environment (getEnv)
+import System.Directory (removeFile)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
 #ifdef DEBUG
@@ -124,8 +126,9 @@ buildGHC pref pkg_descr lbi = do
           cObjs = [ path `joinFilenameDir` file `joinExt` objsuffix
                   | (path, file, _) <- (map splitFilePath (cSources build)) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
-      unless (null hObjs && null cObjs)
-        (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))
+      unless (null hObjs && null cObjs) $ do
+        try (removeFile lib) -- first remove library if it exists
+        rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs])
 
   -- build any executables
   sequence_ [ do let args = ["-package-conf", pkgConf,
