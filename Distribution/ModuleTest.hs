@@ -60,8 +60,16 @@ import qualified Distribution.Simple.Utils(hunitTests)
 import Distribution.Simple.Configure()
 import Distribution.Simple.Register()
 
-import HUnit(runTestTT, Test(..))
+-- base
+import Control.Monad(when)
+import Directory(setCurrentDirectory, doesFileExist,
+                 doesDirectoryExist, removeDirectory)
+import System.Cmd(system)
+import System.Exit(ExitCode(..))
 
+import HUnit(runTestTT, Test(..), Counts, assertBool)
+
+label :: String -> String
 label t = "-= " ++ t ++ " =-"
 
 runTestTT' :: Test -> IO Counts
