@@ -1,0 +1,6 @@
+Name: withHooks
+Version: 1.0
+
+Executable: withHooks
+Executable-Modules: WithHooks
+Main-is: WithHooks.hs
