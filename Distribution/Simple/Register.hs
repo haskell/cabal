@@ -70,9 +70,10 @@ import Distribution.Simple.Install (hugsPackageDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
-import Distribution.Compat.Directory (createDirectoryIfMissing,removeDirectoryRecursive,
-                                      setPermissions, getPermissions, executable
-                                     )
+import Distribution.Compat.Directory
+       (createDirectoryIfMissing,removeDirectoryRecursive,
+        setPermissions, getPermissions, Permissions(executable)
+       )
 import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile)
@@ -217,14 +218,14 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.includeDirs       = includeDirs bi,
         IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,
-        IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options bi],
-        IPI.extraCcOpts       = ccOptions bi,
-        IPI.extraLdOpts       = ldOptions bi,
+        IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
+        IPI.ccOptions         = ccOptions bi,
+        IPI.ldOptions         = ldOptions bi,
         IPI.frameworkDirs     = [],
-        IPI.extraFrameworks   = frameworks bi,
+        IPI.frameworks        = frameworks bi,
 	IPI.haddockInterfaces = [],
 	IPI.haddockHTMLs      = []
-  }	
+  }
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
