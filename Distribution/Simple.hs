@@ -58,14 +58,13 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build	( build )
-import Distribution.Simple.Clean	( clean )
 import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister )
 
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, pathJoin)
+import Distribution.Simple.Utils (die, pathJoin, removeFileRecursive)
 import Distribution.Misc (License(..), Extension(..), Dependency(..))
 import Distribution.Version (Version(..), VersionRange(..), 
 			     orLaterVersion, orEarlierVersion,
@@ -118,7 +117,7 @@ defaultMainNoRead pkg_descr
 
              Right (CleanCmd, extra_flags) -> do
 		no_extra_flags extra_flags
-		clean buildPref pkg_descr
+		removeFileRecursive buildPref
 
              Right (InstallCmd install_prefixM userInst, extra_flags) -> do
 		no_extra_flags extra_flags
