@@ -297,9 +297,6 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags@(uInst, verbose), _, args) <- parseInstallArgs (uInst,0) args []
                 pkg_descr <- hookOrInArgs preInst args flags
 		localbuildinfo <- getPersistBuildConfig
-                -- FIX (HUGS): fix 'die' checks commands below.
-                when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
-                      (die "Hugs cannot yet install user-only packages.")
 		install pkg_descr localbuildinfo (Nothing, verbose)
                 when (hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo (uInst, False, verbose))

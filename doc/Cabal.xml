@@ -19,7 +19,7 @@
       as well as providing a library implementing these interfaces.</para>
   </abstract>
 
-  <section id="packages">
+  <sect1 id="packages">
     <title>Packages</title>
 
     <para>A <firstterm>package</firstterm> is the unit of distribution
@@ -73,9 +73,9 @@
         time, a program cannot use two packages, P and Q that depend
         on different versions of the same underlying package R.</para>
     </note>
-  </section>
+  </sect1>
 
-  <section id="authors">
+  <sect1 id="authors">
     <title>Creating a package</title>
 
     <para>Suppose you have a directory hierarchy containing the source
@@ -194,7 +194,7 @@ Other-Modules:   A, C, Utils</programlisting>
       A few packages require more elaborate solutions
       (see <xref linkend="complex-packages"/>).</para>
 
-    <section id="pkg-descr">
+    <sect2 id="pkg-descr">
       <title>Package descriptions</title>
 
       <para>The package description file should have a name ending in
@@ -740,9 +740,9 @@ Other-Modules:   A, C, Utils</programlisting>
           </varlistentry>
         </variablelist>
       </section>
-    </section>
+    </sect2>
 
-    <section id="system-dependent">
+    <sect2 id="system-dependent">
       <title>System-dependent parameters</title>
 
       <para>For some packages, implementation details and the build
@@ -859,9 +859,9 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
           various tests.  This file may be included by C source files
           and preprocessed Haskell source files in the package.</para>
       </example>
-    </section>
+    </sect2>
 
-    <section id="complex-packages">
+    <sect2 id="complex-packages">
       <title>More complex packages</title>
 
       <para>For packages that don't fit the simple schemes described above,
@@ -923,10 +923,10 @@ main = defaultMain</programlisting>
             Good luck.</para>
         </listitem>
       </itemizedlist>
-    </section>
-  </section>
+    </sect2>
+  </sect1>
 
-  <section id="builders">
+  <sect1 id="builders">
     <title>Building and installing a package</title>
     <para>After you've unpacked a Cabal package, you can build it
       by moving into the root directory of the package and using the
@@ -1024,7 +1024,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       other options will be reported as errors, except in the case of
       the <literal>configure</literal> command.</para>
 
-    <section>
+    <sect2>
       <title>setup configure</title>
       <para>Prepare to build the package.
         Typically, this step checks that the target platform is capable
@@ -1145,21 +1145,21 @@ runhaskell Setup.hs unregister --gen-script</screen>
         run (see <xref linkend="system-dependent"/>), it is passed the
         <option>--prefix</option> option and any unrecognized options.</para>
 
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup build</title>
       <para>Perform any preprocessing or compilation needed to make this
         package ready for installation.</para>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup haddock</title>
       <para>Build the interface documentation for a library using
         &Haddock;.</para>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup install</title>
       <para>Copy the files into the install locations and (for library
         packages) register the package with the compiler, i.e. make the
@@ -1184,9 +1184,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
           </listitem>
         </varlistentry>
       </variablelist>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup copy</title>
       <para>Copy the files without registering them.  This command
         is mainly of use to those creating binary packages.</para>
@@ -1204,9 +1204,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
           </listitem>
         </varlistentry>
       </variablelist>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup register</title>
       <para>Register this package with the compiler, i.e. make the
         modules it contains available to programs.  This only makes sense
@@ -1246,9 +1246,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
           </listitem>
         </varlistentry>
       </variablelist>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup unregister</title>
       <para>Deregister this package with the compiler.</para>
 
@@ -1283,15 +1283,15 @@ runhaskell Setup.hs unregister --gen-script</screen>
           </listitem>
         </varlistentry>
       </variablelist>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup clean</title>
       <para>Remove any files created during the configure or build
         steps.</para>
-    </section>
+    </sect2>
 
-    <section>
+    <sect2>
       <title>setup sdist</title>
       <para>Create a system- and compiler-independent source distribution
         in a file
@@ -1301,10 +1301,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
       <para>However this command is not yet working in the simple build
         infrastructure.</para>
-    </section>
-  </section>
+    </sect2>
+  </sect1>
 
-  <section id="bugs">
+  <sect1 id="bugs">
     <title>Known bugs and deficiencies</title>
 
     <para>All these should be fixed in future versions:</para>
@@ -1352,6 +1352,6 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
     <para>Please report any other flaws to
       <email>libraries@haskell.org</email>.</para>
-  </section>
+  </sect1>
 
 </article>
