@@ -74,7 +74,7 @@ type PreProcessor = FilePath  -- Location of the source file in need of preproce
 -- |A preprocessor for turning non-Haskell files with the given extension
 -- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor)
+    = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
 
 -- |Apply preprocessors to the sources from 'hsSourceDir', to obtain
 -- a Haskell source file for each module.
@@ -104,7 +104,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
 	  | otherwise = ["hs", "lhs"]
-	localHandlers bi = [(ext, h pkg_descr bi lbi) | (ext, h) <- handlers]
+	localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
 
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
@@ -188,15 +188,15 @@ ppUnlit inFile outFile verbose = do
     writeFile outFile (unlit inFile contents)
     return ExitSuccess
 
-ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
-ppCpp' :: [String] -> PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp' inputArgs pkg_descr bi lbi
+ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp' inputArgs bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
-        extraArgs = "--noline" :  sysDefines ++
+        extraArgs = "--noline" : hcDefines hc ++ sysDefines ++
                 incOptions ++ ccOptions bi ++ inputArgs
 	hc = compiler lbi
         sysDefines =
@@ -205,8 +205,8 @@ ppCpp' inputArgs pkg_descr bi lbi
         locations = ["BUILD", "HOST"]
         incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
-ppHsc2hs :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHsc2hs pkg_descr bi lbi
+ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
   where pp n = standardPP n (hcDefines hc ++ incOptions ++ ccOptions bi)
         hc = compiler lbi
@@ -225,16 +225,16 @@ versionInt (Version { versionBranch = [n] }) = show n
 versionInt (Version { versionBranch = n1:n2:_ })
   = show n1 ++ take 2 ('0' : show n2)
 
-ppHappy :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHappy _ _ lbi
+ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppHappy _ lbi
     = maybe (ppNone "happy") pp (withHappy lbi)
   where pp n = standardPP n (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
 
-ppAlex :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppAlex _ _ lbi
+ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppAlex _ lbi
     = maybe (ppNone "alex") pp (withAlex lbi)
   where pp n = standardPP n (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
@@ -267,12 +267,12 @@ ppSuffixes = map fst
 
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     \ _ _ _ -> ppGreenCard)
-  , ("chs",    \ _ _ _ -> ppC2hs)
+  [ ("gc",     \ _ _ -> ppGreenCard)
+  , ("chs",    \ _ _ -> ppC2hs)
   , ("hsc",    ppHsc2hs)
   , ("x",      ppAlex)
   , ("y",      ppHappy)
   , ("ly",     ppHappy)
   , ("cpphs",  ppCpp)
-  , ("testSuffix", \ _ _ _ -> ppTestHandler)
+  , ("testSuffix", \ _ _ -> ppTestHandler)
   ]

@@ -46,7 +46,7 @@ extra-libs:
 
 include-dirs:
 includes:
-depends:	 	base, mtl
+depends:	 	base
 extra-hugs-opts:
 extra-cc-opts:
 extra-ld-opts:
