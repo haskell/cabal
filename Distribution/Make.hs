@@ -122,7 +122,7 @@ defaultMainNoRead pkg_descr
                 exec "make"
 
             CleanCmd -> do
-                (_, args) <- parseCleanArgs args []
+                (_, _, args) <- parseCleanArgs args []
                 no_extra_flags args
                 exec "make clean"
 
@@ -139,7 +139,7 @@ defaultMainNoRead pkg_descr
                 exec "make register"
 
             SDistCmd -> do
-                (_, args) <- parseSDistArgs args []
+                (_, _, args) <- parseSDistArgs args []
                 no_extra_flags args
                 exec "make dist"
 
@@ -149,7 +149,7 @@ defaultMainNoRead pkg_descr
                 exec "make register"
 
             UnregisterCmd -> do
-                (_, args) <- parseUnregisterArgs args []
+                (_, _, args) <- parseUnregisterArgs args []
                 no_extra_flags args
                 exec "make unregister"
 

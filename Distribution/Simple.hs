@@ -48,7 +48,7 @@ module Distribution.Simple (
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        defaultUserHooks, -- UserHooks (..), emptyUserHooks, defaultHookedPackageDesc,
+        defaultUserHooks, UserHooks (..), emptyUserHooks, defaultHookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -189,7 +189,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild
             HaddockCmd -> do
-                (verbose, _, args) <- parseHaddockArgs 0 args []
+                (verbose, _, args) <- parseHaddockArgs args []
                 pkg_descr <- hookOrInput preBuild args
                 withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
@@ -201,15 +201,24 @@ defaultMainWorker pkg_descr_in action args hooks
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
                       mapM (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles
-                      setupMessage "Running Haddock" pkg_descr
+                      let showPkg = showPackageId (package pkg_descr)
+                      let prologName = showPkg ++ "-haddock-prolog.txt"
+                      writeFile prologName ((description pkg_descr) ++ "\n")
+                      setupMessage "Running Haddock for" pkg_descr
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)
-                      code <- rawSystemPath verbose "haddock" (["-h", "-o", targetDir] ++ outFiles)
+                      putStrLn $ "verbose: " ++ (show verbose)
+                      code <- rawSystemPath verbose "haddock" (["-h",
+                                                                "-o", targetDir,
+                                                                 "-t", showPkg,
+                                                                 "-p", prologName]
+                                                               ++ outFiles)
                       removeDirectoryRecursive tmpDir
+--                      removeFile prologName
                       when (code /= ExitSuccess) (exitWith code)
                       return code)
             CleanCmd -> do
-                (_, args) <- parseCleanArgs args []
+                (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInput preClean args
 		localbuildinfo <- getPersistBuildConfig
 		let buildPref = buildDir localbuildinfo
@@ -241,7 +250,7 @@ defaultMainWorker pkg_descr_in action args hooks
             SDistCmd -> do
                 let distPref = "dist"
                 let srcPref   = distPref `joinFileName` "src"
-                (_, args) <- parseSDistArgs args []
+                (verbose,_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInput preSDist args
 		sdist srcPref distPref knownSuffixHandlers pkg_descr
                 postHook postSDist
@@ -254,7 +263,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postReg
 
             UnregisterCmd -> do
-                (_, args) <- parseUnregisterArgs args []
+                (verbose,_, args) <- parseUnregisterArgs args []
                 pkg_descr <- hookOrInput preUnreg args
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo
@@ -262,10 +271,6 @@ defaultMainWorker pkg_descr_in action args hooks
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
-        mJoinPaths :: Maybe FilePath -> FilePath -> Maybe FilePath
-        mJoinPaths f1 f2 = do f1' <- f1
-                              let f2' = dropAbsolutePrefix f2
-                              return $ (joinFileName f1' f2')
         hookOrInput :: (UserHooks -> (b -> IO (Maybe PackageDescription)))
                     -> b
                     -> IO PackageDescription

@@ -122,7 +122,7 @@ cmd_help = Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
 cmd_verbose :: OptDescr (Flag a)
 cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   where
-    verboseFlag mb_s = Verbose (maybe 1 read mb_s)
+    verboseFlag mb_s = Verbose (maybe 3 read mb_s)
 
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
@@ -280,23 +280,8 @@ haddockCmd = Cmd {
         cmdAction      = HaddockCmd
         }
 
-parseHaddockArgs verbose args customOpts =
-  case getCmdOpt haddockCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp haddockCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (updateBld flags verbose, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where
-    updateBld (fl:flags) verbose = updateBld flags $
-          case fl of
-            Verbose n -> n
-            _         -> error $ "Unexpected flag!"
-    updateBld [] t = t
-
+parseHaddockArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseHaddockArgs  = parseNoArgs haddockCmd
 
 cleanCmd :: Cmd a
 cleanCmd = Cmd {
@@ -307,7 +292,7 @@ cleanCmd = Cmd {
         cmdAction      = CleanCmd
         }
 
-parseCleanArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
+parseCleanArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseCleanArgs = parseNoArgs cleanCmd
 
 installCmd :: Cmd a
@@ -391,7 +376,7 @@ sdistCmd = Cmd {
         cmdAction      = SDistCmd
         }
 
-parseSDistArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
+parseSDistArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseSDistArgs = parseNoArgs sdistCmd
 
 registerCmd :: Cmd a
@@ -437,21 +422,31 @@ unregisterCmd = Cmd {
         cmdAction      = UnregisterCmd
         }
 
-parseUnregisterArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
+parseUnregisterArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseUnregisterArgs = parseNoArgs unregisterCmd
 
--- |Helper function for commands with no arguments
-parseNoArgs :: (Cmd a) -> [String] -> [OptDescr a] -> IO ([a], [String])
+-- |Helper function for commands with no arguments except for verbose
+-- and help.
+
+parseNoArgs :: (Cmd a) -> [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseNoArgs cmd args customOpts =
   case getCmdOpt cmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
       printCmdHelp cmd customOpts
       exitWith ExitSuccess
     (flags, args', []) ->
-      return (unliftFlags flags, args')
+      return (updateCmd flags 0, unliftFlags flags, args')
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
+  where
+    updateCmd (fl:flags) _ = updateCmd flags $
+          case fl of
+            Verbose n -> n
+            _         -> error $ "Unexpected flag!"
+    updateCmd [] t = t
+
+
 
 #ifdef DEBUG
 hunitTests :: [Test]
