@@ -49,14 +49,20 @@ import Distribution.Version()
 import Distribution.UseConfig()
 import Distribution.Misc()
 import Distribution.Package()
+import qualified Distribution.Setup(hunitTests)
 
 import Distribution.Simple.Default()
 import Distribution.Simple.Install()
 import Distribution.Simple.Build()
 
+import HUnit(runTestTT, Test(TestList))
+
 main :: IO ()
-main = putStrLn "compile successful"
-       
+main = do putStrLn "compile successful"
+          putStrLn "-= Setup Tests =-"
+          setupTests <- Distribution.Setup.hunitTests
+          runTestTT $ TestList setupTests
+          return ()
 
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
