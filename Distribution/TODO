@@ -96,13 +96,3 @@
 
 ** debian package building (boilerplate) tool.  Other debian support
    w/ rebuild-all-packages?
-
-groupAllBy :: (a -> a -> Bool) -> [a] -> [[a]]
-groupAllBy fun (h:t)
-    = let (groups, rem') = (partition (fun h) t)
-          in if null groups
-             then [h]:(groupAllBy fun rem')
-             else (h:groups):(groupAllBy fun rem')
-groupAllBy _ [] = []
-                                                                                
-                                                                                

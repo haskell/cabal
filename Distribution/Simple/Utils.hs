@@ -63,7 +63,7 @@ splitFilenameDir str
 split :: Char -> String -> [String]
 split c s = case rest of
 		[]     -> [chunk] 
-		_:rest -> chunk : split c rest
+		_:rest' -> chunk : split c rest'
   where (chunk, rest) = break (==c) s
 
 split_longest_prefix :: String -> (Char -> Bool) -> (String,String)
