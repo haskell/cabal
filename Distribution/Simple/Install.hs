@@ -72,7 +72,9 @@ install buildPref pkg_descr lbi install_prefixM = do
   let pref = (maybe (prefix lbi) id install_prefixM) ++
              pathSeperatorStr ++ "lib" ++ pathSeperatorStr ++ (showPackageId $ package pkg_descr)
   setupMessage "Installing" pkg_descr
+  -- FIX: For hugs only
   moveSources "" pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
+  -- FIX: for GHC and NHC only
   moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["hi"]
   moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["o"]
   system $ "cp " ++ mkLibName buildPref (showPackageId (package pkg_descr))
