@@ -24,7 +24,7 @@ rm -f .*config*
 ./setup configure --prefix=$(LIBPATH) --with-compiler=/usr/bin/$(1)
 ./setup build
 mkdir -p $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)
-./setup install --install-prefix=$(CURDIR)/debian/$(PACKAGE)$(LIBPATH)
+./setup copy --copy-prefix=$(CURDIR)/debian/$(PACKAGE)$(LIBPATH)
 cp .installed-pkg-config $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/installed-pkg-config
 
 endef
