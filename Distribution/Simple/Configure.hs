@@ -8,7 +8,7 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: Perform the "./setup configure" action.  Outputs the
+-- Explanation: Perform the ".\/setup configure" action.  Outputs the
 -- .setup-config file.
 
 {- All rights reserved.
@@ -121,7 +121,8 @@ localBuildInfoFile :: FilePath
 localBuildInfoFile = "./.setup-config"
 
 -- -----------------------------------------------------------------------------
--- Configuration
+-- * Configuration
+-- -----------------------------------------------------------------------------
 
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
@@ -205,6 +206,8 @@ defaultCompilerFlavor =
    NHC
 #elif defined(__HUGS__)
    Hugs
+#else
+   error "Unknown compiler"
 #endif
 
 findCompiler :: CompilerFlavor -> IO FilePath

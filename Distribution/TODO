@@ -1,15 +1,9 @@
 * 0.1
 RC:
-** have build -nhc output an error rather than doing something broken
-** ask about dashes in package names. 
-- igloo thinks they should be [a-z0-0][a-z0-9]+ case sensitive
 ** look carefully at "rawSystem" and error handing stuff for nhc.
 ** grep for "FIX"
 ** make sure module documentation (haddock) builds.
 -- tricky because of need to preprocess :(
-** Extensions
-- complain if their use makes the code non-portable?
--- but what does this mean? ghc & hugs?
 ** add description file format to doc. - esp field descriptions
 ** Look over rest of TODO list.  Should anything be promoted?
 ** Fix section on "why must we list hidden modules?"
@@ -35,6 +29,9 @@ LOW
      (that is, library and executable names)
    - The overloaded terminology is *way* confusing. Feh.
 ** API Versioning? Libtool-style or just a major number?
+** Extensions
+- complain if their use makes the code non-portable?
+-- but what does this mean? ghc & hugs?
 
 
 * 1.0 

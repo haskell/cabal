@@ -8,7 +8,7 @@
 -- Stability   :  alpha
 -- Portability :  
 --
--- Explanation: Perform the "./setup register" action.  Uses a
+-- Explanation: Perform the ".\/setup register" action.  Uses a
 -- drop-file for HC-PKG. See also InstalledPackageInfo
 
 
