@@ -3,6 +3,9 @@ PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
 
+# Comment out this line if your system doesn't have System.Posix.
+ISPOSIX=-DHAVE_UNIX_PACKAGE
+
 ifdef user
 USER_FLAG = --user
 GHCPKGFLAGS = -f ~/.ghc-packages
@@ -99,7 +102,7 @@ hunitInstall-stamp: hunit-stamp
 
 moduleTest:
 	mkdir -p dist/debug
-	ghc $(GHCFLAGS) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
+	ghc $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
 
 tests: moduleTest clean
 	cd test/A && make clean

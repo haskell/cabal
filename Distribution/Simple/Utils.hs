@@ -91,9 +91,7 @@ import Compat.Exception (bracket)
 import System.Environment
 import System.Directory
 import Foreign.Marshal (allocaBytes)
-#ifndef mingw32_TARGET_OS
 import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes, fileMode, setFileMode)
-#endif
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -387,15 +385,9 @@ pathJoin :: [String] -> FilePath
 pathJoin = concat . intersperse pathSeparatorStr
 
 
-copyPermissions :: FilePath -> FilePath -> IO ()
-#ifndef mingw32_TARGET_OS
 copyPermissions src dest
     = do srcStatus <- getFileStatus src
          setFileMode dest (fileMode srcStatus)
-#else
-copyPermissions src dest
-    = return ()
-#endif
 
 copyFileTimes :: FilePath -> FilePath -> IO ()
 #ifndef mingw32_TARGET_OS
