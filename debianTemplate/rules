@@ -32,17 +32,19 @@ major=2
 
 #CONFIGURE#
 
+setup: Setup.lhs
+	ghc -package Cabal Setup.lhs -o setup
+
 build: build-stamp
-build-stamp: #CONFIGURE_STAMP# #CONFIG_STATUS#
+build-stamp: #CONFIGURE_STAMP# #CONFIG_STATUS# setup
 	dh_testdir
 	# Add here any extra commands to compile the package.
-	ghc -package Cabal Setup.lhs setup
 	./setup configure --ghc --prefix=/usr
-	./set build
+	./setup build
 
 	touch build-stamp
 
-clean:
+clean: setup
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp #CONFIGURE_STAMP#
@@ -52,15 +54,15 @@ clean:
 
 	dh_clean #PRESERVE#
 
-install: build
+install: build setup
 	dh_testdir
 	dh_testroot
 	dh_clean -k #PRESERVE#
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp
-	./setup install --prefix=$(CURDIR)/debian/$(CABAL_GHC_BIN)
-	cp .installed-pkg-config $(CURDIR)/debian/$(CABAL_GHC_BIN)/usr/share/doc/$(CABAL_GHC_BIN)/installed-pkg-config
+	./setup install --install-prefix=$(CURDIR)/debian/$(CABAL_GHC_BIN)/usr
+	cp .installed-pkg-config installed-pkg-config
 
 
 # Build architecture-independent files here.
@@ -93,7 +95,7 @@ binary-arch: build install
 #	dh_python
 #	dh_makeshlibs
 	dh_installdeb
-	dh_shlibdeps
+#	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
