@@ -198,8 +198,8 @@ tests currDir
          TestLabel "package A: GHC and copy-prefix" $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
-            checkTargetDir ",tmp2/,tmp/lib/test-1.0/" [".hi"]
-            doesFileExist (",tmp2/,tmp/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
+            checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
+            doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package A: GHC and copy to configure loc." $ TestCase $ -- (uses above config)
@@ -233,9 +233,9 @@ tests currDir
          TestLabel "package withHooks: GHC and copy" $ TestCase $
          do let targetDir = ",tmp"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
-            doesFileExist (",tmp/,tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
+            doesFileExist (",tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
               >>= assertBool "library doesn't exist"
-            doesFileExist ",tmp/,tmp/bin/withHooks"
+            doesFileExist ",tmp/bin/withHooks"
               >>= assertBool "executable doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package twoMains: GHC building" $ TestCase $
@@ -263,7 +263,7 @@ tests currDir
             assertCmd "./setup build"
               "build returned error code"
             assertCmd "./setup copy"
-              "instal returned error code"
+              "copy returned error code"
             doesFileExist "dist/build/mains/mainForA" >>= 
               assertBool "build did not create the executable: mainForA"
             doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
