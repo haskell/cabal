@@ -80,6 +80,12 @@ data Action = ConfigCmd LocalBuildInfo
 --        (OptArg
 --           (\arg opt -> return opt{command=useinfo...
 
+-- Locate the compiler based on the flavor
+exeLoc :: CompilerFlavor -> IO FilePath
+exeLoc _ = return "error, not yet implemented" -- FIX
+
+pkgLoc :: CompilerFlavor -> IO FilePath
+pkgLoc _ = return "error, not yet implemented" -- FIX
 
 hunitTests :: IO [Test]
 hunitTests =
@@ -87,7 +93,11 @@ hunitTests =
                                      (Compiler GHC "/bin/ghc"
                                                    "/bin/ghc-pkg")), [])
        let realGhcConfig = (ConfigCmd (LocalBuildInfo "" (Compiler Hugs "" "")), [])
-       let compFlavMap = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
+
+       m <- sequence [do loc <- exeLoc comp
+                         pkg <- pkgLoc comp
+                         return (name, comp, loc, pkg)
+                      | (name, comp) <- [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]]
        return $ [-- Config:
                 "config prefix ghc given package tool" ~: "failed" ~:
                         basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
@@ -102,6 +112,20 @@ hunitTests =
                         realGhcConfig ~=? (parseArgs ["configure", "--ghc"]),
                "should we default to the current compiler?" ~: "failed" ~:
                         realGhcConfig ~=? (parseArgs ["configure"])]
+               -- test location of various compilers
+               ++ ["locate " ++ name ++ " and pkg tool" ~: "failed" ~:
+                    (ConfigCmd (LocalBuildInfo "/usr/local"
+                                (Compiler comp comploc pkgloc)), [])
+                   ~=? (parseArgs ["--prefix=/usr/local", "--"++name, "configure"])
+                   | (name, comp, comploc, pkgloc) <- m]
+               -- find the package tool
+               ++ ["locate pkg tool given " ++ name ~: "failed" ~:
+                    (ConfigCmd (LocalBuildInfo "/usr/local"
+                                (Compiler comp comploc pkgloc)), [])
+                   ~=? (parseArgs ["--prefix=/usr/local", "--"++name,
+                                   "--with-compiler="++name, "configure"])
+                   | (name, comp, comploc, pkgloc) <- m]
+
                -- simpler commands:
                ++ [flag ~: "failed" ~: (flagCmd, []) ~=? (parseArgs [flag])
                    | (flag, flagCmd) <- [("build", BuildCmd),
