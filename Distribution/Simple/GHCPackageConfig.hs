@@ -44,7 +44,7 @@ mkGHCPackageConfig :: PackageDescription -> LocalBuildInfo -> GHCPackageConfig
 mkGHCPackageConfig pkg_descr lbi
   = defaultGHCPackageConfig {
 	name	        = pkg_name,
-	auto	        = True,
+	auto	        = False,
 	import_dirs     = [mkImportDir pkg_descr lbi],
 	library_dirs     = [mkImportDir pkg_descr lbi],
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
