@@ -71,9 +71,8 @@ hunitInstall-stamp: hunit-stamp
 # testing...
 
 moduleTest:
-	-rm -rf dist/debug
 	mkdir -p dist/debug
-	ghc $(GHCFLAGS) -DDEBUG -odir dist/debug -hidir dist/debug -i.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
+	ghc $(GHCFLAGS) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
 
 tests: moduleTest clean
 	cd test/A && make clean

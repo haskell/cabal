@@ -78,7 +78,7 @@ install buildPref pkg_descr lbi install_prefixM = do
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
-     Hugs -> installHugs libPref buildPref pkg_descr
+     Hugs -> do when (hasLibs pkg_descr) (installHugs libPref buildPref pkg_descr)
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
@@ -89,8 +89,8 @@ installExeGhc :: FilePath -- ^install location
               -> PackageDescription -> IO ()
 installExeGhc pref buildPref pkg_descr
     = do createIfNotExists True pref
-         sequence_ [copyFile (pathJoin [buildPref, e]) (pathJoin [pref, e])
-                    | Executable e _ _ <- executables pkg_descr]
+         sequence_ [copyFile (pathJoin [buildPref, hsSourceDir b, e]) (pathJoin [pref, e])
+                    | Executable e _ b <- executables pkg_descr]
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: FilePath -- ^install location
@@ -98,7 +98,7 @@ installLibGHC :: FilePath -- ^install location
               -> PackageDescription -> IO ()
 installLibGHC pref buildPref pkg_descr@PackageDescription{library=Just l,
                                                           package=p}
-    = do moveSources buildPref pref (modules l) ["hi"]
+    = do moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
 
@@ -106,8 +106,8 @@ installLibGHC pref buildPref pkg_descr@PackageDescription{library=Just l,
 installHugs :: FilePath -- ^Install location
             -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
-installHugs pref buildPref pkg_descr
-    = moveSources buildPref pref (maybe [] modules (library pkg_descr)) ["lhs", "hs"]
+installHugs pref buildPref pkg_descr@PackageDescription{library=Just l}
+    = moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
