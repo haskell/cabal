@@ -30,11 +30,13 @@ clean:
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
 	-rm -f hunit-stamp hunitInstall-stamp
+	cd test/HUnit-1.0 && make clean
+	cd test/A && make clean
 
 remove:
-	-ghc-pkg $(GHCPKGFLAGS) -r Cabal-0.1
-	-ghc-pkg $(GHCPKGFLAGS) -r HUnit-1.0
-	-rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
+	-ghc-pkg $(GHCPKGFLAGS) -r Cabal
+	-ghc-pkg $(GHCPKGFLAGS) -r HUnit
+	-rm -r $(PREF)/lib/{Cabal,HUnit}
 
 # dependencies (included):
 

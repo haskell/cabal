@@ -1,7 +1,7 @@
 Name: Cabal
 Version: 0.1
 License: AllRightsReserved
-build-depends: haskell-src, HUnit==1.0
+build-depends: haskell-src, HUnit==1.0, parsec
 Modules: Distribution.Package, Distribution.Version, 
          Distribution.Misc, Distribution.Setup, 
          Distribution.InstalledPackageInfo, 
