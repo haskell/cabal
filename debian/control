@@ -1,15 +1,17 @@
 Source: haskell-cabal
 Priority: optional
 Maintainer: Isaac Jones <ijones@debian.org>
-Build-Depends: debhelper (>= 4.0.0), ghc6 (> 6.2)
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (<< 6.2.3)
 Standards-Version: 3.6.0
-Section: devel
 
 Package: libghc6-cabal-dev
+Section: devel
 Architecture: any
+Depends: ghc6 (>= 6.2.2), ghc6 (<< 6.2.3)
 Description: Haskell Common Architecture for Building Applications and Libraries
- the Cabal describes what a Haskell package is, how these packages
- interact with the language, and what Haskell implementations must to
- do to support packages. The Cabal also specifies some infrastructure
- (code) that makes it easy for tool authors to build and distribute
- conforming packages.
+ The Haskell Cabal is a system for building and installing Haskell
+ programs and libraries.  It is aware of multiple different compilers
+ and can handle them without trouble.
+ .
+ This package will provide the infrastructure necessary to build
+ Cabalized packages on Debian machines, or to Debianize those packages.
