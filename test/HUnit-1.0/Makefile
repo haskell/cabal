@@ -1,6 +1,6 @@
 all:
 	mkdir -p dist/tmp
-	ghc -Wall --make -odir dist/tmp -hidir dist/tmp -i../..:src Setup.lhs -o setup
+	ghc --make -odir dist/tmp -hidir dist/tmp -i../.. Setup.lhs -o setup
 semiclean:
 	rm -rf ,tmp dist
 	find . -name "*.o" |xargs rm -f

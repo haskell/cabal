@@ -108,7 +108,8 @@ buildGHC pref pkg_descr lbi = do
   withLib pkg_descr $ \build -> do
       let args = ["-package-conf", pkgConf,
                   "-package-name", pkgName (package pkg_descr),
-                  "-odir", pref, "-hidir", pref
+                  "-odir", pathJoin [pref, hsSourceDir build],
+                  "-hidir", pathJoin [pref, hsSourceDir build]
                  ]
               ++ constructGHCCmdLine pref build (packageDeps lbi)
               ++ modules build
@@ -119,19 +120,20 @@ buildGHC pref pkg_descr lbi = do
       unless (null (cSources build)) $
          rawSystemExit ghcPath (cSources build ++ ["-odir", pref, "-hidir", pref, "-c"])
 
-      let hObjs = map (++objsuffix) (map dotToSep (modules build))
-          cObjs = [file ++ objsuffix | (file, _)
-                   <- (map splitExt (cSources build))]
+      let hObjs = [ pathJoin [hsSourceDir build, dotToSep x ++ objsuffix]
+                  | x <- modules build ]
+          cObjs = [ file ++ objsuffix
+                  | (file, _) <- (map splitExt (cSources build)) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs)
         (rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs]))
 
   -- build any executables
   sequence_ [ do let args = ["-package-conf", pkgConf,
-                             "-o", pathJoin [pref, exeName]
+                             "-o", pathJoin [pref, hsSourceDir exeBi, exeName]
                             ]
                          ++ constructGHCCmdLine pref exeBi (exeDeps exeName lbi)
-                         ++ [pathJoin [pref, modPath]]
+                         ++ [pathJoin [pref, hsSourceDir exeBi, modPath]]
                  rawSystemExit ghcPath args
              | Executable exeName modPath exeBi <- executables pkg_descr]
 
@@ -139,7 +141,7 @@ constructGHCCmdLine :: FilePath -> BuildInfo -> [PackageIdentifier] -> [String]
 constructGHCCmdLine pref build deps = 
     let (unsupported, flags) = extensionsToGHCFlag (extensions build)
         in if null unsupported
-           then [ "--make", "-i" ++ pref ]
+           then [ "--make", "-i" ++ pathJoin [pref, hsSourceDir build] ]
                 ++ nub (flags ++ [ opt | (GHC,opts) <- options build, opt <- opts ])
                 ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ] )
            else error $ "Unsupported extension for GHC: "
@@ -165,8 +167,8 @@ preprocessSources pkg_descr lbi pref =
     do
     setupMessage "Preprocessing" pkg_descr
     withLib pkg_descr $ \lib ->
-        moveSources (hsSourceDir lib) pref (modules lib) ["hs","lhs"] 
-    sequence_ [ moveSources (hsSourceDir exeBi) pref (modules exeBi) ["hs","lhs"]
+        moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
+    sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable exeName modPath exeBi <- executables pkg_descr]
 
   -- Todo: includes, includeDirs

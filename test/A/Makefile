@@ -1,6 +1,6 @@
 all:
 	mkdir -p dist/tmp
-	ghc -Wall --make -odir dist/tmp -hidir dist/tmp -i../..:../HUnit-1.0/src Setup.lhs -o setup
+	ghc --make -odir dist/tmp -hidir dist/tmp -i../.. Setup.lhs -o setup
 clean:
 	rm -f setup a.out dist/build/testA
 	rm -rf ,tmp dist ,tmp2

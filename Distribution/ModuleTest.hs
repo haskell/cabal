@@ -114,7 +114,7 @@ tests currDir
             system "make"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
             assertCmd "./setup build" "wash2hs build"
-            doesFileExist "dist/build/wash2hs"
+            doesFileExist "dist/build/hs/wash2hs"
               >>= assertBool "wash2hs build didn't create executable!"
             assertCmd "./setup install --user" "wash2hs install"
             doesFileExist ",tmp/bin/wash2hs"
