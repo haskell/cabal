@@ -1,6 +1,8 @@
 ------------------------------------------------------------
 -= 1.0 =-
 
+* add withGreencard=
+
 * Fix up sdist? hide sdist? bdist?
 ** if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
@@ -72,6 +74,8 @@
 ** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
 ** add information about executable stanzas
 ** elimintate need for cpphs in haddock makefile rule.
+** add info about deb packages to web page at least check out the
+   manpage for dh_haskell, section "How to package a haskell library"
 
 * Misc
 ** HC-PKG (see "Depends on HC-PKG" below)
@@ -159,7 +163,7 @@
 
 ** visual studio support
 
-** public database of packages
+** hackage
 
 ** downloadable public database of packages (wget filename;tar xf
    filename;cd filename;./setup install)
