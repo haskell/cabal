@@ -78,6 +78,8 @@ InstallCmd:    We assume there is an install target and a variable $(prefix)
 SDistCmd:      We assume there is an dist target
 RegisterCmd:   We assume there is a register target and a variable $(user)
 UnregisterCmd: We assume there is an unregister target
+HaddockCmd:    We assume there is a "docs" or "doc" target
+ProgramaticaCmd: We assume there is a "programatica" target
 -}
 
 configureArgs :: ConfigFlags -> String
@@ -137,6 +139,19 @@ defaultMainNoRead pkg_descr
                   else putStrLn "Install failed."
                 exitWith retVal
 
+            HaddockCmd -> do 
+                (_, _, args) <- parseHaddockArgs args []
+                no_extra_flags args
+                retVal <- exec "make docs"
+                case retVal of
+                 ExitSuccess -> do putStrLn "Haddock Succeeded"
+                                   exitWith ExitSuccess
+                 _ -> do retVal' <- exec "make doc"
+                         case retVal' of
+                          ExitSuccess -> do putStrLn "Haddock Succeeded"
+                                            exitWith ExitSuccess
+                          _ -> do putStrLn "Haddock Failed."
+                                  exitWith retVal'
 
             BuildCmd -> basicCommand "Build" "make" (parseBuildArgs args [])
 
@@ -149,8 +164,10 @@ defaultMainNoRead pkg_descr
 
             UnregisterCmd -> basicCommand "Unregister" "make unregister"
                                           (parseUnregisterArgs args [])
-            cmd -> do 
-                error $ "Simple Cabal Makefile interface doesn't support command: " ++ (show cmd)
+            ProgramaticaCmd -> basicCommand "Programatica" "make programatica"
+                                        (parseProgramaticaArgs args [])
+
+            HelpCmd -> exitWith ExitSuccess -- this is handled elsewhere
 
 -- |convinience function for repetitions above
 basicCommand :: String  -- ^Command name
