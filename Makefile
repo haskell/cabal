@@ -59,7 +59,7 @@ hunitInstall-stamp: hunit-stamp
 # testing...
 
 moduleTest:
-	ghc $(GHCFLAGS) Distribution/ModuleTest -o moduleTest
+	ghc $(GHCFLAGS) -DDEBUG Distribution/ModuleTest -o moduleTest
 
 tests: moduleTest clean
 	cd test/A && make clean

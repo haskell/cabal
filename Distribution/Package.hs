@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -DDEBUG #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Package
