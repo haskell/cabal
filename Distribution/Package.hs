@@ -171,7 +171,7 @@ parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
            <|> try (parseField "Includes" True parseFilePath
                >>= updateState . (\l pkgD -> pkgD{includes=l}))
            <|> try (parseField "HS-Source-Dir" True parseFilePath
-               >>= updateState . (\l pkgD -> pkgD{hsSourceDir=l}))
+               >>= updateState . (\l pkgD -> pkgD{hsSourceDir=head l}))
 
 -- Parsing remains for:
 --
@@ -210,6 +210,7 @@ parseReqFields = many1 parseReqFieldsHelp >> getState
 anyOf :: [GenParser tok st a] -> GenParser tok st a
 anyOf [a] = a
 anyOf (h:t) = foldl ((<|>) . try) (try h) t
+
 
 -- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st [FilePath]
