@@ -172,6 +172,7 @@ extensionsToHugsFlag l
       extensionToHugsFlag RestrictedTypeSynonyms     = Right "-98"
       extensionToHugsFlag FlexibleContexts           = Right "-98"
       extensionToHugsFlag FlexibleInstances          = Right "-98"
+      extensionToHugsFlag ForeignFunctionInterface   = Right ""
       extensionToHugsFlag EmptyDataDecls             = Right ""
       extensionToHugsFlag e                          = Left e
 
