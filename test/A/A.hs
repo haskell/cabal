@@ -1,4 +1,4 @@
 module A where
 a = 42 :: Int
 
-main = print a
+main2 = print a
