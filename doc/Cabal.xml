@@ -5,6 +5,7 @@
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
     <!ENTITY Extension '<ulink url="../libraries/Cabal/Distribution.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
+    <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/">Haddock</ulink>'>
   ]>
 
 <article>
@@ -29,8 +30,7 @@
         <para>A library, exposing a number of Haskell modules.  A library
           may also contain <firstterm>hidden</firstterm> modules, which
           are used internally but not available to clients.<footnote>
-            <para>Hugs doesn't support module hiding.
-              Just pretend they're not there, OK?</para>
+            <para>Hugs doesn't support module hiding.</para>
           </footnote>
           </para>
       </listitem>
@@ -70,7 +70,7 @@
         and whether they are exposed or hidden.
         This also means that although some implementations (i.e. GHC) may
         allow several versions of a package to be installed at the same
-        time, a program cannot use two packages, P and Q, which depend
+        time, a program cannot use two packages, P and Q that depend
         on different versions of the same underlying package R.</para>
     </note>
   </section>
@@ -83,17 +83,21 @@
       files to the root directory of the package:</para>
     <variablelist>
       <varlistentry>
-        <term><filename><replaceable>package</replaceable>.cabal</filename></term>
+        <term>
+          <filename><replaceable>package</replaceable>.cabal</filename>
+        </term>
         <listitem>
           <para>a text file containing a package description
             (for details of the syntax of this file, see
-            <xref linkend="package-description"/>), and</para>
+            <xref linkend="pkg-descr"/>), and</para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
-        <term><filename>Setup.hs</filename> or
-          <filename>Setup.lhs</filename></term>
+        <term>
+          <filename>Setup.hs</filename> or
+          <filename>Setup.lhs</filename>
+        </term>
         <listitem>
           <para>a Haskell script to perform various setup tasks (with
             the interface described in <xref linkend="builders"/>).
@@ -145,7 +149,7 @@ Hs-Source-Dir:  prog1
 Executable:     program2
 Main-Is:        Main.hs
 Hs-Source-Dir:  prog2
-Hidden-Modules: Utils</programlisting>
+Other-Modules:  Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -162,12 +166,12 @@ Exposed-Modules: A, B, C
 Executable:     program1
 Main-Is:        Main.hs
 Hs-Source-Dir:  prog1
-Hidden-Modules: A, B
+Other-Modules:  A, B
 
 Executable:     program2
 Main-Is:        Main.hs
 Hs-Source-Dir:  prog2
-Hidden-Modules: A, C, Utils</programlisting>
+Other-Modules:  A, C, Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -185,14 +189,14 @@ Hidden-Modules: A, C, Utils</programlisting>
       A few packages require more elaborate solutions
       (see <xref linkend="complex-packages"/>).</para>
 
-    <section id="package-description">
+    <section id="pkg-descr">
       <title>Package descriptions</title>
       <para>The package description file should have a name
         ending in <literal>.cabal</literal>, and contain several
         <quote>stanzas</quote> separated by blank lines.
-        Each stanza consists of a number of fields, with a syntax like
-        mail message headers.</para>
-      <itemizedlist> 
+        Each stanza consists of a number of field/value pairs, with a
+        syntax like mail message headers.</para>
+      <itemizedlist>
 	<listitem>
           <para>case is not significant in field names</para>
 	</listitem>
@@ -203,7 +207,7 @@ Hidden-Modules: A, C, Utils</programlisting>
           <para>to get a blank line in a field value, use an indented
             <quote><literal>.</literal></quote></para>
 	</listitem>
-      </itemizedlist> 
+      </itemizedlist>
       <para>Lines beginning with <quote><literal>--</literal></quote>
         are treated as comments and ignored.</para>
 
@@ -212,7 +216,9 @@ Hidden-Modules: A, C, Utils</programlisting>
         the following fields:</para>
       <variablelist>
         <varlistentry>
-          <term><literal>name:</literal> <replaceable>identifier</replaceable></term>
+          <term>
+            <literal>name:</literal> <replaceable>identifier</replaceable>
+          </term>
           <listitem>
             <para>The unique name of the package, without the version number
               (required).</para>
@@ -220,7 +226,9 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>version:</literal> <replaceable>string</replaceable></term>
+          <term>
+            <literal>version:</literal> <replaceable>string</replaceable>
+          </term>
           <listitem>
             <para>The package version number, usually consisting of
               a sequence of natural numbers separated by dots
@@ -229,7 +237,9 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>license:</literal> <replaceable>string</replaceable></term>
+          <term>
+            <literal>license:</literal> <replaceable>string</replaceable>
+          </term>
           <listitem>
             <para>The type of license under which this package is distributed.
                 License names are the constants of the &License; type.</para>
@@ -237,7 +247,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>license-file:</literal> <replaceable>filename</replaceable></term>
+          <term>
+            <literal>license-file:</literal>
+            <replaceable>filename</replaceable>
+          </term>
           <listitem>
             <para>The name of a file containing the precise license for
               this package.</para>
@@ -245,21 +258,30 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>copyright:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>copyright:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>The name of the holder of the copyright on the package.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>author:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>author:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>The original author of the package.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>maintainer:</literal> <replaceable>email address</replaceable></term>
+          <term>
+            <literal>maintainer:</literal>
+            <replaceable>email address</replaceable>
+          </term>
           <listitem>
             <para>The current maintainer of the package, if different
               from the author.</para>
@@ -267,7 +289,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>stability:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>stability:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>The stability level of the package, e.g.
               <literal>alpha</literal>, <literal>experimental</literal>,
@@ -276,21 +301,29 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>homepage:</literal> <replaceable>URL</replaceable></term>
+          <term>
+            <literal>homepage:</literal> <replaceable>URL</replaceable>
+          </term>
           <listitem>
             <para>The package homepage.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>package-url:</literal> <replaceable>URL</replaceable></term>
+          <term>
+            <literal>package-url:</literal> <replaceable>URL</replaceable>
+          </term>
           <listitem>
-            <para>The location of a source bundle for the package.</para>
+            <para>The location of a source bundle for the package.
+              The distribution should be a Cabal package.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>synopsis:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>synopsis:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>A very short description of the package,
               for use in a table of packages.  This is your headline,
@@ -301,7 +334,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>description:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>description:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>Description of the package.  This may be several
               paragraphs, and should be aimed at a Haskell programmer
@@ -310,7 +346,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>category:</literal> <replaceable>freeform text</replaceable></term>
+          <term>
+            <literal>category:</literal>
+            <replaceable>freeform text</replaceable>
+          </term>
           <listitem>
             <para>A classification category for future use by the package
               catalogue <firstterm>Hackage</firstterm>.  These categories
@@ -320,7 +359,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>tested-with:</literal> <replaceable>compiler list</replaceable></term>
+          <term>
+            <literal>tested-with:</literal>
+            <replaceable>compiler list</replaceable>
+          </term>
           <listitem>
             <para>A list of compilers and versions against which the
               package has been tested (or at least built).</para>
@@ -328,7 +370,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>build-depends:</literal> <replaceable>package list</replaceable></term>
+          <term>
+            <literal>build-depends:</literal>
+            <replaceable>package list</replaceable>
+          </term>
           <listitem>
             <para>A list of packages, possibly annotated with versions,
               needed to build this one, e.g. <literal>foo > 1.2, bar</literal>.
@@ -338,7 +383,10 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
-          <term><literal>exposed-modules:</literal> <replaceable>module list</replaceable></term>
+          <term>
+            <literal>exposed-modules:</literal>
+            <replaceable>module list</replaceable>
+          </term>
           <listitem>
             <para>A list of modules added by this package (required if
               this package contains a library).</para>
@@ -364,8 +412,8 @@ Hidden-Modules: A, C, Utils</programlisting>
           automatically as required.</para>
       </note>
 
-      <para>This stanza may also contain build information fields relating
-        to the library (see <xref linkend="buildinfo"/>).</para>
+      <para>This stanza may also contain build information fields
+        (see <xref linkend="buildinfo"/>) relating to the library.</para>
 
       <section id="executable">
         <title>Executables</title>
@@ -376,14 +424,18 @@ Hidden-Modules: A, C, Utils</programlisting>
 
         <variablelist>
           <varlistentry>
-            <term><literal>executable:</literal> <replaceable>string</replaceable></term>
+            <term>
+              <literal>executable:</literal> <replaceable>string</replaceable>
+            </term>
             <listitem>
               <para>The name of the executable program (required).</para>
             </listitem>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>main-is:</literal> <replaceable>filename</replaceable></term>
+            <term>
+              <literal>main-is:</literal> <replaceable>filename</replaceable>
+            </term>
             <listitem>
               <para>The name of the source file containing the main module,
                 relative to the <literal>hs-sources</literal> directory
@@ -395,15 +447,18 @@ Hidden-Modules: A, C, Utils</programlisting>
 
       <section id="buildinfo">
         <title>Build information</title>
-        <para>The following fields may be present in any stanza, and
-        give information for the building of the corresponding library
-        or executable.  They may also be present in a
-        <replaceable>package</replaceable><literal>.buildinfo</literal>
-        file.  See <xref linkend="system-dependent"/> for more
-        details. All are optional.</para>
+
+        <para>The following fields may be optionally present
+          in any stanza, and give information for the building
+          of the corresponding library or executable.  See also
+          <xref linkend="system-dependent"/> for a way to supply
+          system-dependent values for these fields.</para>
+
         <variablelist>
           <varlistentry>
-            <term><literal>buildable:</literal> <replaceable>Boolean</replaceable></term>
+            <term>
+              <literal>buildable:</literal> <replaceable>Boolean</replaceable>
+            </term>
             <listitem>
               <para>Is the component buildable?
                 (default: <literal>True</literal>.)
@@ -415,7 +470,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>other-modules:</literal> <replaceable>module list</replaceable></term>
+            <term>
+              <literal>other-modules:</literal>
+              <replaceable>module list</replaceable>
+            </term>
             <listitem>
               <para>A list of modules used by the component
                 but not exposed to users.  For a library component, these
@@ -426,7 +484,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>hs-source-dir:</literal> <replaceable>directory</replaceable></term>
+            <term>
+              <literal>hs-source-dir:</literal>
+              <replaceable>directory</replaceable>
+            </term>
             <listitem>
               <para>The name of root directory of the module
                 hierarchy, relative to the package root
@@ -434,7 +495,10 @@ Hidden-Modules: A, C, Utils</programlisting>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term><literal>extensions:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>extensions:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>A list of Haskell extensions used by every module.
                 Extension names are the constructors of the &Extension; type.
@@ -451,7 +515,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>options-ghc:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>options-ghc:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>Additional options for GHC.  You can often achieve
                 the same effect using the <literal>extensions</literal>
@@ -464,7 +531,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>options-hugs:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>options-hugs:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>Additional options for Hugs.  You can often achieve
                 the same effect using the <literal>extensions</literal>
@@ -477,7 +547,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>options-nhc:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>options-nhc:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>Additional options for nhc98.  You can often achieve
                 the same effect using the <literal>extensions</literal>
@@ -490,7 +563,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>includes:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>includes:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>A list of header files, typically
                 containing function prototypes for any foreign imports
@@ -500,7 +576,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>include-dirs:</literal> <replaceable>directory list</replaceable></term>
+            <term>
+              <literal>include-dirs:</literal>
+              <replaceable>directory list</replaceable>
+            </term>
             <listitem>
               <para>A list of directories to search for
                 header files.</para>
@@ -508,7 +587,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>c-sources:</literal> <replaceable>filename list</replaceable></term>
+            <term>
+              <literal>c-sources:</literal>
+              <replaceable>filename list</replaceable>
+            </term>
             <listitem>
               <para>A list of C source files to be compiled
                 and linked with the Haskell files.</para>
@@ -522,21 +604,30 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>extra-libs:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>extra-libs:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>A list of extra libraries to link with.</para>
             </listitem>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>extra-lib-dirs:</literal> <replaceable>string list</replaceable></term>
+            <term>
+              <literal>extra-lib-dirs:</literal>
+              <replaceable>string list</replaceable>
+            </term>
             <listitem>
               <para>A list of directories to search for libraries.</para>
             </listitem>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>cc-options:</literal> <replaceable>space separated list</replaceable></term>
+            <term>
+              <literal>cc-options:</literal>
+              <replaceable>space separated list</replaceable>
+            </term>
             <listitem>
               <para>Command-line arguments to be passed to the C compiler.
                 Since the arguments are compiler-dependent, this field
@@ -546,7 +637,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>ld-options:</literal> <replaceable>space separated list</replaceable></term>
+            <term>
+              <literal>ld-options:</literal>
+              <replaceable>space separated list</replaceable>
+            </term>
             <listitem>
               <para>Command-line arguments to be passed to the linker.
                 Since the arguments are compiler-dependent, this field
@@ -556,7 +650,10 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>frameworks:</literal> <replaceable>space separated list</replaceable></term>
+            <term>
+              <literal>frameworks:</literal>
+              <replaceable>space separated list</replaceable>
+            </term>
             <listitem>
               <para>On Darwin/MacOS X, a list of
                 frameworks to link to. Take a look at Apple's developer
@@ -571,43 +668,45 @@ Hidden-Modules: A, C, Utils</programlisting>
     <section id="system-dependent">
       <title>System-dependent parameters</title>
 
-      <para>Some packages may require a configuration step to set
-      certain fields.  The fields in build information (see <xref
-      linkend="buildinfo"/>) can be generated and put into
-      <replaceable>package</replaceable><literal>.buildinfo</literal>.
-      For this you need a slightly extended
-
-        <filename>Setup.hs</filename>:</para>
+      <para>For some packages, implementation details and the build
+        procedure depend on the build environment.  The simple build
+        infrastructure can handle many such situations using a slightly
+        extended <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
 main = defaultMainWithHooks defaultUserHooks</programlisting>
+
       <para>This differs from <literal>defaultMain</literal> in two
         ways:</para>
       <orderedlist>
         <listitem>
           <para>If the package root directory contains a file called
             <filename>configure</filename>, the configure step will
-            run that.  This <filename>configure</filename> program
-            may be a script produced by the <command>autoconf</command>
-            system, or may be hand-written.  In this way you can generate
-            system-dependent header files and the like.  (Clearly this
-            won't work for Windows without MSYS or Cygwin: other ideas
-            are needed.)</para>
+            run that.  This <filename>configure</filename> program may
+            be a script produced by the <command>autoconf</command>
+            system, or may be hand-written.  This program typically
+            discovers information about the system and records it for
+            later steps, e.g. by generating system-dependent header files
+            for inclusion in C source files and preprocessed Haskell
+            source files.  (Clearly this won't work for Windows without
+            MSYS or Cygwin: other ideas are needed.)</para>
         </listitem>
 
         <listitem>
           <para>If the file
             <replaceable>package</replaceable><literal>.buildinfo</literal>
             exists after the configuration step, subsequent steps will read
-            it to obtain additional build information.  In particular, this
-            file may be produced by the <filename>configure</filename>
-            script mentioned above.</para>
-        </listitem>
-      </orderedlist>
+            it to obtain additional settings for build information fields
+            (see <xref linkend="buildinfo"/>), to be merged with the
+            ones given in the <literal>.cabal</literal> file.
+            In particular, this file may be generated by the
+            <filename>configure</filename> script mentioned above,
+            allowing these settings to vary depending on the build
+            environment.</para>
 
-      <para>The build information file should have the following
-        structure:</para>
-      <programlisting>
+          <para>The build information file should have the following
+            structure:</para>
+          <programlisting>
 <replaceable>buildinfo</replaceable>
 
 executable: <replaceable>name</replaceable>
@@ -617,19 +716,18 @@ executable: <replaceable>name</replaceable>
 <replaceable>buildinfo</replaceable>
 
 ...</programlisting>
+          <para>where each <replaceable>buildinfo</replaceable> consists
+            of settings of fields listed in <xref linkend="buildinfo"/>.
+            The first one (if present) relates to the library, while each
+            of the others relate to the named executable.  (The names
+            must match the package description, but you don't have to
+            have entries for all of them.)</para>
 
-      <para>Each <replaceable>buildinfo</replaceable> may include settings
-        of any of the fields listed in <xref linkend="buildinfo"/>.
-        The first one (if present) relates to the library, while each
-        of the others relate to the named executable.  (The names must
-        match the package description, but you don't have to have entries
-        for all of them.)</para>
+        </listitem>
+      </orderedlist>
 
-      <para>The <replaceable>buildinfo</replaceable>'s you
-        supply here will be merged with the ones given in the
-        <literal>.cabal</literal> file.  In this way you can make some
-        of the above <replaceable>buildinfo</replaceable> fields vary
-        depending on the build environment.</para>
+      <para>Neither of these files is required.  If they are absent, this
+        setup script is equivalent to <literal>defaultMain</literal>.</para>
 
       <example>
         <title>Using autoconf</title>
@@ -643,7 +741,7 @@ executable: <replaceable>name</replaceable>
 AC_INIT([Haskell X11 package], [1.1], [libraries@haskell.org], [X11])
 
 # Safety check: Ensure that we are in the correct source directory.
-AC_CONFIG_SRCDIR([include/HsXlib.h])
+AC_CONFIG_SRCDIR([X11.cabal])
 
 # Header file to place defines in
 AC_CONFIG_HEADERS([include/HsX11Config.h])
@@ -671,12 +769,18 @@ buildable: @BUILD_PACKAGE_BOOL@
 cc-options: @X_CFLAGS@
 ld-options: @X_LIBS@</programlisting>
 
-        <para>This produces a file <filename>X11.buildinfo</filename>
+        <para>This generates a file <filename>X11.buildinfo</filename>
           supplying the parameters needed by later stages:</para>
         <programlisting>
 buildable: True
 cc-options:  -I/usr/X11R6/include
 ld-options:  -L/usr/X11R6/lib</programlisting>
+
+        <para>The <filename>configure</filename> script also generates
+          a header file <filename>include/HsX11Config.h</filename>
+          containing C preprocessor defines recording the results of
+          various tests.  This file may be included by C source files
+          and preprocessed Haskell source files in the package.</para>
       </example>
     </section>
 
@@ -692,7 +796,8 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
             <firstterm>hooks</firstterm>.  These allow you to perform
             additional actions before and after each command is run,
             and also to specify additional preprocessors.  See &Simple;
-            for the details.</para>
+            for the details, but note that this interface is experimental,
+            and likely to change in future releases..</para>
         </listitem>
 
         <listitem>
@@ -702,15 +807,35 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
             which simply parses the command line arguments and invokes
             <command>make</command>.  Here <filename>Setup.hs</filename>
             looks like</para>
-      <programlisting>
+          <programlisting>
 import Distribution.Make
 main = defaultMain</programlisting>
-          <para>This assumes a <filename>configure</filename> script and
-            a <filename>Makefile</filename> with a default target that
-            builds the package, plus targets <literal>install</literal>,
-            <literal>register</literal>, <literal>unregister</literal>,
-            <literal>clean</literal>, <literal>dist</literal>.
-            (More detail needed.)</para>
+
+          <para>The root directory of the package should contain
+            a <filename>configure</filename> script, and, after
+            that has run, a <filename>Makefile</filename> with a
+            default target that builds the package, plus targets
+            <literal>install</literal>, <literal>register</literal>,
+            <literal>unregister</literal>, <literal>clean</literal>,
+            <literal>dist</literal> and <literal>docs</literal>.
+            Some options to commands are passed through as follows:</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>The <literal>--with-hc</literal>,
+                <literal>--with-hc-pkg</literal> and
+                <literal>--prefix</literal> options to the
+                <literal>configure</literal> command are passed on to
+                the <filename>configure</filename> script.</para>
+            </listitem>
+
+            <listitem>
+              <para>the <literal>--copy-prefix</literal> option to the
+                <literal>copy</literal> command becomes a setting of a
+                <literal>prefix</literal> variable on the invocation of
+                <literal>make install</literal>.</para>
+            </listitem>
+          </itemizedlist>
         </listitem>
 
         <listitem>
@@ -741,7 +866,7 @@ main = defaultMain</programlisting>
       argument selects a particular step in the build/install process.
       You can also get a summary of the command syntax with</para>
     <cmdsynopsis>
-      <command>runhaskell Setup.hs <option>--help</option></command>
+      <command>runhaskell Setup.hs</command> <option>--help</option>
     </cmdsynopsis>
 
     <example>
@@ -788,16 +913,20 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <para>The following options are understood by all commands:</para>
     <variablelist>
       <varlistentry>
-        <term><option>--help</option>, <option>-h</option> or
-          <option>-?</option></term>
+        <term>
+          <option>--help</option>, <option>-h</option> or
+          <option>-?</option>
+        </term>
         <listitem>
           <para>List the available options for the command.</para>
         </listitem>
       </varlistentry>
 
       <varlistentry>
-        <term><option>--verbose</option>=<replaceable>n</replaceable>
-	  or <option>-v</option><replaceable>n</replaceable></term>
+        <term>
+          <option>--verbose</option>=<replaceable>n</replaceable> or
+          <option>-v</option><replaceable>n</replaceable>
+        </term>
         <listitem>
           <para>Set the verbosity level (0-5).  The normal level is 1;
             a missing <replaceable>n</replaceable> defaults to 3.</para>
@@ -859,7 +988,7 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
         <varlistentry>
           <term><option>--with-haddock</option>=<replaceable>path</replaceable></term>
           <listitem>
-            <para>Specify the path to <command>haddock</command>.</para>
+            <para>Specify the path to &Haddock;.</para>
           </listitem>
         </varlistentry>
 
@@ -924,15 +1053,16 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <section>
       <title>setup haddock</title>
       <para>Build the interface documentation for a library using
-        <command>haddock</command>.</para>
+        &Haddock;.</para>
     </section>
 
     <section>
       <title>setup install</title>
-      <para>Copy the files into the install locations and register the
-        package with the compiler, i.e. make the modules it contains
-        available to programs.  This command takes the following
-        options:</para>
+      <para>Copy the files into the install locations and (for library
+        packages) register the package with the compiler, i.e. make the
+        modules it contains available to programs.</para>
+
+      <para>This command takes the following options:</para>
 
       <variablelist>
         <varlistentry>
@@ -956,8 +1086,9 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <section>
       <title>setup copy</title>
       <para>Copy the files without registering them.  This command
-        is mainly of use to those creating binary packages.
-        This command takes the following option:</para>
+        is mainly of use to those creating binary packages.</para>
+
+      <para>This command takes the following option:</para>
 
       <variablelist>
         <varlistentry>
@@ -975,12 +1106,13 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <section>
       <title>setup register</title>
       <para>Register this package with the compiler, i.e. make the
-        modules it contains available to programs.  Note that the
-        <literal>install</literal> command incorporates this action.
-        The main use of this separate command is in the post-installation
-        step for a binary package.</para>
+        modules it contains available to programs.  This only makes sense
+        for library packages.  Note that the <literal>install</literal>
+        command incorporates this action.  The main use of this
+        separate command is in the post-installation step for a binary
+        package.</para>
 
-     <para>This command takes the following options:</para>
+      <para>This command takes the following options:</para>
 
       <variablelist>
         <varlistentry>
@@ -1004,6 +1136,9 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
     <section>
       <title>setup unregister</title>
       <para>Deregister this package with the compiler.</para>
+
+      <para>This command takes the following options:</para>
+
       <variablelist>
         <varlistentry>
           <term><option>--global</option></term>
@@ -1039,22 +1174,6 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
         <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
         which can be distributed to package builders.  When unpacked,
         the commands listed in this section will be available.</para>
-    </section>
-  </section>
-
-  <section id="users">
-    <title>Installed packages</title>
-
-    <para>(steal from GHC User's Guide?)</para>
-
-    <section>
-      <title>Package management</title>
-      <para>...</para>
-    </section>
-
-    <section>
-      <title>Installed package descriptions</title>
-      <para>...</para>
     </section>
   </section>
 
