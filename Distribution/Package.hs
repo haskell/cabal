@@ -230,13 +230,6 @@ splitLines = merge . filter validLine . lines
                    (fld, ':':val) -> (map toLower fld, dropWhile isSpace val)
                    (fld, "")      -> error "FIXME"
 
--- |A parser for any of the given parsers.  This actually seems to
--- behave differently from "choice".
-
-anyOf :: [GenParser tok st a] -> GenParser tok st a
-anyOf [a] = a
-anyOf (h:t) = foldl ((<|>) . try) (try h) t
-
 -- |parse a module name
 moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
 
@@ -249,10 +242,6 @@ parseFilePath = liftM concat (many1 (
                        ))
         <?> "parseFilePath"
 
-parseLicense :: GenParser Char st License
-parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
-        <?> "parseLicense"
-
 parseDependency :: GenParser Char st Dependency
 parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
                      skipMany parseWhite
@@ -260,6 +249,10 @@ parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
                      skipMany parseWhite
                      return $ Dependency name ver
         <?> "parseDependency"
+
+parseLicense :: GenParser Char st License
+parseLicense = choice [ try (string s >> return l) | (s,l) <- licenses]
+        <?> "parseLicense"
 
 -- |Mapping between the licenses and their names
 licenses :: [(String, License)]
