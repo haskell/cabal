@@ -189,7 +189,6 @@ defaultMainWorker pkg_descr_in action args hooks
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
-                putStrLn $ "Suffix Handlers are: " ++ concatMap (show . fst) pps
                 pkg_descr <- hookOrInArgs preConf args flags
                 sanityCheckPackage pkg_descr
 		localbuildinfo <- configure pkg_descr flags

@@ -117,7 +117,7 @@ $(HSQLLib): $(OBJS) $(HsODBC_o)
 	   $(AR) -q $(HSQLLib) $$i/*.o; \
 	done
 	$(AR) -q $(HSQLLib) $(HsODBC_o)
-	
+
 genclean: distclean
 	rm -rf configure autom4te.cache
 
@@ -152,7 +152,7 @@ install-ghc: $(HSQLLib) $(HI_SRC) docs
 	   $(INSTALL) -c $(BUILDDIR)/$$i $(GHC_DIR)/imports/`dirname $$i`; \
 	done
 	rm -f $(GHC_DIR)/HSsql.o
-	$(GHC_PKG) -u -g -i hsql.pkg
+	$(GHC_PKG) --config-file=tmpConfig -u -g -i hsql.pkg
 	if test -f $(DOCDIR)/index.html; then  \
 	   $(INSTALL) -d $(DOC_DIR); \
 	   $(INSTALL) -c $(DOCDIR)/* $(DOC_DIR); \

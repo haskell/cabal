@@ -26,9 +26,6 @@
 ** It would be useful to have alternatives in dependencies, e.g. HGL
    could depend on X11 | Win32.
 
-** How about replacing the modules field with hidden-modules, to avoid
-   repetition?
-
 ** Preprocessors
 *** chain of preprocessors
 *** what other preprocessors can't unlit?
