@@ -53,8 +53,10 @@ import Distribution.Package()
 import qualified Distribution.Setup(hunitTests)
 
 import Distribution.Simple()
-import qualified Distribution.Simple.Install(hunitTests)
+import Distribution.Simple.Install()
 import Distribution.Simple.Build()
+import Distribution.Simple.SrcDist()
+import qualified Distribution.Simple.Utils(hunitTests)
 import Distribution.Simple.Configure()
 import Distribution.Simple.Register()
 
@@ -72,7 +74,7 @@ main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupTests <- Distribution.Setup.hunitTests
           mapM runTestTT' setupTests
-          Distribution.Simple.Install.hunitTests >>= runTestTT'
+          Distribution.Simple.Utils.hunitTests >>= runTestTT'
           
           return ()
 

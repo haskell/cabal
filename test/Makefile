@@ -6,3 +6,5 @@ check: all
 	./setup configure --prefix=/tmp/foo
 	./setup install
 	ls /tmp/foo*
+	./setup sdist
+	ls dist
