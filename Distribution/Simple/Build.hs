@@ -87,10 +87,8 @@ build pref pkg_descr lbi = do
 -- |FIX: For now, the target must contain a main module :(
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
-  let (unsupported, flags) = extensionsToNHCFlag (maybe [] extensions (library pkg_descr))
-  unless (null unsupported)
-           (die $ "Unsupported extension for NHC: "
-                  ++ (concat $ intersperse ", " (map show unsupported)))
+  -- Unsupported extensions have already been checked by configure
+  let flags = snd $ extensionsToNHCFlag (maybe [] extensions (library pkg_descr))
   rawSystemExit (compilerPath (compiler lbi))
                 (["-nhc98"]
                 ++ flags
@@ -139,13 +137,11 @@ buildGHC pref pkg_descr lbi = do
 
 constructGHCCmdLine :: FilePath -> BuildInfo -> [PackageIdentifier] -> [String]
 constructGHCCmdLine pref build deps = 
-    let (unsupported, flags) = extensionsToGHCFlag (extensions build)
-        in if null unsupported
-           then [ "--make", "-i" ++ pathJoin [pref, hsSourceDir build] ]
-                ++ nub (flags ++ [ opt | (GHC,opts) <- options build, opt <- opts ])
-                ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ] )
-           else error $ "Unsupported extension for GHC: "
-                      ++ (concat $ intersperse ", " (map show unsupported))
+    -- Unsupported extensions have already been checked by configure
+    let flags = snd $ extensionsToGHCFlag (extensions build)
+     in [ "--make", "-i" ++ pathJoin [pref, hsSourceDir build] ]
+     ++ nub (flags ++ [ opt | (GHC,opts) <- options build, opt <- opts ])
+     ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 objsuffix :: String
 #ifdef mingw32_TARGET_OS

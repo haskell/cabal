@@ -43,6 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Misc(License(..), Dependency(..), Extension(..), Opt
                          ,extensionsToNHCFlag, extensionsToGHCFlag
+                         ,extensionsToHugsFlag
 #ifdef DEBUG        
         ,hunitTests
 #endif
@@ -150,7 +151,8 @@ extensionsToNHCFlag :: [ Extension ] -> ([Extension], [Opt])
 extensionsToNHCFlag l
     = splitEither $ nub $ map extensionToNHCFlag l
       where
-      extensionToNHCFlag NoMonomorphismRestriction = Right "" -- not implemented in NHC
+      -- NHC doesn't enforce the monomorphism restriction at all.
+      extensionToNHCFlag NoMonomorphismRestriction = Right ""
       extensionToNHCFlag ForeignFunctionInterface  = Right ""
       extensionToNHCFlag ExistentialQuantification = Right ""
       extensionToNHCFlag EmptyDataDecls            = Right ""
