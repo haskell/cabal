@@ -123,9 +123,13 @@ installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
 -- Install for Hugs
--- The library goes in <libPref>/hugs/packages/<pkgname>
--- Each executable goes in <libPref>/hugs/programs/<exename>
--- with a script <binPref>/<exename> pointing at it.
+-- For install, copy-prefix = prefix, but for copy they're different.
+-- The library goes in <copy-prefix>/lib/hugs/packages/<pkgname>
+-- (i.e. <prefix>/lib/hugs/packages/<pkgname> on the target system).
+-- Each executable goes in <copy-prefix>/lib/hugs/programs/<exename>
+-- (i.e. <prefix>/lib/hugs/programs/<exename> on the target system)
+-- with a script <copy-prefix>/bin/<exename> pointing at
+-- <prefix>/lib/hugs/programs/<exename>
 installHugs
     :: Int      -- ^verbose
     -> FilePath -- ^Library install location
@@ -143,10 +147,13 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
     let progBuildDir = buildPref `joinFileName` "programs"
     let progInstallDir = libPref `joinFileName` "programs"
+    let progTargetDir = targetLibPref `joinFileName` "programs"
+    when (not (null (executables pkg_descr))) $
+        createDirectoryIfMissing True binPref
     withExe pkg_descr $ \ exe -> do
         let buildDir = progBuildDir `joinFileName` exeName exe
         let installDir = progInstallDir `joinFileName` exeName exe
-        let targetDir = progInstallDir `joinFileName` exeName exe
+        let targetDir = progTargetDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose buildDir installDir
             (otherModules (buildInfo exe)) hugsInstallSuffixes
