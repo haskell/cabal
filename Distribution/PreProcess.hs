@@ -1,6 +1,12 @@
-Copyright (c) 2003-2004, Isaac Jones, Simon Marlow, Martin Sjögren,
-                         Bjorn Bringert, Krasimir Angelov,
-                         Malcolm Wallace
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.PreProcess
+-- 
+-- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
+-- Stability   :  alpha
+-- Portability :  GHC, Hugs
+--
+{- Copyright (c) 2003-2004, Isaac Jones, Malcolm Wallace
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,4 +35,25 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
+
+module Distribution.PreProcess (preprocessSources) where
+
+import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
+import Distribution.Simple.Configure (LocalBuildInfo(..))
+import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin, withLib)
+
+
+-- |Copy and (possibly) preprocess sources from hsSourceDirs
+preprocessSources :: PackageDescription 
+		  -> LocalBuildInfo 
+		  -> FilePath           -- ^ Directory to put preprocessed 
+					-- sources in
+		  -> IO ()
+preprocessSources pkg_descr _ pref = 
+    do
+    setupMessage "Preprocessing" pkg_descr
+    withLib pkg_descr $ \lib ->
+        moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
+    sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
+              | Executable _ _ exeBi <- executables pkg_descr]
