@@ -60,6 +60,7 @@ module Distribution.Compat.ReadP
   chainl1,    -- :: ReadP a -> ReadP (a -> a -> a) -> ReadP a
   chainr1,    -- :: ReadP a -> ReadP (a -> a -> a) -> ReadP a
   manyTill,   -- :: ReadP a -> ReadP end -> ReadP [a]
+  Parser,
   
   -- * Running a parser
   ReadS,      -- :: *; = String -> [(a,String)]

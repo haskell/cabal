@@ -281,23 +281,26 @@ compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
 compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
 compilerBinaryName Hugs = "ffihugs"
+compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
+compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> IO Version
-configCompilerVersion GHC compilerPath =
+configCompilerVersion GHC compilerP =
   withTempFile "." "" $ \tmp -> do
-    maybeExit $ system (compilerPath ++ " --version >" ++ tmp)
+    maybeExit $ system (compilerP ++ " --version >" ++ tmp)
     str <- readFile tmp
     case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
 	[v] -> return v
-	_   -> die ("cannot determine version of " ++ compilerPath ++ ":\n  "
+	_   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "
 			++ str)
 configCompilerVersion _ _ = return Version{ versionBranch=[],versionTags=[] }
 
+pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
