@@ -1,0 +1,1191 @@
+<!DOCTYPE ARTICLE PUBLIC "-//OASIS//DTD DocBook V3.1//EN" [
+<!entity  ghc         "<application>GHC</application>">
+<!entity  nhc         "<application>NHC</application>">
+<!entity  hugs        "<application>Hugs</application>">
+<!entity  autoconf    "<application>autoconf</application>">
+<!entity  impl        "Haskell Implementation">
+<!entity  impls       "Haskell Implementations">
+<!entity  distMod     "<className>Distribution</className> module">
+<!entity  haskellConfig  "<application>haskell-config</application>">
+<!entity  DistPackage  "<classname>Distribution.Package</classname>">
+<!entity  DistBuild    "<classname>Distribution.Build</classname>">
+<!entity  DistInstall  "<classname>Distribution.Install</classname>">
+<!entity  DistConfigure   "<classname>Distribution.Config</classname>">
+<!entity  hunit       "<application>HUnit</application>">
+<!entity  distutils   "<application>Distutils</application>">
+<!entity  cpan        "<application>CPAN</application>">
+<!entity  xemacs      "<application>XEmacs</application>">
+<!entity  hmake       "<application>hmake</application>">
+<!entity  dpkg        "<application>dpkg</application>">
+<!entity  rpm        "<application>rpm</application>">
+]>
+ 
+<!-- You should search this document for 'foo' and delete it. -->
+<!-- Look for FIX too -->
+
+<!-- ToDo: -->
+
+<!-- Look at Package data types again and add the version information where -->
+<!-- necessary. -->
+
+<article id="lip">
+  <artHeader>
+    <date>2003-09-12</date>
+    <title>Library Infrastructure Project</title>
+    <author>
+      <firstname>Isaac</firstname>
+      <surname>Jones</surname>
+    </author>
+    <address><email>ijones@syntaxpolice.org</email></address>
+    <abstract>
+
+      <para>The Library Infrastructure Project is an effort to provide
+      a framework for developers to more effectively contribute their
+      software to the Haskell community.</para>
+
+      <para>The &impls;<footnote><para>Herein, I will use &impl; as a
+      catch-all phrase to include compilers and interpreters for the
+      Haskell programming language.</para></footnote> come included
+      with a good set of standard libraries, but this set is
+      constantly growing and is maintained centrally.  This model does
+      not scale up well, and as Haskell grows in acceptance, the
+      quality and quantity of available libraries is becoming a major
+      issue.  There are a wide variety of &impls; (both compilers and
+      interpreters), each of which target a variety of hardware
+      architectures and operating systems.  There are also a number of
+      different groups and individuals providing libraries, and these
+      libraries depend upon each other and they depend upon external
+      systems such as Java or GTK.</para>
+
+      <para>It can be very difficult for an end user to manage these
+      dependencies and build all the necessary software at the correct
+      version numbers on their platform: there is currently no generic
+      build system to abstract away differences between Haskell
+      Implementations and operating systems <footnote><para>Your
+      humble author has in-depth knowledge of Debian GNU/Linux, but
+      could probably learn a thing or two about other operating
+      systems like Windows and MacOS.  Should you notice anything here
+      which offends your sense of operating system, please let me
+      know.</para></footnote>.</para>
+
+      <para>The Library Infrastructure Project seeks to provide some
+      relief to this situation by building tools to assist developers,
+      end users, and operating system distributers. </para>
+
+      <para>This is a draft proposal.  If you have comments, please
+      email <ulink url="mailto:ijones@syntaxpolice.org">Isaac
+      Jones</ulink>.  The latest version of this document should be
+      available in a variety of formats from the Library
+      Infrastructure Project <ulink
+      url="http://www.haskell.org/libraryInfrastructure">home
+      page</ulink>.  This proposal is seperate, but related </para>
+
+    </abstract>
+  </artheader>
+
+<!-- Overview ------------------------------------------------ -->
+  <section id="lip-overview"><title>High-Level Overview</title>
+
+  <para>On a high level, we say that we want the system to help the
+  user to install packages (whether they be libraries or applications)
+  and their dependencies.  The system should work
+  <emphasis>with</emphasis> operating-system-level package managers
+  (such as &dpkg;, &rpm;, and FreeBSD's Ports system) rather than
+  replacing them.  For operating systems without the luxury of a
+  package manager, we propose to add a Haskell-specific package
+  manager.</para>
+
+  <para>To accomplish this, we propose a system similar to Python's
+  &distutils; (<xref linkend="lip-appendix-distutils">) where each
+  Haskell tool is distributed with a script (<xref
+  linkend="lip-script-example">) that has a standard command-line
+  interface.  This script will provide a familiar user interface
+  (<xref linkend="lip-command">) for compiling, installing, and
+  removing packages and their dependencies.</para>
+
+  <para>For instance, to install the &hunit; package, the user might
+  install it with their package manager, if available
+  (<command>apt-get install hunit-hugs</command> for instance) or
+  download the source code from the web site, change into the &hunit;
+  directory, and type <command>./Setup.lhs install default</command>,
+  which would build and install the &hunit; package for the default
+  compiler.  Similarly, he might type <command>./Setup.lhs install
+  nhc</command> to install the package for &nhc;.</para>
+
+  <para>Other tasks might be necessary to make the package known to
+  the system, such as registering it with the &impl; of interest
+  (<xref linkend="lip-packaging">).  Such tasks would also be
+  performed by this Setup program.</para>
+  </section>
+
+<!-- Problems ------------------------------------------------ -->
+  <section id="lip-problems"><title>Issues Facing Developers</title>
+
+  <para>There are a number of issues facing developers of Haskell
+  software when they decide to deploy their work.  </para>
+
+  <itemizedlist>
+
+  <listitem><para>Binary incompatibility between Haskell
+  Implementations and between versions of some implementations make it
+  very difficult to distribute binary libraries: if they are expected
+  to work together, all of the libraries on a user's system need to be
+  built with the same compiler.  This makes it a virtual necessity
+  that the source code for a Haskell library be distributed to the end
+  user of that library, although other options exist for systems like
+  Debian (<xref linkend="lip-appendix-debian">) which have
+  auto-builders. </para></listitem>
+
+  <listitem><para>Compilation is difficult: It was noted above that it
+  is usually necessary to distribute the source code for Haskell tools
+  to the end user.  The end user has to compile each Haskell tool they
+  use, but the task of compilation is complicated by a plethora of
+  preprocessors (such as arrowp and greencard) and interfaces with
+  non-Haskell libraries (such as Java, X, C, and GTK).  Further, there
+  is no way to formally express dependencies between Haskell tools, so
+  the users have to visit the home pages of the projects they're
+  interested in and find the dependencies.  </para></listitem>
+
+  <listItem><para>The &impls; are not completely compatible either:
+  They support different extensions, different libraries, different
+  binary formats, different flags, and different packaging
+  systems.</para></listitem>
+
+  <listitem><para>Given that compilation is difficult in and of
+  itself, it is further complicated by a wide variety of target
+  platforms that it is desirable to support.  These systems may treat
+  files differently (copying of files, path names) or have different
+  defaults for where to put compiled files or source code to make them
+  available to the user.  The variety of &impls; and target platforms
+  make writing of a generic build system that "just works" very
+  difficult.</para></listitem>
+  
+  <listitem><para>Having managed to compile and install all of the
+  Haskell software they need, if a user installs a new compiler (or
+  version thereof), all this work needs to be redone.  All of the
+  libraries on the system will have to be recompiled to match the
+  version of that compiler (this is apparently a bigger problem with
+  GHC than with NHC, and not much of a problem with
+  Hugs.)</para></listitem>
+
+  </itemizedlist>
+
+  <para>Compare this to the experience of installing a typical library
+  or tool written in C or C++ on a Debian GNU/Linux system: The user
+  consults a database of known programs (which is stored on her
+  computer) and runs a single command to install that package.  The
+  package management tool figures out the dependencies, downloads all
+  dependencies downloads the package, and installs them in the proper
+  order.  The packages are already compiled by a set of central
+  servers.  In fact, there is no reason that this kind of interface
+  can't be available to the end user except for the difficulty of
+  creating binary packages. (See <xref linkEnd =
+  "lip-problems-packagers">) </para>
+
+  <section id="lip-problems-packagers"><title>Issues Facing Packagers</title>
+
+  <para>There are roughly speaking, three different kinds of
+  operating-system package systems: source distributions (FreeBSD,
+  Gentoo), binary distributions (Debian, RPM), and language-specific
+  distributions (CPAN, XEmacs).  What we are proposing to create is a
+  language-specific distribution that assists in the creation of both
+  source and binary packages for other operating systems.</para>
+
+  <para>As mentioned above, it is possible to create an operating
+  system package for a Haskell library.  Indeed, its no harder to
+  create a Haskell package than any other kind of package; Haskell
+  packages are harder to maintain, however.  For instance, in the
+  Debian GNU/Linux system (<xref linkend="lip-appendix-debian">),
+  which is a binary distribution, there is currently no way to express
+  that a library needs to be recompiled when a new compiler is
+  uploaded to the autobuilders.  Currently, the only solution is to
+  re-upload library packages to the autobuilders at the same time you
+  upload a new &impl;.  Similarly for Redhat, binary packages have to
+  include the version number for &ghc; that they were compiled
+  with. </para>
+
+  <para> In a source distribution like FreeBSD (<xref
+  linkend="lip-appendix-freebsd">), this isn't a problem, since the
+  end user compiles all of their software themselves.  However, when the
+  end user compiles and installs a new &impl;, all of the libraries
+  compiled with the old &impl; will no longer work and need to be
+  recompiled.  As I understand it, there is currently no means of
+  performing this operation automatically.</para>
+
+  <para>Emacs / XEmacs presents packagers with some of the same
+  issues; they are both, practically speaking, Lisp compilers, and
+  incompatible, much like different versions of &impls;.  When an
+  elisp package is installed on Debian, it gets compiled automatically
+  (on the end user's machine) for each version of Emacs / XEmacs that
+  is installed.  This procedure is orthogonal to the XEmacs Packaging
+  System (<xref linkend="lip-appendix-xemacs">) and is a duplication
+  of effort in some cases, but that is really the only way to make it
+  work with Debian.  This has some ugly properties from Debian's
+  standpoint: once compiled, there are files in the operating system
+  that the packaging system doesn't know about.  These are similar to
+  issues that Haskell packagers for Debian will have to face.</para>
+
+</section>
+
+  <section id="lip-problems-solve"><title>Why We Should Solve This</title>
+
+<itemizedList>
+
+  <listItem><para>We need to evolve a decentralized way of
+  distributing libraries.  The current model of distributing them with
+  the &impls; puts too much strain upon the &impl; authors, and is not
+  sustainable in the long-term.  If this continues, availability and
+  reliability of libraries will suffer, and Haskell itself will suffer
+  in the long-term as a rich set of libraries is becoming the standard
+  for successful programming languages.</para></listItem>
+
+  <listItem><para>If we can help operating system packagers build
+  packages (Debian, RPM, etc.), then we'll have more happy end
+  users.</para></listItem>
+
+  <listItem><para>If we lower the cost of evaluating Haskell and
+  Haskell tools, more people might try them out.</para></listItem>
+
+  <listItem><para>Many Haskell programs are developed as research
+  prototypes and abandoned.  The subsequent bitrot makes it difficult
+  for the community to take over the projects.  Formally specifying
+  versioned dependencies and creating a central repository for Haskell
+  tools can help solve this problem.</para></listItem>
+
+  <listItem><para>Active participation with the rest of the Free
+  Software community (inclusion of Haskell in OS distributions,
+  interoperability between Haskell tools and external libraries) can
+  bring attention to Haskell and perhaps bring more talented
+  developers into The Flock.</para></listItem>
+
+</itemizedList>
+
+
+</section>
+
+</section>
+
+<!-- Solution ------------------------------------------------- -->
+  <section id="lip-in-haskell"><title>A Solution for Haskell in Haskell</title>
+
+  <para>As mentioned above, the foremost user interface for this
+  system will be a Haskell program to be executed by the default
+  &impl;. This Haskell program, <command>Setup.lhs</command>, will
+  perform the tasks of building the package (where necessary),
+  installing the package, and making the package available to the
+  system.</para>
+
+<!-- Module Overview ---------------------------- -->
+  <section id="lip-modules"><title>The Module Design</title>
+  <para>I propose a set of modules based on these three major tasks:</para>
+
+<itemizedList>
+
+  <listItem><para>&DistBuild;: For tasks of preparing the package for
+  installation, including tasking compilers and creating packages for
+  systems like Debian (<xref linkend="lip-build">).</para></listItem>
+
+  <listItem><para>&DistInstall;: For moving the distribution files
+  into place (<xref linkend="lip-install">).</para></listItem>
+
+  <listItem><para>&DistPackage;: For
+  accessing the database of installed packages, versions, etc. Might
+  also be responsible for removing packages (<xref
+  linkend="lip-packaging">).</para></listItem>
+
+  <listItem><para>&DistConfigure;: For discovering details about the
+  configuration of the target system not covered by the database of
+  installed packages.  These are tasks typically performed by tools
+  such as &autoconf; (<xref
+  linkend="lip-configure">).</para></listItem>
+
+  <listItem><para><className>Distribution</className>: For general
+  purpose elements that don't fit into any of the above
+  categories.</para></listItem>
+</itemizedList>
+</section>
+
+<!-- Why Haskell ---------------------------- -->
+  <section id="lip-why-haskell"><title>But Why Should We Use Haskell?</title>
+
+<para>It is very appropriate that this solution be implemented in
+Haskell:</para>
+
+<itemizedList>
+
+<listItem><para>Haskell runs on all the systems of interest.</para></listItem>
+
+<listItem><para>Haskell's standard libraries should include a rich set of operating
+system operations needed for the task.  These can abstract-away the
+differences between systems in a way that is not possible for
+Make-based tools.</para></listItem>
+
+<listItem><para>Haskell is a great language for many things, including tasks
+typically relegated to languages like Python.  Building, installing,
+and managing packages is a perfect proving ground for these tasks, and
+can help us to discover weaknesses in Haskell or its libraries that
+prevent it from breaking into this "market".  A positive side-effect
+of this project might be to make Haskell more suitable for "scripting"
+tasks.</para></listItem>
+
+<listItem><para>Likewise, each piece of the project (Building, Installing, and
+Packaging) can be leveraged elsewhere if we make them into
+libraries.</para></listItem>
+
+<listItem><para>Make is not particularly good for parsing, processing, and sharing
+meta-information about packages.  The availability of this information
+to Haskell systems (including compilers, interpreters, and other
+tools) is useful.  Unlike Make, Haskell can also reuse unrelated
+algorithms, parsers, and other libraries that have been developed in
+the past.</para></listItem>
+
+<listItem><para><emphasis>Dogfooding</emphasis>, the act of using the tools you
+develop, is a healthy policy.</para></listItem>
+
+</itemizedList>
+</section>
+
+<!-- Setup.lhs ---------------------------- -->
+  <section id="lip-command"><title>Setup.lhs Command-Line Interface</title>
+
+     <para>The purpose of the Setup script is to provide a standard
+     interface to end users and layered tools.  For any particular
+     application, the script may be implemented in a variety of ways:
+     For pure Haskell applications, the &distMod; should perform all
+     of the heavy lifting, requiring only a few lines of code from the
+     developer.  For applications that feel they need a complete and
+     robust make-based system, the Setup script can wrap such a
+     system.</para>
+
+     <para>One of the early design tasks of this project should be to decide
+     on a format for the command-line interface of the Setup script,
+     but here is an example of how it might behave:</para>
+     
+     <table frame=all><title>Setup.lhs interface</title>
+
+     <tgroup cols=2 align=left colsep=1 rowsep=1>     <tbody>
+
+     <row><Entry><command>./Setup.lhs info</command></entry>
+                    <Entry><para>Output package configuration
+                    information</para></entry></row>
+
+
+     <row><Entry><command>./Setup.lhs build all</command></entry>
+                    <Entry><para>Compile / prepare this package for
+                    all installed &impls;</para></entry></row>
+
+
+     <row><Entry><command>./Setup.lhs build default</command></entry>
+                    <Entry><para>Compile / prepare this package for
+                    the default &impl;</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs build {&nhc;,&ghc;,&hugs;, ...}
+     </command></entry>
+
+                    <Entry><para>Compile / prepare this package for
+                    the given &impl;</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs install {all,default,&nhc;,&ghc;,&hugs;,...}</command></entry>
+                    <Entry><para>Install this package.</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs register
+                    {all,default,&nhc;,&ghc;,&hugs;,...}</command></entry>
+                    <Entry><para>Register this package with the
+                    package management system (making it available to
+                    the given &impl;.)</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs bdist_{deb,rpm,...}</command></entry>
+                    <Entry><para>Create a binary distribution package
+                    for Debian, RPM, etc.</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs sdist</command></entry>
+                    <Entry><para>Create a source distribution
+                    archive.</para></entry></row>
+
+     <row><Entry><command>./Setup.lhs test</command></entry>
+                    <Entry><para>Run the package's test suite.</para></entry></row>
+
+     </tbody></tgroup>
+     </table>
+
+     <para>Other commands may be available, and it is important to
+     anticipate commands that may some day be desirable.</para>
+
+  </section>
+
+<!-- Script Example ---------------------------- -->
+
+  <section id="lip-script-example"><title>An Example Setup.lhs Script</title>
+
+  <para>Here's what the setup script might look like for HUnit, which
+  has no complex dependencies.</para>
+
+<programListing>#!/usr/bin/env haskell
+import Distribution.Core
+import Distribution.Package
+
+toolInfo = (defaultPackage "HUnit"
+                           (NumberedVersion 1 0 0))
+	   {haskellSources=[
+                    "HUnitLang98.lhs","HUnitLangExc.lhs", "Info.lhs",
+                    "Terminal.lhs", "HUnitTest98.lhs", "TerminalTest.lhs",
+                    "HUnit.lhs", "HUnitTestBase.lhs", "HUnitBase.lhs",
+                    "HUnitTestExc.lhs", "HUnitLang.lhs", "HUnitText.lhs",
+                    "Setup.lhs"],
+	    docs = ["Example.hs", "Guide.html", "License", "README"]}
+
+main = defaultMain toolInfo id id
+-- Those last to parameters might be pre-install and post-install functions
+</programListing>
+
+<para><function>defaultMain</function> would implement all of the
+standard command-line flags, and defaultPackage is a template with
+sane default values for most fields.</para>
+
+  </section>
+
+</section>
+
+  <section id="lip-distribution"><title>Distribution Module</title>
+
+<!-- Building ---------------------------- -->
+
+<section id="lip-build"><title>&DistBuild;</title>
+
+<para>The basic strategy we will take for the actual task of building
+Haskell tools is as follows:</para>
+
+<itemizedlist>
+
+  <listitem><para>For simple tools like Haskell modules, leverage
+  &hmake;'s (<xref
+  linkend="lip-appendix-hmake">) abilities and create a Haskell-based
+  system (which will evolve to do more complex
+  tasks.)</para></listitem>
+
+  <listitem><para>Tools that require something more complex can use
+  ``fptools'' or Yale's Make-based system (<xref
+  linkend="lip-appendix-make-based">), or use their own build
+  system.</para></listitem>
+
+  <listitem><para>All systems will be wrapped in a common veneer
+  (<xref linkend="lip-command">) so they look the same to the average
+  user and to layered tools (<xref linkend="lip-distribution-means">)
+  and so that once &DistBuild; evolves to be a more robust tool,
+  packages can transition to using it without effecting the interface
+  to their build system.  </para></listitem>
+
+</itemizedlist>
+<para>
+Since it is obviously the compilers that do the actual compilation,
+the task of &DistBuild; is more one of coordination among tools
+outside the compiler.  We hope to offer support for preprocessors
+(both existing and those yet to come).  &DistBuild; will handle the
+task of compiling for a particular &impl;, or for all installed
+&impls;, and help to abstract-away differences between command-line
+flags.</para>
+
+<para>&DistBuild; could also be used to recompile all of the installed
+libraries once a new &impl; is installed.  This is an important
+function, as it solves the problem of binary incompatibility between
+&impls; and versions thereof.  Another very useful function that
+&DistBuild; could offer is the implementation of a generic
+<filename>/usr/bin/haskell</filename> that either executes a Haskell
+program using the default compiler or throws the user into the default
+interpreter, depending upon how it is invoked.  This allows Haskell
+scripts (such as Setup.lhs) to be distributed with a
+<command>#!/usr/bin/env haskell</command> annotation that has reasonable
+behavior.</para>
+
+</section>
+
+<!-- Installing ------------------------------------------------ -->
+  <section id="lip-install"><title>&DistInstall;</title>
+
+  <para>The &DistInstall; module performs the task of moving files
+  into place.  Presumably, this is the last task before package
+  registration.  &DistInstall; will have to understand configuration
+  options for the operating systems that Haskell modules are being
+  installed on. (For instance, different operating systems have different
+  policies for where to put documentation, source code, binary files,
+  and libraries.)  Such information will most likely be read from a
+  file that can be edited by the system administrator (<xref
+  linkend="lip-haskell-config">).  </para>
+
+  <para>Not only will this module have to support standards on
+  different operating systems, but it must have access to filesystem
+  functionality like <command>copy</command> and
+  <command>move</command>, as well as permission-related operations.
+  Such functions should be offered by a library such as
+  <classname>System.Posix.Files</classname> and
+  <classname>System.Directory</classname>, but the
+  <classname>System.Posix</classname> module is not available on all
+  operating systems.  To some extent, &DistInstall; should handle the
+  differences between operating systems (file permissions for
+  instance), but Haskell should offer a more robust set of file
+  operations in order to encourage the use of Haskell for common
+  scripting tasks. (One issue that the author has noticed is that
+  <function>System.Directory.renameDirectory</function> is not
+  implemented the same in GHC and Hugs, which forces &DistInstall; to
+  find a way to abstract the differences.)</para>
+
+ </section>
+
+<!-- Packaging ------------------------------------------------- -->
+  <section id="lip-packaging"><title>&DistPackage;</title>
+
+  <para>The complex task of packaging requires a lot of attention.
+  The proposed solution is not only a module to access the packaging
+  information, but also an application to assist external systems with
+  the same task:</para>
+
+  <para>The main features of this system are:</para>
+
+<orderedList>
+
+  <listItem><para>To let the &impls; know how to use a package,
+   whether its available by default (or whether it requires a -package
+   flag), and where the root of its hierarchy is.</para></listItem>
+
+   <listItem><para>To store other information about a package,
+   including information such as its license, home page, version
+   number, and dependencies, to be used by other tools in the
+   <className>Distribution</className> hierarchy.</para></listItem>
+
+   <listItem><para>All information will be made available through the
+   &DistPackage; module.  The information can be made available to
+   non-haskell tools by way of a command-line tool, &haskellConfig;
+   (<xref linkend="lip-haskell-config">) with easily parsable output
+   (similar to <ulink
+   url="http://www.freedesktop.org/software/pkgconfig/">package-config</ulink>)
+   though a different solution may be necessary for
+   windows.</para></listItem>
+
+</orderedList>
+
+<para>Some secondary features are:</para>
+
+<orderedList> <listitem><para>Let other tools, such as debuggers and
+   editors know where the source code for a module / package
+   is.</para></listitem>
+
+   <listItem><para>When new Haskell implementations are installed,
+   allow them to find the source code and import it into their own
+   library tree (perhaps through other features of the
+   L.I.P.)</para></listItem>
+
+   <listItem><para>For Haskell implementations that don't conform to
+   the new packaging interface, implement a wrapper so that it can
+   still utilize other important features of the Library
+   Infrastructure Project.</para></listItem> </orderedList>
+
+<para>The information would be held in a file, such as
+<filename>/etc/haskell/packages.conf</filename><footnote><para>or
+<filename>/usr/local/etc/haskell/packages.conf</filename> or wherever the
+default location for config files is.</para></footnote> and
+<fileName>~/.haskell/packages.conf</fileName>.</para>
+
+<section id="lip-PackageConfig"><Title>PackageConfig Data Structure</title>
+
+<para>The package data structure might look something like this (based
+on GHC's Package class)</para>
+
+<programListing>data PkgIdentifier
+    = PkgIdentifier {pkgName::String, pkgVersion::Version}
+{- ^Often need name and version since multiple versions of a single
+    package can exist on a system. -}
+
+data PackageConfig
+   = Package {
+        pkgIdent        :: PkgIdentifier,
+        license         :: License,
+        auto            :: Bool,
+
+
+        import_dirs     :: [FilePath],
+        source_dirs     :: [FilePath],
+        library_dirs    :: [FilePath],
+        include_dirs    :: [FilePath],
+        hs_libraries    :: [String],
+        extra_libraries :: [String],
+        c_includes      :: [String],
+        build_deps      :: [Dependency], -- build dependencies
+        depends         :: [Dependency], -- use dependencies
+<!--         extra_ghc_opts  :: [String], -->
+        extra_cc_opts   :: [String],
+        extra_ld_opts   :: [String],
+        framework_dirs  :: [String],
+        haddock_html_root :: String,
+        haddock_interface :: String,
+        default_grafting_point :: String,
+-- ^Related to new packages proposal
+        vars            :: [(String, String)],
+-- ^Variable, value pairs, whatever author wants here
+        extra_frameworks:: [String]}
+
+data Version = DateVersion {versionYear  :: Integer,
+                            versionMonth :: Month,
+                            versionDay   :: Integer}
+             | NumberedVersion {versionMajor      :: Integer,
+                                versionMinor      :: Integer,
+                                versionPatchLevel :: Integer}
+
+data License = GPL | LGPL | BSD | {- ... | -} OtherLicense FilePath
+
+data Dependency = Dependency String VersionRange
+
+data VersionRange
+  = AnyVersion
+  | OrLaterVersion     Version
+  | ExactlyThisVersion Version
+  | OrEarlierVersion   Version
+
+type PackageMap = FiniteMap PkgIdentifier PackageConfig
+</programListing>
+
+<para>But perhaps we'll need to be even more flexible: some
+implementations might not be interested in certain fields, and others
+might want their own fields.  I propose that implementation-specific
+fields be prepended with the implementation name:
+<varname>ghc_interpreter_flags</varname>,
+<varname>hugs_interpreter_flags</varname>, etc.  In general it would
+certainly be desirable to have a flexible parser so that we can add
+more fields later and maintain backward compatibility.</para>
+
+<para>The &DistPackage; API might look like so:</para>
+
+<programListing>userPkgConfigLocation   :: FilePath
+systemPkgConfigLocation :: FilePath
+getSystemPkgConfig  :: IO [PackageMap] -- ^Query /etc/haskell/packages.conf
+getUserPkgConfig    :: IO [PackageMap] -- ^Query ~/.haskell/packages.conf
+getPkgConfig        :: FilePath -> IO [PackageMap]
+addUserPackage   :: PackageConfig -> IO ()
+addSystemPackage :: PackageConfig -> IO ()
+delUserPackage   :: PkgIdentifier -> IO ()
+delSystemPackage :: PkgIdentifier -> IO ()
+basicPackage     :: PackageConfig          -- provides sensible defaults
+checkLicense     :: PackageConfig -> Bool
+{- Just for fun, check to see if the licences that this package uses
+   conflicts with any of the licences of the packages it depends on -}</programListing>
+
+</section>
+
+  </section>
+
+<!-- haskell-config ---------------------------- -->
+
+  <section id="lip-haskell-config"><title>&haskellConfig; Command-line
+  interface</title>
+
+<para>The &haskellConfig; <footnote><para>Because of the confusion
+between different kinds of configuration (the kinds offered by
+&DistPackage; and &DistConfigure;) I am torn about the name of this
+program.  There is the further confusion between package management
+(the actual installation and removal of the programs themselves) and
+interfacing with the packaging system.  Further there is one more bit
+of confusion between packages in the Haskell system (i.e. a set of
+modules distributed together by an author) and a package on the
+operating system.  If anyone has an idea to straighten all of this
+out, I'd be glad to hear it :) </para></footnote> tool is a
+command-line interface to the packaging system.  It will presumably be
+written in Haskell and import the &DistPackage; module.  The purpose
+of this tool is to give non-Haskell systems the ability to interact
+with the packaging system, since they won't be able to import
+&DistPackage;.  This tool serves a purpose similar to ghc-pkg and
+package-config.</para>
+
+<programlisting>% haskell-config [--user] register < packageFile
+% haskell-config [--user] unregister packageName
+# add or remove packages from the package database.  --user indicates
+# that we should add it to the package database in the user's home
+# directory, not to the system-wide package database.
+
+% haskell-config packageName c_includes
+# would output this list in a way that a C compiler could use directly
+
+% haskell-config list-packages
+% haskell-config list-user-packages
+% haskell-config list-system-packages
+# Query the database in a variety of ways</programlisting>
+
+  </section>
+
+
+<!-- haskell-config ---------------------------- -->
+
+  <section id="lip-haskell-package"><title>haskell-pkg?</title>
+
+  <para>The &haskellConfig; tool brings up an interesting question.
+  Should the functionality of &DistInstall; also be made available as
+  a command-line tool, perhaps called <command>haskell-pkg</command>
+  ("Haskell package")?  In this sense, "package" would refer to that
+  word in the sense that <application>dpkg</application> and the 'P'
+  in <application>RPM</application> mean it:
+  <command>haskell-pkg</command> could be used for installing and
+  removing Haskell programs when supplied with the package metadata
+  that is defined by &DistPackage;.  This would conflict with &ghc;'s
+  terminology for <application>ghc-pkg</application>.</para>
+
+</section>
+<!-- Configure ------------------------------------------------- -->
+  <section id="lip-configure"><title>&DistConfigure;</title>
+
+  <para>The information available through the &DistPackage; module is
+  not all of the information that could possibly be needed to prepare
+  a package for installation.  Typically, tools such as &autoconf; are
+  used to discover useful information about the system.  The author
+  has not given a lot of thought to the configuration problem, but he
+  sees a few possible paths:</para>
+  
+<itemizedList>
+
+  <listitem><para>A module, &DistConfigure; can act as an interface to
+  configuration information.  This is the approach that Python has
+  taken.</para></listitem>
+
+  <listitem><para>Some information can be written by the end user or
+  maintained on the system in a standard file format.  The file could
+  reside, for example in 
+ <filename>~/.haskell/distributionConfig</filename>,
+  <filename>/etc/haskell/distributionConfig</filename>, and
+  <filename>distributionConfig</filename> within the package
+  directory.  This information can be made available through the
+  &DistConfigure; module.</para></listitem>
+
+  <listitem><para>Certain pieces of information are available when the
+  &impls; themselves are installed.  This information can be made
+  available to installing scripts once again through the
+  <filename>distributionConfig</filename> file.</para></listitem>
+
+  <listItem><para>Shortcomings in the &DistConfigure; module can be
+  made up by using &autoconf; itself, which can output information to
+  the above mentioned <filename>distributionConfig</filename>
+  file.</para></listItem></itemizedList>
+
+  </section>
+
+</section> <!-- Distribution module -->
+
+<!-- Use Cases ------------------------------------------------- -->
+  <section id="lip-use-cases"><title>Use Cases</title>
+
+  <para><emphasis>End User:</emphasis> The end user has identified a
+  Haskell package (tool or library) that she wants to use.</para>
+
+  <itemizedList><listitem><para>The end user installs packages with a
+  operating-system-specific package management system like RPM, dpkg,
+  or FreeBSD's Ports collection.</para></listitem>
+
+  <listitem><para>If no such packaging system is available on her
+  system, she, can run <command>./Setup.lhs install nhc</command> or
+  <command>./Setup.lhs install hugs</command> to build, install, and
+  register an &nhc; or &hugs; version of the program (for
+  instance).</para></listitem>
+
+</itemizedList>
+
+<para><emphasis>Packager:</emphasis> A packager is someone who makes
+operating-system-specific packages so that an end-user can have an
+easier time installing them on her own system.  For each platform,
+there should be one or more packager.</para>
+
+<itemizedList><listitem><para>The packager can run
+  <command>./Setup.lhs bdist_deb</command> to build a skeleton Debian
+  package (for instance) for each of the installed &impls;.  This
+  might generate Debian packages like <emphasis>hunit-hugs</emphasis>,
+  <emphasis>hunit-ghc</emphasis>, <emphasis>hunit-prof-ghc</emphasis>,
+  <emphasis>hunit-prof-nhc</emphasis>.</para></listItem>
+
+</itemizedList>
+
+<para><emphasis>3rd Party Author:</emphasis> A 3rd party author is a
+Haskell developer (distinct from the &impl; authors or end users) who
+wishes to distribute a library or application that he has developed in
+Haskell.</para>
+
+<itemizedList><listitem><para>The 3rd Party Author writes a
+  <command>Setup.lhs</command> program.  <command>Setup.lhs</command>
+  imports elements from the &distMod; which does most of the hard
+  work.  A very common case, which should be our first priority, is a
+  pure Haskell 98 module that needn't interface with any external
+  systems.  In this case the author only has to include the name of
+  the program, the version, and the source files.  He can then call
+  <function>Distribution.defaultMain</function> to create an
+  executable script with the proper command-line flags that knows how
+  to interface with the &DistPackage; module.</para></listitem>
+
+<listitem><para>Should he have a more complex program (one which
+  perhaps depends on systems external to Haskell), then the &distMod;
+  could output a Makefile to be used in 'fptools' or Yale's system
+  (see <xref linkend="lip-appendix-make-based">). </para></listitem>
+
+<listitem><para>Should he not want to migrate from his own build
+  system, he could write a <command>Setup.lhs</command> script to wrap
+  the build system so that it conforms to the standard command-line
+  interface.</para></listitem>
+
+</itemizedList>
+
+<para><emphasis>&impl; Authors</emphasis>:</para>
+
+<itemizedList><listitem><para>&impl; authors must conform to an
+  agreed-upon &DistPackage; interface.</para></listitem>
+
+ <listitem><para>This may include writing functionality so the
+    compiler can be asked questions about itself.</para></listitem>
+
+ <listitem><para>This may also include altering compilers to read
+    <filename>/etc/haskellPackages.conf</filename> (for instance) to
+    discover what packages are installed or where to look for
+    imports.</para></listitem>
+
+<listitem><para>Include the &distMod; with the &impls; (in exchange, we
+  can hopefully remove some libraries that are currently included with
+  the &impls;).</para></listitem></itemizedList>
+
+<para><emphasis>Random Haskell Programmer</emphasis>:</para>
+
+<itemizedList><listitem><para>A random Haskell programmer can use the
+  &distMod; as a means to create layered tools that download, build,
+  or install packages.  For instance:
+
+<itemizedList>
+  <listItem><para>&haskellConfig; is an example of a layered tool which interfaces with
+  the &distMod;.  This tool gives the end user access to the database
+  of installed applications.</para></listItem>
+
+  <listItem><para>A Graphical User Interface could be layered on top
+  of the Setup script to give installation a better look-and-feel
+  according to the target platform.</para></listItem>
+
+  <listItem><para>The &distMod; could be augmented with an online
+  repository of libraries (see <xref
+  linkend="lip-appendix-cpan-boost">), and a layered tool might
+  perform the searching and downloading functionality of the
+  installation process.</para></listItem>
+
+  <listItem><para>Debuggers often need to locate the source code to a
+  library module in order to instrument them.</para></listItem>
+
+  <listItem><para>Source code editors or browsers could benefit from
+  being able to locate related source code on the user's
+  system.</para></listItem>
+
+</itemizedList>
+
+</para></listitem>
+
+</itemizedList>
+
+</section>
+
+<!-- Means of dist--------------------------------- -->
+
+  <section id="lip-distribution-means"><title>Means of Distribution
+  and Layered Tools</title>
+
+  <para>Most of the discussion here has been about giving the user
+  tools to build, install, and manage libraries and tools written in
+  Haskell.  There is another important component to this which
+  deserves attention, and that is the distribution of these tools.
+  </para>
+
+<para>
+  For C++ and Perl (and likely many other programming languages) there
+  are central repositories of libraries and tools (<xref
+  linkend="lip-appendix-cpan-boost">).  In a way, Haskell has this
+  also, bit it is centrally maintained rather than being a
+  free-for-all where nearly anyone can get their package distributed.
+  The author feels that both approaches are appropriate, and libraries
+  can graduate from one to the other.</para>
+
+<para> Having a standard interface for installing packages allows us
+  to layer tools upon it.  For instance, it would be nice to be able
+  to download and install Haskell libraries and all their dependencies
+  with one command.  For Perl (by virtue of CPAN) this is already
+  possible.  Other layered tools are discussed in the Use Cases (<xref
+  linkend="lip-use-cases">).</para>
+
+</section>
+
+<!-- Development Plan --------------------------------- -->
+<section id="lip-plan"><title>Development Plan</title>
+
+<para>On a high level, this is the order in which we should approach
+the tasks:</para>
+
+<itemizedList>
+
+<listItem><para>We should agree first on the high-level design of the
+<emphasis>packaging system</emphasis> (<xref
+linkend="lip-packaging">), since this will require a consensus from
+the &impl; authors.  Details such as the format of the database and
+the exact API will evolve over the course of the project.  The author
+views this as the top priority.</para></listItem>
+
+<listItem><para>In parallel, we should decide on the command-line interface for the
+Setup script (<xref linkend="lip-command">), and the particulars of
+how it is invoked on various systems.</para></listItem>
+
+<listItem><para>The first priority for Build and Install support
+should be pure Haskell modules, and reasonable support for wrapping
+make-based systems that are currently more highly evolved.</para></listItem>
+
+<listItem><para>At this point, it may be possible to collect
+libraries, convert them to use the Library Infrastructure Project, and
+make them available at a central repository.</para></listItem>
+
+<listItem><para>The next priority should be tools to assist in the
+creation and maintenance of operating-system packages (Debian and RPM
+for instance).</para></listItem>
+
+<listItem><para>Once these features are in place, it makes sense to
+augment the &distMod; with more complex tool support like
+preprocessors and external libraries.</para></listItem>
+
+<listItem><para>Now we can add more fun features like GUI front-ends,
+downloading tools, package security tools, etc.</para></listItem>
+
+</itemizedList>
+
+<para>The author has implemented a "toy" prototype system that fulfills
+many of the features outlined above.  It uses &hmake; by running it as
+an external command.  It can build Debian packages and interfaces with
+the Common Debian Build System.  It can prepare installations for Hugs
+and GHC.  The author decided to stop implementation, however, until
+details about the Packaging system (<xref linkend="lip-packaging">)
+are worked through.</para>
+
+</section>
+
+
+<!-- Appendix: Related Systems --------------------------------- -->
+<appendix><title>Related Systems</title>
+
+<para>I will try to outline interesting points in a variety of systems
+that we can learn from.  These systems may be intended for building or
+installing packages, or repositories for packages.  I am not deeply
+familiar with all of the tools here, and would be interested in
+hearing more relevant points from someone with more knowledge.
+Another weakness of mine is that I don't know much about Microsoft
+Windows, so some good examples for Windows systems would be
+helpful.</para>
+
+<section id="lip-appendix-debian"><Title>Debian</title>
+
+<para>
+The <ulink url="http://www.debian.org">Debian GNU/Linux system</ulink>
+is a good example of a <emphasis>binary</emphasis> distribution
+(meaning that packages are distributed in binary, as opposed to source
+code form), and its packaging system (<application>dpkg</application>)
+is somewhat similar to the more famous <application>RPM</application>.
+Debian has several other tools to help the user to install packages,
+most notably, <command>apt</command>.  The Debian toolset is
+interesting for several reasons:
+
+<itemizedList>
+
+  <listItem><para>It handles dependencies extremely well.  A single
+  command can download and install a package, as well as downloading
+  and installing all of its dependencies.</para></listItem>
+
+  <listItem><para>It handles updates extremely well.  One command
+  (<command>apt-get update</command>) checks for new versions of
+  packages and updates a local database.  Another command
+  (<command>apt-get dist-upgrade</command>) downloads and installs all
+  new versions of installed packages and any new
+  dependencies.</para></listItem>
+
+
+  <listItem><para>There are standard commands for downloading and
+  building packages from source.  If I'm interested in hacking on a
+  package, I can run <command>apt-get source packagename</command>
+  which will download and unpack the source code for the package.  The
+  source can then be built with the standard command
+  <command>debuild</command>.</para></listItem>
+
+
+  <listItem><para>The Debian Project maintains a central repository
+  for packages, and the packaging tools offer support for using
+  unofficial repositories as well.  The central repositories include a
+  set of servers, the <emphasis>autobuilders</emphasis>, which compile
+  uploaded source packages for a variety of hardware architectures
+  (see below) and make them available as binary packages.  As a
+  packager, I merely upload the source code to my package, and the
+  autobuilders do the rest.</para></listItem>
+
+  <listitem><para>Currently the hardware architectures supported by
+  Debian are Intel x86, Motorola 68k, Sun SPARC, Alpha, PowerPC, ARM,
+  MIPS, HP PA-RISC, IA-64, S/390.  Debian also runs on non-Linux
+  systems, including GNU/Hurd, GNU/NetBSD, and GNU/FreeBSD.  The
+  package management tools also run on MacOS X under the name of the
+  <application>Fink</application> project.</para></listItem>
+
+</itemizedList>
+</para>
+
+</section>
+
+<section id="lip-appendix-distutils"><title>Python Distutils</title>
+
+<para>Python's <ulink
+url="http://www.python.org/sigs/distutils-sig/">&distutils;
+system</ulink> is in many ways similar to what we propose here.  It is
+a system for building and installing Python modules, written purely in
+Python.  The user interface is a Python script,
+(<filename>setup.py</filename> by convention) and a setup
+configuration file (<filename>setup.cfg</filename> by convention). To
+quote from <ulink
+url="http://www.python.org/doc/current/dist/dist.html">Distributing
+Python Modules</ulink>, "The setup configuration file is a useful
+middle-ground between the setup script--which, ideally, would be
+opaque to installers -- and the command-line to the setup script,
+which is outside of your control and entirely up to the
+installer. "</para>
+
+<para>Its noteworthy that Python has a big advantage over many
+programming languages when implementing a system like &distutils;: It
+is designed to be well suited to so-called scripting tasks, which are
+common to the installation task, and Python has done these tasks in a
+portable way for a long time.  I believe that Haskell should evolve
+portable ways to perform common scripting tasks.</para>
+
+</section>
+
+<section id="lip-appendix-cpan-boost"><title>&cpan; and Boost</title>
+
+<para> Quoting from &cpan;'s <ulink url="http://www.cpan.org"> web
+site </ulink> "&cpan; is the Comprehensive Perl Archive Network, a
+large collection of Perl software and documentation."  That really
+says it all.  It is a central location where Perl developers can
+contribute the software they write.</para>
+
+<para>&cpan; has a means of standardizing installation,
+<filename>Makefile.pl</filename> (which is a Perl script which creates
+a Makefile with targets like "install", "test", "config", "clean", etc.). Makefile.pl typically uses the <ulink
+url="http://www.perldoc.com/perl5.6/lib/ExtUtils/MakeMaker.html">MakeMover
+module</ulink>. It also has a means of registering a namespace for the
+module that a developer is contributing.</para>
+
+<para>From the Boost <ulink url="http://www.boost.org">web
+site</ulink> "[Boost] provides free peer-reviewed portable C++ source
+libraries. The emphasis is on libraries which work well with the C++
+Standard Library. One goal is to establish "existing practice" and
+provide reference implementations so that the Boost libraries are
+suitable for eventual standardization. Some of the libraries have
+already been proposed for inclusion in the C++ Standards Committee's
+upcoming C++ Standard Library Technical Report."</para>
+
+<para>From what I can tell, unlike &cpan;, Boost is a bit more focused
+on standards and review.  That is, it is perhaps more Cathedral than
+Bazaar <footnote><para>See Eric Raymond's essay <ulink
+url="http://catb.org/~esr/writings/cathedral-bazaar/cathedral-bazaar/">The
+Cathedral and the Bazaar</ulink>.</para></footnote>. Boost does not
+currently have a standard means of installation.</para>
+</section>
+
+<section id="lip-appendix-freebsd"><title>FreeBSD's Ports System</title>
+
+<para>The FreeBSD <ulink url="http://www.freebsd.org/ports/">Ports
+Collection</ulink> is a collection of software with a standard means
+of compilation and installation.  FreeBSD is a source distribution
+(whereas Debian is a Binary Distribution).  Packages come in
+source-code form with a Makefile suitable for installing the program
+on a FreeBSD system.  The ports collection is very large (around 9000
+packages).</para>
+
+<para>Some things may be simpler with a source distribution than with
+a binary distribution.  For instance, since the code is expected to be
+already on the machine and buildable, when a new compiler is installed
+one merely needs to rebuild the dependant libraries.  In contrast,
+with a binary distribution like Debian one must wait for a new binary
+package to be made available.  However, as I understand it, FreeBSD
+has no means of recompiling dependant packages automatically when a
+new compiler is installed.</para>
+
+</section>
+
+<!-- FIX: I'm not sure why I thought this was so interesting.  I don't -->
+<!-- reference it anywhere and it really doesn't add anything that the perl -->
+<!-- and python systems don't have. -->
+
+<section id="lip-appendix-xemacs"><title>The &xemacs; Packaging
+System</title>
+
+<para>
+As most folks know, &xemacs; is not only a text editor, but also a
+Lisp environment.  Its functionality can be extended with lisp
+programs, and many such programs are available from &xemacs;' <ulink
+url="http://www.xemacs.org/Documentation/21.5/html/lispref_4.html">Packaging
+System</ulink>.  Simply put, the packaging system offers a menu-driven
+interface within &xemacs; where the user can browse available
+packages, select packages she is interested in, and ask &xemacs; to
+download and install them.  This system is interesting because it is
+cross-platform (Unix, Linux, Windows, etc.) and is designed to work
+only with elisp.
+</para>
+
+
+
+ </section>
+
+<section id="lip-appendix-make-based"><title>Make-Based Systems</title>
+
+<para>The "fptools" build system has been used for many years in the
+cross-platform &ghc; compiler.  It is a make-based system which is
+capable of a wide variety of installation tasks, compilation tasks,
+and system configuration tasks.  Currently, it is not entirely generic
+across &impls;, and does not yet deal with some of the package
+registration issues mentioned above.</para>
+
+<para>At Yale, another system is being developed.  It is also a
+make-based system and works reasonably well on various platforms
+(Unix, Linux, Windows) and &impls;.  It also does not yet deal with
+all of the package registration issues mentioned above.</para>
+
+<para>Both tools can benefit from a standard packaging system.</para>
+
+<para>Because <application>make</application> has been used for many
+years, it is expected that these systems will be able to do more than
+the initial release of the &distMod;.  The Setup script will be
+designed with this in mind, and should be able to wrap these tools in
+order to provide a common interface for users and for layered
+tools.</para>
+
+</section>
+
+<section id="lip-appendix-hmake"><title>&hmake;</title>
+
+<para>From the &hmake; <ulink
+url="http://www.cs.york.ac.uk/fp/hmake/">home page</ulink>,
+<quote>&hmake; is an intelligent compilation management tool for
+Haskell programs. It automatically extracts dependencies between
+source modules, and issues the appropriate compiler commands to
+rebuild only those that have changed, given just the name of the
+program or module that you want to build. Yes, you need never write a
+Makefile again!</quote> &hmake; also does a good job of handling the
+variety of compilers that might be installed on a user's system.  It
+maintains a list of compilers and can switch between them according to
+a flag.  It also has a default compiler.</para>
+
+<para>&hmake; is particularly interesting to us because it is written
+in Haskell and handles the task of compiling Haskell tools quite well.
+One shortcoming is that it is not extensible on a per-project basis:
+it is difficult to add support for new preprocessors without editing
+the &hmake; code itself.  It does, however, perform a lot of the tasks
+that &DistBuild; will ultimately have to perform, and we hope to reuse
+some of the code.</para>
+
+<para>Another interesting feature of &hmake; is the
+<application>Haskell Interactive</application> tool (hi).  hi
+<quote>is, an interpreter-like environment that you can wrap over any
+common Haskell compiler to achieve an interactive development
+style.</quote> This is interesting because it would be nice to have a
+generic <filename>/usr/bin/haskell</filename> which would use the
+default compiler to interpret Haskell scripts.</para>
+
+</section>
+
+</appendix>
+ 
+</article>
