@@ -50,9 +50,9 @@ module Distribution.Simple.SrcDist (
 #endif
   )  where
 
-import Distribution.Package(PackageDescription(..), BuildInfo(..), showPackageId)
+import Distribution.Package(PackageDescription(..), BuildInfo(..), buildInfo, showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin)
+import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin, sequenceMap)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
@@ -74,21 +74,29 @@ sdist tmpDir targetPref pps pkg_descr _  = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
-  case library pkg_descr of
-    Just lib -> let srcDir = hsSourceDir lib
-                    tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
-                 in do moveSources srcDir tmpLoc1 (modules lib) (ppSuffixes pps)
-                       removePreprocessed tmpLoc1 (modules lib) (ppSuffixes pps)
-    Nothing  -> return ()
--- FIX: move executables!  
---  removePreprocessed tmpLoc1 (allModules pkg_descr) (ppSuffixes pps) (for execs)
-  let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
-  moveSources ""     tmpLoc2 ["Setup"] ["lhs", "hs"]
+  let targetDir = pathJoin [tmpDir, nameVersion pkg_descr]
+  -- maybe move the library files into place
+  maybe (return ()) (prepareDir targetDir pps) (library pkg_descr)
+  -- move the executables into place
+  sequenceMap (prepareDir targetDir pps) (map buildInfo (executables pkg_descr))
+  -- setup isn't listed in the description file.
+  moveSources ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (pathJoin [targetPref, tarBallName pkg_descr])
 		    ++ " " ++ (nameVersion pkg_descr)
   system $ "rm -rf " ++ tmpDir
   putStrLn "Source tarball created."
+
+-- |Move the sources into place based on buildInfo
+prepareDir :: FilePath  -- ^TargetPrefix
+           -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
+           -> BuildInfo
+           -> IO ()
+prepareDir inPref pps BuildInfo{hsSourceDir=srcDir, modules=mods}
+    = do let pref = pathJoin [inPref, srcDir]
+         let suff = ppSuffixes pps
+         moveSources srcDir pref mods suff
+         removePreprocessed pref mods suff
 
 ------------------------------------------------------------
 
