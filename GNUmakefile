@@ -136,6 +136,7 @@ deb: dist
 	cd $(TMPDISTLOC)/haskell-cabal-$(CABALVERSION) && debuild
 
 $(CABALBALL):
+	darcs record
 	rm -rf /tmp/cabal* /tmp/Cabal*
 	rm -rf $(TMPDISTLOC)
 	darcs dist
@@ -144,7 +145,6 @@ $(CABALBALL):
 TMPDISTLOC=/tmp/cabaldist
 
 dist: haddock $(CABALBALL)
-	darcs record
 	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
 	mv $(CABALBALL) $(TMPDISTLOC)
