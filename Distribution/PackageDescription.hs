@@ -48,7 +48,7 @@ module Distribution.PackageDescription (
         basicStanzaFields,
         writePackageDescription,
 	showPackageDescription,
-        sanityCheckPackage,
+        sanityCheckPackage, errorOut,
         setupMessage,
         Library(..),
         withLib,
@@ -78,7 +78,7 @@ module Distribution.PackageDescription (
 #endif
   ) where
 
-import Control.Monad(liftM, foldM, when)
+import Control.Monad(liftM, foldM, when, unless)
 import Data.Char
 import Data.Maybe(fromMaybe, fromJust, isNothing, catMaybes)
 import Text.PrettyPrint.HughesPJ
@@ -98,7 +98,7 @@ import Distribution.Simple.Utils(currentDir, die)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 
 #ifdef DEBUG
-import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts)
+import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
 import Distribution.ParseUtils	(runP)
 #endif
 
@@ -311,12 +311,21 @@ hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
 -- * Parsing & Pretty printing
 -- ------------------------------------------------------------
 
+-- the strings for the required fields are necessary here, and so we
+-- don't repeat ourselves, I name them:
+
+reqNameName       = "name"
+reqNameVersion    = "version"
+reqNameCopyright  = "copyright"
+reqNameMaintainer = "maintainer"
+reqNameSynopsis   = "synopsis"
+
 basicStanzaFields :: [StanzaField PackageDescription]
 basicStanzaFields =
- [ simpleField "name"
+ [ simpleField reqNameName
                            text                   parsePackageName
                            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
- , simpleField "version"
+ , simpleField reqNameVersion
                            (text . showVersion)   parseVersion 
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "license"
@@ -325,10 +334,10 @@ basicStanzaFields =
  , simpleField "license-file"
                            showFilePath           parseFilePathQ
                            licenseFile            (\l pkg -> pkg{licenseFile=l})
- , simpleField "copyright"
+ , simpleField reqNameCopyright
                            showFreeText           (munch (const True))
                            copyright              (\val pkg -> pkg{copyright=val})
- , simpleField "maintainer"
+ , simpleField reqNameMaintainer
                            showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
  , commaListField  "build-depends"
@@ -343,7 +352,7 @@ basicStanzaFields =
  , simpleField "package-url"
                            showFreeText           (munch (const True))
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
- , simpleField "synopsis"
+ , simpleField reqNameSynopsis
                            showFreeText           (munch (const True))
                            synopsis               (\val pkg -> pkg{synopsis=val})
  , simpleField "description"
@@ -421,6 +430,7 @@ binfoFields =
  , optsField   "nhc-options"  NHC
                            options            (\path  binfo -> binfo{options=path})
  ]
+
 
 -- --------------------------------------------
 -- ** Parsing
@@ -562,36 +572,62 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
 
 -- |Sanity check this description file.
 
--- FIX: add a sanity check for missing haskell files?
-sanityCheckPackage :: PackageDescription -> IO Bool
+-- FIX: add a sanity check for missing haskell files? That's why its
+-- in the IO monad.
+
+sanityCheckPackage :: PackageDescription -> IO ([String] -- Warnings
+                                               ,[String])-- Errors
 sanityCheckPackage pkg_descr
-    = do libSane <- sanityCheckLib (library pkg_descr)
-         identSane <- checkSanity
-                        (null (pkgName (package pkg_descr))
-                         || null (versionBranch (pkgVersion (package pkg_descr))))
-                        "package identifier malformed, either empty name or empty version"
-         nothingToDo <- checkSanity
-                         (null (executables pkg_descr) && isNothing (library pkg_descr))
-                         "No executables and no library found. Nothing to do."
-         noModules <- checkSanity (hasMods pkg_descr)
+    = let libSane   = sanityCheckLib (library pkg_descr)
+          nothingToDo = checkSanity
+                        (null (executables pkg_descr) && isNothing (library pkg_descr))
+                        "No executables and no library found. Nothing to do."
+          noModules = checkSanity (hasMods pkg_descr)
                       "No exposed modules or executables in this package."
+          allRights = checkSanity (license pkg_descr == AllRightsReserved)
+                      "Package is copyright All Rights Reserved"
+          noLicenseFile = checkSanity (null $ licenseFile pkg_descr)
+                          "No license-file field."
 
-         return $ any (==True) [libSane, identSane, nothingToDo, noModules]
+         in return $ (catMaybes [nothingToDo, noModules,
+                                 allRights, noLicenseFile]
+                     ,catMaybes $ libSane:(checkMissingFields pkg_descr))
 
-sanityCheckLib :: Maybe Library -> IO Bool
-sanityCheckLib Nothing  = return True
+-- |Output warnings and errors. Exit if any errors.
+errorOut :: [String]  -- ^Warnings
+         -> [String]  -- ^errors
+         -> IO ()
+errorOut warnings errors = do
+  mapM (putStrLn . ("Warning: " ++)) warnings
+  mapM (putStrLn . ("Error: " ++))   errors
+  unless (null errors) (error "Errors detected. See above.")
+
+checkMissingFields :: PackageDescription -> [Maybe String]
+checkMissingFields pkg_descr = 
+    [missingField (pkgName . package)    reqNameName
+    ,missingField copyright              reqNameCopyright
+    ,missingField maintainer             reqNameMaintainer
+    ,missingField synopsis               reqNameSynopsis
+    ,missingField (versionBranch .pkgVersion .package) reqNameVersion
+    ]
+    where missingField :: (PackageDescription -> [a]) -- Field accessor
+                       -> String -- Name of field
+                       -> Maybe String -- error message
+          missingField f n
+              = if null (f pkg_descr)
+                 then Just $ "Missing field: " ++ n
+                 else Nothing
+
+sanityCheckLib :: Maybe Library -> Maybe String
+sanityCheckLib Nothing  = Nothing
 sanityCheckLib (Just l)
     = if null $ exposedModules l
-      then sanityWarning "Non-empty library, but empty exposed modules list. Cabal may not build this library correctly"
-      else return True
+      then Just "Non-empty library, but empty exposed modules list. Cabal may not build this library correctly"
+      else Nothing
 
-checkSanity :: Bool -> String -> IO Bool
-checkSanity False _  = return False
-checkSanity True  s  = sanityWarning s
-
-sanityWarning :: String -> IO Bool
-sanityWarning s = do putStrLn $ "Sanity Check Warning: " ++ s
-                     return True
+checkSanity :: Bool -> String -> Maybe String
+checkSanity False _  = Nothing
+checkSanity True  s  = Just s
 
 hasMods :: PackageDescription -> Bool
 hasMods pkg_descr
@@ -743,8 +779,11 @@ hunitTests = [
                                     assertBool ("parse . show . parse not identity."
                                                 ++"   Incorrect fields:"
                                                 ++ (show $ comparePackageDescriptions d d'))
-                                               (d == d')
-                                            
+                                               (d == d'),
+            TestLabel "Sanity checker" $ TestCase $ do
+              (warns, ers) <- sanityCheckPackage emptyPackageDescription
+              assertEqual "Wrong number of errors"   (length ers)   5
+              assertEqual "Wrong number of warnings" (length warns) 4
             ]
 
 -- |Compare two package descriptions and see which fields aren't the same.

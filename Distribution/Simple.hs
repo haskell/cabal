@@ -199,7 +199,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
                 pkg_descr <- hookOrInArgs preConf args flags
-                sanityCheckPackage pkg_descr
+                (warns, ers) <- sanityCheckPackage pkg_descr
+                errorOut warns ers
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf args flags localbuildinfo
