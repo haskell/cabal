@@ -81,16 +81,13 @@ import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
-import Distribution.License
-import Distribution.Extension
-import Distribution.Version
-
 -- Base
 import System.Cmd	(rawSystem)
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist)
 
+import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse )
 import Data.Maybe       ( isNothing, fromJust, maybeToList )
@@ -103,7 +100,13 @@ import Distribution.Compat.FilePath(joinFileName, joinPaths, splitFileName, join
 
 #ifdef DEBUG
 import HUnit (Test)
+import Distribution.Extension hiding (hunitTests)
+import Distribution.Version hiding (hunitTests)
+#else
+import Distribution.Extension
+import Distribution.Version
 #endif
+
 
 type Args = [String]
 
