@@ -1,6 +1,6 @@
 Name: withHooks
 Version: 1.0
-exposed-modules: Main
+exposed-modules: Main, C
 
 Executable: withHooks
 Hidden-Modules: Main

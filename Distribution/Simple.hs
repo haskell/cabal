@@ -64,7 +64,8 @@ module Distribution.Simple (
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
-                                ppUnlit, removePreprocessedPackage, preprocessSources)
+                                ppUnlit, removePreprocessedPackage,
+                                preprocessSources, PPSuffixHandler)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
@@ -110,6 +111,7 @@ data UserHooks = UserHooks
     {
      runTests :: Args -> Bool -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
+     hookedPreProcessors :: [ PPSuffixHandler ], -- ^Add custom preprocessors
 
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      postConf :: Args -> LocalBuildInfo -> IO ExitCode,
@@ -175,7 +177,10 @@ defaultMainWorker :: PackageDescription
                   -> Maybe UserHooks
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
-    = do case action of
+    = do let pps = maybe knownSuffixHandlers
+                         (\h -> knownSuffixHandlers ++ hookedPreProcessors h)
+                         hooks
+         case action of
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
@@ -195,7 +200,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, _, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInArgs preBuild args flags
 		localbuildinfo <- getPersistBuildConfig
-		build pkg_descr localbuildinfo flags knownSuffixHandlers
+		build pkg_descr localbuildinfo flags pps
                 writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild args localbuildinfo
             HaddockCmd -> do
@@ -210,7 +215,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
                       createDirectoryIfMissing True tmpDir
                       createDirectoryIfMissing True targetDir
-                      preprocessSources pkg_descr lbi verbose knownSuffixHandlers
+                      preprocessSources pkg_descr lbi verbose pps
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
                       mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
@@ -243,7 +248,7 @@ defaultMainWorker pkg_descr_in action args hooks
                        putStrLn $ "using : " ++ fromJust mPfe
                        let bi = libBuildInfo lib
                        let mods = exposedModules lib ++ hiddenModules (libBuildInfo lib)
-                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
+                       preprocessSources pkg_descr lbi verbose pps
                        inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                               | m <- mods] >>= return . concat
                        let tmpDir = joinPaths (buildDir lbi) "tmp"
@@ -269,7 +274,7 @@ defaultMainWorker pkg_descr_in action args hooks
 		try $ removeDirectoryRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
-                removePreprocessedPackage pkg_descr currentDir (ppSuffixes knownSuffixHandlers)
+                removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
                 postHook postClean args localbuildinfo
 
             CopyCmd mprefix -> do
@@ -297,7 +302,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 (verbose,_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args verbose
                 localbuildinfo <- getPersistBuildConfig
-		sdist srcPref distPref verbose knownSuffixHandlers pkg_descr
+		sdist srcPref distPref verbose pps pkg_descr
                 postHook postSDist args localbuildinfo
 
             RegisterCmd uInst -> do
@@ -361,6 +366,7 @@ emptyUserHooks
       {
        runTests  = res,
        readDesc  = return Nothing,
+       hookedPreProcessors = [],
        preConf   = rn,
        postConf  = res,
        preBuild  = rn,
