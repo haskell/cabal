@@ -4,13 +4,16 @@
 
 * Code
 ** Version (simonMar)
-** command-line parser (isaac)
+** configure step
 ** cross-platform compiler location(simonmar?)
 ** build
 ** install
 ** register
 ** generate InstalledPackageInfo
 ** read & write config-droppings
+
+* later todo
+** command-line parsing errors
 
 * Testing
 ** testing of altered version of getopt
