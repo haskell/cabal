@@ -140,7 +140,7 @@ defaultMainNoRead pkg_descr
                 (_, args) <- parseSDistArgs args []
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		sdist srcPref distPref pkg_descr localbuildinfo
+		sdist srcPref distPref [] pkg_descr localbuildinfo
 
             RegisterCmd uInst -> do
                 (uInst, _, args) <- parseRegisterArgs uInst args []

@@ -38,7 +38,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
-                                PPSuffixHandler, PreProcessor)
+                                ppSuffixes, PPSuffixHandler, PreProcessor)
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
@@ -74,8 +74,7 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr _ handlers = 
     do
     setupMessage "Preprocessing" pkg_descr
-    -- preprocess all sources before moving them
-    allSources <- findAllSourceFiles pkg_descr [a | (a, _, _) <- knownSuffixHandlers]
+    allSources <- findAllSourceFiles pkg_descr (ppSuffixes knownSuffixHandlers)
     sequence [dispatchPP src handlers | src <- allSources] -- FIX: output errors?
     return ()
 
@@ -105,11 +104,11 @@ findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixe
          libFiles <- case lib of 
                        Just bi -> buildInfoSources bi allSuffixes
                        Nothing -> return []
-         return $ catMaybes ((concat exeFiles) ++ libFiles)
+         return $ ((concat exeFiles) ++ libFiles)
 
-        where buildInfoSources :: BuildInfo -> [String] -> IO [Maybe FilePath]
+        where buildInfoSources :: BuildInfo -> [String] -> IO [FilePath]
               buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} suffixes
-                  = sequence [moduleToFilePath dir modu suffixes | modu <- mods]
+                  = sequence [moduleToFilePath dir modu suffixes | modu <- mods] >>= return . concat
 
 
 -- ------------------------------------------------------------
@@ -139,6 +138,10 @@ ppTestHandler inFile outFile
 standardPP :: String -> PreProcessor
 standardPP eName inFile outFile
     = rawSystemPath eName ["-o" ++ outFile, inFile]
+
+-- |Convinience function; get the suffixes of these preprocessors.
+ppSuffixes :: [ PPSuffixHandler ] -> [String]
+ppSuffixes h = [s | (s, _, _) <- h]
 
 -- |Leave in unlit since some preprocessors can't handle literated
 -- source?
