@@ -21,7 +21,7 @@ module Distribution.Simple.GHCPackageConfig (
 import Distribution.Package (PackageDescription(..), BuildInfo(..),
                              PackageIdentifier(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Install (mkImportDir)
+import Distribution.Simple.Install (mkLibDir)
 import Distribution.Simple.Utils(pathJoin)
 
 import Text.PrettyPrint.HughesPJ
@@ -46,8 +46,8 @@ mkGHCPackageConfig pkg_descr lbi
   = defaultGHCPackageConfig {
 	name	        = pkg_name,
 	auto	        = False,
-	import_dirs     = [mkImportDir pkg_descr lbi],
-	library_dirs     = [mkImportDir pkg_descr lbi],
+	import_dirs     = [mkLibDir pkg_descr lbi Nothing],
+	library_dirs    = [mkLibDir pkg_descr lbi Nothing],
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
 	extra_libraries = maybe [] extraLibs (library pkg_descr),
 	include_dirs    = maybe [] includeDirs (library pkg_descr),

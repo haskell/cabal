@@ -43,7 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
 	install,
-	mkImportDir,
+	mkBinDir,
+	mkLibDir,
 #ifdef DEBUG        
         hunitTests
 #endif
@@ -71,9 +72,8 @@ install :: FilePath  -- ^build location
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
 install buildPref pkg_descr lbi install_prefixM = do
-  let libPref = pathJoin [(maybe (prefix lbi) id install_prefixM), "lib",
-                          (showPackageId $ package pkg_descr)]
-  let binPref = pathJoin [(maybe (prefix lbi) id install_prefixM), "bin"]
+  let libPref = mkLibDir pkg_descr lbi install_prefixM
+  let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ "&" ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
@@ -112,15 +112,18 @@ installHugs pref buildPref pkg_descr@PackageDescription{library=Just l}
 -- -----------------------------------------------------------------------------
 -- Installation policies
 
-mkImportDir :: PackageDescription -> LocalBuildInfo -> FilePath
-mkImportDir pkg_descr lbi = 
-#ifdef mingw32_TARGET_OS
-	pathJoin [prefix lbi, pkg_name]
-#else
-	pathJoin [prefix lbi, "lib", pkg_name]
+mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
+mkLibDir pkg_descr lbi install_prefixM = 
+	pathJoin [ maybe (prefix lbi) id install_prefixM
+#ifndef mingw32_TARGET_OS
+                 , "lib"
 #endif
-  where 
-	pkg_name = showPackageId (package pkg_descr)
+	         , showPackageId (package pkg_descr)
+	         ]
+
+mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
+mkBinDir pkg_descr lbi install_prefixM = 
+	pathJoin [(maybe (prefix lbi) id install_prefixM), "bin"]
 
 -- ------------------------------------------------------------
 -- * Testing
