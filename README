@@ -2,7 +2,7 @@ Cabal home page:
 http://www.haskell.org/cabal
 
 
-Quirky things about the build system
+-= Quirky things about the build system =-
 
 * The Makefile wraps the standard Cabal setup script; the Makefile is
   a convinience for bootstrapping the system. "sudo make install"
@@ -13,5 +13,34 @@ Quirky things about the build system
   uses HUnit for testing.  Don't panic.
 
 * HUnit also uses the standard setup script interface, and has to get
-  installed and registered before the build setup of Cabal.  The
-  install target of the Makefile does everything in the right order.
+  installed and registered before you can build the setup for Cabal.
+  The install target of the Makefile does everything in the right
+  order.
+
+-= Your Help =-
+
+Portability is one of the most important things about this project.
+We don't expect the early releases to work on every system, but it
+should work on YOUR system!  If it doesn't please help us figure out
+why, and write a patch and test case to fix the problem, if you can!
+The codebase is a very manageable size.
+
+-= Code =-
+
+You can get the code from the web page; the version control system we
+use is very open and welcoming to new developers.
+
+-= Credits (in alphabetical order) =-
+
+Cabal Coders:
+- Bjorn Bringert
+- Isaac Jones
+- Simon Marlow
+- Martin Sjögren
+
+Cabal proposal:
+- Isaac Jones
+- Simon Marlow
+- Ross Patterson
+- Simon Peyton Jones
+- Malcolm Wallace
