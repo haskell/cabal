@@ -67,6 +67,7 @@ import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 -- base
+import Control.Monad(when)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory,
                  getPermissions, Permissions(..))
@@ -114,7 +115,8 @@ assertCmd' :: String -- ^Command
            -> String -- ^Comment
            -> Assertion
 assertCmd' command args comment
-    = system (command ++ " "++ args) >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
+    = system (command ++ " "++ args ++ ">>out.build")
+        >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
 -- |Run this command, and assert it returns an unsuccessful error code.
 assertCmdFail :: String -- ^Command
@@ -128,28 +130,8 @@ tests :: FilePath -> [Test]
 tests currDir
     = let testdir = currDir `joinFileName` "tests" in
       [
--- wash2hs
-       TestLabel "testing the wash2hs package" $ TestCase $ 
-         do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
-            system "make clean"
-            system "make"
-            assertCmdFail "./setup configure --someUnknownFlag"
-                          "wash2hs configure with unknown flag"
-            assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
-            assertCmd "./setup haddock" "setup haddock returned error code."
-            assertCmd "./setup build" "wash2hs build"
-            doesFileExist "dist/build/hs/wash2hs"
-              >>= assertBool "wash2hs build didn't create executable!"
-            assertCmd "./setup install --user" "wash2hs install"
-            doesFileExist ",tmp/bin/wash2hs"
-              >>= assertBool "wash2hs didn't put executable into place."
-            perms <- getPermissions ",tmp/bin/wash2hs"
-            assertBool "wash2hs isn't +x" (executable perms)
-            assertCmd "./setup clean" "clean failed"
-            assertCmd "make clean" "make clean failed"
-            -- no unregister, because it has no libs!
 -- HUnit
-         ,TestLabel "testing the HUnit package" $ TestCase $ 
+         TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             pkgConf <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
@@ -264,34 +246,6 @@ tests currDir
             assertCmd "./setup copy" "copy hsql returned error code"
             doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
               assertBool "libHSsql.a doesn't exist. copy failed."
--- withHooks
-         ,TestLabel "package withHooks: GHC building" $ TestCase $
-         do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
-            system "make clean"
-            system "make"
-            assertCmd "./setup configure --ghc --prefix=,tmp --woohoo"
-              "configure returned error code"
-            assertCmd "./setup haddock" "setup haddock returned error code."
-            assertCmd "./setup build"
-              "build returned error code"
-            doesFileExist "dist/build/withHooks" >>= 
-              assertBool "build did not create the executable: withHooks"
-            doesFileExist "dist/build/C.o" >>=
-              assertBool "C.testSuffix did not get compiled to C.o."
-            doesFileExist "dist/build/D.o" >>=
-              assertBool "D.gc did not get compiled to D.o this is an overriding test"
-         ,TestLabel "package withHooks: GHC and copy" $ TestCase $
-         do let targetDir = ",tmp"
-            instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
-            doesFileExist (",tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
-              >>= assertBool "library doesn't exist"
-            doesFileExist ",tmp/bin/withHooks"
-              >>= assertBool "executable doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
-         ,TestLabel "package withHooks: GHC and clean" $ TestCase $
-         do system "./setup clean"
-            doesFileExist "C.hs" >>=
-               assertEqual "C.hs (a generated file) not cleaned." False
 
 --          ,TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
@@ -312,21 +266,23 @@ genericTests currDir comp compFlag
     = let testdir = currDir `joinFileName` "tests"
           compStr = show comp
           compCmd = command comp
+          compIdent = compStr ++ "/" ++ compFlag
+          testPrelude = system "make clean >> out.build" >> system "make >> out.build"
           assertConfigure pref
               = assertCmd' compCmd ("configure --prefix=" ++ pref ++ " " ++ compFlag)
                            "configure returned error code"
+          assertBuild = assertCmd' compCmd "build" "build returned error code"
+          assertCopy  = assertCmd' compCmd "copy"  "copy returned error code"
+          assertHaddock = assertCmd' compCmd "haddock" "setup haddock returned error code."
        in [
 -- twoMains
-         TestLabel ("package twoMains: building " ++ compStr ++ "/" ++ compFlag) $ TestCase $
+         TestLabel ("package twoMains: building " ++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
-            system "make clean"
-            system "make"
-            assertConfigure ",tmp" 
+            testPrelude
+            assertConfigure ",tmp"
             assertCmd' compCmd "haddock" "setup haddock returned error code."
-            assertCmd' compCmd "build"
-              "build returned error code"
-            assertCmd' compCmd "copy"
-              "build returned error code"
+            assertBuild
+            assertCopy
             doesFileExist ",tmp/bin/testA" >>= 
               assertBool "build did not create the executable: testA"
             doesFileExist ",tmp/bin/testB" >>= 
@@ -334,16 +290,13 @@ genericTests currDir comp compFlag
             assertCmd "./,tmp/bin/testA isA" "A is not A"
             assertCmd "./,tmp/bin/testB isB" "B is not B"
 -- depOnLib
-       ,TestLabel ("package depOnLib: (executable depending on its lib)"++compStr ++ "/" ++ compFlag) $ TestCase $
+       ,TestLabel ("package depOnLib: (executable depending on its lib)"++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
-            system "make clean"
-            system "make"
+            testPrelude
             assertConfigure ",tmp"
-            assertCmd' compCmd "haddock" "setup haddock returned error code."
-            assertCmd' compCmd "build"
-              "build returned error code"
-            assertCmd' compCmd "copy"
-              "copy returned error code"
+            assertHaddock
+            assertBuild
+            assertCopy
             doesFileExist "dist/build/mains/mainForA" >>= 
               assertBool "build did not create the executable: mainForA"
             doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
@@ -352,6 +305,44 @@ genericTests currDir comp compFlag
               >>= assertBool "installed bin doesn't exist"
             doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
               >>= assertBool "installed lib doesn't exist"
+-- wash2hs
+       ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
+         do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
+            testPrelude
+            assertCmdFail "./setup configure --someUnknownFlag"
+                          "wash2hs configure with unknown flag"
+            assertConfigure ",tmp"
+            assertHaddock
+            assertBuild
+            assertCopy
+            doesFileExist ",tmp/bin/wash2hs"
+              >>= assertBool "wash2hs didn't put executable into place."
+            perms <- getPermissions ",tmp/bin/wash2hs"
+            assertBool "wash2hs isn't +x" (executable perms)
+            assertCmd' compCmd "clean" "clean failed"
+            -- no unregister, because it has no libs!
+-- withHooks
+         ,TestLabel ("package withHooks: "++compIdent) $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
+            testPrelude
+            assertCmd ("./setup configure --prefix=,tmp --woohoo " ++ compFlag)
+              "configure returned error code"
+            assertHaddock
+            assertBuild
+            assertCopy
+            when (comp == GHC)
+                 (do doesFileExist "dist/build/C.o" >>=
+                       assertBool "C.testSuffix did not get compiled to C.o."
+                     doesFileExist "dist/build/D.o" >>=
+                       assertBool "D.gc did not get compiled to D.o this is an overriding test"
+                     doesFileExist (",tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
+                       >>= assertBool "library doesn't exist")
+
+            doesFileExist ",tmp/bin/withHooks" >>= 
+              assertBool "copy did not create the executable: withHooks"
+            assertCmd' compCmd  "clean" "withHooks clean failed"
+            doesFileExist "C.hs" >>=
+               assertEqual "C.hs (a generated file) not cleaned." False
       ]
       where command GHC = "./setup"
             command Hugs = "runhugs -98 Setup.lhs"
