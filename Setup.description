@@ -12,4 +12,4 @@ Modules: Distribution.Package, Distribution.Version,
          Distribution.Simple.Register, 
          Distribution.Simple.GHCPackageConfig, 
          Distribution.GetOpt,
-         Compat.ReadP, Compat.H98
+         Compat.ReadP, Compat.H98, Compat.Exception, Compat.RawSystem

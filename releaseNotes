@@ -1,0 +1,55 @@
+                      The Haskell Cabal
+The Common Architecture for Building Applications and Libraries.
+
+DOWNLOAD:
+
+The Haskell Cabal has reached pre-release stage, with a 0.1 version
+The community should use this release to evaluate the interfaces and
+explore the concepts of these tools.
+
+Download the Cabal here:
+http://www.haskell.org/cabal/download.html
+
+BUGS:
+
+Please report bugs and wish-list items here:
+http://sourceforge.net/tracker/?func=add&group_id=44807&atid=440922
+
+Or email Isaac Jones: ijones@syntaxpolice.org
+
+
+ABOUT:
+
+The Haskell Cabal is meant to be a part of a larger infrastructure for
+distributing, organizing, and cataloging Haskell Libraries and
+Tools. It is an effort to provide a framework for developers to more
+effectively contribute their software to the Haskell community.
+
+Specifically, the Cabal describes what a Haskell package is, how these
+packages interact with the language, and what Haskell implementations
+must to do to support packages. The Cabal also specifies some
+infrastructure (code) that makes it easy for tool authors to build and
+distribute conforming packages.
+
+The Cabal is only one contribution to the larger goal. In particular,
+the Cabal says nothing about more global issues such as how authors
+decide where in the module name space their library should live; how
+users can find a package they want; how orphan packages find new
+owners; and so on.
+
+NOTES:
+
+This release is meant to provide the community with concrete
+information about how the interfaces are shaping up.  This release
+does NOT fix the interfaces, we can't promise not to break anything
+that relies on these interfaces.  We hope that Haskell authors will
+try to package their software using these tools, and let us know where
+they fall short.
+
+MORE INFORMATION:
+
+Please see the web site for the source code, interfaces, and
+especially the proposal, which will serve as documentation for this
+release:
+
+http://www.haskell.org/cabal/

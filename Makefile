@@ -56,7 +56,6 @@ haddock:
 	rm -r dist/doc/*
 	mv dist/tmp/doc/html dist/doc
 	rmdir dist/tmp/doc
-	rmdir dist/tmp
 
 clean: clean-cabal clean-hunit clean-test
 
@@ -120,10 +119,13 @@ dist: pushall haddock
 	darcs dist
 	mv cabal.tar.gz /tmp
 	cd /tmp && tar -zxvf cabal.tar.gz
-	mkdir -p /tmp/cabal/doc/html
-	cp -r dist/doc/html /tmp/cabal/doc/html
+	mkdir -p /tmp/cabal/doc
+	cp -r dist/doc/html /tmp/cabal/doc/API
+	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
+	cp -r /tmp/pkg-spec{-html,.pdf} /tmp/cabal/doc
+
 	cd /tmp && tar -zcvf cabal-code.tgz cabal
 	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
-	rm -f /tmp/cabal-code.tgz
+#	rm -f /tmp/cabal-code.tgz
 	rm -f /tmp/cabal.tar.gz
 	rm -rf /tmp/cabal
