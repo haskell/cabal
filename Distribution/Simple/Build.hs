@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Build
@@ -43,19 +44,53 @@ module Distribution.Simple.Build (
 	build
   ) where
 
+import Distribution.Setup
 import Distribution.Package
-import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage)
+import Distribution.Simple.Configure
+import Distribution.Simple.Utils
 
 import System.IO
 import System.Exit
+import System.Cmd (rawSystem)
+import Control.Monad
+
+-- -----------------------------------------------------------------------------
+-- Build the library
 
 build :: PackageDescription -> LocalBuildInfo -> IO ()
 build pkg_descr lbi = do
-  setupMessage "Configuring" pkg_descr
-  exitWith (ExitFailure 1)
+  setupMessage "Building" pkg_descr
 
-  -- construct ghc --make command line
-  -- run it
-  -- build a library
+  when (compilerFlavor (compiler lbi) /= GHC) $
+	die ("only building with GHC is implemented")
+	
+  -- first, build the modules
+  let args = constructGHCCmdLine pkg_descr lbi
+  rawSystemExit (compilerPath (compiler lbi)) args
 
+  -- now, build the library
+  let objs = map (++objsuffix) (allModules pkg_descr)
+      lib  = mkLibName (library pkg_descr)
+  rawSystemPathExit "ar" (["q", lib] ++ objs)
+
+constructGHCCmdLine :: PackageDescription -> LocalBuildInfo -> [String]
+constructGHCCmdLine pkg_descr lbi = 
+  [
+    "--make",
+    "-package-name", showPackageId (package pkg_descr)
+  ] 
+  ++ extensionsToGHCFlag (extensions pkg_descr)
+  ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
+  ++ allModules pkg_descr
+
+extensionsToGHCFlag _ = [] -- ToDo
+
+#ifdef mingw32_TARGET_OS
+objsuffix = ".obj"
+#else
+objsuffix = ".o"
+#endif
+
+mkLibName lib = "lib" ++ lib ++ ".a"
+
+  -- ToDo: includes, includeDirs

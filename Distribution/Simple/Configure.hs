@@ -50,7 +50,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..))
-import Distribution.Simple.Utils (splitFilenameDir, die, split, setupMessage)
+import Distribution.Simple.Utils
 
 import System.IO hiding (catch)
 import System.Exit
@@ -65,9 +65,11 @@ import HUnit
 #endif
 
 -- |Data cached after configuration step.
-data LocalBuildInfo = LocalBuildInfo {prefix :: String,
-                                      compiler :: Compiler}
-     deriving (Show, Read, Eq)
+data LocalBuildInfo = LocalBuildInfo {
+  	prefix	 :: String,
+	compiler :: Compiler
+  }
+  deriving (Show, Read, Eq)
 
 emptyLocalBuildInfo :: LocalBuildInfo
 emptyLocalBuildInfo = undefined
@@ -146,7 +148,14 @@ defaultCompilerFlavor =
 #endif
 
 findCompiler :: CompilerFlavor -> IO FilePath
-findCompiler flavor = findBinary (compilerBinaryName flavor)
+findCompiler flavor = do
+  let prog = compilerBinaryName flavor
+  message $ "searching for " ++ prog ++ " in path."
+  res <- findBinary prog
+  case res of
+   Nothing   -> die ("Cannot find compiler for " ++ prog)
+   Just path -> do message ("found " ++ prog ++ " at "++ path)
+		   return path
    -- ToDo: check that compiler works? check compiler version?
 
 compilerBinaryName GHC  = "ghc"
@@ -168,29 +177,6 @@ guessPkgToolFromHCPath flavor path
 	  die ("Cannot find package tool: " ++ pkgtool)
        message $ "found package tool in " ++ pkgtool
        return pkgtool
-
-findBinary :: String -> IO FilePath
-findBinary binary = do
-  path <- getEnv "PATH"
-  message $ "searching for " ++ binary ++ " in path."
-  search (parsePath path)
-  where
-    search :: [FilePath] -> IO FilePath
-    search [] = die ("Cannot find compiler for " ++ binary)
-    search (d:ds) = do
-	let path = d ++ '/':binary
-	b <- doesFileExist path
-	if b then do message ("found " ++ binary ++ " at "++ path); return path
-             else search ds
-
-parsePath :: String -> [FilePath]
-parsePath path = split pathSep path
-  where
-#ifdef mingw32_TARGET_OS
-	pathSep = ';'
-#else
-	pathSep = ':'
-#endif
 
 message s = putStrLn $ "configure: " ++ s
 
