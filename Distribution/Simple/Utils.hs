@@ -44,7 +44,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Utils (
 	splitFilePath,
 	joinFilenameDir,
-        joinExt,	
+        joinExt,
+        pathInits,
 	isPathSeparator,
         pathSeparatorStr,
         split,
@@ -124,6 +125,33 @@ joinExt path ext = path++'.':ext
 joinFilenameDir :: String -> String -> FilePath
 joinFilenameDir dir ""    = dir
 joinFilenameDir dir fname = dir++pathSeparator:fname
+
+-- |Get this path and all its parents.
+pathInits :: FilePath -> [FilePath]
+pathInits p =
+    map ((++) root') (tail $ inits path')
+    where
+#ifdef mingw32_TARGET_OS
+       (root,path) = case break (== ':') p of
+          (path,    "") -> ("",path)
+          (root,_:path) -> (root++":",path)
+#else
+       (root,path) = ("",p)
+#endif
+       (root',path') = case path of
+         (c:path) | isPathSeparator c -> (root++pathSeparatorStr,path)
+         _                            -> (root,path)
+
+       inits :: String -> [String]
+       inits [] =  [""]
+       inits cs = 
+         case pre of
+           "." -> inits suf
+           _   -> [""] ++ map (joinFilenameDir pre) (inits suf)
+         where
+           (pre,suf) = case break isPathSeparator cs of
+              (pre,"")    -> (pre, "")
+              (pre,_:suf) -> (pre,suf)
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =
@@ -241,22 +269,7 @@ createDirectoryParents :: FilePath -> IO()
 createDirectoryParents file
     = mapM_ (createIfNotExists False) (pathInits file)
 
--- |Get this path and all its parents.
-pathInits :: FilePath -> [FilePath]
-pathInits path
-    = map (\x -> device++pathJoin x) (tail $ inits $ mySplit pathSeparator path')
-    where
-#ifdef mingw32_TARGET_OS    -- Should we do this only on Windows? What about file://usr/bin?
-       (device,path') = case break (== ':') path of
-         (path,"") -> ("",path)
-         (device,c1:c2:path) | isPathSeparator c2 -> (device++[c1,c2],path)
-         (device,c1:path) -> (device++[c1],path)
-#else
-       (device,path') = ("",path)
-#endif
-
 -- |Give a list of lists breaking apart elements who match the given criteria
-
 --  > mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
 mySplit :: Eq a => a -> [a] -> [[a]]
 mySplit a l = let (upto, rest) = break (== a) l
@@ -459,6 +472,18 @@ hunitTests
             "justExt"      ~: (".\\.txt")        ~=? ("."     `joinFilenameDir` (""    `joinExt` "txt")),
             "curDir"       ~: (".")              ~=? ("."     `joinFilenameDir` (""    `joinExt` "")),
             "root"         ~: ("\\")             ~=? ("\\"    `joinFilenameDir` (""    `joinExt` ""))
+	   ],
+
+	TestLabel "pathInits" $ TestList
+           ["simpleCase"    ~: ["c:\\foo","c:\\foo\\bar.txt"] ~=? (pathInits "c:\\foo\\bar.txt"),
+            "justName"      ~: ["bar.txt"] ~=? (pathInits "bar.txt"),
+            "driveAndName1" ~: ["c:bar.txt"] ~=? (pathInits "c:bar.txt"),
+            "driveAndName2" ~: ["c:\\bar.txt"] ~=? (pathInits "c:\\bar.txt"),
+            "locDir"        ~: ["bar.txt"] ~=? (pathInits ".\\bar.txt"),
+            "midLocDir"     ~: ["foo","foo\\bar.txt"] ~=? (pathInits "foo\\.\\bar.txt"),
+            "rootFile"      ~: ["\\bar.txt"] ~=? (pathInits "\\bar.txt"),
+            "curDir"        ~: [] ~=? (pathInits "."),
+            "root"          ~: [] ~=? (pathInits "\\")
 	   ]
 #else
        do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
@@ -489,6 +514,16 @@ hunitTests
             "justExt"      ~: ("./.txt")       ~=? ("."    `joinFilenameDir` (""    `joinExt` "txt")),
             "curDir"       ~: (".")            ~=? ("."    `joinFilenameDir` (""    `joinExt` "")),
             "root"         ~: ("/")            ~=? ("/"    `joinFilenameDir` (""    `joinExt` ""))
+	   ],
+
+	TestLabel "pathInits" $ TestList
+           ["simpleCase"    ~: ["/foo","/foo/bar.txt"] ~=? (pathInits "/foo/bar.txt"),
+            "justName"      ~: ["bar.txt"] ~=? (pathInits "bar.txt"),
+            "locDir"        ~: ["bar.txt"] ~=? (pathInits "./bar.txt"),
+            "midLocDir"     ~: ["foo","foo/bar.txt"] ~=? (pathInits "foo/./bar.txt"),
+            "rootFile"      ~: ["/bar.txt"] ~=? (pathInits "/bar.txt"),
+            "curDir"        ~: [] ~=? (pathInits "."),
+            "root"          ~: [] ~=? (pathInits "/")
 	   ]
 #endif
           ]
