@@ -60,9 +60,24 @@ build :: PackageDescription -> LocalBuildInfo -> IO ()
 build pkg_descr lbi = do
   setupMessage "Building" pkg_descr
 
-  when (compilerFlavor (compiler lbi) /= GHC) $
-	die ("only building with GHC is implemented")
-	
+  case compilerFlavor (compiler lbi) of
+   GHC -> buildGHC pkg_descr lbi
+   NHC -> buildNHC pkg_descr lbi
+   _   -> die ("only building with GHC is implemented")
+
+-- |FIX: For now, the target must contain a main module :(
+buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
+buildNHC pkg_descr lbi = do
+  rawSystemExit (compilerPath (compiler lbi))
+                (["-nhc98"]
+                ++ extensionsToNHCFlag (extensions pkg_descr)
+                ++ [ opt | (NHC,opts) <- options pkg_descr, opt <- opts ]
+                ++ allModules pkg_descr)
+
+-- |Building for GHC
+buildGHC :: PackageDescription -> LocalBuildInfo -> IO ()
+buildGHC pkg_descr lbi = do
+
   -- first, build the modules
   let args = constructGHCCmdLine pkg_descr lbi
   rawSystemExit (compilerPath (compiler lbi)) args
@@ -89,6 +104,10 @@ constructGHCCmdLine pkg_descr _ =
 extensionsToGHCFlag :: [ Extension ] -> [String]
 extensionsToGHCFlag _ = [] -- ToDo
 
+extensionsToNHCFlag :: [ Extension ] -> [String]
+extensionsToNHCFlag _ = [] -- ToDo
+
+objsuffix :: String
 #ifdef mingw32_TARGET_OS
 objsuffix = ".obj"
 #else

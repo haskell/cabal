@@ -170,12 +170,12 @@ findCompiler flavor = do
 
 compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
-compilerBinaryName NHC  = "nhc98"
+compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
 compilerBinaryName Hugs = "hugs"
 
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
-compilerPkgToolName NHC  = "nhc98-pkg"
+compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs-package"
 
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
