@@ -355,7 +355,7 @@ testPkgDesc = unlines [
         "Extensions: OverlappingInstances, TypeSynonymInstances",
         "Extra-Libs: libfoo, bar, bang",
         "Include-Dirs: your/slightest, look/will",
-        "Includes: /easily/unclose, /me",
+        "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
         "Options-ghc: -fTH",
         "Options-hugs: +TH",
         "",
@@ -390,7 +390,7 @@ testPkgDescAnswer =
                         extensions = [OverlappingInstances, TypeSynonymInstances],
                         extraLibs = ["libfoo", "bar", "bang"],
                         includeDirs = ["your/slightest", "look/will"],
-                        includes = ["/easily/unclose", "/me"],
+                        includes = ["/easily/unclose", "/me", "funky, path\\name"],
                         options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
                     },
                     executables = [("somescript", emptyBuildInfo{
@@ -437,12 +437,10 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
 --                 assertRight "basic spaces with newline"
 --                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
 
-              TestCase (assertRight "BSD4" BSD4 (parse parseLicense "" "BSD4")),
-
-              TestLabel "license parsers" $ 
-                        TestCase (sequence_ [assertRight ("license " ++ lName) lVal
-                                                    (parse parseLicense "" lName)
-                                             | (lName, lVal) <- licenses]),
+              TestLabel "license parsers" $ TestCase $
+                 sequence_ [assertRight ("license " ++ show lVal) lVal
+                                        (parse parseLicense "" (show lVal))
+                           | lVal <- [GPL,LGPL,BSD3,BSD4]],
 
               TestLabel "Required fields" $ TestCase $
                  do assertRight "some fields"
