@@ -1,9 +1,5 @@
 * misc
 
-** Executables that depend on the package itself: build the package
-first, install it into a local package.conf and then build the
-executables against the package.  
-
 ** make debian watchfile
 ** multiple libraries?
 ** find a real test case that uses preprocessors
