@@ -79,10 +79,10 @@ data Extension =
                | MultiParamTypeClasses
                | NoMonomorphismRestriction
                | FunctionalDependencies
-               | RankTwoTypes
+               | RankNTypes
                | PolymorphicComponents
                | ExistentialQuantification
-               | PatternTypeAnnotations
+               | ScopedTypeVariables
                | ImplicitParams
                | FlexibleContexts
                | FlexibleInstances
@@ -98,11 +98,11 @@ data Extension =
                | Arrows
                | Generics
                | NoImplicitPrelude
+               | NamedFieldPuns
 
                | ExtensibleRecords
                | RestrictedTypeSynonyms
                | HereDocuments
-               | HoodDebugging
                | UnsafeOverlappingInstances
 	       deriving (Show, Read, Eq)
 
@@ -119,7 +119,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
     extensionToGHCFlag AllowOverlappingInstances    = Right "-fallow-overlapping-instances"
     extensionToGHCFlag AllowUndecidableInstances    = Right "-fallow-undecidable-instances"
-    extensionToGHCFlag AllowIncoherentInstances     = Right "-fallow- incoherent-instances"
+    extensionToGHCFlag AllowIncoherentInstances     = Right "-fallow-incoherent-instances"
     extensionToGHCFlag InlinePhase                  = Right "-finline-phase"
     extensionToGHCFlag ContextStack                 = Right "-fcontext-stack"
     extensionToGHCFlag Arrows                       = Right "-farrows"
@@ -131,18 +131,18 @@ extensionsToGHCFlag l
     extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
     extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
     extensionToGHCFlag FunctionalDependencies       = Right "-fglasgow-exts"
-    extensionToGHCFlag RankTwoTypes                 = Right "-fglasgow-exts"
+    extensionToGHCFlag RankNTypes                   = Right "-fglasgow-exts"
     extensionToGHCFlag PolymorphicComponents        = Right "-fglasgow-exts"
     extensionToGHCFlag ExistentialQuantification    = Right "-fglasgow-exts"
-    extensionToGHCFlag PatternTypeAnnotations       = Right "-fglasgow-exts"
+    extensionToGHCFlag ScopedTypeVariables          = Right "-fglasgow-exts"
     extensionToGHCFlag FlexibleContexts             = Right "-fglasgow-exts"
     extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
     extensionToGHCFlag e@HereDocuments              = Left e
-    extensionToGHCFlag e@HoodDebugging              = Left e
     extensionToGHCFlag e@UnsafeOverlappingInstances = Left e
+    extensionToGHCFlag e@NamedFieldPuns             = Left e
 
 -- |NHC: Return the unsupported extensions, and the flags for the supported extensions
 extensionsToNHCFlag :: [ Extension ] -> ([Extension], [Opt])
@@ -151,7 +151,8 @@ extensionsToNHCFlag l
       where
       extensionToNHCFlag NoMonomorphismRestriction = Right "" -- not implemented in NHC
       extensionToNHCFlag ForeignFunctionInterface  = Right ""
-      extensionToNHCFlag HoodDebugging             = Right ""
+      extensionToNHCFlag ExistentialQuantification = Right ""
+      extensionToNHCFlag NamedFieldPuns            = Right "-puns"
       extensionToNHCFlag e                         = Left e
 
 -- |Hugs: Return the unsupported extensions, and the flags for the supported extensions
@@ -166,14 +167,13 @@ extensionsToHugsFlag l
       extensionToHugsFlag ParallelListComp           = Right "-98"
       extensionToHugsFlag MultiParamTypeClasses      = Right "-98"
       extensionToHugsFlag FunctionalDependencies     = Right "-98"
-      extensionToHugsFlag RankTwoTypes               = Right "-98"
+      extensionToHugsFlag RankNTypes                 = Right "-98"
       extensionToHugsFlag PolymorphicComponents      = Right "-98"
       extensionToHugsFlag ExistentialQuantification  = Right "-98"
-      extensionToHugsFlag PatternTypeAnnotations     = Right "-98"
+      extensionToHugsFlag ScopedTypeVariables        = Right "-98"
       extensionToHugsFlag ImplicitParams             = Right "-98"
       extensionToHugsFlag ExtensibleRecords          = Right "-98"
       extensionToHugsFlag RestrictedTypeSynonyms     = Right "-98"
-      extensionToHugsFlag HoodDebugging              = Right "-98"
       extensionToHugsFlag FlexibleContexts           = Right "-98"
       extensionToHugsFlag FlexibleInstances          = Right "-98"
       extensionToHugsFlag e                          = Left e
