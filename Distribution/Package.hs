@@ -272,14 +272,16 @@ splitStanzas = map merge . groupStanzas . filter validLine . lines
 -- |parse a module name
 moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
 
--- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st FilePath
-parseFilePath = liftM concat (many1 (
-                        do try word
-                           <|> toStr digit
-                           <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{.")
-                       ))
+parseFilePath = parseReadS <|> (many1 (alphaNum <|> oneOf "-+/_."))
         <?> "parseFilePath"
+
+parseReadS :: Read a => GenParser Char st a
+parseReadS = do toks <- getInput
+                case reads toks of
+                  [(str,toks')] -> do setInput toks'
+                                      return str
+                  _             -> fail "Bad String"
 
 parseDependency :: GenParser Char st Dependency
 parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
