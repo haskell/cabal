@@ -53,12 +53,12 @@ import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          setupMessage, libModules)
 import Distribution.Package (showPackageId)
-import Distribution.Simple.Utils(smartCopySources, die)
+import Distribution.Simple.Utils(smartCopySources, die, findPackageDesc)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
 import System.Cmd (system)
-import System.Directory (doesDirectoryExist)
+import Distribution.Compat.Directory (doesDirectoryExist, getCurrentDirectory, copyFile)
 import Distribution.Compat.FilePath (joinFileName)
 
 #ifdef DEBUG
@@ -85,6 +85,8 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
   sequence_ [prepareDir verbose targetDir pps [] exeBi | (Executable _ _ exeBi) <- executables pkg_descr]
   -- setup isn't listed in the description file.
   smartCopySources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
+  descFile <- getCurrentDirectory >>= findPackageDesc
+  copyFile descFile (joinFileName targetDir descFile)
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (targetPref `joinFileName` (tarBallName pkg_descr))
 		    ++ " " ++ (nameVersion pkg_descr)

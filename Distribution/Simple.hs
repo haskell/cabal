@@ -117,7 +117,7 @@ data UserHooks = UserHooks
      runTests :: Args -> Bool -> LocalBuildInfo -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
      hookedPreProcessors :: [ PPSuffixHandler ],
-        -- ^Custom preprocessors in addition to 'knownSuffixHandlers'.
+        -- ^Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
 
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      postConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode,
