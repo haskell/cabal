@@ -16,7 +16,6 @@ Description:
 Category: Distribution
 Exposed-Modules:
 	Distribution.Extension,
-	Distribution.GetOpt,
 	Distribution.InstalledPackageInfo,
 	Distribution.License,
 	Distribution.Make,
@@ -37,6 +36,7 @@ Exposed-Modules:
 	Distribution.Simple.Utils,
 	Distribution.Version
 Hidden-Modules:
+	Distribution.GetOpt,
 	Distribution.Compat.Directory,
 	Distribution.Compat.Error,
 	Distribution.Compat.Exception,
