@@ -65,6 +65,7 @@ module Distribution.PackageDescription (
         exeModules,
         libModules,
         hcOptions,
+        sanityCheckPackage,
 #ifdef DEBUG
         hunitTests,
         test
@@ -539,6 +540,31 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
     ppFields _  [] = empty
     ppFields bi ((StanzaField _ get _ _):flds) =
            get bi $$ ppFields bi flds
+
+
+-- ------------------------------------------------------------
+-- * Sanity Checking
+-- ------------------------------------------------------------
+
+sanityCheckPackage :: PackageDescription -> IO Bool
+sanityCheckPackage pkg_descr
+    = do libSane <- sanityCheckLib (library pkg_descr)
+         identSane <- if null (pkgName (package pkg_descr))
+                         || null (versionBranch (pkgVersion (package pkg_descr)))
+                      then sanityWarning "package identifier malformed, either empty name or empty version"
+                      else return False
+         return $ any (==True) [libSane, identSane]
+
+sanityCheckLib :: Maybe Library -> IO Bool
+sanityCheckLib Nothing  = return True
+sanityCheckLib (Just l)
+    = if null $ exposedModules l
+      then sanityWarning "Non-empty library, but empty exposed modules list. Cabal may not build this library correctly"
+      else return True
+
+sanityWarning :: String -> IO Bool
+sanityWarning s = do putStrLn $ "Sanity Check Warning: " ++ s
+                     return True
 
 -- ------------------------------------------------------------
 -- * Testing
