@@ -32,7 +32,6 @@ Exposed-Modules:
 	Distribution.Simple.Configure,
 	Distribution.Simple.GHCPackageConfig,
 	Distribution.Simple.Install,
-	Distribution.Simple.LocalBuildInfo,
 	Distribution.Simple.Register,
 	Distribution.Simple.SrcDist,
 	Distribution.Simple.Utils,
