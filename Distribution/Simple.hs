@@ -76,11 +76,10 @@ import Distribution.Version (Version(..), VersionRange(..),
 import System.Environment(getArgs)
 import System.Directory(removeFile)
 
-import System.IO.Error(try)
 import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
-import System.IO (hPutStr, stderr)
+import System.IO (hPutStr, stderr, try)
 
 #ifdef DEBUG
 import HUnit (Test)
