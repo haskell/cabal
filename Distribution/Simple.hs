@@ -67,7 +67,7 @@ import Distribution.Simple.Register	( register, unregister,
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, pathJoin, removeFileRecursive)
+import Distribution.Simple.Utils (die, pathJoin, removeFileRecursive, currentDir)
 import Distribution.Misc (License(..), Extension(..), Dependency(..))
 import Distribution.Version (Version(..), VersionRange(..), 
 			     orLaterVersion, orEarlierVersion,
@@ -96,9 +96,6 @@ doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function t
 doBuildInstall f pkgConf
     = do lbi <- getPersistBuildConfig
          f pkgConf lbi
-
-currentDir :: FilePath
-currentDir = "."-- FIX: FileUtils.currentDir
 
 defaultMain :: IO ()
 defaultMain = readPackageDescription defaultPackageDesc >>= defaultMainNoRead

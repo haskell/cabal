@@ -1,8 +1,5 @@
 ** where are we using allModules, is this the right place?
 
-** move some of the junk in Utils up one level, then use currentDir =
-   "." there.
-
 ** integrate w/ GHC distro
 
 ** what other preprocessors can't unlit?

@@ -61,10 +61,11 @@ import Distribution.Misc(Dependency(..), extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), PackageIdentifier(..),
-                            BuildInfo(..), Executable(..), emptyPackageDescription
+                            BuildInfo(..), Executable(..), setupMessage,
+                            emptyPackageDescription
                            )
-import Distribution.Simple.Utils (die, setupMessage, findBinary, 
-                                  splitFilePath, joinFilenameDir,  joinExt)
+import Distribution.Simple.Utils (die, findBinary, splitFilePath,
+                                  joinFilenameDir, joinExt)
 import Distribution.Package	( PackageIdentifier )
 import Distribution.Version (Version(..), VersionRange(..))
 
