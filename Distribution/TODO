@@ -1,4 +1,6 @@
 * priorities
+** Extension
+- constructorless data-types
 ** Change mainModules to [(String, String)] for (Module, executable
    name)
 ** Build executables for mainModules

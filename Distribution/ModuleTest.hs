@@ -131,14 +131,12 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0") "package remove"
             setCurrentDirectory oldDir,
 
-         TestLabel "configure GHC, sdist" $ TestCase $
+         TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf <- GHC.localPackageConfig
             system $ "ghc-pkg -r test-1.0 --config-file=" ++ pkgConf
             setCurrentDirectory "test/A"
-            dirE1 <- doesDirectoryExist ",tmp"
-            when dirE1 (system "rm -r ,tmp">>return())
-            dirE2 <- doesDirectoryExist "dist"
-            when dirE2 (system "rm -r dist">>return())
+            system "make clean"
+            system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
               "configure returned error code"
 
@@ -152,7 +150,7 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
               assertEqual "dist/src exists" False
             doesDirectoryExist "dist/build" >>=
               assertBool "dist/build doesn't exists",
-         TestLabel "GHC and install-prefix" $ TestCase $ -- (uses above config)
+         TestLabel "package A: GHC and install-prefix" $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             instRetCode <- system $ "./setup install --install-prefix=" ++ targetDir
             checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
