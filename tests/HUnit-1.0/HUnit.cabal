@@ -1,5 +1,8 @@
 Name: HUnit
 Version: 1.0
+copyright: filler for test suite
+maintainer: filler for test suite
+synopsis: filler for test suite
 License: AllRightsReserved
 Build-Depends: haskell-src
 Other-Modules: HUnitText, HUnitLang, HUnitTestBase, Terminal, HUnitBase

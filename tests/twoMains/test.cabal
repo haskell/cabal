@@ -1,5 +1,8 @@
 Name: test
 Version: 1.0
+copyright: filler for test suite
+maintainer: filler for test suite
+synopsis: filler for test suite
 
 Executable: testA
 Other-Modules: MainA

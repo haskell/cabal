@@ -1,5 +1,7 @@
 Name: test
 Version: 1.0
+copyright: filler for test suite
+maintainer: Isaac Jones
 synopsis: this package is really awesome.
 Other-Modules: B.A
 Exposed-Modules: A
