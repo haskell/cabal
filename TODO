@@ -32,6 +32,31 @@
 - no way to tell Hugs to turn packages on or off
 - no register / unregister for hugs
 
+** Haddock
+  - should process hidden modules as well as exposed ones.  The hidden
+    modules might contain entities that are re-exported by an exposed
+    module.  Hidden modules should use the #hide haddock directive.
+
+  - configure should detect haddock.  We should have a --with-haddock
+too
+    (similarly for all the other programs we use - I made this change
+for
+    VS a while ago and didn't get around to pushing it, now it'll be
+    conflict city.  oh well).
+
+  - if GHC is present and hscpp is not, we can use 'ghc -E -cpp'.  This
+    also unlits.
+
+  - hscpp need to define __HADDOCK__ when preprocessing for haddock.
+This
+    means we have to preprocess seprately for haddock.
+
+  - haddock should be passed the names of the interface files for the
+    dependent packages (gotten from haddock_interfaces field of the
+    dependent packages, query ghc-pkg).
+
+  - we should install the haddock interface, and fill in the location
+    in haddock_interfaces.  Similarly for the HTML, and haddock_html.
 
 ** for a source tarball:?
 - if there's a flag, --include-preprocessed-sources (or something
