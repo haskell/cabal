@@ -4,8 +4,6 @@
 
 * Code
 ** make "configure" more verbose
-** configure step
-** cross-platform compiler location(simonmar?)
 ** build
 ** install
 ** register
@@ -13,6 +11,7 @@
 ** read & write config-droppings
 
 * later todo
+** writePersistBuildConfig robustify + diagnostics
 ** command-line parsing errors
 ** elaborate command-line help text
 

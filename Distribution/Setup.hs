@@ -66,12 +66,12 @@ import Control.Monad.Error
 -- ------------------------------------------------------------
 
 data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
-              deriving (Show, Eq)
+              deriving (Show, Read, Eq)
 
 data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
                           compilerPath  :: FilePath,
                           compilerPkgTool :: FilePath}
-                deriving (Show, Eq)
+                deriving (Show, Read, Eq)
 
 emptyCompiler :: Compiler
 emptyCompiler = Compiler (OtherCompiler "") "" ""

@@ -50,6 +50,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageConfig(..))
+import Distribution.Simple.Utils (splitFilenameDir, die, split)
 
 import System.IO
 import System.Exit
@@ -64,16 +65,22 @@ import HUnit
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {prefix :: String,
                                       compiler :: Compiler}
-     deriving (Show, Eq)
+     deriving (Show, Read, Eq)
 
 emptyLocalBuildInfo :: LocalBuildInfo
 emptyLocalBuildInfo = undefined
 
 getPersistBuildConfig :: IO LocalBuildInfo
-getPersistBuildConfig = return emptyLocalBuildInfo -- FIX
+getPersistBuildConfig = do
+  str <- readFile localBuildInfoFile
+  return (read str)
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
-writePersistBuildConfig _ = return () --FIX
+writePersistBuildConfig lbi = do
+  writeFile localBuildInfoFile (show lbi)
+
+localBuildInfoFile :: FilePath
+localBuildInfoFile = "./.setup-config"
 
 -- -----------------------------------------------------------------------------
 -- Configuration
@@ -171,39 +178,7 @@ parsePath path = split pathSep path
 #endif
 
 -- -----------------------------------------------------------------------------
--- Utils
-
--- "foo/bar/xyzzy.ext" -> ("foo/bar", "xyzzy.ext")
-splitFilenameDir :: String -> (String,String)
-splitFilenameDir str
-  = let (dir, rest) = split_longest_prefix str isPathSeparator
-  	real_dir | null dir  = "."
-		 | otherwise = dir
-    in  (real_dir, rest)
-
-split :: Char -> String -> [String]
-split c s = case rest of
-		[]     -> [chunk] 
-		_:rest -> chunk : split c rest
-  where (chunk, rest) = break (==c) s
-
-split_longest_prefix :: String -> (Char -> Bool) -> (String,String)
-split_longest_prefix s pred
-  = case pre of
-	[]      -> ([], reverse suf)
-	(_:pre) -> (reverse pre, reverse suf)
-  where (suf,pre) = break pred (reverse s)
-
-isPathSeparator :: Char -> Bool
-isPathSeparator ch =
-#ifdef mingw32_TARGET_OS
-  ch == '/' || ch == '\\'
-#else
-  ch == '/'
-#endif
-
-die :: String -> IO a
-die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
+-- Tests
 
 #ifdef DEBUG
 hunitTests :: IO [Test]
