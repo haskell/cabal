@@ -1,7 +1,7 @@
 Name: Cabal
 Version: 0.3
 Copyright: 2003-2005, Isaac Jones
-Build-Depends: posix
+Build-Depends: base, util
 License: BSD3
 Author: Isaac Jones <ijones@syntaxpolice.org>
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
@@ -43,5 +43,4 @@ Hidden-Modules:
 	Distribution.Compat.Exception,
 	Distribution.Compat.FilePath,
 	Distribution.Compat.RawSystem
-Build-Depends: base
 Extensions: CPP

@@ -336,8 +336,8 @@ parseInstallArgs cfg args customOpts =
             UserFlag     -> True
             GlobalFlag   -> False
             Lift _       -> uFlag
-            _            -> error $ "Internal Error: Unexpected flag!"
-    updateCfg [] t = t
+            _            -> error $ "Unexpected flag!"
+        updateCfg [] t = t
 
 sdistCmd :: Cmd a
 sdistCmd = Cmd {
