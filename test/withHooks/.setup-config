@@ -1,1 +1,0 @@
-LocalBuildInfo {prefix = "/usr", compiler = Compiler {compilerFlavor = GHC, compilerVersion = Version {versionBranch = [6,2,2], versionTags = []}, compilerPath = "/usr/bin/ghc", compilerPkgTool = "/usr/bin/ghc-pkg"}, buildDir = "dist/build", packageDeps = [], executableDeps = [("withHooks",[])]}
