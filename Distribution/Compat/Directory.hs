@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 module Distribution.Compat.Directory (
  	findExecutable, copyFile
   ) where

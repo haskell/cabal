@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
