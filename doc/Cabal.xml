@@ -99,10 +99,13 @@
           <filename>Setup.lhs</filename>
         </term>
         <listitem>
-          <para>a Haskell script to perform various setup tasks (with
-            the interface described in <xref linkend="builders"/>).
-            In most cases this will be trivial, calling on the Cabal
-            library to do most of the work.</para>
+          <para>a single-module Haskell program to perform various
+            setup tasks (with the interface described in
+            <xref linkend="builders"/>).  This module should import only
+            modules that will be present in all Haskell implementations,
+            including modules of the Cabal library.  In most cases it
+            will be trivial, calling on the Cabal library to do most of
+            the work.</para>
         </listitem>
       </varlistentry>
     </variablelist>
@@ -973,15 +976,17 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
   	  or <option>-w</option><replaceable>path</replaceable></term>
           <listitem>
             <para>Specify the path to a particular compiler.  If given,
-              this must match the implementation selected above.  The
-              default is to search for the selected compiler.</para>
+              this must match the implementation selected above.
+              The default is to search for the usual name of the
+              selected implementation.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
           <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
           <listitem>
-            <para>Specify the path to the package tool.</para>
+            <para>Specify the path to the package tool, e.g.
+              <literal>ghc-pkg</literal>.</para>
           </listitem>
         </varlistentry>
 
@@ -1019,28 +1024,44 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
             <para>Specify the path to <command>cpphs</command>.</para>
           </listitem>
         </varlistentry>
+
+	<varlistentry>
+	  <term><option>--user</option></term>
+	  <listitem>
+	    <para>Allow dependencies to be satisfied by the user package
+	      database, in addition to the global database.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>--global</option></term>
+	  <listitem>
+	    <para>(default) Dependencies must be satisfied by the global
+	      package database.</para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
 
       <para>In the simple build infrastructure, an additional option
-        recognized:</para>
+        is recognized:</para>
       <variablelist>
         <varlistentry>
           <term><option>--builddir</option>=<replaceable>dir</replaceable> or
             <option>-b</option><replaceable>dir</replaceable></term>
           <listitem>
             <para>Specify the directory into which the package will be
-              build (default: <filename>dist/build</filename>.</para>
+              built (default: <filename>dist/build</filename>).</para>
           </listitem>
         </varlistentry>
       </variablelist>
 
-      <para>If a user-supplied <filename>configure</filename> script is
-        run (see <xref linkend="system-dependent"/>), it is passed the
-        <option>--prefix</option> option and any unrecognized options.</para>
-
       <para>In the simple build infrastructure, the values supplied via
         these options are recorded in a private file for use by later
         stages.</para>
+
+      <para>If a user-supplied <filename>configure</filename> script is
+        run (see <xref linkend="system-dependent"/>), it is passed the
+        <option>--prefix</option> option and any unrecognized options.</para>
 
     </section>
 
@@ -1160,8 +1181,8 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
 
     <section>
       <title>setup clean</title>
-      <para>Remove any files created during the configure, build, or
-        register steps.</para>
+      <para>Remove any files created during the configure or build
+        steps.</para>
     </section>
 
     <section>
