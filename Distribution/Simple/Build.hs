@@ -80,11 +80,11 @@ build pref pkg_descr lbi = do
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi
-   NHC -> buildNHC pkg_descr lbi
    Hugs -> return ()
-   _   -> die ("building with GHC & NHC is implemented, preprocessing for hugs.")
+   _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
 
--- |FIX: For now, the target must contain a main module :(
+-- |FIX: For now, the target must contain a main module :( Not used
+-- ATM. Re-add later.
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
   -- Unsupported extensions have already been checked by configure
