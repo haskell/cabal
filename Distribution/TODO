@@ -10,12 +10,13 @@ RC:
 ** add haddock generated stuff to .deb.
 
 HIGH: 
+** Fix example for angela, expose Data.Set, etc, not A, B, etc.
 
 LOW
 ** clean 
 - should .installed-pkg-config be removed after successful register?
 ** Change name of Setup.description?
-
+** add over-all license file.
 
 * 0.2
 ** elimintate need for cpphs in haddock makefile rule.

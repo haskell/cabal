@@ -436,6 +436,9 @@ hunitTests
              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
-              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"]
+              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
+        TestLabel "splitExt" $ TestList 
+          ["simpleCase" ~: "failed" ~: ("/foo/bar", ".txt") ~=? (splitExt"/foo/bar.txt"), 
+           "dotInDirName" ~: "failed" ~: ("/foo.txt/bar","") ~=? (splitExt "/foo.txt/bar")]
         ]
 #endif
