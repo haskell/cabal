@@ -45,6 +45,8 @@ module Distribution.PackageDescription (
 	emptyPackageDescription,
         readPackageDescription,
 	parseDescription,
+        StanzaField(..),
+        LineNo,
         basicStanzaFields,
         writePackageDescription,
 	showPackageDescription,
@@ -605,9 +607,6 @@ errorOut warnings errors = do
 checkMissingFields :: PackageDescription -> [Maybe String]
 checkMissingFields pkg_descr = 
     [missingField (pkgName . package)    reqNameName
-    ,missingField copyright              reqNameCopyright
-    ,missingField maintainer             reqNameMaintainer
-    ,missingField synopsis               reqNameSynopsis
     ,missingField (versionBranch .pkgVersion .package) reqNameVersion
     ]
     where missingField :: (PackageDescription -> [a]) -- Field accessor
