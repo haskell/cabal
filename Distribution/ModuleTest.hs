@@ -99,7 +99,7 @@ checkTargetDir targetDir suffixes
 tests :: [Test]
 tests = [TestLabel "configure GHC, sdist" $ TestCase $
          do system "ghc-pkg -r test-1.0 --config-file=$HOME/.ghc-packages"
-            setCurrentDirectory "test"
+            setCurrentDirectory "test/A"
             dirE1 <- doesDirectoryExist ",tmp"
             when dirE1 (system "rm -r ,tmp">>return())
             dirE2 <- doesDirectoryExist "dist"
