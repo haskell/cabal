@@ -49,7 +49,8 @@ module Distribution.Simple.Build (
 
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
-import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId, pkgName)
+import Distribution.Package (PackageDescription(..), BuildInfo(..),
+                             showPackageId, pkgName, Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
@@ -110,6 +111,11 @@ buildGHC pref pkg_descr lbi = do
   -- build any C sources
   when (not (null (maybe [] cSources (library pkg_descr)))) $
      rawSystemExit (compilerPath (compiler lbi)) (maybe [] cSources (library pkg_descr) ++ ["-odir " ++ pref, "-hidir " ++ pref, "-c"])
+
+  -- build any executables
+  sequence_ [rawSystemExit (compilerPath (compiler lbi))
+               ["--make", modPath, "-o", pathJoin [pref, exeName]]
+             | (Executable exeName modPath _) <- executables pkg_descr]
 
   -- now, build the library
   let hObjs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
