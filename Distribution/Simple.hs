@@ -301,7 +301,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       (die "Hugs cannot yet install user-only packages.")
 		install pkg_descr localbuildinfo (Nothing, verbose)
                 when (hasLibs pkg_descr)
-                         (register pkg_descr localbuildinfo flags)
+                         (register pkg_descr localbuildinfo (uInst, False, verbose))
                 postHook postInst args flags localbuildinfo
 
             SDistCmd -> do
@@ -313,15 +313,15 @@ defaultMainWorker pkg_descr_in action args hooks
 		sdist srcPref distPref verbose pps pkg_descr
                 postHook postSDist args verbose localbuildinfo
 
-            RegisterCmd uInst -> do
-                (flags, _, args) <- parseRegisterArgs (uInst,0) args []
+            RegisterCmd uInst genScript -> do
+                (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo flags)
                 postHook postReg args flags localbuildinfo
 
-            UnregisterCmd uInst -> do
-                (flags,_, args) <- parseUnregisterArgs (uInst,0) args []
+            UnregisterCmd uInst genScript -> do
+                (flags,_, args) <- parseUnregisterArgs (uInst,genScript, 0) args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo flags
