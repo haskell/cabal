@@ -66,12 +66,12 @@ import Distribution.PackageDescription (
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
-import Distribution.Simple.Utils(moveSources, mkLibName, die)
+import Distribution.Simple.Utils(moveSources, copyFileVerbose, mkLibName, die)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when, unless)
 import Data.Maybe(fromMaybe)
-import Distribution.Compat.Directory(copyFile,createDirectoryIfMissing,removeDirectoryRecursive)
+import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath(joinFileName, dllExtension,
 				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
@@ -84,52 +84,54 @@ import HUnit (Test)
 -- |FIX: nhc isn't implemented yet.
 install :: PackageDescription
         -> LocalBuildInfo
-        -> Maybe FilePath -- ^install-prefix
+        -> (Maybe FilePath,Int) -- ^install-prefix, verbose
         -> IO ()
-install pkg_descr lbi install_prefixM = do
+install pkg_descr lbi (install_prefixM,verbose) = do
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi install_prefixM
   let targetLibPref = mkLibDir pkg_descr lbi Nothing
   let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
-                installExeGhc binPref buildPref pkg_descr
-     Hugs -> installHugs libPref binPref targetLibPref buildPref pkg_descr
+     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose libPref buildPref pkg_descr)
+                installExeGhc verbose binPref buildPref pkg_descr
+     Hugs -> installHugs verbose libPref binPref targetLibPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
 
 -- |Install executables for GHC.
-installExeGhc :: FilePath -- ^install location
+installExeGhc :: Int      -- ^verbose
+              -> FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installExeGhc pref buildPref pkg_descr
+installExeGhc verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
-         sequence_ [copyFile (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
+         sequence_ [copyFileVerbose verbose (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
                     | Executable e _ _ b <- executables pkg_descr]
 
 -- |Install for ghc, .hi and .a
-installLibGHC :: FilePath -- ^install location
+installLibGHC :: Int      -- ^verbose
+              -> FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLibGHC pref buildPref pd@PackageDescription{library=Just l,
+installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
-    = do moveSources (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
-         copyFile (mkLibName buildPref (showPackageId p))
-                    (mkLibName pref (showPackageId p))
-installLibGHC _ _ PackageDescription{library=Nothing}
+    = do moveSources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
+         copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) (mkLibName pref (showPackageId p))
+installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
 -- |Install for Hugs
 installHugs
-    :: FilePath -- ^Library install location
+    :: Int      -- ^verbose
+    -> FilePath -- ^Library install location
     -> FilePath -- ^Executable install location
     -> FilePath -- ^Library location on target system
     -> FilePath -- ^Build location
     -> PackageDescription
     -> IO ()
-installHugs libPref binPref targetLibPref buildPref pkg_descr = do
+installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
     let hugsInstallDir = libPref `joinFileName` "hugs"
     let hugsTargetDir = targetLibPref `joinFileName` "hugs"
     let pkg_name = pkgName (package pkg_descr)
@@ -137,7 +139,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
 	try $ removeDirectoryRecursive pkgDir
-	moveSources buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
+	moveSources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
     unless (null (executables pkg_descr)) $ do
 	let progBuildDir = buildPref `joinFileName` "programs"
 	let progInstallDir = hugsInstallDir `joinFileName` "programs"
@@ -145,12 +147,12 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 	let progTargetDir = hugsTargetDir `joinFileName` "programs"
 		    `joinFileName` pkg_name
 	try $ removeDirectoryRecursive progInstallDir
-	moveSources progBuildDir progInstallDir
+	moveSources verbose progBuildDir progInstallDir
 	    (exeModules pkg_descr) hugsInstallSuffixes
 	flip mapM_ (executables pkg_descr) $ \ exe -> do
 	    let fname = hugsMainFilename exe
 	    let installName = progInstallDir `joinFileName` fname
-	    copyFile (progBuildDir `joinFileName` fname) installName
+	    copyFileVerbose verbose (progBuildDir `joinFileName` fname) installName
 #ifndef mingw32_TARGET_OS
 	    -- FIX (HUGS): works for Unix only
 	    let targetName = progTargetDir `joinFileName` fname
