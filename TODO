@@ -30,6 +30,8 @@
    command?
 ** Add a flag to configure to specify where to put them?
 
+* do we have to run configure before clean?
+
 * Preprocessors
 ** chain of preprocessors
 ** what other preprocessors can't unlit?

@@ -47,6 +47,8 @@ module Distribution.Simple.Register (
         writeInstalledConfig,
 	removeInstalledConfig,
         installedPkgConfigFile,
+        regScriptLocation,
+        unregScriptLocation,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -255,7 +257,7 @@ unregister pkg_descr lbi (user_unreg, verbose) = do
 	die ("only unregistering with GHC and Hugs is implemented")
 
 -- |Like rawSystemExit, but optionally emits to a script instead of
--- exiting.
+-- exiting. FIX: chmod +x?
 rawSystemEmit :: FilePath -- ^Script name
               -> Bool     -- ^if true, emit, if false, run
               -> Int      -- ^Verbosity
@@ -270,7 +272,7 @@ rawSystemEmit scriptName True verbosity path args
                            ++ "\n")
       >> putStrLn (path ++ concatMap (' ':) args)
 
--- |Like rawSystemEmit, except it has string for pipeFrom
+-- |Like rawSystemEmit, except it has string for pipeFrom. FIX: chmod +x
 rawSystemPipe :: FilePath -- ^Script location
               -> Int      -- ^Verbosity
               -> String   -- ^where to pipe from
