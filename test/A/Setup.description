@@ -1,6 +1,6 @@
 Name: test
 Version: 1.0
-Modules: A, B.A
+Modules: A, B.A, C
 Exposed-Modules: A
 C-Sources: hello.c
 Extensions: ForeignFunctionInterface
