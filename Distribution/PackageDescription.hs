@@ -211,8 +211,6 @@ data Executable = Executable {
     }
     deriving (Show, Read, Eq)
 
-data LibOrExe = Lib String | Exe String
-
 emptyExecutable :: Executable
 emptyExecutable = Executable {
                       exeName = "",
@@ -223,6 +221,7 @@ emptyExecutable = Executable {
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
+emptyHookedBuildInfo :: HookedBuildInfo
 emptyHookedBuildInfo = (Nothing, [])
 
 -- ------------------------------------------------------------
@@ -259,13 +258,13 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
       updateLibrary (Just bi) Nothing     = Just emptyLibrary{libBuildInfo=bi}
 
       updateExecutables :: [(String, BuildInfo)] -> [Executable] -> [Executable]
-      updateExecutables exe_bi executables = foldr updateExecutable executables exe_bi
+      updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
       
       updateExecutable :: (String, BuildInfo) -> [Executable] -> [Executable]
-      updateExecutable exe_bi           []         = []
-      updateExecutable exe_bi@(name,bi) (exe:exes)
+      updateExecutable _                 []         = []
+      updateExecutable exe_bi'@(name,bi) (exe:exes)
         | exeName exe == name = exe{buildInfo = unionBuildInfo bi (buildInfo exe)} : exes
-        | otherwise           = updateExecutable exe_bi exes
+        | otherwise           = updateExecutable exe_bi' exes
 
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
@@ -478,13 +477,13 @@ parseHookedBuildInfo inp = do
                        return (lib, biExes)
   where
     parseLib :: Stanza -> ParseResult (Maybe BuildInfo)
-    parseLib ((_, fieldName, mName):bi)
-        | map toLower fieldName == "name" = do bi' <- parseBI bi; return $ Just bi'
+    parseLib ((_, inFieldName, _mName):bi) -- FIX: should we check that mName == library's name?
+        | map toLower inFieldName == "name" = do bi' <- parseBI bi; return $ Just bi'
         | otherwise = return Nothing
     parseLib [] = return Nothing
     parseExe :: Stanza -> ParseResult (String, BuildInfo)
-    parseExe ((lineNo, fieldName, mName):bi)
-        | map toLower fieldName == "executable"
+    parseExe ((lineNo, inFieldName, mName):bi)
+        | map toLower inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
         | otherwise = myError lineNo "expecting 'executable' at top of stanza"

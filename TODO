@@ -1,5 +1,7 @@
 * misc
 
+** Add package sanity checker?
+
 ** make debian watchfile
 ** find a real test case that uses preprocessors
 ** unregistering the package, etc
