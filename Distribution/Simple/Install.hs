@@ -156,13 +156,10 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         let targetDir = progTargetDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose buildDir installDir
-            (otherModules (buildInfo exe)) hugsInstallSuffixes
-        let fname = hugsMainFilename exe
-        copyFileVerbose verbose (buildDir `joinFileName` fname)
-            (installDir `joinFileName` fname)
+            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes
 #ifndef mingw32_TARGET_OS
         -- FIX (HUGS): works for Unix only
-        let targetName = targetDir `joinFileName` fname
+        let targetName = targetDir `joinFileName` hugsMainFilename exe
         let exeFile = binPref `joinFileName` exeName exe
         -- FIX (HUGS): use extensions, and options from file too?
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))

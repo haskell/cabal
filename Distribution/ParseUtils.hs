@@ -47,12 +47,12 @@ module Distribution.ParseUtils (
 	LineNo, PError(..), showError, myError, runP,
 	ParseResult(..),
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
-	parseFilePathQ, parseLibNameQ,
+	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
 	parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList,
-	showFilePath, showTestedWith, showDependency, showFreeText,
-	simpleField, listField, optsField, 
+	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
+	simpleField, listField, commaListField, optsField, 
 	parseReadS, parseQuoted,
   ) where
 
@@ -107,40 +107,35 @@ myError n s = ParseFailed $ FromString s (Just n)
 data StanzaField a 
   = StanzaField 
       { fieldName     :: String
-      , fieldShow     :: a -> Doc
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
       }
 
 simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
 simpleField name showF readF get set = StanzaField name
-   (\st -> text name <> colon <+> showF (get st))
-   (showF . get)
+   (\st -> showF (get st))
    (\lineNo val st -> do
        x <- runP lineNo name readF val
        return (set x st))
 
-listField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
-listField name showF readF get set = StanzaField name
-   (\st -> case get st of
-        [] -> empty
-        lst ->
-           text name <> colon <+> fsep (punctuate comma (map showF lst)))
-   (\st -> case get st of
-        [] -> empty
-        lst ->
-           vcat (map (\value -> comma <+> showF value) lst))
+commaListField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
+commaListField name showF readF get set = StanzaField name
+   (\st -> fsep (punctuate comma (map showF (get st))))
    (\lineNo val st -> do
        xs <- runP lineNo name (parseCommaList readF) val
+       return (set xs st))
+
+listField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
+listField name showF readF get set = StanzaField name
+   (\st -> fsep (map showF (get st)))
+   (\lineNo val st -> do
+       xs <- runP lineNo name (parseOptCommaList readF) val
        return (set xs st))
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> StanzaField b
 optsField name flavor get set = StanzaField name
    (\st -> case lookup flavor (get st) of
-        Just args -> text name <> colon <+> hsep (map text args)
-        Nothing   -> empty)
-   (\st -> case lookup flavor (get st) of
-        Just args -> sep (map text args)
+        Just args -> hsep (map text args)
         Nothing   -> empty)
    (\_ val st -> 
        let
@@ -211,7 +206,7 @@ parseModuleNameQ = parseQuoted modu <++ modu
 	  return (c:cs)
 
 parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
+parseFilePathQ = parseTokenQ
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
@@ -253,13 +248,18 @@ parseLicenseQ = parseQuoted parseReadS <++ parseReadS
 parseExtensionQ :: ReadP r Extension
 parseExtensionQ = parseQuoted parseReadS <++ parseReadS
 
-parseLibNameQ :: ReadP r String
-parseLibNameQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
+parseTokenQ :: ReadP r String
+parseTokenQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
 parseCommaList p = sepBy p separator
     where separator = skipSpaces >> ReadP.char ',' >> skipSpaces
+
+parseOptCommaList :: ReadP r a -- ^The parser for the stuff between commas
+               -> ReadP r [a]
+parseOptCommaList p = sepBy p separator
+    where separator = skipSpaces >> optional (ReadP.char ',') >> skipSpaces
 
 parseQuoted :: ReadP r a -> ReadP r a
 parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
@@ -268,13 +268,13 @@ parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
 -- ** Pretty printing
 
 showFilePath :: FilePath -> Doc
-showFilePath fpath
-	| all (\x -> isAlphaNum x || x `elem` "-+/_.") fpath = text (replaceSlash fpath)
-	| otherwise = doubleQuotes (text (replaceSlash fpath))
-        where
-        replaceSlash s = case break (== '\\') s of
-                         (a, (h:t)) -> a ++ (h:h:(replaceSlash t))
-                         (a, []) -> a
+showFilePath = showToken
+
+showToken :: String -> Doc
+showToken str
+ | not (any dodgy str)  = text str
+ | otherwise            = text (show str)
+  where dodgy c = isSpace c || c == ','
 
 showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
 showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRange version)

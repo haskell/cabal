@@ -39,7 +39,7 @@ hidden-modules:
 import-dirs:	IMPORT_DIR
 library-dirs:	LIB_DIR
 hs-libraries:   "HSCabal"
-extra-libs:
+extra-libraries:
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__) || defined(_MSC_VER)
 	     "shell32"
 #endif
@@ -47,10 +47,10 @@ extra-libs:
 include-dirs:
 includes:
 depends:	 	base
-extra-hugs-opts:
-extra-cc-opts:
-extra-ld-opts:
+hugs-options:
+cc-options:
+ld-options:
 framework-dirs:
-extra-frameworks:
+frameworks:
 haddock-interfaces:	HADDOCK_IFACE
 haddock-html:		HTML_DIR

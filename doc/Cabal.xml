@@ -440,9 +440,9 @@ Other-Modules:  A, C, Utils</programlisting>
               <literal>main-is:</literal> <replaceable>filename</replaceable>
             </term>
             <listitem>
-              <para>The name of the source file containing the main module,
-                relative to the <literal>hs-sources</literal> directory
-                (required).</para>
+              <para>The name of the source file containing the
+                <literal>Main</literal> module, relative to the
+                <literal>hs-source-dir</literal> directory (required).</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -878,12 +878,12 @@ main = defaultMain</programlisting>
 runhaskell Setup.hs configure --ghc
 runhaskell Setup.hs build
 runhaskell Setup.hs install</screen>
+      <para>The first line readies the system to build the tool using GHC;
+        for example, it checks that GHC exists on the system.  The second
+        line performs the actual building, while the last both copies
+        the build results to some permanent place and registers the
+        package with GHC.</para>
     </example>
-    <para>The first line readies the system to build the tool using GHC;
-      for example, it checks that GHC exists on the system.  The second
-      line performs the actual building, while the last both copies the
-      build results to some permanent place and registers the package
-      with GHC.</para>
 
     <example>
       <title>Building and installing a user package</title>
@@ -906,11 +906,19 @@ runhaskell Setup.hs configure --ghc --prefix=/usr
 runhaskell Setup.hs build
 runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
 (cd /tmp/mypkg; tar cf - .) | gzip -9 >mypkg.tar.gz</screen>
-      <para>After unpacking on the target system, the package must be
-        registered:</para>
-      <screen>runhaskell Setup.lhs register</screen>
-      <para>A similar procedure would be needed for creating Windows
-        installer packages.</para>
+
+      <para>If the package contains a library, you need two additional
+        steps:</para>
+      <screen>
+runhaskell Setup.hs register --gen-script
+runhaskell Setup.hs unregister --gen-script</screen>
+      <para>This creates shell scripts <filename>register.sh</filename>
+        and <filename>unregister.sh</filename>, which must also be sent
+        to the target system.  After unpacking there, the package must be
+        registered by running the <filename>register.sh</filename> script.
+        The <filename>unregister.sh</filename> script would be used
+        in the uninstall procedure of the package.  There is not yet a
+        similar procedure for creating Windows installer packages.</para>
     </example>
 
     <para>The following options are understood by all commands:</para>
@@ -1151,6 +1159,17 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
               database.</para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term><option>--gen-script</option></term>
+          <listitem>
+            <para>Instead of registering the package, generate a script
+              <filename>register.sh</filename> containing commands to
+              perform the register step.  This file might be included
+              in a binary bundle, to be run after the bundle is unpacked
+              on the target system.</para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </section>
 
@@ -1176,6 +1195,16 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
               database.</para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term><option>--gen-script</option></term>
+          <listitem>
+            <para>Instead of deregistering the package, generate a script
+              <filename>unregister.sh</filename> containing commands to
+              perform the unregister step.  This file might be included
+              in a binary bundle, to be run on the target system.</para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </section>
 
@@ -1187,15 +1216,60 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
 
     <section>
       <title>setup sdist</title>
-      <para>This command is intended to create a system- and
-        compiler-independent source distribution, but it's not working
-        yet.</para>
-
-        <para>The plan is to produce a file
+      <para>Create a system- and compiler-independent source distribution
+        in a file
         <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
-        which can be distributed to package builders.  When unpacked,
+        that can be distributed to package builders.  When unpacked,
         the commands listed in this section will be available.</para>
+
+      <para>However this command is not yet working in the simple build
+        infrastructure.</para>
     </section>
+  </section>
+
+  <section id="bugs">
+    <title>Known bugs and deficiencies</title>
+
+    <para>All these should be fixed in future versions:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>In the simple build infrastructure, the
+          <literal>sdist</literal> command does not work.</para>
+      </listitem>
+
+      <listitem>
+        <para>Cabal has some limitations both running under Hugs
+          and building packages for it:</para>
+        <itemizedlist>
+          <listitem>
+            <para>Cabal does not work with the current stable release
+              (Nov 2003), just the development version.</para>
+          </listitem>
+
+          <listitem>
+            <para>It doesn't work with Windows.</para>
+          </listitem>
+
+          <listitem>
+            <para>The <option>--user</option> option is unavailable.</para>
+          </listitem>
+
+          <listitem>
+            <para>There is no <literal>hugs-pkg</literal> tool.</para>
+          </listitem>
+        </itemizedlist>
+      </listitem>
+
+      <listitem>
+        <para>Though the library runs under Nhc98, it cannot build
+          packages for Nhc98.</para>
+      </listitem>
+
+    </itemizedlist>
+
+    <para>Please report any other flaws to
+      <email>libraries@haskell.org</email>.</para>
   </section>
 
 </article>

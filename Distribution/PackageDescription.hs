@@ -81,7 +81,7 @@ module Distribution.PackageDescription (
 import Control.Monad(liftM, foldM, when)
 import Data.Char
 import Data.Maybe(fromMaybe, fromJust, isNothing)
-import Text.PrettyPrint.HughesPJ(text, render, ($$), (<+>), empty, space, vcat, fsep)
+import Text.PrettyPrint.HughesPJ
 import System.Directory(doesFileExist)
 
 import Distribution.ParseUtils
@@ -331,7 +331,7 @@ basicStanzaFields =
  , simpleField "maintainer"
                            showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
- , listField   "build-depends"
+ , commaListField  "build-depends"
                            showDependency         parseDependency
                            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
@@ -381,14 +381,14 @@ binfoFields =
  [ simpleField "buildable"
                            (text . show)      parseReadS
                            buildable          (\val binfo -> binfo{buildable=val})
- , simpleField "cc-options"
-                           (fsep . map text)  (fmap words (munch (const True)))
+ , listField "cc-options"
+                           showToken	      parseTokenQ
                            ccOptions          (\val binfo -> binfo{ccOptions=val})
- , simpleField "ld-options"
-                           (fsep . map text)  (fmap words (munch (const True)))
+ , listField "ld-options"
+                           showToken	      parseTokenQ
                            ldOptions          (\val binfo -> binfo{ldOptions=val})
- , simpleField "frameworks"
-                           (fsep . map text)  (fmap words (munch (const True)))
+ , listField "frameworks"
+                           showToken	      parseTokenQ
                            frameworks         (\val binfo -> binfo{frameworks=val})
  , listField   "c-sources"
                            showFilePath       parseFilePathQ
@@ -397,10 +397,10 @@ binfoFields =
                            (text . show)      parseExtensionQ
                            extensions         (\exts  binfo -> binfo{extensions=exts})
  , listField   "extra-libs"
-                           text               parseLibNameQ
+                           showToken	      parseTokenQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
-                           text               parseLibNameQ
+                           showFilePath       parseFilePathQ
                            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
  , listField   "includes"
                            showFilePath       parseFilePathQ
@@ -449,7 +449,7 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza ((StanzaField name _ _ set):fields) pkg (lineNo, f, val)
+        parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
         parseBasicStanza [] pkg (lineNo, f, val) = do
@@ -465,7 +465,7 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
           myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
-        parseExecutableField ((StanzaField name _ _ set):fields) exe (lineNo, f, val)
+        parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
 	  | name == f = set lineNo val exe
 	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
 	parseExecutableField [] exe (lineNo, f, val) = do
@@ -505,7 +505,7 @@ parseHookedBuildInfo inp = do
     parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
 
 parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
-parseBInfoField ((StanzaField name _ _ set):fields) binfo (lineNo, f, val)
+parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
 	  | name == f = set lineNo val binfo
 	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
 parseBInfoField [] _ (lineNo, f, _) =
@@ -531,8 +531,10 @@ showPackageDescription pkg = render $
       ppFields (buildInfo exe) binfoFields
 
     ppFields _ [] = empty
-    ppFields pkg' ((StanzaField _ get _ _):flds) =
-           get pkg' $$ ppFields pkg' flds
+    ppFields pkg' ((StanzaField name get _):flds) =
+           ppField name (get pkg') $$ ppFields pkg' flds
+
+ppField name field = text name <> colon <+> field
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
 writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
@@ -550,8 +552,8 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
       ppFields bi binfoFields
 
     ppFields _  [] = empty
-    ppFields bi ((StanzaField _ get _ _):flds) =
-           get bi $$ ppFields bi flds
+    ppFields bi ((StanzaField name get _):flds) =
+           ppField name (get bi) $$ ppFields bi flds
 
 
 -- ------------------------------------------------------------
