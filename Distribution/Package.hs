@@ -52,7 +52,6 @@ module Distribution.Package (
         emptyBuildInfo,
         Executable(..),
         emptyExecutable,
-        allModules,
         setupMessage,
         withLib,
 #ifdef DEBUG
@@ -122,10 +121,10 @@ emptyPackageDescription
                      }
 
 -- |Get all the module names from this package
-allModules :: PackageDescription -> [String]
-allModules PackageDescription{executables=execs, library=lib}
-    = (concatMap (\e -> modules $ buildInfo e) execs)
-         ++ (maybe [] modules lib)
+-- allModules :: PackageDescription -> [String]
+-- allModules PackageDescription{executables=execs, library=lib}
+--     = (concatMap (\e -> modules $ buildInfo e) execs)
+--          ++ (maybe [] modules lib)
 
 -- |Set the name for this package. Convenience function.
 setPkgName :: String -> PackageDescription -> PackageDescription
