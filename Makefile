@@ -118,7 +118,11 @@ check: tests
 pushall:
 	darcs push --all ijones@cvs.haskell.org:/home/darcs/cabal
 
-dist: pushall haddock
+pushdist: pushall dist
+	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
+#	rm -f /tmp/cabal-code.tgz
+
+dist: haddock
 	darcs dist
 	mv cabal.tar.gz /tmp
 	cd /tmp && tar -zxvf cabal.tar.gz
@@ -128,7 +132,5 @@ dist: pushall haddock
 	cp -r /tmp/pkg-spec{-html,.pdf} /tmp/cabal/doc
 
 	cd /tmp && tar -zcvf cabal-code.tgz cabal
-	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
-#	rm -f /tmp/cabal-code.tgz
 	rm -f /tmp/cabal.tar.gz
 	rm -rf /tmp/cabal
