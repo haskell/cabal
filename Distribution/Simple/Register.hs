@@ -169,7 +169,7 @@ register pkg_descr lbi (userInst, genScript, verbose)
 	let allFlags = "--auto-ghci-libs":
 		       (register_flags
                         ++ config_flags)
-                       ++ if ghc_63_plus then ["-"] else []
+                       ++ if ghc_63_plus && genScript then ["-"] else []
         let pkgTool = compilerPkgTool (compiler lbi)
 
         if genScript
