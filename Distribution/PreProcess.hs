@@ -50,7 +50,7 @@ import Distribution.Setup (CompilerFlavor(..), compilerFlavor)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
 import Control.Monad (when)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile)
 import Distribution.Compat.FilePath
@@ -100,7 +100,8 @@ preprocessModule searchLoc mod handlers = do
 	[] -> die ("can't find source for " ++ mod)
 	(srcFile:_) -> do
 	    let (srcStem, ext) = splitFileExt srcFile
-	    case fromJust (lookup ext handlers) of -- FIX: can't fail?
+	    case fromMaybe (error "Internal error in preProcess module: Just expected")
+                     (lookup ext handlers) of -- FIX: can't fail?
 		Nothing -> return ExitSuccess
 		Just pp -> pp srcFile (srcStem `joinFileExt` "hs")
 
