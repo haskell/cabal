@@ -1,8 +1,10 @@
 * misc
+** if you're passing arguments to hooks, you shouldn't call
+   no_extra_flags, should you?  Perhaps it should be in the empty hooks.
+
 ** two executables in same directory fails because both create Main.o
 ** Executables that depend on the package itself
 ** make debian watchfile
-** postinst, test
 ** multiple libraries?
 ** find a real test case that uses preprocessors
 ** unregistering the package, etc
