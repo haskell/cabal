@@ -100,7 +100,7 @@ data PackageDescription
 	-- the following are required by the simple build infrastructure only:
         buildDepends   :: [ Dependency ],
         allModules     :: [ String ],
-        mainModules    :: [ String ],
+        mainModules    :: [ (String, String) ],
         cSources       :: [ FilePath ],
 	hsSourceDir    :: FilePath,
 	exposedModules :: [ String ],
@@ -201,7 +201,7 @@ parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines i
              return pkg{hsSourceDir=path}
         -- Module related
         parseDescHelp pkg (f@"main-modules", val) =
-          do xs <- runP f (parseCommaList moduleName) val
+          do xs <- runP f (parseCommaList mainModule) val
              return pkg{mainModules=xs}
         parseDescHelp pkg (f@"exposed-modules", val) =
           do xs <- runP f (parseCommaList moduleName) val
@@ -241,6 +241,13 @@ splitLines = merge . filter validLine . lines
 
 -- |parse a module name
 moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
+
+mainModule = do filename <- word
+                skipMany parseWhite
+                char ':'
+                skipMany parseWhite
+                modname <- moduleName
+                return (filename,modname)
 
 -- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st FilePath
@@ -317,7 +324,7 @@ testPkgDesc = unlines [
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Modules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig",
-        "Main-Modules: Distribution.Main",
+        "Main-Modules: cabal: Distribution.Main",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dir: src",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
@@ -345,7 +352,7 @@ testPkgDescAnswer =
                     allModules = ["Distribution.Package","Distribution.Version",
                                   "Distribution.Simple.GHCPackageConfig"],
 
-                    mainModules = ["Distribution.Main"],
+                    mainModules = [("cabal","Distribution.Main")],
                     cSources = ["not/even/rain.c", "such/small/hands"],
                     hsSourceDir = "src",
                     exposedModules = ["Distribution.Void", "Foo.Bar"],
