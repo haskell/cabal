@@ -1,4 +1,18 @@
 
+rawSystemEmit :: FilePath -- ^Script name
+              -> Bool     -- ^if true, emit, if false, run
+              -> Int      -- ^Verbosity
+              -> FilePath -- ^Program to run
+              -> [String] -- ^Args
+              -> IO ()
+rawSystemEmit _ False verbosity path args
+    = rawSystemExit verbosity path args
+rawSystemEmit scriptName True verbosity path args
+    = writeFile scriptName ("#!/bin/sh\n\n"
+                           ++ (path ++ concatMap (' ':) args)
+                           ++ "\n")
+      >> putStrLn (path ++ concatMap (' ':) args)
+
   -- build the executables
   sequence_ [rawSystemExit (compilerPath (compiler lbi)) ["--make", modName, "-o" ++ exeName]
              | (exeName, modName, _) <- executables pkg_descr]
