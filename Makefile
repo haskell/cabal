@@ -27,6 +27,10 @@ build-stamp: config
 install: build-stamp
 	./setup install $(USER_FLAG)
 
+# FIX: doesn't work because of preprocsesing.
+doc:
+	haddock --html --odir=dist/tmp/doc --title="The Haskell Cabal" --source=http://cvs.haskell.org/darcs/cabal/ `find Distribution -name "*.hs"`
+
 clean: clean-cabal clean-hunit clean-test
 
 clean-cabal:

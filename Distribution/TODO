@@ -4,6 +4,7 @@ RC:
 ** make sure module documentation (haddock) builds.
 ** Extensions
 - complain if their use makes the code non-portable?
+-- but what does this mean? ghc & hugs?
 - constructorless data-types?
 ** add description file format to doc. - esp field descriptions
 ** Look over rest of TODO list.  Should anything be promoted?
@@ -21,6 +22,7 @@ LOW
    which options are relevant to which commands.
 
 * 1.0 
+** add a make target or command for tests we know will fail?
 ** HC-PKG (see "Depends on HC-PKG" below)
 ** port code to windows
 ** ./Setup.lhs build for nhc
