@@ -26,6 +26,17 @@ LOW
 - should .installed-pkg-config be removed after successful register?
 ** Change name of Setup.description?
 
+
+* 0.2
+** It actually makes sense to have several libraries ("hs-packages")
+   in one package ("cabal-package"), look at wxhaskell for example.
+   - So, Library stanzas, I suppose
+   - ./setup build should take an optional list of build targets
+     (that is, library and executable names)
+   - The overloaded terminology is *way* confusing. Feh.
+** API Versioning? Libtool-style or just a major number?
+
+
 * 1.0 
 ** add a make target or command for tests we know will fail?
 ** HC-PKG (see "Depends on HC-PKG" below)
