@@ -66,10 +66,11 @@ import Distribution.Version (Version(..), VersionRange(..))
 
 import Data.List (intersperse, nub)
 import Data.Maybe(fromJust)
-import System.IO hiding (catch)
 import System.Directory
 import Control.Monad		( when, unless )
+#ifndef __NHC__
 import Control.Exception	( catch, evaluate )
+#endif
 import Prelude hiding (catch)
 
 #ifdef DEBUG
@@ -104,8 +105,12 @@ getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   str <- readFile localBuildInfoFile
   let bi = read str
+#ifndef __NHC__
   evaluate bi `catch` \_ -> 
 	die "error reading .setup-config; run ./Setup.lhs configure?\n"
+#else
+-- FIXME: Is there anything we can do here? DeepSeq?
+#endif
   return bi
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()

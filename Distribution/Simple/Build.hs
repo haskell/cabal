@@ -48,7 +48,7 @@ module Distribution.Simple.Build (
   ) where
 
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
-import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
+import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
                              BuildInfo(..), showPackageId, Executable(..), hasLibs)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)

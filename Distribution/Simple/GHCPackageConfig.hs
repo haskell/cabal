@@ -18,7 +18,8 @@ module Distribution.Simple.GHCPackageConfig (
         localPackageConfig
   ) where
 
-import Distribution.Package (PackageDescription(..), BuildInfo(..), pkgName, showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..),
+                             PackageIdentifier(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkImportDir)
 import Distribution.Simple.Utils(pathJoin)

@@ -1,3 +1,4 @@
+{-# OPTIONS_COMPILE -prelude #-}
 module Compat.H98 where
 
 class Error e where

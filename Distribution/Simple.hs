@@ -75,7 +75,7 @@ import Distribution.Version (Version(..), VersionRange(..),
 import System.Environment(getArgs)
 import System.Directory(removeFile)
 
-import Control.Exception(try)
+import System.IO.Error(try)
 import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
