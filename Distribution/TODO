@@ -1,7 +1,13 @@
 * Code
+** Extensions -> flags interface
+
 ** parse pkg.desc
 ** build
 ** install
+
+*** Installation for hugs-style (just copy source) is implemented.
+    also must implement for {g,n}hc style where we look for .o and .hi.
+
 ** register
 ** generate InstalledPackageInfo
 ** read & write config-droppings

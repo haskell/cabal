@@ -51,13 +51,20 @@ import Distribution.Package
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage)
 
+import Data.List(inits, nub, intersperse, findIndices)
+import System.Cmd(system)
+import System.Directory(doesDirectoryExist, createDirectory)
 import System.Exit
 
-install :: PackageDescription -> LocalBuildInfo -> IO ()
-install pkg_descr _ = do
-  setupMessage "Installing" pkg_descr
-  exitWith (ExitFailure 1)
 
+-- |FIX: for now, only works with hugs or sdist-style
+-- installation... must implement for .hi files and such...  how do we
+-- know which files to expect?
+install :: PackageDescription -> LocalBuildInfo -> IO ()
+install pkg_descr lbi = do
+  setupMessage "Installing" pkg_descr
+  moveSources (prefix lbi) (allModules pkg_descr) (mainModules pkg_descr)
+  exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
@@ -72,3 +79,72 @@ mkImportDir pkg_descr lbi =
   where 
 	pkg_name = showPackageId (package pkg_descr)
 
+-- |Put the source files into the right directory in preperation for
+-- something like sdist or installHugs.
+moveSources :: FilePath   -- ^Target directory
+            -> [FilePath] -- ^sources
+            -> [FilePath] -- ^Main modules
+            -> IO ()
+moveSources _targetDir sources mains
+    = do let targetDir = maybeAddSep _targetDir
+         createIfNotExists True targetDir
+	 -- Create parent directories for everything:
+	 mapM (createIfNotExists True)
+		  $ nub [(removeFilename $ targetDir ++ x)
+		   | x <- (sources ++ mains), (removeFilename x /= "")]
+	 -- Put sources into place:
+	 mapM system ["cp -r " ++ x ++ " " ++ targetDir ++ x
+				  | x <- sources ++ mains]
+	 return ()
+
+-- ------------------------------------------------------------
+-- * utility functions
+-- ------------------------------------------------------------
+
+-- |FIX: Do we actually have to make something differnet for windows,
+-- or does this work?
+pathSeperator = '/'
+pathSeperatorStr = [pathSeperator]
+
+createIfNotExists :: Bool     -- ^Create its parents too?
+		  -> FilePath -- ^The path to the directory you want to make
+		  -> IO ()
+createIfNotExists parents file
+    = do b <- doesDirectoryExist file
+	 case (b,parents, file) of 
+		  (_, _, "")    -> return ()
+		  (True, _, _)  -> return()
+		  (_, True, _)  -> createDirectoryParents file
+		  (_, False, _) -> createDirectory file
+
+-- |like mkdir -p.  Create this directory and its parents
+createDirectoryParents :: FilePath -> IO()
+createDirectoryParents file
+    = mapM_ (createIfNotExists False) (pathInits file)
+
+-- |Get this path and all its parents.
+pathInits :: FilePath -> [FilePath]
+pathInits path
+    = map (concat . intersperse pathSeperatorStr)
+      (inits $ mySplit pathSeperator path)
+
+-- |Give a list of lists breaking apart elements who match the given criteria
+
+--  > mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
+mySplit :: Eq a => a -> [a] -> [[a]]
+mySplit a l = let (upto, rest) = break (== a) l
+		  in if null rest
+		     then [upto]
+		     else upto:(mySplit a (tail rest))
+
+-- |Find the last slash and remove it and everything after it. Turns
+-- Foo/Bar.lhs into Foo
+removeFilename :: FilePath -> FilePath
+removeFilename path
+    = case findIndices (== pathSeperator) path of
+      [] -> path
+      l  -> fst $ splitAt (maximum l) path
+
+-- |If this filename doesn't end in the path separator, add it.
+maybeAddSep :: FilePath -> FilePath
+maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr

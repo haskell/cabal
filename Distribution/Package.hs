@@ -77,7 +77,8 @@ data PackageDescription
 
 	-- the following are required by the simple build infrastructure only:
         buildDepends   :: [ Dependency ],
-        allModules     :: [ String ],
+        allModules     :: [ FilePath ],
+        mainModules    :: [ FilePath ],
         cSources       :: [ FilePath ],
 	exposedModules :: [ String ],
         extensions     :: [ Extension ],
@@ -97,6 +98,7 @@ emptyPackageDescription
                       stability    = "",
                       buildDepends = [],
                       allModules   = [],
+                      mainModules   = [],
 		      cSources     = [],
 		      exposedModules = [],
                       extensions   = [],
