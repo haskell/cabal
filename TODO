@@ -1,10 +1,8 @@
 * misc
 ** make debian watchfile
-** postinst, test, copy?
+** postinst, test
 ** multiple libraries?
 ** find a real test case that uses preprocessors
-** sync w/ GHC distro
-** add noregister and nopostinst flags to install?
 ** unregistering the package, etc
 *** --user flag to unregister
 

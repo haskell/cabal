@@ -276,7 +276,7 @@ installCmd :: Cmd a
 installCmd = Cmd {
         cmdName        = "install",
         cmdHelp        = "Copy the files into the install locations.",
-        cmdDescription = "Unlike the copy command, 'install calls the register command.\nMulti-line!\n",
+        cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
         cmdOptions     = [cmd_help,
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
                "[deprecated, use copy] specify the directory in which to place installed files",

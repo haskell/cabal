@@ -183,11 +183,18 @@ tests currDir
               assertEqual "dist/src exists" False
             doesDirectoryExist "dist/build" >>=
               assertBool "dist/build doesn't exists",
-         TestLabel "package A: GHC and install-prefix" $ TestCase $ -- (uses above config)
+         TestLabel "package A: GHC and copy-prefix" $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
-            instRetCode <- system $ "./setup install --install-prefix=" ++ targetDir
+            instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
             checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
             doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
+              >>= assertBool "library doesn't exist"
+            assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestLabel "package A: GHC and copy to configure loc." $ TestCase $ -- (uses above config)
+         do let targetDir = ",tmp2"
+            instRetCode <- system $ "./setup copy"
+            checkTargetDir ",tmp/lib/test-1.0/" [".hi"]
+            doesFileExist (",tmp/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
