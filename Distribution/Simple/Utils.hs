@@ -109,7 +109,9 @@ splitFilePath p =
     (path,drive) = (reverse p,"")
 #endif
     (file,dir)   = break isPathSeparator path
-    (suf,pre)    = break (== '.') file
+    (suf,pre)    = case file of
+                     ".." -> ("..", "")
+                     _    -> break (== '.') file
     
     real_dir = case dir of
       []      -> "."++drive
@@ -463,6 +465,7 @@ hunitTests
             "justExt"      ~: (".",            "", "txt") ~=? (splitFilePath ".txt"),
             "rootDir"      ~: ("\\",        "foo",    "") ~=? (splitFilePath "\\foo"),
             "noFile"       ~: ("\\foo\\bar",   "",    "") ~=? (splitFilePath "\\foo\\bar\\"),
+            "parentDir"    ~: (".",          "..",    "") ~=? (splitFilePath ".."),
             "curDir"       ~: (".",            "",    "") ~=? (splitFilePath "."),
 	    "root"         ~: ("\\",           "",    "") ~=? (splitFilePath "\\"),
 	    "curDirDrive"  ~: ("c:.",          "",    "") ~=? (splitFilePath "c:."),
@@ -512,6 +515,7 @@ hunitTests
             "justExt"      ~: (".",           "", "txt") ~=? (splitFilePath ".txt"),
             "rootDir"      ~: ("/",        "foo",    "") ~=? (splitFilePath "/foo"),
             "noFile"       ~: ("/foo/bar",    "",    "") ~=? (splitFilePath "/foo/bar/"),
+            "parentDir"    ~: (".",         "..",    "") ~=? (splitFilePath ".."),
             "curDir"       ~: (".",           "",    "") ~=? (splitFilePath "."),
 	    "root"         ~: ("/",           "",    "") ~=? (splitFilePath "/")
 	   ],
