@@ -35,10 +35,10 @@ install: build-stamp
 	./setup install $(USER_FLAG)
 
 hugsbootstrap:
-	rm -rf dist/tmp
+	rm -rf dist/tmp dist/hugs
 	mkdir -p dist/tmp
 	mkdir dist/hugs
-	cp -r Distribution Compat dist/tmp
+	cp -r Distribution dist/tmp
 	hugs-package dist/tmp dist/hugs
 	cp Setup.lhs Setup.description dist/hugs
 
