@@ -60,7 +60,8 @@ import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
 import Distribution.Simple.SrcDist	( sdist )
-import Distribution.Simple.Register	( register, unregister, installedPkgConfigFile )
+import Distribution.Simple.Register	( register, unregister,
+                                          writeInstalledConfig, installedPkgConfigFile )
 
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
@@ -118,7 +119,8 @@ defaultMainNoRead pkg_descr
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		build buildPref pkg_descr localbuildinfo
-
+                writeInstalledConfig pkg_descr localbuildinfo
+ 
             CleanCmd -> do
                 (_, args) <- parseCleanArgs args []
                 no_extra_flags args
