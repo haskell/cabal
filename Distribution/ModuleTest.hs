@@ -133,8 +133,8 @@ tests currDir
             doesFileExist ",tmp/bin/wash2hs"
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
-            assertBool "wash2hs isn't +x" (executable perms),
-         TestLabel "testing the HUnit package" $ TestCase $ 
+            assertBool "wash2hs isn't +x" (executable perms)
+         ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             pkgConf <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
@@ -166,9 +166,9 @@ tests currDir
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
-            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove",
+            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove"
 
-         TestLabel "package A: configure GHC, sdist" $ TestCase $
+         ,TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf  <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
@@ -192,28 +192,41 @@ tests currDir
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False
             doesDirectoryExist "dist/build" >>=
-              assertBool "dist/build doesn't exists",
-         TestLabel "package A: GHC and copy-prefix" $ TestCase $ -- (uses above config)
+              assertBool "dist/build doesn't exists"
+         ,TestLabel "package A: GHC and copy-prefix" $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
             checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
             doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "package A: GHC and copy to configure loc." $ TestCase $ -- (uses above config)
+            assertEqual "install returned error code" ExitSuccess instRetCode
+         ,TestLabel "package A: GHC and copy to configure loc." $ TestCase $ -- (uses above config)
          do instRetCode <- system $ "./setup copy"
             checkTargetDir ",tmp/lib/test-1.0/" [".hi"]
             doesFileExist (",tmp/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
+            assertEqual "install returned error code" ExitSuccess instRetCode
+         ,TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
          do let targetDir = ",tmp/lib/test-1.0/"
             instRetCode <- system $ "./setup install --user"
             checkTargetDir targetDir [".hi"]
             doesFileExist (targetDir `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "package withHooks: GHC building" $ TestCase $
+            assertEqual "install returned error code" ExitSuccess instRetCode
+         ,TestLabel "package HSQL (make-based): GHC building" $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
+            system "make distclean"
+            system "rm -rf /tmp/lib/HSQL"
+            system "ghc -cpp --make -i../.. Setup.lhs -o setup 2>out.build"
+            assertCmd "./setup configure --ghc --prefix=/tmp"
+              "configure returned error code"
+            doesFileExist "config.mk" >>=
+              assertBool "config.mk not generated after configure"
+            assertCmd "./setup build" "build hsql returned error code"
+            assertCmd "./setup copy" "copy hsql returned error code"
+            doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
+              assertBool "libHSsql.a doesn't exist. copy failed."
+         ,TestLabel "package withHooks: GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
             system "make clean"
             system "make"
@@ -227,20 +240,20 @@ tests currDir
             doesFileExist "dist/build/C.o" >>=
               assertBool "C.testSuffix did not get compiled to C.o."
             doesFileExist "dist/build/D.o" >>=
-              assertBool "D.gc did not get compiled to D.o this is an overriding test",
-         TestLabel "package withHooks: GHC and copy" $ TestCase $
+              assertBool "D.gc did not get compiled to D.o this is an overriding test"
+         ,TestLabel "package withHooks: GHC and copy" $ TestCase $
          do let targetDir = ",tmp"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
             doesFileExist (",tmp/lib/withHooks-1.0/" `joinFileName` "libHSwithHooks-1.0.a")
               >>= assertBool "library doesn't exist"
             doesFileExist ",tmp/bin/withHooks"
               >>= assertBool "executable doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "package withHooks: GHC and clean" $ TestCase $
+            assertEqual "install returned error code" ExitSuccess instRetCode
+         ,TestLabel "package withHooks: GHC and clean" $ TestCase $
          do system "./setup clean"
             doesFileExist "C.hs" >>=
-               assertEqual "C.hs (a generated file) not cleaned." False,
-         TestLabel "package twoMains: GHC building" $ TestCase $
+               assertEqual "C.hs (a generated file) not cleaned." False
+         ,TestLabel "package twoMains: GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
             system "make clean"
             system "make"
@@ -254,8 +267,8 @@ tests currDir
             doesFileExist "dist/build/testB" >>= 
               assertBool "build did not create the executable: testB"
             assertCmd "./dist/build/testA isA" "A is not A"
-            assertCmd "./dist/build/testB isB" "B is not B",
-         TestLabel "package depOnLib: GHC building (executable depending on its lib)" $ TestCase $
+            assertCmd "./dist/build/testB isB" "B is not B"
+         ,TestLabel "package depOnLib: GHC building (executable depending on its lib)" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
             system "make clean"
             system "make"
@@ -275,7 +288,7 @@ tests currDir
             doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
               >>= assertBool "installed lib doesn't exist"
 
---          TestLabel "package A:no install-prefix and hugs" $ TestCase $
+--          ,TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
 --              "HUGS configure returned error code"
 --             assertCmd "./setup build"
