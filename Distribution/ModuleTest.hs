@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 
 -- |
@@ -41,8 +40,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.ModuleTest where
-#ifdef DEBUG
+module Main where
+
 -- Import everything, since we want to test the compilation of them:
 
 import qualified Distribution.Version as D.V (hunitTests)
@@ -234,7 +233,7 @@ main = do putStrLn "compile successful"
 combineCounts :: Counts -> Counts -> Counts
 combineCounts (Counts a b c d) (Counts a' b' c' d')
     = Counts (a + a') (b + b') (c + c') (d + d')
-#endif
+
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
 -- End:
