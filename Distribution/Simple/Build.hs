@@ -65,7 +65,8 @@ import Control.Monad (unless)
 import Control.Exception (try)
 import Data.List(nub)
 import System.Directory (removeFile)
-import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
+import qualified Distribution.Simple.GHCPackageConfig
+    as GHC (localPackageConfig, maybeCreatePackageConfig, canReadPackageConfig)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -105,13 +106,14 @@ buildNHC pkg_descr lbi = do
 buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildGHC pref pkg_descr lbi = do
   let ghcPath = compilerPath (compiler lbi)
-  (pkgConf, pkgConfExists) <- GHC.localPackageConfig
-  unless pkgConfExists $ writeFile pkgConf "[]\n"
+  GHC.maybeCreatePackageConfig
+  pkgConf <- GHC.localPackageConfig
+  pkgConfReadable <- GHC.canReadPackageConfig
   -- Build lib
   withLib pkg_descr $ \buildInfo' -> do
       createIfNotExists True (pathJoin [pref, hsSourceDir buildInfo'])
-      let args = ["-package-conf", pkgConf,
-                  "-package-name", pkgName (package pkg_descr),
+      let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+              ++ ["-package-name", pkgName (package pkg_descr),
                   "-odir", pathJoin [pref, hsSourceDir buildInfo'],
                   "-hidir", pathJoin [pref, hsSourceDir buildInfo']
                  ]
@@ -135,8 +137,8 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any executables
   sequence_ [ do createIfNotExists True (pathJoin [pref, hsSourceDir exeBi])
-                 let args = ["-package-conf", pkgConf,
-                             "-odir", pathJoin [pref, hsSourceDir exeBi],
+                 let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+                         ++ ["-odir", pathJoin [pref, hsSourceDir exeBi],
                              "-hidir", pathJoin [pref, hsSourceDir exeBi],
                              "-o", pathJoin [pref, hsSourceDir exeBi, exeName']
                             ]
