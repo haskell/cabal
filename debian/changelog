@@ -1,12 +1,27 @@
-haskell-cabal (0.0.1-2) unstable; urgency=low
+haskell-cabal (0.1-4) unstable; urgency=low
 
-  * Cleaned up scripts and name of binary.
+  * Added basic infrastructure for multiple targets, though
+    have not yet enabled it because it doesn't yet work upstream.
 
- -- Isaac Jones <ijones@debian.org>  Thu, 29 Jul 2004 10:37:31 -0400
+ -- John Goerzen <jgoerzen@complete.org>  Tue,  5 Oct 2004 19:45:27 -0500
 
-haskell-cabal (0.0.1-1) unstable; urgency=low
+haskell-cabal (0.1-3) unstable; urgency=low
 
-  * Initial Release.
+  * Fixed old postinst, postrm scripts to do the right thing in more cases.
 
- -- Isaac Jones <ijones@debian.org>  Wed, 28 Jul 2004 22:29:38 -0400
+ -- John Goerzen <jgoerzen@complete.org>  Tue,  5 Oct 2004 16:25:29 -0500
+
+haskell-cabal (0.1-2) unstable; urgency=low
+
+  * Install binary under /usr/lib/haskell-libraries/ghc6 in keeping
+    with new Haskell policy.
+
+ -- John Goerzen <jgoerzen@complete.org>  Tue,  5 Oct 2004 15:56:03 -0500
+
+haskell-cabal (0.1-1) unstable; urgency=low
+
+  * Initial release.  Closes: #275069.
+
+ -- John Goerzen <jgoerzen@complete.org>  Tue, 05 Oct 2004 13:36:08 -0500
+
 
