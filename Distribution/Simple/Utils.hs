@@ -68,15 +68,17 @@ module Distribution.Simple.Utils (
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 
-import GHC.IOBase(Exception(..), IOException(..),
-                  IOErrorType(InappropriateType), IOErrorType(..),
-                  ioe_type, throw)
-import Control.Monad(when)
+import Control.Monad(when, unless, liftM, mapM)
 import Data.List(inits, nub, intersperse, findIndices, partition)
 import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
-import System.IO
+import System.IO (hPutStr, stderr)
+import System.IO.Error
 import System.Exit
-import System.Cmd
+#ifdef __GLASGOW_HASKELL__
+import System.Cmd (rawSystem)
+#else
+import Compat.RawSystem (rawSystem)
+#endif
 import System.Environment
 import System.Directory
 
@@ -155,7 +157,6 @@ die msg = do hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
--- FIX: rawSystem does not exist in Hugs
 rawSystemPath :: String -> [String] -> IO ExitCode
 rawSystemPath prog args = do
   r <- findBinary prog
@@ -259,7 +260,6 @@ moduleToFilePath :: FilePath -- ^search location
 moduleToFilePath pref s possibleSuffixes
     = do let possiblePaths = moduleToPossiblePaths pref s possibleSuffixes
          matchList <- sequence $ map (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
---         sequence $ map (system . ("ls " ++)) possiblePaths
          return $ listToMaybe [x | (x, True) <- matchList]
 
 -- |Get the possible file paths based on this module name.
@@ -334,19 +334,20 @@ partitionIO f l
 
 -- |Remove a list of files; if it encounters a directory, it doesn't
 -- remove it, but returns it.  Throws everything that removeFile
--- throws except InappropriateType.
+-- throws unless the file is a directory.
 removeFiles :: [FilePath]    -- ^Files and directories to remove
             -> IO [FilePath]
             {- ^The ones we were unable to remove because they were of
                 an inappropriate type (directory) removeFiles -}
-removeFiles files
-    = (sequence $ map rm' files) >>= (return . catMaybes)
+removeFiles files = liftM catMaybes (mapM rm' files)
       where
        rm' :: FilePath -> IO (Maybe FilePath)
        rm' f = do  temp <- try (removeFile f)
                    case temp of
-                    Left (IOError{ioe_type=InappropriateType}) -> return $ Just f
-                    Left e  -> throw $ IOException e -- can't handle, throw.
+                    Left e  -> do isDir <- doesDirectoryExist f
+                                  -- If f is not a directory, re-throw the error
+                                  unless isDir $ ioError e
+                                  return (Just f)
                     Right _ -> return Nothing
 
 -- |Probably follows symlinks, be careful.
