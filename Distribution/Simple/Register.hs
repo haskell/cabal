@@ -179,7 +179,7 @@ mkInstalledPackageInfo pkg_descr lbi
 	IPI.category	      = category pkg_descr,
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
-	IPI.hiddenModules     = filter (`notElem` exposedModules lib) (modules lib),
+	IPI.hiddenModules     = hiddenModules lib,
         IPI.importDirs        = [mkLibDir pkg_descr lbi Nothing],
         IPI.libraryDirs       = [mkLibDir pkg_descr lbi Nothing],
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],

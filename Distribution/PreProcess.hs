@@ -44,7 +44,7 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
 
 import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-                             BuildInfo(..), Executable(..))
+                                        BuildInfo(..), Executable(..), biModules)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath,
                                   sequenceMap, removeFiles)
@@ -110,8 +110,9 @@ findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixe
          return $ ((concat exeFiles) ++ libFiles)
 
         where buildInfoSources :: BuildInfo -> [String] -> IO [FilePath]
-              buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} suffixes
-                  = sequence [moduleToFilePath dir modu suffixes | modu <- mods] >>= return . concat
+              buildInfoSources bi@BuildInfo{hsSourceDir=dir} suffixes
+                  = sequence [moduleToFilePath dir modu suffixes | modu <- biModules bi]
+                              >>= return . concat
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
@@ -123,7 +124,7 @@ removePreprocessedPackage pkg_descr r suff
          return ()
     where removePPBuildInfo :: BuildInfo -> IO ()
           removePPBuildInfo bi
-              = removePreprocessed (r `joinFileName` (hsSourceDir bi)) (modules bi) suff
+              = removePreprocessed (r `joinFileName` (hsSourceDir bi)) (biModules bi) suff
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location

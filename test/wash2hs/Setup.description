@@ -6,7 +6,7 @@ hs-source-dir: hs
 executable: wash2hs
 Build-Depends: text
 hs-source-dir: hs
-Modules: WASHClean,  WASHExpression,  WASHGenerator,  WASHOut,
-         WASHData,   WASHFlags,       WASHMain,       WASHParser,
-         WASHUtil
+Executable-Modules: WASHClean,  WASHExpression,  WASHGenerator,  WASHOut,
+                    WASHData,   WASHFlags,       WASHMain,       WASHParser,
+                    WASHUtil
 main-is: WASHMain.hs

@@ -55,7 +55,9 @@ module Distribution.PackageDescription (
         emptyBuildInfo,
         Executable(..),
         emptyExecutable,
-        allModules,
+        libModules,
+        exeModules,
+        biModules,
 #ifdef DEBUG
         hunitTests,
         test
@@ -130,11 +132,23 @@ emptyPackageDescription
                       executables  = []
                      }
 
--- |Get all the module names from this package
-allModules :: PackageDescription -> [String]
-allModules PackageDescription{executables=execs, library=lib}
-    = (concatMap (\e -> modules $ buildInfo e) execs)
-         ++ (maybe [] modules lib)
+-- |All the modules listed in this BuildInfo.
+biModules :: BuildInfo -> [String]
+biModules BuildInfo{executableModules=exeMods,
+                    exposedModules=expMods,
+                    hiddenModules=hMods}
+    = exeMods ++ hMods ++ expMods
+
+-- |Get all the module names from the libraries in this package
+libModules :: PackageDescription -> [String]
+libModules PackageDescription{library=lib}
+    = (maybe [] exposedModules lib)
+      ++ (maybe [] hiddenModules lib)
+
+-- |Get all the module names from the exes in this package
+exeModules :: PackageDescription -> [String]
+exeModules PackageDescription{executables=execs}
+    = concatMap (\e -> executableModules $ buildInfo e) execs
 
 -- |Set the name for this package. Convenience function.
 setPkgName :: String -> PackageDescription -> PackageDescription
@@ -149,39 +163,44 @@ setPkgVersion v desc@PackageDescription{package=pkgIdent}
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = case library p of
-            Just l  -> if null (cSources l) && null (modules l)
+            Just l  -> if null (cSources l)
+                          && null (hiddenModules l)
+                          && null (exposedModules l)
                        then False else True
             Nothing -> False
 
             
+-- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
-        buildDepends    :: [Dependency],
-        modules         :: [String],
-	exposedModules  :: [String],
-        cSources        :: [FilePath],
-        hsSourceDir     :: FilePath,
-        extensions      :: [Extension],
-        extraLibs       :: [String],
-        extraLibDirs    :: [String],
-        includeDirs     :: [FilePath],
-        includes        :: [FilePath],
-        options         :: [(CompilerFlavor,[String])]
+        buildDepends      :: [Dependency],
+        executableModules :: [String], -- Only used for executables
+	exposedModules    :: [String], -- Only used for libs
+	hiddenModules     :: [String], -- Only used for libs
+        cSources          :: [FilePath],
+        hsSourceDir       :: FilePath,
+        extensions        :: [Extension],
+        extraLibs         :: [String],
+        extraLibDirs      :: [String],
+        includeDirs       :: [FilePath],
+        includes          :: [FilePath],
+        options           :: [(CompilerFlavor,[String])]
     }
     deriving (Show,Read,Eq)
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
-                      buildDepends   = [],
-                      modules        = [],
-		      exposedModules = [], -- Only used for libs
-		      cSources       = [],
-		      hsSourceDir    = currentDir,
-                      extensions     = [],
-                      extraLibs      = [],
-                      extraLibDirs   = [],
-                      includeDirs    = [],
-                      includes       = [],
-                      options        = []
+                      buildDepends      = [],
+                      executableModules = [], -- Only used for executables
+		      exposedModules    = [], -- Only used for libs
+		      hiddenModules     = [], -- Only used for libs
+		      cSources          = [],
+		      hsSourceDir       = currentDir,
+                      extensions        = [],
+                      extraLibs         = [],
+                      extraLibDirs      = [],
+                      includeDirs       = [],
+                      includes          = [],
+                      options           = []
                      }
                      
 -- |Add options for a specific compiler. Convenience function.
@@ -279,12 +298,15 @@ binfoFields =
  [ listField   "build-depends"   
                            showDependency     parseDependency
                            buildDepends       (\xs    binfo -> binfo{buildDepends=xs})
- , listField   "modules"         
+ , listField   "hidden-modules"         
                            text               parseModuleNameQ
-                           modules            (\xs    binfo -> binfo{modules=xs})
+                           hiddenModules      (\xs    binfo -> binfo{hiddenModules=xs})
  , listField   "exposed-modules"
                            text               parseModuleNameQ
                            exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
+ , listField   "executable-modules"
+                           text               parseModuleNameQ
+                           exposedModules     (\xs    binfo -> binfo{executableModules=xs})
  , listField   "c-sources"
                            showFilePath       parseFilePathQ
                            cSources           (\paths binfo -> binfo{cSources=paths})
@@ -412,8 +434,8 @@ testPkgDesc = unlines [
         "Tested-with: GHC",
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
-        "Modules: Distribution.Package, Distribution.Version,",
-        "         Distribution.Simple.GHCPackageConfig",
+        "Hidden-Modules: Distribution.Package, Distribution.Version,",
+        "                Distribution.Simple.GHCPackageConfig",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dir: src",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
@@ -428,7 +450,7 @@ testPkgDesc = unlines [
         "-- Next is an executable",
         "Executable: somescript",
         "Main-is: SomeFile.hs",
-        "Modules: Foo1, Util, Main",
+        "Executable-Modules: Foo1, Util, Main",
         "HS-Source-Dir: scripts",
         "Extensions: OverlappingInstances"
         ]
@@ -454,9 +476,9 @@ testPkgDescAnswer =
                                          (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
                                           (LaterVersion (Version [1,0,0] ["rain"])))],
 
-                        modules = ["Distribution.Package","Distribution.Version",
-                                      "Distribution.Simple.GHCPackageConfig"],
-
+                        hiddenModules = ["Distribution.Package","Distribution.Version",
+                                         "Distribution.Simple.GHCPackageConfig"],
+                        executableModules=[],
                         cSources = ["not/even/rain.c", "such/small/hands"],
                         hsSourceDir = "src",
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
@@ -470,7 +492,7 @@ testPkgDescAnswer =
                     },
                     executables = [Executable "somescript" "SomeFile.hs" (
                       emptyBuildInfo{
-                        modules = ["Foo1","Util","Main"],
+                        executableModules = ["Foo1","Util","Main"],
                         hsSourceDir = "scripts",
                         extensions = [OverlappingInstances]
                       })]
