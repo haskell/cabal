@@ -1,34 +1,47 @@
 Name: Cabal
-Version: 0.2
+Version: 0.3
+Copyright: 2003-2005, Isaac Jones
 License: BSD3
-build-depends: haskell-src, posix
-Extensions: CPP
+Author: Isaac Jones <ijones@syntaxpolice.org>
+Maintainer: Isaac Jones <ijones@syntaxpolice.org>
+Package-URL: http://www.haskell.org/cabal/
+Description:
+	Common Architecture for Building Applications and Libraries:
+	a framework defining a common interface for authors to more
+	easily build their Haskell applications in a portable way.
+	.
+	The Haskell Cabal is meant to be a part of a larger infrastructure
+	for distributing, organizing, and cataloging Haskell libraries
+	and tools.
+Category: Distribution
 Exposed-Modules:
-        Distribution.Simple,
-        Distribution.Simple.Build,
-        Distribution.Simple.Install,
-        Distribution.Simple.Utils,
-        Distribution.Simple.Register,
-        Distribution.Simple.Configure,
-        Distribution.Simple.SrcDist,
-        Distribution.Simple.GHCPackageConfig,
-        Distribution.Simple.LocalBuildInfo,
-        Distribution.Version,
-        Distribution.GetOpt,
-        Distribution.Setup,
-        Distribution.PreProcess.Unlit,
-        Distribution.License,
-        Distribution.Extension,
-        Distribution.PackageDescription,
-        Distribution.Package,
-        Distribution.InstalledPackageInfo,
-        Distribution.ParseUtils,
-        Distribution.Make,
-        Distribution.PreProcess
+	Distribution.Extension,
+	Distribution.GetOpt,
+	Distribution.InstalledPackageInfo,
+	Distribution.License,
+	Distribution.Make,
+	Distribution.Package,
+	Distribution.PackageDescription,
+	Distribution.ParseUtils,
+	Distribution.PreProcess,
+	Distribution.PreProcess.Unlit,
+	Distribution.Setup,
+	Distribution.Simple,
+	Distribution.Simple.Build,
+	Distribution.Simple.Configure,
+	Distribution.Simple.GHCPackageConfig,
+	Distribution.Simple.Install,
+	Distribution.Simple.LocalBuildInfo,
+	Distribution.Simple.Register,
+	Distribution.Simple.SrcDist,
+	Distribution.Simple.Utils,
+	Distribution.Version
 Hidden-Modules:
-        Distribution.Compat.Error,
-        Distribution.Compat.Exception,
-        Distribution.Compat.RawSystem,
-        Distribution.Compat.ReadP,
-        Distribution.Compat.FilePath,
-        Distribution.Compat.Directory
+	Distribution.Compat.Directory,
+	Distribution.Compat.Error,
+	Distribution.Compat.Exception,
+	Distribution.Compat.FilePath,
+	Distribution.Compat.RawSystem,
+	Distribution.Compat.ReadP
+Build-Depends: base, mtl
+Extensions: CPP
