@@ -1,6 +1,3 @@
-** change all concat $ map to concatMap and sequence $ map to
-   sequenceMap
-
 ** sdist probably doesn't look in the right place, doesn't put in the
    files for executables
 
@@ -13,24 +10,12 @@
 
 ** what other preprocessors can't unlit?
 
-** several solutions to above problem:
--- remember the source files to remove somehow
--- move them into place first, then preprocess them, leave source
-   files there (depends on answer to below)
--- preprocess them, and put them in place in the new
-   location. best solution, but not set up well for that right now,
-   since we concat together the entire filename (including module name)
-
 ** is cpp ever run yet?
 
-
 ** for a source tarball:?
-- include the unpreprocessed sources...
 - if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
-
-** if the config file isn't there, output a better error message.
 
 ** clarify description filename issues
 - allow foo.hsproj?
