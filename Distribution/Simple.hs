@@ -85,10 +85,15 @@ defaultMain pkgconfig
 			  concat (intersperse "," (extra_flags)))
 		localbuildinfo <- configure pkgconfig flags
 		writePersistBuildConfig localbuildinfo
-             Left er -> putStrLn $ show er
+
+             Left err -> do 
+		hPutStr stderr (unlines err)
+		hPutStr stderr (optionHelpString helpprefix)
+
 --           (BuildCmd,       _) -> doBuildInstall build p
 --           (InstallCmd _,   _) -> doBuildInstall install p
---           (InfoCmd, _) -> print p
+
+	     _other -> die "unimplemented command\n"
          return ()
 
 emptyPackageConfig :: PackageConfig

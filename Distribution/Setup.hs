@@ -84,7 +84,6 @@ data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | InstallCmd (Maybe FilePath) -- install
             | SDistCmd                    -- sdist
-            | InfoCmd                     -- info
             | RegisterCmd                 -- register
             | UnregisterCmd               -- unregister
 	    | HelpCmd			  -- help
@@ -108,35 +107,45 @@ parseArgs args
              []  -> if HelpFlag `elem` flags then
 			Right (HelpCmd, unkFlags)
 		    else case commands' of
-                     		[]  -> Left ["No command detected"]
+                     		[]  -> Left ["Missing command"]
                      		[h] -> parseCommands h flags unkFlags
-                     		c   -> Left ["More than one command detected: " ++ (concat $ intersperse ", " c)]
+                     		c   -> Left ["Multiple commands: " ++ (concat $ intersperse ", " c)]
     where
     parseCommands :: String -- command
                   -> [Flag]
                   -> [String] -- unknown flags
                   -> Either [String] CommandLineOpts
-    parseCommands "configure" flags unkFlags
+    parseCommands str flags unkFlags
+	= case str of
+		"configure"  -> parseConfigure flags unkFlags
+		"install"    -> parseInstall flags unkFlags
+		"build"      -> noFlags str BuildCmd flags unkFlags
+		"sdist"      -> noFlags str SDistCmd flags unkFlags
+        	"register"   -> noFlags str RegisterCmd flags unkFlags
+        	"unregister" -> noFlags str UnregisterCmd flags unkFlags
+    		_            -> Left ["Unrecognised command: " ++ str]
+
+    parseConfigure flags unkFlags
         | not (any isInstallPrefix flags)
           = case getConfigFlags flags of
                Left err          -> Left [err]
                Right configFlags -> Right (ConfigCmd configFlags, unkFlags)
-    parseCommands "install" [InstPrefix m] unkFlags
+	| otherwise
+	  = commandSyntaxError "configure"
+
+    parseInstall [InstPrefix m] unkFlags
         = Right (InstallCmd $ Just m, unkFlags)
-    parseCommands "install" [] unkFlags
+    parseInstall  [] unkFlags
         = Right (InstallCmd Nothing, unkFlags)
-    parseCommands "build" [] unkFlags
-        = Right (BuildCmd, unkFlags)
-    parseCommands "sdist" [] unkFlags
-        = Right (SDistCmd, unkFlags)
-    parseCommands "info" [] unkFlags
-        = Right (InfoCmd, unkFlags)
-    parseCommands "register" [] unkFlags
-        = Right (RegisterCmd, unkFlags)
-    parseCommands "unregister" [] unkFlags
-        = Right (UnregisterCmd, unkFlags)
-    parseCommands c _ _
-        = Left $ ["command line syntax error for command: " ++ c]
+    parseInstall  _ _
+	= commandSyntaxError "install"
+
+    noFlags str cmd [] unkFlags 
+	= Right (cmd, unkFlags)
+    noFlags str cmd _ unkFlags
+	= commandSyntaxError str
+
+    commandSyntaxError c = Left ["Syntax error for command: " ++ c]
 
     isInstallPrefix :: Flag -> Bool
     isInstallPrefix (InstPrefix _) = True
@@ -181,7 +190,7 @@ options :: [OptDescr Flag]
 options = [Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
-           Option "w" ["with-compiler"] (ReqArg WithCompiler "COMPILER PATH")
+           Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
                "give the path to a particular compiler",
            Option "" ["prefix"] (ReqArg Prefix "DIR")
                "bake this prefix in preparation of installation",
@@ -197,7 +206,6 @@ commands = [("configure", "configure this package"),
             ("build", ""),
             ("install", ""),
             ("sdist", ""),
-            ("info", ""),
             ("register", ""),
             ("unregister","")
            ]
@@ -239,7 +247,6 @@ hunitTests =
                    | (flag, flagCmd) <- [("build", BuildCmd),
                                          ("install", InstallCmd Nothing),
                                          ("sdist", SDistCmd),
-                                         ("info", InfoCmd),
                                          ("register", RegisterCmd)]
                   ]
                ]
