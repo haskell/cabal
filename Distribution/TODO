@@ -1,7 +1,3 @@
-* Quick
-** fix "Seperator" - use pathJoin
-** use copyFile instead of "cp"
-
 * misc
 ** Possibly create a (native?) zib library?
 ** port code to windows
