@@ -185,8 +185,6 @@ tests currDir
               assertBool "build did not create the executable: testA"
             doesFileExist "dist/build/testB" >>= 
               assertBool "build did not create the executable: testB"
-            doesFileExist "dist/build/C.o" >>=
-              assertBool "C.testSuffix did not get compiled to C.o."
             assertCmd "./setup sdist"
              "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 
@@ -215,10 +213,6 @@ tests currDir
             doesFileExist (targetDir `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestLabel "package A: GHC and clean" $ TestCase $
-         do system "./setup clean"
-            doesFileExist "C.hs" >>=
-               assertEqual "C.hs (a generated file) not cleaned." False,
          TestLabel "package withHooks: GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
             system "make clean"
@@ -229,7 +223,9 @@ tests currDir
             assertCmd "./setup build"
               "build returned error code"
             doesFileExist "dist/build/withHooks" >>= 
-              assertBool "build did not create the executable: withHooks",
+              assertBool "build did not create the executable: withHooks"
+            doesFileExist "dist/build/C.o" >>=
+              assertBool "C.testSuffix did not get compiled to C.o.",
          TestLabel "package withHooks: GHC and copy" $ TestCase $
          do let targetDir = ",tmp"
             instRetCode <- system $ "./setup copy --copy-prefix=" ++ targetDir
@@ -238,6 +234,10 @@ tests currDir
             doesFileExist ",tmp/bin/withHooks"
               >>= assertBool "executable doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestLabel "package withHooks: GHC and clean" $ TestCase $
+         do system "./setup clean"
+            doesFileExist "C.hs" >>=
+               assertEqual "C.hs (a generated file) not cleaned." False,
          TestLabel "package twoMains: GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "twoMains")
             system "make clean"
