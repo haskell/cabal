@@ -101,7 +101,7 @@ data UserHooks = UserHooks
      runTests :: Bool -> IO ExitCode, -- ^Used for './setup test'
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
 
-     preConf  :: IO (Maybe PackageDescription),
+     preConf  :: ConfigFlags -> IO (Maybe PackageDescription),
      postConf :: IO ExitCode,
 
      preBuild  :: IO (Maybe PackageDescription),
@@ -110,16 +110,18 @@ data UserHooks = UserHooks
      preClean  :: IO (Maybe PackageDescription),
      postClean :: IO ExitCode,
 
-     preCopy  :: IO (Maybe PackageDescription),
+     preCopy  :: (Maybe FilePath) -- Copy Location
+                 -> IO (Maybe PackageDescription),
      postCopy :: IO ExitCode,
 
-     preInst  :: IO (Maybe PackageDescription),
+     preInst  :: Bool ->  IO (Maybe PackageDescription),
      postInst :: IO ExitCode, -- ^guaranteed to be run on target
 
      preSDist  :: IO (Maybe PackageDescription),
      postSDist :: IO ExitCode,
 
-     preReg  :: IO (Maybe PackageDescription),
+     preReg  :: Bool -- Install in the user's database?
+                -> IO (Maybe PackageDescription),
      postReg :: IO ExitCode,
 
      preUnreg  :: IO (Maybe PackageDescription),
@@ -178,13 +180,19 @@ defaultMainWorker pkg_descr_in action args hooks
                                            case maybeDesc of
                                             Nothing -> return pkg_descr_in
                                             Just x  -> return x
+         let hookOrInArgs f i = case hooks of
+                                 Nothing -> return pkg_descr_in
+                                 Just h -> do maybeDesc <- (f h) $ i
+                                              case maybeDesc of
+                                               Nothing -> return pkg_descr_in
+                                               Just x  -> return x
          let postHook f = case hooks of
                            Nothing -> return ExitSuccess
                            Just h  -> f h
          case action of
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs flags args []
-                pkg_descr <- hookOrInput preConf
+                pkg_descr <- hookOrInArgs preConf flags
                 no_extra_flags args
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig localbuildinfo
@@ -211,7 +219,7 @@ defaultMainWorker pkg_descr_in action args hooks
 
             CopyCmd mprefix -> do
                 (mprefix, _, args) <- parseCopyArgs mprefix args []
-                pkg_descr <- hookOrInput preCopy
+                pkg_descr <- hookOrInArgs preCopy mprefix
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		install buildPref pkg_descr localbuildinfo mprefix
@@ -219,7 +227,7 @@ defaultMainWorker pkg_descr_in action args hooks
 
             InstallCmd mprefix uInst -> do
                 ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
-                pkg_descr <- hookOrInput preInst
+                pkg_descr <- hookOrInArgs preInst uInst
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
                 -- FIX (HUGS): fix 'die' checks commands below.
@@ -239,7 +247,7 @@ defaultMainWorker pkg_descr_in action args hooks
 
             RegisterCmd uInst -> do
                 (uInst, _, args) <- parseRegisterArgs uInst args []
-                pkg_descr <- hookOrInput preReg
+                pkg_descr <- hookOrInArgs preReg uInst
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo uInst)
@@ -268,19 +276,19 @@ emptyUserHooks
       {
        runTests  = \_ -> res,
        readDesc  = rn,
-       preConf   = rn,
+       preConf   = \_ -> rn,
        postConf  = res,
        preBuild  = rn,
        postBuild = res,
        preClean  = rn,
        postClean = res,
-       preCopy   = rn,
+       preCopy   = \_ -> rn,
        postCopy  = res,
-       preInst   = rn,
+       preInst   = \_ -> rn,
        postInst  = res,
        preSDist  = rn,
        postSDist = res,
-       preReg    = rn,
+       preReg    = \_ -> rn,
        postReg   = res,
        preUnreg  = rn,
        postUnreg = res
@@ -292,13 +300,13 @@ defaultUserHooks :: UserHooks
 defaultUserHooks
     = emptyUserHooks
       {
-       preConf   = return Nothing,
+       preConf   = \_ -> return Nothing,
        preBuild  = readHook,
        preClean  = readHook,
-       preCopy   = readHook,
-       preInst   = readHook,
+       preCopy   = \_ -> readHook,
+       preInst   = \_ -> readHook,
        preSDist  = readHook,
-       preReg    = readHook,
+       preReg    = \_ -> readHook,
        preUnreg  = readHook
       }
     where readHook = readPackageDescription hookedPackageDesc >>= (return . Just)
