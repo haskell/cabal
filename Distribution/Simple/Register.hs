@@ -6,7 +6,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  
+-- Portability :  GHC, Hugs
 --
 -- Explanation: Perform the ".\/setup register" action.  Uses a
 -- drop-file for HC-PKG. See also InstalledPackageInfo
@@ -87,7 +87,7 @@ import HUnit (Test)
 -- Registration
 
 -- |Be sure to call writeInstalledConfig first.  If the --user flag
-                                                        -- was passed, and ~\/.ghc-packages is writable, or can be created,
+-- was passed, and ~\/.ghc-packages is writable, or can be created,
 -- then we use that file, perhaps creating it.
 
 register :: PackageDescription -> LocalBuildInfo
@@ -129,7 +129,6 @@ register pkg_descr lbi userInst
                               ++ config_flags)
       -- FIX (HUGS):
       Hugs -> do
-	let 
 	createIfNotExists True (hugsPackageDir pkg_descr lbi)
 	copyFile installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")

@@ -6,7 +6,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  
+-- Portability :  GHC, Hugs
 --
 -- Explanation: Data types and parser for the standard command-line
 -- setup.  Will also return commands it doesn't know about.
