@@ -170,8 +170,8 @@ moduleToFilePath pref s possibleSuffixes
          matchList <- mapM (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
          return [x | (x, True) <- matchList]
     where searchModuleToPossiblePaths :: String -> [String] -> FilePath -> [FilePath]
-          searchModuleToPossiblePaths s suffs searchP
-              = moduleToPossiblePaths searchP s suffs
+          searchModuleToPossiblePaths s' suffs searchP
+              = moduleToPossiblePaths searchP s' suffs
 
 -- |Get the possible file paths based on this module name.
 moduleToPossiblePaths :: FilePath -- ^search prefix
@@ -247,13 +247,13 @@ mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
 withTempFile :: FilePath -> String -> (FilePath -> IO a) -> IO a
 withTempFile tmp_dir extn action
   = do x <- getProcessID
-       findTempName tmp_dir x
+       findTempName x
   where 
-    findTempName tmp_dir x
+    findTempName x
       = do let filename = ("tmp" ++ show x) `joinFileExt` extn
 	       path = tmp_dir `joinFileName` filename
   	   b  <- doesFileExist path
-	   if b then findTempName tmp_dir (x+1)
+	   if b then findTempName (x+1)
 		else action path `finally` try (removeFile path)
 
 #ifdef mingw32_TARGET_OS
@@ -344,16 +344,23 @@ stripComments keepPragmas = stripCommentsLevel 0
 -- * Finding the description file
 -- ------------------------------------------------------------
 
+oldDescFile :: String
 oldDescFile = "Setup.description"
+
+cabalExt :: String
 cabalExt = "cabal"
+
+buildInfoExt  :: String
 buildInfoExt = "buildinfo"
 
 matchesDescFile :: FilePath -> Bool
 matchesDescFile p = (snd $ splitFileExt p) == cabalExt
                     || p == oldDescFile
 
+noDesc :: IO a
 noDesc = die $ "No description file found, please create a cabal-formatted description file with the name <pkgname>." ++ cabalExt
 
+multiDesc :: [String] -> IO a
 multiDesc l = die $ "Multiple description files found.  Please use only one of : "
                       ++ show (filter (/= oldDescFile) l)
 

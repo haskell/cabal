@@ -1,5 +1,5 @@
 CABALVERSION=0.4
-GHCFLAGS= --make -W -fno-warn-unused-matches -cpp
+GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =

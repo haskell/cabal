@@ -62,14 +62,14 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..), Library (..),
-	setupMessage, hasLibs, withLib, libModules, withExe, exeModules,
+	setupMessage, hasLibs, withLib, libModules, withExe,
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName, die)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
-import Control.Monad(when, unless)
+import Control.Monad(when)
 import Data.Maybe(fromMaybe)
 import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath(joinFileName, dllExtension,
@@ -143,7 +143,6 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
     let progBuildDir = buildPref `joinFileName` "programs"
     let progInstallDir = libPref `joinFileName` "programs"
-    let progTargetDir = targetLibPref `joinFileName` "programs"
     withExe pkg_descr $ \ exe -> do
         let buildDir = progBuildDir `joinFileName` exeName exe
         let installDir = progInstallDir `joinFileName` exeName exe

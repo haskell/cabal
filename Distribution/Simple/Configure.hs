@@ -288,13 +288,13 @@ compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> IO Version
-configCompilerVersion GHC compiler =
+configCompilerVersion GHC compilerPath =
   withTempFile "." "" $ \tmp -> do
-    maybeExit $ system (compiler ++ " --version >" ++ tmp)
+    maybeExit $ system (compilerPath ++ " --version >" ++ tmp)
     str <- readFile tmp
     case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
 	[v] -> return v
-	_   -> die ("cannot determine version of " ++ compiler ++ ":\n  "
+	_   -> die ("cannot determine version of " ++ compilerPath ++ ":\n  "
 			++ str)
 configCompilerVersion _ _ = return Version{ versionBranch=[],versionTags=[] }
 
@@ -319,11 +319,11 @@ message s = putStrLn $ "configure: " ++ s
 -- Tests
 
 #ifdef DEBUG
-packageID = PackageIdentifier "Foo" (Version [1] [])
 
 hunitTests :: [Test]
 hunitTests = []
 {- Too specific:
+packageID = PackageIdentifier "Foo" (Version [1] [])
     = [TestCase $
        do let simonMarGHCLoc = "/usr/bin/ghc"
           simonMarGHC <- configure emptyPackageDescription {package=packageID}

@@ -165,6 +165,7 @@ splitStanzas = mapM mkStanza . map merge . groupStanzas . filter validLine . zip
         groupStanzas xs = let (ys,zs) = break allSpaces xs
                            in ys : groupStanzas (dropWhile allSpaces zs)
 
+allSpaces :: (a, String) -> Bool
 allSpaces (_,xs) = all isSpace xs
 
 -- |Split a file into "Field: value" groups, but blank lines have no
@@ -177,6 +178,7 @@ singleStanza = mkStanza . merge . filter validLine . zip [1..] . lines
                             []        -> False      -- blank line
                             _         -> True
 
+merge :: [(a, [Char])] -> [(a, [Char])]
 merge ((n,x):(_,c:s):ys) 
   | c == ' ' || c == '\t' = case dropWhile isSpace s of
                                ('.':s') -> merge ((n,x++"\n"++s'):ys)
@@ -195,15 +197,15 @@ mkStanza ((n,xs):ys) =
        return ((n, fld, dropWhile isSpace val):ss)
     (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"
   where
-    checkDuplField fld [] = return ()
-    checkDuplField fld (x'@(n',fld',val'):xs')
+    checkDuplField _ [] = return ()
+    checkDuplField fld ((n',fld',_):xs')
       | fld' == fld = fail ("The field "++fld++" is defined on both line "++show n++" and "++show n')
       | otherwise   = checkDuplField fld xs'
 
 -- |parse a module name
 parseModuleNameQ :: ReadP r String
-parseModuleNameQ = parseQuoted mod <++ mod
- where mod = do 
+parseModuleNameQ = parseQuoted modu <++ modu
+ where modu = do 
 	  c <- satisfy isUpper
 	  cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
 	  return (c:cs)
