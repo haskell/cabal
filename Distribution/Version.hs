@@ -61,11 +61,11 @@ module Distribution.Version (
 #endif
  ) where
 
+import Control.Monad    ( liftM )
+import Data.Char        ( isDigit, isAlpha )
 import Data.List	( intersperse )
 
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Language
-import qualified Text.ParserCombinators.Parsec.Token as P
+import Compat.ReadP
 
 #ifdef DEBUG
 import HUnit
@@ -195,143 +195,22 @@ showVersionRange (IntersectVersionRanges r1 r2)
 -- * Parsing
 -- ------------------------------------------------------------
 
-word :: GenParser Char st String
-word = many1 letter <?> "word"
-
 --  -----------------------------------------------------------
-parseVersionRange :: GenParser Char st VersionRange
-parseVersionRange =     (do reservedOp "<"
-                            v <- parseVersion
-                            return $ EarlierVersion v)
-                    <|> (do reservedOp ">"
-                            v <- parseVersion
-                            return $ LaterVersion v)
-                    <|> (do reservedOp ">="
-                            v <- parseVersion
-                            return $ orLaterVersion v)
-                    <|> (do reservedOp "<="
-                            v <- parseVersion
-                            return $ orEarlierVersion v)
-                    <|> (do reservedOp "=="
-                            v <- parseVersion
-                            return $ ThisVersion v)
-
+parseVersionRange :: ReadP r VersionRange
+parseVersionRange = choice [ string s >> liftM f parseVersion
+                           | (s,f) <- rangeOps ]
+  where rangeOps = [ ("<",  EarlierVersion),
+                     ("<=", orEarlierVersion),
+                     (">",  LaterVersion),
+                     (">=", orLaterVersion),
+                     ("==", ThisVersion) ]
 
 --  -----------------------------------------------------------
 -- |Parse any kind of version
-parseVersion :: GenParser Char st Version
-parseVersion
-    = do branch <- branchParser
-         tags   <- many (char '-' >> word)
-         return Version{versionBranch=branch, versionTags=tags}
-
---  -----------------------------------------------------------
--- |Parse a version of the form 1.2.3
-branchParser :: GenParser Char st [Int]
-branchParser
-    = do n <- number
-	 bs <- many branches
-	 return (n : bs)
-
---branches :: GenParser Char st [Int]
-branches
-    = do char '.'
-	 n <- number
-         return (n)
-
-number :: (Integral a, Read a) => GenParser Char st a
-number  = do{ ds <- many1 digit
-            ; return (read ds)
-            }
-        <?> "number"
-
--- -----------------------------------------------------------------------------
--- Parsing dates
-
-{-
--- Here is some code for parsing dates.  We might need this at some point.
-
--- |Seperate the date with typically a '.' or a '-', /sep/
-dateSeparatedBy :: Char -> GenParser Char () Version
-dateSeparatedBy sep
-    = try (do year  <- number -- 2003.01.15, 2003.1.15
-              char sep
-              month <- number
-              char sep
-              day   <- number
-              return $ DateVersion year (toEnum $ month - 1) day)
-      <|>  try (do year  <- number -- 2003-Jan-15
-                   char sep
-                   month <- shortMonthParser
-                   char sep
-                   day   <- number
-                   return $ DateVersion year month day)
-
-      <|>  try (do month <- shortMonthParser -- Nov-2002
-                   char sep
-                   year  <- number
-                   return $ DateVersion year month 0)
-
-      <|>  try (do year  <- number -- 2003-January-15
-                   char sep
-                   month <- word
-                   char sep
-                   day   <- number
-                   return $ DateVersion year (read month) day)
-
-dateVersionParser :: Parser String
-dateVersionParser 
-    = try (dateSeparatedBy '.')
-      <|> (dateSeparatedBy '-')
-
-shortMonthParser :: Parser Month
-shortMonthParser = foldl1 (<|>) [do reserved a;return b | (a,b)
-                                 <- [("Jan", January),   ("Feb", February),
-                                     ("Mar", March),     ("Apr", April), 
-                                     ("May", May),       ("Jun", June),
-                                     ("Jul", July),      ("Aug", August),
-                                     ("Sep", September), ("Oct", October),
-                                     ("Nov", November),  ("Dec", December)]]
--}
-
-lexer :: P.TokenParser st
-lexer  = P.makeTokenParser 
-         (emptyDef
-
-         { P.reservedNames = ["Jan","Feb", "Mar", "Apr", "May", "Jun",
-                              "Jul", "Aug", "Sept", "Oct", "Nov", "Dec", "any"
-                             ],
-           P.identStart    = letter <|> char '_',
-           P.identLetter    = alphaNum <|> oneOf "_'",
-           P.reservedOpNames = ["<", ">", "<=", ">=", "==", "-"]
-         })
-
-whiteSpace :: CharParser st ()
-whiteSpace = P.whiteSpace lexer
-
-lexeme :: CharParser st a -> CharParser st a
-lexeme = P.lexeme lexer
-
-symbol :: String -> CharParser st String
-symbol = P.symbol lexer
-
-natural :: CharParser st Integer
-natural = P.natural lexer
-
-parens :: CharParser st a -> CharParser st a
-parens  = P.parens lexer
-
-semi :: CharParser st String
-semi = P.semi lexer
-
-identifier :: CharParser st String
-identifier = P.identifier lexer
-
-reserved :: String -> CharParser st ()
-reserved = P.reserved lexer
-
-reservedOp :: String -> CharParser st ()
-reservedOp = P.reservedOp lexer
+parseVersion :: ReadP r Version
+parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
+                  tags   <- many (char '-' >> munch1 isAlpha)
+                  return Version{versionBranch=branch, versionTags=tags}
 
 #ifdef DEBUG
 -- ------------------------------------------------------------
@@ -340,18 +219,20 @@ reservedOp = P.reservedOp lexer
 
 -- |Simple version parser wrapper
 doVersionParse :: String -> Either String Version
-doVersionParse input = let x = parse parseVersion "" input
-                        in case x of
-                           Left err -> Left (show err)
-                           Right y  -> Right y
+doVersionParse input = case results of
+                         [y] -> Right y
+                         []  -> Left "No parse"
+                         _   -> Left "Ambigous parse"
+  where results = [ x | (x,"") <- readP_to_S parseVersion input ]
 
 -- |Version range parsing
 doVersionRangeParse :: String -> Either String VersionRange
-doVersionRangeParse input
-    = let x = parse parseVersionRange "" input
-          in case x of
-             Left err -> Left (show err)
-             Right y  -> Right y
+doVersionRangeParse input = case results of
+                              [y] -> Right y
+                              []  -> Left "No parse"
+                              _   -> Left "Ambigous parse"
+  where results = [ x | (x,"") <- readP_to_S parseVersionRange input ]
+
 branch1 :: [Int]
 branch1 = [1]
 
