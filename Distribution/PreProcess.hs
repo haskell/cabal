@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
-                                ppCpp, ppCppHaddock, ppGreenCard, ppC2hs, ppHsc2hs,
+                                ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
 				ppHappy, ppAlex, ppUnlit
                                )
     where
@@ -189,17 +189,16 @@ ppUnlit inFile outFile verbose = do
     return ExitSuccess
 
 ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp = ppCppHaddock False
+ppCpp = ppCpp' []
 
-ppCppHaddock :: Bool -> PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCppHaddock forHaddock pkg_descr bi lbi
+ppCpp' :: [String] -> PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp' inputArgs pkg_descr bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
-        extraArgs = "--noline" : compOrHaddock ++ sysDefines ++
-                incOptions ++ ccOptions bi
+        extraArgs = "--noline" :  sysDefines ++
+                incOptions ++ ccOptions bi ++ inputArgs
 	hc = compiler lbi
-        compOrHaddock = if forHaddock then ["-D__HADDOCK__"] else hcDefines hc
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
