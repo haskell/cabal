@@ -1,8 +1,5 @@
 * misc
 
-** give usage message before erroring when no description file?
-** give better error message for missing description file
-
 ** unregistering the package, etc
 
 *** think about HC-PKG's role here. maybe HC-PKG should do all this
