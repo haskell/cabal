@@ -68,7 +68,8 @@ import Directory(setCurrentDirectory, doesFileExist,
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
-import HUnit(runTestTT, Test(..), Counts, assertBool, assertEqual, Assertion)
+import HUnit(runTestTT, Test(..), Counts(..), assertBool,
+             assertEqual, Assertion, showCounts)
 
 label :: String -> String
 label t = "-= " ++ t ++ " =-"
@@ -124,13 +125,13 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             when dirE1 (system "rm -r ,tmp">>return())
             dirE2 <- doesDirectoryExist "dist"
             when dirE2 (system "rm -r dist">>return())
-            system "./setup configure --ghc --prefix=,tmp"
-             >>= assertEqual "configure returned error code" ExitSuccess
-            system "./setup build"
-             >>= assertEqual "build returned error code" ExitSuccess
+            assertCmd "./setup configure --ghc --prefix=,tmp"
+              "configure returned error code"
+            assertCmd "./setup build"
+              "build returned error code"
 
-            system "./setup sdist"
-             >>= assertEqual "setup sdist returned error code" ExitSuccess
+            assertCmd "./setup sdist"
+             "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
@@ -152,10 +153,10 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "no install-prefix and hugs" $ TestCase $
-         do system "./setup configure --hugs --prefix=,tmp"
-             >>= assertEqual "HUGS configure returned error code" ExitSuccess
-            system "./setup build"
-             >>= assertEqual "HUGS build returned error code" ExitSuccess
+         do assertCmd "./setup configure --hugs --prefix=,tmp"
+             "HUGS configure returned error code"
+            assertCmd "./setup build"
+             "HUGS build returned error code"
             instRetCode <- system "./setup install --user"
             let targetDir = ",tmp/lib/test-1.0/"
             checkTargetDir targetDir [".hs"]
@@ -165,7 +166,7 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
-          runTestTT' $ TestList $
+          count1 <- runTestTT' $ TestList $
                         (TestLabel "Utils Tests" $ TestList D.S.U.hunitTests):
                         (TestLabel "Setup Tests" $ TestList D.Setup.hunitTests):
                         (TestLabel "config Tests" $ TestList D.S.C.hunitTests):
@@ -173,8 +174,15 @@ main = do putStrLn "compile successful"
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
                            D.P.hunitTests ++ D.M.hunitTests)
-          runTestTT' $ TestList tests
+          count2 <- runTestTT' $ TestList tests
+          putStrLn "-------------"
+          putStrLn "Test Summary:"
+          putStrLn $ showCounts $ combineCounts count1 count2
           return ()
+
+combineCounts :: Counts -> Counts -> Counts
+combineCounts (Counts a b c d) (Counts a' b' c' d')
+    = Counts (a + a') (b + b') (c + c') (d + d')
 
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
