@@ -77,7 +77,7 @@ import Distribution.Package (PackageDescription(..), showPackageId,
                              BuildInfo(..), hasLibs)
 
 import Control.Monad(when, unless, liftM, mapM)
-import Data.List(inits, nub, intersperse, findIndices, partition)
+import Data.List(nub, intersperse, findIndices)
 import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
 import System.IO (hPutStr, stderr, hFlush, stdout
 #ifdef __GLASGOW_HASKELL__
@@ -106,8 +106,8 @@ import HUnit ((~:), (~=?), Test(..), assertEqual)
 splitFilePath :: FilePath -> (String, String, String)
 splitFilePath p =
   case pre of
-    []      -> (reverse real_dir, reverse suf, [])
-    (_:pre) -> (reverse real_dir, reverse pre, reverse suf)
+    []       -> (reverse real_dir, reverse suf, [])
+    (_:pre') -> (reverse real_dir, reverse pre', reverse suf)
   where
 #ifdef mingw32_TARGET_OS
     (path,drive) = break (== ':') (reverse p)
@@ -120,9 +120,9 @@ splitFilePath p =
                      _    -> break (== '.') file
     
     real_dir = case dir of
-      []      -> "."++drive
-      [_]     -> pathSeparatorStr++drive
-      (_:dir) -> dir++drive
+      []       -> "."++drive
+      [_]      -> pathSeparatorStr++drive
+      (_:dir') -> dir'++drive
 
 -- | Join extension to file path
 joinExt :: FilePath -> String -> String
@@ -154,8 +154,8 @@ pathInits p =
        (root,path) = ("",p)
 #endif
        (root',path') = case path of
-         (c:path) | isPathSeparator c -> (root++pathSeparatorStr,path)
-         _                            -> (root,path)
+         (c:path'') | isPathSeparator c -> (root++pathSeparatorStr,path'')
+         _                              -> (root,path)
          
        dropEmptyPath ("":paths) = paths
        dropEmptyPath paths      = paths
@@ -169,8 +169,8 @@ pathInits p =
            _    -> "" : map (joinFilenameDir pre) (inits suf)
          where
            (pre,suf) = case break isPathSeparator cs of
-              (pre,"")    -> (pre, "")
-              (pre,_:suf) -> (pre,suf)
+              (pre',"")    -> (pre', "")
+              (pre',_:suf') -> (pre',suf')
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =

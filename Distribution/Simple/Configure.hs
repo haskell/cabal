@@ -61,7 +61,7 @@ import Distribution.Misc(Dependency(..), extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), PackageIdentifier(..),
-                            BuildInfo(..), Executable(..)
+                            BuildInfo(..), Executable(..), emptyPackageDescription
                            )
 import Distribution.Simple.Utils (die, setupMessage, findBinary, 
                                   splitFilePath, joinFilenameDir,  joinExt)
