@@ -183,9 +183,17 @@ withinRange v1 (IntersectVersionRanges v2 v3)
 
 showVersionRange :: VersionRange -> String
 showVersionRange AnyVersion = "-any"
-showVersionRange (ThisVersion v) = '=' : showVersion v
+showVersionRange (ThisVersion v) = '=' : '=' : showVersion v
 showVersionRange (LaterVersion v) = '>' : showVersion v
 showVersionRange (EarlierVersion v) = '<' : showVersion v
+showVersionRange (UnionVersionRanges (ThisVersion v1) (LaterVersion v2))
+  | v1 == v2 = '>' : '=' : showVersion v1
+showVersionRange (UnionVersionRanges (LaterVersion v2) (ThisVersion v1))
+  | v1 == v2 = '>' : '=' : showVersion v1
+showVersionRange (UnionVersionRanges (ThisVersion v1) (EarlierVersion v2))
+  | v1 == v2 = '<' : '=' : showVersion v1
+showVersionRange (UnionVersionRanges (EarlierVersion v2) (ThisVersion v1))
+  | v1 == v2 = '<' : '=' : showVersion v1
 showVersionRange (UnionVersionRanges r1 r2) 
   = showVersionRange r1 ++ "||" ++ showVersionRange r2
 showVersionRange (IntersectVersionRanges r1 r2) 
@@ -197,9 +205,24 @@ showVersionRange (IntersectVersionRanges r1 r2)
 
 --  -----------------------------------------------------------
 parseVersionRange :: ReadP r VersionRange
-parseVersionRange = choice [ string s >> liftM f parseVersion
-                           | (s,f) <- rangeOps ]
-  where rangeOps = [ ("<",  EarlierVersion),
+parseVersionRange = do
+  f1 <- factor
+  (do
+     string "||"
+     f2 <- factor
+     return (UnionVersionRanges f1 f2)
+   +++
+   do    
+     string "&&"
+     f2 <- factor
+     return (IntersectVersionRanges f1 f2)
+   +++
+   return f1)
+  where 
+        factor   = choice ((string "-any" >> return AnyVersion) :
+	                            [ string s >> liftM f parseVersion
+                                    | (s,f) <- rangeOps ])
+        rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
                      (">=", orLaterVersion),

@@ -63,6 +63,7 @@ import Control.Exception(bracket)
 import Data.Char
 import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
+import Text.PrettyPrint.HughesPJ
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, 
@@ -208,71 +209,74 @@ showError (FromString s Nothing)  = s
 myError :: LineNo -> String -> Either PError a
 myError n s = Left $ FromString s (Just n)
 
-data Field a 
-  = Field 
+data StanzaField a 
+  = StanzaField 
       { fieldName     :: String
-      , fieldGet      :: a -> String
+      , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> Either PError a
       }
 
-basicStanzaFields :: [Field PackageDescription]
+basicStanzaFields :: [StanzaField PackageDescription]
 basicStanzaFields =
  [ simpleField "name"
-                           id                     parsePackageName
+                           text                   parsePackageName
                            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
-                           showVersion            parseVersion 
+                           (text . showVersion)   parseVersion 
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , licenseField "license" False
                            license                (\l pkg -> pkg{license=l})
  , licenseField "license-file" True
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
-                           id                     (munch (const True))
+                           text                   (munch (const True))
                            copyright              (\val pkg -> pkg{copyright=val})
  , simpleField "maintainer"
-                           id                     (munch (const True))
+                           text                   (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
  , simpleField "stability"
-                           id                     (munch (const True))
+                           text                   (munch (const True))
                            stability              (\val pkg -> pkg{stability=val})
  ]
 
-executableStanzaFields :: [Field Executable]
+executableStanzaFields :: [StanzaField Executable]
 executableStanzaFields =
  [ simpleField "executable"
-                           id                 (munch (const True))
+                           text               (munch (const True))
                            exeName            (\xs    exe -> exe{exeName=xs})
  , simpleField "main-is"
-                           id                 parseFilePath
+                           showFilePath       parseFilePath
                            modulePath         (\xs    exe -> exe{modulePath=xs})
  ]
 
-binfoFields :: [Field BuildInfo]
+binfoFields :: [StanzaField BuildInfo]
 binfoFields =
  [ listField   "build-depends"   
                            showDependency     parseDependency
                            buildDepends       (\xs    binfo -> binfo{buildDepends=xs})
  , listField   "modules"         
-                           id                 parseModuleName
+                           text               parseModuleName
                            modules            (\xs    binfo -> binfo{modules=xs})
  , listField   "exposed-modules"
-                           id                 parseModuleName
+                           text               parseModuleName
                            exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
  , listField   "c-sources"
-                           id                 parseFilePath
+                           showFilePath       parseFilePath
                            cSources           (\paths binfo -> binfo{cSources=paths})
  , listField   "extensions"
-                           show               parseExtension
+                           (text . show)      parseExtension
                            extensions         (\exts  binfo -> binfo{extensions=exts})
  , listField   "extra-libs"
-                           id                 parseLibName
+                           text               parseLibName
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "includes"
-                           id                 parseFilePath
+                           showFilePath       parseFilePath
                            includes           (\paths binfo -> binfo{includes=paths})
+ , listField   "include-dirs"
+                           showFilePath       parseFilePath
+                           includes           (\paths binfo -> binfo{includeDirs=paths})
  , simpleField "hs-source-dir"
-                           id                 parseFilePath
+                           showFilePath       parseFilePath
                            hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
  , optsField   "options-ghc"  GHC
                            options            (\path  binfo -> binfo{options=path})
@@ -282,31 +286,31 @@ binfoFields =
                            options            (\path  binfo -> binfo{options=path})
  ]
 
-simpleField :: String -> (a -> String) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> Field b
-simpleField name showF readF get set = Field name
-   (\st -> name ++ ": " ++ showF (get st))
+simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
+simpleField name showF readF get set = StanzaField name
+   (\st -> text name <> colon <+> showF (get st))
    (\lineNo val st -> do
        x <- runP lineNo name readF val
        return (set x st))
 
-listField :: String -> (a -> String) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> Field b
-listField name showF readF get set = Field name
+listField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
+listField name showF readF get set = StanzaField name
    (\st -> case get st of
-        [] -> ""
+        [] -> empty
         (value:values) ->
-           init (unlines ((name ++ ": " ++ showF value) : 
-                          map (\val -> (replicate (length name) ' '++", "++showF val)) values)))
+           text name <> vcat (               colon <+> showF value:
+                              map (\value -> comma <+> showF value) values))
    (\lineNo val st -> do
        xs <- runP lineNo name (parseCommaList readF) val
        return (set xs st))
 
-licenseField :: String -> Bool -> (b -> License) -> (License -> b -> b) -> Field b
-licenseField name flag get set = Field name
+licenseField :: String -> Bool -> (b -> License) -> (License -> b -> b) -> StanzaField b
+licenseField name flag get set = StanzaField name
    (\st -> case get st of
-             OtherLicense path | flag      -> name ++ ": " ++ path
-                               | otherwise -> ""
-             license           | not flag  -> name ++ ": " ++ show license
-                               | otherwise -> "")
+             OtherLicense path | flag      -> text name <> colon <+> showFilePath path
+                               | otherwise -> empty
+             license           | not flag  -> text name <> colon <+> text (show license)
+                               | otherwise -> empty)
    (\lineNo val st ->
        if flag 
          then do 
@@ -316,11 +320,11 @@ licenseField name flag get set = Field name
             x <- runP lineNo name parseLicense val
             return (set x st))
 
-optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> Field b
-optsField name flavor get set = Field name
+optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> StanzaField b
+optsField name flavor get set = StanzaField name
    (\st -> case lookup flavor (get st) of
-        Just args -> name++": "++unwords args
-        Nothing   -> "")
+        Just args -> text name <> colon <+> hsep (map text args)
+        Nothing   -> empty)
    (\lineNo val st -> 
        let
          old_val  = get st
@@ -335,9 +339,8 @@ optsField name flavor get set = Field name
 
 -- |Parse the given package file.
 readPackageDescription :: FilePath -> IO PackageDescription
-readPackageDescription p = do 
-  h <- openFile p ReadMode
-  str <- hGetContents h
+readPackageDescription fpath = do 
+  str <- readFile fpath
   case parseDescription str of
     Left  e -> error (showError e) -- FIXME
     Right PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
@@ -349,7 +352,7 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza ((Field name get set):fields) pkg (lineNo, f, val)
+        parseBasicStanza ((StanzaField name get set):fields) pkg (lineNo, f, val)
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
         parseBasicStanza [] pkg (lineNo, f, val) = do
@@ -365,14 +368,14 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
           myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
-        parseExecutableField ((Field name get set):fields) exe (lineNo, f, val)
+        parseExecutableField ((StanzaField name get set):fields) exe (lineNo, f, val)
 	  | name == f = set lineNo val exe
 	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
 	parseExecutableField [] exe (lineNo, f, val) = do
 	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
-        parseBInfoField ((Field name get set):fields) binfo (lineNo, f, val)
+        parseBInfoField ((StanzaField name get set):fields) binfo (lineNo, f, val)
 	  | name == f = set lineNo val binfo
 	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
 	parseBInfoField [] binfo (lineNo, f, val) =
@@ -428,6 +431,12 @@ parseModuleName = do c <- satisfy isUpper
 parseFilePath :: ReadP r FilePath
 parseFilePath = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
 
+showFilePath :: FilePath -> Doc
+showFilePath fpath
+	| all (\x -> isAlphaNum x || x `elem` "-+/_.") fpath = text fpath
+	| otherwise = doubleQuotes (text fpath)
+
+
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
 
@@ -455,7 +464,7 @@ parseLibName = munch1 (\x -> not (isSpace x) && x /= ',')
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
 parseCommaList p = sepBy1 p separator
-    where separator = skipSpaces >> char ',' >> skipSpaces
+    where separator = skipSpaces >> Compat.ReadP.char ',' >> skipSpaces
 
 
 
@@ -463,30 +472,27 @@ parseCommaList p = sepBy1 p separator
 -- ** Pretty printing
 
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
-writePackageDescription fpath pkg = bracket (openFile fpath WriteMode) hClose $ \hFile -> do
-  hPutFields hFile pkg basicStanzaFields
-  case library pkg of
-    Nothing  -> return ()
-    Just lib -> hPutFields hFile lib binfoFields
-  mapM_ (hPutExecutable hFile) (executables pkg)
-  where
-    hPutExecutable hFile exe = do
-      hPutStrLn hFile ""
-      hPutFields hFile exe executableStanzaFields
-      hPutFields hFile (buildInfo exe) binfoFields
+writePackageDescription fpath pkg = writeFile fpath (showPackageDescription pkg)
 
-    hPutFields hFile pkg [] = return ()
-    hPutFields hFile pkg ((Field name get set):flds)
-      | value /= "" = do
-           hPutStrLn hFile value
-           hPutFields hFile pkg flds
-      | otherwise = do
-           hPutFields hFile pkg flds
-      where
-        value = get pkg
+showPackageDescription :: PackageDescription -> String
+showPackageDescription pkg = render $
+  ppFields pkg basicStanzaFields $$
+  (case library pkg of
+     Nothing  -> empty
+     Just lib -> ppFields lib binfoFields) $$
+  vcat (map ppExecutable (executables pkg))
+  where
+    ppExecutable exe =
+      space $$
+      ppFields exe executableStanzaFields $$
+      ppFields (buildInfo exe) binfoFields
+
+    ppFields pkg [] = empty
+    ppFields pkg ((StanzaField name get set):flds) =
+           get pkg $$ ppFields pkg flds
         
-showDependency :: Dependency -> String
-showDependency (Dependency name ver) = name ++ " " ++ showVersionRange ver
+showDependency :: Dependency -> Doc
+showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
 
 -- ------------------------------------------------------------
 -- * Testing
