@@ -111,7 +111,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)))
                                      modu verbose builtinSuffixes biHandlers |
-			    modu <- hiddenModules bi] -- FIX: output errors?
+			    modu <- otherModules bi] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -158,7 +158,7 @@ removePreprocessedPackage  pkg_descr r suff
                      removePreprocessed (r `joinFileName` hsSourceDir bi) (libModules pkg_descr) suff)
          foreachExe pkg_descr (\theExe -> do
                      let bi = buildInfo theExe
-                     removePreprocessed (r `joinFileName` hsSourceDir bi) (hiddenModules bi) suff)
+                     removePreprocessed (r `joinFileName` hsSourceDir bi) (otherModules bi) suff)
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location

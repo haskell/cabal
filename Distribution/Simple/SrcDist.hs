@@ -98,11 +98,11 @@ prepareDir :: Int       -- ^verbose
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, hiddenModules=mods'}
+prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, otherModules=mods'}
     = do let pref = inPref `joinFileName` srcDir
-         let suff = ppSuffixes pps
-         smartCopySources verbose srcDir pref (mods++mods') (suff ++ ["hs", "lhs"])
-         removePreprocessed pref mods (suff ++ ["hs", "lhs"])
+         let suff = ppSuffixes pps  ++ ["hs", "lhs"]
+         smartCopySources verbose srcDir pref (mods++mods') suff
+         removePreprocessed pref mods suff
 
 ------------------------------------------------------------
 

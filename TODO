@@ -1,8 +1,13 @@
 * misc
 
-> > Is it sufficient to put License: BSD3 in the package description?
-> > Or should License-File be mandatory, and License just an optional
-> > hint?
+* I guess we should take the "OtherLicense"
+  option out of license type, add a licenseFile field, and make either
+   /or required.
+
+* make preprocessors in hooks override the built-in ones
+
+* Fix up sdist! 
+* Write tests for make and hugs
 
 * Write semantic checker for package description file.  start w/
    sanity checker.  give error if buildInfo field given when no

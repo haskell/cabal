@@ -56,8 +56,8 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils (
-	StanzaField(..), singleStanza, ParseResult,
-	simpleField, listField, licenseField,
+	StanzaField(..), singleStanza, ParseResult(..),
+	simpleField, listField, parseLicenseQ,
 	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
@@ -188,9 +188,8 @@ basicStanzaFields =
  , simpleField "version"
                            (text . showVersion)   parseOptVersion 
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
- , licenseField "license" False
-                           license                (\l pkg -> pkg{license=l})
- , licenseField "license-file" True
+ , simpleField "license"
+                           (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
                            showFreeText           (munch (const True))

@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (--parseArgs,
                            Action(..), ConfigFlags(..),
+                           CopyFlags, InstallFlags, RegisterFlags,
                            CompilerFlavor(..), Compiler(..),
 			   --optionHelpString,
 #ifdef DEBUG
@@ -100,6 +101,7 @@ data Action = ConfigCmd ConfigFlags       -- config
 --            | NoCmd -- error case?
     deriving (Show, Eq)
 
+-- | Flags to @configure@ command
 data ConfigFlags = ConfigFlags {
         configHcFlavor :: Maybe CompilerFlavor,
         configHcPath   :: Maybe FilePath, -- ^given compiler location
@@ -359,8 +361,11 @@ copyCmd = Cmd {
         cmdAction      = CopyCmd Nothing
         }
 
-parseCopyArgs :: (Maybe FilePath,Int) -> [String] -> [OptDescr a] ->
-                    IO ((Maybe FilePath,Int), [a], [String])
+-- | Flags to @copy@: (Copy Location, verbose)
+type CopyFlags = (Maybe FilePath,Int)
+
+parseCopyArgs :: CopyFlags -> [String] -> [OptDescr a] ->
+                    IO (CopyFlags, [a], [String])
 parseCopyArgs cfg args customOpts =
   case getCmdOpt copyCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -379,8 +384,11 @@ parseCopyArgs cfg args customOpts =
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
-parseInstallArgs :: (Bool,Int) -> [String] -> [OptDescr a] ->
-                    IO ((Bool,Int), [a], [String])
+-- | Flags to @install@: (user package, verbose)
+type InstallFlags = (Bool,Int)
+
+parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
+                    IO (InstallFlags, [a], [String])
 parseInstallArgs cfg args customOpts =
   case getCmdOpt installCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -431,8 +439,11 @@ registerCmd = Cmd {
         cmdAction      = RegisterCmd False
         }
 
-parseRegisterArgs :: (Bool,Int) -> [String] -> [OptDescr a] ->
-                     IO ((Bool,Int), [a], [String])
+-- | Flags to @register@: (user package, verbose)
+type RegisterFlags = (Bool,Int)
+
+parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
+                     IO (RegisterFlags, [a], [String])
 parseRegisterArgs cfg args customOpts =
   case getCmdOpt registerCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
