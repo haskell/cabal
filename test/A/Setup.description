@@ -7,5 +7,10 @@ Extensions: ForeignFunctionInterface
 
 Executable: testA
 Modules: A, Main
-Main-is: Main.hs
+Main-is: MainA.hs
 Extensions: OverlappingInstances
+
+Executable: testB
+Modules: B, Main
+Main-is: MainB.hs
+hs-source-dir: B

@@ -155,6 +155,8 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
               "build returned error code"
             doesFileExist "dist/build/testA" >>= 
               assertBool "build did not create the executable: testA"
+            doesFileExist "dist/build/testB" >>= 
+              assertBool "build did not create the executable: testB"
             assertCmd "./setup sdist"
              "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 
