@@ -70,7 +70,7 @@ import System.Cmd
 import System.Environment
 import System.Directory
 
-import HUnit ((~:), (~=?), Test(..))
+import HUnit ((~:), (~=?), Test(..), assertEqual)
 
 -- -----------------------------------------------------------------------------
 -- Pathname-related utils
@@ -285,21 +285,19 @@ moveSources _targetDir sources mains
 -- ------------------------------------------------------------
 
 #ifdef DEBUG
-hunitTests :: IO Test
+hunitTests :: [Test]
 hunitTests
-    = do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
-         mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
-         return $ TestLabel "Utils Tests" $ TestList
-             ["moduleToPossiblePaths 1" ~: "failed" ~:
-              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
+    = [TestCase $
+       do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
+          mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
+          assertEqual "existing not found failed"
+                   (Just "Distribution/Simple/Build.hs") mp1
+          assertEqual "not existing not nothing failed" Nothing mp2,
+       
+        "moduleToPossiblePaths 1" ~: "failed" ~:
+             ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
                 ~=? (moduleToPossiblePaths "Foo.Bar.Bang"),
-              "moduleToPossiblePaths2 " ~: "failed" ~:
-                (moduleToPossiblePaths "Foo")
-                ~=? ["Foo.hs", "Foo.lhs"],
-
-
-              "existing not found" ~: "failed" ~:
-                   (Just "Distribution/Simple/Build.hs") ~=? mp1,
-              "not existing not nothing" ~: "failed" ~: Nothing ~=? mp2
-             ]
+        "moduleToPossiblePaths2 " ~: "failed" ~:
+              (moduleToPossiblePaths "Foo") ~=? ["Foo.hs", "Foo.lhs"]
+        ]
 #endif
