@@ -206,7 +206,8 @@ defaultMainWorker pkg_descr_in action args hooks
                     die ("Package " ++ name ++ " can't be built on this system.")
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo flags pps
-                writeInstalledConfig pkg_descr localbuildinfo
+                when (hasLibs pkg_descr) $
+                    writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild args flags localbuildinfo
             HaddockCmd -> do
                 (verbose, _, args) <- parseHaddockArgs args []
