@@ -97,8 +97,8 @@ prepareDir :: FilePath  -- ^TargetPrefix
 prepareDir inPref pps bi@BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         moveSources srcDir pref (biModules bi) suff
-         removePreprocessed pref (biModules bi) suff
+         moveSources srcDir pref (biModules bi) (suff ++ ["hs", "lhs"])
+         removePreprocessed pref (biModules bi) (suff ++ ["hs", "lhs"])
 
 ------------------------------------------------------------
 
