@@ -27,7 +27,7 @@ remove:
 	ghc-pkg -r HUnit-1.0
 	rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
 
-# dependencies:
+# dependencies (included):
 
 hunit:
 	cd test/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
