@@ -14,10 +14,15 @@
 
 ** grep for "FIX".
 
+** Get function from hmake that creates a directory based on arch.
+
 ** register
 ** generate InstalledPackageInfo
 ** read & write config-droppings
 ** configure: check for presence of build dependencies
+
+** ./Setup test
+- this may be something that's easy to break off and give to someone else.
 
 * later todo
 ** writePersistBuildConfig robustify + diagnostics

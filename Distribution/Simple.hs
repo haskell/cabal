@@ -47,10 +47,8 @@ module Distribution.Simple (
 	defaultMain,
   ) where
 
--- Base
-import System(getArgs)
-
-import Distribution.Package
+-- local
+import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build	( build )
@@ -64,8 +62,13 @@ import Distribution.Simple.Utils (die)
 import Distribution.Misc (License(..))
 import Distribution.Version (Version(..))
 
-import System.IO
+-- Base
+import System(getArgs)
+
+import Control.Monad(when)
+import Data.Maybe(isNothing)
 import Data.List	( intersperse )
+import System.IO (hPutStr, stderr)
 
 -- |Reads local build info, executes function
 doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function to apply
@@ -91,10 +94,11 @@ defaultMain pkg_descr
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo
 
-             Right (InstallCmd _, extra_flags) -> do
+             Right (InstallCmd install_prefixM, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo
+		install pkg_descr localbuildinfo install_prefixM
+                when (isNothing install_prefixM) (register pkg_descr localbuildinfo)
 
              Right (SDistCmd, extra_flags) -> do
 		no_extra_flags extra_flags
