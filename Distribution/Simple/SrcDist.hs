@@ -50,6 +50,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.Package(PackageDescription(..), BuildInfo(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin)
+import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, knownSuffixHandlers)
 
 import Control.Monad(when)
 import System.Cmd (system)
@@ -63,15 +64,17 @@ import HUnit (Test)
 -- on windows).
 sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
+      -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> PackageDescription -> LocalBuildInfo -> IO ()
-sdist tmpDir targetPref pkg_descr _ = do
+sdist tmpDir targetPref pps pkg_descr _  = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   case library pkg_descr of
     Just lib -> let srcDir = hsSourceDir lib
                     tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
-                 in moveSources srcDir tmpLoc1 (modules lib) ["lhs", "hs"]
+                 in moveSources srcDir tmpLoc1 (modules lib)
+                        (ppSuffixes (knownSuffixHandlers ++ pps))
     Nothing  -> return ()
   let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
   moveSources ""     tmpLoc2 ["Setup"] ["lhs", "hs"]

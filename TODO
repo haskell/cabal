@@ -13,8 +13,16 @@
 -- preprocess them, and put them in place in the new
    location. best solution, but not set up well for that right now,
    since we concat together the entire filename (including module name)
+** is cpp ever run yet?
 
-** for a source tarball, do we want to include JUST the unpreprocessed sources?
+
+** for a source tarball:?
+- include the unpreprocessed sources...
+- if there's a flag, --include-preprocessed-sources (or something
+   better) run the preprocessing phase and include both the
+   unpreprocessed and the preprocessed sources in the source tarball?
+
+** if the config file isn't there, output a better error message.
 
 ** clarify description filename issues
 - allow foo.hsproj?
