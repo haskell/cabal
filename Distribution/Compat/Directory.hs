@@ -1,5 +1,6 @@
 module Distribution.Compat.Directory (
- 	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing, removeDirectoryRecursive
+ 	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
+        removeDirectoryRecursive, module System.Directory
   ) where
 
 #if __GLASGOW_HASKELL__
