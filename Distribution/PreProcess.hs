@@ -49,14 +49,16 @@ import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..),
 					Library(..), withLib, libModules)
-import Distribution.Setup (CompilerFlavor(..), Compiler(compilerFlavor))
+import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
                                   moduleToFilePath, die)
+import Distribution.Version (Version(..))
 import Control.Monad (when)
 import Data.Maybe (fromMaybe, maybeToList)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
+import System.Info (os, arch)
 import System.IO (stderr, hPutStrLn)
 import Distribution.Compat.FilePath
 	(splitFileExt, joinFileName, joinFileExt)
@@ -187,28 +189,38 @@ ppUnlit inFile outFile verbose = do
     return ExitSuccess
 
 ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp pkg_descr bi lbi = pp
-  where pp inFile outFile verbose
-	  = rawSystemPath verbose "cpphs" (extraArgs ++ ["-O" ++ outFile, inFile])
-	extraArgs = "--noline":hcFlags hc ++
-		["-I" ++ dir | dir <- includeDirs bi] ++ ccOptions pkg_descr
-	hc = compilerFlavor (compiler lbi)
+ppCpp pkg_descr bi lbi
+    = maybe (ppNone "cpphs") pp (withCpphs lbi)
+  where pp cpphs inFile outFile verbose
+	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
+        extraArgs = "--noline" : hcDefines hc ++ sysDefines ++
+                incOptions ++ ccOptions pkg_descr
+	hc = compiler lbi
+        sysDefines =
+                ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
+                ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
+        locations = ["HOST", "TARGET"]
+        incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
--- FIX (non-GHC): This uses hsc2hs as supplied with GHC, but this may
--- not be present, and if present will pass GHC-specific cpp defines to
--- the C compiler.
 ppHsc2hs :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs pkg_descr bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n (hcFlags hc ++ incOptions ++ ccOptions pkg_descr)
-        hc = compilerFlavor (compiler lbi)
+  where pp n = standardPP n (hcDefines hc ++ incOptions ++ ccOptions pkg_descr)
+        hc = compiler lbi
 	incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
--- FIX: should add NHC versions too (maybe just use nhc as cpp?)
-hcFlags :: CompilerFlavor -> [String]
-hcFlags NHC = ["-D__NHC__"]
-hcFlags Hugs = ["-D__HUGS__"]
-hcFlags _ = []
+hcDefines :: Compiler -> [String]
+hcDefines Compiler { compilerFlavor=NHC, compilerVersion=version }
+  = ["-D__NHC__=" ++ versionInt version]
+hcDefines Compiler { compilerFlavor=Hugs }
+  = ["-D__HUGS__"]
+hcDefines _ = []
+
+versionInt :: Version -> String
+versionInt (Version { versionBranch = [] }) = "1"
+versionInt (Version { versionBranch = [n] }) = show n
+versionInt (Version { versionBranch = n1:n2:_ })
+  = show n1 ++ take 2 ('0' : show n2)
 
 ppHappy :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ _ lbi
