@@ -7,7 +7,7 @@ Standards-Version: #POLICY#
 Package: libghc6-#PACKAGE#-dev
 Section: devel
 Architecture: any
-Depends: #PACKAGE#BROKEN (= ${Source-Version})
+#Depends: #PACKAGE# (= ${Source-Version})
 Description: <insert up to 60 chars description>
  <insert long description, indented with spaces>
 
