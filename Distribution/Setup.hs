@@ -61,13 +61,12 @@ module Distribution.Setup (--parseArgs,
 import HUnit (Test(..), (~:), (~=?))
 #endif
 
-import Data.List(intersperse, find)
-import Data.Maybe(listToMaybe)
+import Data.List(find)
 import System.Console.GetOpt
 import System.Exit
 import System.Environment
 
-import Compat.H98 ()
+import Compat.H98 () -- FIX: is this line necessary for some platform?
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports
@@ -81,8 +80,8 @@ data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
                           compilerPkgTool :: FilePath}
                 deriving (Show, Read, Eq)
 
-type CommandLineOpts = (Action,
-                        [String]) -- The un-parsed remainder
+-- type CommandLineOpts = (Action,
+--                         [String]) -- The un-parsed remainder
 
 data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
@@ -115,6 +114,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | Lift a
             deriving (Show, Eq)
 
+cmd_help :: OptDescr (Flag a)
 cmd_help = Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
 
 -- Do we have any other interesting global flags? Verbose?
@@ -168,6 +168,7 @@ printCmdHelp cmd opts = do pname <- getProgName
                            putStrLn (usageInfo syntax_line (cmdOptions cmd ++ liftCustomOpts opts))
                            putStr (cmdDescription cmd)
 
+getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
 getCmdOpt cmd opts = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts)
 
 -- We don't want to use elem, because that imposes Eq a
@@ -190,6 +191,7 @@ parseGlobalArgs args =
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
+configureCmd :: Cmd a
 configureCmd = Cmd {
         cmdName        = "configure",
         cmdHelp        = "Prepare to build the package.",
@@ -231,6 +233,7 @@ parseConfigureArgs cfg args customOpts =
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
+buildCmd :: Cmd a
 buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
@@ -250,6 +253,7 @@ parseBuildArgs args customOpts =
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
+cleanCmd :: Cmd a
 cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
@@ -269,6 +273,7 @@ parseCleanArgs args customOpts =
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
+installCmd :: Cmd a
 installCmd = Cmd {
         cmdName        = "install",
         cmdHelp        = "Copy the files into the install locations.",
@@ -304,6 +309,7 @@ parseInstallArgs cfg args customOpts =
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
+sdistCmd :: Cmd a
 sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
@@ -323,6 +329,7 @@ parseSDistArgs args customOpts =
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
+registerCmd :: Cmd a
 registerCmd = Cmd {
         cmdName        = "register",
         cmdHelp        = "Register this package with the compiler.",
@@ -355,6 +362,7 @@ parseRegisterArgs cfg args customOpts =
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
+unregisterCmd :: Cmd a
 unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
