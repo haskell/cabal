@@ -45,8 +45,23 @@ import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
-                                  withLib, rawSystemPath)
+                                  withLib, rawSystemPath, splitFilePath)
 import System.Exit (ExitCode(..))
+
+-- |A preprocessor must fulfill this basic interface.  It can be an
+-- external program, or just a function.
+type PreProcessor = FilePath  -- ^Location of the source file in need of preprocessing
+                  -> FilePath -- ^Output filename
+                  -> IO ExitCode
+
+
+-- |How to dispatch this file to a preprocessor.  Is there a better
+-- way to handle this "Unlit" business?  It is nice that it can handle
+-- happy, for instance.  Maybe we need a way to chain preprocessors
+-- that would solve this problem.
+
+type PPSuffixHandler
+    = (String, (String->String->String), PreProcessor)
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
 preprocessSources :: PackageDescription 
@@ -55,6 +70,7 @@ preprocessSources :: PackageDescription
 		  -> FilePath           {- ^ Directory to put preprocessed 
 				             sources in -}
 		  -> IO ()
+
 preprocessSources pkg_descr _ _ pref = 
     do
     setupMessage "Preprocessing" pkg_descr
@@ -63,13 +79,20 @@ preprocessSources pkg_descr _ _ pref =
     sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable _ _ exeBi <- executables pkg_descr]
 
--- |If both output locations are null, just output to the default
--- location for this preprocessor (may be stdout?).  If directory is
--- null, default to "." if output file is null, use the default
--- filename, but move to the output directory.
-type PreProcessor = FilePath  -- ^Location of the source file in need of preprocessing
-                  -> FilePath -- ^Output filename
-                  -> IO ExitCode
+dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ()
+dispatchPP p handlers
+    = do let (dir, file, ext) = splitFilePath p
+         let (Just (lit, pp)) = findPP ext handlers
+         return ()
+
+findPP :: String -- ^Extension
+       -> [PPSuffixHandler]
+       -> Maybe ((String -> String -> String), PreProcessor)
+findPP ext ((e2, lit, pp):t)
+    | e2 == ext = Just (lit, pp)
+    | otherwise = findPP ext t
+findPP _ [] = Nothing
+
 
 ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
 
@@ -80,16 +103,12 @@ ppGreenCard inFile outFile
 ppHsc2hs = standardPP "hsc2hs"
 ppC2hs inFile outFile
     = rawSystemPath "c2hs" ["-o " ++ outFile, inFile]
-
 ppHappy = standardPP "happy"
 ppNone _ _  = return ExitSuccess
 
 standardPP :: String -> PreProcessor
 standardPP eName inFile outFile
     = rawSystemPath eName ["-o" ++ outFile, inFile]
-
-type PPSuffixHandler
-    = (String, (String->String->String), PreProcessor)
 
 -- |Leave in unlit since some preprocessors can't handle literated
 -- source?
