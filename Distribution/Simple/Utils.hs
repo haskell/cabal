@@ -91,7 +91,9 @@ import Compat.Exception (bracket)
 import System.Environment
 import System.Directory
 import Foreign.Marshal (allocaBytes)
+#ifndef mingw32_TARGET_OS
 import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes, fileMode, setFileMode)
+#endif
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -385,9 +387,27 @@ pathJoin :: [String] -> FilePath
 pathJoin = concat . intersperse pathSeparatorStr
 
 
+copyPermissions :: FilePath -> FilePath -> IO ()
+#ifndef mingw32_TARGET_OS
 copyPermissions src dest
     = do srcStatus <- getFileStatus src
          setFileMode dest (fileMode srcStatus)
+#else
+copyPermissions src dest
+    = return ()
+#endif
+
+copyFileTimes :: FilePath -> FilePath -> IO ()
+#ifndef mingw32_TARGET_OS
+copyFileTimes src dest
+   = do st <- getFileStatus src
+	let atime = accessTime st
+	    mtime = modificationTime st
+	setFileTimes dest atime mtime
+#else
+copyFileTimes src dest
+    = return ()
+#endif
 
 -- |Preserves permissions and, if possible, atime+mtime
 copyFile :: FilePath -> FilePath -> IO ()
@@ -402,12 +422,7 @@ copyFile src dest
                   bracket (openBinaryFile dest WriteMode) hClose $ \hDest ->
                   do allocaBytes bufSize $ \buffer -> copyContents hSrc hDest buffer
                      try (copyPermissions src dest)
-#ifdef HAVE_UNIX_PACKAGE
-                     try $ do st <- getFileStatus src
-                              let atime = accessTime st
-                                  mtime = modificationTime st
-                              setFileTimes dest atime mtime
-#endif
+                     try (copyFileTimes src dest)
                      return ()
   where bufSize = 1024
         copyContents hSrc hDest buffer
