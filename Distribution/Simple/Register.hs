@@ -54,6 +54,14 @@ module Distribution.Simple.Register (
 #endif
   ) where
 
+#if __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ < 603
+#include "config.h"
+#else
+#include "ghcconfig.h"
+#endif
+#endif
+
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..), RegisterFlags)
@@ -87,10 +95,18 @@ import HUnit (Test)
 #endif
 
 regScriptLocation :: FilePath
+#ifdef mingw32_TARGET_OS
+regScriptLocation = "register.bat"
+#else
 regScriptLocation = "register.sh"
+#endif
 
 unregScriptLocation :: FilePath
+#ifdef mingw32_TARGET_OS
+unregScriptLocation = "unregister.bat"
+#else
 unregScriptLocation = "unregister.sh"
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -135,11 +151,20 @@ register pkg_descr lbi (userInst, genScript, verbose)
           writeInstalledConfig pkg_descr lbi
 
 	let register_flags 
-		| ghc_63_plus = ["update", installedPkgConfigFile]
+		| ghc_63_plus = "update":
+#ifndef mingw32_TARGET_OS
+		                 if genScript
+                                    then []
+                                    else 
+#endif
+                                      [installedPkgConfigFile]
 		| otherwise   = "--update-package":
+#ifndef mingw32_TARGET_OS
 				 if genScript
                                     then []
-                                    else ["--input-file="++installedPkgConfigFile]
+                                    else
+#endif
+                                      ["--input-file="++installedPkgConfigFile]
         
 	let allFlags = "--auto-ghci-libs":
 		       (register_flags
@@ -269,12 +294,15 @@ rawSystemEmit :: FilePath -- ^Script name
 rawSystemEmit _ False verbosity path args
     = rawSystemExit verbosity path args
 rawSystemEmit scriptName True verbosity path args = do
+#ifdef mingw32_TARGET_OS
+  writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
+#else
   writeFile scriptName ("#!/bin/sh\n\n"
                         ++ (path ++ concatMap (' ':) args)
                         ++ "\n")
-  putStrLn (path ++ concatMap (' ':) args)
   p <- getPermissions scriptName
   setPermissions scriptName p{executable=True}
+#endif
 
 -- |Like rawSystemEmit, except it has string for pipeFrom. FIX: chmod +x
 rawSystemPipe :: FilePath -- ^Script location
@@ -284,13 +312,17 @@ rawSystemPipe :: FilePath -- ^Script location
               -> [String] -- ^Args
               -> IO ()
 rawSystemPipe scriptName verbose pipeFrom path args = do
+#ifdef mingw32_TARGET_OS
+  writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
+#else
   writeFile scriptName ("#!/bin/sh\n\n"
                         ++ "echo '" ++ pipeFrom
-                        ++ "' |" 
+                        ++ "' | " 
                         ++ (path ++ concatMap (' ':) args)
                         ++ "\n")
   p <- getPermissions scriptName
   setPermissions scriptName p{executable=True}
+#endif
 
 -- ------------------------------------------------------------
 -- * Testing

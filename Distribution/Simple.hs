@@ -421,13 +421,13 @@ defaultUserHooks
     = emptyUserHooks
       {
        postConf  = defaultPostConf,
-       preBuild  = readHook,
-       preClean  = readHook,
-       preCopy   = readHook,
-       preInst   = readHook,
-       preSDist  = readHook,
-       preReg    = readHook,
-       preUnreg  = readHook
+       preBuild  = readHook id,
+       preClean  = readHook id,
+       preCopy   = readHook snd,
+       preInst   = readHook snd,
+       preSDist  = readHook id,
+       preReg    = readHook thd3,
+       preUnreg  = readHook thd3
       }
     where defaultPostConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode
           defaultPostConf args flags lbi
@@ -435,20 +435,25 @@ defaultUserHooks
                            ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
 	           if confExists then do
-	               rawSystem "sh"
+	               rawSystemVerbose (configVerbose flags) "sh"
 			   ("configure" : maybe id prefix_opt (configPrefix flags) args)
 		       return ()
 		     else
 		       no_extra_flags args
                    return ExitSuccess
 
-          readHook :: Args -> a -> IO HookedBuildInfo
-          readHook a _ = do
+          readHook :: (a -> Int) -> Args -> a -> IO HookedBuildInfo
+          readHook verbose a flags = do
               no_extra_flags a
               maybe_infoFile <- defaultHookedPackageDesc
               case maybe_infoFile of
                   Nothing       -> return emptyHookedBuildInfo
-                  Just infoFile -> readHookedBuildInfo infoFile
+                  Just infoFile -> do
+                      when (verbose flags > 0) $
+                          putStrLn $ "Reading parameters from " ++ infoFile
+                      readHookedBuildInfo infoFile
+
+          thd3 (_,_,z) = z
 
 -- ------------------------------------------------------------
 -- * Testing
