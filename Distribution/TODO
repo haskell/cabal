@@ -9,11 +9,6 @@ RC:
 ** add haddock generated stuff to .deb.
 
 HIGH: 
-** Clean up field parsers:
- - parseOption: Which characters are valid for arbitrary options
-    to the compilers? Yuck, that could be anything. Maybe we should
-    have a parseAnything function, that accepts anything that isn't
-    space or comma...
 
 LOW
 ** clean 
@@ -33,6 +28,12 @@ LOW
 ** Extensions
 - complain if their use makes the code non-portable?
 -- but what does this mean? ghc & hugs?
+** Parse error reporting
+** Reorganize compiler dependent code into Distribution.Compiler.*
+** Allow quoting in the options fields, to allow things like
+   -f"something with spaces"
+** Instead of freaking out on unknown fields, the parser should return
+   a list of those unknown fields so a warning can be printed. Or not.
 
 
 * 1.0 
