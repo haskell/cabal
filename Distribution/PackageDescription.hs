@@ -110,9 +110,9 @@ data PackageDescription
 	pkgUrl         :: String,
 	description    :: String,
 	category       :: String,
-        buildDepends      :: [Dependency],
+        buildDepends   :: [Dependency],
 	-- possibly system-dependent build parameters
-	buildPackage   :: Bool,		-- ^ package is buildable here
+	buildable      :: Bool,		-- ^ package is buildable here
 	ccOptions      :: [String],	-- ^ options for C compiler
 	ldOptions      :: [String],	-- ^ options for linker
 	frameworks     :: [String],
@@ -144,7 +144,7 @@ emptyPackageDescription
 		      pkgUrl       = "",
 		      description  = "",
 		      category     = "",
-		      buildPackage = True,
+		      buildable    = True,
 		      ccOptions    = [],
 		      ldOptions    = [],
 		      frameworks   = [],
@@ -253,7 +253,7 @@ unionPackageDescription p1 p2
 	 pkgUrl        = override pkgUrl "package-url",
 	 description   = override description "description",
 	 category      = override category "category",
-	 buildPackage  = override buildPackage "build-package",
+	 buildable     = override buildable "buildable",
          -- combine fields:
          buildDepends  = combine buildDepends,
 	 ccOptions     = combine ccOptions,
@@ -300,7 +300,7 @@ unionLibrary l1 l2
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
     = b1{cSources          = combine cSources,
-         hsSourceDir       = override hsSourceDir "hs-source-dir" currentDir,
+         hsSourceDir       = override hsSourceDir "hs-source-dir",
          extensions        = combine extensions,
          extraLibs         = combine extraLibs,
          extraLibDirs      = combine extraLibDirs,
@@ -311,17 +311,14 @@ unionBuildInfo b1 b2
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
       combine f = f b1 ++ f b2
-      override :: (Eq a)
-	=> (BuildInfo -> a)	-- ^ field extractor
-	-> String		-- ^ field name
-	-> a			-- ^ default value
-	-> a
-      override f s def
+      override :: (Eq a) => (BuildInfo -> a) -> String -> a
+      override f s
 	| v1 == def = v2
 	| v2 == def = v1
 	| otherwise = error $ "union: Two non-empty fields found in union attempt: " ++ s
         where v1 = f b1
 	      v2 = f b2
+	      def = f emptyBuildInfo
 
 unionPackageIdent :: PackageIdentifier -> PackageIdentifier -> PackageIdentifier
 unionPackageIdent p1 p2
@@ -366,7 +363,7 @@ basicStanzaFields =
  , simpleField "maintainer"
                            showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
- , listField   "build-depends"   
+ , listField   "build-depends"
                            showDependency         parseDependency
                            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
@@ -390,9 +387,9 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
- , simpleField "build-package"
+ , simpleField "buildable"
                            (text . show)          parseReadS
-                           buildPackage           (\val pkg -> pkg{buildPackage=val})
+                           buildable              (\val pkg -> pkg{buildable=val})
  , simpleField "cc-options"
                            (fsep . map text)      (fmap words (munch (const True)))
                            ccOptions              (\val pkg -> pkg{ccOptions=val})
@@ -554,7 +551,7 @@ testPkgDesc = unlines [
         "Package-url: http://www.haskell.org/foo",
         "Description: a nice package!",
         "Category: tools",
-        "Build-Package: True",
+        "buildable: True",
         "CC-OPTIONS: -g -o",
         "LD-OPTIONS: -BStatic -dn",
         "Frameworks: foo",
@@ -593,8 +590,8 @@ testPkgDescAnswer =
                     pkgUrl   = "http://www.haskell.org/foo",
                     description = "a nice package!",
                     category = "tools",
-                    buildPackage = True,
-                     buildDepends = [Dependency "haskell-src" AnyVersion,
+                    buildable = True,
+                    buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
                                       (LaterVersion (Version [1,0,0] ["rain"])))],

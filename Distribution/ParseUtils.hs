@@ -177,7 +177,7 @@ type Stanza = [(LineNo,String,String)]
 -- |Split a string into blank line-separated stanzas of
 -- "Field: value" groups
 splitStanzas :: String -> ParseResult [Stanza]
-splitStanzas = mapM (mapM brk) . map merge . groupStanzas . filter validLine . zip [1..] . lines
+splitStanzas = mapM mkStanza . map merge . groupStanzas . filter validLine . zip [1..] . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
                             _         -> True
@@ -192,7 +192,7 @@ allSpaces (_,xs) = all isSpace xs
 -- significance, unlike 'splitStanzas'.  A field value may span over blank
 -- lines.
 singleStanza :: String -> ParseResult Stanza
-singleStanza = mapM brk . merge . filter validLine . zip [1..] . lines
+singleStanza = mkStanza . merge . filter validLine . zip [1..] . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
                             []        -> False      -- blank line
@@ -205,10 +205,21 @@ merge ((n,x):(_,c:s):ys)
 merge ((n,x):ys) = (n,x) : merge ys
 merge []         = []
 
-brk :: (Int,String) -> ParseResult (Int,String,String)
-brk (n,xs) = case break (==':') xs of
-             (fld, ':':val) -> return (n, map toLower fld, dropWhile isSpace val)
-             (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"
+mkStanza :: [(Int,String)] -> ParseResult Stanza
+mkStanza []          = return []
+mkStanza ((n,xs):ys) =
+  case break (==':') xs of
+    (fld', ':':val) -> do
+       let fld = map toLower fld'
+       ss <- mkStanza ys
+       checkDuplField fld ss
+       return ((n, fld, dropWhile isSpace val):ss)
+    (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"
+  where
+    checkDuplField fld [] = return ()
+    checkDuplField fld (x'@(n',fld',val'):xs')
+      | fld' == fld = fail ("The field "++fld++" is defined on both line "++show n++" and "++show n')
+      | otherwise   = checkDuplField fld xs'
 
 -- |parse a module name
 parseModuleNameQ :: ReadP r String
