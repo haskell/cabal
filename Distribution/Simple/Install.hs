@@ -8,7 +8,7 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: Perform the "./setup install" action.  Move files into
+-- Explanation: Perform the ".\/setup install" action.  Move files into
 -- place based on the prefix argument.
 
 {- All rights reserved.

@@ -239,7 +239,7 @@ mySplit a l = let (upto, rest) = break (== a) l
 		     else upto:(mySplit a (tail rest))
 
 -- |Find the last slash and remove it and everything after it. Turns
--- Foo/Bar.lhs into Foo
+-- Foo\/Bar.lhs into Foo
 removeFilename :: FilePath -> FilePath
 removeFilename path
     = case findIndices (== pathSeparator) path of
