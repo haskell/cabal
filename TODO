@@ -7,6 +7,8 @@
    unpreprocessed and the preprocessed sources in the source tarball?
 ** Better way to find 'tar'; is there a library? what does darcs do?
 
+* buildDepToDep in Configure doesn't set version dependency
+
 * Write tests for hugs
 
 * Write semantic checker for package description file.  start w/
@@ -93,7 +95,6 @@
 -= Future Releases =-
 
 * Depends on HC-PKG
-** buildDepToDep in Configure doesn't set version dependency
 ** hugs-pkg
 ** register for hugs
 ** configure: check for presence of build dependencies
