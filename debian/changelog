@@ -1,9 +1,16 @@
+haskell-cabal (0.2-2) unstable; urgency=low
+
+  * Removed spurious depends on ghc5.  Should close 279988.  I'll close
+    that by hand once I'm sure.
+
+ -- Isaac Jones <ijones@debian.org>  Sun,  7 Nov 2004 14:21:38 -0800
+
 haskell-cabal (0.2-1) unstable; urgency=low
 
   * New upstream release
   * Includes cleanup of treatment of the local packages file
     ~/.ghc-packages.  Doesn't touch this file unless it's
-    necessary. (Closes: #278667)
+    necessary. (Closes: #278667 Closes: #279556).
   * Some work on preprocessors.
 
  -- Isaac Jones <ijones@debian.org>  Tue,  2 Nov 2004 20:06:22 -0800

@@ -1,7 +1,7 @@
 Source: haskell-cabal
 Priority: optional
 Maintainer: Isaac Jones <ijones@debian.org>
-Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (<< 6.2.3), ghc5 (>= 5.04.3), ghc5 (<< 5.04.4)
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (<< 6.2.3)
 Standards-Version: 3.6.0
 
 Package: libghc6-cabal-dev
@@ -15,4 +15,3 @@ Description: Haskell Common Architecture for Building Applications and Libraries
  .
  This package will provide the infrastructure necessary to build
  Cabalized packages on Debian machines, or to Debianize those packages.
-
