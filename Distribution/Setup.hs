@@ -231,12 +231,12 @@ commands = [("configure", "configure this package"),
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
-hunitTests :: IO [Test]
+hunitTests :: [Test]
 hunitTests =
-    do let m = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
-       let (flags, commands', unkFlags, ers)
+    let m = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
+        (flags, commands', unkFlags, ers)
                = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo", "--user", "--global"]
-       return $ [TestLabel "very basic option parsing" $ TestList [
+       in  [TestLabel "very basic option parsing" $ TestList [
                  "getOpt flags" ~: "failed" ~:
                  [Prefix "/foo", GhcFlag, NhcFlag, HugsFlag,
                   WithCompiler "/comp", InstPrefix "/foo", UserFlag, GlobalFlag]

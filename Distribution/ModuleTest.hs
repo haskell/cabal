@@ -50,7 +50,7 @@ import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
 import qualified Distribution.Misc as D.M (hunitTests)
 import qualified Distribution.Package as D.P (hunitTests)
-import qualified Distribution.Setup (hunitTests)
+import qualified Distribution.Setup as D.Setup (hunitTests)
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
 import qualified Distribution.Simple.Install as D.S.I (hunitTests)
@@ -83,7 +83,7 @@ tests = [TestCase $
          do setCurrentDirectory "test"
             dirE1 <- doesDirectoryExist ",tmp"
             when dirE1 (system "rm -r ,tmp">>return())
-            system "ls"
+--            system "ls"
             system "./setup configure --prefix=,tmp"
             let targetDir = ",tmp/lib/test-1.0/"
             system "./setup build"
@@ -103,17 +103,14 @@ tests = [TestCase $
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
-          setupTests <- Distribution.Setup.hunitTests
-          confTests <- D.S.C.hunitTests
-          utilTests <- D.S.U.hunitTests
-          mapM runTestTT' setupTests
-          mapM runTestTT' confTests
-          runTestTT' utilTests
-          
-          runTestTT' $ TestList (D.S.R.hunitTests ++ D.V.hunitTests ++
-                                 D.S.S.hunitTests ++ D.S.B.hunitTests ++
-                                 D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                                 D.P.hunitTests ++ D.M.hunitTests)
+          runTestTT' $ TestList $
+                        (TestLabel "Utils Tests" $ TestList D.S.U.hunitTests):
+                        (TestLabel "Setup Tests" $ TestList D.Setup.hunitTests):
+                        (TestLabel "config Tests" $ TestList D.S.C.hunitTests):
+                          (D.S.R.hunitTests ++ D.V.hunitTests ++
+                           D.S.S.hunitTests ++ D.S.B.hunitTests ++
+                           D.S.I.hunitTests ++ D.S.simpleHunitTests ++
+                           D.P.hunitTests ++ D.M.hunitTests)
           runTestTT' $ TestList tests
           return ()
 

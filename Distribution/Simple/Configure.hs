@@ -51,7 +51,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
     where
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
-import Distribution.Package(PackageDescription(..))
+import Distribution.Package(PackageDescription(..), emptyPackageDescription)
 import Distribution.Simple.Utils (die, setupMessage,
                                   findBinary, splitFilenameDir)
 import Distribution.Package	( PackageIdentifier )
@@ -199,16 +199,17 @@ message s = putStrLn $ "configure: " ++ s
 -- Tests
 
 #ifdef DEBUG
-hunitTests :: IO [Test]
-hunitTests = do
-   let simonMarGHCLoc = "/home/simonmar/fp/bin/i386-unknown-linux/ghc"
-   simonMarGHC <- configure PackageDescription{} (Just GHC,
+hunitTests :: [Test]
+hunitTests
+    = [TestCase $
+       do let simonMarGHCLoc = "/home/simonmar/fp/bin/i386-unknown-linux/ghc"
+          simonMarGHC <- configure emptyPackageDescription (Just GHC,
 				       Just simonMarGHCLoc,
 				       Nothing)
-   return $ [TestLabel "Configure Testing" $ TestList [
-	     "finding ghc, etc on simonMar's machine" ~: "failed" ~:
+	  assertEqual "finding ghc, etc on simonMar's machine failed"
              (LocalBuildInfo "/usr" (Compiler GHC 
 	                    simonMarGHCLoc
  			    (simonMarGHCLoc ++ "-pkg")) [])
-             ~=? simonMarGHC]]
+             simonMarGHC
+      ]
 #endif
