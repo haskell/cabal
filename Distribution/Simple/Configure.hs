@@ -146,12 +146,13 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_hc_pkg, maybe_prefix)
             concat (intersperse ", " (map show exts))
 
         -- FIXME: maybe this should only be printed when verbose?
-        message $ "Using build prefix: " ++ pref
+        message $ "Using install prefix: " ++ pref
         message $ "Using compiler: " ++ p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=pref, compiler=comp,
+			      buildDir="dist" `joinFileName` "build",
                               packageDeps=map buildDepToDep (maybe [] buildDepends lib),
                               executableDeps = [(n, map buildDepToDep (buildDepends exeBi))
                                                 | Executable n _ exeBi <- executables pkg_descr]

@@ -57,6 +57,8 @@ module Distribution.Simple.Utils (
         currentDir,
         dotToSep,
 	withTempFile,
+	getOptionsFromSource,
+	stripComments,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -68,10 +70,14 @@ module Distribution.Simple.Utils (
 
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally)
+import Distribution.Extension (Extension)
+import Distribution.Setup (CompilerFlavor(..))
+import Distribution.PreProcess.Unlit (unlit)
 
 import Control.Monad(when, unless, liftM, mapM)
-import Data.List(nub)
-import Data.Maybe(Maybe, catMaybes)
+import Data.Char(isSpace)
+import Data.List(nub, isSuffixOf)
+import Data.Maybe(Maybe, catMaybes, mapMaybe)
 import System.IO (hPutStr, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
@@ -303,6 +309,73 @@ getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 #else
 #error ToDo: getProcessID
 #endif
+
+-- ------------------------------------------------------------
+-- * options in source files
+-- ------------------------------------------------------------
+
+-- |Read the initial part of a source file, before any Haskell code,
+-- and return the contents of any OPTIONS or LANGUAGE pragmas.
+getOptionsFromSource
+    :: FilePath
+    -> IO ([Extension],                 -- LANGUAGE pragma, if any
+           [(CompilerFlavor,[String])]  -- OPTIONS_FOO pragmas
+          )
+getOptionsFromSource file = do
+    text <- readFile file
+    return $ foldr appendOptions ([],[]) $ map getOptions $
+	takeWhileJust $ map getPragma $
+	filter textLine $ map (dropWhile isSpace) $ lines $
+	stripComments True $
+	if ".lhs" `isSuffixOf` file then unlit file text else text
+  where textLine [] = False
+	textLine ('#':_) = False
+	textLine _ = True
+
+	getPragma :: String -> Maybe [String]
+	getPragma line = case words line of
+	    ("{-#" : rest) | last rest == "#-}" -> Just (init rest)
+	    _ -> Nothing
+
+	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)])
+	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)])
+	getOptions ("OPTIONS_NHC":opts) = ([], [(NHC, opts)])
+	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)])
+	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [])
+	  where	readExtension :: String -> Maybe Extension
+		readExtension w = case reads w of
+		    [(ext, "")] -> Just ext
+		    [(ext, ",")] -> Just ext
+		    _ -> Nothing
+	getOptions _ = ([], [])
+
+	appendOptions (exts, opts) (exts', opts') = (exts++exts', opts++opts')
+
+-- takeWhileJust f = map fromJust . takeWhile isJust
+takeWhileJust :: [Maybe a] -> [a]
+takeWhileJust (Just x:xs) = x : takeWhileJust xs
+takeWhileJust _ = []
+
+-- |Strip comments from Haskell source.
+stripComments
+    :: Bool	-- ^ preserve pragmas?
+    -> String	-- ^ input source text
+    -> String
+stripComments keepPragmas = stripCommentsLevel 0
+  where stripCommentsLevel :: Int -> String -> String
+	stripCommentsLevel 0 ('-':'-':cs) =	-- FIX: symbols like -->
+	    stripCommentsLevel 0 (dropWhile (/= '\n') cs)
+	stripCommentsLevel 0 ('{':'-':'#':cs)
+	  | keepPragmas = '{' : '-' : '#' : copyPragma cs
+	stripCommentsLevel n ('{':'-':cs) = stripCommentsLevel (n+1) cs
+	stripCommentsLevel 0 (c:cs) = c : stripCommentsLevel 0 cs
+	stripCommentsLevel n ('-':'}':cs) = stripCommentsLevel (n-1) cs
+	stripCommentsLevel n (c:cs) = stripCommentsLevel n cs
+	stripCommentsLevel _ [] = []
+
+	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
+	copyPragma (c:cs) = c : copyPragma cs
+	copyPragma [] = []
 
 -- ------------------------------------------------------------
 -- * Testing

@@ -42,16 +42,19 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 removePreprocessed, removePreprocessedPackage)
     where
 
-import Distribution.PreProcess.Unlit(plain, unlit)
+import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-                                        BuildInfo(..), Executable(..), biModules)
+                                        BuildInfo(..), Executable(..),
+					biModules, withLib)
+import Distribution.Setup (CompilerFlavor(..), compilerFlavor)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath,
-                                  sequenceMap, removeFiles)
-import Control.Monad(when)
-import System.Exit (ExitCode(..), exitWith)
+import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
+import Control.Monad (when)
+import Data.Maybe (fromJust)
+import System.Exit (ExitCode(..))
+import System.Directory (removeFile)
 import Distribution.Compat.FilePath
-	(splitFilePath, splitFileExt, joinFileName, joinFileExt)
+	(splitFileExt, joinFileName, joinFileExt)
 
 -- |A preprocessor must fulfill this basic interface.  It can be an
 -- external program, or just a function.
@@ -60,71 +63,54 @@ type PreProcessor = FilePath  -- ^Location of the source file in need of preproc
                   -> IO ExitCode
 
 
--- |How to dispatch this file to a preprocessor.  Is there a better
--- way to handle this "Unlit" business?  It is nice that it can handle
--- happy, for instance.  Maybe we need a way to chain preprocessors
--- that would solve this problem.
-
+-- |A preprocessor for turning non-Haskell files with the given extension
+-- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, (String->String->String), PreProcessor)
+    = (String, PackageDescription -> LocalBuildInfo -> PreProcessor)
 
--- |Copy and (possibly) preprocess sources from hsSourceDirs
+-- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
+-- a Haskell source file for each module.
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 
                   -> [PPSuffixHandler]  -- ^ preprocessors to try
 		  -> IO ()
 
-preprocessSources pkg_descr _ handlers = 
-    do
+preprocessSources pkg_descr lbi handlers = do
     setupMessage "Preprocessing" pkg_descr
-    allSources <- findAllSourceFiles pkg_descr (ppSuffixes handlers)
-    sequence [dispatchPP src handlers | src <- allSources] -- FIX: output errors?
-    return ()
+    foreachBuildInfo pkg_descr $ \ bi ->
+	sequence_ [preprocessModule (hsSourceDir bi) mod localHandlers |
+			    mod <- biModules bi] -- FIX: output errors?
+  where hc = compilerFlavor (compiler lbi)
+	builtinSuffixes
+	  | hc == NHC = ["hs", "lhs", "gc"]
+	  | otherwise = ["hs", "lhs"]
+	localHandlers = [(ext, Nothing) | ext <- builtinSuffixes] ++
+			[(ext, Just (h pkg_descr lbi)) | (ext, h) <- handlers]
 
-dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ExitCode
-dispatchPP p handlers
-    = do let (dir, file, ext) = splitFilePath p
-         let (Just (lit, pp)) = findPP ext handlers --FIX: Nothing case?
-         pp p (joinFileName dir (joinFileExt file "hs"))
-
-findPP :: String -- ^Extension
-       -> [PPSuffixHandler]
-       -> Maybe ((String -> String -> String), PreProcessor)
-findPP ext ((e2, lit, pp):t)
-    | e2 == ext = Just (lit, pp)
-    | otherwise = findPP ext t
-findPP _ [] = Nothing
-
-
--- |Locate the source files based on the module names, the search
--- paths (both in PackageDescription) and the suffixes we might be
--- interested in.
-findAllSourceFiles :: PackageDescription
-                   -> [String] -- ^search suffixes
-                   -> IO [FilePath]
-findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixes
-    = do exeFiles <- sequence [buildInfoSources (buildInfo e) allSuffixes | e <- execs]
-         libFiles <- case lib of 
-                       Just bi -> buildInfoSources bi allSuffixes
-                       Nothing -> return []
-         return $ ((concat exeFiles) ++ libFiles)
-
-        where buildInfoSources :: BuildInfo -> [String] -> IO [FilePath]
-              buildInfoSources bi@BuildInfo{hsSourceDir=dir} suffixes
-                  = sequence [moduleToFilePath dir modu suffixes | modu <- biModules bi]
-                              >>= return . concat
+-- |Find the first extension of the file that exists, and preprocess it
+-- if required.
+preprocessModule
+    :: FilePath				-- ^source directory
+    -> String				-- ^module name
+    -> [(String, Maybe PreProcessor)]	-- ^possible preprocessors
+    -> IO ExitCode
+preprocessModule searchLoc mod handlers = do
+    srcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
+    case srcFiles of
+	[] -> die ("can't find source for " ++ mod)
+	(srcFile:_) -> do
+	    let (srcStem, ext) = splitFileExt srcFile
+	    case fromJust (lookup ext handlers) of -- FIX: can't fail?
+		Nothing -> return ExitSuccess
+		Just pp -> pp srcFile (srcStem `joinFileExt` "hs")
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
                           -> [String] -- ^suffixes
                           -> IO ()
 removePreprocessedPackage pkg_descr r suff
-    = do maybe (return ()) removePPBuildInfo (library pkg_descr)
-         sequenceMap removePPBuildInfo (map buildInfo (executables pkg_descr))
-         return ()
-    where removePPBuildInfo :: BuildInfo -> IO ()
-          removePPBuildInfo bi
-              = removePreprocessed (r `joinFileName` (hsSourceDir bi)) (biModules bi) suff
+    = foreachBuildInfo pkg_descr $ \ bi ->
+	removePreprocessed (r `joinFileName` hsSourceDir bi) (biModules bi) suff
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: FilePath -- ^search Location
@@ -132,45 +118,59 @@ removePreprocessed :: FilePath -- ^search Location
                    -> [String] -- ^suffixes
                    -> IO ()
 removePreprocessed searchLoc mods suffixesIn
-    = sequenceMap (\m -> moduleToFilePath searchLoc m suffixesIn) mods -- collect related files
-         >>= sequenceMap removeIfDup -- delete the .hs stuff.
-         >>  return ()
-         where -- ^Should give a list of files that only differ by the extension.
-               removeIfDup :: [FilePath] -> IO ()
-               removeIfDup []  = return ()
-               removeIfDup [x] = return () -- if there's only one, it needs to stay
-               removeIfDup l = do when (not $ extensionProp l)
-                                    (putStrLn "Internal Error: attempt to remove source with no matching preprocessed element."
-                                     >> exitWith (ExitFailure 1))
-                                  let hsFiles = (filter (\x -> snd (splitFileExt x) == "hs") l)
-                                  when (length hsFiles > 1)
-                                    (putStrLn "Internal Error: multiple \".hs\" files found while removing preprocessed element."
-                                     >> exitWith (ExitFailure 1))
-                                  removeFiles hsFiles
-                                  return ()
-               -- the files in this list only differ by their extension
-               extensionProp []  = True
-               extensionProp [x] = True
-               extensionProp (x1:x2:xs)
-                   = let (dir1, name1, _) = splitFilePath x1
-                         (dir2, name2, _) = splitFilePath x2
-                         in dir1 == dir2 && name1 == name2 && (extensionProp (x2:xs))
+    = mapM_ removePreprocessedModule mods
+  where removePreprocessedModule m = do
+	    -- collect related files
+	    fs <- moduleToFilePath searchLoc m otherSuffixes
+	    -- does M.hs also exist?
+	    hs <- moduleToFilePath searchLoc m ["hs"]
+	    when (not (null fs)) (mapM_ removeFile hs)
+	otherSuffixes = filter (/= "hs") suffixesIn
+
+-- | Perform the action on each 'BuildInfo' in the package description.
+foreachBuildInfo :: PackageDescription -> (BuildInfo -> IO a) -> IO ()
+foreachBuildInfo pkg_descr action = do
+    withLib pkg_descr (\ bi -> action bi >> return ())
+    mapM_ (action . buildInfo) (executables pkg_descr)
 
 -- ------------------------------------------------------------
 -- * known preprocessors
 -- ------------------------------------------------------------
 
-ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
+ppCpp, ppGreenCard, ppC2hs :: PreProcessor
 
 ppCpp inFile outFile
     = rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
 ppGreenCard inFile outFile
     = rawSystemPath "green-card" ["-tffi", "-o" ++ outFile, inFile]
-ppHsc2hs = standardPP "hsc2hs"
 ppC2hs inFile outFile
     = rawSystemPath "c2hs" ["-o " ++ outFile, inFile]
-ppHappy = standardPP "happy"
-ppNone _ _  = return ExitSuccess
+
+-- This one is useful for preprocessors that can't handle literate source.
+-- We also need a way to chain preprocessors.
+ppUnlit :: PreProcessor
+ppUnlit inFile outFile = do
+    contents <- readFile inFile
+    writeFile outFile (unlit inFile contents)
+    return ExitSuccess
+
+-- FIX (non-GHC): This uses hsc2hs as supplied with GHC, but this may
+-- not be present, and if present will pass GHC-specific cpp defines to
+-- the C compiler.
+ppHsc2hs :: PackageDescription -> LocalBuildInfo -> PreProcessor
+ppHsc2hs pkg_descr lbi
+    = standardPP "hsc2hs" (hcFlags hc ++ ccOptions pkg_descr)
+  where hc = compilerFlavor (compiler lbi)
+	hcFlags NHC = ["-D__NHC__"]
+	hcFlags Hugs = ["-D__HUGS__"]
+	hcFlags _ = []
+
+ppHappy :: PackageDescription -> LocalBuildInfo -> PreProcessor
+ppHappy _ lbi
+    = standardPP "happy" (hcFlags hc)
+  where hc = compilerFlavor (compiler lbi)
+	hcFlags GHC = ["-agc"]
+	hcFlags _ = []
 
 ppTestHandler :: FilePath -- ^InFile
               -> FilePath -- ^OutFile
@@ -180,26 +180,21 @@ ppTestHandler inFile outFile
          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
          return ExitSuccess
 
-standardPP :: String -> PreProcessor
-standardPP eName inFile outFile
-    = rawSystemPath eName ["-o" ++ outFile, inFile]
+standardPP :: String -> [String] -> PreProcessor
+standardPP eName args inFile outFile
+    = rawSystemPath eName (args ++ ["-o" ++ outFile, inFile])
 
--- |Convinience function; get the suffixes of these preprocessors.
+-- |Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [ PPSuffixHandler ] -> [String]
-ppSuffixes h = [s | (s, _, _) <- h]
+ppSuffixes = map fst
 
--- |Leave in unlit since some preprocessors can't handle literated
--- source?
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     plain, ppGreenCard)
-  , ("chs",    plain, ppC2hs)
-  , ("hsc",    plain, ppHsc2hs)
-  , ("y",      plain, ppHappy)
-  , ("ly",     unlit, ppHappy)
-  , ("cpphs",  plain, ppCpp)
-  , ("gc",     plain, ppNone)	-- note, for nhc98 only
-  , ("hs",     plain, ppNone)
-  , ("lhs",    unlit, ppNone)
-  , ("testSuffix", plain, ppTestHandler)
-  ] 
+  [ ("gc",     \ _ _ -> ppGreenCard)
+  , ("chs",    \ _ _ -> ppC2hs)
+  , ("hsc",    ppHsc2hs)
+  , ("y",      ppHappy)
+  , ("ly",     ppHappy)
+  , ("cpphs",  \ _ _ -> ppCpp)
+  , ("testSuffix", \ _ _ -> ppTestHandler)
+  ]

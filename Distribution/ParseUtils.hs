@@ -221,7 +221,10 @@ parseDependency = do name <- parsePackageNameQ
                      skipSpaces
                      return $ Dependency name ver
 
+parsePackageNameQ :: ReadP r String
 parsePackageNameQ = parseQuoted parsePackageName <++ parsePackageName 
+
+parseVersionRangeQ :: ReadP r VersionRange
 parseVersionRangeQ = parseQuoted parseVersionRange <++ parseVersionRange
 
 parseOptVersion :: ReadP r Version

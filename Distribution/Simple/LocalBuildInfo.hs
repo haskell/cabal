@@ -52,9 +52,12 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- @C:/Program Files/foo-1.2@ on Windows.
 	compiler    :: Compiler,
 		-- ^ The compiler we're building with
+	buildDir    :: FilePath,
+		-- ^ Where to put the result of building.
 	packageDeps :: [PackageIdentifier],
-		-- ^ Which packages we depend on, *exactly*,  The
-		-- 'PackageDescription' specifies a set of build dependencies
+		-- ^ Which packages we depend on, /exactly/.
+		-- The 'Distribution.PackageDescription.PackageDescription'
+		-- specifies a set of build dependencies
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
