@@ -126,7 +126,7 @@ tests: moduleTest clean
 	cd test/HUnit-1.0 && make
 
 check:
-	rm moduleTest
+	rm -f moduleTest
 	make moduleTest
 	./moduleTest
 

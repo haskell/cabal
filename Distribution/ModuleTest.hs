@@ -110,6 +110,14 @@ assertCmd :: String -- ^Command
 assertCmd command comment
     = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
+-- |Run this command, and assert it returns an unsuccessful error code.
+assertCmdFail :: String -- ^Command
+              -> String -- ^Comment
+              -> Assertion
+assertCmdFail command comment
+    = do code <- system command
+         assertBool (command ++ ":" ++ comment) (code /= ExitSuccess)
+
 tests :: FilePath -> [Test]
 tests currDir
     = let testdir = currDir `joinFileName` "test" in
@@ -117,6 +125,7 @@ tests currDir
          do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
             system "make clean"
             system "make"
+            assertCmdFail "./setup configure --someUnknownFlag" "wash2hs configure with unknown flag"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
             assertCmd "./setup build" "wash2hs build"
             doesFileExist "dist/build/hs/wash2hs"
@@ -211,7 +220,7 @@ tests currDir
          do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
             system "make clean"
             system "make"
-            assertCmd "./setup configure --ghc --prefix=,tmp"
+            assertCmd "./setup configure --ghc --prefix=,tmp --woohoo"
               "configure returned error code"
             assertCmd "./setup build"
               "build returned error code"
