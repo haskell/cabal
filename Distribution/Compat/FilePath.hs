@@ -23,6 +23,11 @@ module Distribution.Compat.FilePath
          , isPathSeparator
          , pathSeparator
          , searchPathSeparator
+
+	 -- * Filename extensions
+	 , exeExtension
+	 , objExtension
+	 , dllExtension
          ) where
 
 #if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ >= 603
@@ -371,4 +376,32 @@ searchPathSeparator = ';'
 searchPathSeparator = ':'
 #endif
 
+#endif
+-- ToDo: This should be determined via autoconf (AC_EXEEXT)
+-- | Extension for executable files
+-- (typically @\"\"@ on Unix and @\".exe\"@ on Windows or OS\/2)
+exeExtension :: String
+#ifdef mingw32_TARGET_OS
+exeExtension = ".exe"
+#else
+exeExtension = ""
+#endif
+
+-- ToDo: This should be determined via autoconf (AC_OBJEXT)
+-- | Extension for object files
+-- (typically @\".o\"@ on Unix and @\".obj\"@ on Windows)
+objExtension :: String
+#ifdef mingw32_TARGET_OS
+objExtension = ".obj"
+#else
+objExtension = ".o"
+#endif
+
+-- | Extension for dynamically linked (or shared) libraries
+-- (typically @\".so\"@ on Unix and @\".dll\"@ on Windows)
+dllExtension :: String
+#ifdef mingw32_TARGET_OS
+dllExtension = ".dll"
+#else
+dllExtension = ".so"
 #endif
