@@ -317,7 +317,9 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
-		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo flags)
+		if hasLibs pkg_descr
+                   then register pkg_descr localbuildinfo flags
+                   else putStrLn "Package contains no library to register."
                 postHook postReg args flags localbuildinfo
 
             UnregisterCmd uInst genScript -> do

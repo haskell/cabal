@@ -3,7 +3,7 @@ HC=ghc
 setup: Setup.lhs
 	$(HC) -cpp --make -i../.. Setup.lhs -o setup 2>out.build
 clean:
-	rm -f setup a.out .setup-config
+	rm -f setup a.out .setup-config register.sh unregister.sh
 	rm -rf ,tmp* dist
 	find . -name "*.o" |xargs rm -f
 	find . -name "*.hi" |xargs rm -f

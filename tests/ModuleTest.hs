@@ -175,12 +175,13 @@ tests currDir comp compConf = [
               assertEqual "dist/src exists" False
             assertCmd' compCmd "register --user" "pkg A, register failed"
             assertCmd' compCmd "unregister --user" "pkg A, unregister failed"
-            assertCmd' compCmd ("register --user "++dumpScriptFlag)
-                               "pkg A, register dump script failed"
-            assertCmd' compCmd ("unregister --user "++dumpScriptFlag)
-                               "pkg A, register dump script failed"
-            assertCmd' "source" "register.sh" "reg script failed"  -- FIX: chmod +x instead of source
-            assertCmd' "source" "unregister.sh" "unreg script failed" -- FIX: chmod +x instead of source
+            -- tricky, script-based register
+            registerAndExecute comp "pkg A: register with script failed"
+            unregisterAndExecute comp "pkg A: unregister with script failed"
+            -- non-trick non-script based register
+            assertCmd' compCmd "register --user" "regular register returned error"
+            assertCmd' compCmd "unregister --user" "regular unregister returned error"
+
          ,TestLabel ("package A copy-prefix: " ++ compIdent) $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             assertCmd' compCmd ("copy --copy-prefix=" ++ targetDir) "copy --copy-prefix failed"
@@ -192,9 +193,10 @@ tests currDir comp compConf = [
          ,TestLabel ("package A and install w/ no prefix: " ++ compIdent) $ TestCase $
          do let targetDir = ",tmp/lib/test-1.0/"
             removeDirectoryRecursive ",tmp"
-            assertCmd' compCmd "install --user" "install --user failed"
-            libForA ",tmp"
-            assertCmd' compCmd "unregister --user" "unregister failed"
+            when (comp == GHC) -- FIX: hugs can't do --user yet
+              (do assertCmd' compCmd "install --user" "install --user failed"
+                  libForA ",tmp"
+                  assertCmd' compCmd "unregister --user" "unregister failed")
 -- HUnit
          ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
@@ -251,6 +253,7 @@ tests currDir comp compConf = [
               assertBool "build did not create the executable: testB"
             assertCmd "./,tmp/bin/testA isA" "A is not A"
             assertCmd "./,tmp/bin/testB isB" "B is not B"
+            -- no register, since there's no library
 -- depOnLib
        ,TestLabel ("package depOnLib: (executable depending on its lib)"++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
@@ -259,14 +262,17 @@ tests currDir comp compConf = [
             assertHaddock
             assertBuild
             assertCopy
-            doesFileExist "dist/build/mains/mainForA" >>= 
-              assertBool "build did not create the executable: mainForA"
-            doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
-              >>= assertBool "library doesn't exist"
-            doesFileExist (",tmp/bin/mainForA")
-              >>= assertBool "installed bin doesn't exist"
-            doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
-              >>= assertBool "installed lib doesn't exist"
+            registerAndExecute comp "pkg depOnLib: register with script failed"
+            unregisterAndExecute comp "pkg DepOnLib: unregister with script failed"
+            when (comp == GHC) (do 
+                                doesFileExist "dist/build/mains/mainForA" >>= 
+                                  assertBool "build did not create the executable: mainForA"
+                                doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
+                                  >>= assertBool "library doesn't exist"
+                                doesFileExist (",tmp/bin/mainForA")
+                                  >>= assertBool "installed bin doesn't exist"
+                                doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
+                                  >>= assertBool "installed lib doesn't exist")
 -- wash2hs
        ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
@@ -277,6 +283,7 @@ tests currDir comp compConf = [
             assertHaddock
             assertBuild
             assertCopy
+            -- no library to register
             doesFileExist ",tmp/bin/wash2hs"
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
@@ -292,6 +299,8 @@ tests currDir comp compConf = [
             assertHaddock
             assertBuild
             assertCopy
+            assertCmd' compCmd "register --user" "regular register returned error"
+            assertCmd' compCmd "unregister --user" "regular unregister returned error"
             when (comp == GHC) -- FIX: come up with good test for Hugs
                  (do doesFileExist "dist/build/C.o" >>=
                        assertBool "C.testSuffix did not get compiled to C.o."
@@ -347,6 +356,19 @@ tests currDir comp compConf = [
                              doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
           dumpScriptFlag = "--gen-script"
+          registerAndExecute comp comment = do
+            assertCmd' compCmd ("register --user "++dumpScriptFlag) comment
+            if comp == GHC   -- FIX: chmod +x instead of source
+               then assertCmd' "source" "register.sh" "reg script failed" 
+               else do ex <- doesFileExist "register.sh"
+                       assertBool "hugs should not produce register.sh" (not ex) 
+          unregisterAndExecute comp comment = do
+            assertCmd' compCmd ("unregister --user "++dumpScriptFlag) comment
+            if comp == GHC   -- FIX: chmod +x instead of source
+               then assertCmd' "source" "unregister.sh" "reg script failed"
+               else do ex <- doesFileExist "unregister.sh" 
+                       assertBool "hugs should not produce unregister.sh" (not ex)
+
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
