@@ -36,6 +36,19 @@
       <firstname>Isaac</firstname>
       <surname>Jones</surname>
     </author>
+    <author>
+      <firstname>Simon</firstname>
+      <surname>Peyton Jones</surname>
+    </author>
+    <author>
+      <firstname>Simon</firstname>
+      <surname>Marlow</surname>
+    </author>
+    <author>
+      <firstname>Malcolm</firstname>
+      <surname>Wallace</surname>
+    </author>
+
     <address><email>ijones@syntaxpolice.org</email></address>
     <abstract>
 
@@ -78,7 +91,7 @@
       available in a variety of formats from the Library
       Infrastructure Project <ulink
       url="http://www.haskell.org/libraryInfrastructure">home
-      page</ulink>.  This proposal is seperate, but related </para>
+      page</ulink>.  This proposal is seperate, but related.</para>
 
     </abstract>
   </artheader>
@@ -93,6 +106,10 @@ to specify a standard way in which a Haskell library can be packaged, so that it
 easy for consumers to use it, or re-package it, 
 regardless of the Haskell implementation or installation platform.</para>  
 
+  <note><para>We need to come up w/ an agreed-upon name.  For one thing, the
+  entire "infrastructure" will not only include the above, but also a
+  web site for uploading packages, etc.</para></note>
+
 <para>The HLI also
 supports library authors by providing an instrastructure that automates the
 process of building and packaging simple libraries.  It is not necessary to use
@@ -103,7 +120,7 @@ handle 75% of the cases with no trouble.</para>
 <itemizedlist>
 <listitem><para>
  <emphasis>Joe User</emphasis> is simply a Haskell user.  He does not download new pacakges.  Nevertheless,
-he needs to know about his Haskell compiler's <function>-package</function> flag <xref linkend="compiler-reqts">.
+he needs to know about his Haskell compiler's <function>-package</function> flag (see <xref linkend="compiler-reqts">).
 	    </para>
 	  </listitem>
 <listitem><para>
@@ -115,7 +132,7 @@ he needs to know about his Haskell compiler's <function>-package</function> flag
 <listitem><para>
  <emphasis>Roland RPM</emphasis>, <emphasis>Donald Debian</emphasis>, and <emphasis>Willie Windows</emphasis> 
   build Linux RPM, Debian, and Windows installer packages respectively.  (This list is not exhaustive.)
-  They do this as a service for Angela Author, and may know little or nothing about the internal details 
+  They do this as a service for Angela Author and the community, and may know little or nothing about the internal details 
   of the Haskell packages they are wrapping up.
 	    </para>
 	  </listitem>
@@ -164,6 +181,7 @@ A list of exposed modules.  Not all of the modules that comprise a package imple
 exposed to a pacakge client.
 The ability to expose some, but not all, of the modules making up a package
 is rather like using an explicit export list on a Haskell module.</para>
+  <note<para>>This isn't specified in <xref linkend="compiler-reqts"></para></note>
 	  </listitem>
 <listitem><para>
 More detailed information about the make-up of the package and how to build it.
@@ -185,18 +203,20 @@ from the name, and dots to separate the version components.  For example, "hunit
 A <emphasis>HLI source distribution</emphasis> is a tree of files (tar-ball, zip file etc)
 containing the library sources, which may need to be
 compiled before being installed.  The same source tarball may well be installable for several
-Haskell implementations. 
+Haskell implementations, OSs, and platforms.
 	    </para>
 <para>A source distribution may contain fewer files than appear in the developer's CVS repository; for example,
 design notes may be omitted.  It may also contain some derived files, that do not appear in the
 the developer's repository; for example, ones made by a somewhat exotic pre-processor where it
 seems simpler to ship the derived file than to ensure that all consumers have the pre-processor.</para>
 	  </listitem>
+
 <listitem><para>
 A <emphasis>HLI binary distribution</emphasis> is a tree of files that contains a pre-compiled library, ready
-for installation.  The pre-compilation means that the distribution will be Haskell-compiler-specific.
+for installation.  The pre-compilation means that the distribution will be Haskell-compiler-specific, and certain "looser" dependencies (hunit > 2.3) will now be precisely fixed (hunit == 2.4).
 	    </para>
 	  </listitem>
+
 <listitem><para>
 The library may be packaged as an <emphasis>RPM</emphasis>, <emphasis>Debian</emphasis> distribution, 
 or <emphasis>Windows installer</emphasis>.  (This list is not exhaustive.)
@@ -223,7 +243,7 @@ supporting files somewhere, and then using <function>hc-pkg</function> to make t
 of the new package.
 </para></listitem>
 <listitem><para>Subsequent invocations of <function>hc</function> will include modules from the
-new package in the module name space (i.e. visible to <function>imnport</function> statements).
+new package in the module name space (i.e. visible to <function>import</function> statements).
 </para></listitem>
 <listitem><para>
 The compiler should support a <function>-package</function> flag for finer-grain control
@@ -252,9 +272,11 @@ Bob the Builder downloads and unpacks a source tar-ball into a temporary directo
   ./Setup.lhs build
   ./Setup.lhs install
 </programlisting>
+
+<note><para>Should we state the rule about when one must explictly call "register"?</para></note>
+
 The configuration step checks, for example, that the package author indeed intends the package to be buildable
-with GHC, that a sufficiently up-to-date GHC is available, that the packages on which
-<function>hunit-2.3</function> depends are already installed for GHC, and so on.
+with GHC, that a sufficiently up-to-date GHC is available, that the packages which are required to build <function>hunit-2.3</function> are already installed for GHC, and so on.
 After that the <function>build</function> and <function>install</function> steps know what 
 compiler they are using.</para>
 <note><para>
@@ -276,16 +298,16 @@ all the work.</para>
 <function>Angela.Bag</function>, and <function>Angela.Internals</function>, that she wants to 
 turn into a package.  All she need do is write the setup script
 <programlisting>
-  #! runhugs
+  #! /usr/bin/env runhugs
   import Distribution.Simple
   
-  pkgDescr = PD { name = "angela",
-                  version = [1],
-                  modules = ["Angela.Set", "Angela.Bag"] }
+  pkgDescr = emptyPackage { name = "angela",
+                            version = [1],
+                            modules = ["Angela.Set", "Angela.Bag"] }
 
-  main = setup pkgDescr 
+  main = defaultMain pkgDescr 
 </programlisting>
-She tar's it up and that's her source distribution.
+Now she can use ./Setup.lhs sdist to create a source distribution.
 </para>
 <para>The details of <function>Distribution.Simple</function> are given in <xref linkend="simple">.
       </para>
@@ -332,14 +354,14 @@ It is convenient for consumers to execute <function>Setup.lhs</function> directl
 <programlisting>
   ./Setup.lhs ...
 </programlisting>
-This can be achieved by starting <function>Setup.lhs</function> with "<function>#! runhugs</function>".
+This can be achieved by starting <function>Setup.lhs</function> with "<function>#! /usr/bin/env runhugs</function>".
 Since it's a literate Haskell script (<function>.lhs</function> file), the Haskell compiler will ignore
 this line.
 However, nothing stops a consumer from running the script interactively, or compiling it and running 
 the compiled binary.  Any implementation of Haskell should suffice to run the script, provided 
 the implementation has the HLI libraries installed.
 	</para>
- <note><para>We should provide <function>runghc</function>.</para></note>
+ <note><para>The GHC team should provide <function>runghc</function>.</para></note>
       </sect2>
   </sect1>
 
@@ -365,7 +387,7 @@ package consumers.</para>
  </para></entry></row>
 
 
-     <row><Entry><command>./Setup.lhs configure </command></entry>
+     <row><Entry><command>./Setup.lhs configure [flags] </command></entry>
          <Entry><para> Prepare to build the package.  Typically, this step checks
 		that the target platform is capable of building the package, and
 		discovers platform-specific features that are needed during the build. 
@@ -373,12 +395,12 @@ package consumers.</para>
 
 
      <row><Entry><command>./Setup.lhs build</command></entry>
-                    <Entry><para>Build the package, ready for installation.  For a true compiler,
+                    <Entry><para>Make this package ready for installation.  For a true compiler,
 		  this step involves compiling the Haskell source code.  Even for an interpreter, however, 
 		  it may involve running a pre-processor.</para></entry></row>
 
 
-     <row><Entry><command>./Setup.lhs install</command></entry>
+     <row><Entry><command>./Setup.lhs install [install-prefix]</command></entry>
                     <Entry><para>Copy the files into the install locations, and register
 		  the package with the compiler.</para></entry></row>
 
@@ -419,7 +441,10 @@ installation (e.g. where the files are), while <function>PkgDescr</function> giv
 to build the package.  For sophisticated packages, the configure step
 may perform elaborate checks, to gather information about the target
 system.  It may write a file to record its results, but the name and
-format of the file are not part of the specification.
+format of the file are not part of the specification.  For wrapped
+make-based systems (for instance), a command-line parser that
+understands the standard targets will be provided.
+
       </para>
 <para>
 All flags are optional.  The flags are these:
@@ -428,7 +453,7 @@ All flags are optional.  The flags are these:
 <function>--ghc</function>, 
 <function>--nhc</function>, 
 <function>--hugs</function>: 
-specifies which compiler to use.  At most one of these flags may be specified.
+specifies which compiler to use.  At most one of the value of these flags may be specified.
 The configure step checks
 that the compiler is available, in a sufficiently up-to-date form for the package, and that the package
 expects to work with that compiler.  If the compiler name
@@ -441,6 +466,9 @@ on Windows it will be <function>Program Files</function>.  The setup script will
 (often platform-specific) if the flag is not specified.
 	    </para>
 	  </listitem>
+
+<listitem><para>Unrecognized flags are errors in the default build system, but may be meaningful to wrapped make-based systems (for instance).  Therefore, the provided command-line parser will pass unrecognized command-line flags on to the wrapped system.</para></listitem>
+
         </itemizedlist>
 It is OK for these flags to be "baked into" the compiled library.  In particular, the build system may
 bake the installation path into the compiled files.  There is no provision for installing the compiled
@@ -450,7 +478,7 @@ files anywhere other than the place specified in the <function>configure</functi
 
 <sect3><title><function>setup build</function></title>
 
-<para>The command <function>./Setup.lhs build</function> builds the
+<para>The command <function>./Setup.lhs build</function> makes this
 package, ready for installation.  It takes no flags.</para>
 
     </sect3>
@@ -494,8 +522,9 @@ used, because in that case <function>hc-pkg</function> is not called.
 Similarly, <function>./Setup.lhs unregister</function> un-registers the package.
 <itemizedlist>
 <listitem><para><function>--shared</function>: registers/un-registers a shared package as shared.  
-The default is to treat the package as a user package.
-	    </para>
+The default is to treat the package as a user package.</para>
+
+<note><para>We have not yet introduced the concept of a user package at this point, I think.</para></note>
 	  </listitem>
 	</itemizedlist></para>
 
@@ -550,6 +579,9 @@ However, the HLI provides support for library authors to make it easy to fulfil 
 
 <sect2><title>The Makefile route</title>
 
+<note><para>Isaac isn't sure that we can provide much value here beside providing
+a standard command-line parser (which is pretty good at least).  I think it might be good to offer a boilerplate Setup.lhs file for makefiles, but implementing it in a library is a bit overkill.  Perhaps in the future, if the build system is delivered w/ fptools or something, we could provide an API to wrap that.</para></note>
+
 <para>Marcus Makefile is happy with <function>make</function>, 
 and he can build the library entirely using <function>make</function>.</para>
 
@@ -585,11 +617,11 @@ the root of the distribution, where the Bob the Builder expects to find it.</par
 <para>
 In many cases, though, a Haskell package will consist of nothing more than a bunch of Haskell modules,
 with perhaps the odd C file.  In that case, the HLI provides a simple build infrastructure that
-completely replaces make.  (Think <function>hmake</function>.)  The emphasis is on ``simple'': it deals with the 90% case only.
+completely replaces make.  (Think <function>hmake</function>.)  The emphasis is on ``simple'': it deals with the 75% case only.
 If you want something more elaborate, you can (a) modify the simple build infrastructure (which is written in Haskell)
 (b) use makefiles, or (c) implement something else entirely.
 </para><para>
-The simple build infrastructure works as follows.  Angela puts the following Hasell file <function>setup.hs</function> in the
+The simple build infrastructure works as follows.  Angela puts the following Hasell file <function>Setup.lhs</function> in the
 root of her tree:
 <programlisting>
   module Main where
@@ -605,23 +637,23 @@ It contains precisely the information that is output by <function>setup info</fu
 </para><para>
 Now Angela can build her package by saying
 <programlisting>
-  setup.hs build
+  Setup.lhs build
 </programlisting>
-She can even install it on her ownn machine by saying
+She can even install it on her own machine by saying
 <programlisting>
-  setup.hs install
+  Setup.lhs install
 </programlisting>
 She can build a HLI source distribution:
 <programlisting>
-  setup.hs source-dist
+  Setup.lhs source-dist
 </programlisting>
 The full details are given in <xref linkend="simple-build">.  
 </para><para>
 It is no coincidence that the interface is very similar to that for the setup script
 for an HLI package distribution (<xref linkend="setup">).
-In fact, <function>Distribution.Simple.setup</function> conforms to the specification of <xref linkend="setup-spec">, and when it builds
+In fact, <function>Distribution.Simple.defaultMain</function> conforms to the specification of <xref linkend="setup-spec">, and when it builds
 a distribution, it includes <function>./Setup.lhs</function> in the tarball, ready to be run by Bob the Builder.
-However, <function>Distribution.Simple.setup</function> of course implements a richer interface than that required by
+However, <function>Distribution.Simple.defaultMain</function> of course implements a richer interface than that required by
 <xref linkend="setup-spec">, becuase it's intended to support Angela as well as Bob.
 The full specification is in <xref linkend="simple-build">.
 </para>
@@ -635,7 +667,7 @@ former.  The latter are just for build-specific modification (e.g. make a debug 
 
 </sect3>
 
-<sect3 id="simple-build"><title><function>Distribution.Simple.setup</function></title>
+<sect3 id="simple-build"><title><function>Distribution.Simple.defaultMain</function></title>
 
 <para>Command line interface to the simple build infrastructure.</para>
 </sect3>
@@ -651,7 +683,7 @@ former.  The latter are just for build-specific modification (e.g. make a debug 
 <para>The HLI requires that the Haskell implementations be somewhat package-aware.
 This section documents those requirements</para>
 
-<sect2><title>Registering a package</title>
+<sect2><title>Building and registering a package</title>
 
 <para>Installing a package ultimately involves these steps:
 <itemizedlist>
@@ -763,6 +795,8 @@ fields.</para>
 
 <para>Each Haskell implementation <function>hc</function> must provide an associated program <function>hc-pkg</function> which 
 allows a user to make a new package known to the compiler, and to ask what packages it knows. Here is a summary of its interface
+
+<note><para>Some of these commands (unregister, hide, and describe) make sense for package IDs which offer a range, such as "hc-pkg unregister "hmake<2.3".</para></note>
 
      <table frame=all><title><function>hc-pkg</function> interface</title>
 

@@ -86,7 +86,11 @@ data Action = ConfigCmd ConfigFlags       -- config
             | InfoCmd                     -- info
             | RegisterCmd                 -- register
             | UnregisterCmd               -- unregister
+v v v v v v v
 	    | HelpCmd			  -- help
+*************
+            | NoCmd -- error case, help case.
+^ ^ ^ ^ ^ ^ ^
 --             | TestCmd 1.0?
 --             | BDist -- 1.0
 --            | CleanCmd                 -- clean

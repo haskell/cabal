@@ -76,6 +76,10 @@ doBuildInstall f pkgConf
 defaultMain :: PackageConfig -> IO ()
 defaultMain pkgconfig
     = do args <- getArgs
+v v v v v v v
+          case parseArgs args of
+             (NoCmd,          _) -> putStrLn optionHelpString ""
+*************
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
 
@@ -86,6 +90,7 @@ defaultMain pkgconfig
 		localbuildinfo <- configure pkgconfig flags
 		writePersistBuildConfig localbuildinfo
 
+^ ^ ^ ^ ^ ^ ^
 --           (BuildCmd,       _) -> doBuildInstall build p
 --           (InstallCmd _,   _) -> doBuildInstall install p
 --           (InfoCmd, _) -> print p
