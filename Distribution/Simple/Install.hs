@@ -50,14 +50,16 @@ module Distribution.Simple.Install (
 #endif
   ) where
 
-import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..),
+                             showPackageId, hasLibs)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources,
                                  mkLibName, pathJoin,
-                                 copyFile, die
+                                 copyFile, die, createIfNotExists
                                 )
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
+import Control.Monad(when)
 import System.Cmd(system)
 
 #ifdef DEBUG
@@ -70,24 +72,36 @@ install :: FilePath  -- ^build location
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
 install buildPref pkg_descr lbi install_prefixM = do
-  let pref = pathJoin [(maybe (prefix lbi) id install_prefixM), "lib",
-                       (showPackageId $ package pkg_descr)]
-  setupMessage ("Installing: " ++ pref) pkg_descr
+  let libPref = pathJoin [(maybe (prefix lbi) id install_prefixM), "lib",
+                          (showPackageId $ package pkg_descr)]
+  let binPref = pathJoin [(maybe (prefix lbi) id install_prefixM), "bin"]
+  setupMessage ("Installing: " ++ libPref ++ "&" ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> installGHC pref buildPref pkg_descr
-     Hugs -> installHugs pref buildPref pkg_descr
+     GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
+                installExeGhc binPref buildPref pkg_descr
+     Hugs -> installHugs libPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
 
+-- |Install executables for GHC.  FIX: doesn't make it executable!
+installExeGhc :: FilePath -- ^install location
+              -> FilePath -- ^Build location
+              -> PackageDescription -> IO ()
+installExeGhc pref buildPref pkg_descr
+    = do createIfNotExists True pref
+         sequence_ [copyFile (pathJoin [buildPref, e]) (pathJoin [pref, e])
+                    | Executable e _ _ <- executables pkg_descr]
+
 -- |Install for ghc, .hi and .a
-installGHC :: FilePath -- ^install location
-           -> FilePath -- ^Build location
-           -> PackageDescription -> IO ()
-installGHC pref buildPref pkg_descr
-    = do moveSources buildPref pref (maybe [] modules (library pkg_descr)) ["hi"]
-         copyFile (mkLibName buildPref (showPackageId (package pkg_descr)))
-                    (mkLibName pref (showPackageId (package pkg_descr)))
+installLibGHC :: FilePath -- ^install location
+              -> FilePath -- ^Build location
+              -> PackageDescription -> IO ()
+installLibGHC pref buildPref pkg_descr@PackageDescription{library=Just l,
+                                                          package=p}
+    = do moveSources buildPref pref (modules l) ["hi"]
+         copyFile (mkLibName buildPref (showPackageId p))
+                    (mkLibName pref (showPackageId p))
 
 -- |Install for hugs, .lhs and .hs
 installHugs :: FilePath -- ^Install location

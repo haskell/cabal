@@ -47,20 +47,22 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       LocalBuildInfo(..),
  			  	      configure,
                                       hunitTests,
-                                      localBuildInfoFile
+                                      localBuildInfoFile,
+                                      exeDeps
                                      )
     where
 
 import Distribution.Misc(Dependency(..))
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), emptyPackageDescription,
-                            PackageIdentifier(..), BuildInfo(..)
+                            PackageIdentifier(..), BuildInfo(..), Executable(..)
                            )
 import Distribution.Simple.Utils (die, setupMessage,
                                   findBinary, splitFilenameDir)
 import Distribution.Package	( PackageIdentifier )
 import Distribution.Version (Version(..), VersionRange(..))
 
+import Data.Maybe(fromJust)
 import System.IO hiding (catch)
 import System.Directory
 import Control.Monad		( when )
@@ -78,14 +80,19 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- @C:/Program Files/foo-1.2@ on Windows.
 	compiler    :: Compiler,
 		-- ^ The compiler we're building with
-	packageDeps :: [PackageIdentifier]
+	packageDeps :: [PackageIdentifier],
 		-- ^ Which packages we depend on, *exactly*,  The
 		-- 'PackageDescription' specifies a set of build dependencies
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
+        executableDeps :: [(String,[PackageIdentifier])]
   }
   deriving (Show, Read, Eq)
+
+-- |Throws an error if it's not found.
+exeDeps :: String -> LocalBuildInfo -> [PackageIdentifier]
+exeDeps s d = fromJust $ lookup s (executableDeps d)
 
 emptyLocalBuildInfo :: LocalBuildInfo
 emptyLocalBuildInfo = undefined
@@ -125,7 +132,10 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=prefix, compiler=compiler,
-                              packageDeps=map buildDepToDep (maybe [] buildDepends lib)}
+                              packageDeps=map buildDepToDep (maybe [] buildDepends lib),
+                              executableDeps = [(n, map buildDepToDep (buildDepends exeBi))
+                                                | Executable n _ exeBi <- executables pkg_descr]
+                             }
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
 -- set any version information.
@@ -230,7 +240,7 @@ hunitTests
 	  assertEqual "finding ghc, etc on simonMar's machine failed"
              (LocalBuildInfo "/usr" (Compiler GHC 
 	                    simonMarGHCLoc
- 			    (simonMarGHCLoc ++ "-pkg")) [])
+ 			    (simonMarGHCLoc ++ "-pkg")) [] [])
              simonMarGHC
       ]
 #endif

@@ -128,7 +128,8 @@ defaultMainNoRead pkg_descr
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
 		install buildPref pkg_descr localbuildinfo install_prefixM
-                when (isNothing install_prefixM) (register pkg_descr localbuildinfo userInst)
+                when (isNothing install_prefixM && hasLibs pkg_descr)
+                         (register pkg_descr localbuildinfo userInst)
 
              Right (SDistCmd, extra_flags) -> do
 		no_extra_flags extra_flags
@@ -138,7 +139,7 @@ defaultMainNoRead pkg_descr
              Right (RegisterCmd userFlag, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		register pkg_descr localbuildinfo userFlag
+		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo userFlag)
 
              Right (UnregisterCmd, extra_flags) -> do
 		no_extra_flags extra_flags
