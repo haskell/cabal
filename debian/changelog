@@ -1,7 +1,8 @@
 haskell-cabal (0.3-1) unstable; urgency=low
 
   * new upstream version.  see upstream changelog for more info.
-  * some interface changes.
+  * some interface changes, see upstream changelog.
+  * bumped standards-version.
 
  -- Isaac Jones <ijones@debian.org>  Sat, 15 Jan 2005 12:55:49 -0800
 
