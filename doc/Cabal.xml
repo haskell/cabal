@@ -143,6 +143,7 @@ Name:           TestPackage
 Version:        0.0
 License:        BSD3
 Author:         Angela Author
+Synopsis:       Small package with two programs
 Build-Depends:  HUnit
 
 Executable:     program1
@@ -163,18 +164,19 @@ Name:            TestPackage
 Version:         0.0
 License:         BSD3
 Author:          Angela Author
+Synopsis:        Package with library and two programs
 Build-Depends:   HUnit
 Exposed-Modules: A, B, C
 
-Executable:     program1
-Main-Is:        Main.hs
-Hs-Source-Dir:  prog1
-Other-Modules:  A, B
+Executable:      program1
+Main-Is:         Main.hs
+Hs-Source-Dir:   prog1
+Other-Modules:   A, B
 
-Executable:     program2
-Main-Is:        Main.hs
-Hs-Source-Dir:  prog2
-Other-Modules:  A, C, Utils</programlisting>
+Executable:      program2
+Main-Is:         Main.hs
+Hs-Source-Dir:   prog2
+Other-Modules:   A, C, Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -272,6 +274,9 @@ Other-Modules:  A, C, Utils</programlisting>
         <literal>build-depends</literal> field, where the commas are
         mandatory.</para>
 
+      <para>Some fields are marked as required.  All others are optional,
+        and unless otherwise specified have empty default values.</para>
+
       <para>The first stanza describes the package
         as a whole, as well as the library it contains (if any), using
         the following fields:</para>
@@ -279,31 +284,33 @@ Other-Modules:  A, C, Utils</programlisting>
         <varlistentry>
           <term>
             <literal>name:</literal> <replaceable>identifier</replaceable>
+            (required)
           </term>
           <listitem>
-            <para>The unique name of the package, without the version number
-              (required).</para>
+            <para>The unique name of the package, without the version
+              number.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
           <term>
             <literal>version:</literal> <replaceable>numbers</replaceable>
+            (required)
           </term>
           <listitem>
-            <para>The package version number, usually consisting of
-              a sequence of natural numbers separated by dots
-              (required).</para>
+            <para>The package version number, usually consisting of a
+              sequence of natural numbers separated by dots.</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
           <term>
             <literal>license:</literal> <replaceable>identifier</replaceable>
+            (default: <literal>AllRightsReserved</literal>)
           </term>
           <listitem>
             <para>The type of license under which this package is distributed.
-                License names are the constants of the &License; type.</para>
+              License names are the constants of the &License; type.</para>
           </listitem>
         </varlistentry>
 
@@ -324,7 +331,9 @@ Other-Modules:  A, C, Utils</programlisting>
             <replaceable>freeform</replaceable>
           </term>
           <listitem>
-            <para>The name of the holder of the copyright on the package.</para>
+            <para>The content of a copyright notice, typically the name of
+              the holder of the copyright on the package and the year(s)
+              from which copyright is claimed.</para>
           </listitem>
         </varlistentry>
 
@@ -344,8 +353,9 @@ Other-Modules:  A, C, Utils</programlisting>
             <replaceable>address</replaceable>
           </term>
           <listitem>
-            <para>The current maintainer of the package, if different
-              from the author.</para>
+            <para>The current maintainer or maintainers of the package.
+              This is an e-mail address to which users should send bug
+              reports, feature requests and patches.</para>
           </listitem>
         </varlistentry>
 
@@ -386,11 +396,11 @@ Other-Modules:  A, C, Utils</programlisting>
             <replaceable>freeform</replaceable>
           </term>
           <listitem>
-            <para>A very short description of the package,
-              for use in a table of packages.  This is your headline,
-              so keep it short (one line) but as informative as possible.
-              Save space by not including the package name or saying
-              it's written in Haskell.</para>
+            <para>A very short description of the package, for use in a
+              table of packages.  This is your headline, so keep it short
+              (one line) but as informative as possible.  Save space
+              by not including the package name or saying it's written
+              in Haskell.</para>
           </listitem>
         </varlistentry>
 
@@ -447,10 +457,10 @@ Other-Modules:  A, C, Utils</programlisting>
           <term>
             <literal>exposed-modules:</literal>
             <replaceable>identifier list</replaceable>
+            (required if this package contains a library)
           </term>
           <listitem>
-            <para>A list of modules added by this package (required if
-              this package contains a library).</para>
+            <para>A list of modules added by this package.</para>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -488,20 +498,22 @@ Other-Modules:  A, C, Utils</programlisting>
             <term>
               <literal>executable:</literal>
               <replaceable>freeform</replaceable>
+              (required)
             </term>
             <listitem>
-              <para>The name of the executable program (required).</para>
+              <para>The name of the executable program.</para>
             </listitem>
           </varlistentry>
 
           <varlistentry>
             <term>
               <literal>main-is:</literal> <replaceable>filename</replaceable>
+              (required)
             </term>
             <listitem>
               <para>The name of the source file containing the
                 <literal>Main</literal> module, relative to the
-                <literal>hs-source-dir</literal> directory (required).</para>
+                <literal>hs-source-dir</literal> directory.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -520,10 +532,10 @@ Other-Modules:  A, C, Utils</programlisting>
           <varlistentry>
             <term>
               <literal>buildable:</literal> <replaceable>Boolean</replaceable>
+              (default: <literal>True</literal>)
             </term>
             <listitem>
               <para>Is the component buildable?
-                (default: <literal>True</literal>.)
                 Like some of the other fields below, this field is
                 more useful with the slightly more elaborate form of
                 the simple build infrastructure described in
@@ -549,10 +561,11 @@ Other-Modules:  A, C, Utils</programlisting>
             <term>
               <literal>hs-source-dir:</literal>
               <replaceable>directory</replaceable>
+              (default: <quote><literal>.</literal></quote>)
             </term>
             <listitem>
-              <para>The name of root directory of the module hierarchy
-                (default: <quote><literal>.</literal></quote>).</para>
+              <para>The name of root directory of the module
+                hierarchy.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -629,11 +642,12 @@ Other-Modules:  A, C, Utils</programlisting>
               <replaceable>filename list</replaceable>
             </term>
             <listitem>
-              <para>A list of header files from standard include directories
-                or those listed in <literal>include-dirs</literal>, typically
-                containing function prototypes for any foreign imports
-                used by the package.  These will be included in any
-                compilations via C.</para>
+              <para>A list of header files from standard
+                include directories or those listed in
+                <literal>include-dirs</literal>, to be included in any
+                compilations via C.  These files typically contain
+                function prototypes for foreign imports used by the
+                package.</para>
             </listitem>
           </varlistentry>
 
@@ -643,8 +657,9 @@ Other-Modules:  A, C, Utils</programlisting>
               <replaceable>directory list</replaceable>
             </term>
             <listitem>
-              <para>A list of directories to search for
-                header files.</para>
+              <para>A list of directories to search for header files,
+                both when using a C preprocessor and when compiling
+                via C.</para>
             </listitem>
           </varlistentry>
 
@@ -717,10 +732,10 @@ Other-Modules:  A, C, Utils</programlisting>
               <replaceable>token list</replaceable>
             </term>
             <listitem>
-              <para>On Darwin/MacOS X, a list of
-                frameworks to link to. Take a look at Apple's developer
-                documentation to find out what frameworks actually are.
-                This entry is ignored on all other platforms.</para>
+              <para>On Darwin/MacOS X, a list of frameworks to link to.
+                See Apple's developer documentation for more details
+                on frameworks.  This entry is ignored on all other
+                platforms.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -733,13 +748,13 @@ Other-Modules:  A, C, Utils</programlisting>
       <para>For some packages, implementation details and the build
         procedure depend on the build environment.  The simple build
         infrastructure can handle many such situations using a slightly
-        extended <filename>Setup.hs</filename>:</para>
+        longer <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
 main = defaultMainWithHooks defaultUserHooks</programlisting>
 
-      <para>This differs from <literal>defaultMain</literal> in two
-        ways:</para>
+      <para>This program differs from <literal>defaultMain</literal>
+        in two ways:</para>
       <orderedlist>
         <listitem>
           <para>If the package root directory contains a file called
@@ -977,7 +992,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
         registered by running the <filename>register.sh</filename> script.
         The <filename>unregister.sh</filename> script would be used
         in the uninstall procedure of the package.  Similar steps may
-        be used for creating binary backages for Windows.</para>
+        be used for creating binary packages for Windows.</para>
     </example>
 
     <para>The following options are understood by all commands:</para>
