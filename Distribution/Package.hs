@@ -205,6 +205,8 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
         parseExecutableStanza (("executable",exeName):st) =
           do binfo <- foldM parseExeHelp emptyBuildInfo st
              return (exeName,binfo)
+        parseExecutableStanza ((f,_):st) = throwError $ strMsg $
+                "'Executable' stanza starts with field '" ++ f ++ "'"
         parseExeHelp binfo (f@"extra-libs", val) =
           do xs <- runP f (parseCommaList word) val
              return binfo{extraLibs=xs}
