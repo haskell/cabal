@@ -64,12 +64,12 @@ import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Simple.Utils (rawSystemExit, die)
+import Distribution.Simple.Utils (rawSystemExit, copyFileVerbose, die)
 import Distribution.Simple.Install (hugsPackageDir, hugsProgramsDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
-import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing,removeDirectoryRecursive)
+import Distribution.Compat.Directory (createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile)
@@ -90,9 +90,9 @@ import HUnit (Test)
 -- then we use that file, perhaps creating it.
 
 register :: PackageDescription -> LocalBuildInfo
-         -> Bool -- ^Install in the user's database?
+         -> (Bool,Int) -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi userInst
+register pkg_descr lbi (userInst,verbose)
   | isNothing (library pkg_descr) = do
     setupMessage "No package to register" pkg_descr
     return ()
@@ -115,21 +115,24 @@ register pkg_descr lbi userInst
 		else return []
 
         instConfExists <- doesFileExist installedPkgConfigFile
-        unless instConfExists (writeInstalledConfig pkg_descr lbi)
+        unless instConfExists $ do
+          when (verbose > 0) $
+            putStrLn ("create "++installedPkgConfigFile)
+          writeInstalledConfig pkg_descr lbi
 
 	let register_flags 
 		| ghc_63_plus = ["register", installedPkgConfigFile]
 		| otherwise   = ["--update-package",
 				 "--input-file="++installedPkgConfigFile]
 
-        rawSystemExit 0 (compilerPkgTool (compiler lbi))
-	                     (["--auto-ghci-libs"]
-			      ++ register_flags
-                              ++ config_flags)
+        rawSystemExit verbose (compilerPkgTool (compiler lbi))
+	                         (["--auto-ghci-libs"]
+			          ++ register_flags
+                                  ++ config_flags)
       -- FIX (HUGS):
       Hugs -> do
 	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
-	copyFile installedPkgConfigFile
+	copyFileVerbose verbose installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
       _   -> die ("only registering with GHC is implemented")
 
@@ -197,13 +200,13 @@ mkInstalledPackageInfo pkg_descr lbi
 -- -----------------------------------------------------------------------------
 -- Unregistration
 
-unregister :: PackageDescription -> LocalBuildInfo -> IO ()
-unregister pkg_descr lbi = do
+unregister :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
+unregister pkg_descr lbi verbose = do
   setupMessage "Unregistering" pkg_descr
 
   case compilerFlavor (compiler lbi) of
     GHC ->
-	rawSystemExit 0 (compilerPkgTool (compiler lbi))
+	rawSystemExit verbose (compilerPkgTool (compiler lbi))
 	    ["--remove-package=" ++ pkgName (package pkg_descr)]
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)

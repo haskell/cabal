@@ -69,21 +69,22 @@ import HUnit (Test)
 -- on windows).
 sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
+      -> Int      -- ^verbose
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> PackageDescription
       -> IO ()
-sdist tmpDir targetPref pps pkg_descr = do
+sdist tmpDir targetPref verbose pps pkg_descr = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
   -- maybe move the library files into place
-  maybe (return ()) (\l -> prepareDir targetDir pps (libModules pkg_descr) (libBuildInfo l))
+  maybe (return ()) (\l -> prepareDir verbose targetDir pps (libModules pkg_descr) (libBuildInfo l))
                     (library pkg_descr)
   -- move the executables into place
-  sequence_ [prepareDir targetDir pps exeM exeBi | (Executable _ exeM _ exeBi) <- executables pkg_descr]
+  sequence_ [prepareDir verbose targetDir pps exeM exeBi | (Executable _ exeM _ exeBi) <- executables pkg_descr]
   -- setup isn't listed in the description file.
-  moveSources ""     targetDir ["Setup"] ["lhs", "hs"]
+  moveSources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (targetPref `joinFileName` (tarBallName pkg_descr))
 		    ++ " " ++ (nameVersion pkg_descr)
@@ -91,15 +92,16 @@ sdist tmpDir targetPref pps pkg_descr = do
   putStrLn "Source tarball created."
 
 -- |Move the sources into place based on buildInfo
-prepareDir :: FilePath  -- ^TargetPrefix
+prepareDir :: Int       -- ^verbose
+           -> FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
            -> [String] -- ^Modules
            -> BuildInfo
            -> IO ()
-prepareDir inPref pps mods bi@BuildInfo{hsSourceDir=srcDir}
+prepareDir verbose inPref pps mods bi@BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         moveSources srcDir pref mods (suff ++ ["hs", "lhs"])
+         moveSources verbose srcDir pref mods (suff ++ ["hs", "lhs"])
          removePreprocessed pref mods (suff ++ ["hs", "lhs"])
 
 ------------------------------------------------------------

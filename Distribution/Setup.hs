@@ -150,7 +150,7 @@ cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
 globalOptions = [
-  cmd_help
+  cmd_help, cmd_verbose
   ]
 
 liftCustomOpts :: [OptDescr a] -> [OptDescr (Flag a)]
@@ -322,7 +322,7 @@ installCmd = Cmd {
         cmdName        = "install",
         cmdHelp        = "Copy the files into the install locations. Run register.",
         cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
-        cmdOptions     = [cmd_help,
+        cmdOptions     = [cmd_help, cmd_verbose,
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
                "[DEPRECATED, use copy]",
            Option "" ["user"] (NoArg UserFlag)
@@ -338,15 +338,15 @@ copyCmd = Cmd {
         cmdName        = "copy",
         cmdHelp        = "Copy the files into the install locations.",
         cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the copy-prefix flag, configure determines location.\n",
-        cmdOptions     = [cmd_help,
+        cmdOptions     = [cmd_help, cmd_verbose,
            Option "" ["copy-prefix"] (ReqArg InstPrefix "DIR")
                "specify the directory in which to place installed files"
            ],
         cmdAction      = CopyCmd Nothing
         }
 
-parseCopyArgs :: (Maybe FilePath) -> [String] -> [OptDescr a] ->
-                    IO ((Maybe FilePath), [a], [String])
+parseCopyArgs :: (Maybe FilePath,Int) -> [String] -> [OptDescr a] ->
+                    IO ((Maybe FilePath,Int), [a], [String])
 parseCopyArgs cfg args customOpts =
   case getCmdOpt copyCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -357,15 +357,16 @@ parseCopyArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) mprefix = updateCfg flags $
+  where updateCfg (fl:flags) (mprefix,verbose) = updateCfg flags $
           case fl of
-            InstPrefix path -> Just path
-            Lift _          -> mprefix
+            InstPrefix path -> (Just path,verbose)
+            Verbose n       -> (mprefix,n)
+            Lift _          -> (mprefix,verbose)
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
-parseInstallArgs :: Bool -> [String] -> [OptDescr a] ->
-                    IO (Bool, [a], [String])
+parseInstallArgs :: (Bool,Int) -> [String] -> [OptDescr a] ->
+                    IO ((Bool,Int), [a], [String])
 parseInstallArgs cfg args customOpts =
   case getCmdOpt installCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -377,13 +378,14 @@ parseInstallArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg :: [Flag a] -> Bool -> Bool
-        updateCfg (fl:flags) uFlag = updateCfg flags $
+  where updateCfg :: [Flag a] -> (Bool,Int) -> (Bool,Int)
+        updateCfg (fl:flags) (uFlag,verbose) = updateCfg flags $
           case fl of
             InstPrefix _ -> error "--install-prefix is deprecated. Use copy command instead."
-            UserFlag     -> True
-            GlobalFlag   -> False
-            Lift _       -> uFlag
+            UserFlag     -> (True,verbose)
+            GlobalFlag   -> (False,verbose)
+            Verbose n    -> (uFlag,n)
+            Lift _       -> (uFlag,verbose)
             _            -> error $ "Unexpected flag!"
         updateCfg [] t = t
         isInstallPref (InstPrefix _) = True
@@ -394,7 +396,7 @@ sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
         cmdDescription = "This is the long description for sdist.\n", -- Multi-line!
-        cmdOptions     = [cmd_help],
+        cmdOptions     = [cmd_help,cmd_verbose],
         cmdAction      = SDistCmd
         }
 
@@ -406,7 +408,7 @@ registerCmd = Cmd {
         cmdName        = "register",
         cmdHelp        = "Register this package with the compiler.",
         cmdDescription = "This is the long description for register.\n", -- Multi-line!
-        cmdOptions     = [cmd_help,
+        cmdOptions     = [cmd_help, cmd_verbose,
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -415,8 +417,8 @@ registerCmd = Cmd {
         cmdAction      = RegisterCmd False
         }
 
-parseRegisterArgs :: Bool -> [String] -> [OptDescr a] ->
-                     IO (Bool, [a], [String])
+parseRegisterArgs :: (Bool,Int) -> [String] -> [OptDescr a] ->
+                     IO ((Bool,Int), [a], [String])
 parseRegisterArgs cfg args customOpts =
   case getCmdOpt registerCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -427,11 +429,12 @@ parseRegisterArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) uFlag = updateCfg flags $
+  where updateCfg (fl:flags) (uFlag,verbose) = updateCfg flags $
           case fl of
-            UserFlag        -> True
-            GlobalFlag      -> False
-            Lift _          -> uFlag
+            UserFlag        -> (True,verbose)
+            GlobalFlag      -> (False,verbose)
+            Verbose n       -> (uFlag,n)
+            Lift _          -> (uFlag,verbose)
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
@@ -440,7 +443,7 @@ unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
         cmdDescription = "This is the long description for unregister.\n", -- Multi-line!
-        cmdOptions     = [cmd_help],
+        cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = UnregisterCmd
         }
 
