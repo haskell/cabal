@@ -1,15 +1,13 @@
 * 0.1
 RC:
 ** grep for "FIX"
-** sanity check for both library and executables == nothing.
-- also, if they have Nothing, and yet BuildInfo is non-empty, this
-   should probably be a warning.
 ** Extensions
 - complain if their use makes the code non-portable?
-- constructorless data-types
+- constructorless data-types?
 
 HIGH: 
-** under what conditions does library == Nothing?
+** Question: under what conditions does library == Nothing?
+- Answer: when any of the buildInfo is filled out?
 ** Clean up field parsers (Martin: what else goes here?)
 
 LOW
