@@ -58,11 +58,12 @@ import Control.Monad.State
 import Control.Monad(when, foldM)
 import Control.Monad.Error
 import Data.Char(isSpace, toLower)
+import Data.List(isPrefixOf)
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension(..))
-import Distribution.Setup(CompilerFlavor)
+import Distribution.Setup(CompilerFlavor(..))
 
 import System.IO(openFile, IOMode(..), hGetContents)
 
@@ -120,6 +121,11 @@ setPkgName n desc@PackageDescription{package=pkgIdent}
 setPkgVersion :: Version -> PackageDescription -> PackageDescription
 setPkgVersion v desc@PackageDescription{package=pkgIdent}
     = desc{package=pkgIdent{pkgVersion=v}}
+
+-- |Add options for a specific compiler. Convenience function.
+setPkgOptions :: CompilerFlavor -> [String] -> PackageDescription -> PackageDescription
+setPkgOptions c xs desc@PackageDescription{options=opts}
+    = desc{options=(c,xs):opts}
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
@@ -206,9 +212,12 @@ parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines i
         parseDescHelp pkg (f@"extensions", val) =
           do exts <- runP f (parseCommaList parseExtension) val
              return pkg{extensions=exts}
-        parseDescHelp pkg (f@"options", val) =
-          do -- ...
-             return pkg
+        parseDescHelp pkg (f, val) | "options-" `isPrefixOf` f =
+          let compilers = [("ghc",GHC),("nhc",NHC),("hugs",Hugs)] -- FIXME
+           in case lookup (drop 8 f) compilers of
+                Just c -> do xs <- runP f (parseCommaList parseOption) val
+                             return (setPkgOptions c xs pkg)
+                Nothing -> error $ "Unknown compiler (" ++ drop 8 f ++ ")"
         parseDescHelp pkg (field, val) = error $ "Unknown field :: " ++ field
         -- ...
         runP f p s = case parse p f s of
@@ -272,6 +281,8 @@ extensionsMap = [("OverlappingInstances", OverlappingInstances),
                  ("TypeSynonymInstances", TypeSynonymInstances),
                  ("TemplateHaskell", TemplateHaskell)]
 
+parseOption = many1 (letter <|> digit <|> oneOf "-+/\\._") -- FIXME
+
 toStr c = c >>= \x -> return [x]
 
 word :: GenParser Char st String
@@ -314,7 +325,8 @@ testPkgDesc = unlines [
         "Extra-Libs: libfoo, bar, bang",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me",
-        "Options: ghc: -fTH, hugs: +TH"
+        "Options-ghc: -fTH",
+        "Options-hugs: +TH"
         ]
 
 testPkgDescAnswer = 
@@ -341,7 +353,7 @@ testPkgDescAnswer =
                     extraLibs = ["libfoo", "bar", "bang"],
                     includeDirs = ["your/slightest", "look/will"],
                     includes = ["/easily/unclose", "/me"],
-                    options = []
+                    options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
 }
 
 hunitTests :: [Test]
