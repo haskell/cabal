@@ -1,4 +1,4 @@
-GHCFLAGS= --make -Wall
+GHCFLAGS= --make -Wall -cpp
 PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
