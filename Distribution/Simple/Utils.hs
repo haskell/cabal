@@ -56,8 +56,9 @@ module Distribution.Simple.Utils (
 	getOptionsFromSource,
 	stripComments,
         defaultPackageDesc,
-        hookedPackageDesc,
         findPackageDesc,
+	defaultHookedPackageDesc,
+	findHookedPackageDesc,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -319,6 +320,7 @@ stripComments keepPragmas = stripCommentsLevel 0
 
 oldDescFile = "Setup.description"
 cabalExt = "cabal"
+buildInfoExt = "buildinfo"
 
 matchesDescFile :: FilePath -> Bool
 matchesDescFile p = (snd $ splitFileExt p) == cabalExt
@@ -363,10 +365,22 @@ findPackageDesc p = do ls <- getDirectoryContents p
                        let descs = filter matchesDescFile ls
                        descriptionCheck descs
 
--- |Package build information file (@Setup.buildinfo@) used by
--- 'defaultUserHooks'.
-hookedPackageDesc :: FilePath
-hookedPackageDesc = "Setup.buildinfo"
+-- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
+defaultHookedPackageDesc :: IO (Maybe FilePath)
+defaultHookedPackageDesc = getCurrentDirectory >>= findHookedPackageDesc
+
+-- |Find auxiliary package information in the given directory.
+-- Looks for @.buildinfo@ files.
+findHookedPackageDesc
+    :: FilePath			-- ^Directory to search
+    -> IO (Maybe FilePath)	-- ^/dir/@\/@/pkgname/@.buildinfo@, if present
+findHookedPackageDesc dir = do
+    ns <- getDirectoryContents dir
+    case [dir `joinFileName`  n |
+		n <- ns, snd (splitFileExt n) == buildInfoExt] of
+	[] -> return Nothing
+	[f] -> return (Just f)
+	_ -> die ("Multiple files with extension " ++ buildInfoExt)
 
 -- ------------------------------------------------------------
 -- * Testing

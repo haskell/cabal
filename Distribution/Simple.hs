@@ -48,7 +48,7 @@ module Distribution.Simple (
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        UserHooks (..), emptyUserHooks, defaultUserHooks, hookedPackageDesc,
+        UserHooks (..), emptyUserHooks, defaultUserHooks, defaultHookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -70,7 +70,7 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir,
-                                  defaultPackageDesc, hookedPackageDesc,
+                                  defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
 import Distribution.License (License(..))
 import Distribution.Extension (Extension(..))
@@ -337,11 +337,11 @@ emptyUserHooks
 --
 -- * on non-Windows systems, 'preConf' runs @.\/configure@, if present.
 --
--- * all pre-hooks read additional build information from 'hookedPackageDesc',
---   if present.
+-- * all pre-hooks read additional build information from
+--   /package/@.buildinfo@, if present.
 --
 -- Thus @configure@ can use local system information to generate
--- 'hookedPackageDesc' and possibly other files.
+-- /package/@.buildinfo@ and possibly other files.
 
 -- FIXME: do something sensible for windows, or do nothing in preConf.
 
@@ -372,12 +372,12 @@ defaultUserHooks
 		       no_extra_flags args
 		   readHookedPackageDesc
           readHookedPackageDesc
-              = do exists <- doesFileExist hookedPackageDesc
-		   if exists then do
-		       pkg_descr <- readPackageDescription hookedPackageDesc
-		       return (Just pkg_descr)
-		     else
-		       return Nothing
+              = do maybe_infoFile <- defaultHookedPackageDesc
+		   case maybe_infoFile of
+		       Nothing -> return Nothing
+		       Just infoFile -> do
+			   pkg_descr <- readPackageDescription infoFile
+			   return (Just pkg_descr)
 
 -- ------------------------------------------------------------
 -- * Testing
