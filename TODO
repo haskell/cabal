@@ -37,6 +37,9 @@
 *** Better way to find 'tar'; is there a library? what does darcs do?
 
 ** Doc
+*** do comments have to start in the first column?
+*** clarify relationship between exposed-modules and modules, etc.
+*** add preprocessor explanation (see bottom of this TODO).
 *** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
 *** add information about executable stanzas
 *** elimintate need for cpphs in haddock makefile rule.
@@ -184,3 +187,24 @@
 
 ** debian package building (boilerplate) tool.  Other debian support
    w/ rebuild-all-packages?
+
+------------------------------------------------------------
+[1] Foo.y is a happy grammer which, when processed, will produce Foo.hs.
+
+The description file should include the module Foo.
+
+./setup sdist (source distribution): Include Foo.y, not Foo.hs.  Maybe
+we could add a flag to include Foo.hs as well.  This makes sense for
+some preprocessors and not for others, but I'm wary of including too
+much preprocessor-specific behavior.
+
+./setup clean: Removes Foo.hs if Foo.y exists.
+
+./setup build: Preprocesses Foo.y to Create Foo.hs before any
+compilation.
+
+The issue with cpp is that we can't go by extensions as we do with the
+rest of the preprocessors... There is a function in HMake which tests
+to see if a file needs to be cpp'd, so we can employ that.  I think
+we'll probably have to just treat cpp a little differently from the
+others, unfortunitely, and I haven't gotten around to it.
