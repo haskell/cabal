@@ -1,0 +1,17 @@
+Cabal home page:
+http://www.haskell.org/cabal
+
+
+Quirky things about the build system
+
+* The Makefile wraps the standard Cabal setup script; the Makefile is
+  a convinience for bootstrapping the system. "sudo make install"
+  should handle HUnit, generate the setup script, configure, build,
+  install, and register it in a standard location.
+
+* HUnit is included both as a test case for Cabal, and because Cabal
+  uses HUnit for testing.  Don't panic.
+
+* HUnit also uses the standard setup script interface, and has to get
+  installed and registered before the build setup of Cabal.  The
+  install target of the Makefile does everything in the right order.
