@@ -48,7 +48,7 @@ module Distribution.Simple (
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        UserHooks (..), emptyUserHooks, defaultUserHooks, defaultHookedPackageDesc,
+        defaultUserHooks, -- UserHooks (..), emptyUserHooks, defaultHookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -201,6 +201,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
                       mapM (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles
+                      setupMessage "Running Haddock" pkg_descr
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)
                       code <- rawSystemPath verbose "haddock" (["-h", "-o", targetDir] ++ outFiles)
