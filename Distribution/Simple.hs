@@ -41,20 +41,29 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple (defaultMain)
-where
+module Distribution.Simple (
+	module Distribution.Package,
+	License(..), Version(..),
+	defaultMain, emptyPackageConfig,
+  ) where
 
 -- Base
 import System(getArgs)
 
-import Distribution.Package(PackageConfig(..))
+import Distribution.Package
 import Distribution.Setup(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Build(build)
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig)
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
+				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
+import Distribution.Simple.Utils (die)
+import Distribution.Misc (License(..))
+import Distribution.Version (Version(..))
 
 import System.IO
+import Control.Monad	( when )
+import Data.List	( intersperse )
 
 -- |Reads local build info, executes function
 doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
@@ -65,15 +74,39 @@ doBuildInstall f pkgConf
          f pkgConf lbi
 
 defaultMain :: PackageConfig -> IO ()
-defaultMain p
+defaultMain pkgconfig
     = do args <- getArgs
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
+
+	     Right (ConfigCmd flags, extra_flags) -> do
+		when (not (null extra_flags)) $ do
+		   die ("Unrecognised flags: " ++ 
+			  concat (intersperse "," (extra_flags)))
+		localbuildinfo <- configure pkgconfig flags
+		writePersistBuildConfig localbuildinfo
 
 --           (BuildCmd,       _) -> doBuildInstall build p
 --           (InstallCmd _,   _) -> doBuildInstall install p
 --           (InfoCmd, _) -> print p
          return ()
+
+emptyPackageConfig :: PackageConfig
+emptyPackageConfig
+    =  PackageConfig {package      = undefined,
+                      licenese     = AllRightsReserved,
+                      copyright    = "",
+                      maintainer   = "",
+                      stability    = "",
+                      buildDepends = [],
+                      sources      = [],
+                      extensions   = [],
+                      library      = "",
+                      extraLibs    = [],
+                      includeDirs  = [],
+                      includes     = [],
+                      options      = []
+                     }
 
 helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"
