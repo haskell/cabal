@@ -88,7 +88,7 @@ import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist)
 
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Data.List	( intersperse )
 import Data.Maybe       ( isNothing, fromJust, maybeToList )
 import System.IO.Error (try)
@@ -233,6 +233,7 @@ defaultMainWorker pkg_descr_in action args hooks
             ProgramaticaCmd -> do
                  (verbose, _, args) <- parseProgramaticaArgs args []
                  pkg_descr <- hookOrInArgs preBuild args verbose
+                 unless (hasLibs pkg_descr) (error "no libraries found in this project.")
                  withLib pkg_descr ExitSuccess (\lib ->
                     do lbi <- getPersistBuildConfig
                        mPfe <- findProgram "pfesetup" Nothing
@@ -253,8 +254,8 @@ defaultMainWorker pkg_descr_in action args hooks
 --                                 "-o", targetDir,
 --                                 "-t", showPkg,
 --                                 "-p", prologName]
-                                ((if verbose > 4 then ["-v"] else [])
-                               ++ outFiles)
+                                ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
+                               ++ inFiles)
                        when (code /= ExitSuccess) (exitWith code)
                        return code)
 
