@@ -256,8 +256,7 @@ parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
 parseDependency :: GenParser Char st Dependency
 parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
                      skipMany parseWhite
-                     ver  <- parseVersionRange -- XXX Ugly ugly fix, this will
-                         <|> return AnyVersion -- XXX probably break something
+                     ver <- parseVersionRange <|> return AnyVersion
                      skipMany parseWhite
                      return $ Dependency name ver
         <?> "parseDependency"

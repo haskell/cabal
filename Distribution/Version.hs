@@ -195,7 +195,7 @@ word = many1 letter <?> "word"
 
 --  -----------------------------------------------------------
 parseVersionRange :: GenParser Char st VersionRange
-parseVersionRange = try (do reservedOp "<"
+parseVersionRange =     (do reservedOp "<"
                             v <- parseVersion
                             return $ EarlierVersion v)
                     <|> (do reservedOp ">"
@@ -210,9 +210,6 @@ parseVersionRange = try (do reservedOp "<"
                     <|> (do reservedOp "=="
                             v <- parseVersion
                             return $ ThisVersion v)
-                    <|> (do reservedOp "-"
-                            reserved "any"
-                            return $ AnyVersion)
 
 
 --  -----------------------------------------------------------
@@ -381,13 +378,6 @@ hunitTests
        "released version 3" ~: "failed"
             ~: (Right $ release3) ~=? doVersionParse "1.2.3",
 
-       -- Version ranges
-       "Any version" ~: "failed"
-            ~: (Right $ AnyVersion)
-            ~=? doVersionRangeParse "-any",
-       "Any version space" ~: "failed"
-            ~: (Right $ AnyVersion)
-            ~=? doVersionRangeParse "- any",
        "range comparison LaterVersion 1" ~: "failed"
             ~: True
             ~=? release3 `withinRange` (LaterVersion release2),
