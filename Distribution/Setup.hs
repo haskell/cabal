@@ -110,17 +110,24 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | HelpFlag
           -- For install:
           | InstPrefix FilePath
---          | Verbose | Version?
+          | Verbose Int
+--          | Version?
           | Lift a
             deriving (Show, Eq)
 
 cmd_help :: OptDescr (Flag a)
 cmd_help = Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
 
--- Do we have any other interesting global flags? Verbose?
+cmd_verbose :: OptDescr (Flag a)
+cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
+  where
+    verboseFlag mb_s = Verbose (maybe 1 read mb_s)
+
+-- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
 globalOptions = [
-  cmd_help
+  cmd_help,
+  cmd_verbose
   ]
 
 liftCustomOpts :: [OptDescr a] -> [OptDescr (Flag a)]
@@ -241,23 +248,54 @@ buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
         cmdDescription = "This is the long description for build.\n", -- Multi-line!
-        cmdOptions     = [cmd_help],
+        cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = BuildCmd
         }
 
-parseBuildArgs :: [String] -> [OptDescr a] -> IO ([a], [String])
-parseBuildArgs = parseNoArgs buildCmd
+parseBuildArgs :: Int -> [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseBuildArgs verbose args customOpts = 
+  case getCmdOpt buildCmd customOpts args of
+    (flags, _, []) | hasHelpFlag flags -> do
+      printCmdHelp buildCmd customOpts
+      exitWith ExitSuccess
+    (flags, args', []) ->
+      return (updateBld flags verbose, unliftFlags flags, args')
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
+                       exitWith (ExitFailure 1)
+  where
+    updateBld (fl:flags) verbose = updateBld flags $
+          case fl of
+            Verbose n -> n
+            _         -> error $ "Unexpected flag!"
+    updateBld [] t = t
 
 haddockCmd :: Cmd a
 haddockCmd = Cmd {
         cmdName        = "haddock",
         cmdHelp        = "Generate Haddock HTML code from Exposed-Modules.",
         cmdDescription = "Requires cpphs and haddock.",
-        cmdOptions     = [cmd_help],
+        cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = HaddockCmd
         }
 
-parseHaddockArgs = parseNoArgs haddockCmd
+parseHaddockArgs verbose args customOpts =
+  case getCmdOpt haddockCmd customOpts args of
+    (flags, _, []) | hasHelpFlag flags -> do
+      printCmdHelp haddockCmd customOpts
+      exitWith ExitSuccess
+    (flags, args', []) ->
+      return (updateBld flags verbose, unliftFlags flags, args')
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
+                       exitWith (ExitFailure 1)
+  where
+    updateBld (fl:flags) verbose = updateBld flags $
+          case fl of
+            Verbose n -> n
+            _         -> error $ "Unexpected flag!"
+    updateBld [] t = t
+
 
 cleanCmd :: Cmd a
 cleanCmd = Cmd {

@@ -122,7 +122,7 @@ register pkg_descr lbi userInst
 		| otherwise   = ["--update-package",
 				 "--input-file="++installedPkgConfigFile]
 
-        rawSystemExit (compilerPkgTool (compiler lbi))
+        rawSystemExit 0 (compilerPkgTool (compiler lbi))
 	                     (["--auto-ghci-libs"]
 			      ++ register_flags
                               ++ config_flags)
@@ -203,7 +203,7 @@ unregister pkg_descr lbi = do
 
   case compilerFlavor (compiler lbi) of
     GHC ->
-	rawSystemExit (compilerPkgTool (compiler lbi))
+	rawSystemExit 0 (compilerPkgTool (compiler lbi))
 	    ["--remove-package=" ++ pkgName (package pkg_descr)]
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
