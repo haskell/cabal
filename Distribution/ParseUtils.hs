@@ -186,7 +186,11 @@ allSpaces (_,xs) = all isSpace xs
 -- significance, unlike 'splitStanzas'.  A field value may span over blank
 -- lines.
 singleStanza :: String -> Either PError Stanza
-singleStanza = mapM brk . merge . filter (not.allSpaces) . zip [1..] . lines
+singleStanza = mapM brk . merge . filter validLine . zip [1..] . lines
+  where validLine (_,s) = case dropWhile isSpace s of
+                            '-':'-':_ -> False      -- Comment
+                            []        -> False      -- blank line
+                            _         -> True
 
 merge ((n,x):(_,c:s):ys) 
   | c == ' ' || c == '\t' = case dropWhile isSpace s of
