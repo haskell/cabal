@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.InstalledPackageInfo (
 	InstalledPackageInfo(..),
+	ParseResult(..),
 	emptyInstalledPackageInfo,
 	parseInstalledPackageInfo,
 	showInstalledPackageInfo,

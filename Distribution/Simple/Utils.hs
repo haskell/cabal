@@ -229,7 +229,7 @@ copyFileVerbose verbose src dest = do
   copyFile src dest
 
 -- |The path name that represents the current directory.  May be
--- system-specific.  In Unix, it's "." FIX: What about other arches?
+-- system-specific.  In Unix, it's @\".\"@. FIX: What about other arches?
 currentDir :: FilePath
 currentDir = "."
 
@@ -379,7 +379,7 @@ descriptionCheck [x,y]
     | otherwise = multiDesc [x,y]
 descriptionCheck l = multiDesc l
 
--- |Package description file (@<pkgname>.cabal@)
+-- |Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: IO FilePath
 defaultPackageDesc = getCurrentDirectory >>= findPackageDesc
 

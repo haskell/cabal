@@ -51,7 +51,7 @@ module Distribution.License (
 
 -- |This datatype indicates the license under which your package is
 -- released.  It is also wise to add your license to each source file.
--- The "AllRightsReserved" constructor is not actually a license, but
+-- The 'AllRightsReserved' constructor is not actually a license, but
 -- states that you are not giving anyone else a license to use or
 -- distribute your work.  The comments below are general guidelines.
 -- Please read the licenses themselves and consult a lawyer if you are
