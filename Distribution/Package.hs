@@ -55,8 +55,13 @@ module Distribution.Package (
 #endif
   ) where
 
-import Control.Monad(when, foldM)
+import Control.Monad(foldM)
+#ifdef __NHC__
+-- nhc doesn't have C.M.Error (which defines Monad (Either String))
+import Compat.H98
+#else
 import Control.Monad.Error
+#endif
 import Data.Char
 import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
@@ -175,17 +180,14 @@ hasLibs p = case library p of
 -- * Parsing
 -- ------------------------------------------------------------
 
-notImp :: String -> a
-notImp s = error $ s ++ " not yet implemented"
-
 -- |Parse the given package file.
 parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p = do h <- openFile p ReadMode
                         str <- hGetContents h
                         case parseDescription str of
                           Left  e -> error (showError e) -- FIXME
-                          Right x@PackageDescription{library=Nothing,
-                                                     executables=[]}
+                          Right PackageDescription{library=Nothing,
+                                                   executables=[]}
                               -> error "no library listed, and no executable stanza."
                           Right x -> return x
 
@@ -195,6 +197,7 @@ data PError = AmbigousParse | NoParse | FromString String
 instance Error PError where
         strMsg = FromString
 
+showError :: PError -> String
 showError AmbigousParse  = "Ambigous parse"
 showError NoParse        = "No parse"
 showError (FromString s) = s
@@ -205,61 +208,62 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza pkg (f@"name",      val) = return (setPkgName val pkg)
-        parseBasicStanza pkg (f@"version",   val) =
+        parseBasicStanza pkg ("name",      val) = return (setPkgName val pkg)
+        parseBasicStanza pkg ("version",   val) =
           do v <- runP parseVersion val
              return (setPkgVersion v pkg)
-        parseBasicStanza pkg (f@"copyright", val) = return pkg{copyright=val}
-        parseBasicStanza pkg (f@"license",   val) =
+        parseBasicStanza pkg ("copyright", val) = return pkg{copyright=val}
+        parseBasicStanza pkg ("license",   val) =
           do l <- runP parseLicense val
              return pkg{license=l}
-        parseBasicStanza pkg (f@"license-file", val) =
+        parseBasicStanza pkg ("license-file", val) =
           do path <- runP parseFilePath val
              return pkg{license=OtherLicense path}
-        parseBasicStanza pkg (f@"maintainer", val) = return pkg{maintainer=val}
-        parseBasicStanza pkg (f@"stability",  val) = return pkg{stability=val}
+        parseBasicStanza pkg ("maintainer", val) = return pkg{maintainer=val}
+        parseBasicStanza pkg ("stability",  val) = return pkg{stability=val}
         parseBasicStanza pkg (field, val) =
           do let lib = fromMaybe emptyBuildInfo (library pkg)
              lib' <- parseExeHelp lib (field, val)
              return pkg{library=Just lib'}
         -- Stanzas for executables
-        parseExecutableStanza (("executable",exeName):st) =
+        parseExecutableStanza (("executable",eName):st) =
           case lookup "main-is" st of
             Just xs -> do path <- runP parseFilePath xs
                           binfo <- foldM parseExeHelp emptyBuildInfo st
-                          return $ Executable exeName path binfo
+                          return $ Executable eName path binfo
             Nothing -> fail $
-                "No 'Main-Is' field found for " ++ exeName ++ " stanza"
-        parseExecutableStanza ((f,_):st) = fail $
-                "'Executable' stanza starts with field '" ++ f ++ "'"
-        parseExeHelp binfo (f@"main-is", _) = return binfo
-        parseExeHelp binfo (f@"extra-libs", val) =
-          do xs <- runP (parseCommaList word) val
+                "No 'Main-Is' field found for " ++ eName ++ " stanza"
+        parseExecutableStanza ((f,_):_) = fail $
+                "'Executable' stanza starting with field '" ++ f ++ "'"
+        parseExecutableStanza _ = error "This shouldn't happen!"
+        parseExeHelp binfo ("main-is", _) = return binfo
+        parseExeHelp binfo ("extra-libs", val) =
+          do xs <- runP (parseCommaList parseLibName) val
              return binfo{extraLibs=xs}
-        parseExeHelp binfo (f@"build-depends", val) =
+        parseExeHelp binfo ("build-depends", val) =
           do xs <- runP (parseCommaList parseDependency) val
              return binfo{buildDepends=xs}
         -- Paths and stuff
-        parseExeHelp binfo (f@"c-sources", val) =
+        parseExeHelp binfo ("c-sources", val) =
           do paths <- runP (parseCommaList parseFilePath) val
              return binfo{cSources=paths}
-        parseExeHelp binfo (f@"include-dirs", val) =
+        parseExeHelp binfo ("include-dirs", val) =
           do paths <- runP (parseCommaList parseFilePath) val
              return binfo{includeDirs=paths}
-        parseExeHelp binfo (f@"includes", val) =
+        parseExeHelp binfo ("includes", val) =
           do paths <- runP (parseCommaList parseFilePath) val
              return binfo{includes=paths}
-        parseExeHelp binfo (f@"hs-source-dir", val) =
+        parseExeHelp binfo ("hs-source-dir", val) =
           do path <- runP parseFilePath val
              return binfo{hsSourceDir=path}
         -- Module related
-        parseExeHelp binfo (f@"modules", val) =
+        parseExeHelp binfo ("modules", val) =
           do xs <- runP (parseCommaList parseModuleName) val
              return binfo{modules=xs}
-        parseExeHelp binfo (f@"exposed-modules", val) =
+        parseExeHelp binfo ("exposed-modules", val) =
           do xs <- runP (parseCommaList parseModuleName) val
              return binfo{exposedModules=xs}
-        parseExeHelp binfo (f@"extensions", val) =
+        parseExeHelp binfo ("extensions", val) =
           do exts <- runP (parseCommaList parseExtension) val
              return binfo{extensions=exts}
         parseExeHelp binfo (f, val) | "options-" `isPrefixOf` f =
@@ -268,7 +272,7 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
                 Just c -> do xs <- runP (parseCommaList parseOption) val
                              return (setOptions c xs binfo)
                 Nothing -> error $ "Unknown compiler (" ++ drop 8 f ++ ")"
-        parseExeHelp binfo (field, val) = error $ "Unknown field :: " ++ field
+        parseExeHelp _binfo (field, _val) = error $ "Unknown field :: " ++ field
         -- ...
 
 runP :: ReadP a a -> String -> Either PError a
@@ -296,13 +300,14 @@ splitStanzas = map merge . groupStanzas . filter validLine . lines
         merge []     = []
         brk xs = case break (==':') xs of
                    (fld, ':':val) -> (map toLower fld, dropWhile isSpace val)
-                   (fld, "")      -> error "FIXME"
+                   (fld, _)       -> error $ "Parser error: Line '"
+                                        ++ fld ++ "' has no colon"
 
 -- |parse a module name
 parseModuleName :: ReadP r String
-parseModuleName = do x <- satisfy isUpper
-                     xs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
-                     return (x:xs)
+parseModuleName = do c <- satisfy isUpper
+                     cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
+                     return (c:cs)
 
 parseFilePath :: ReadP r FilePath
 parseFilePath = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
@@ -323,10 +328,15 @@ parseLicense = parseReadS
 parseExtension :: ReadP r Extension
 parseExtension = parseReadS
 
-parseOption = munch1 (\x -> isAlphaNum x || x `elem` "-+/\\._") -- FIXME
+-- FIXME
+-- Which characters are valid for arbitrary options to the compilers?
+-- Couldn't this be basically anything? Maybe we should have a generic
+-- parseAnything (that looks just like parseLibName, see below)
+parseOption :: ReadP r String
+parseOption = munch1 (\x -> isAlphaNum x || x `elem` "-+/\\._")
 
-word :: ReadP r String
-word = munch1 isAlpha
+parseLibName :: ReadP r String
+parseLibName = munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
