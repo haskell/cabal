@@ -9,8 +9,8 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: Perform the ".\/setup configure" action.  Outputs the
--- .setup-config file.
+-- Explanation: Perform the \"@.\/setup configure@\" action.
+-- Outputs the @.setup-config@ file.
 
 {- All rights reserved.
 
