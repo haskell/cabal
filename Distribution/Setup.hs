@@ -178,6 +178,7 @@ getConfigFlags flags
     convert HugsFlag = Just Hugs
     convert _        = Nothing
 
+getOneOpt :: Show a => [a] -> Either String (Maybe a)
 getOneOpt [] = return Nothing
 getOneOpt [one] = return (Just one)
 getOneOpt o = fail $ "Multiple options where one expected: "

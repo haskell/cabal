@@ -51,10 +51,6 @@ import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
 
-import System.Cmd(system)
-import System.Directory(doesDirectoryExist, createDirectory, doesFileExist)
-import System.Exit
-
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
 -- know which files to expect?

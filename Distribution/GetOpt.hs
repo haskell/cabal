@@ -170,7 +170,7 @@ getNext a            rest _        = (NonOpt a,rest)
 longOpt :: String -> [String] -> [OptDescr a] -> (OptKind a,[String])
 longOpt ls rs optDescr = long ads arg rs
    where (opt,arg) = break (=='=') ls
-         getWith p = [ o  | o@(Option _ ls _ _) <- optDescr, l <- ls, opt `p` l ]
+         getWith p = [ o  | o@(Option _ xs _ _) <- optDescr, x <- xs, opt `p` x ]
          exact     = getWith (==)
          options   = if null exact then getWith isPrefixOf else exact
          ads       = [ ad | Option _ _ ad _ <- options ]
@@ -188,10 +188,10 @@ longOpt ls rs optDescr = long ads arg rs
 
 -- handle short option
 shortOpt :: Char -> String -> [String] -> [OptDescr a] -> (OptKind a,[String])
-shortOpt x xs rest optDescr = short ads xs rest
-  where options = [ o  | o@(Option ss _ _ _) <- optDescr, s <- ss, x == s ]
+shortOpt y ys rs optDescr = short ads ys rs
+  where options = [ o  | o@(Option ss _ _ _) <- optDescr, s <- ss, y == s ]
         ads     = [ ad | Option _ _ ad _ <- options ]
-        optStr  = '-':[x]
+        optStr  = '-':[y]
 
         short (_:_:_)        _  rest     = (errAmbig options optStr,rest)
         short (NoArg  a  :_) [] rest     = (Opt a,rest)
