@@ -43,6 +43,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Misc(License(..), Dependency(..), Extension(..), Opt
+                         ,extensionsToNHCFlag, extensionsToGHCFlag
 #ifdef DEBUG        
         ,hunitTests
 #endif
@@ -50,6 +51,7 @@ module Distribution.Misc(License(..), Dependency(..), Extension(..), Opt
     where
 
 import Distribution.Version(VersionRange)
+import Data.List(nub)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -68,13 +70,116 @@ data Dependency = Dependency String VersionRange
                   deriving (Read, Show, Eq)
 
 -- |This represents non-standard compiler extensions which each
--- package might employ.  FIX: Most extensions not yet implemented.
+-- package might employ.
 
 data Extension = 
 	       OverlappingInstances
+               | RecursiveDo
+               | ParallelListComp
+               | MultiParamTypeClasses
+               | NoMonomorphismRestriction
+               | FunctionalDependencies
+               | RankTwoTypes
+               | PolymorphicComponents
+               | ExistentialQuantification
+               | PatternTypeAnnotations
+               | ImplicitParams
+               | FlexibleContexts
+               | FlexibleInstances
+
 	       | TypeSynonymInstances
 	       | TemplateHaskell
+               | ForeignFunctionInterface
+               | AllowOverlappingInstances
+               | AllowUndecidableInstances
+               | AllowIncoherentInstances
+               | InlinePhase
+               | ContextStack
+               | Arrows
+               | Generics
+               | NoImplicitPrelude
+
+               | ExtensibleRecords
+               | RestrictedTypeSynonyms
+               | HereDocuments
+               | HoodDebugging
+               | UnsafeOverlappingInstances
 	       deriving (Show, Read, Eq)
+
+-- |GHC: Return the unsupported extensions, and the flags for the supported extensions
+extensionsToGHCFlag :: [ Extension ] -> ([Extension], [Opt])
+extensionsToGHCFlag l
+    = splitEither $ nub $ map extensionToGHCFlag l
+    where
+    extensionToGHCFlag :: Extension -> Either Extension String
+    extensionToGHCFlag OverlappingInstances         = Right "-fallow-overlapping-instances"
+    extensionToGHCFlag TypeSynonymInstances         = Right "-fglasgow-exts"
+    extensionToGHCFlag TemplateHaskell              = Right "-fth"
+    extensionToGHCFlag ForeignFunctionInterface     = Right "-ffi"
+    extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
+    extensionToGHCFlag AllowOverlappingInstances    = Right "-fallow-overlapping-instances"
+    extensionToGHCFlag AllowUndecidableInstances    = Right "-fallow-undecidable-instances"
+    extensionToGHCFlag AllowIncoherentInstances     = Right "-fallow- incoherent-instances"
+    extensionToGHCFlag InlinePhase                  = Right "-finline-phase"
+    extensionToGHCFlag ContextStack                 = Right "-fcontext-stack"
+    extensionToGHCFlag Arrows                       = Right "-farrows"
+    extensionToGHCFlag Generics                     = Right "-fgenerics"
+    extensionToGHCFlag NoImplicitPrelude            = Right "-fno-implicit-prelude"
+    extensionToGHCFlag ImplicitParams               = Right "-fimplicit-params"
+
+    extensionToGHCFlag RecursiveDo                  = Right "-fglasgow-exts"
+    extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
+    extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
+    extensionToGHCFlag FunctionalDependencies       = Right "-fglasgow-exts"
+    extensionToGHCFlag RankTwoTypes                 = Right "-fglasgow-exts"
+    extensionToGHCFlag PolymorphicComponents        = Right "-fglasgow-exts"
+    extensionToGHCFlag ExistentialQuantification    = Right "-fglasgow-exts"
+    extensionToGHCFlag PatternTypeAnnotations       = Right "-fglasgow-exts"
+    extensionToGHCFlag FlexibleContexts             = Right "-fglasgow-exts"
+    extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
+
+    extensionToGHCFlag e@ExtensibleRecords          = Left e
+    extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
+    extensionToGHCFlag e@HereDocuments              = Left e
+    extensionToGHCFlag e@HoodDebugging              = Left e
+    extensionToGHCFlag e@UnsafeOverlappingInstances = Left e
+
+-- |NHC: Return the unsupported extensions, and the flags for the supported extensions
+extensionsToNHCFlag :: [ Extension ] -> ([Extension], [Opt])
+extensionsToNHCFlag l
+    = splitEither $ nub $ map extensionToNHCFlag l
+      where
+      extensionToNHCFlag NoMonomorphismRestriction = Right "" -- not implemented in NHC
+      extensionToNHCFlag ForeignFunctionInterface  = Right ""
+      extensionToNHCFlag HoodDebugging             = Right ""
+      extensionToNHCFlag e                         = Left e
+
+-- |Hugs: Return the unsupported extensions, and the flags for the supported extensions
+extensionsToHugsFlag :: [ Extension ] -> ([Extension], [Opt])
+extensionsToHugsFlag l
+    = splitEither $ nub $ map extensionToHugsFlag l
+      where
+      extensionToHugsFlag OverlappingInstances       = Right "+o"
+      extensionToHugsFlag UnsafeOverlappingInstances = Right "+O"
+      extensionToHugsFlag HereDocuments              = Right "+H"
+      extensionToHugsFlag RecursiveDo                = Right "-98"
+      extensionToHugsFlag ParallelListComp           = Right "-98"
+      extensionToHugsFlag MultiParamTypeClasses      = Right "-98"
+      extensionToHugsFlag FunctionalDependencies     = Right "-98"
+      extensionToHugsFlag RankTwoTypes               = Right "-98"
+      extensionToHugsFlag PolymorphicComponents      = Right "-98"
+      extensionToHugsFlag ExistentialQuantification  = Right "-98"
+      extensionToHugsFlag PatternTypeAnnotations     = Right "-98"
+      extensionToHugsFlag ImplicitParams             = Right "-98"
+      extensionToHugsFlag ExtensibleRecords          = Right "-98"
+      extensionToHugsFlag RestrictedTypeSynonyms     = Right "-98"
+      extensionToHugsFlag HoodDebugging              = Right "-98"
+      extensionToHugsFlag FlexibleContexts           = Right "-98"
+      extensionToHugsFlag FlexibleInstances          = Right "-98"
+      extensionToHugsFlag e                          = Left e
+
+splitEither :: [Either a b] -> ([a], [b])
+splitEither l = ([a | Left a <- l], [b | Right b <- l])
 
 type Opt = String
 
