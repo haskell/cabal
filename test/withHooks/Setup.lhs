@@ -25,5 +25,5 @@
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
->         postClean=removeFile "Setup.buildinfo" >> return ExitSuccess
+>         postClean=(\_ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
 >        }

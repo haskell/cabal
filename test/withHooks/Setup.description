@@ -3,5 +3,5 @@ Version: 1.0
 exposed-modules: Main
 
 Executable: withHooks
-Executable-Modules: Main
+Hidden-Modules: Main
 Main-is: Main.hs

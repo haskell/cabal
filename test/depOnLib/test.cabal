@@ -4,6 +4,6 @@ hs-source-dir: libs
 exposed-modules: A
 
 Executable: mainForA
-Executable-Modules: Main, A
+Hidden-Modules: Main, A
 hs-source-dir: mains
 Main-is: Main.hs
