@@ -147,7 +147,7 @@ writeInstalledConfig pkg_descr lbi = do
 	GHC | compilerVersion hc < Version [6,3] [] ->
 	    showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
 	_ -> showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
-  writeFile installedPkgConfigFile pkg_config
+  writeFile installedPkgConfigFile (pkg_config ++ "\n")
 
 removeInstalledConfig :: IO ()
 removeInstalledConfig = try (removeFile installedPkgConfigFile) >> return ()

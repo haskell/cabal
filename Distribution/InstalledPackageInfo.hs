@@ -58,7 +58,8 @@ import Distribution.ParseUtils (
 	StanzaField(..), singleStanza, PError(..),
 	simpleField, listField, licenseField,
 	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
-	showFilePath, parseReadS, parseOptVersion, parseQuoted)
+	showFilePath, parseReadS, parseOptVersion, parseQuoted,
+	showFreeText)
 import Distribution.License 	( License(..) )
 import Distribution.Extension 	( Opt )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
@@ -191,28 +192,28 @@ basicStanzaFields =
  , licenseField "license-file" True
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            copyright              (\val pkg -> pkg{copyright=val})
  , simpleField "maintainer"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
  , simpleField "stability"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            stability              (\val pkg -> pkg{stability=val})
  , simpleField "homepage"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            homepage               (\val pkg -> pkg{homepage=val})
  , simpleField "package-url"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
  , simpleField "description"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            description            (\val pkg -> pkg{description=val})
  , simpleField "category"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            category               (\val pkg -> pkg{category=val})
  , simpleField "author"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            author                 (\val pkg -> pkg{author=val})
  ]
 
