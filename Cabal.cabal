@@ -7,8 +7,8 @@ Author: Isaac Jones <ijones@syntaxpolice.org>
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
 Homepage: http://www.haskell.org/cabal/
 Description:
-	Common Architecture for Building Applications and Libraries:
-	a framework defining a common interface for authors to more
+	The Haskell Common Architecture for Building Applications and
+        Libraries: a framework defining a common interface for authors to more
 	easily build their Haskell applications in a portable way.
 	.
 	The Haskell Cabal is meant to be a part of a larger infrastructure
