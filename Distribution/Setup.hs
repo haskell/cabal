@@ -61,7 +61,7 @@ import HUnit (Test(..), (~:), (~=?))
 
 import Distribution.Version (Version)
 import Data.List(find)
-import System.Console.GetOpt
+import Distribution.GetOpt
 import System.Exit
 import System.Environment
 
@@ -168,7 +168,8 @@ printCmdHelp cmd opts = do pname <- getProgName
                            putStr (cmdDescription cmd)
 
 getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
-getCmdOpt cmd opts = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts)
+getCmdOpt cmd opts s = let (a,b,c,d) = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts) s
+                         in (a,c,d)
 
 -- We don't want to use elem, because that imposes Eq a
 hasHelpFlag :: [Flag a] -> Bool
@@ -177,18 +178,19 @@ hasHelpFlag flags = not . null $ [ () | HelpFlag <- flags ]
 parseGlobalArgs :: [String] -> IO (Action,[String])
 parseGlobalArgs args =
   case getOpt RequireOrder globalOptions args of
-    (flags, _, []) | hasHelpFlag flags -> do
+    (flags, _, _, []) | hasHelpFlag flags -> do
       printGlobalHelp
       exitWith ExitSuccess
-    (flags, cname:cargs, []) -> do
+    (flags, cname:cargs, _, []) -> do
       case lookupCommand cname commandList of
         Just cmd -> return (cmdAction cmd,cargs)
         Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"
                        exitWith (ExitFailure 1)
-    (_, [], [])  -> do putStrLn $ "No command given (try --help)"
-                       exitWith (ExitFailure 1)
-    (_, _, errs) -> do mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
+    (_, [], _, [])  -> do putStrLn $ "No command given (try --help)"
+                          exitWith (ExitFailure 1)
+    (_, _, _, errs) -> do putStrLn "Errors:"
+                          mapM_ putStrLn errs
+                          exitWith (ExitFailure 1)
 
 configureCmd :: Cmd a
 configureCmd = Cmd {
@@ -218,7 +220,8 @@ parseConfigureArgs cfg args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) t@(mcf, mpath, mhcpkg, mprefix) = updateCfg flags $
           case fl of
@@ -249,7 +252,8 @@ parseBuildArgs args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
 cleanCmd :: Cmd a
@@ -269,7 +273,8 @@ parseCleanArgs args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
 installCmd :: Cmd a
@@ -309,7 +314,8 @@ parseCopyArgs cfg args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) mprefix = updateCfg flags $
           case fl of
@@ -327,7 +333,8 @@ parseInstallArgs cfg args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) uFlag = updateCfg flags $
           case fl of
@@ -355,7 +362,8 @@ parseSDistArgs args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
 registerCmd :: Cmd a
@@ -381,7 +389,8 @@ parseRegisterArgs cfg args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) uFlag = updateCfg flags $
           case fl of
@@ -408,7 +417,8 @@ parseUnregisterArgs args customOpts =
       exitWith ExitSuccess
     (flags, args', []) ->
       return (unliftFlags flags, args')
-    (_, _, errs) -> do mapM_ putStrLn errs
+    (_, _, errs) -> do putStrLn "Errors: "
+                       mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
 
 #ifdef DEBUG

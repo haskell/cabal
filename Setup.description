@@ -14,6 +14,7 @@ Exposed-Modules:
         Distribution.Simple.GHCPackageConfig,
         Distribution.Simple.LocalBuildInfo,
         Distribution.Version,
+        Distribution.GetOpt,
         Distribution.Setup,
         Distribution.PreProcess.Unlit,
         Distribution.License,
