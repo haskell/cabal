@@ -1,8 +1,22 @@
 -*-change-log-*-
 
-0.6  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 2 2005
-	* No more executable-modules.  Use "hidden-modules" instead.
-
+0.5  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 19 2005
+	* WARNING: this is a pre-release and the interfaces are still
+	likely to change until we reach a 1.0 release.
+	* Hooks interfaces changed
+	* Added preprocessors to user hooks
+	* No more executable-modules or hidden-modules.  Use
+	"other-modules" instead.
+	* Certain fields moved into BuildInfo, much refactoring
+	* extra-libs -> extra-libraries
+	* Added --gen-script to configure and unconfigure.
+	* modules-ghc (etc) now ghc-modules (etc)
+	* added new fields including "synopsis"
+	* Lots of bug fixes
+	* spaces can sometimes be used instead of commas
+	* A user manual has appeared (Thanks, ross!)
+	* for ghc 6.4, configures versionsed depends properly
+	* more features to ./setup haddock
 	
 0.4  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
 

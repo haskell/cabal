@@ -1,4 +1,4 @@
-CABALVERSION=0.4
+CABALVERSION=0.5
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
@@ -55,7 +55,14 @@ hugsinstall: hugsbootstrap
 	cd dist/hugs && ./Setup.lhs install
 
 haddock: setup
+	./setup configure
 	./setup haddock
+
+clean-doc:
+	cd doc && make clean
+
+doc: haddock
+	docbook2html doc/Cabal.xml --output doc/users-guide
 
 clean: clean-cabal clean-hunit clean-test
 
@@ -137,11 +144,14 @@ $(CABALBALL):
 TMPDISTLOC=/tmp/cabaldist
 
 dist: haddock $(CABALBALL)
+	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
 	mv $(CABALBALL) $(TMPDISTLOC)
 	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL) && mv Cabal cabal
-	mkdir $(TMPDISTLOC)/cabal/doc
+	#mkdir $(TMPDISTLOC)/cabal/doc
+	make doc
 	cp -r dist/doc/html $(TMPDISTLOC)/cabal/doc/API
+	cp -r doc/users-guide $(TMPDISTLOC)/cabal/doc/users-guide
 	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
 	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal/doc
 
