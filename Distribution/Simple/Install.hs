@@ -45,6 +45,8 @@ module Distribution.Simple.Install (
 	install,
 	mkBinDir,
 	mkLibDir,
+	hugsPackageDir,
+	hugsProgramsDir,
 #ifdef DEBUG        
         hunitTests
 #endif
@@ -56,19 +58,20 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..),
-	setupMessage, hasLibs, withLib, libModules)
-import Distribution.Package (showPackageId)
+	setupMessage, hasLibs, withLib, libModules, exeModules, biModules)
+import Distribution.Package (showPackageId, pkgName)
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(moveSources, rawSystemExit,
-                                 mkLibName,
+                                 mkLibName, removeFileRecursive,
                                  die, createIfNotExists
                                 )
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Data.Maybe(maybeToList, fromMaybe)
 import Distribution.Compat.Directory(copyFile)
-import Distribution.Compat.FilePath(joinFileName)
+import Distribution.Compat.FilePath(joinFileName, dllExtension)
+import System.IO.Error(try)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -87,13 +90,7 @@ install pkg_descr lbi install_prefixM = do
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
-     Hugs -> do withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
-                                     do let targetDir = buildPref `joinFileName` srcDir
-                                        let args = targetDir
-                                                    : (maybeToList install_prefixM)
-                                        let hugsPkg = compilerPkgTool $ compiler $ lbi
-                                        rawSystemExit hugsPkg args)
-                -- FIX (HUGS): Install executables, still needs work in build step
+     Hugs -> installHugs libPref binPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
@@ -117,12 +114,45 @@ installLibGHC pref buildPref pd@PackageDescription{library=Just l,
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
 
--- |Install for hugs, .lhs and .hs
-installHugs :: FilePath -- ^Install location
-            -> FilePath -- ^Build location
-            -> PackageDescription -> IO ()
-installHugs pref buildPref pd@PackageDescription{library=Just l}
-    = moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (libModules pd) ["lhs", "hs"]
+-- |Install for Hugs
+installHugs
+    :: FilePath -- ^Library install location
+    -> FilePath -- ^Executable install location
+    -> FilePath -- ^Build location
+    -> PackageDescription
+    -> IO ()
+installHugs libPref binPref buildPref pkg_descr = do
+    let hugsDir = libPref `joinFileName` "hugs"
+    let pkg_name = pkgName (package pkg_descr)
+    withLib pkg_descr $ \ libInfo -> do
+	let pkgDir = hugsDir `joinFileName` "packages"
+		    `joinFileName` pkg_name
+	try $ removeFileRecursive pkgDir
+	moveSources buildPref pkgDir (biModules libInfo) hugsInstallSuffixes
+    unless (null (executables pkg_descr)) $ do
+	let progBuildDir = buildPref `joinFileName` "programs"
+	let progInstallDir = hugsDir `joinFileName` "programs"
+		    `joinFileName` pkg_name
+	try $ removeFileRecursive progInstallDir
+	moveSources progBuildDir progInstallDir
+	    (exeModules pkg_descr) hugsInstallSuffixes
+	flip mapM_ (executables pkg_descr) $ \ Executable {modulePath=e} ->
+	    copyFile (progBuildDir `joinFileName` e)
+		    (progInstallDir `joinFileName` e)
+	-- FIX (HUGS): Install executables, still needs work (in build step?)
+
+hugsInstallSuffixes :: [String]
+hugsInstallSuffixes = ["hs", "lhs", drop 1 dllExtension]
+
+hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
+hugsPackageDir pkg_descr lbi =
+    prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
+	`joinFileName` "packages" `joinFileName` pkgName (package pkg_descr)
+
+hugsProgramsDir :: PackageDescription -> LocalBuildInfo -> FilePath
+hugsProgramsDir pkg_descr lbi =
+    prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
+	`joinFileName` "programs" `joinFileName` pkgName (package pkg_descr)
 
 -- -----------------------------------------------------------------------------
 -- Installation policies

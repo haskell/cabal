@@ -65,10 +65,13 @@ import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Simple.Utils (rawSystemExit, die)
+import Distribution.Simple.Utils (rawSystemExit, die, removeFileRecursive)
+import Distribution.Simple.Install (hugsPackageDir, hugsProgramsDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
+import Distribution.Compat.Directory (copyFile)
+import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile)
 import System.IO (try)
@@ -90,15 +93,14 @@ import HUnit (Test)
 register :: PackageDescription -> LocalBuildInfo
          -> Bool -- ^Install in the user's database?
          -> IO ()
-register pkg_descr lbi userInst = do
-  setupMessage "Registering" pkg_descr
-  if isNothing (library pkg_descr)
-	then do setupMessage "No package to register" pkg_descr 
-	        return ()
-	else do
-
-  case compilerFlavor (compiler lbi) of
-   GHC -> do 
+register pkg_descr lbi userInst
+  | isNothing (library pkg_descr) = do
+    setupMessage "No package to register" pkg_descr
+    return ()
+  | otherwise = do
+    setupMessage "Registering" pkg_descr
+    case compilerFlavor (compiler lbi) of
+      GHC -> do 
      	let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
 
 	config_flags <-
@@ -125,9 +127,12 @@ register pkg_descr lbi userInst = do
 	                     (["--auto-ghci-libs"]
 			      ++ register_flags
                               ++ config_flags)
-   -- FIX (HUGS):
-   Hugs -> setupMessage "Warning: Hugs has no packaging tool\nLibrary files will just be moved into place." pkg_descr
-   _   -> die ("only registering with GHC is implemented")
+      -- FIX (HUGS):
+      Hugs -> do
+	let 
+	copyFile installedPkgConfigFile
+	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
+      _   -> die ("only registering with GHC is implemented")
 
 userPkgConfErr local_conf = 
   die ("--user flag passed, but cannot write to local package config: "
@@ -137,17 +142,11 @@ userPkgConfErr local_conf =
 writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> IO ()
 writeInstalledConfig pkg_descr lbi = do
   let hc = compiler lbi
-  case compilerFlavor hc of
-   GHC ->
-     let pkg_config 
-	   | compilerVersion hc >= Version [6,3] []
-	   = showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
-	   | otherwise
-	   = showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
-     in
-     writeFile installedPkgConfigFile ( pkg_config)
-   Hugs -> return ()
-   _   -> die ("only registering with GHC is implemented")
+  let pkg_config = case compilerFlavor hc of
+	GHC | compilerVersion hc < Version [6,3] [] ->
+	    showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
+	_ -> showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
+  writeFile installedPkgConfigFile pkg_config
 
 removeInstalledConfig :: IO ()
 removeInstalledConfig = try (removeFile installedPkgConfigFile) >> return ()
@@ -203,11 +202,17 @@ unregister :: PackageDescription -> LocalBuildInfo -> IO ()
 unregister pkg_descr lbi = do
   setupMessage "Unregistering" pkg_descr
 
-  when (compilerFlavor (compiler lbi) /= GHC) $
-	die ("only unregistering with GHC is implemented")
+  case compilerFlavor (compiler lbi) of
+    GHC ->
+	rawSystemExit (compilerPkgTool (compiler lbi))
+	    ["--remove-package=" ++ pkgName (package pkg_descr)]
+    Hugs -> do
+        try $ removeFileRecursive (hugsPackageDir pkg_descr lbi)
+        try $ removeFileRecursive (hugsProgramsDir pkg_descr lbi)
+	return ()
+    _ ->
+	die ("only unregistering with GHC and Hugs is implemented")
 	
-  rawSystemExit (compilerPkgTool (compiler lbi))
-	["--remove-package=" ++ pkgName (package pkg_descr)]
 
 
 -- ------------------------------------------------------------

@@ -49,7 +49,7 @@ module Distribution.Simple (
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        UserHooks (..), defaultUserHooks, hookedPackageDesc,
+        UserHooks (..), emptyUserHooks, defaultUserHooks, hookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
