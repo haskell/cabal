@@ -2,11 +2,11 @@
 RC:
 ** look carefully at "rawSystem" and error handing stuff for nhc.
 ** grep for "FIX"
-** make sure module documentation (haddock) builds.
--- tricky because of need to preprocess :(
-** add description file format to doc. - esp field descriptions
+** doc
+*** add description file format to doc. - esp field descriptions
+*** Fix section on "why must we list hidden modules?"
 ** Look over rest of TODO list.  Should anything be promoted?
-** Fix section on "why must we list hidden modules?"
+** add haddock generated stuff to .deb.
 
 HIGH: 
 ** Clean up field parsers:
@@ -22,6 +22,7 @@ LOW
 
 
 * 0.2
+** elimintate need for cpphs in haddock makefile rule.
 ** It actually makes sense to have several libraries ("hs-packages")
    in one package ("cabal-package"), look at wxhaskell for example.
    - So, Library stanzas, I suppose
