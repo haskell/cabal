@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Register
@@ -73,7 +72,7 @@ import HUnit (Test)
 -- Registration
 
 -- |Be sure to call writeInstalledConfig first.  If the --user flag
--- was passed, and ~\/.ghc-packages is writable, or can be created,
+                                                        -- was passed, and ~\/.ghc-packages is writable, or can be created,
 -- then we use that file, perhaps creating it.
 
 register :: PackageDescription -> LocalBuildInfo
