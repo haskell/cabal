@@ -1,3 +1,3 @@
-module Main where
+module WithHooks where
 
-main = putStrLn "Happy New Year!"
+f = 34
