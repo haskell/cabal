@@ -60,6 +60,7 @@ import HUnit (Test(..), (~:), (~=?))
 #endif
 
 import Control.Monad.Error
+import Data.List(intersperse)
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports
@@ -86,11 +87,8 @@ data Action = ConfigCmd ConfigFlags       -- config
             | InfoCmd                     -- info
             | RegisterCmd                 -- register
             | UnregisterCmd               -- unregister
-v v v v v v v
 	    | HelpCmd			  -- help
-*************
-            | NoCmd -- error case, help case.
-^ ^ ^ ^ ^ ^ ^
+--            | NoCmd -- error case, help case.
 --             | TestCmd 1.0?
 --             | BDist -- 1.0
 --            | CleanCmd                 -- clean
@@ -112,7 +110,7 @@ parseArgs args
 		    else case commands' of
                      		[]  -> Left ["No command detected"]
                      		[h] -> parseCommands h flags unkFlags
-                     		_:_ -> Left ["More than one command detected"]
+                     		c   -> Left ["More than one command detected: " ++ (concat $ intersperse ", " c)]
     where
     parseCommands :: String -- command
                   -> [Flag]
@@ -159,7 +157,8 @@ getConfigFlags flags
 
     getOneOpt [] = return Nothing
     getOneOpt [one] = return (Just one)
-    getOneOpt _ = fail "Multiple prefix options"
+    getOneOpt o = fail $ "Multiple options where one expected: "
+                    ++ (concat $ intersperse ", " (map show o))
 
 -- ------------------------------------------------------------
 -- * Option Specifications

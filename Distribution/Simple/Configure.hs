@@ -145,20 +145,24 @@ compilerBinaryName Hugs = "hugs"
 
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "nhc98-pkg"
-compilerPkgToolName Hugs = "hugs-pkg"
+compilerPkgToolName Hugs = "hugs-package"
 
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath flavor path
-  = do let (dir,_) = splitFilenameDir path
-           pkgtool = dir ++ '/':compilerPkgToolName flavor
+  = do let pkgToolName = compilerPkgToolName flavor
+           (dir,_) = splitFilenameDir path
+           pkgtool = dir ++ '/':pkgToolName
+       message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
        when (not exists) $
 	  die ("Cannot find package tool: " ++ pkgtool)
+       message $ "found package tool in " ++ pkgtool
        return pkgtool
 
 findBinary :: String -> IO FilePath
 findBinary binary = do
   path <- getEnv "PATH"
+  message $ "searching for " ++ binary ++ " in path."
   search (parsePath path)
   where
     search :: [FilePath] -> IO FilePath
@@ -166,7 +170,8 @@ findBinary binary = do
     search (d:ds) = do
 	let path = d ++ '/':binary
 	b <- doesFileExist path
-	if b  then return path else search ds
+	if b then do message ("found " ++ binary ++ " at "++ path); return path
+             else search ds
 
 parsePath :: String -> [FilePath]
 parsePath path = split pathSep path
@@ -176,6 +181,8 @@ parsePath path = split pathSep path
 #else
 	pathSep = ':'
 #endif
+
+message s = putStrLn $ "configure: " ++ s
 
 -- -----------------------------------------------------------------------------
 -- Tests
