@@ -240,6 +240,9 @@ compilerBinaryName Hugs = "hugs"
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
+
+-- FIX (HUGS): This tool doesn't actually implement the HC-PKG
+-- spec. it does something different.
 compilerPkgToolName Hugs = "hugs-package"
 
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath

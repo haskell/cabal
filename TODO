@@ -15,9 +15,15 @@
 
 ** what other preprocessors can't unlit?
 
+** Hugs
+- look for "FIX (HUGS)"
+- can't handle cabal's OPTIONS pragmas at the top.
+- no way to tell Hugs to turn packages on or off
+- no register / unregister for hugs
+
 ** find a real test case that uses a preprocessor
 
-** is cpp ever run yet?
+** is cpp ever run yet? NO!
 
 ** for a source tarball:?
 - if there's a flag, --include-preprocessed-sources (or something

@@ -56,12 +56,12 @@ import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   split, createIfNotExists,
-                                  mkLibName, pathJoin, 
+                                  mkLibName, pathJoin, moveSources,
                                   splitFilePath, joinFilenameDir, joinExt
                                  )
 
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Control.Exception (try)
 import Data.List(nub)
 import System.Directory (removeFile)
@@ -86,7 +86,7 @@ build pref pkg_descr lbi suffixes = do
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi
-   Hugs -> return ()
+   Hugs -> buildHugs pref pkg_descr lbi
    _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
 
 -- |FIX: For now, the target must contain a main module :( Not used
@@ -154,6 +154,25 @@ constructGHCCmdLine buildInfo' deps =
      in [ "--make", "-i" ++ hsSourceDir buildInfo' ]
      ++ nub (flags ++ [ opt | (GHC,opts) <- options buildInfo', opt <- opts ])
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
+
+-- |
+buildHugs :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
+buildHugs pref pkg_descr lbi
+    = do -- move library-related source files into place.
+         withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir, modules=mods} -> 
+                               do let targetDir = pathJoin [pref, hsSourceDir buildInfo]
+                                  moveSources srcDir pref mods ["hs", "lhs"]
+                           )
+
+
+         {- FIX (HUGS): something smart must happen here; we need to
+            create a shell script or bat file or something to call
+            runhugs for running the executable file.  For now, ignore
+            executables -}
+         when (not $ null $ executables $ pkg_descr)
+              (setupMessage "Warning: executable stanzas ignored for HUGS.\nNot yet implemented in cabal." pkg_descr)
+         return ()
+
 
 objsuffix :: String
 objsuffix = "o"
