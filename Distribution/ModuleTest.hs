@@ -113,7 +113,17 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             setCurrentDirectory "test/HUnit-1.0"
             pkgConf <- GHC.localPackageConfig
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0"
+            system "make clean"
+            system "make"
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
+            -- Test clean:
+            assertCmd "./setup build" "hunit build"
+            doesDirectoryExist "dist/build" >>= 
+              assertBool "HUnit build did not create build directory"
+            assertCmd "./setup clean" "hunit clean"
+            doesDirectoryExist "dist/build" >>= 
+              assertEqual "HUnit clean did not get rid of build directory" False
+
             assertCmd "./setup build" "hunit build"
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit-1.0 HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
@@ -131,9 +141,9 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             when dirE2 (system "rm -r dist">>return())
             assertCmd "./setup configure --ghc --prefix=,tmp"
               "configure returned error code"
+
             assertCmd "./setup build"
               "build returned error code"
-
             assertCmd "./setup sdist"
              "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 

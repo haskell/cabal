@@ -60,15 +60,18 @@ module Distribution.Simple.Utils (
         createIfNotExists,
         mkLibName,
         copyFile,
-        pathJoin
+        pathJoin,
+        removeFileRecursive
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 
+import GHC.IOBase(Exception(..), IOException(..),
+                  IOErrorType(InappropriateType), IOErrorType(..),
+                  ioe_type, throw)
 import Control.Monad(when)
-import Data.List(inits, nub, intersperse, findIndices)
-import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust)
-
+import Data.List(inits, nub, intersperse, findIndices, partition)
+import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
 import System.IO
 import System.Exit
 import System.Cmd
@@ -313,6 +316,41 @@ copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
     | otherwise = readFile src >>= writeFile dest
+
+partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
+partitionIO f l
+    = do bools <- sequence $ map f l
+         let both = zip l bools
+         return ([x | (x, True) <- both], [y | (y, False) <- both])
+
+-- |Remove a list of files; if it encounters a directory, it doesn't
+-- remove it, but returns it.  Throws everything that removeFile
+-- throws except InappropriateType.
+removeFiles :: [FilePath]    -- ^Files and directories to remove
+            -> IO [FilePath]
+            {- ^The ones we were unable to remove because they were of
+                an inappropriate type (directory) removeFiles -}
+removeFiles files
+    = (sequence $ map rm' files) >>= (return . catMaybes)
+      where
+       rm' :: FilePath -> IO (Maybe FilePath)
+       rm' f = do  temp <- try (removeFile f)
+                   case temp of
+                    Left (IOError{ioe_type=InappropriateType}) -> return $ Just f
+                    Left e  -> throw $ IOException e -- can't handle, throw.
+                    Right _ -> return Nothing
+
+-- |Probably follows symlinks, be careful.
+removeFileRecursive :: FilePath -> IO ()
+removeFileRecursive startLoc
+    = do cont' <- getDirectoryContents startLoc
+         let cont = filter (\x -> x /= "." && x /= "..") cont'
+         curDir <- getCurrentDirectory
+         setCurrentDirectory startLoc
+         dirs <- removeFiles cont
+         sequence $ map removeFileRecursive dirs
+         setCurrentDirectory curDir
+         removeDirectory startLoc
 
 -- ------------------------------------------------------------
 -- * Testing
