@@ -140,7 +140,7 @@ die msg = do hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
-
+-- FIX: rawSystem does not exist in Hugs
 rawSystemPath :: String -> [String] -> IO ExitCode
 rawSystemPath prog args = do
   r <- findBinary prog
