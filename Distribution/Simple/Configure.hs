@@ -139,7 +139,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
                              }
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
--- set any version information.
+-- set any version information - will need to query HC-PKG for this.
 buildDepToDep :: Dependency -> PackageIdentifier
 
 -- if they specify the exact version, use that:
