@@ -58,8 +58,6 @@ import Distribution.License (License(..))
 import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)
-import Distribution.GetOpt(OptDescr)
-import Control.Monad (unless)
 import Data.List  ( intersperse )
 import System.IO (hPutStrLn, stderr)
 import System.Cmd
@@ -100,6 +98,7 @@ configureArgs flags
   	showHC GHC = "ghc"
         showHC NHC = "nhc98"
         showHC Hugs = "hugs"
+        showHC c    = "unknown compiler: " ++ (show c)
 
 exec :: String -> IO ExitCode
 exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
@@ -122,32 +121,14 @@ defaultMainNoRead pkg_descr
                   else putStrLn "Configure failed."
                 exitWith retVal
 
-            BuildCmd -> do
-                (_, _, args) <- parseBuildArgs args []
-                no_extra_flags args
-                retVal <- exec "make"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Build Succeeded."
-                  else putStrLn "Build failed."
-                exitWith retVal
-
-            CleanCmd -> do
-                (_, _, args) <- parseCleanArgs args []
-                no_extra_flags args
-                retVal <- exec "make clean"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Clean Succeeded."
-                  else putStrLn "Clean failed."
-                exitWith retVal
-
             CopyCmd mprefix -> do
-                ((mprefix,verbose), _, args) <- parseCopyArgs (mprefix,0) args []
+                ((mprefix,_), _, args) <- parseCopyArgs (mprefix,0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install" ++
                                      maybe "" (" prefix="++) mprefix
 
             InstallCmd uInst -> do
-                ((uInst,verbose), _, args) <- parseInstallArgs (uInst,0) args []
+                ((_,_), _, args) <- parseInstallArgs (uInst,0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
                 retVal <- exec "make register"
@@ -156,34 +137,35 @@ defaultMainNoRead pkg_descr
                   else putStrLn "Install failed."
                 exitWith retVal
 
-            SDistCmd -> do
-                (_, _, args) <- parseSDistArgs args []
-                no_extra_flags args
-                retVal <- exec "make dist"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Sdist Succeeded."
-                  else putStrLn "Sdist failed."
-                exitWith retVal
 
-            RegisterCmd uInst -> do
-                ((uInst,0), _, args) <- parseRegisterArgs (uInst,0) args []
-                no_extra_flags args
-                retVal <- exec "make register"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Register Succeeded."
-                  else putStrLn "Register failed."
-                exitWith retVal
+            BuildCmd -> basicCommand "Build" "make" (parseBuildArgs args [])
 
-            UnregisterCmd -> do
-                (_, _, args) <- parseUnregisterArgs args []
-                no_extra_flags args
-                retVal <- exec "make unregister"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Unregister Succeeded."
-                  else putStrLn "Unregister failed."
-                exitWith retVal
+            CleanCmd -> basicCommand "Clean" "make clean" (parseCleanArgs args [])
+
+            SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
+
+            RegisterCmd uInst -> basicCommand "Register" "make register"
+                                              (parseRegisterArgs (uInst,0) args [])
+
+            UnregisterCmd -> basicCommand "Unregister" "make unregister"
+                                          (parseUnregisterArgs args [])
             cmd -> do 
                 error $ "Simple Cabal Makefile interface doesn't support command: " ++ (show cmd)
+
+-- |convinience function for repetitions above
+basicCommand :: String  -- ^Command name
+             -> String  -- ^Command command
+             -> (IO (b, [a], [String]))   -- ^Command parser function
+             -> IO ()
+basicCommand commandName commandCommand commandParseFun = do 
+                (_, _, args) <- commandParseFun
+                no_extra_flags args
+                retVal <- exec commandCommand
+                putStrLn $ commandName ++ 
+                    if (retVal == ExitSuccess)
+                       then " Succeeded."
+                       else " Failed."
+                exitWith retVal
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
