@@ -45,7 +45,7 @@ module Distribution.Simple.Install (
 	mkBinDir,
 	mkLibDir,
 	hugsPackageDir,
-	hugsProgramsDir,
+	hugsProgramsDirs,
 	hugsMainFilename,
 #ifdef DEBUG        
         hunitTests
@@ -122,7 +122,10 @@ installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
 installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
--- |Install for Hugs
+-- Install for Hugs
+-- The library goes in <libPref>/hugs/packages/<pkgname>
+-- Each executable goes in <libPref>/hugs/programs/<exename>
+-- with a script <binPref>/<exename> pointing at it.
 installHugs
     :: Int      -- ^verbose
     -> FilePath -- ^Library install location
@@ -132,61 +135,60 @@ installHugs
     -> PackageDescription
     -> IO ()
 installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
-    let hugsInstallDir = libPref `joinFileName` "hugs"
-    let hugsTargetDir = targetLibPref `joinFileName` "hugs"
     let pkg_name = pkgName (package pkg_descr)
     withLib pkg_descr () $ \ libInfo -> do
-	let pkgDir = hugsInstallDir `joinFileName` "packages"
-		    `joinFileName` pkg_name
-	try $ removeDirectoryRecursive pkgDir
-	smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
-    unless (null (executables pkg_descr)) $ do
-	let progBuildDir = buildPref `joinFileName` "programs"
-	let progInstallDir = hugsInstallDir `joinFileName` "programs"
-		    `joinFileName` pkg_name
-	let progTargetDir = hugsTargetDir `joinFileName` "programs"
-		    `joinFileName` pkg_name
-	try $ removeDirectoryRecursive progInstallDir
-	smartCopySources verbose progBuildDir progInstallDir
-	    (exeModules pkg_descr) hugsInstallSuffixes
-	withExe pkg_descr $ \ exe -> do
-	    let fname = hugsMainFilename exe
-	    let installName = progInstallDir `joinFileName` fname
-	    copyFileVerbose verbose (progBuildDir `joinFileName` fname) installName
+        let pkgDir = libPref `joinFileName` "packages"
+                    `joinFileName` pkg_name
+        try $ removeDirectoryRecursive pkgDir
+        smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
+    let progBuildDir = buildPref `joinFileName` "programs"
+    let progInstallDir = libPref `joinFileName` "programs"
+    let progTargetDir = targetLibPref `joinFileName` "programs"
+    withExe pkg_descr $ \ exe -> do
+        let buildDir = progBuildDir `joinFileName` exeName exe
+        let installDir = progInstallDir `joinFileName` exeName exe
+        let targetDir = progInstallDir `joinFileName` exeName exe
+        try $ removeDirectoryRecursive installDir
+        smartCopySources verbose buildDir installDir
+            (otherModules (buildInfo exe)) hugsInstallSuffixes
+        let fname = hugsMainFilename exe
+        copyFileVerbose verbose (buildDir `joinFileName` fname)
+            (installDir `joinFileName` fname)
 #ifndef mingw32_TARGET_OS
-	    -- FIX (HUGS): works for Unix only
-	    let targetName = progTargetDir `joinFileName` fname
-	    let exeFile = binPref `joinFileName` exeName exe
-	    -- FIX (HUGS): use extensions, and options from file too?
-	    let hugsOptions = hcOptions Hugs (options (buildInfo exe))
-	    let script = unlines [
-		    "#! /bin/sh", 
-		    unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
-	    writeFile exeFile script
-	    perms <- getPermissions exeFile
-	    setPermissions exeFile perms { executable = True, readable = True }
+        -- FIX (HUGS): works for Unix only
+        let targetName = targetDir `joinFileName` fname
+        let exeFile = binPref `joinFileName` exeName exe
+        -- FIX (HUGS): use extensions, and options from file too?
+        let hugsOptions = hcOptions Hugs (options (buildInfo exe))
+        let script = unlines [
+                "#! /bin/sh", 
+                unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
+        writeFile exeFile script
+        perms <- getPermissions exeFile
+        setPermissions exeFile perms { executable = True, readable = True }
 #endif
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = ["hs", "lhs", dllExtension]
 
--- |Prefix for Hugs package directories
+-- |Hugs library directory for a package
 hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
 hugsPackageDir pkg_descr lbi =
-    prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
+    mkLibDir pkg_descr lbi Nothing
 	`joinFileName` "packages" `joinFileName` pkgName (package pkg_descr)
 
--- |Prefix for Hugs program directories
-hugsProgramsDir :: PackageDescription -> LocalBuildInfo -> FilePath
-hugsProgramsDir pkg_descr lbi =
-    prefix lbi `joinFileName` "lib" `joinFileName` "hugs"
-	`joinFileName` "programs" `joinFileName` pkgName (package pkg_descr)
+-- |Hugs program directories for a package
+hugsProgramsDirs :: PackageDescription -> LocalBuildInfo -> [FilePath]
+hugsProgramsDirs pkg_descr lbi =
+    [exeDir `joinFileName` exeName exe |
+         exe <- executables pkg_descr, buildable (buildInfo exe)]
+  where exeDir = mkLibDir pkg_descr lbi Nothing `joinFileName` "programs"
 
 -- |Filename used by Hugs for the main module of an executable.
 -- This is a simple filename, so that Hugs will look for any auxiliary
 -- modules it uses relative to the directory it's in.
 hugsMainFilename :: Executable -> FilePath
-hugsMainFilename exe = (exeName exe ++ "-Main") `joinFileExt` ext
+hugsMainFilename exe = "Main" `joinFileExt` ext
   where (_, ext) = splitFileExt (modulePath exe)
 
 -- -----------------------------------------------------------------------------
@@ -194,11 +196,13 @@ hugsMainFilename exe = (exeName exe ++ "-Main") `joinFileExt` ext
 
 mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkLibDir pkg_descr lbi install_prefixM = 
-  (fromMaybe (prefix lbi) install_prefixM) `joinFileName`
+  case compilerFlavor (compiler lbi) of
+    Hugs -> libDir `joinFileName` "hugs"
+    _ -> libDir `joinFileName` showPackageId (package pkg_descr)
+  where libDir = (fromMaybe (prefix lbi) install_prefixM)
 #ifndef mingw32_TARGET_OS
-                 "lib" `joinFileName`
+                 `joinFileName` "lib"
 #endif
-	         showPackageId (package pkg_descr)
 
 mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkBinDir _ lbi install_prefixM = 

@@ -64,7 +64,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (rawSystemExit, copyFileVerbose, die)
-import Distribution.Simple.Install (hugsPackageDir, hugsProgramsDir)
+import Distribution.Simple.Install (hugsPackageDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
@@ -210,7 +210,6 @@ unregister pkg_descr lbi verbose = do
 	    ["--remove-package=" ++ pkgName (package pkg_descr)]
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
-        try $ removeDirectoryRecursive (hugsProgramsDir pkg_descr lbi)
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
