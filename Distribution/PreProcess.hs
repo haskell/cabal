@@ -40,7 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
-                                ppCpp, ppGreenCard, ppC2hs, ppHsc2hs, ppHappy, ppUnlit
+                                ppCpp, ppGreenCard, ppC2hs, ppHsc2hs,
+				ppHappy, ppAlex, ppUnlit
                                )
     where
 
@@ -206,6 +207,13 @@ ppHappy _ _ lbi
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
 
+ppAlex :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppAlex _ _ lbi
+    = standardPP "alex" (hcFlags hc)
+  where hc = compilerFlavor (compiler lbi)
+	hcFlags GHC = ["-g"]
+	hcFlags _ = []
+
 ppTestHandler :: FilePath -- ^InFile
               -> FilePath -- ^OutFile
               -> IO ExitCode
@@ -227,6 +235,7 @@ knownSuffixHandlers =
   [ ("gc",     \ _ _ _ -> ppGreenCard)
   , ("chs",    \ _ _ _ -> ppC2hs)
   , ("hsc",    ppHsc2hs)
+  , ("x",      ppAlex)
   , ("y",      ppHappy)
   , ("ly",     ppHappy)
   , ("cpphs",  ppCpp)
