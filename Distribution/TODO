@@ -1,12 +1,14 @@
 * misc
-** add en.wikipedia.org/wiki/Cabal to web page
-** Possibly create a (native?) zib library?
+** Possibly create a (native?) zlib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
 ** nhc-pkg (see old package manager code)
 ** hugs-pkg
 ** better command-line parsing interface
 ** ./Setup.lhs bdist
+** integrate hscpp, use it for preprocessing step.
+** add more layered tools to appendix?
+** make reference to "layered tools" appendix where approprote
 
 * testing
 ** setup test suite to run on --push?
