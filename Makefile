@@ -65,5 +65,5 @@ pushall:
 
 dist: pushall
 	darcs dist
-	scp library-infrastructure--darcs.tar.gz ijones@www.haskell.org:~/libraryInfrastructure/libraryInfrastructure-code.tgz
-	rm -f library-infrastructure--darcs.tar.gz
+	scp cabal.tar.gz ijones@www.haskell.org:~/libraryInfrastructure/libraryInfrastructure-code.tgz
+	rm -f cabal.tar.gz
