@@ -2,6 +2,14 @@
    knownPreprocessors or we require the user to pass them in...
 ** bug in srcDist where it doesn't move exe sources into place
 
+** change all concat $ map to concatMap and sequence $ map to
+   sequenceMap
+
+** sdist remove file probably doesn't look in the right place, doesn't
+   put in the files for executables
+
+** where are we using allModules, is this the right place?
+
 ** integrate w/ GHC distro
 ** Preprocessing
 - what other preprocessors can't unlit?
