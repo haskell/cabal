@@ -96,7 +96,7 @@ import HUnit ((~:), (~=?), Test(..), assertEqual)
 -- -----------------------------------------------------------------------------
 -- Pathname-related utils
 
--- | Split the path into filename and extension
+-- | Split the path into (directory, filename sans extension, extension)
 splitFilePath :: FilePath -> (String, String, String)
 splitFilePath p =
   case pre of
@@ -122,6 +122,13 @@ splitFilePath p =
 joinExt :: FilePath -> String -> String
 joinExt path ""  = path
 joinExt path ext = path++'.':ext
+
+-- |Not exported.  Does this file have the given extension?
+hasExt :: FilePath -- ^Does this file
+       -> String   -- ^Have this extension?
+       -> Bool
+hasExt f testExt = let (_, _, realExt) = splitFilePath f
+                       in testExt == realExt
 
 -- Join file name to directory
 joinFilenameDir :: String -> String -> FilePath
@@ -436,6 +443,17 @@ removeFileRecursive startLoc
          setCurrentDirectory curDir
          removeDirectory startLoc
 
+-- |Might want to make this more generic some day, with regexps
+-- or something.
+filesWithExtensions :: FilePath -- ^Directory to look in
+                    -> String   -- ^The extension
+                    -> IO [FilePath] {- ^The file names (not full
+                                     path) of all the files with this
+                                     extension in this directory. -}
+filesWithExtensions dir extension 
+    = do allFiles <- getDirectoryContents dir
+         return $ filter ((flip hasExt) extension) allFiles
+
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
@@ -517,8 +535,10 @@ hunitTests
             "noFile"       ~: ("/foo/bar",    "",    "") ~=? (splitFilePath "/foo/bar/"),
             "parentDir"    ~: (".",         "..",    "") ~=? (splitFilePath ".."),
             "curDir"       ~: (".",           "",    "") ~=? (splitFilePath "."),
-	    "root"         ~: ("/",           "",    "") ~=? (splitFilePath "/")
+	    "root"         ~: ("/",           "",    "") ~=? (splitFilePath "/"),
+            "hasExt"       ~: True                       ~=? (hasExt "foo/bang.hs" "hs")
 	   ],
+
         TestLabel "joinFilenameDir&joinExt" $ TestList
            ["simpleCase"   ~: ("/foo/bar.txt") ~=? ("/foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
             "justDir"      ~: ("/foo")         ~=? ("/foo" `joinFilenameDir` (""    `joinExt` "")),
@@ -538,7 +558,9 @@ hunitTests
             "parentDir"     ~: [] ~=? (pathInits ".."),
             "curDir"        ~: [] ~=? (pathInits "."),
             "root"          ~: [] ~=? (pathInits "/")
-	   ]
+	   ],
+        TestCase (do files <- filesWithExtensions "." "description"
+                     assertEqual "filesWithExtensions" "Setup.description" (head files))
 #endif
           ]
 #endif
