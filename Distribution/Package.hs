@@ -69,13 +69,14 @@ import Data.Char
 import Data.List(concatMap)
 import Data.Maybe(fromMaybe, fromJust)
 import Text.PrettyPrint.HughesPJ
+import System.Directory(doesFileExist)
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, 
                             showVersionRange, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor(..))
-import Distribution.Simple.Utils(currentDir)
+import Distribution.Simple.Utils(currentDir, die)
 
 import Compat.H98
 import Compat.ReadP hiding (get)
@@ -408,6 +409,8 @@ optsField name flavor get set = StanzaField name
 -- |Parse the given package file.
 readPackageDescription :: FilePath -> IO PackageDescription
 readPackageDescription fpath = do 
+  exists <- doesFileExist fpath
+  when (not exists) (die $ "Error: description file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
   str <- readFile fpath
   case parseDescription str of
     Left  e -> error (showError e) -- FIXME
