@@ -98,7 +98,7 @@ import System.Directory (getDirectoryContents, removeDirectory,
                         doesDirectoryExist, doesFileExist, removeFile,
                         createDirectory)
 
-#ifndef mingw32_TARGET_OS
+#ifdef mingw32_TARGET_OS
 import System.Directory (getPermissions,setPermissions)
 #endif
 
