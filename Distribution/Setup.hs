@@ -80,6 +80,7 @@ type CommandLineOpts = (Action,
 
 data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
+            | CleanCmd                    -- clean
             | InstallCmd (Maybe FilePath) Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
@@ -119,6 +120,7 @@ parseArgs args
 		"configure"  -> parseConfigure flags unkFlags
 		"install"    -> parseInstall flags unkFlags
 		"build"      -> noFlags str BuildCmd flags unkFlags
+		"clean"      -> noFlags str CleanCmd flags unkFlags
 		"sdist"      -> noFlags str SDistCmd flags unkFlags
         	"register"   -> parseRegister flags unkFlags
         	"unregister" -> noFlags str UnregisterCmd flags unkFlags
