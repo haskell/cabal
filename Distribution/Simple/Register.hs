@@ -102,7 +102,11 @@ register pkg_descr lbi (userInst,verbose)
     setupMessage "No package to register" pkg_descr
     return ()
   | otherwise = do
-    setupMessage "Registering" pkg_descr
+    let writeRegScript = verbose > 10 -- FIX, thread new flag.
+    setupMessage (if writeRegScript
+                     then ("Writing registration script: " ++ regScriptLocation)
+                     else "Registering")
+                 pkg_descr
     case compilerFlavor (compiler lbi) of
       GHC -> do 
      	let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
@@ -115,25 +119,35 @@ register pkg_descr lbi (userInst,verbose)
 			  GHC.maybeCreateLocalPackageConfig
 		          localConf <- GHC.localPackageConfig
 			  pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-		          when (not pkgConfWriteable) $ userPkgConfErr localConf
+		          when (not pkgConfWriteable && not writeRegScript)
+                                   $ userPkgConfErr localConf
 			  return ["--config-file=" ++ localConf]
 		else return []
 
         instConfExists <- doesFileExist installedPkgConfigFile
-        unless instConfExists $ do
+        when (not instConfExists && not writeRegScript) $ do
           when (verbose > 0) $
             putStrLn ("create "++installedPkgConfigFile)
           writeInstalledConfig pkg_descr lbi
 
 	let register_flags 
 		| ghc_63_plus = ["update", installedPkgConfigFile]
-		| otherwise   = ["--update-package",
-				 "--input-file="++installedPkgConfigFile]
+		| otherwise   = "--update-package":
+				 if writeRegScript
+                                    then []
+                                    else ["--input-file="++installedPkgConfigFile]
+        
+	let allFlags = "--auto-ghci-libs":
+		       (register_flags
+                        ++ config_flags)
+        let pkgTool = compilerPkgTool (compiler lbi)
 
-        rawSystemEmit regScriptLocation (verbose>10) verbose (compilerPkgTool (compiler lbi))
-	                         (["--auto-ghci-libs"]
-			          ++ register_flags
-                                  ++ config_flags)
+        if writeRegScript
+         then rawSystemPipe regScriptLocation verbose
+                           (showInstalledConfig pkg_descr lbi)
+                           pkgTool allFlags
+         else rawSystemExit verbose pkgTool allFlags
+
       -- FIX (HUGS):
       Hugs -> do
 	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
@@ -149,12 +163,17 @@ userPkgConfErr local_conf =
 -- |Register doesn't drop the register info file, it must be done in a separate step.
 writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> IO ()
 writeInstalledConfig pkg_descr lbi = do
-  let hc = compiler lbi
-  let pkg_config = case compilerFlavor hc of
-	GHC | compilerVersion hc < Version [6,3] [] ->
-	    showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
-	_ -> showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
+  let pkg_config = showInstalledConfig pkg_descr lbi
   writeFile installedPkgConfigFile (pkg_config ++ "\n")
+
+-- |Create a string suitable for writing out to the package config file
+showInstalledConfig :: PackageDescription -> LocalBuildInfo -> String
+showInstalledConfig pkg_descr lbi
+    = let hc = compiler lbi
+      in case compilerFlavor hc of
+          GHC | compilerVersion hc < Version [6,3] [] ->
+	          showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
+ 	  _ -> showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
 
 removeInstalledConfig :: IO ()
 removeInstalledConfig = try (removeFile installedPkgConfigFile) >> return ()
@@ -235,6 +254,8 @@ unregister pkg_descr lbi (user_unreg, verbose) = do
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
 
+-- |Like rawSystemExit, but optionally emits to a script instead of
+-- exiting.
 rawSystemEmit :: FilePath -- ^Script name
               -> Bool     -- ^if true, emit, if false, run
               -> Int      -- ^Verbosity
@@ -248,6 +269,20 @@ rawSystemEmit scriptName True verbosity path args
                            ++ (path ++ concatMap (' ':) args)
                            ++ "\n")
       >> putStrLn (path ++ concatMap (' ':) args)
+
+-- |Like rawSystemEmit, except it has string for pipeFrom
+rawSystemPipe :: FilePath -- ^Script location
+              -> Int      -- ^Verbosity
+              -> String   -- ^where to pipe from
+              -> FilePath -- ^Program to run
+              -> [String] -- ^Args
+              -> IO ()
+rawSystemPipe scriptName verbose pipeFrom path args
+    = writeFile scriptName ("#!/bin/sh\n\n"
+                            ++ "echo '" ++ pipeFrom
+                            ++ "' |" 
+                            ++ (path ++ concatMap (' ':) args)
+                            ++ "\n")
 
 -- ------------------------------------------------------------
 -- * Testing
