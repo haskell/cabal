@@ -1,6 +1,7 @@
 * misc
 
 ** Add package sanity checker?
+** add hooks to haddock cmd
 
 ** make debian watchfile
 ** find a real test case that uses preprocessors
