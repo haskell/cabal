@@ -114,6 +114,7 @@ constructGHCCmdLine pref pkg_descr _ =
   ] 
   ++ extensionsToGHCFlag (extensions pkg_descr)
   ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
+  ++ [ "-i" ++ pref ]
   ++ allModules pkg_descr
 
 extensionsToGHCFlag :: [ Extension ] -> [String]
