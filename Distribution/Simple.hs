@@ -66,10 +66,10 @@ import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister,
                                           writeInstalledConfig, installedPkgConfigFile )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, findHaddock,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, currentDir, rawSystemPath,
+import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
 import Distribution.License (License(..))
@@ -86,6 +86,7 @@ import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad(when)
 import Data.List	( intersperse )
+import Data.Maybe (isNothing, fromJust)
 import System.IO.Error (try)
 import Distribution.GetOpt
 
@@ -193,6 +194,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInput preBuild args
                 withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
+                      mHaddock <- findHaddock (withHaddock lbi)
+                      when (isNothing mHaddock) (error "haddock command not found")
                       let bi = libBuildInfo lib
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
@@ -207,14 +210,16 @@ defaultMainWorker pkg_descr_in action args hooks
                       setupMessage "Running Haddock for" pkg_descr
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)
-                      putStrLn $ "verbose: " ++ (show verbose)
-                      code <- rawSystemPath verbose "haddock" (["-h",
-                                                                "-o", targetDir,
-                                                                 "-t", showPkg,
-                                                                 "-p", prologName]
-                                                               ++ outFiles)
+                      code <- rawSystemVerbose verbose (fromJust mHaddock)
+                              (["-h",
+                                "-o", targetDir,
+                                "-t", showPkg,
+                                "-p", prologName]
+                              ++ (if verbose > 4 then ["-v"] else [])
+                              ++ outFiles
+                              )
                       removeDirectoryRecursive tmpDir
---                      removeFile prologName
+                      removeFile prologName
                       when (code /= ExitSuccess) (exitWith code)
                       return code)
             CleanCmd -> do
@@ -371,7 +376,7 @@ defaultUserHooks
     where readHook a = no_extra_flags a >> readHookedPackageDesc
           readHook2 a _ = no_extra_flags a >> readHookedPackageDesc
           defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
-          defaultPreConf args (_, _, _, mb_prefix)
+          defaultPreConf args (_, _, _, mb_prefix, _)
               = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
 	           if confExists then do
