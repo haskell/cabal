@@ -81,6 +81,12 @@ import Data.Maybe (isNothing, fromJust)
 import HUnit (Test)
 #endif
 
+regScriptLocation :: FilePath
+regScriptLocation = "register.sh"
+
+unregScriptLocation :: FilePath
+unregScriptLocation = "unregister.sh"
+
 -- -----------------------------------------------------------------------------
 -- Registration
 
@@ -124,7 +130,7 @@ register pkg_descr lbi (userInst,verbose)
 		| otherwise   = ["--update-package",
 				 "--input-file="++installedPkgConfigFile]
 
-        rawSystemExit verbose (compilerPkgTool (compiler lbi))
+        rawSystemEmit regScriptLocation (verbose>10) verbose (compilerPkgTool (compiler lbi))
 	                         (["--auto-ghci-libs"]
 			          ++ register_flags
                                   ++ config_flags)
@@ -221,13 +227,27 @@ unregister pkg_descr lbi (user_unreg, verbose) = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",theName]
                         else ["--remove-package="++theName]
-	rawSystemExit verbose (compilerPkgTool (compiler lbi))
+	rawSystemEmit unregScriptLocation (verbose>10) verbose (compilerPkgTool (compiler lbi))
 	    (removeCmd++config_flags)
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
+
+rawSystemEmit :: FilePath -- ^Script name
+              -> Bool     -- ^if true, emit, if false, run
+              -> Int      -- ^Verbosity
+              -> FilePath -- ^Program to run
+              -> [String] -- ^Args
+              -> IO ()
+rawSystemEmit _ False verbosity path args
+    = rawSystemExit verbosity path args
+rawSystemEmit scriptName True verbosity path args
+    = writeFile scriptName ("#!/bin/sh\n\n"
+                           ++ (path ++ concatMap (' ':) args)
+                           ++ "\n")
+      >> putStrLn (path ++ concatMap (' ':) args)
 
 -- ------------------------------------------------------------
 -- * Testing
