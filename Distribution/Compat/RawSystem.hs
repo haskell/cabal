@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 module Distribution.Compat.RawSystem (rawSystem) where
 
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 602

@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 module Distribution.Compat.Exception (bracket,finally) where
 
 #ifdef __NHC__

@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 module Distribution.Compat.Error (Error(..)) where
 
 #ifndef __NHC__
