@@ -4,6 +4,8 @@ http://www.haskell.org/cabal
 
 -= Quirky things about the build system =-
 
+* "make install" as root, then try "ghci -package Cabal" to test it.
+
 * GNUmakefile is the one you're probably interested in.  If you see
   Makefile, it is probably from the fptools build tree, and it won't
   work on its own.

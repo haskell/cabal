@@ -13,6 +13,9 @@ GHCPKGFLAGS = -f ~/.ghc-packages
 GHCFLAGS += -package-conf ~/.ghc-packages
 endif
 
+# the cabal tarball...
+CABALBALL=cabal.tar.gz
+
 all: moduleTest
 
 # build the library itself
@@ -115,15 +118,23 @@ pushdist: pushall dist
 	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
 #	rm -f /tmp/cabal-code.tgz
 
-dist: haddock
+$(CABALBALL):
 	darcs dist
-	mv Cabal.tar.gz /tmp
-	cd /tmp && tar -zxvf Cabal.tar.gz
-	mkdir -p /tmp/cabal/doc
-	cp -r dist/doc/html /tmp/cabal/doc/API
-	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
-	cp -r /tmp/pkg-spec{-html,.pdf} /tmp/cabal/doc
+	mv Cabal.tar.gz $(CABALBALL)
 
-	cd /tmp && tar -zcvf cabal-code.tgz cabal
-	rm -f /tmp/Cabal.tar.gz
-	rm -rf /tmp/cabal
+TMPDISTLOC=/tmp/cabaldist
+
+dist: haddock $(CABALBALL)
+	rm -rf /tmp/cabal* /tmp/Cabal*
+	rm -rf $(TMPDISTLOC)
+	mkdir $(TMPDISTLOC)
+	mv $(CABALBALL) $(TMPDISTLOC)
+	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL) && mv Cabal cabal
+	mkdir $(TMPDISTLOC)/cabal/doc
+	cp -r dist/doc/html $(TMPDISTLOC)/cabal/doc/API
+	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
+	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal/doc
+
+	cd $(TMPDISTLOC) && tar -zcvf /tmp/cabal-code.tgz cabal
+#	rm -f /tmp/Cabal.tar.gz
+#	rm -rf /tmp/cabal
