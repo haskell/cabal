@@ -46,6 +46,7 @@ module Distribution.Package (
 	PackageIdentifier(..), 
 	showPackageId,
 	PackageDescription(..),
+        BuildInfo(..),
 	emptyPackageDescription,
         parsePackageDesc,
 #ifdef DEBUG        
