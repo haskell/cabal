@@ -231,14 +231,12 @@ findCompiler flavor = do
 compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
 compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
-compilerBinaryName Hugs = "hugs"
+compilerBinaryName Hugs = "ffihugs"
 
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
--- FIX (HUGS): This tool doesn't actually implement the HC-PKG
--- spec. it does something different.
-compilerPkgToolName Hugs = "hugs-package"
+compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> IO Version
 configCompilerVersion GHC compiler =
