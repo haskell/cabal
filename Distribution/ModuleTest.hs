@@ -49,6 +49,7 @@ module Main where
 import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
 import qualified Distribution.Misc as D.M (hunitTests)
+import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
 

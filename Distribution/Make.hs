@@ -59,7 +59,7 @@ import Distribution.Version (Version(..))
 -- Base
 import System(getArgs)
 
-import Control.Monad (when, unless)
+import Control.Monad (when)
 import Data.Maybe (isNothing, maybe)
 import Data.List	( intersperse )
 import System.IO (hPutStr, stderr)

@@ -1,14 +1,15 @@
 all: main
 
 main:
-	ghc -Wall --make -i../:/usr/local/src/HUnit-1.0 Distribution/ModuleTest -o moduleTest
+	ghc -Wall --make -i../:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
+
 tests:
 	cd test/A && make
 	cd test/HUnit-1.0 && make
 
 clean:
 	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
-	rm -f library-infrastructure--darcs.tar.gz
+	-rm -f library-infrastructure--darcs.tar.gz
 
 check: tests main
 	./moduleTest

@@ -52,6 +52,7 @@ module Distribution.Simple.Utils (
 	findBinary,
 	rawSystemPath,
 	rawSystemExit,
+        maybeExit,
 	rawSystemPathExit,
         moveSources,
         hunitTests,
