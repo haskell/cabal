@@ -419,6 +419,7 @@ testPkgDesc = unlines [
         "Exposed-Modules: Distribution.Void, Foo.Bar",
         "Extensions: OverlappingInstances, TypeSynonymInstances",
         "Extra-Libs: libfoo, bar, bang",
+	"Extra-Lib-Dirs: \"/usr/local/libs\"",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
         "Options-ghc: -fTH -fglasgow-exts",
@@ -461,6 +462,7 @@ testPkgDescAnswer =
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
                         extensions = [OverlappingInstances, TypeSynonymInstances],
                         extraLibs = ["libfoo", "bar", "bang"],
+                        extraLibDirs = ["/usr/local/libs"],
                         includeDirs = ["your/slightest", "look/will"],
                         includes = ["/easily/unclose", "/me", "funky, path\\name"],
                         -- Note reversed order:
