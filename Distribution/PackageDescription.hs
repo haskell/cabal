@@ -111,6 +111,7 @@ data PackageDescription
 	-- the following are required by all packages:
 	package        :: PackageIdentifier,
         license        :: License,
+        licenseFile    :: FilePath,
         copyright      :: String,
         maintainer     :: String,
 	author         :: String,
@@ -118,6 +119,7 @@ data PackageDescription
 	testedWith     :: [(CompilerFlavor,VersionRange)],
 	homepage       :: String,
 	pkgUrl         :: String,
+	synopsis       :: String,
 	description    :: String,
 	category       :: String,
         buildDepends   :: [Dependency],
@@ -138,6 +140,7 @@ emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
                       license      = AllRightsReserved,
+                      licenseFile  = "",
                       copyright    = "",
                       maintainer   = "",
 		      author       = "",
@@ -146,6 +149,7 @@ emptyPackageDescription
                       buildDepends = [],
 		      homepage     = "",
 		      pkgUrl       = "",
+		      synopsis     = "",
 		      description  = "",
 		      category     = "",
                       library      = Nothing,
@@ -156,12 +160,12 @@ emptyPackageDescription
 libModules :: PackageDescription -> [String]
 libModules PackageDescription{library=lib}
     = (maybe [] exposedModules lib)
-      ++ (maybe [] (hiddenModules . libBuildInfo) lib)
+      ++ (maybe [] (otherModules . libBuildInfo) lib)
 
 -- |Get all the module names from the exes in this package
 exeModules :: PackageDescription -> [String]
 exeModules PackageDescription{executables=execs}
-    = concatMap (hiddenModules . buildInfo) execs
+    = concatMap (otherModules . buildInfo) execs
 
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
@@ -175,7 +179,7 @@ data BuildInfo = BuildInfo {
         frameworks        :: [String],
         cSources          :: [FilePath],
         hsSourceDir       :: FilePath,
-	hiddenModules     :: [String],
+	otherModules      :: [String],
         extensions        :: [Extension],
         extraLibs         :: [String],
         extraLibDirs      :: [String],
@@ -193,7 +197,7 @@ emptyBuildInfo = BuildInfo {
 		      frameworks        = [],
 		      cSources          = [],
 		      hsSourceDir       = currentDir,
-		      hiddenModules     = [],
+		      otherModules      = [],
                       extensions        = [],
                       extraLibs         = [],
                       extraLibDirs      = [],
@@ -271,7 +275,7 @@ unionBuildInfo b1 b2
          frameworks        = combine frameworks,
          cSources          = combine cSources,
          hsSourceDir       = override hsSourceDir "hs-source-dir",
-         hiddenModules     = combine hiddenModules,
+         otherModules      = combine otherModules,
          extensions        = combine extensions,
          extraLibs         = combine extraLibs,
          extraLibDirs      = combine extraLibDirs,
@@ -307,10 +311,12 @@ basicStanzaFields =
  , simpleField "version"
                            (text . showVersion)   parseVersion 
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
- , licenseField "license" False
+ , simpleField "license"
+                           (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
- , licenseField "license-file" True
-                           license                (\l pkg -> pkg{license=l})
+ , simpleField "license-file"
+                           showFilePath           parseFilePathQ
+                           licenseFile            (\l pkg -> pkg{licenseFile=l})
  , simpleField "copyright"
                            showFreeText           (munch (const True))
                            copyright              (\val pkg -> pkg{copyright=val})
@@ -329,6 +335,9 @@ basicStanzaFields =
  , simpleField "package-url"
                            showFreeText           (munch (const True))
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
+ , simpleField "synopsis"
+                           showFreeText           (munch (const True))
+                           synopsis               (\val pkg -> pkg{synopsis=val})
  , simpleField "description"
                            showFreeText           (munch (const True))
                            description            (\val pkg -> pkg{description=val})
@@ -394,9 +403,9 @@ binfoFields =
  , simpleField "hs-source-dir"
                            showFilePath       parseFilePathQ
                            hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
- , listField   "hidden-modules"         
+ , listField   "other-modules"         
                            text               parseModuleNameQ
-                           hiddenModules      (\val binfo -> binfo{hiddenModules=val})
+                           otherModules       (\val binfo -> binfo{otherModules=val})
  , optsField   "options-ghc"  GHC
                            options            (\path  binfo -> binfo{options=path})
  , optsField   "options-hugs" Hugs
@@ -555,7 +564,7 @@ sanityCheckPackage pkg_descr
                          (null (executables pkg_descr) && isNothing (library pkg_descr))
                          "No executables and no library found. Nothing to do."
          noModules <- checkSanity (hasMods pkg_descr)
-                      "No non-hidden modules in this package."
+                      "No exposed modules or executables in this package."
 
          return $ any (==True) [libSane, identSane, nothingToDo, noModules]
 
@@ -594,7 +603,8 @@ testPkgDesc = unlines [
         "Author: Happy Haskell Hacker",
         "Homepage: http://www.haskell.org/foo",
         "Package-url: http://www.haskell.org/foo",
-        "Description: a nice package!",
+        "Synopsis: a nice package!",
+        "Description: a really nice package!",
         "Category: tools",
         "buildable: True",
         "CC-OPTIONS: -g -o",
@@ -603,7 +613,7 @@ testPkgDesc = unlines [
         "Tested-with: GHC",
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
-        "Hidden-Modules: Distribution.Package, Distribution.Version,",
+        "Other-Modules: Distribution.Package, Distribution.Version,",
         "                Distribution.Simple.GHCPackageConfig",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dir: src",
@@ -619,7 +629,7 @@ testPkgDesc = unlines [
         "-- Next is an executable",
         "Executable: somescript",
         "Main-is: SomeFile.hs",
-        "Hidden-Modules: Foo1, Util, Main",
+        "Other-Modules: Foo1, Util, Main",
         "HS-Source-Dir: scripts",
         "Extensions: OverlappingInstances"
         ]
@@ -633,7 +643,8 @@ testPkgDescAnswer =
                     author  = "Happy Haskell Hacker",
                     homepage = "http://www.haskell.org/foo",
                     pkgUrl   = "http://www.haskell.org/foo",
-                    description = "a nice package!",
+                    synopsis = "a nice package!",
+                    description = "a really nice package!",
                     category = "tools",
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
@@ -652,9 +663,9 @@ testPkgDescAnswer =
                            frameworks = ["foo"],
                            cSources = ["not/even/rain.c", "such/small/hands"],
                            hsSourceDir = "src",
-                           hiddenModules = ["Distribution.Package",
-                                            "Distribution.Version",
-                                            "Distribution.Simple.GHCPackageConfig"],
+                           otherModules = ["Distribution.Package",
+                                           "Distribution.Version",
+                                           "Distribution.Simple.GHCPackageConfig"],
                            extensions = [OverlappingInstances, TypeSynonymInstances],
                            extraLibs = ["libfoo", "bar", "bang"],
                            extraLibDirs = ["/usr/local/libs"],
@@ -666,7 +677,7 @@ testPkgDescAnswer =
                     executables = [Executable "somescript" 
                        "SomeFile.hs" (
                       emptyBuildInfo{
-                        hiddenModules=["Foo1","Util","Main"],
+                        otherModules=["Foo1","Util","Main"],
                         hsSourceDir = "scripts",
                         extensions = [OverlappingInstances]
                       })]

@@ -52,7 +52,7 @@ module Distribution.ParseUtils (
 	parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList,
 	showFilePath, showTestedWith, showDependency, showFreeText,
-	simpleField, listField, licenseField, optsField, 
+	simpleField, listField, optsField, 
 	parseReadS, parseQuoted,
   ) where
 
@@ -133,27 +133,6 @@ listField name showF readF get set = StanzaField name
    (\lineNo val st -> do
        xs <- runP lineNo name (parseCommaList readF) val
        return (set xs st))
-
-licenseField :: String -> Bool -> (b -> License) -> (License -> b -> b) -> StanzaField b
-licenseField name flag get set = StanzaField name
-   (\st -> case get st of
-             OtherLicense path | flag      -> text name <> colon <+> showFilePath path
-                               | otherwise -> empty
-             license'          | not flag  -> text name <> colon <+> text (show license')
-                               | otherwise -> empty)
-   (\st -> case get st of
-             OtherLicense path | flag      -> showFilePath path
-                               | otherwise -> empty
-             license'          | not flag  -> text (show license')
-                               | otherwise -> empty)
-   (\lineNo val st ->
-       if flag 
-         then do 
-            path <- runP lineNo name parseFilePathQ val
-            return (set (OtherLicense path) st)
-         else do
-            x <- runP lineNo name parseLicenseQ val
-            return (set x st))
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> StanzaField b
 optsField name flavor get set = StanzaField name

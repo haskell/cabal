@@ -63,6 +63,5 @@ data License = GPL  -- ^GNU Public License. Source code must accompany alteratio
              | BSD4 -- ^4-clause BSD license, older, with advertising clause.
              | PublicDomain -- ^Holder makes no claim to ownership, least restrictive license.
              | AllRightsReserved -- ^No rights are granted to others. Undistributable. Most restrictive.
-             | {- ... | -} OtherLicense FilePath
-             -- ^Use another license by listing the relative path to your license file.
+             | {- ... | -} OtherLicense -- ^Some other license.
                deriving (Read, Show, Eq)
