@@ -43,7 +43,6 @@
 --with-compiler=
 --prefix=
 --instprefix=
---help (for compatibility? it's really more of an action)
 
 * 1.0
 ** actions

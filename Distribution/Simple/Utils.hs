@@ -83,4 +83,3 @@ isPathSeparator ch =
 
 die :: String -> IO a
 die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
-
