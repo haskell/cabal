@@ -1,6 +1,8 @@
 ------------------------------------------------------------
 -= 1.0 =-
 
+* Install libraries in $libdir/ghc-$ghc_version/ rather than $libdir.
+
 * Write semantic checker for package description file.  start w/
    sanity checker.  give error if buildInfo field given when no
    exposed or hidden modules for a library.  Check for required
