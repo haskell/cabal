@@ -1,5 +1,5 @@
 all:
-	ghc -Wall --make -i../../:/usr/local/src/HUnit-1.0 Setup.lhs -o setup
+	ghc -Wall --make -i../../:../HUnit-1.0/src Setup.lhs -o setup
 clean:
 	rm -f setup a.out dist/build/testA
 	rm -rf ,tmp dist ,tmp2
