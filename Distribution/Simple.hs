@@ -111,38 +111,34 @@ type Args = [String]
 -- a command is run, and also to specify additional preprocessors.
 data UserHooks = UserHooks
     {
-     runTests :: Args -> Bool -> IO ExitCode, -- ^Used for @.\/setup test@
+     runTests :: Args -> Bool -> LocalBuildInfo -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
      hookedPreProcessors :: [ PPSuffixHandler ],
         -- ^Custom preprocessors in addition to 'knownSuffixHandlers'.
 
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
-     postConf :: Args -> LocalBuildInfo -> IO ExitCode,
+     postConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode,
 
      preBuild  :: Args -> Int -> IO HookedBuildInfo,
-     postBuild :: Args -> LocalBuildInfo -> IO ExitCode,
+     postBuild :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
      preClean  :: Args -> Int -> IO HookedBuildInfo,
-     postClean :: Args -> LocalBuildInfo -> IO ExitCode,
+     postClean :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
-     preCopy  :: Args
-                 -> (Maybe FilePath,Int) -- Copy Location,verbose
-                 -> IO HookedBuildInfo,
-     postCopy :: Args -> LocalBuildInfo -> IO ExitCode,
+     preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
+     postCopy :: Args -> CopyFlags -> LocalBuildInfo -> IO ExitCode,
 
-     preInst  :: Args -> (Bool,Int) -> IO HookedBuildInfo,
-     postInst :: Args -> LocalBuildInfo -> IO ExitCode, -- ^guaranteed to be run on target
+     preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
+     postInst :: Args -> InstallFlags -> LocalBuildInfo -> IO ExitCode, -- ^guaranteed to be run on target
 
      preSDist  :: Args -> Int -> IO HookedBuildInfo,
-     postSDist :: Args -> LocalBuildInfo -> IO ExitCode,
+     postSDist :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
-     preReg  :: Args
-                -> (Bool,Int) -- Install in the user's database?; verbose
-                -> IO HookedBuildInfo,
-     postReg :: Args -> LocalBuildInfo -> IO ExitCode,
+     preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+     postReg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
      preUnreg  :: Args -> Int -> IO HookedBuildInfo,
-     postUnreg :: Args -> LocalBuildInfo -> IO ExitCode
+     postUnreg :: Args -> Int -> LocalBuildInfo -> IO ExitCode
     }
 
 -- |A simple implementation of @main@ for a Cabal setup script.
@@ -151,22 +147,21 @@ data UserHooks = UserHooks
 defaultMain :: IO ()
 defaultMain = do args <- getArgs
                  (action, args) <- parseGlobalArgs args
-                 pkg_descr <- defaultPackageDesc >>= readPackageDescription
+                 pkg_descr_file <- defaultPackageDesc
+                 pkg_descr <- readPackageDescription pkg_descr_file
                  defaultMainWorker pkg_descr action args Nothing
                  return ()
 
 -- | A customizable version of 'defaultMain'.
-defaultMainWithHooks :: UserHooks
-                     -> IO ()
+defaultMainWithHooks :: UserHooks -> IO ()
 defaultMainWithHooks hooks
     = do args <- getArgs
          (action, args) <- parseGlobalArgs args
          maybeDesc <- readDesc hooks
-         case maybeDesc of
-          Just pkg_descr -> defaultMainWorker pkg_descr action args (Just hooks) >> return ()
-          Nothing        -> do pkg_descr <- defaultPackageDesc >>= readPackageDescription
-                               defaultMainWorker pkg_descr action args (Just hooks)
-                               return ()
+         pkg_descr <- maybe (defaultPackageDesc >>= readPackageDescription)
+                            return maybeDesc
+         defaultMainWorker pkg_descr action args (Just hooks)
+         return ()
 
 -- |Like 'defaultMain', but accepts the package description as input
 -- rather than using IO to read it.
@@ -192,24 +187,24 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, optFns, args) <-
 			parseConfigureArgs flags args [buildDirOpt]
                 pkg_descr <- hookOrInArgs preConf args flags
-                let buildInfos =
-                        map libBuildInfo (maybeToList (library pkg_descr)) ++
-                        map buildInfo (executables pkg_descr)
-		when (not (any buildable buildInfos)) $ do
-		    let name = showPackageId (package pkg_descr)
-		    die ("Package " ++ name ++ " can't be built on this system.")
+                sanityCheckPackage pkg_descr
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
-                sanityCheckPackage pkg_descr
-                postHook postConf args localbuildinfo
+                postHook postConf args flags localbuildinfo
 
             BuildCmd -> do
                 (flags, _, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInArgs preBuild args flags
+                let buildInfos =
+                        map libBuildInfo (maybeToList (library pkg_descr)) ++
+                        map buildInfo (executables pkg_descr)
+                when (not (any buildable buildInfos)) $ do
+                    let name = showPackageId (package pkg_descr)
+                    die ("Package " ++ name ++ " can't be built on this system.")
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo flags pps
                 writeInstalledConfig pkg_descr localbuildinfo
-                postHook postBuild args localbuildinfo
+                postHook postBuild args flags localbuildinfo
             HaddockCmd -> do
                 (verbose, _, args) <- parseHaddockArgs args []
                 pkg_descr <- hookOrInArgs preBuild args verbose
@@ -254,7 +249,7 @@ defaultMainWorker pkg_descr_in action args hooks
                        when (isNothing mPfe) (error "pfe command not found")
                        putStrLn $ "using : " ++ fromJust mPfe
                        let bi = libBuildInfo lib
-                       let mods = exposedModules lib ++ hiddenModules (libBuildInfo lib)
+                       let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
                        preprocessSources pkg_descr lbi verbose pps
                        inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                               | m <- mods] >>= return . concat
@@ -282,14 +277,14 @@ defaultMainWorker pkg_descr_in action args hooks
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
-                postHook postClean args localbuildinfo
+                postHook postClean args verbose localbuildinfo
 
             CopyCmd mprefix -> do
                 (flags, _, args) <- parseCopyArgs (mprefix,0) args []
                 pkg_descr <- hookOrInArgs preCopy args flags
 		localbuildinfo <- getPersistBuildConfig
 		install pkg_descr localbuildinfo flags
-                postHook postCopy args localbuildinfo
+                postHook postCopy args flags localbuildinfo
 
             InstallCmd uInst -> do
                 (flags@(uInst, verbose), _, args) <- parseInstallArgs (uInst,0) args []
@@ -301,7 +296,7 @@ defaultMainWorker pkg_descr_in action args hooks
 		install pkg_descr localbuildinfo (Nothing, verbose)
                 when (hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo flags)
-                postHook postInst args localbuildinfo
+                postHook postInst args flags localbuildinfo
 
             SDistCmd -> do
                 let distPref = "dist"
@@ -310,21 +305,21 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preSDist args verbose
                 localbuildinfo <- getPersistBuildConfig
 		sdist srcPref distPref verbose pps pkg_descr
-                postHook postSDist args localbuildinfo
+                postHook postSDist args verbose localbuildinfo
 
             RegisterCmd uInst -> do
                 (flags, _, args) <- parseRegisterArgs (uInst,0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo flags)
-                postHook postReg args localbuildinfo
+                postHook postReg args flags localbuildinfo
 
             UnregisterCmd -> do
                 (flags,_, args) <- parseUnregisterArgs args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo flags
-                postHook postUnreg args localbuildinfo
+                postHook postUnreg args flags localbuildinfo
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
@@ -337,10 +332,10 @@ defaultMainWorker pkg_descr_in action args hooks
                     Nothing -> no_extra_flags a >> return pkg_descr_in
                     Just h -> do pbi <- f h a i
                                  return (updatePackageDescription pbi pkg_descr_in)
-        postHook f a localbuildinfo
+        postHook f args flags localbuildinfo
                  = case hooks of
                     Nothing -> return ExitSuccess
-                    Just h  -> f h a localbuildinfo
+                    Just h  -> f h args flags localbuildinfo
         mockPP inputArgs pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
@@ -391,26 +386,26 @@ emptyUserHooks
        preUnreg  = rn,
        postUnreg = res
       }
-    where rn  _ _ = return emptyHookedBuildInfo
-          res _ _ = return ExitSuccess
+    where rn  _ _   = return emptyHookedBuildInfo
+          res _ _ _ = return ExitSuccess
 
 -- |Basic default 'UserHooks':
 --
--- * on non-Windows systems, 'preConf' runs @.\/configure@, if present.
+-- * on non-Windows systems, 'postConf' runs @.\/configure@, if present.
 --
--- * all pre-hooks read additional build information from
+-- * all pre-hooks except 'preConf' read additional build information from
 --   /package/@.buildinfo@, if present.
 --
 -- Thus @configure@ can use local system information to generate
 -- /package/@.buildinfo@ and possibly other files.
 
--- FIXME: do something sensible for windows, or do nothing in preConf.
+-- FIXME: do something sensible for windows, or do nothing in postConf.
 
 defaultUserHooks :: UserHooks
 defaultUserHooks
     = emptyUserHooks
       {
-       preConf   = defaultPreConf,
+       postConf  = defaultPostConf,
        preBuild  = readHook,
        preClean  = readHook,
        preCopy   = readHook,
@@ -419,9 +414,8 @@ defaultUserHooks
        preReg    = readHook,
        preUnreg  = readHook
       }
-    where readHook a _ = no_extra_flags a >> readExistingHookedBuildInfo
-          defaultPreConf :: [String] -> ConfigFlags -> IO HookedBuildInfo
-          defaultPreConf args flags
+    where defaultPostConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode
+          defaultPostConf args flags lbi
               = do let prefix_opt pref opts =
                            ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
@@ -431,12 +425,15 @@ defaultUserHooks
 		       return ()
 		     else
 		       no_extra_flags args
-		   readExistingHookedBuildInfo
-          readExistingHookedBuildInfo
-              = do maybe_infoFile <- defaultHookedPackageDesc
-		   case maybe_infoFile of
-		       Nothing       -> return emptyHookedBuildInfo
-		       Just infoFile -> readHookedBuildInfo infoFile
+                   return ExitSuccess
+
+          readHook :: Args -> a -> IO HookedBuildInfo
+          readHook a _ = do
+              no_extra_flags a
+              maybe_infoFile <- defaultHookedPackageDesc
+              case maybe_infoFile of
+                  Nothing       -> return emptyHookedBuildInfo
+                  Just infoFile -> readHookedBuildInfo infoFile
 
 -- ------------------------------------------------------------
 -- * Testing

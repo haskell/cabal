@@ -118,9 +118,7 @@ Author:         Dean Herington
 Homepage:       http://hunit.sourceforge.net/
 Category:       Testing
 Build-Depends:  base
-Description:
-        HUnit is a unit testing framework for Haskell, inspired by the
-        JUnit tool for Java, see: &lt;http://www.junit.org&gt;.
+Synopsis:       Unit testing framework for Haskell
 Exposed-modules:
         Test.HUnit, Test.HUnit.Base, Test.HUnit.Lang,
         Test.HUnit.Terminal, Test.HUnit.Text
@@ -292,6 +290,17 @@ Hidden-Modules: A, C, Utils</programlisting>
         </varlistentry>
 
         <varlistentry>
+          <term><literal>synopsis:</literal> <replaceable>freeform text</replaceable></term>
+          <listitem>
+            <para>A very short description of the package,
+              for use in a table of packages.  This is your headline,
+              so keep it short (one line) but as informative as possible.
+              Save space by not including the package name or saying
+              it's written in Haskell.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
           <term><literal>description:</literal> <replaceable>freeform text</replaceable></term>
           <listitem>
             <para>Description of the package.  This may be several
@@ -403,7 +412,7 @@ Hidden-Modules: A, C, Utils</programlisting>
           </varlistentry>
 
           <varlistentry>
-            <term><literal>hidden-modules:</literal> <replaceable>module list</replaceable></term>
+            <term><literal>other-modules:</literal> <replaceable>module list</replaceable></term>
             <listitem>
               <para>A list of modules used by the component
                 but not exposed to users.  For a library component, these
@@ -720,8 +729,11 @@ main = defaultMain</programlisting>
     <para>where <literal>runhaskell</literal> might be
       <literal>runhugs</literal>, <literal>runghc</literal> or
       <literal>runnhc</literal>.  The <replaceable>command</replaceable>
-      argument selects a particular step in the build/install
-      process.</para>
+      argument selects a particular step in the build/install process.
+      You can also get a summary of the command syntax with</para>
+    <cmdsynopsis>
+      <command>runhaskell Setup.hs</command> <option>--help</option>
+    </cmdsynopsis>
 
     <example>
       <title>Building and installing a system package</title>
@@ -770,7 +782,7 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
         <term><option>--help</option>, <option>-h</option> or
           <option>-?</option></term>
         <listitem>
-          <para>List the available options.</para>
+          <para>List the available options for the command.</para>
         </listitem>
       </varlistentry>
 
