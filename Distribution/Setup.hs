@@ -49,7 +49,7 @@ module Distribution.Setup (--parseArgs,
 #endif
                            parseGlobalArgs, commandList,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
-                           parseHaddockArgs,
+                           parseHaddockArgs, parseProgramaticaArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
                            parseUnregisterArgs, parseCopyArgs
                            ) where
@@ -87,6 +87,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | CleanCmd                    -- clean
             | CopyCmd (Maybe FilePath)    -- copy
             | HaddockCmd                  -- haddock
+            | ProgramaticaCmd             -- pfesetup
             | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
@@ -173,7 +174,8 @@ data Cmd a = Cmd {
 
 commandList :: [Cmd a]
 commandList = [configureCmd, buildCmd, cleanCmd, installCmd,
-               copyCmd, sdistCmd, haddockCmd, registerCmd, unregisterCmd]
+               copyCmd, sdistCmd, haddockCmd, programaticaCmd,
+               registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
 lookupCommand name = find ((==name) . cmdName)
@@ -301,6 +303,18 @@ haddockCmd = Cmd {
         cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = HaddockCmd
         }
+
+programaticaCmd :: Cmd a
+programaticaCmd = Cmd {
+        cmdName        = "pfe",
+        cmdHelp        = "Generate Programatica Project.",
+        cmdDescription = "",
+        cmdOptions     = [cmd_help, cmd_verbose],
+        cmdAction      = ProgramaticaCmd
+        }
+
+parseProgramaticaArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseProgramaticaArgs  = parseNoArgs programaticaCmd
 
 parseHaddockArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseHaddockArgs  = parseNoArgs haddockCmd

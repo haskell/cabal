@@ -61,7 +61,7 @@ module Distribution.Simple (
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCppHaddock,
+import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage, preprocessSources)
 import Distribution.Setup
 
@@ -211,7 +211,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
-                      mapM_ (mockPP pkg_descr bi lbi tmpDir verbose) inFiles
+                      mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
                       let showPkg = showPackageId (package pkg_descr)
                       let prologName = showPkg ++ "-haddock-prolog.txt"
                       writeFile prologName ((description pkg_descr) ++ "\n")
@@ -230,6 +230,34 @@ defaultMainWorker pkg_descr_in action args hooks
                       removeFile prologName
                       when (code /= ExitSuccess) (exitWith code)
                       return code)
+            ProgramaticaCmd -> do
+                 (verbose, _, args) <- parseProgramaticaArgs args []
+                 pkg_descr <- hookOrInArgs preBuild args verbose
+                 withLib pkg_descr ExitSuccess (\lib ->
+                    do lbi <- getPersistBuildConfig
+                       mPfe <- findProgram "pfesetup" Nothing
+                       when (isNothing mPfe) (error "pfe command not found")
+                       putStrLn $ "using : " ++ fromJust mPfe
+                       let bi = libBuildInfo lib
+                       let mods = exposedModules lib ++ hiddenModules (libBuildInfo lib)
+                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
+                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
+                                              | m <- mods] >>= return . concat
+                       let tmpDir = joinPaths (buildDir lbi) "tmp"
+                       mapM_ (mockPP ["-D__HUGS__"] pkg_descr bi lbi tmpDir verbose) inFiles
+                       setupMessage "Running pfesetup for " pkg_descr
+                       let outFiles = map (joinFileName tmpDir)
+                                      (map ((flip changeFileExt) "hs") inFiles)
+                       code <- rawSystemVerbose verbose (fromJust mPfe)
+--                               (["-h",
+--                                 "-o", targetDir,
+--                                 "-t", showPkg,
+--                                 "-p", prologName]
+                                ((if verbose > 4 then ["-v"] else [])
+                               ++ outFiles)
+                       when (code /= ExitSuccess) (exitWith code)
+                       return code)
+
             CleanCmd -> do
                 (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInArgs preClean args verbose
@@ -298,14 +326,14 @@ defaultMainWorker pkg_descr_in action args hooks
                  = case hooks of
                     Nothing -> return ExitSuccess
                     Just h  -> f h a localbuildinfo
-        mockPP pkg_descr bi lbi pref verbose file
+        mockPP inputArgs pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
                  let targetFile = joinFileName targetDir fileName
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
-                    then ppCppHaddock True pkg_descr bi lbi file targetFile verbose
+                    then ppCpp' inputArgs pkg_descr bi lbi file targetFile verbose
                     else copyFile file targetFile >> return ExitSuccess
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
