@@ -1,8 +1,7 @@
-* 0.2
 ** Preprocessing
-- add simple (cpphs) preprocessing?
+- move files to output location
+- integrate into preprocessSources function
 - what other preprocessors can't unlit?
-- 
 
 ** clarify description filename issues
 - allow foo.hsproj?

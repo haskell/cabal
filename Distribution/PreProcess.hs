@@ -44,7 +44,8 @@ module Distribution.PreProcess (preprocessSources, knownSuffixes,
 import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin, withLib)
+import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
+                                  withLib, rawSystemPath)
 import Distribution.Setup (CompilerFlavor(..))
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
@@ -70,10 +71,29 @@ data PreProcessor = PreProcessor
         -- |Whether the pp produces source appropriate for this compiler.
 	  ppSuitable         :: CompilerFlavor -> Bool
 	}
-     | PreProcessAction (FilePath -> IO ())
+      | PreProcessAction
+        {ppFun :: (FilePath    -- Input file
+                   -> FilePath -- output file
+                   -> IO ()),
+         ppSuitable :: CompilerFlavor -> Bool}
 
 type PPSuffixHandler
     = (String, (String->String->String), PreProcessor)
+
+--| FIX: Some preprocessors aren't respecting the output location; for
+-- these, we should move the file?  Should we change it to "directory"?
+
+ppCommandLine :: PreProcessor
+              -> FilePath     -- ^Location of the source file
+              -> FilePath     -- ^Location of the output file
+              -> IO ()        -- ^The constructed command-line
+ppCommandLine (PreProcessor exeName inOpts outFun _) sourceFile outFile
+    = let opts = if (null (outFun outFile))
+                 then inOpts ++ [sourceFile]
+                 else (inOpts ++ [outFun outFile, sourceFile])
+          in rawSystemPath exeName opts >> return ()
+ppCommandLine (PreProcessAction f _) sourceFile outFile
+    = f sourceFile outFile
 
 -- |Leave in unlit since some preprocessors can't handle literated
 -- source?
