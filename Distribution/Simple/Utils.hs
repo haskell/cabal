@@ -143,7 +143,7 @@ pathInits p =
          _                            -> (root,path)
          
        dropEmptyPath ("":paths) = paths
-       dropEmptyPath paths     = paths
+       dropEmptyPath paths      = paths
 
        inits :: String -> [String]
        inits [] =  [""]
