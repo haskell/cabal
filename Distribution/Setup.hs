@@ -130,8 +130,7 @@ cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
 globalOptions = [
-  cmd_help,
-  cmd_verbose
+  cmd_help
   ]
 
 liftCustomOpts :: [OptDescr a] -> [OptDescr (Flag a)]
@@ -180,7 +179,7 @@ printCmdHelp cmd opts = do pname <- getProgName
                            putStr (cmdDescription cmd)
 
 getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
-getCmdOpt cmd opts s = let (a,_,c,d) = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts) s
+getCmdOpt cmd opts s = let (a,_,c,d) = getOpt' Permute (cmdOptions cmd ++ liftCustomOpts opts) s
                          in (a,c,d)
 
 -- We don't want to use elem, because that imposes Eq a
@@ -189,7 +188,7 @@ hasHelpFlag flags = not . null $ [ () | HelpFlag <- flags ]
 
 parseGlobalArgs :: [String] -> IO (Action,[String])
 parseGlobalArgs args =
-  case getOpt RequireOrder globalOptions args of
+  case getOpt' RequireOrder globalOptions args of
     (flags, _, _, []) | hasHelpFlag flags -> do
       printGlobalHelp
       exitWith ExitSuccess
@@ -259,23 +258,8 @@ buildCmd = Cmd {
         cmdAction      = BuildCmd
         }
 
-parseBuildArgs :: Int -> [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseBuildArgs verbose args customOpts = 
-  case getCmdOpt buildCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp buildCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (updateBld flags verbose, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where
-    updateBld (fl:flags) verbose = updateBld flags $
-          case fl of
-            Verbose n -> n
-            _         -> error $ "Unexpected flag!"
-    updateBld [] t = t
+parseBuildArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseBuildArgs = parseNoArgs buildCmd
 
 haddockCmd :: Cmd a
 haddockCmd = Cmd {
