@@ -51,10 +51,13 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
     where
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
-import Distribution.Package(PackageDescription(..), emptyPackageDescription)
+import Distribution.Package(PackageDescription(..), emptyPackageDescription,
+                            PackageIdentifier(..)
+                           )
 import Distribution.Simple.Utils (die, setupMessage,
                                   findBinary, splitFilenameDir)
 import Distribution.Package	( PackageIdentifier )
+import Distribution.Version (Version(..))
 
 import System.IO hiding (catch)
 import System.Directory
@@ -199,11 +202,14 @@ message s = putStrLn $ "configure: " ++ s
 -- Tests
 
 #ifdef DEBUG
+packageID = PackageIdentifier "Foo" (Version [1] [])
+
 hunitTests :: [Test]
 hunitTests
     = [TestCase $
-       do let simonMarGHCLoc = "/home/simonmar/fp/bin/i386-unknown-linux/ghc"
-          simonMarGHC <- configure emptyPackageDescription (Just GHC,
+       do let simonMarGHCLoc = "/usr/bin/ghc"
+          simonMarGHC <- configure emptyPackageDescription {package=packageID}
+                                       (Just GHC,
 				       Just simonMarGHCLoc,
 				       Nothing)
 	  assertEqual "finding ghc, etc on simonMar's machine failed"
