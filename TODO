@@ -37,19 +37,11 @@
     modules might contain entities that are re-exported by an exposed
     module.  Hidden modules should use the #hide haddock directive.
 
-  - configure should detect haddock.  We should have a --with-haddock
-too
-    (similarly for all the other programs we use - I made this change
-for
-    VS a while ago and didn't get around to pushing it, now it'll be
-    conflict city.  oh well).
-
   - if GHC is present and hscpp is not, we can use 'ghc -E -cpp'.  This
     also unlits.
 
   - hscpp need to define __HADDOCK__ when preprocessing for haddock.
-This
-    means we have to preprocess seprately for haddock.
+    This means we have to preprocess seprately for haddock.
 
   - haddock should be passed the names of the interface files for the
     dependent packages (gotten from haddock_interfaces field of the
