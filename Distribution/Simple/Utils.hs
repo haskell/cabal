@@ -261,15 +261,16 @@ foreign import ccall unsafe "getpid" getProcessID :: IO Int
 -- ------------------------------------------------------------
 
 -- |Read the initial part of a source file, before any Haskell code,
--- and return the contents of any OPTIONS or LANGUAGE pragmas.
+-- and return the contents of any LANGUAGE, OPTIONS and INCLUDE pragmas.
 getOptionsFromSource
     :: FilePath
     -> IO ([Extension],                 -- LANGUAGE pragma, if any
-           [(CompilerFlavor,[String])]  -- OPTIONS_FOO pragmas
+           [(CompilerFlavor,[String])], -- OPTIONS_FOO pragmas
+           [String]                     -- INCLUDE pragmas
           )
 getOptionsFromSource file = do
     text <- readFile file
-    return $ foldr appendOptions ([],[]) $ map getOptions $
+    return $ foldr appendOptions ([],[],[]) $ map getOptions $
 	takeWhileJust $ map getPragma $
 	filter textLine $ map (dropWhile isSpace) $ lines $
 	stripComments True $
@@ -283,19 +284,21 @@ getOptionsFromSource file = do
 	    ("{-#" : rest) | last rest == "#-}" -> Just (init rest)
 	    _ -> Nothing
 
-	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)])
-	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)])
-	getOptions ("OPTIONS_NHC98":opts) = ([], [(NHC, opts)])
-	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)])
-	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [])
+	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)], [])
+	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)], [])
+	getOptions ("OPTIONS_NHC98":opts) = ([], [(NHC, opts)], [])
+	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)], [])
+	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [], [])
 	  where	readExtension :: String -> Maybe Extension
 		readExtension w = case reads w of
 		    [(ext, "")] -> Just ext
 		    [(ext, ",")] -> Just ext
 		    _ -> Nothing
-	getOptions _ = ([], [])
+	getOptions ("INCLUDE":ws) = ([], [], ws)
+	getOptions _ = ([], [], [])
 
-	appendOptions (exts, opts) (exts', opts') = (exts++exts', opts++opts')
+	appendOptions (exts, opts, incs) (exts', opts', incs')
+          = (exts++exts', opts++opts', incs++incs')
 
 -- takeWhileJust f = map fromJust . takeWhile isJust
 takeWhileJust :: [Maybe a] -> [a]
