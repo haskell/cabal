@@ -1,5 +1,7 @@
+#HC=/tmp/ghc/bin/ghc
+HC=ghc
 setup: Setup.lhs
-	ghc -cpp --make -i../.. Setup.lhs -o setup 2>out.build
+	$(HC) -cpp --make -i../.. Setup.lhs -o setup 2>out.build
 clean:
 	rm -f setup a.out .setup-config
 	rm -rf ,tmp* dist
