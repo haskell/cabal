@@ -51,7 +51,7 @@ import Distribution.Misc (extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
                              BuildInfo(..), showPackageId, Executable(..))
-import Distribution.PreProcess (preprocessSources, knownSuffixHandlers)
+import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
@@ -76,10 +76,13 @@ import HUnit (Test)
 -- Build the library
 
 build :: FilePath -- ^Build location
-         -> PackageDescription -> LocalBuildInfo -> IO ()
-build pref pkg_descr lbi = do
+         -> PackageDescription
+         -> LocalBuildInfo
+         -> [ PPSuffixHandler ]
+         -> IO ()
+build pref pkg_descr lbi suffixes = do
   createIfNotExists True pref
-  preprocessSources pkg_descr lbi knownSuffixHandlers
+  preprocessSources pkg_descr lbi suffixes
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi
