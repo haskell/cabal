@@ -73,3 +73,23 @@ defaultMain p
           (InstallCmd,     _) -> doBuildInstall install p
           (PackageInfoCmd, _) -> print p
          return ()
+
+type CommandLineOpts = (Action,
+                        [String]) -- The un-parsed remainder
+
+data Action = ConfigCmd LocalBuildInfo
+            | BuildCmd
+            | InstallCmd
+            | SDistCmd
+            | PackageInfoCmd
+            | UseInfoCmd
+            | TestCmd
+--             | Register
+--             | BDist
+
+
+-- options :: [ OptDescr (Options -> IO Options) ]
+-- options = 
+--     [Option "p" ["prefix"]
+--        (OptArg
+--           (\arg opt -> return opt{command=useinfo...

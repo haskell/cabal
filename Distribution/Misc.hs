@@ -65,25 +65,6 @@ emptyCompiler :: Compiler
 emptyCompiler = Compiler (OtherCompiler "") "" ""
 
 -- ------------------------------------------------------------
--- * Command-Line
--- ------------------------------------------------------------
-
-type CommandLineOpts = (Action,
-                        [String]) -- The un-parsed remainder
-
-data Action = ConfigCmd LocalBuildInfo
-            | BuildCmd
-            | InstallCmd
-            | SDistCmd
-            | PackageInfoCmd
-            | UseInfoCmd
-            | TestCmd
---             | Register
---             | BDist
-
-
-
--- ------------------------------------------------------------
 -- * build config
 -- ------------------------------------------------------------
 
