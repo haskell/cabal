@@ -48,12 +48,19 @@ module Distribution.Simple.Utils (
 	isPathSeparator,
 	setupMessage,
 	die,
+	findBinary,
+	rawSystemPath,
+	rawSystemExit,
+	rawSystemPathExit,
   ) where
 
 import Distribution.Package
 
 import System.IO
 import System.Exit
+import System.Cmd
+import System.Environment
+import System.Directory
 
 -- "foo/bar/xyzzy.ext" -> ("foo/bar", "xyzzy.ext")
 splitFilenameDir :: String -> (String,String)
@@ -90,3 +97,57 @@ setupMessage msg pkg_descr =
 
 die :: String -> IO a
 die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)
+
+-- ToDo: add cacheing?
+findBinary :: String -> IO (Maybe FilePath)
+findBinary binary = do
+  path <- getEnv "PATH"
+  search (parsePath path)
+  where
+    search :: [FilePath] -> IO (Maybe FilePath)
+    search [] = return Nothing
+    search (d:ds) = do
+	let path = d ++ '/':binary
+	b <- doesFileExist path
+	if b then return (Just path)
+             else search ds
+
+parsePath :: String -> [FilePath]
+parsePath path = split pathSep path
+  where
+#ifdef mingw32_TARGET_OS
+	pathSep = ';'
+#else
+	pathSep = ':'
+#endif
+
+-- -----------------------------------------------------------------------------
+-- rawSystem variants
+
+rawSystemPath :: String -> [String] -> IO ExitCode
+rawSystemPath prog args = do
+  r <- findBinary prog
+  case r of
+    Nothing -> die ("Cannot find: " ++ prog)
+    Just path -> rawSystem path args
+
+maybeExit :: IO ExitCode -> IO ()
+maybeExit cmd = do
+  res <- cmd
+  if res /= ExitSuccess
+	then exitWith res  
+	else return ()
+
+-- Exit with the same exitcode if the subcommand fails
+rawSystemExit :: FilePath -> [String] -> IO ()
+rawSystemExit path args = do
+  putStrLn (path ++ concat (map (' ':) args))
+	--ToDo: make command display conditional on -v flag?
+  maybeExit $ rawSystem path args
+
+-- Exit with the same exitcode if the subcommand fails
+rawSystemPathExit :: String -> [String] -> IO ()
+rawSystemPathExit prog args = do
+  putStrLn (prog ++ concat (map (' ':) args))
+	--ToDo: make command display conditional on -v flag?
+  maybeExit $ rawSystemPath prog args
