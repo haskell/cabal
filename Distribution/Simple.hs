@@ -44,7 +44,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple (
 	module Distribution.Package,
-	License(..), Version(..),
+	License(..), Version(..), VersionRange(..), 
+	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
+	Extension(..), Dependency(..),
 	defaultMain,
 #ifdef DEBUG        
         simpleHunitTests
@@ -63,8 +65,10 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, pathJoin)
-import Distribution.Misc (License(..))
-import Distribution.Version (Version(..))
+import Distribution.Misc (License(..), Extension(..), Dependency(..))
+import Distribution.Version (Version(..), VersionRange(..), 
+			     orLaterVersion, orEarlierVersion,
+			     betweenVersionsInclusive)
 
 -- Base
 import System(getArgs)
