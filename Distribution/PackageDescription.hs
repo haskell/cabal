@@ -46,7 +46,13 @@ module Distribution.PackageDescription (
 	parseDescription,
         writePackageDescription,
 	showPackageDescription,
-        unionPackageDescription,
+	updatePackageDescription,
+	HookedBuildInfo,
+	emptyHookedBuildInfo,
+	readHookedBuildInfo,
+	parseHookedBuildInfo,
+	writeHookedBuildInfo,
+	showHookedBuildInfo,        
 	basicStanzaFields,
         setupMessage,
         withLib,
@@ -68,7 +74,7 @@ module Distribution.PackageDescription (
 import Control.Monad(foldM, when)
 import Data.Char
 import Data.Maybe(fromMaybe, fromJust)
-import Text.PrettyPrint.HughesPJ(text, render, ($$), empty, space, vcat, fsep)
+import Text.PrettyPrint.HughesPJ(text, render, ($$), (<+>), empty, space, vcat, fsep)
 import System.Directory(doesFileExist)
 
 import Distribution.ParseUtils
@@ -205,6 +211,8 @@ data Executable = Executable {
     }
     deriving (Show, Read, Eq)
 
+data LibOrExe = Lib String | Exe String
+
 emptyExecutable :: Executable
 emptyExecutable = Executable {
                       exeName = "",
@@ -212,6 +220,10 @@ emptyExecutable = Executable {
                       buildInfo = emptyBuildInfo,
                       executableModules=[]
                      }
+
+type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
+
+emptyHookedBuildInfo = (Nothing, [])
 
 -- ------------------------------------------------------------
 -- * Utils
@@ -241,61 +253,29 @@ setupMessage msg pkg_descr =
 -- FIXME: executables not implemented correctly, library (buildinfo)
 -- not yet implemented.
 
-unionPackageDescription :: PackageDescription -> PackageDescription -> PackageDescription
-unionPackageDescription p1 p2
-    = p1{ -- simple fields
-         license       = override license "license",
-         copyright     = override copyright "copyright",
-         maintainer    = override maintainer "maintainer",
-	 author        = override author "author",
-         stability     = override stability "stability",
-	 homepage      = override homepage "homepage",
-	 pkgUrl        = override pkgUrl "package-url",
-	 description   = override description "description",
-	 category      = override category "category",
-	 buildable     = override buildable "buildable",
-         -- combine fields:
-         buildDepends  = combine buildDepends,
-	 ccOptions     = combine ccOptions,
-	 ldOptions     = combine ldOptions,
-	 frameworks    = combine frameworks,
-         testedWith    = combine testedWith,
-         -- it's not obvious what to do with executables:
-         executables   = combine executables,
+updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
+updatePackageDescription (mb_lib_bi, exe_bi) p
+    = p{ executables = updateExecutables exe_bi    (executables p)
+       , library     = updateLibrary     mb_lib_bi (library     p)
+       }
+    where
+      updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
+      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = unionBuildInfo bi (libBuildInfo lib)})
+      updateLibrary Nothing   mb_lib     = mb_lib
 
-         -- complex fields
-         package       = unionPackageIdent (package p1) (package p2),
-         library       = makeLib (library p1) (library p2)
-        }
-      where
-      override :: (Eq a) => (PackageDescription -> a)
-               -> String -- Field name
-               -> a
-      override f s
-          | f p1 == f p2 = f p1
-          | f p1 /= f emptyPackageDescription
-            && f p2 /= f emptyPackageDescription
-                = error $ "union: Two non-empty fields found in union attempt:" ++ s
-          | f p1 == f emptyPackageDescription = f p2
-          | otherwise = f p1
-      combine :: (Eq a) => (PackageDescription -> [a])
-               -> [a]
-      combine f = f p1 ++ f p2
-      makeLib :: Maybe Library -> Maybe Library -> Maybe Library
-      makeLib Nothing Nothing     = Nothing
-      makeLib Nothing j           = j
-      makeLib j Nothing           = j
-      makeLib (Just b1) (Just b2) = Just $ unionLibrary b1 b2
+       --the lib only exists in the buildinfo file.  FIX: Is this
+       --wrong?  If there aren't any exposedModules, then the library
+       --won't build anyway.
+      updateLibrary (Just bi) Nothing     = Just emptyLibrary{libBuildInfo=bi}
 
-unionLibrary :: Library -> Library -> Library
-unionLibrary l1 l2
-    = l1{ exposedModules    = combine exposedModules,
-	  hiddenModules     = combine hiddenModules,
-          libBuildInfo      = unionBuildInfo (libBuildInfo l1) (libBuildInfo l2)
-        }
-      where 
-      combine :: (Eq a) => (Library -> [a]) -> [a]
-      combine f = f l1 ++ f l2
+      updateExecutables :: [(String, BuildInfo)] -> [Executable] -> [Executable]
+      updateExecutables exe_bi executables = foldr updateExecutable executables exe_bi
+      
+      updateExecutable :: (String, BuildInfo) -> [Executable] -> [Executable]
+      updateExecutable exe_bi           []         = []
+      updateExecutable exe_bi@(name,bi) (exe:exes)
+        | exeName exe == name = exe{buildInfo = unionBuildInfo bi (buildInfo exe)} : exes
+        | otherwise           = updateExecutable exe_bi exes
 
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
@@ -319,23 +299,6 @@ unionBuildInfo b1 b2
         where v1 = f b1
 	      v2 = f b2
 	      def = f emptyBuildInfo
-
-unionPackageIdent :: PackageIdentifier -> PackageIdentifier -> PackageIdentifier
-unionPackageIdent p1 p2
-    = p1{pkgName = override pkgName "name",
-         pkgVersion = override pkgVersion "version"}
-      where
-      override :: (Eq a) => (PackageIdentifier -> a)
-               -> String -- Field name
-               -> a
-      override f s
-          | f p1 == f p2 = f p1
-          | f p1 /= f emptyIdent
-            && f p2 /= f emptyIdent
-                = error $ "union: Two non-empty fields found in union attempt:" ++ s
-          | f p1 == f emptyIdent = f p2
-          | otherwise = f p1
-      emptyIdent = PackageIdentifier "" (Version [] [])
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
@@ -474,8 +437,8 @@ readAndParseFile parser fpath = do
 readPackageDescription :: FilePath -> IO PackageDescription
 readPackageDescription = readAndParseFile parseDescription 
 
-readBuildInfo :: FilePath -> IO [BuildInfo]
-readBuildInfo = readAndParseFile parseBuildInfo
+readHookedBuildInfo :: FilePath -> IO HookedBuildInfo
+readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
 
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription inp = do (st:sts) <- splitStanzas inp
@@ -514,10 +477,28 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
           | otherwise   = lookupField x st
         lookupField _ [] = Nothing
 
-
-parseBuildInfo :: String -> ParseResult [BuildInfo]
-parseBuildInfo inp = splitStanzas inp >>= mapM parseBI
-    where
+parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
+parseHookedBuildInfo inp = do
+  stanzas@(mLibStr:exes) <- splitStanzas inp
+  mLib <- parseLib mLibStr
+  case mLib of
+    Nothing      -> do biExes <- mapM parseExe stanzas
+                       return (Nothing, biExes)
+    lib@(Just _) -> do biExes <- mapM parseExe exes
+                       return (lib, biExes)
+  where
+    parseLib :: Stanza -> ParseResult (Maybe BuildInfo)
+    parseLib ((_, fieldName, mName):bi)
+        | map toLower fieldName == "name" = do bi' <- parseBI bi; return $ Just bi'
+        | otherwise = return Nothing
+    parseLib [] = return Nothing
+    parseExe :: Stanza -> ParseResult (String, BuildInfo)
+    parseExe ((_, fieldName, mName):bi)
+        | map toLower fieldName == "executable"
+            = do bis <- parseBI bi
+                 return (mName, bis)
+        | otherwise = error "expecting 'executable' at top of stanza" -- FIX
+    parseExe [] = error "error in parsing buildinfo file" -- FIX
     parseBI :: Stanza -> ParseResult BuildInfo
     parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
 
@@ -550,7 +531,26 @@ showPackageDescription pkg = render $
     ppFields _ [] = empty
     ppFields pkg' ((StanzaField _ get _ _):flds) =
            get pkg' $$ ppFields pkg' flds
-        
+
+writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
+writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
+
+showHookedBuildInfo :: HookedBuildInfo -> String
+showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
+  (case mb_lib_bi of
+     Nothing -> empty
+     Just bi -> ppFields bi binfoFields) $$
+  vcat (map ppExeBuildInfo ex_bi)
+  where
+    ppExeBuildInfo (name, bi) =
+      space $$
+      text "executable:" <+> text name $$
+      ppFields bi binfoFields
+
+    ppFields _  [] = empty
+    ppFields bi ((StanzaField _ get _ _):flds) =
+           get bi $$ ppFields bi flds
+
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
