@@ -64,7 +64,6 @@ import Distribution.Simple.Utils(setupMessage, moveSources,
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when)
-import System.Cmd(system)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -100,8 +99,8 @@ installExeGhc pref buildPref pkg_descr
 installLibGHC :: FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLibGHC pref buildPref pkg_descr@PackageDescription{library=Just l,
-                                                          package=p}
+installLibGHC pref buildPref PackageDescription{library=Just l,
+                                                package=p}
     = do moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
@@ -110,7 +109,7 @@ installLibGHC pref buildPref pkg_descr@PackageDescription{library=Just l,
 installHugs :: FilePath -- ^Install location
             -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
-installHugs pref buildPref pkg_descr@PackageDescription{library=Just l}
+installHugs pref buildPref PackageDescription{library=Just l}
     = moveSources (pathJoin [buildPref, hsSourceDir l]) pref (modules l) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
@@ -126,7 +125,7 @@ mkLibDir pkg_descr lbi install_prefixM =
 	         ]
 
 mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
-mkBinDir pkg_descr lbi install_prefixM = 
+mkBinDir _ lbi install_prefixM = 
 	pathJoin [(maybe (prefix lbi) id install_prefixM), "bin"]
 
 -- ------------------------------------------------------------
