@@ -72,7 +72,7 @@ import System.Directory (removeFile)
 import System.Exit (ExitCode(..))
 import Distribution.Compat.Directory (copyFile)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
-				searchPathSeparator, objExtension)
+				searchPathSeparator, objExtension, joinPaths)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -152,10 +152,12 @@ buildGHC pkg_descr lbi = do
   -- build any executables
   sequence_ [ do createIfNotExists True (pref `joinFileName` (hsSourceDir exeBi))
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
+                 let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
+                 createIfNotExists True exeDir
                  let args = ccOptions pkg_descr
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
-                         ++ ["-odir",  targetDir,
-                             "-hidir", targetDir,
+                         ++ ["-odir",  exeDir,
+                             "-hidir", exeDir,
                              "-o",     targetDir `joinFileName` exeName'
                             ]
                          ++ constructGHCCmdLine exeBi (exeDeps exeName' lbi)
