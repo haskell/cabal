@@ -1,7 +1,5 @@
 * misc
-** make a library from the FileUtils, look at Python's os.path.
 ** add en.wikipedia.org/wiki/Cabal to web page
-** if the configure with --user make sure it installs with --user!
 ** Possibly create a (native?) zib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
@@ -11,22 +9,21 @@
 ** ./Setup.lhs bdist
 
 * testing
-** count errors and output.
 ** setup test suite to run on --push?
 ** redirect non-hunit outputs to a file?
 ** test / port code for Hugs and nhc
 
 * Code
 
-** BUG: sdist forgets to include the Setup.lhs file :)
-
 ** buildDepToDep in Configure doesn't set version dependency.
 
 ** Extensions -> flags interface (Misc.hs)
 
-** Change mainModules to [(String, String)] for (Module, executable name)
+** Change mainModules to [(String, String)] for (Module, executable
+   name)
+** Build executables for mainModules
 
-** parse Setup.description
+** parser for Setup.description
 
 ** for fields like allModules, allow user to specify "Foo.Bar.*" or
    something to indicate all haskell modules under that?

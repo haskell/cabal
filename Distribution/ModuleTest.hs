@@ -111,19 +111,19 @@ tests :: [Test]
 tests = [TestLabel "testing the HUnit package" $ TestCase $ 
          do oldDir <- getCurrentDirectory
             setCurrentDirectory "test/HUnit-1.0"
---            assertCmd "make semiclean" "make semiclean"
             pkgConf <- GHC.localPackageConfig
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0"
             assertCmd "./setup configure --prefix=\",tmp\"" "hunit configure"
             assertCmd "./setup build" "hunit build"
             assertCmd "./setup install --user" "hunit install"
-            assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit-1.0 HUnitTester.hs -o ./hunitTest" "compile w/ hunit"
+            assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit-1.0 HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
-            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0" "package remove"
+            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit-1.0") "package remove"
             setCurrentDirectory oldDir,
 
          TestLabel "configure GHC, sdist" $ TestCase $
-         do system $ "ghc-pkg -r test-1.0 --config-file=" ++ pkgConf
+         do pkgConf <- GHC.localPackageConfig
+            system $ "ghc-pkg -r test-1.0 --config-file=" ++ pkgConf
             setCurrentDirectory "test/A"
             dirE1 <- doesDirectoryExist ",tmp"
             when dirE1 (system "rm -r ,tmp">>return())
