@@ -39,21 +39,89 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources) where
 
+import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin, withLib)
-
+import Distribution.Setup (CompilerFlavor(..))
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 
-		  -> FilePath           -- ^ Directory to put preprocessed 
-					-- sources in
+                  -> [PPSuffixHandler]  -- ^ preprocessors to try
+		  -> FilePath           {- ^ Directory to put preprocessed 
+				             sources in -}
 		  -> IO ()
-preprocessSources pkg_descr _ pref = 
+preprocessSources pkg_descr _ _ pref = 
     do
     setupMessage "Preprocessing" pkg_descr
     withLib pkg_descr $ \lib ->
         moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
     sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable _ _ exeBi <- executables pkg_descr]
+
+data PreProcessor = PreProcessor
+	{ ppExecutableName   :: String,
+          ppDefaultOptions   :: [String]
+        -- |How to construct the output option
+	  ppOutputFileOption :: FilePath -> String,
+        -- |Whether the pp produces source appropriate for this compiler.
+	  ppSuitable         :: CompilerFlavor -> Bool,
+	}
+     | PreProcessAction (FilePath -> IO ())
+
+type PPSuffixHandler
+    = (String, (String->String->String), PreProcessor)
+
+-- |Leave in unlit since some preprocessors can't handle literated
+-- source?
+knownSuffixes :: [ PPSuffixHandler ]
+knownSuffixes =
+  [ ("gc",     plain, ppGreenCard)
+  , ("chs",    plain, ppC2hs)
+  , ("hsc",    plain, ppHsc2hs)
+  , ("y",      plain, ppHappy)
+  , ("ly",     unlit, ppHappy)
+--  , ("hs.cpp", plain, ppCpp)
+  , ("gc",     plain, ppNone)	-- note, for nhc98 only
+  , ("hs",     plain, ppNone)
+--  , ("lhs",    unlit, ppNone)
+  ] 
+
+ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
+-- ppCpp = PreProcessor
+-- 	{ ppExecutableName = "gcc -E -traditional"
+-- 	, ppDefaultOptions = \d-> "-x c" : map ("-D"++) (defs d++zdefs d)
+-- 	, ppOutputFileOption = \f-> "> "++f
+-- 	, ppSuitable = \hc-> True
+-- 	}
+ppGreenCard = PreProcessor
+	{ ppExecutableName = "green-card"
+	, ppDefaultOptions = ["-tffi"]	-- + includePath of compiler?
+	, ppOutputFileOption = \f-> "-o "++f
+	, ppSuitable = \hc-> hc == GHC
+	}
+ppHsc2hs = PreProcessor
+	{ ppExecutableName = "hsc2hs"
+	, ppDefaultOptions = []
+	, ppOutputFileOption = \_-> ""
+	, ppSuitable = \hc-> hc `elem` [GHC,NHC]
+	}
+ppC2hs = PreProcessor
+	{ ppExecutableName = "c2hs"
+	, ppDefaultOptions = []
+	, ppOutputFileOption = \_-> ""
+	, ppSuitable = \hc-> hc `elem` [GHC,NHC]
+	}
+ppHappy = PreProcessor
+	{ ppExecutableName = "happy"
+	, ppDefaultOptions = []
+	, ppOutputFileOption = \_-> ""
+	, ppSuitable = \hc-> True
+	}
+ppNone = PreProcessor
+	{ ppExecutableName = ""
+	, ppDefaultOptions = []
+	, ppOutputFileOption = \_-> ""
+	, ppSuitable = \hc-> True
+	}
