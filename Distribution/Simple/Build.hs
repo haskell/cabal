@@ -132,6 +132,7 @@ buildGHC pkg_descr lbi verbose = do
                  ]
               ++ constructGHCCmdLine Nothing buildInfo' (packageDeps lbi)
               ++ (libModules pkg_descr)
+              ++ (if verbose > 4 then ["-v"] else [])
       unless (null (libModules pkg_descr)) $
         rawSystemExit verbose ghcPath args
 
@@ -142,6 +143,7 @@ buildGHC pkg_descr lbi verbose = do
 		       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
 			       ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
+			       ++ (if verbose > 4 then ["-v"] else [])
                        rawSystemExit verbose ghcPath (args ++ [c])
                                    | c <- cSources buildInfo']
 
@@ -153,7 +155,10 @@ buildGHC pkg_descr lbi verbose = do
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
         try (removeFile lib) -- first remove library if it exists
-        rawSystemPathExit verbose "ar" (["q", lib] ++ [pref `joinFileName` x | x <- hObjs ++ cObjs])
+        let args = ["q"++ (if verbose > 4 then "v" else "")]
+                ++ [lib]
+                ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]                
+        rawSystemPathExit verbose "ar" args
 
   -- build any executables
   sequence_ [ do createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
@@ -171,6 +176,7 @@ buildGHC pkg_descr lbi verbose = do
                                                 exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions pkg_descr
+			 ++ (if verbose > 4 then ["-v"] else [])
                  rawSystemExit verbose ghcPath args
              | Executable exeName' exeMods modPath exeBi <- executables pkg_descr]
 
