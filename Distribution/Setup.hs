@@ -112,7 +112,8 @@ data ConfigFlags = ConfigFlags {
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
         configPrefix   :: Maybe FilePath, -- ^installation prefix
-        configVerbose  :: Int             -- ^verbosity level
+        configVerbose  :: Int,            -- ^verbosity level
+	configUser     :: Bool		  -- ^--user flag?
     }
     deriving (Show, Eq)
 
@@ -127,7 +128,8 @@ emptyConfigFlags = ConfigFlags {
         configHsc2hs   = Nothing,
         configCpphs    = Nothing,
         configPrefix   = Nothing,
-        configVerbose  = 0
+        configVerbose  = 0,
+	configUser     = False
     }
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
@@ -255,7 +257,11 @@ configureCmd = Cmd {
            Option "" ["with-hsc2hs"] (ReqArg WithHsc2hs "PATH")
                "give the path to hsc2hs",
            Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
-               "give the path to cpphs"
+               "give the path to cpphs",
+           Option "" ["user"] (NoArg UserFlag)
+               "allow dependencies to be satisfied from the user package database",
+           Option "" ["global"] (NoArg GlobalFlag)
+               "(default) dependencies must be satisfied from the global package database"
            ],
         cmdAction      = ConfigCmd emptyConfigFlags
         }
@@ -286,6 +292,8 @@ parseConfigureArgs cfg args customOpts =
             WithCpphs path    -> t { configCpphs    = Just path }
             Prefix path       -> t { configPrefix   = Just path }
             Verbose n         -> t { configVerbose  = n }
+	    UserFlag	      -> t { configUser     = True }
+	    GlobalFlag	      -> t { configUser     = False }
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t

@@ -8,7 +8,7 @@ clean:
 	find . -name "*.o" |xargs rm -f
 	find . -name "*.hi" |xargs rm -f
 	find . -name "*~" | xargs rm -f
-check: all
+check: setup
 	./setup configure --user --prefix=/tmp/foo
 	./setup build
 	./setup install --install-prefix=/tmp/bar

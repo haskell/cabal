@@ -54,9 +54,9 @@ import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
                                         Executable(..), withExe,
                                         Library(..), libModules, hcOptions)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
+import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
 import Distribution.PreProcess.Unlit (unlit)
-import Distribution.Simple.Configure (LocalBuildInfo(..), exeDeps)
+import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, dotToSep,
@@ -73,7 +73,6 @@ import IO (try)
 #endif
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
-import System.Info
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
 				searchPathSeparator, objExtension, joinPaths)
@@ -176,7 +175,7 @@ buildGHC pkg_descr lbi verbose = do
                              "-o",     targetDir `joinFileName` exeName'
                             ]
                          ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
-                                                exeBi (exeDeps exeName' lbi)
+                                                exeBi (packageDeps lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions exeBi
 			 ++ (if verbose > 4 then ["-v"] else [])
@@ -196,9 +195,9 @@ constructGHCCmdLine mSrcLoc bi deps =
      ++ maybe []  (\l -> ["-i" ++ l]) mSrcLoc
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ nub (flags ++ hcOptions GHC (options bi))
-     ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
+     ++ (concat [ ["-package", showPackageId pkg] | pkg <- deps ])
 
--- |
+-- |Building a package for Hugs.
 buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 buildHugs pkg_descr lbi verbose = do
     let pref = buildDir lbi
@@ -245,22 +244,11 @@ buildHugs pkg_descr lbi verbose = do
 	    createDirectoryIfMissing True (dirOf destFile)
 	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
-	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then
-	    	cppFile bi srcFile destFile
+	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
+	    	ppCpp bi lbi srcFile destFile verbose
+	    	return ()
 	      else
 	    	copyFile srcFile destFile
-
-	{- FIX (HUGS): assumes gcc -}
-	cppFile bi inFile outFile =
-	    rawSystemExit verbose "cpp"
-		(["-traditional", "-P"] ++ defines ++
-			["-I" ++ dir | dir <- includeDirs bi] ++
-			ccOptions bi ++ [inFile, outFile])
-
-	defines = "-D__HUGS__" :
-		["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
-		["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
-	locations = ["HOST", "TARGET"]
 
 	compileFFI :: BuildInfo -> FilePath -> IO ()
 	compileFFI bi file = do
