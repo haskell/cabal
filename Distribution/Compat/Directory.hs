@@ -2,8 +2,12 @@ module Distribution.Compat.Directory (
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing, removeDirectoryRecursive
   ) where
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
+#if __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ < 603
 #include "config.h"
+#else
+#include "ghcconfig.h"
+#endif
 #endif
 
 #if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
