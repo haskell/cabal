@@ -81,7 +81,9 @@ import System.Cmd
 import System.Environment
 import System.Directory
 
+#ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Pathname-related utils
