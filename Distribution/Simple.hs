@@ -70,7 +70,7 @@ import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister,
                                           writeInstalledConfig, installedPkgConfigFile )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, findHaddock,
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, findProgram,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
@@ -197,7 +197,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInput preBuild args
                 withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
-                      mHaddock <- findHaddock (withHaddock lbi)
+                      mHaddock <- findProgram "haddock" (withHaddock lbi)
                       when (isNothing mHaddock) (error "haddock command not found")
                       let bi = libBuildInfo lib
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
@@ -383,12 +383,13 @@ defaultUserHooks
     where readHook a = no_extra_flags a >> readHookedPackageDesc
           readHook2 a _ = no_extra_flags a >> readHookedPackageDesc
           defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
-          defaultPreConf args (_, _, _, mb_prefix, _)
-              = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
+          defaultPreConf args flags
+              = do let prefix_opt pref opts =
+                           ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
 	           if confExists then do
 	               rawSystem "sh"
-			   ("configure" : maybe id prefix_opt mb_prefix args)
+			   ("configure" : maybe id prefix_opt (configPrefix flags) args)
 		       return ()
 		     else
 		       no_extra_flags args

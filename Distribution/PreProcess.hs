@@ -51,11 +51,13 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Setup (CompilerFlavor(..), Compiler(compilerFlavor))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
+import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
+                                  moduleToFilePath, die)
 import Control.Monad (when)
 import Data.Maybe (fromMaybe, maybeToList)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
+import System.IO (stderr, hPutStrLn)
 import Distribution.Compat.FilePath
 	(splitFileExt, joinFileName, joinFileExt)
 
@@ -81,14 +83,14 @@ preprocessSources :: PackageDescription
 		  -> IO ()
 
 preprocessSources pkg_descr lbi verbose handlers = do
-    setupMessage "Preprocessing library" pkg_descr
-
     withLib pkg_descr () $ \ lib -> do
+        setupMessage "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule [hsSourceDir bi] mod verbose builtinSuffixes biHandlers |
 			    mod <- libModules pkg_descr] -- FIX: output errors?
-    setupMessage "Preprocessing executables for" pkg_descr
+    when (not (null (executables pkg_descr))) $
+        setupMessage "Preprocessing executables for" pkg_descr
     foreachExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
@@ -197,8 +199,9 @@ ppCpp pkg_descr bi lbi = pp
 -- the C compiler.
 ppHsc2hs :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs pkg_descr bi lbi
-    = standardPP "hsc2hs" (hcFlags hc ++ incOptions ++ ccOptions pkg_descr)
-  where hc = compilerFlavor (compiler lbi)
+    = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
+  where pp n = standardPP n (hcFlags hc ++ incOptions ++ ccOptions pkg_descr)
+        hc = compilerFlavor (compiler lbi)
 	incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
 -- FIX: should add NHC versions too (maybe just use nhc as cpp?)
@@ -209,15 +212,17 @@ hcFlags _ = []
 
 ppHappy :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ _ lbi
-    = standardPP "happy" (hcFlags hc)
-  where hc = compilerFlavor (compiler lbi)
+    = maybe (ppNone "happy") pp (withHappy lbi)
+  where pp n = standardPP n (hcFlags hc)
+        hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
 
 ppAlex :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppAlex _ _ lbi
-    = standardPP "alex" (hcFlags hc)
-  where hc = compilerFlavor (compiler lbi)
+    = maybe (ppNone "alex") pp (withAlex lbi)
+  where pp n = standardPP n (hcFlags hc)
+        hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-g"]
 	hcFlags _ = []
 
@@ -234,7 +239,12 @@ ppTestHandler inFile outFile verbose
 
 standardPP :: String -> [String] -> PreProcessor
 standardPP eName args inFile outFile verbose
-    = rawSystemPath verbose eName (args ++ ["-o" ++ outFile, inFile])
+    = rawSystemVerbose verbose eName (args ++ ["-o" ++ outFile, inFile])
+
+ppNone :: String -> PreProcessor
+ppNone name inFile _ _ = do
+    hPutStrLn stderr (inFile ++ ": no " ++ name ++ " preprocessor available")
+    return (ExitFailure 1)
 
 -- |Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [ PPSuffixHandler ] -> [String]

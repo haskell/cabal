@@ -72,6 +72,7 @@ import IO (try)
 #endif
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
+import System.Info
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
 				searchPathSeparator, objExtension, joinPaths)
@@ -241,7 +242,7 @@ buildHugs pkg_descr lbi verbose = do
 	copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
 	copyModule cppAll bi srcFile destFile = do
 	    createDirectoryIfMissing True (dirOf destFile)
-	    (exts, opts) <- getOptionsFromSource srcFile
+	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then
 	    	cppFile bi srcFile destFile
@@ -251,20 +252,25 @@ buildHugs pkg_descr lbi verbose = do
 	{- FIX (HUGS): assumes gcc -}
 	cppFile bi inFile outFile =
 	    rawSystemExit verbose "cpp"
-		(["-traditional", "-P", "-D__HUGS__"] ++
+		(["-traditional", "-P"] ++ defines ++
 			["-I" ++ dir | dir <- includeDirs bi] ++
 			ccOptions pkg_descr ++ [inFile, outFile])
+
+	defines = "-D__HUGS__" :
+		["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
+		["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
+	locations = ["HOST", "TARGET"]
 
 	compileFFI :: BuildInfo -> FilePath -> IO ()
 	compileFFI bi file = do
 	    -- Only compile FFI stubs for a file if it contains some FFI stuff
 	    inp <- readHaskellFile file
 	    when ("foreign" `elem` symbols (stripComments False inp)) $ do
-		(_, opts) <- getOptionsFromSource file
+		(_, opts, file_incs) <- getOptionsFromSource file
 		let ghcOpts = hcOptions GHC opts
 		let srcDir = hsSourceDir bi
 		let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
-		let incs = uniq (sort (includeOpts ghcOpts ++ pkg_incs))
+		let incs = uniq (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
 		let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
 		let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
 		cfiles <- getCFiles file
