@@ -18,7 +18,6 @@ Modules:
         Distribution.Simple.Configure,
         Distribution.Simple.SrcDist,
         Distribution.Simple.GHCPackageConfig,
-        Distribution.GetOpt,
         Distribution.Version,
         Distribution.Setup,
         Distribution.PreProcess.Unlit,
