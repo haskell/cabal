@@ -47,32 +47,8 @@ hugsinstall: hugsbootstrap
 	cd dist/hugs && ./Setup.lhs build
 	cd dist/hugs && ./Setup.lhs install
 
-# Lame for now. I don't mind though, because cabal itself should be
-# able to do this soon.  Needs cpphs.
-haddock:
-	rm -rf dist/doc
-	mkdir -p dist/doc/Distribution/Simple
-	mkdir -p dist/tmp/doc/html
-	cpphs --noline Distribution/Package.hs > dist/doc/Distribution/Package.hs.raw
-	cpphs --noline Distribution/Misc.hs > dist/doc/Distribution/Misc.hs.raw
-	cpphs --noline Distribution/Version.hs > dist/doc/Distribution/Version.hs.raw
-	cpphs --noline Distribution/Setup.hs > dist/doc/Distribution/Setup.hs.raw
-	cpphs --noline Distribution/ModuleTest.hs > dist/doc/Distribution/ModuleTest.hs.raw
-	cpphs --noline Distribution/Simple.hs > dist/doc/Distribution/Simple.hs.raw
-	cpphs --noline Distribution/Make.hs > dist/doc/Distribution/Make.hs.raw
-	cpphs --noline Distribution/InstalledPackageInfo.hs > dist/doc/Distribution/InstalledPackageInfo.hs.raw
-	cpphs --noline Distribution/Simple/Build.hs > dist/doc/Distribution/Simple/Build.hs.raw
-	cpphs --noline Distribution/Simple/Install.hs > dist/doc/Distribution/Simple/Install.hs.raw
-	cpphs --noline Distribution/Simple/Configure.hs > dist/doc/Distribution/Simple/Configure.hs.raw
-	cpphs --noline Distribution/Simple/Register.hs > dist/doc/Distribution/Simple/Register.hs.raw
-	cpphs --noline Distribution/Simple/Utils.hs > dist/doc/Distribution/Simple/Utils.hs.raw
-	cpphs --noline Distribution/Simple/SrcDist.hs > dist/doc/Distribution/Simple/SrcDist.hs.raw
-	cpphs --noline Distribution/Simple/GHCPackageConfig.hs > dist/doc/Distribution/Simple/GHCPackageConfig.hs.raw
-	cpphs --noline Distribution/GetOpt.hs > dist/doc/Distribution/GetOpt.hs.raw
-	find dist/doc/Distribution -name "*.raw"|xargs haddock --html --odir=dist/tmp/doc/html --title="The Haskell Cabal" --source=http://cvs.haskell.org/darcs/cabal/ 
-	rm -r dist/doc/*
-	mv dist/tmp/doc/html dist/doc
-	rmdir dist/tmp/doc
+haddock: setup
+	./setup haddock
 
 clean: clean-cabal clean-hunit clean-test
 
@@ -141,8 +117,8 @@ pushdist: pushall dist
 
 dist: haddock
 	darcs dist
-	mv cabal.tar.gz /tmp
-	cd /tmp && tar -zxvf cabal.tar.gz
+	mv Cabal.tar.gz /tmp
+	cd /tmp && tar -zxvf Cabal.tar.gz
 	mkdir -p /tmp/cabal/doc
 	cp -r dist/doc/html /tmp/cabal/doc/API
 	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
