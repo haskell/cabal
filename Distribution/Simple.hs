@@ -180,9 +180,10 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preConf args flags
 		when (not (buildable pkg_descr)) $ do
 		    let name = showPackageId (package pkg_descr)
-		    die ("Package " ++ name ++ " can't be built on this system.")
+		    die ("Package " ++ name ++ " is marked as unbuildable on this system.")
 		localbuildinfo <- configure pkg_descr flags
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
+                sanityCheckPackage pkg_descr
                 postHook postConf
 
             BuildCmd -> do
