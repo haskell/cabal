@@ -68,9 +68,13 @@ build pkg_descr lbi = do
   let args = constructGHCCmdLine pkg_descr lbi
   rawSystemExit (compilerPath (compiler lbi)) args
 
+  -- build any C sources
+  when (not (null (cSources pkg_descr))) $
+     rawSystemExit (compilerPath (compiler lbi)) (cSources pkg_descr)
+
   -- now, build the library
   let objs = map (++objsuffix) (allModules pkg_descr)
-      lib  = mkLibName (library pkg_descr)
+      lib  = mkLibName (showPackageId (package pkg_descr))
   rawSystemPathExit "ar" (["q", lib] ++ objs)
 
 constructGHCCmdLine :: PackageDescription -> LocalBuildInfo -> [String]
@@ -91,6 +95,6 @@ objsuffix = ".obj"
 objsuffix = ".o"
 #endif
 
-mkLibName lib = "lib" ++ lib ++ ".a"
+mkLibName lib = "libHS" ++ lib ++ ".a"
 
   -- ToDo: includes, includeDirs
