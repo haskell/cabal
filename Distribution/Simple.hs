@@ -84,7 +84,7 @@ import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
 -- Base
 import System.Cmd	(rawSystem)
 import System.Environment(getArgs)
-import System.Exit(ExitCode(..), exitWith)
+import System.Exit(ExitCode(..))
 import System.Directory(removeFile, doesFileExist)
 
 import Distribution.License
@@ -141,7 +141,14 @@ data UserHooks = UserHooks
      postReg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
      preUnreg  :: Args -> Int -> IO HookedBuildInfo,
-     postUnreg :: Args -> Int -> LocalBuildInfo -> IO ExitCode
+     postUnreg :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
+
+     preHaddock  :: Args -> Int -> IO HookedBuildInfo,
+     postHaddock :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
+
+     prePFE  :: Args -> Int -> IO HookedBuildInfo,
+     postPFE :: Args -> Int -> LocalBuildInfo -> IO ExitCode
+
     }
 
 -- |A simple implementation of @main@ for a Cabal setup script.
@@ -211,7 +218,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postBuild args flags localbuildinfo
             HaddockCmd -> do
                 (verbose, _, args) <- parseHaddockArgs args []
-                pkg_descr <- hookOrInArgs preBuild args verbose
+                pkg_descr <- hookOrInArgs preHaddock args verbose
+		localbuildinfo <- getPersistBuildConfig
                 withLib pkg_descr ExitSuccess (\lib ->
                    do lbi <- getPersistBuildConfig
                       mHaddock <- findProgram "haddock" (withHaddock lbi)
@@ -241,11 +249,11 @@ defaultMainWorker pkg_descr_in action args hooks
                               )
                       removeDirectoryRecursive tmpDir
                       removeFile prologName
-                      when (code /= ExitSuccess) (exitWith code)
-                      return code)
+                      postHook postHaddock args verbose localbuildinfo)
             ProgramaticaCmd -> do
                  (verbose, _, args) <- parseProgramaticaArgs args []
-                 pkg_descr <- hookOrInArgs preBuild args verbose
+                 pkg_descr <- hookOrInArgs prePFE args verbose
+		 localbuildinfo <- getPersistBuildConfig
                  unless (hasLibs pkg_descr) (error "no libraries found in this project.")
                  withLib pkg_descr ExitSuccess (\lib ->
                     do lbi <- getPersistBuildConfig
@@ -257,20 +265,10 @@ defaultMainWorker pkg_descr_in action args hooks
                        preprocessSources pkg_descr lbi verbose pps
                        inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                               | m <- mods] >>= return . concat
-                       let tmpDir = joinPaths (buildDir lbi) "tmp"
-                       mapM_ (mockPP ["-D__HUGS__"] pkg_descr bi lbi tmpDir verbose) inFiles
-                       setupMessage "Running pfesetup for " pkg_descr
-                       let outFiles = map (joinFileName tmpDir)
-                                      (map ((flip changeFileExt) "hs") inFiles)
                        code <- rawSystemVerbose verbose (fromJust mPfe)
---                               (["-h",
---                                 "-o", targetDir,
---                                 "-t", showPkg,
---                                 "-p", prologName]
                                 ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
                                ++ inFiles)
-                       when (code /= ExitSuccess) (exitWith code)
-                       return code)
+                       postHook postPFE args verbose localbuildinfo)
 
             CleanCmd -> do
                 (verbose,_, args) <- parseCleanArgs args []
@@ -391,7 +389,11 @@ emptyUserHooks
        preReg    = rn,
        postReg   = res,
        preUnreg  = rn,
-       postUnreg = res
+       postUnreg = res,
+       prePFE    = rn,
+       postPFE   = res,
+       preHaddock  = rn,
+       postHaddock = res
       }
     where rn  _ _   = return emptyHookedBuildInfo
           res _ _ _ = return ExitSuccess
