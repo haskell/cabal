@@ -50,7 +50,7 @@ import Distribution.Setup (CompilerFlavor(..), compilerFlavor)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
 import Control.Monad (when)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile)
 import Distribution.Compat.FilePath
@@ -76,9 +76,16 @@ preprocessSources :: PackageDescription
 		  -> IO ()
 
 preprocessSources pkg_descr lbi handlers = do
-    setupMessage "Preprocessing" pkg_descr
-    foreachBuildInfo pkg_descr $ \ bi ->
-	sequence_ [preprocessModule (hsSourceDir bi) mod localHandlers |
+    setupMessage "Preprocessing library" pkg_descr
+
+    withLib pkg_descr $ \ bi ->
+	sequence_ [preprocessModule [hsSourceDir bi] mod localHandlers |
+			    mod <- biModules bi] -- FIX: output errors?
+    setupMessage "Preprocessing executables for" pkg_descr
+    foreachBuildInfo False pkg_descr $ \ bi ->
+	sequence_ [preprocessModule ((hsSourceDir bi)
+                                     :(maybeToList (library pkg_descr >>= Just . hsSourceDir)))
+                                     mod localHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
@@ -90,14 +97,14 @@ preprocessSources pkg_descr lbi handlers = do
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessModule
-    :: FilePath				-- ^source directory
+    :: [FilePath]			-- ^source directories
     -> String				-- ^module name
     -> [(String, Maybe PreProcessor)]	-- ^possible preprocessors
     -> IO ExitCode
 preprocessModule searchLoc mod handlers = do
     srcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
     case srcFiles of
-	[] -> die ("can't find source for " ++ mod)
+	[] -> die ("can't find source for " ++ mod ++ " in " ++ show searchLoc )
 	(srcFile:_) -> do
 	    let (srcStem, ext) = splitFileExt srcFile
 	    case fromMaybe (error "Internal error in preProcess module: Just expected")
@@ -109,8 +116,8 @@ removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
                           -> [String] -- ^suffixes
                           -> IO ()
-removePreprocessedPackage pkg_descr r suff
-    = foreachBuildInfo pkg_descr $ \ bi ->
+removePreprocessedPackage  pkg_descr r suff
+    = foreachBuildInfo True pkg_descr $ \ bi ->
 	removePreprocessed (r `joinFileName` hsSourceDir bi) (biModules bi) suff
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
@@ -122,16 +129,18 @@ removePreprocessed searchLoc mods suffixesIn
     = mapM_ removePreprocessedModule mods
   where removePreprocessedModule m = do
 	    -- collect related files
-	    fs <- moduleToFilePath searchLoc m otherSuffixes
+	    fs <- moduleToFilePath [searchLoc] m otherSuffixes
 	    -- does M.hs also exist?
-	    hs <- moduleToFilePath searchLoc m ["hs"]
+	    hs <- moduleToFilePath [searchLoc] m ["hs"]
 	    when (not (null fs)) (mapM_ removeFile hs)
 	otherSuffixes = filter (/= "hs") suffixesIn
 
 -- | Perform the action on each 'BuildInfo' in the package description.
-foreachBuildInfo :: PackageDescription -> (BuildInfo -> IO a) -> IO ()
-foreachBuildInfo pkg_descr action = do
-    withLib pkg_descr (\ bi -> action bi >> return ())
+foreachBuildInfo :: Bool -- Including the library?
+                 -> PackageDescription -> (BuildInfo -> IO a)
+                 -> IO ()
+foreachBuildInfo includeLib pkg_descr action = do
+    when includeLib (withLib pkg_descr (\ bi -> action bi >> return ()))
     mapM_ (action . buildInfo) (executables pkg_descr)
 
 -- ------------------------------------------------------------
