@@ -123,8 +123,12 @@ buildGHC pref pkg_descr lbi = do
 
       -- build any C sources
       unless (null (cSources buildInfo')) $
-         rawSystemExit ghcPath (cSources buildInfo' ++ ["-odir", pref, "-hidir", pref, "-c"])
+         sequence_ [do let odir = pathJoin [pref, dirOf c]
+                       createIfNotExists True odir
+                       rawSystemExit ghcPath (c: ["-odir", odir , "-hidir", pref, "-c"])
+                                   | c <- cSources buildInfo']
 
+      -- link:
       let hObjs = [ pathJoin [hsSourceDir buildInfo', dotToSep x `joinExt` objsuffix]
                   | x <- modules buildInfo' ]
           cObjs = [ path `joinFilenameDir` file `joinExt` objsuffix
@@ -145,6 +149,9 @@ buildGHC pref pkg_descr lbi = do
                          ++ [pathJoin [hsSourceDir exeBi, modPath]]
                  rawSystemExit ghcPath args
              | Executable exeName' modPath exeBi <- executables pkg_descr]
+
+dirOf :: FilePath -> FilePath
+dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
 
 constructGHCCmdLine :: BuildInfo -> [PackageIdentifier] -> [String]
 constructGHCCmdLine buildInfo' deps = 
