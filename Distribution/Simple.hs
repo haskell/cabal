@@ -98,7 +98,7 @@ doBuildInstall f pkgConf
          f pkgConf lbi
 
 defaultMain :: IO ()
-defaultMain = parsePackageDesc defaultPackageDesc >>= defaultMainNoRead
+defaultMain = readPackageDescription defaultPackageDesc >>= defaultMainNoRead
 
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr

@@ -44,12 +44,14 @@ module Distribution.Package (
 	PackageIdentifier(..), 
 	showPackageId,
 	PackageDescription(..),
+	emptyPackageDescription,
+        readPackageDescription,
+        writePackageDescription,
+        hasLibs,
         BuildInfo(..),
         emptyBuildInfo,
         Executable(..),
-	emptyPackageDescription,
-        parsePackageDesc,
-        hasLibs,
+        emptyExecutable,
 #ifdef DEBUG
         hunitTests,
         test
@@ -57,16 +59,18 @@ module Distribution.Package (
   ) where
 
 import Control.Monad(foldM, liftM)
+import Control.Exception(bracket)
 import Data.Char
 import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
 
 import Distribution.Version(Version(..), VersionRange(..),
-                            showVersion, parseVersion, parseVersionRange)
+                            showVersion, parseVersion, 
+                            showVersionRange, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor(..))
 
-import System.IO(openFile, IOMode(..), hGetContents)
+import System.IO(openFile, IOMode(..), hGetContents, hClose, hPutStrLn)
 
 import Compat.H98
 import Compat.ReadP
@@ -83,6 +87,7 @@ showPackageId :: PackageIdentifier -> String
 showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
 showPackageId pkgid = 
   pkgName pkgid ++ '-': showVersion (pkgVersion pkgid)
+
 
 -- | This data type is the internal representation of the file @pkg.descr@.
 -- It contains two kinds of information about the package: information
@@ -103,13 +108,35 @@ data PackageDescription
     }
     deriving (Show, Read, Eq)
 
-data Executable = Executable {
-        exeName    :: String,
-        modulePath :: FilePath,
-        buildInfo  :: BuildInfo
-    }
-    deriving (Show, Read, Eq)
+emptyPackageDescription :: PackageDescription
+emptyPackageDescription
+    =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
+                      license      = AllRightsReserved,
+                      copyright    = "",
+                      maintainer   = "",
+                      stability    = "",
+                      library      = Nothing,
+                      executables  = []
+                     }
 
+-- |Set the name for this package. Convenience function.
+setPkgName :: String -> PackageDescription -> PackageDescription
+setPkgName n desc@PackageDescription{package=pkgIdent}
+    = desc{package=pkgIdent{pkgName=n}}
+
+-- |Set the version for this package. Convenience function.
+setPkgVersion :: Version -> PackageDescription -> PackageDescription
+setPkgVersion v desc@PackageDescription{package=pkgIdent}
+    = desc{package=pkgIdent{pkgVersion=v}}
+
+-- |does this package have any libraries?
+hasLibs :: PackageDescription -> Bool
+hasLibs p = case library p of
+            Just l  -> if null (cSources l) && null (modules l)
+                       then False else True
+            Nothing -> False
+
+            
 data BuildInfo = BuildInfo {
         buildDepends    :: [Dependency],
         modules         :: [String],
@@ -124,27 +151,6 @@ data BuildInfo = BuildInfo {
     }
     deriving (Show,Read,Eq)
 
--- |Set the name for this package. Convenience function.
-setPkgName :: String -> PackageDescription -> PackageDescription
-setPkgName n desc@PackageDescription{package=pkgIdent}
-    = desc{package=pkgIdent{pkgName=n}}
-
--- |Set the version for this package. Convenience function.
-setPkgVersion :: Version -> PackageDescription -> PackageDescription
-setPkgVersion v desc@PackageDescription{package=pkgIdent}
-    = desc{package=pkgIdent{pkgVersion=v}}
-
-emptyPackageDescription :: PackageDescription
-emptyPackageDescription
-    =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
-                      license      = AllRightsReserved,
-                      copyright    = "",
-                      maintainer   = "",
-                      stability    = "",
-                      library      = Nothing,
-                      executables  = []
-                     }
-
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
                       buildDepends   = [],
@@ -158,37 +164,32 @@ emptyBuildInfo = BuildInfo {
                       includes       = [],
                       options        = []
                      }
-                        
+                     
 -- |Add options for a specific compiler. Convenience function.
 setOptions :: CompilerFlavor -> [String] -> BuildInfo -> BuildInfo
 setOptions c xs desc@BuildInfo{options=opts}
     = desc{options=(c,xs):opts}
 
--- |does this package have any libraries?
-hasLibs :: PackageDescription -> Bool
-hasLibs p = case library p of
-            Just l  -> if null (cSources l) && null (modules l)
-                       then False else True
-            Nothing -> False
 
+data Executable = Executable {
+        exeName    :: String,
+        modulePath :: FilePath,
+        buildInfo  :: BuildInfo
+    }
+    deriving (Show, Read, Eq)
+
+emptyExecutable :: Executable
+emptyExecutable = Executable {
+                      exeName = "",
+                      modulePath = "",
+                      buildInfo = emptyBuildInfo
+                     }
 
 -- ------------------------------------------------------------
--- * Parsing
+-- * Parsing & Pretty printing
 -- ------------------------------------------------------------
-
--- |Parse the given package file.
-parsePackageDesc :: FilePath -> IO PackageDescription
-parsePackageDesc p = do h <- openFile p ReadMode
-                        str <- hGetContents h
-                        case parseDescription str of
-                          Left  e -> error (showError e) -- FIXME
-                          Right PackageDescription{library=Nothing,
-                                                   executables=[]}
-                              -> error "no library listed, and no executable stanza."
-                          Right x -> return x
 
 type LineNo = Int
-type Stanza = [(LineNo,String,String)]
 
 data PError = AmbigousParse String LineNo
             | NoParse String LineNo
@@ -207,85 +208,182 @@ showError (FromString s Nothing)  = s
 myError :: LineNo -> String -> Either PError a
 myError n s = Left $ FromString s (Just n)
 
+data Field a 
+  = Field 
+      { fieldName     :: String
+      , fieldGet      :: a -> String
+      , fieldSet      :: LineNo -> String -> a -> Either PError a
+      }
+
+basicStanzaFields :: [Field PackageDescription]
+basicStanzaFields =
+ [ simpleField "name"
+                           id                     parsePackageName
+                           (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
+ , simpleField "version"
+                           showVersion            parseVersion 
+                           (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+ , licenseField "license" False
+                           license                (\l pkg -> pkg{license=l})
+ , licenseField "license-file" True
+                           license                (\l pkg -> pkg{license=l})
+ , simpleField "copyright"
+                           id                     (munch (const True))
+                           copyright              (\val pkg -> pkg{copyright=val})
+ , simpleField "maintainer"
+                           id                     (munch (const True))
+                           maintainer             (\val pkg -> pkg{maintainer=val})
+ , simpleField "stability"
+                           id                     (munch (const True))
+                           stability              (\val pkg -> pkg{stability=val})
+ ]
+
+executableStanzaFields :: [Field Executable]
+executableStanzaFields =
+ [ simpleField "executable"
+                           id                 (munch (const True))
+                           exeName            (\xs    exe -> exe{exeName=xs})
+ , simpleField "main-is"
+                           id                 parseFilePath
+                           modulePath         (\xs    exe -> exe{modulePath=xs})
+ ]
+
+binfoFields :: [Field BuildInfo]
+binfoFields =
+ [ listField   "build-depends"   
+                           showDependency     parseDependency
+                           buildDepends       (\xs    binfo -> binfo{buildDepends=xs})
+ , listField   "modules"         
+                           id                 parseModuleName
+                           modules            (\xs    binfo -> binfo{modules=xs})
+ , listField   "exposed-modules"
+                           id                 parseModuleName
+                           exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
+ , listField   "c-sources"
+                           id                 parseFilePath
+                           cSources           (\paths binfo -> binfo{cSources=paths})
+ , listField   "extensions"
+                           show               parseExtension
+                           extensions         (\exts  binfo -> binfo{extensions=exts})
+ , listField   "extra-libs"
+                           id                 parseLibName
+                           extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
+ , listField   "includes"
+                           id                 parseFilePath
+                           includes           (\paths binfo -> binfo{includes=paths})
+ , simpleField "hs-source-dir"
+                           id                 parseFilePath
+                           hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
+ , optsField   "options-ghc"  GHC
+                           options            (\path  binfo -> binfo{options=path})
+ , optsField   "options-hugs" Hugs
+                           options            (\path  binfo -> binfo{options=path})
+ , optsField   "options-nhc"  NHC
+                           options            (\path  binfo -> binfo{options=path})
+ ]
+
+simpleField :: String -> (a -> String) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> Field b
+simpleField name showF readF get set = Field name
+   (\st -> name ++ ": " ++ showF (get st))
+   (\lineNo val st -> do
+       x <- runP lineNo name readF val
+       return (set x st))
+
+listField :: String -> (a -> String) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> Field b
+listField name showF readF get set = Field name
+   (\st -> case get st of
+        [] -> ""
+        (value:values) ->
+           init (unlines ((name ++ ": " ++ showF value) : 
+                          map (\val -> (replicate (length name) ' '++", "++showF val)) values)))
+   (\lineNo val st -> do
+       xs <- runP lineNo name (parseCommaList readF) val
+       return (set xs st))
+
+licenseField :: String -> Bool -> (b -> License) -> (License -> b -> b) -> Field b
+licenseField name flag get set = Field name
+   (\st -> case get st of
+             OtherLicense path | flag      -> name ++ ": " ++ path
+                               | otherwise -> ""
+             license           | not flag  -> name ++ ": " ++ show license
+                               | otherwise -> "")
+   (\lineNo val st ->
+       if flag 
+         then do 
+            path <- runP lineNo name parseFilePath val
+            return (set (OtherLicense path) st)
+         else do
+            x <- runP lineNo name parseLicense val
+            return (set x st))
+
+optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> Field b
+optsField name flavor get set = Field name
+   (\st -> case lookup flavor (get st) of
+        Just args -> name++": "++unwords args
+        Nothing   -> "")
+   (\lineNo val st -> 
+       let
+         old_val  = get st
+         old_args = case lookup flavor old_val of
+                       Just args -> args
+                       Nothing   -> []
+         val'     = filter (\(f,_) -> f/=flavor) old_val
+       in return (set ((flavor,words val++old_args) : val') st))
+
+-- --------------------------------------------
+-- ** Parsing
+
+-- |Parse the given package file.
+readPackageDescription :: FilePath -> IO PackageDescription
+readPackageDescription p = do 
+  h <- openFile p ReadMode
+  str <- hGetContents h
+  case parseDescription str of
+    Left  e -> error (showError e) -- FIXME
+    Right PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
+    Right x -> return x
+
 parseDescription :: String -> Either PError PackageDescription
 parseDescription inp = do let (st:sts) = splitStanzas inp
-                          pkg <- foldM parseBasicStanza emptyPackageDescription st
+                          pkg <- foldM (parseBasicStanza basicStanzaFields) emptyPackageDescription st
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza pkg (lineNo, f@"name", val) =
-          do name <- runP lineNo f parsePackageName val
-             return (setPkgName name pkg)
-        parseBasicStanza pkg (lineNo, f@"version", val) =
-          do v <- runP lineNo f parseVersion val
-             return (setPkgVersion v pkg)
-        parseBasicStanza pkg (lineNo, "copyright", val) = return pkg{copyright=val}
-        parseBasicStanza pkg (lineNo, f@"license", val) =
-          do l <- runP lineNo f parseLicense val
-             return pkg{license=l}
-        parseBasicStanza pkg (lineNo, f@"license-file", val) =
-          do path <- runP lineNo f parseFilePath val
-             return pkg{license=OtherLicense path}
-        parseBasicStanza pkg (lineNo, "maintainer", val) = return pkg{maintainer=val}
-        parseBasicStanza pkg (lineNo, "stability",  val) = return pkg{stability=val}
-        parseBasicStanza pkg (lineNo, field, val) =
-          do let lib = fromMaybe emptyBuildInfo (library pkg)
-             lib' <- parseBInfoField lib (lineNo, field, val)
-             return pkg{library=Just lib'}
-        -- Stanzas for executables
-        parseExecutableStanza ((lineNo, f@"executable",eName):st) =
+        parseBasicStanza ((Field name get set):fields) pkg (lineNo, f, val)
+          | name == f = set lineNo val pkg
+          | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
+        parseBasicStanza [] pkg (lineNo, f, val) = do
+          let lib = fromMaybe emptyBuildInfo (library pkg)
+	  lib' <- parseBInfoField binfoFields lib (lineNo, f, val)
+          return pkg{library=Just lib'}
+
+        parseExecutableStanza st@((lineNo, f@"executable",eName):st1) =
           case lookupField "main-is" st of
-            Just (lineNo,val) -> do path <- runP lineNo f parseFilePath val
-                                    binfo <- foldM parseBInfoField emptyBuildInfo st
-                                    return $ Executable eName path binfo
-            Nothing -> fail $
-                "No 'Main-Is' field found for " ++ eName ++ " stanza"
-        parseExecutableStanza ((lineNo, f,_):_) = myError lineNo $
-                "'Executable' stanza starting with field '" ++ f ++ "'"
+	    Just (lineNo,val) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
+	    Nothing           -> fail $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
+        parseExecutableStanza ((lineNo, f,_):_) = 
+          myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
-        parseBInfoField binfo (lineNo, "main-is", _) = return binfo
-        parseBInfoField binfo (lineNo, f@"extra-libs", val) =
-          do xs <- runP lineNo f (parseCommaList parseLibName) val
-             return binfo{extraLibs=xs}
-        parseBInfoField binfo (lineNo, f@"build-depends", val) =
-          do xs <- runP lineNo f (parseCommaList parseDependency) val
-             return binfo{buildDepends=xs}
-        -- Paths and stuff
-        parseBInfoField binfo (lineNo, f@"c-sources", val) =
-          do paths <- runP lineNo f (parseCommaList parseFilePath) val
-             return binfo{cSources=paths}
-        parseBInfoField binfo (lineNo, f@"include-dirs", val) =
-          do paths <- runP lineNo f (parseCommaList parseFilePath) val
-             return binfo{includeDirs=paths}
-        parseBInfoField binfo (lineNo, f@"includes", val) =
-          do paths <- runP lineNo f (parseCommaList parseFilePath) val
-             return binfo{includes=paths}
-        parseBInfoField binfo (lineNo, f@"hs-source-dir", val) =
-          do path <- runP lineNo f parseFilePath val
-             return binfo{hsSourceDir=path}
-        -- Module related
-        parseBInfoField binfo (lineNo, f@"modules", val) =
-          do xs <- runP lineNo f (parseCommaList parseModuleName) val
-             return binfo{modules=xs}
-        parseBInfoField binfo (lineNo, f@"exposed-modules", val) =
-          do xs <- runP lineNo f (parseCommaList parseModuleName) val
-             return binfo{exposedModules=xs}
-        parseBInfoField binfo (lineNo, f@"extensions", val) =
-          do exts <- runP lineNo f (parseCommaList parseExtension) val
-             return binfo{extensions=exts}
-        parseBInfoField binfo (lineNo, f, val) | "options-" `isPrefixOf` f =
-          let compilers = [("ghc",GHC),("nhc",NHC),("hugs",Hugs)] -- FIXME
-           in case lookup (drop (length "options-") f) compilers of
-                Just c  -> return (setOptions c (words val) binfo)
-                Nothing -> myError lineNo $ "Unknown compiler '" ++ drop 8 f ++ "'"
-        parseBInfoField _binfo (lineNo, field, _val) =
-                myError lineNo $ "Unknown field '" ++ field ++ "'"
+
+        parseExecutableField ((Field name get set):fields) exe (lineNo, f, val)
+	  | name == f = set lineNo val exe
+	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
+	parseExecutableField [] exe (lineNo, f, val) = do
+	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
+          return exe{buildInfo=binfo}
+
+        parseBInfoField ((Field name get set):fields) binfo (lineNo, f, val)
+	  | name == f = set lineNo val binfo
+	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
+	parseBInfoField [] binfo (lineNo, f, val) =
+	  myError lineNo $ "Unknown field '" ++ f ++ "'"
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
         lookupField x [] = Nothing
         lookupField x ((n,f,v):st)
           | x == f      = Just (n,v)
           | otherwise   = lookupField x st
+
 
 runP :: LineNo -> String -> ReadP a a -> String -> Either PError a
 runP lineNo field p s =
@@ -297,6 +395,8 @@ runP lineNo field p s =
              _   -> Left (AmbigousParse field lineNo)
     _   -> Left (AmbigousParse field lineNo)
   where results = readP_to_S p s
+
+type Stanza = [(LineNo,String,String)]
 
 -- |Split a string into blank line-separated stanzas of
 -- "Field: value" groups
@@ -357,6 +457,36 @@ parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
 parseCommaList p = sepBy1 p separator
     where separator = skipSpaces >> char ',' >> skipSpaces
 
+
+
+-- --------------------------------------------
+-- ** Pretty printing
+
+writePackageDescription :: FilePath -> PackageDescription -> IO ()
+writePackageDescription fpath pkg = bracket (openFile fpath WriteMode) hClose $ \hFile -> do
+  hPutFields hFile pkg basicStanzaFields
+  case library pkg of
+    Nothing  -> return ()
+    Just lib -> hPutFields hFile lib binfoFields
+  mapM_ (hPutExecutable hFile) (executables pkg)
+  where
+    hPutExecutable hFile exe = do
+      hPutStrLn hFile ""
+      hPutFields hFile exe executableStanzaFields
+      hPutFields hFile (buildInfo exe) binfoFields
+
+    hPutFields hFile pkg [] = return ()
+    hPutFields hFile pkg ((Field name get set):flds)
+      | value /= "" = do
+           hPutStrLn hFile value
+           hPutFields hFile pkg flds
+      | otherwise = do
+           hPutFields hFile pkg flds
+      where
+        value = get pkg
+        
+showDependency :: Dependency -> String
+showDependency (Dependency name ver) = name ++ " " ++ showVersionRange ver
 
 -- ------------------------------------------------------------
 -- * Testing
