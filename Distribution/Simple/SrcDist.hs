@@ -52,7 +52,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), buildInfo, setupMessage, biModules)
 import Distribution.Package (showPackageId)
-import Distribution.Simple.Utils(moveSources, die, sequenceMap)
+import Distribution.Simple.Utils(moveSources, die)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
@@ -79,7 +79,7 @@ sdist tmpDir targetPref pps pkg_descr = do
   -- maybe move the library files into place
   maybe (return ()) (prepareDir targetDir pps) (library pkg_descr)
   -- move the executables into place
-  sequenceMap (prepareDir targetDir pps) (map buildInfo (executables pkg_descr))
+  mapM_ (prepareDir targetDir pps) (map buildInfo (executables pkg_descr))
   -- setup isn't listed in the description file.
   moveSources ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++

@@ -1,7 +1,6 @@
 * misc
 
 ** make debian watchfile
-** multiple libraries?
 ** find a real test case that uses preprocessors
 ** unregistering the package, etc
 *** --user flag to unregister

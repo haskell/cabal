@@ -56,7 +56,7 @@ module Distribution.Setup (--parseArgs,
 
 -- Misc:
 #ifdef DEBUG
-import HUnit (Test(..), (~:), (~=?))
+import HUnit (Test(..))
 #endif
 
 import Distribution.Version (Version)
@@ -169,7 +169,7 @@ printCmdHelp cmd opts = do pname <- getProgName
                            putStr (cmdDescription cmd)
 
 getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
-getCmdOpt cmd opts s = let (a,b,c,d) = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts) s
+getCmdOpt cmd opts s = let (a,_,c,d) = getOpt Permute (cmdOptions cmd ++ liftCustomOpts opts) s
                          in (a,c,d)
 
 -- We don't want to use elem, because that imposes Eq a

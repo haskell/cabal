@@ -63,7 +63,7 @@ import Distribution.ParseUtils (
 import Distribution.License 	( License(..) )
 import Distribution.Extension 	( Opt )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
-				  parsePackageName, parsePackageId )
+				  parsePackageId )
 import Distribution.Version	( Version(..), showVersion )
 import Distribution.Compat.ReadP as ReadP
 
