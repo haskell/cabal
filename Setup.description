@@ -1,18 +1,18 @@
 Name: Cabal
-Version: 0.1
+Version: 0.2
 License: AllRightsReserved
 build-depends: haskell-src
 Extensions: CPP
 Modules: Distribution.Package, Distribution.Version, 
          Distribution.Misc, Distribution.Setup, 
-         Distribution.PreProcess,
+         Distribution.PreProcess, Distribution.PreProcess.Unlit,
          Distribution.PreProcess.Unlit,
          Distribution.InstalledPackageInfo, 
          Distribution.Make, Distribution.Simple, 
          Distribution.Simple.Build,
          Distribution.Simple.Install, Distribution.Simple.SrcDist,
          Distribution.Simple.Configure, Distribution.Simple.Utils, 
-         Distribution.Simple.Register, 
+         Distribution.Simple.Register,
          Distribution.Simple.GHCPackageConfig, 
          Distribution.GetOpt,
          Compat.ReadP, Compat.H98, Compat.Exception, Compat.RawSystem
