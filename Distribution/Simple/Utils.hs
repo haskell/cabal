@@ -275,7 +275,12 @@ removeFilename path
 -- |If this filename doesn't end in the path separator, add it.
 maybeAddSep :: FilePath -> FilePath
 maybeAddSep [] = []
-maybeAddSep p = if last p == pathSeparator then p else p ++ pathSeparatorStr
+maybeAddSep p  = if isPathSeparator (last p) then p else p ++ pathSeparatorStr
+
+-- |If this filename ends in the path separator, remove it.
+maybeRemoveSep :: FilePath -> FilePath
+maybeRemoveSep [] = []
+maybeRemoveSep p  = if isPathSeparator (last p) then init p else p
 
 -- |Get the file path for this particular module.  In the IO monad
 -- because it looks for the actual file.  Might eventually interface
