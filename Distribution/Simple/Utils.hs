@@ -129,7 +129,7 @@ joinFilenameDir dir fname = dir++pathSeparator:fname
 -- |Get this path and all its parents.
 pathInits :: FilePath -> [FilePath]
 pathInits p =
-    map ((++) root') (tail $ inits path')
+    map ((++) root') (dropEmptyPath $ inits path')
     where
 #ifdef mingw32_TARGET_OS
        (root,path) = case break (== ':') p of
@@ -141,13 +141,17 @@ pathInits p =
        (root',path') = case path of
          (c:path) | isPathSeparator c -> (root++pathSeparatorStr,path)
          _                            -> (root,path)
+         
+       dropEmptyPath ("":paths) = paths
+       dropEmptyPath paths     = paths
 
        inits :: String -> [String]
        inits [] =  [""]
        inits cs = 
          case pre of
-           "." -> inits suf
-           _   -> [""] ++ map (joinFilenameDir pre) (inits suf)
+           "."  -> inits suf
+           ".." -> map (joinFilenameDir pre) (dropEmptyPath $ inits suf)
+           _    -> "" : map (joinFilenameDir pre) (inits suf)
          where
            (pre,suf) = case break isPathSeparator cs of
               (pre,"")    -> (pre, "")
@@ -481,6 +485,9 @@ hunitTests
             "driveAndName2" ~: ["c:\\bar.txt"] ~=? (pathInits "c:\\bar.txt"),
             "locDir"        ~: ["bar.txt"] ~=? (pathInits ".\\bar.txt"),
             "midLocDir"     ~: ["foo","foo\\bar.txt"] ~=? (pathInits "foo\\.\\bar.txt"),
+            "withParentDir1"~: ["..\\foo"] ~=? (pathInits "..\\foo"),
+            "withParentDir2"~: ["foo\\..\\bar", "foo\\..\\bar\\baz"] ~=? (pathInits "foo\\..\\bar\\baz"),
+            "parentDir"     ~: [] ~=? (pathInits ".."),
             "rootFile"      ~: ["\\bar.txt"] ~=? (pathInits "\\bar.txt"),
             "curDir"        ~: [] ~=? (pathInits "."),
             "root"          ~: [] ~=? (pathInits "\\")
@@ -522,6 +529,9 @@ hunitTests
             "locDir"        ~: ["bar.txt"] ~=? (pathInits "./bar.txt"),
             "midLocDir"     ~: ["foo","foo/bar.txt"] ~=? (pathInits "foo/./bar.txt"),
             "rootFile"      ~: ["/bar.txt"] ~=? (pathInits "/bar.txt"),
+            "withParentDir1"~: ["../foo"] ~=? (pathInits "../foo"),
+            "withParentDir2"~: ["foo/../bar", "foo/../bar/baz"] ~=? (pathInits "foo/../bar/baz"),
+            "parentDir"     ~: [] ~=? (pathInits ".."),
             "curDir"        ~: [] ~=? (pathInits "."),
             "root"          ~: [] ~=? (pathInits "/")
 	   ]
