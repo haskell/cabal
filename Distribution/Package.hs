@@ -71,6 +71,6 @@ data PackageConfig
                       extraLibs    :: [ String ],
                       includeDirs  :: [ FilePath ],
                       includes     :: [ FilePath ],
-                      options      :: [ (Compiler, [String]) ]
+                      options      :: [ (CompilerFlavor, [String]) ]
                      }
        deriving Show
