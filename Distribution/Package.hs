@@ -99,7 +99,14 @@ data PackageDescription
         maintainer     :: String,
         stability      :: String,
         library        :: Maybe BuildInfo,
-        executables    :: [(String,BuildInfo)]
+        executables    :: [Executable]
+    }
+    deriving (Show, Read, Eq)
+
+data Executable = Executable {
+        exeName    :: String,
+        modulePath :: FilePath,
+        buildInfo  :: BuildInfo
     }
     deriving (Show, Read, Eq)
 
@@ -206,10 +213,15 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
              return pkg{library=Just lib'}
         -- Stanzas for executables
         parseExecutableStanza (("executable",exeName):st) =
-          do binfo <- foldM parseExeHelp emptyBuildInfo st
-             return (exeName,binfo)
+          case lookup "main-is" st of
+            Just xs -> do path <- runP "main-is" parseFilePath xs
+                          binfo <- foldM parseExeHelp emptyBuildInfo st
+                          return $ Executable exeName path binfo
+            Nothing -> throwError $ strMsg $
+                "No 'Main-Is' field found for " ++ exeName ++ " stanza"
         parseExecutableStanza ((f,_):st) = throwError $ strMsg $
                 "'Executable' stanza starts with field '" ++ f ++ "'"
+        parseExeHelp binfo (f@"main-is", _) = return binfo
         parseExeHelp binfo (f@"extra-libs", val) =
           do xs <- runP f (parseCommaList word) val
              return binfo{extraLibs=xs}
@@ -348,6 +360,7 @@ testPkgDesc = unlines [
         "",
         "-- Next is an executable",
         "Executable: somescript",
+        "Main-is: SomeFile.hs",
         "Modules: Foo1, Util, Main",
         "HS-Source-Dir: scripts",
         "Extensions: OverlappingInstances"
@@ -380,7 +393,8 @@ testPkgDescAnswer =
                         includes = ["/easily/unclose", "/me", "funky, path\\name"],
                         options = [(Hugs,["+TH"]), (GHC,["-fTH"])] -- Note reversed order
                     },
-                    executables = [("somescript", emptyBuildInfo{
+                    executables = [Executable "somescript" "SomeFile.hs" (
+                      emptyBuildInfo{
                         modules = ["Foo1","Util","Main"],
                         hsSourceDir = "scripts",
                         extensions = [OverlappingInstances]
@@ -448,7 +462,7 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
                                           
              TestCase $ assertRight "no library" Nothing
-                        (library `liftM` parseDescription "Name: foo\nVersion: 1\nLicense: GPL\nMaintainer: someone\n\nExecutable: script\n"),
+                        (library `liftM` parseDescription "Name: foo\nVersion: 1\nLicense: GPL\nMaintainer: someone\n\nExecutable: script\nMain-is: SomeFile.hs\n"),
 
              TestLabel "Package description" $ TestCase $ 
                 assertRight "entire package description" testPkgDescAnswer
