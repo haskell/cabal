@@ -285,8 +285,8 @@ moveSources pref _targetDir sources mains searchSuffixes
 		  $ nub [(removeFilename $ targetDir ++ x)
 		   | x <- sourceLocsNoPref, (removeFilename x /= "")]
 	 -- Put sources into place:
-	 mapM system ["cp -r " ++ x ++ " " ++ targetDir
-                      ++ y | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
+	 sequence_ [copyFile x (pathJoin [targetDir, y])
+                      | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
 	 return ()
     where moduleToFPErr m
               = do p <- moduleToFilePath pref m searchSuffixes
