@@ -58,8 +58,8 @@ module Distribution.InstalledPackageInfo (
 import Distribution.ParseUtils (
 	StanzaField(..), singleStanza, ParseResult(..), LineNo,
 	simpleField, listField, parseLicenseQ,
-	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
-	showFilePath, parseReadS, parseOptVersion, parseQuoted,
+	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
+	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
 import Distribution.License 	( License(..) )
 import Distribution.Extension 	( Opt )
@@ -98,11 +98,11 @@ data InstalledPackageInfo
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [PackageIdentifier],
-        extraHugsOpts     :: [Opt],
-        extraCcOpts       :: [Opt],
-        extraLdOpts       :: [Opt],
+        hugsOptions	  :: [Opt],
+        ccOptions	  :: [Opt],
+        ldOptions	  :: [Opt],
         frameworkDirs     :: [FilePath],
-        extraFrameworks   :: [String],
+        frameworks	  :: [String],
 	haddockInterfaces :: [FilePath],
 	haddockHTMLs      :: [FilePath]
     }
@@ -111,31 +111,31 @@ data InstalledPackageInfo
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        package          = PackageIdentifier "" noVersion,
-        license          = AllRightsReserved,
-        copyright        = "",
-        maintainer       = "",
-	author		 = "",
-        stability        = "",
-	homepage	 = "",
-	pkgUrl		 = "",
-	description	 = "",
-	category	 = "",
-        exposed          = False,
-	exposedModules	 = [],
-	hiddenModules    = [],
-        importDirs       = [],
-        libraryDirs      = [],
-        hsLibraries      = [],
-        extraLibraries   = [],
-        includeDirs      = [],
-        includes	 = [],
-        depends          = [],
-        extraHugsOpts    = [],
-        extraCcOpts      = [],
-        extraLdOpts      = [],
-        frameworkDirs    = [],
-        extraFrameworks  = [],
+        package           = PackageIdentifier "" noVersion,
+        license           = AllRightsReserved,
+        copyright         = "",
+        maintainer        = "",
+	author		  = "",
+        stability         = "",
+	homepage	  = "",
+	pkgUrl		  = "",
+	description	  = "",
+	category	  = "",
+        exposed           = False,
+	exposedModules	  = [],
+	hiddenModules     = [],
+        importDirs        = [],
+        libraryDirs       = [],
+        hsLibraries       = [],
+        extraLibraries    = [],
+        includeDirs       = [],
+        includes	  = [],
+        depends           = [],
+        hugsOptions       = [],
+        ccOptions         = [],
+        ldOptions         = [],
+        frameworkDirs     = [],
+        frameworks        = [],
 	haddockInterfaces = [],
 	haddockHTMLs      = []
     }
@@ -157,7 +157,7 @@ parseBasicStanza :: [StanzaField a]
 		    -> a
 		    -> (LineNo, String, String)
 		    -> ParseResult a
-parseBasicStanza ((StanzaField name _ _ set):fields) pkg (lineNo, f, val)
+parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
   | name == f = set lineNo val pkg
   | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
 parseBasicStanza [] pkg (_, _, _) = return pkg
@@ -169,15 +169,18 @@ showInstalledPackageInfo :: InstalledPackageInfo -> String
 showInstalledPackageInfo pkg = render (ppFields fields)
   where
     ppFields [] = empty
-    ppFields ((StanzaField _ get' _ _):flds) = get' pkg $$ ppFields flds
+    ppFields ((StanzaField name get' _):flds) = 
+	pprField name (get' pkg) $$ ppFields flds
 
 showInstalledPackageInfoField
 	:: String
 	-> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField field
-  = case [ get' | (StanzaField f get' _ _) <- fields, f == field ] of
+  = case [ (f,get') | (StanzaField f get' _) <- fields, f == field ] of
 	[]      -> Nothing
-	(get':_) -> Just (render . get')
+	((f,get'):_) -> Just (render . pprField f . get')
+
+pprField name field = text name <> colon <+> field
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -240,10 +243,10 @@ installedStanzaFields = [
 	showFilePath       parseFilePathQ
 	libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
  , listField   "hs-libraries"
-	showFilePath       parseLibNameQ
+	showFilePath       parseTokenQ
 	hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})
- , listField   "extra-libs"
-	text               parseLibNameQ
+ , listField   "extra-libraries"
+	showToken          parseTokenQ
 	extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
  , listField   "include-dirs"
 	showFilePath       parseFilePathQ
@@ -254,21 +257,21 @@ installedStanzaFields = [
  , listField   "depends"
 	(text.showPackageId)  parsePackageId'
 	depends            (\xs pkg -> pkg{depends=xs})
- , listField   "extra-hugs-opts"
-	text		   parseFilePathQ
-	extraHugsOpts      (\path  pkg -> pkg{extraHugsOpts=path})
- , listField   "extra-cc-opts"
-	text		   parseFilePathQ
-	extraCcOpts        (\path  pkg -> pkg{extraCcOpts=path})
- , listField   "extra-ld-opts"
-	text		   parseFilePathQ
-	extraLdOpts        (\path  pkg -> pkg{extraLdOpts=path})
+ , listField   "hugs-options"
+	showToken	   parseTokenQ
+	hugsOptions        (\path  pkg -> pkg{hugsOptions=path})
+ , listField   "cc-options"
+	showToken	   parseTokenQ
+	ccOptions          (\path  pkg -> pkg{ccOptions=path})
+ , listField   "ld-options"
+	showToken	   parseTokenQ
+	ldOptions          (\path  pkg -> pkg{ldOptions=path})
  , listField   "framework-dirs"
 	showFilePath       parseFilePathQ
 	frameworkDirs      (\xs pkg -> pkg{frameworkDirs=xs})
- , listField   "extra-frameworks"
-	showFilePath       parseFilePathQ
-	extraFrameworks    (\xs pkg -> pkg{extraFrameworks=xs})
+ , listField   "frameworks"
+	showToken          parseTokenQ
+	frameworks         (\xs pkg -> pkg{frameworks=xs})
  , listField   "haddock-interfaces"
 	showFilePath       parseFilePathQ
 	haddockInterfaces  (\xs pkg -> pkg{haddockInterfaces=xs})
