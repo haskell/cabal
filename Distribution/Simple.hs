@@ -62,7 +62,7 @@ import Distribution.Simple.Register	( register, unregister )
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, pathSeperatorStr)
+import Distribution.Simple.Utils (die, pathJoin)
 import Distribution.Misc (License(..))
 import Distribution.Version (Version(..))
 
@@ -90,8 +90,8 @@ defaultMain :: PackageDescription -> IO ()
 defaultMain pkg_descr
     = do args <- getArgs
          let distPref = "dist"
-         let buildPref = distPref ++ pathSeperatorStr ++ "build"
-         let srcPref = distPref ++ pathSeperatorStr ++ "src"
+         let buildPref = pathJoin [distPref, "build"]
+         let srcPref = pathJoin [distPref, "src"]
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
 

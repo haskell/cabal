@@ -109,7 +109,7 @@ emptyPackageDescription
                       allModules   = [],
                       mainModules   = [],
 		      cSources     = [],
-		      hsSourceDir  = ".",
+		      hsSourceDir  = ".", -- FIX: FileUtils.currentDir
 		      exposedModules = [],
                       extensions   = [],
                       extraLibs    = [],

@@ -49,7 +49,7 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.Package(PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr, die)
+import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin)
 
 import Control.Monad(when)
 import System.Cmd (system)
@@ -68,10 +68,10 @@ sdist srcPref targetPref pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist srcPref
   when ex (die $ "Source distribution already in place. please move: " ++ srcPref)
-  moveSources "" (srcPref++pathSeperatorStr++nameVersion pkg_descr)
+  moveSources "" (pathJoin [srcPref, nameVersion pkg_descr])
               (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
-  system $ "tar --directory=" ++ srcPref ++ " -zcf "
-	     ++ targetPref ++ pathSeperatorStr ++ (tarBallName pkg_descr)
+  system $ "tar --directory=" ++ srcPref ++ " -zcf " ++
+	     (pathJoin [targetPref, tarBallName pkg_descr])
 		    ++ " " ++ (nameVersion pkg_descr)
   system $ "rm -rf " ++ srcPref
   putStrLn "Source tarball created."
