@@ -1,5 +1,7 @@
 * 0.2
 ** add simple (cpphs) preprocessing?
+** clarify description filename issues
+- allow foo.hsproj?
 
 ** grep for "FIX"
 ** Compatibility
@@ -11,12 +13,8 @@
 
 ** Doc
 *** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
-*** add over-all license file.
 *** add information about executable stanzas
 *** elimintate need for cpphs in haddock makefile rule.
-
-** Change name of Setup.description?
-- allow foo.hsproj?
 
 ** look carefully at "rawSystem" and error handing stuff for nhc.
 
