@@ -190,11 +190,11 @@ showVersionRange (IntersectVersionRanges r1 r2)
 -- * Parsing
 -- ------------------------------------------------------------
 
-word :: Parser String
+word :: GenParser Char st String
 word = many1 letter <?> "word"
 
 --  -----------------------------------------------------------
-parseVersionRange :: Parser VersionRange
+parseVersionRange :: GenParser Char st VersionRange
 parseVersionRange = try (do reservedOp "<"
                             v <- parseVersion
                             return $ EarlierVersion v)
@@ -217,7 +217,7 @@ parseVersionRange = try (do reservedOp "<"
 
 --  -----------------------------------------------------------
 -- |Parse any kind of version
-parseVersion :: Parser Version
+parseVersion :: GenParser Char st Version
 parseVersion
     = do branch <- branchParser
 	 date <- dateParser
@@ -225,13 +225,13 @@ parseVersion
 
 --  -----------------------------------------------------------
 -- |Parse a version of the form 1.2.3
-branchParser :: Parser [Int]
+branchParser :: GenParser Char st [Int]
 branchParser
     = do n <- number
 	 bs <- branches
 	 return (n : bs)
 
-branches :: Parser [Int]
+branches :: GenParser Char st [Int]
 branches
     = option [] $ do
 	  char '.'
@@ -239,12 +239,12 @@ branches
           bs <- branches
           return (n:bs)
 
-dateParser :: Parser [String]
+dateParser :: GenParser Char st [String]
 dateParser
      = (try $ do char '-'; d <- word; return ["date="++d])
        <|> (do notFollowedBy anyChar; return [])
 
-number :: (Integral a, Read a) => Parser a
+number :: (Integral a, Read a) => GenParser Char st a
 number  = do{ ds <- many1 digit
             ; return (read ds)
             }
@@ -299,7 +299,7 @@ shortMonthParser = foldl1 (<|>) [do reserved a;return b | (a,b)
                                      ("Nov", November),  ("Dec", December)]]
 -}
 
-lexer :: P.TokenParser ()
+lexer :: P.TokenParser st
 lexer  = P.makeTokenParser 
          (emptyDef
 
@@ -311,31 +311,31 @@ lexer  = P.makeTokenParser
            P.reservedOpNames = ["<", ">", "<=", ">=", "==", "-"]
          })
 
-whiteSpace :: CharParser () ()
+whiteSpace :: CharParser st ()
 whiteSpace = P.whiteSpace lexer
 
-lexeme :: CharParser () a -> CharParser () a
+lexeme :: CharParser st a -> CharParser st a
 lexeme = P.lexeme lexer
 
-symbol :: String -> CharParser () String
+symbol :: String -> CharParser st String
 symbol = P.symbol lexer
 
-natural :: CharParser () Integer
+natural :: CharParser st Integer
 natural = P.natural lexer
 
-parens :: CharParser () a -> CharParser () a
+parens :: CharParser st a -> CharParser st a
 parens  = P.parens lexer
 
-semi :: CharParser () String
+semi :: CharParser st String
 semi = P.semi lexer
 
-identifier :: CharParser () String
+identifier :: CharParser st String
 identifier = P.identifier lexer
 
-reserved :: String -> CharParser () ()
+reserved :: String -> CharParser st ()
 reserved = P.reserved lexer
 
-reservedOp :: String -> CharParser () ()
+reservedOp :: String -> CharParser st ()
 reservedOp = P.reservedOp lexer
 
 -- ------------------------------------------------------------
