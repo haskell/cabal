@@ -170,9 +170,6 @@ tests currDir
               assertBool "build did not create the executable: testB"
             doesFileExist "dist/build/C.o" >>=
               assertBool "C.testSuffix did not get compiled to C.o."
-            doesFileExist "C.hs" >>=
-              assertEqual "C.hs (a generated file) should not be in the top-level of the source tree"
-                          False
             assertCmd "./setup sdist"
              "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tgz" >>= 
@@ -194,7 +191,13 @@ tests currDir
             checkTargetDir targetDir [".hi"]
             doesFileExist (pathJoin [targetDir, "libHStest-1.0.a"])
               >>= assertBool "library doesn't exist"
-            assertEqual "install returned error code" ExitSuccess instRetCode
+            assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestLabel "package A: GHC and clean" $ TestCase $
+         do let targetDir = ",tmp/lib/test-1.0/"
+            system "make clean"
+            doesFileExist "C.hs" >>=
+               assertEqual "C.hs (a generated file) not cleaned." False
+
 --          TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
 --              "HUGS configure returned error code"
