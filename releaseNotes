@@ -40,6 +40,11 @@ owners; and so on.
 
 NOTES:
 
+You cannot currently execute the setup scripts with "./Setup.lhs"
+since Cabal Hugs support isn't ready-for-prime-time.  You can compile
+it with ghc thusly: "ghc -package Cabal Setup.lhs -o setup" and then
+use the "setup" executable after that.
+
 This release is meant to provide the community with concrete
 information about how the interfaces are shaping up.  This release
 does NOT fix the interfaces, we can't promise not to break anything
