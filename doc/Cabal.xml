@@ -40,12 +40,14 @@
       </listitem>
     </itemizedlist>
     <para>However having both a library and executables in a package
-      does not work very well, as the executables may not depend on
-      the library.</para>
+    does not work very well; if the executables depend on the library,
+    they must explicitly list the modules they use from that
+    library.</para>
 
-    <para>Internally, the package may consist of much more than a bunch
-      of Haskell modules: it may also have C source code and header
-      files, documentation, test cases, auxiliary tools etc.</para>
+    <para>Internally, the package may consist of much more than a
+    bunch of Haskell modules: it may also have C source code and
+    header files, source code meant for preprocessing, documentation,
+    test cases, auxiliary tools etc.</para>
 
     <para>A package is identified by a globally-unique
       <firstterm>package name</firstterm>, an identifier containing
@@ -129,20 +131,23 @@ main = defaultMain</programlisting>
     </example>
 
     <example id="simple-executable-example">
-      <title>A package containing executable programs</title>
+      <title>A package containing a library and executable programs</title>
       <programlisting>
-Name:           TestPackage
-Version:        0.0
-License:        BSD3
-Author:         Angela Author
-Build-Depends:  HUnit
+Name:            TestPackage
+Version:         0.0
+License:         BSD3
+Author:          Angela Author
+Build-Depends:   HUnit
+Exposed-Modules: A, B, C
 
 Executable:     program1
 Main-Is:        Main.hs
+Hidden-Modules: A, B
 Hs-Source-Dir:  prog1
 
 Executable:     program2
 Main-Is:        Main.hs
+Hidden-Modules: C
 Hs-Source-Dir:  prog2
 Hidden-Modules: Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
@@ -648,9 +653,11 @@ main = defaultMain</programlisting>
         </listitem>
 
         <listitem>
-          <para>Writing your own setup script conforming to the interface
-            of <xref linkend="builders"/>, possibly using the Cabal
-            library for part of the work.  Good luck.</para>
+          <para>Writing your own setup script conforming to the
+          interface of <xref linkend="builders"/>, possibly using the
+          Cabal library for part of the work.  One option is to copy
+          the source of Distribution.Simple, and alter it for your
+          needs.  Good luck.</para>
         </listitem>
       </itemizedlist>
     </section>
@@ -961,10 +968,12 @@ runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
 
     <section>
       <title>Package management</title>
+      <para>...</para>
     </section>
 
     <section>
       <title>Installed package descriptions</title>
+      <para>...</para>
     </section>
   </section>
 
