@@ -19,8 +19,7 @@ set -e
 
 case "$1" in
     configure)
-        /usr/lib/ghc-6.2.2/bin/ghc-pkg-6.2.2 -g --add-package \
-                < /usr/share/doc/libghc6-cabal-dev/installed-pkg-config
+        /usr/share/doc/libghc6-cabal-dev/register.sh
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

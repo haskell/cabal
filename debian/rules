@@ -24,8 +24,15 @@ rm -f .*config*
 ./setup configure --prefix=$(LIBPATH) --with-compiler=/usr/bin/$(1)
 ./setup build
 mkdir -p $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)
+cp $(CURDIR)/doc/API $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)
+cp $(CURDIR)/doc/users-guide $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)
 ./setup copy --copy-prefix=$(CURDIR)/debian/$(PACKAGE)$(LIBPATH)
-cp .installed-pkg-config $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/installed-pkg-config
+#generate the register and unregister scripts
+./setup register   --gen-script
+./setup unregister --gen-script
+# install them for later
+cp register.sh $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/register.sh
+cp unregister.sh $(CURDIR)/debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/unregister.sh
 
 endef
 
