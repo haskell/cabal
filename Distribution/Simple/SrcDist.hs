@@ -68,8 +68,8 @@ sdist srcPref targetPref pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist srcPref
   when ex (die $ "Source distribution already in place. please move: " ++ srcPref)
-  moveSources  srcPref (srcPref++pathSeperatorStr++nameVersion pkg_descr)
-              (allModules pkg_descr) (mainModules pkg_descr)
+  moveSources "" (srcPref++pathSeperatorStr++nameVersion pkg_descr)
+              (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
   system $ "tar --directory=" ++ srcPref ++ " -zcf "
 	     ++ targetPref ++ pathSeperatorStr ++ (tarBallName pkg_descr)
 		    ++ " " ++ (nameVersion pkg_descr)

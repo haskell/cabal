@@ -100,14 +100,14 @@ tests = [TestCase $
 
             sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
                        | (e, f) <- zip allFilesE files]
-            assertEqual "install returned error code" ExitSuccess instRetCode
             system "./setup sdist"
             doesFileExist "dist/test-1.0.tgz" >>= 
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False
-            doesFileExist "dist/build" >>=
+            doesDirectoryExist "dist/build" >>=
               assertBool "dist/build doesn't exists"
+            assertEqual "install returned error code" ExitSuccess instRetCode
         ]
 
 main :: IO ()

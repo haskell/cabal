@@ -233,26 +233,31 @@ maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr
 -- filenames.
 -- Returns Nothing if the file doesn't exist.
 
-moduleToFilePath :: String   -- ^Module Name
+moduleToFilePath :: FilePath -- ^search location
+                 -> String   -- ^Module Name
+                 -> [String] -- ^possible suffixes
                  -> IO (Maybe FilePath)
 
-moduleToFilePath s
-    = do let possiblePaths = moduleToPossiblePaths s
+moduleToFilePath pref s possibleSuffixes
+    = do let possiblePaths = moduleToPossiblePaths pref s possibleSuffixes
          matchList <- sequence $ map (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
 --         sequence $ map (system . ("ls " ++)) possiblePaths
          return $ listToMaybe [x | (x, True) <- matchList]
 
 -- |Get the possible file paths based on this module name.
-moduleToPossiblePaths :: String -> [FilePath]
-moduleToPossiblePaths s
+moduleToPossiblePaths :: FilePath -- ^search prefix
+                      -> String -- ^module name
+                      -> [String] -- ^possible suffixes
+                      -> [FilePath]
+moduleToPossiblePaths searchPref s possibleSuffixes
     =  let splitted = mySplit '.' s
            lastElem = last splitted
-           possibleSuffixes = [".hs", ".lhs"]
            pref = if (not $ null $ init splitted)
                   then concat (intersperse pathSeperatorStr (init splitted))
                            ++ pathSeperatorStr
                   else ""
-        in [pref ++ x | x <- map (lastElem++) possibleSuffixes]
+        in [(maybeAddSep searchPref) ++ pref ++ x
+             | x <- map (lastElem++) (map ("."++)possibleSuffixes)]
 
 
 
@@ -262,23 +267,28 @@ moveSources :: FilePath -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^Main modules
+            -> [String] -- ^search suffixes
             -> IO ()
-moveSources buildPref _targetDir sources mains
+moveSources pref _targetDir sources mains searchSuffixes
     = do let targetDir = maybeAddSep _targetDir
          createIfNotExists True targetDir
 	 -- Create parent directories for everything:
          sourceLocs <- sequence $ map moduleToFPErr (sources ++ mains)
+         let sourceLocsNoPref -- get rid of the prefix, for target location.
+                 = if null pref then sourceLocs
+                   else map (drop ((length pref) +1)) sourceLocs
 	 mapM (createIfNotExists True)
 		  $ nub [(removeFilename $ targetDir ++ x)
-		   | x <- sourceLocs, (removeFilename x /= "")]
+		   | x <- sourceLocsNoPref, (removeFilename x /= "")]
 	 -- Put sources into place:
-	 mapM system ["cp -r " ++ x ++ " " ++ targetDir ++ x
-				  | x <- sourceLocs]
+	 mapM system ["cp -r " ++ x ++ " " ++ targetDir
+                      ++ y | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
 	 return ()
     where moduleToFPErr m
-              = do p <- moduleToFilePath m
+              = do p <- moduleToFilePath pref m searchSuffixes
                    when (isNothing p)
-                            (putStrLn ("Error: Could not find module: " ++ m)
+                            (putStrLn ("Error: Could not find module: " ++ m
+                                       ++ " with any suffix: " ++ (show searchSuffixes))
                              >> exitWith (ExitFailure 1))
                    return $ fromJust p
 
@@ -295,17 +305,18 @@ mkLibName pref lib = pref ++ pathSeperatorStr ++ "libHS" ++ lib ++ ".a"
 #ifdef DEBUG
 hunitTests :: [Test]
 hunitTests
-    = [TestCase $
-       do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
-          mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
+    = let suffixes = ["hs", "lhs"]
+          in [TestCase $
+       do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
+          mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
                    (Just "Distribution/Simple/Build.hs") mp1
           assertEqual "not existing not nothing failed" Nothing mp2,
        
         "moduleToPossiblePaths 1" ~: "failed" ~:
              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
-                ~=? (moduleToPossiblePaths "Foo.Bar.Bang"),
+                ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
-              (moduleToPossiblePaths "Foo") ~=? ["Foo.hs", "Foo.lhs"]
+              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"]
         ]
 #endif
