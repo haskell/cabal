@@ -85,7 +85,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | CleanCmd                    -- clean
             | CopyCmd (Maybe FilePath)    -- copy
-            | InstallCmd (Maybe FilePath) Bool -- install (install-prefix) (--user flag)
+            | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
             | UnregisterCmd               -- unregister
@@ -285,7 +285,7 @@ installCmd = Cmd {
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) upon registration, register this package in the system-wide package database"
            ],
-        cmdAction      = InstallCmd Nothing False
+        cmdAction      = InstallCmd False
         }
 
 copyCmd :: Cmd a
@@ -318,8 +318,8 @@ parseCopyArgs cfg args customOpts =
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
-parseInstallArgs :: (Maybe FilePath, Bool) -> [String] -> [OptDescr a] ->
-                    IO ((Maybe FilePath, Bool), [a], [String])
+parseInstallArgs :: Bool -> [String] -> [OptDescr a] ->
+                    IO (Bool, [a], [String])
 parseInstallArgs cfg args customOpts =
   case getCmdOpt installCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -329,12 +329,12 @@ parseInstallArgs cfg args customOpts =
       return (updateCfg flags cfg, unliftFlags flags, args')
     (_, _, errs) -> do mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) t@(mprefix, uFlag) = updateCfg flags $
+  where updateCfg (fl:flags) uFlag = updateCfg flags $
           case fl of
             InstPrefix _ -> error "--install-prefix is deprecated. Use copy command instead."
-            UserFlag     -> (mprefix, True)
-            GlobalFlag   -> (mprefix, False)
-            Lift _       -> t
+            UserFlag     -> True
+            GlobalFlag   -> False
+            Lift _       -> uFlag
             _            -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
