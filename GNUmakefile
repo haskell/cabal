@@ -97,7 +97,7 @@ hunitInstall-stamp: hunit-stamp
 
 moduleTest:
 	mkdir -p dist/debug
-	ghc -main-is Distribution.ModuleTest.main $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:tests/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
+	ghc $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest 
 
 tests: moduleTest clean
 	cd tests/A && make clean
