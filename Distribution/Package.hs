@@ -58,7 +58,8 @@ module Distribution.Package (
 import Control.Monad(when, liftM)
 import Data.Char(isSpace)
 
-import Distribution.Version(Version(..), VersionRange(..), showVersion, parseVersion)
+import Distribution.Version(Version(..), VersionRange(..),
+                            showVersion, parseVersion, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension)
 import Distribution.Setup(CompilerFlavor)
 
@@ -161,9 +162,14 @@ parseDesc :: GenParser Char PackageDescription PackageDescription
 parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
     where
     parseDescHelp
-           -- Free string and file paths:
+           -- misc
         =  try (parseField "Stability" False word
                >>= updateState . (\l pkgD -> pkgD{stability=l}))
+           <|> try (parseField "Extra-Libs" True (parseCommaList word)
+               >>= updateState . (\l pkgD -> pkgD{extraLibs=l}))
+           <|> try (parseField "Build-Depends" True (parseCommaList parseDependency)
+               >>= updateState . (\l pkgD -> pkgD{buildDepends=l}))
+           -- File-path-related
            <|> try (parseField "C-Sources" True parseFilePath
                >>= updateState . (\l pkgD -> pkgD{cSources=l}))
            <|> try (parseField "Include-Dirs" True parseFilePath
@@ -172,6 +178,7 @@ parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
                >>= updateState . (\l pkgD -> pkgD{includes=l}))
            <|> try (parseField "HS-Source-Dir" True parseFilePath
                >>= updateState . (\l pkgD -> pkgD{hsSourceDir=head l}))
+           -- module related
            <|> try (parseField "Main-Modules" True (parseCommaList moduleName)
                >>= updateState . (\l pkgD -> pkgD{mainModules=l}))
            <|> try (parseField "Exposed-Modules" True (parseCommaList moduleName)
@@ -181,8 +188,6 @@ parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
 
 -- Parsing remains for:
 --
--- Build-Depends: haskell-src, HUnit>=1.0.0-foo
--- Extra-Libs: libfoo, bar, bang
 -- Options: ghc: -fTH, hugs: +TH
 -- Extensions: {some known extensions}
 
@@ -227,6 +232,13 @@ parseFilePath
 
 parseLicense :: GenParser Char st License
 parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
+
+parseDependency :: GenParser Char st Dependency
+parseDependency = do name <- word
+                     skipMany parseWhite
+                     ver  <- parseVersionRange
+                     skipMany parseWhite
+                     return $ Dependency name ver
 
 -- |Mapping between the licenses and their names
 licenses :: [(String, License)]
@@ -375,6 +387,15 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                        ["foo/bar/bang","/baz/boom/pow", "/", "foob"]
                        (parse (parseField "Includes" False parseFilePath) ""
                          "Includes: foo/bar/bang   , /baz/boom/pow, /, foob")
+                    assertRight "dependencies"
+                       [Dependency "not" (LaterVersion (Version [0]   [])),
+                        Dependency "even" (ThisVersion (Version [3,3] ["date=the"])),
+                        Dependency "rain"
+                           (UnionVersionRanges (ThisVersion (Version [3,3] []))
+                                               (LaterVersion (Version[3,3] [])))]
+                       (parse (parseField "Build-Depends" False
+                               (parseCommaList parseDependency)) ""
+                               "Build-Depends: not>0, even   ==  3.3-the   ,   rain>=3.3")
                     -- Module-related fields
                     assertRight "main modules field"
                        someModules (parse (parseField "Main-Modules" False
@@ -387,7 +408,11 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                     assertRight "modules field"
                        someModules (parse (parseField "Modules" False
                                            (parseCommaList moduleName)) "" 
-                                           ("Modules: " ++ someModulesText)),
+                                           ("Modules: " ++ someModulesText))
+                    assertRight "extra libs"
+                       ["inYour", "libMostFrail", "gestures"]
+                       (parse (parseField "Extra-Libs" False (parseCommaList word))
+                               "" "Extra-Libs: inYour\t, libMostFrail,gestures"),
 
               TestLabel "Required fields" $ TestCase $
                  do assertRight "some fields"
