@@ -45,12 +45,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       LocalBuildInfo(..),
- 			  	      configure)
+ 			  	      configure,
+                                      hunitTests
+                                     )
     where
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..))
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils (die, setupMessage,
+                                  findBinary, splitFilenameDir)
 import Distribution.Package	( PackageIdentifier )
 
 import System.IO hiding (catch)

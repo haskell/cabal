@@ -46,24 +46,24 @@ module Main where
 
 -- Import everything, since we want to test the compilation of them:
 
-import Distribution.Version()
-import Distribution.InstalledPackageInfo()
-import Distribution.Misc()
-import Distribution.Package()
-import qualified Distribution.Setup(hunitTests)
+import qualified Distribution.Version as D.V (hunitTests) 
+-- import qualified Distribution.InstalledPackageInfo(hunitTests)
+import qualified Distribution.Misc as D.M (hunitTests)
+import qualified Distribution.Package as D.P (hunitTests)
+import qualified Distribution.Setup (hunitTests)
 
-import Distribution.Simple()
-import Distribution.Simple.Install()
-import Distribution.Simple.Build()
-import Distribution.Simple.SrcDist()
-import qualified Distribution.Simple.Utils(hunitTests)
-import Distribution.Simple.Configure()
-import Distribution.Simple.Register()
+import qualified Distribution.Simple as D.S (simpleHunitTests)
+import qualified Distribution.Simple.Install as D.S.I (hunitTests)
+import qualified Distribution.Simple.Build as D.S.B (hunitTests)
+import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
+import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
+import qualified Distribution.Simple.Configure as D.S.C (hunitTests)
+import qualified Distribution.Simple.Register as D.S.R (hunitTests)
 
 -- base
 import Control.Monad(when)
 import Directory(setCurrentDirectory, doesFileExist,
-                 doesDirectoryExist, removeDirectory)
+                 doesDirectoryExist)
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
 
@@ -78,6 +78,7 @@ runTestTT'  (TestLabel l t)
     = putStrLn (label l) >> runTestTT t
 runTestTT' t = runTestTT t
 
+tests :: [Test]
 tests = [TestCase $
          do setCurrentDirectory "test"
             dirE1 <- doesDirectoryExist ",tmp"
@@ -103,11 +104,20 @@ main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupTests <- Distribution.Setup.hunitTests
+          confTests <- D.S.C.hunitTests
+          utilTests <- D.S.U.hunitTests
           mapM runTestTT' setupTests
-          Distribution.Simple.Utils.hunitTests >>= runTestTT'
+          mapM runTestTT' confTests
+          runTestTT' utilTests
+          
+          runTestTT' $ TestList (D.S.R.hunitTests ++ D.V.hunitTests ++
+                                 D.S.S.hunitTests ++ D.S.B.hunitTests ++
+                                 D.S.I.hunitTests ++ D.S.simpleHunitTests ++
+                                 D.P.hunitTests ++ D.M.hunitTests)
           runTestTT' $ TestList tests
           return ()
 
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
 -- End:
+

@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -45,11 +45,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Install (
 	install,
 	mkImportDir,
+#ifdef DEBUG        
+        ,hunitTests
+#endif
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
@@ -76,3 +83,11 @@ mkImportDir pkg_descr lbi =
 #endif
   where 
 	pkg_name = showPackageId (package pkg_descr)
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif
