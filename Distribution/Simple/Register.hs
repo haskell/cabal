@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Package
+-- Module      :  Distribution.Simple.Register
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -41,32 +41,11 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Package(PackageIdentifier(..),
-                            PackageConfig(..))
+module Distribution.Simple.Register where
 
-where
+import Distribution.Simple.Configure(LocalBuildInfo)
+import Distribution.Package(PackageConfig)
+import Distribution.InstalledPackageInfo(InstalledPackageInfo)
 
-import Distribution.Version(Version)
-import Distribution.Misc(License, Dependency, Extension)
-import Distribution.Setup(CompilerFlavor)
-
-data PackageIdentifier
-    = PackageIdentifier {pkgName::String, pkgVersion::Version}
-      deriving (Read, Show, Eq)
-
-data PackageConfig
-    =  PackageConfig {package      :: PackageIdentifier,
-                      licenese     :: License,
-                      copyright    :: String,
-                      maintainer   :: String,
-                      stability    :: String,
-                      buildDepends :: [ Dependency ],
-                      sources      :: [ FilePath ],
-                      extensions   :: [ Extension ],
-                      library      :: String,      -- library name
-                      extraLibs    :: [ String ],
-                      includeDirs  :: [ FilePath ],
-                      includes     :: [ FilePath ],
-                      options      :: [ (CompilerFlavor, [String]) ]
-                     }
-       deriving Show
+getUseInfo :: LocalBuildInfo -> PackageConfig -> InstalledPackageInfo
+getUseInfo _ _ = undefined

@@ -51,9 +51,11 @@ import Distribution.Misc()
 import Distribution.Package()
 import qualified Distribution.Setup(hunitTests)
 
-import Distribution.Simple.Default()
+import Distribution.Simple()
 import Distribution.Simple.Install()
 import Distribution.Simple.Build()
+import Distribution.Simple.Configure()
+import Distribution.Simple.Register()
 
 import HUnit(runTestTT, Test(..))
 

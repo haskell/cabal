@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Build where
 
 import Distribution.Package(PackageConfig)
-import Distribution.Misc(LocalBuildInfo)
+import Distribution.Simple.Configure(LocalBuildInfo)
 
 build :: PackageConfig -> LocalBuildInfo -> IO ()
 build _ _ = return ()

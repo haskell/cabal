@@ -44,30 +44,36 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (parseArgs, Action(..), ConfigFlags,
+                           CompilerFlavor(..), Compiler(..),
 #ifdef DEBUG
                            hunitTests,
 #endif
                            ) where
 
  -- Local
-import Distribution.Misc(LocalBuildInfo, CompilerFlavor(..),
-                         Compiler(..), LocalBuildInfo(..))
 import Distribution.GetOpt
 
 -- Misc:
+#ifdef DEBUG
 import HUnit (Test(..), (~:), (~=?))
+#endif
+
 import Control.Monad.Error
-
--- Locate the compiler based on the flavor
-exeLoc :: CompilerFlavor -> IO FilePath
-exeLoc _ = return "error, not yet implemented" -- FIX
-
-pkgLoc :: CompilerFlavor -> IO FilePath
-pkgLoc _ = return "error, not yet implemented" -- FIX
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports
 -- ------------------------------------------------------------
+
+data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
+              deriving (Show, Eq)
+
+data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
+                          compilerPath  :: FilePath,
+                          compilerPkgTool :: FilePath}
+                deriving (Show, Eq)
+
+emptyCompiler :: Compiler
+emptyCompiler = Compiler (OtherCompiler "") "" ""
 
 type CommandLineOpts = (Action,
                         [String]) -- The un-parsed remainder
@@ -92,10 +98,10 @@ type ConfigFlags = (Maybe CompilerFlavor,
 -- |Parse the standard command-line arguments.
 parseArgs :: [String] -> Either [String] CommandLineOpts
 parseArgs args
-    = let (flags, commands, unkFlags, ers) = getOpt Permute options args
+    = let (flags, commands', unkFlags, ers) = getOpt Permute options args
           in case ers of
              _:_ -> Left ers
-             []  -> case commands of
+             []  -> case commands' of
                      []  -> Left ["No command detected"]
                      [h] -> parseCommands h flags unkFlags
                      _:_ -> Left ["More than one command detected"]
@@ -127,7 +133,7 @@ parseArgs args
         = Left $ ["command line syntax error for command: " ++ c]
 
     isInstallPrefix :: Flag -> Bool
-    isInstallPrefix (InstPrefix m) = True
+    isInstallPrefix (InstPrefix _) = True
     isInstallPrefix _              = False
 
 -- Converts the abstract "flag" type to a more concrete type.
@@ -145,7 +151,7 @@ getConfigFlags flags
 
     getOneOpt [] = return Nothing
     getOneOpt [one] = return (Just one)
-    getOneOpt many = fail "Multiple prefix options"
+    getOneOpt _ = fail "Multiple prefix options"
 
 -- ------------------------------------------------------------
 -- * Option Specifications
@@ -192,23 +198,18 @@ commands = [("configure", "configure this package"),
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
-
+#ifdef DEBUG
 hunitTests :: IO [Test]
 hunitTests =
-    do m <- sequence [do loc <- exeLoc comp
-                         pkg <- pkgLoc comp
-                         return (name, comp, loc, pkg)
-                      | (name, comp) <- [("ghc", GHC),
-                                         ("nhc", NHC),
-                                         ("hugs", Hugs)]]
-       let (flags, commands, unkFlags, ers)
+    do let m = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
+       let (flags, commands', unkFlags, ers)
                = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo"]
        return $ [TestLabel "very basic option parsing" $ TestList [
                  "getOpt flags" ~: "failed" ~:
                  [Prefix "/foo", GhcFlag, NhcFlag, HugsFlag,
                   WithCompiler "/comp", InstPrefix "/foo"]
                  ~=? flags,
-                 "getOpt commands" ~: "failed" ~: ["configure", "foobar"] ~=? commands,
+                 "getOpt commands" ~: "failed" ~: ["configure", "foobar"] ~=? commands',
                  "getOpt unknown opts" ~: "failed" ~:
                       ["--unknown1", "--unknown2"] ~=? unkFlags,
                  "getOpt errors" ~: "failed" ~: [] ~=? ers],
@@ -217,14 +218,14 @@ hunitTests =
                ["configure parsing for prefix and compiler flag" ~: "failed" ~:
                     (Right (ConfigCmd (Just comp, Nothing, Just "/usr/local"), []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name, "configure"])
-                   | (name, comp, comploc, pkgloc) <- m],
+                   | (name, comp) <- m],
 
                TestLabel "find the package tool" $ TestList
                ["configure parsing for prefix comp flag, withcompiler" ~: "failed" ~:
                     (Right (ConfigCmd (Just comp, Just "/foo/comp", Just "/usr/local"), []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name,
                                    "--with-compiler=/foo/comp", "configure"])
-                   | (name, comp, comploc, pkgloc) <- m],
+                   | (name, comp) <- m],
 
                TestLabel "simpler commands" $ TestList
                [flag ~: "failed" ~: (Right (flagCmd, [])) ~=? (parseArgs [flag])
@@ -235,6 +236,7 @@ hunitTests =
                                          ("register", RegisterCmd)]
                   ]
                ]
+#endif
 
 {- Testing ideas:
    * IO to look for hugs and hugs-pkg (which hugs, etc)

@@ -3,7 +3,6 @@
 ** x-pkg command-line interface
 
 * Code
-** Version (simonMar)
 ** configure step
 ** cross-platform compiler location(simonmar?)
 ** help action without command... help command?
