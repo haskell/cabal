@@ -1,4 +1,3 @@
-name: withHooks
 include-dirs: /foo/bar, /bang/baz
 extensions: CPP
 

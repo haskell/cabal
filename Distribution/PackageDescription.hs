@@ -615,7 +615,7 @@ testPkgDesc = unlines [
         "-- Next is an executable",
         "Executable: somescript",
         "Main-is: SomeFile.hs",
-        "Executable-Modules: Foo1, Util, Main",
+        "Hidden-Modules: Foo1, Util, Main",
         "HS-Source-Dir: scripts",
         "Extensions: OverlappingInstances"
         ]
@@ -648,6 +648,9 @@ testPkgDescAnswer =
                            frameworks = ["foo"],
                            cSources = ["not/even/rain.c", "such/small/hands"],
                            hsSourceDir = "src",
+                           hiddenModules = ["Distribution.Package",
+                                            "Distribution.Version",
+                                            "Distribution.Simple.GHCPackageConfig"],
                            extensions = [OverlappingInstances, TypeSynonymInstances],
                            extraLibs = ["libfoo", "bar", "bang"],
                            extraLibDirs = ["/usr/local/libs"],
@@ -657,12 +660,10 @@ testPkgDescAnswer =
                            options = [(Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
                     executables = [Executable "somescript" 
-                       ["Foo1","Util","Main"] "SomeFile.hs" (
+                       "SomeFile.hs" (
                       emptyBuildInfo{
-                        
+                        hiddenModules=["Foo1","Util","Main"],
                         hsSourceDir = "scripts",
-                        hiddenModules = ["Distribution.Package","Distribution.Version",
-                                         "Distribution.Simple.GHCPackageConfig"],
                         extensions = [OverlappingInstances]
                       })]
 }
