@@ -54,7 +54,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
-import Distribution.Setup (CompilerFlavor(..), Compiler(..))
+import Distribution.Setup (CompilerFlavor(..), Compiler(..), RegisterFlags)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -89,7 +89,7 @@ import HUnit (Test)
 -- then we use that file, perhaps creating it.
 
 register :: PackageDescription -> LocalBuildInfo
-         -> (Bool,Int) -- ^Install in the user's database?; verbose
+         -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
 register pkg_descr lbi (userInst,verbose)
   | isNothing (library pkg_descr) = do
@@ -201,7 +201,7 @@ mkInstalledPackageInfo pkg_descr lbi
 -- -----------------------------------------------------------------------------
 -- Unregistration
 
-unregister :: PackageDescription -> LocalBuildInfo -> (Bool,Int) -> IO ()
+unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi (user_unreg, verbose) = do
   setupMessage "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
@@ -228,8 +228,6 @@ unregister pkg_descr lbi (user_unreg, verbose) = do
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
-	
-
 
 -- ------------------------------------------------------------
 -- * Testing
