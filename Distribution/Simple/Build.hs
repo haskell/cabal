@@ -55,20 +55,24 @@ import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.PreProcess.Unlit (unlit)
-import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
+import Distribution.Simple.Configure (LocalBuildInfo(..), exeDeps)
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
-                                  createIfNotExists, mkLibName, dotToSep,
+                                  mkLibName, dotToSep,
 				  moduleToFilePath, currentDir,
 				  getOptionsFromSource, stripComments
                                  )
 
 import Data.Maybe(maybeToList)
 import Control.Monad (unless, when)
+#ifndef __NHC__
 import Control.Exception (try)
+#else
+import IO (try)
+#endif
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
-import Distribution.Compat.Directory (copyFile)
+import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
 				searchPathSeparator, objExtension, joinPaths)
 import qualified Distribution.Simple.GHCPackageConfig
@@ -86,7 +90,7 @@ build :: PackageDescription
          -> [ PPSuffixHandler ]
          -> IO ()
 build pkg_descr lbi suffixes = do
-  createIfNotExists True (buildDir lbi)
+  createDirectoryIfMissing True (buildDir lbi)
   preprocessSources pkg_descr lbi suffixes
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
@@ -116,9 +120,9 @@ buildGHC pkg_descr lbi = do
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr () $ \buildInfo' -> do
-      createIfNotExists True (pref `joinFileName` (hsSourceDir buildInfo'))
+      createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir buildInfo'))
       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
-              ++ ccOptions pkg_descr
+              ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
               ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
                   "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
@@ -132,9 +136,9 @@ buildGHC pkg_descr lbi = do
       -- build any C sources
       unless (null (cSources buildInfo')) $
          sequence_ [do let odir = pref `joinFileName` dirOf c
-                       createIfNotExists True odir
+                       createDirectoryIfMissing True odir
 		       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
-		               ++ ccOptions pkg_descr
+			       ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
                        rawSystemExit ghcPath (args ++ [c])
                                    | c <- cSources buildInfo']
@@ -150,12 +154,12 @@ buildGHC pkg_descr lbi = do
         rawSystemPathExit "ar" (["q", lib] ++ [pref `joinFileName` x | x <- hObjs ++ cObjs])
 
   -- build any executables
-  sequence_ [ do createIfNotExists True (pref `joinFileName` (hsSourceDir exeBi))
+  sequence_ [ do createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
-                 createIfNotExists True exeDir
+                 createDirectoryIfMissing True exeDir
                  let args = ["-I" ++ dir | dir <- includeDirs exeBi]
-                         ++ ccOptions pkg_descr
+                         ++ ["-optc" ++ opt | opt <- ccOptions pkg_descr]
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
                          ++ ["-odir",  exeDir,
                              "-hidir", exeDir,
@@ -226,7 +230,7 @@ buildHugs pkg_descr lbi = do
 	-- Copy or cpp a file from the source directory to the build directory.
 	copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
 	copyModule cppAll bi srcFile destFile = do
-	    createIfNotExists True (dirOf destFile)
+	    createDirectoryIfMissing True (dirOf destFile)
 	    (exts, opts) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then

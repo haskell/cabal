@@ -69,9 +69,9 @@ import Distribution.Simple.Register	( register, unregister,
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig, localBuildInfoFile)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, removeFileRecursive, currentDir,
+import Distribution.Simple.Utils (die, currentDir,
                                   defaultPackageDesc, hookedPackageDesc,
-                                  createIfNotExists, moduleToFilePath)
+                                  moduleToFilePath)
 import Distribution.License (License(..))
 import Distribution.Extension (Extension(..))
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
@@ -86,8 +86,10 @@ import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad(when)
 import Data.List	( intersperse )
-import System.IO (try)
+import System.IO.Error (try)
 import Distribution.GetOpt
+
+import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath(joinFileName, dropAbsolutePrefix,
                                     joinPaths, splitFileName, joinFileExt,
                                     splitFileExt, changeFileExt)
@@ -190,7 +192,7 @@ defaultMainWorker pkg_descr_in action args hooks
                    do lbi <- getPersistBuildConfig
                       let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
-                      createIfNotExists True targetDir
+                      createDirectoryIfMissing True targetDir
                       preprocessSources pkg_descr lbi knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules bi] >>= return . concat
@@ -198,7 +200,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       let outFiles = map (joinFileName tmpDir)
                                      (map ((flip changeFileExt) "hs") inFiles)
                       code <- rawSystem "haddock" (["-h", "-o" ++ targetDir] ++ outFiles)
-                      removeFileRecursive tmpDir
+                      removeDirectoryRecursive tmpDir
                       when (code /= ExitSuccess) (exitWith code)
                       return code)
             CleanCmd -> do
@@ -206,7 +208,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInput preClean args
 		localbuildinfo <- getPersistBuildConfig
 		let buildPref = buildDir localbuildinfo
-		try $ removeFileRecursive buildPref
+		try $ removeDirectoryRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes knownSuffixHandlers)
@@ -288,7 +290,7 @@ defaultMainWorker pkg_descr_in action args hooks
                  let targetDir = joinPaths pref filePref
                  let targetFile = joinFileName targetDir fileName
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
-                 createIfNotExists True targetDir
+                 createDirectoryIfMissing True targetDir
                  ret <- ppCpp pkg_descr bi lbi file targetFile
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") >> return ())
@@ -359,20 +361,16 @@ defaultUserHooks
     where readHook a = no_extra_flags a >> readHookedPackageDesc
           readHook2 a _ = no_extra_flags a >> readHookedPackageDesc
           defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
-#ifdef mingw32_TARGET_OS
-          defaultPreConf = readHook2
-#else
           defaultPreConf args (_, _, _, mb_prefix)
               = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
 	           if confExists then do
-	               rawSystem "./configure"
-	                   (maybe id prefix_opt mb_prefix args)
+	               rawSystem "sh"
+			   ("configure" : maybe id prefix_opt mb_prefix args)
 		       return ()
 		     else
 		       no_extra_flags args
 		   readHookedPackageDesc
-#endif
           readHookedPackageDesc
               = do exists <- doesFileExist hookedPackageDesc
 		   if exists then do

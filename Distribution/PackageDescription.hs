@@ -67,7 +67,6 @@ module Distribution.PackageDescription (
 
 import Control.Monad(foldM, when)
 import Data.Char
-import Data.List(concatMap)
 import Data.Maybe(fromMaybe, fromJust)
 import Text.PrettyPrint.HughesPJ(text, render, ($$), empty, space, vcat, fsep)
 import System.Directory(doesFileExist)
@@ -455,11 +454,11 @@ readPackageDescription fpath = do
   when (not exists) (die $ "Error: description file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
   str <- readFile fpath
   case parseDescription str of
-    Left  e -> error (showError e) -- FIXME
---    Right PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
-    Right x -> return x
+    ParseFailed e -> error (showError e) -- FIXME
+--    ParseOk PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
+    ParseOk x -> return x
 
-parseDescription :: String -> Either PError PackageDescription
+parseDescription :: String -> ParseResult PackageDescription
 parseDescription inp = do (st:sts) <- splitStanzas inp
                           pkg <- foldM (parseBasicStanza basicStanzaFields) emptyPackageDescription st
                           exes <- mapM parseExecutableStanza sts
@@ -618,47 +617,47 @@ testPkgDescAnswer =
 hunitTests :: [Test]
 hunitTests = [
               TestLabel "license parsers" $ TestCase $
-                 sequence_ [assertRight ("license " ++ show lVal) lVal
+                 sequence_ [assertParseOk ("license " ++ show lVal) lVal
                                         (runP 1 "license" parseLicenseQ (show lVal))
                            | lVal <- [GPL,LGPL,BSD3,BSD4]],
 
               TestLabel "Required fields" $ TestCase $
-                 do assertRight "some fields"
+                 do assertParseOk "some fields"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
                                                         (Version [0,0] ["asdf"]))}
                        (parseDescription "Name: foo\nVersion: 0.0-asdf")
 
-                    assertRight "more fields foo"
+                    assertParseOk "more fields foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
                                                         (Version [0,0]["asdf"])),
                                                license=GPL}
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
 
-                    assertRight "required fields for foo"
+                    assertParseOk "required fields for foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
                                                         (Version [0,0]["asdf"])),
                                         license=GPL, copyright="2004 isaac jones"}
                        (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
                                           
-             TestCase $ assertRight "no library" Nothing
+             TestCase $ assertParseOk "no library" Nothing
                         (library `liftM` parseDescription "Name: foo\nVersion: 1\nLicense: GPL\nMaintainer: someone\n\nExecutable: script\nMain-is: SomeFile.hs\n"),
 
              TestLabel "Package description" $ TestCase $ 
-                assertRight "entire package description" testPkgDescAnswer
+                assertParseOk "entire package description" testPkgDescAnswer
                                                          (parseDescription testPkgDesc),
              TestLabel "Package description pretty" $ TestCase $ 
                 case parseDescription testPkgDesc of
-                 Left  _ -> assertBool "can't parse description" False
-                 Right d -> assertRight "parse . show . parse not identity"
+                 ParseFailed _ -> assertBool "can't parse description" False
+                 ParseOk d -> assertParseOk "parse . show . parse not identity"
                              testPkgDescAnswer (parseDescription $ showPackageDescription d)
              ]
 
 
-assertRight :: (Eq val) => String -> val -> (Either a val) -> Assertion
-assertRight mes expected actual
+assertParseOk :: (Eq val) => String -> val -> ParseResult val -> Assertion
+assertParseOk mes expected actual
     =  assertBool mes
            (case actual of
-             (Right v) -> v == expected
+             ParseOk v -> v == expected
              _         -> False)
 
 test = runTestTT (TestList hunitTests)

@@ -59,7 +59,6 @@ import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)
 
-import Data.Maybe (maybe)
 import Data.List  ( intersperse )
 import System.IO (hPutStr, stderr)
 import System.Cmd

@@ -63,13 +63,11 @@ module Distribution.Version (
 #endif
  ) where
 
-#if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ >= 603
+#if __HUGS__ || __GLASGOW_HASKELL__ >= 603
 import Data.Version	( Version(..), showVersion, parseVersion )
 #endif
 
 import Control.Monad    ( liftM )
-import Data.Char        ( isDigit, isAlphaNum )
-import Data.List	( intersperse )
 
 import Distribution.Compat.ReadP
 
@@ -80,7 +78,7 @@ import HUnit
 -- -----------------------------------------------------------------------------
 -- The Version type
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
+#if ( __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603 ) || __NHC__
 
 -- Code copied from Data.Version in GHC 6.3+ :
 
@@ -89,7 +87,7 @@ import HUnit
 -- of GHC.  In which case, we might need to pick up ReadP from 
 -- Distribution.Compat.ReadP, because the version in 
 -- Text.ParserCombinators.ReadP doesn't have all the combinators we need.
-#if __GLASGOW_HASKELL__ <= 602
+#if __GLASGOW_HASKELL__ <= 602 || __NHC__
 import Distribution.Compat.ReadP
 #else
 import Text.ParserCombinators.ReadP
@@ -102,7 +100,6 @@ import Data.Typeable 	( Typeable )
 #endif
 
 import Data.List	( intersperse )
-import Control.Monad	( liftM )
 import Data.Char	( isDigit, isAlphaNum )
 
 {- |
@@ -154,7 +151,7 @@ data Version =
 #endif
 	)
 
-#if __GLASGOW_HASKELL__ < 602
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 602
 versionTc :: TyCon
 versionTc = mkTyCon "Version"
 

@@ -15,6 +15,7 @@ Description:
 	and tools.
 Category: Distribution
 Exposed-Modules:
+	Distribution.Compat.ReadP,
 	Distribution.Extension,
 	Distribution.InstalledPackageInfo,
 	Distribution.License,
@@ -38,10 +39,8 @@ Exposed-Modules:
 Hidden-Modules:
 	Distribution.GetOpt,
 	Distribution.Compat.Directory,
-	Distribution.Compat.Error,
 	Distribution.Compat.Exception,
 	Distribution.Compat.FilePath,
-	Distribution.Compat.RawSystem,
-	Distribution.Compat.ReadP
-Build-Depends: base, mtl
+	Distribution.Compat.RawSystem
+Build-Depends: base
 Extensions: CPP

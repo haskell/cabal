@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- #hide
 module Distribution.ParseUtils (
 	LineNo, PError(..), showError, myError, runP,
+	ParseResult(..),
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
 	parseFilePathQ, parseLibNameQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
@@ -61,7 +62,6 @@ import Distribution.Version
 import Distribution.Extension
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.Compat.Error
 import Distribution.Setup(CompilerFlavor(..))
 
 import Data.Char
@@ -75,18 +75,24 @@ data PError = AmbigousParse String LineNo
             | FromString String (Maybe LineNo)
         deriving Show
 
-instance Error PError where
-        strMsg s = FromString s Nothing
+data ParseResult a = ParseFailed PError | ParseOk a
+        deriving Show
 
-runP :: LineNo -> String -> ReadP a a -> String -> Either PError a
+instance Monad ParseResult where
+	return x = ParseOk x
+	ParseFailed err >>= _ = ParseFailed err
+	ParseOk x >>= f = f x
+	fail s = ParseFailed (FromString s Nothing)
+
+runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
 runP lineNo field p s =
   case [ x | (x,"") <- results ] of
-    [a] -> Right a
+    [a] -> ParseOk a
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
-             [a] -> Right a
-             []  -> Left (NoParse field lineNo)
-             _   -> Left (AmbigousParse field lineNo)
-    _   -> Left (AmbigousParse field lineNo)
+             [a] -> ParseOk a
+             []  -> ParseFailed (NoParse field lineNo)
+             _   -> ParseFailed (AmbigousParse field lineNo)
+    _   -> ParseFailed (AmbigousParse field lineNo)
   where results = readP_to_S p s
 
 showError :: PError -> String
@@ -95,15 +101,15 @@ showError (NoParse f n)           = "Line "++show n++": Parse of field '"++f++"'
 showError (FromString s (Just n)) = "Line "++show n++": " ++ s
 showError (FromString s Nothing)  = s
 
-myError :: LineNo -> String -> Either PError a
-myError n s = Left $ FromString s (Just n)
+myError :: LineNo -> String -> ParseResult a
+myError n s = ParseFailed $ FromString s (Just n)
 
 data StanzaField a 
   = StanzaField 
       { fieldName     :: String
       , fieldShow     :: a -> Doc
       , fieldGet      :: a -> Doc
-      , fieldSet      :: LineNo -> String -> a -> Either PError a
+      , fieldSet      :: LineNo -> String -> a -> ParseResult a
       }
 
 simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
@@ -170,7 +176,7 @@ type Stanza = [(LineNo,String,String)]
 
 -- |Split a string into blank line-separated stanzas of
 -- "Field: value" groups
-splitStanzas :: String -> Either PError [Stanza]
+splitStanzas :: String -> ParseResult [Stanza]
 splitStanzas = mapM (mapM brk) . map merge . groupStanzas . filter validLine . zip [1..] . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
@@ -185,7 +191,7 @@ allSpaces (_,xs) = all isSpace xs
 -- |Split a file into "Field: value" groups, but blank lines have no
 -- significance, unlike 'splitStanzas'.  A field value may span over blank
 -- lines.
-singleStanza :: String -> Either PError Stanza
+singleStanza :: String -> ParseResult Stanza
 singleStanza = mapM brk . merge . filter validLine . zip [1..] . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
@@ -199,7 +205,7 @@ merge ((n,x):(_,c:s):ys)
 merge ((n,x):ys) = (n,x) : merge ys
 merge []         = []
 
-brk :: (Int,String) -> Either PError (Int,String,String)
+brk :: (Int,String) -> ParseResult (Int,String,String)
 brk (n,xs) = case break (==':') xs of
              (fld, ':':val) -> return (n, map toLower fld, dropWhile isSpace val)
              (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"

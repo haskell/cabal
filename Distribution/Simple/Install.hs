@@ -60,15 +60,14 @@ import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..),
 	setupMessage, hasLibs, withLib, libModules, exeModules, biModules,
 	hcOptions)
-import Distribution.Package (showPackageId, pkgName)
+import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
-import Distribution.Simple.Utils(moveSources, mkLibName, removeFileRecursive,
-                                 die, createIfNotExists)
+import Distribution.Simple.Utils(moveSources, mkLibName, die)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when, unless)
 import Data.Maybe(fromMaybe)
-import Distribution.Compat.Directory(copyFile)
+import Distribution.Compat.Directory(copyFile,createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath(joinFileName, dllExtension,
 				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
@@ -102,7 +101,7 @@ installExeGhc :: FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
 installExeGhc pref buildPref pkg_descr
-    = do createIfNotExists True pref
+    = do createDirectoryIfMissing True pref
          sequence_ [copyFile (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
                     | Executable e _ b <- executables pkg_descr]
 
@@ -133,7 +132,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
     withLib pkg_descr () $ \ libInfo -> do
 	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
-	try $ removeFileRecursive pkgDir
+	try $ removeDirectoryRecursive pkgDir
 	moveSources buildPref pkgDir (biModules libInfo) hugsInstallSuffixes
     unless (null (executables pkg_descr)) $ do
 	let progBuildDir = buildPref `joinFileName` "programs"
@@ -141,7 +140,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 		    `joinFileName` pkg_name
 	let progTargetDir = hugsTargetDir `joinFileName` "programs"
 		    `joinFileName` pkg_name
-	try $ removeFileRecursive progInstallDir
+	try $ removeDirectoryRecursive progInstallDir
 	moveSources progBuildDir progInstallDir
 	    (exeModules pkg_descr) hugsInstallSuffixes
 	flip mapM_ (executables pkg_descr) $ \ exe -> do

@@ -49,9 +49,7 @@ module Distribution.Simple.Utils (
 	rawSystemPathExit,
         moveSources,
         moduleToFilePath,
-        createIfNotExists,
         mkLibName,
-        removeFileRecursive,
         currentDir,
         dotToSep,
 	withTempFile,
@@ -75,10 +73,10 @@ import Distribution.Extension (Extension)
 import Distribution.Setup (CompilerFlavor(..))
 import Distribution.PreProcess.Unlit (unlit)
 
-import Control.Monad(when, unless, liftM, mapM)
+import Control.Monad(when)
 import Data.Char(isSpace)
 import Data.List(nub, isSuffixOf)
-import Data.Maybe(Maybe, catMaybes, mapMaybe)
+import Data.Maybe(mapMaybe)
 import System.IO (hPutStr, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
@@ -88,13 +86,11 @@ import System.Posix.Internals (c_getpid)
 
 import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt,
-	pathParents, pathSeparator)
-import System.Directory (getDirectoryContents, removeDirectory,
-                        setCurrentDirectory, getCurrentDirectory,
-                        doesDirectoryExist, doesFileExist, removeFile, 
-                        createDirectory)
+	pathSeparator)
+import System.Directory (getDirectoryContents, getCurrentDirectory,
+                        doesFileExist, removeFile)
 
-import Distribution.Compat.Directory (copyFile,findExecutable)
+import Distribution.Compat.Directory (copyFile,findExecutable,createDirectoryIfMissing)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -144,23 +140,6 @@ rawSystemPathExit prog args = do
 -- * File Utilities
 -- ------------------------------------------------------------
 
-
-createIfNotExists :: Bool     -- ^Create its parents too?
-		  -> FilePath -- ^The path to the directory you want to make
-		  -> IO ()
-createIfNotExists parents file
-    = do b <- doesDirectoryExist file
-	 case (b,parents, file) of 
-		  (_, _, "")    -> return ()
-		  (True, _, _)  -> return ()
-		  (_, True, _)  -> createDirectoryParents file
-		  (_, False, _) -> createDirectory file
-
--- |like mkdir -p.  Create this directory and its parents
-createDirectoryParents :: FilePath -> IO()
-createDirectoryParents file
-    = mapM_ (createIfNotExists False) (tail (pathParents file))
-
 -- |Get the file path for this particular module.  In the IO monad
 -- because it looks for the actual file.  Might eventually interface
 -- with preprocessor libraries in order to correctly locate more
@@ -203,14 +182,14 @@ moveSources :: FilePath -- ^build prefix (location of objects)
             -> [String] -- ^search suffixes
             -> IO ()
 moveSources pref targetDir sources searchSuffixes
-    = do createIfNotExists True targetDir
+    = do createDirectoryIfMissing True targetDir
 	 -- Create parent directories for everything:
          sourceLocs' <- mapM moduleToFPErr sources
          let sourceLocs = concat sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref then sourceLocs
                    else map (drop ((length pref) +1)) sourceLocs
-	 mapM (createIfNotExists True)
+	 mapM (createDirectoryIfMissing True)
 		  $ nub [fst (splitFileName (targetDir `joinFileName` x))
 		   | x <- sourceLocsNoPref, fst (splitFileName x) /= "."]
 	 -- Put sources into place:
@@ -234,50 +213,6 @@ mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
 mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
-
--- |Remove a list of files; if it encounters a directory, it doesn't
--- remove it, but returns it.  Throws everything that removeFile
--- throws unless the file is a directory.
-removeFiles :: [FilePath]    -- ^Files and directories to remove
-            -> IO [FilePath]
-            {- ^The ones we were unable to remove because they were of
-                an inappropriate type (directory) removeFiles -}
-removeFiles files = liftM catMaybes (mapM rm' files)
-      where
-       rm' :: FilePath -> IO (Maybe FilePath)
-       rm' f = do  temp <- try (removeFile f)
-                   case temp of
-                    Left e  -> do isDir <- doesDirectoryExist f
-                                  -- If f is not a directory, re-throw the error
-                                  unless isDir $ ioError e
-                                  return (Just f)
-                    Right _ -> return Nothing
-
--- |Probably follows symlinks, be careful.
-removeFileRecursive :: FilePath -> IO ()
-removeFileRecursive startLoc
-    = do cont' <- getDirectoryContents startLoc
-         let cont = filter (\x -> x /= "." && x /= "..") cont'
-         curDir <- getCurrentDirectory
-         setCurrentDirectory startLoc
-         dirs <- removeFiles cont
-         mapM removeFileRecursive dirs
-         setCurrentDirectory curDir
-         removeDirectory startLoc
-
--- |Might want to make this more generic some day, with regexps
--- or something.
-filesWithExtensions :: FilePath -- ^Directory to look in
-                    -> String   -- ^The extension
-                    -> IO [FilePath] {- ^The file names (not full
-                                     path) of all the files with this
-                                     extension in this directory. -}
-filesWithExtensions dir extension 
-    = do allFiles <- getDirectoryContents dir
-         return $ filter hasExt allFiles
-    where
-      hasExt f = snd (splitFileExt f) == extension
-
 
 -- -----------------------------------------------------------------------------
 -- * temporary file names
@@ -304,7 +239,8 @@ foreign import ccall unsafe "_getpid" getProcessID :: IO Int
 getProcessID :: IO Int
 getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 #else
-#error ToDo: getProcessID
+-- #error ToDo: getProcessID
+foreign import ccall unsafe "getpid" getProcessID :: IO Int
 #endif
 
 -- ------------------------------------------------------------
@@ -336,7 +272,7 @@ getOptionsFromSource file = do
 
 	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)])
 	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)])
-	getOptions ("OPTIONS_NHC":opts) = ([], [(NHC, opts)])
+	getOptions ("OPTIONS_NHC98":opts) = ([], [(NHC, opts)])
 	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)])
 	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [])
 	  where	readExtension :: String -> Maybe Extension
@@ -470,4 +406,17 @@ hunitTests
                      assertEqual "filesWithExtensions" "Setup.description" (head files))
 #endif
           ]
+
+-- |Might want to make this more generic some day, with regexps
+-- or something.
+filesWithExtensions :: FilePath -- ^Directory to look in
+                    -> String   -- ^The extension
+                    -> IO [FilePath] {- ^The file names (not full
+                                     path) of all the files with this
+                                     extension in this directory. -}
+filesWithExtensions dir extension 
+    = do allFiles <- getDirectoryContents dir
+         return $ filter hasExt allFiles
+    where
+      hasExt f = snd (splitFileExt f) == extension
 #endif
