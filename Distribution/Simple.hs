@@ -219,7 +219,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 (mprefix, _, args) <- parseCopyArgs mprefix args []
                 pkg_descr <- hookOrInArgs preCopy args mprefix
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo (mJoinPaths mprefix (prefix localbuildinfo))
+		install pkg_descr localbuildinfo mprefix
                 postHook postCopy
 
             InstallCmd uInst -> do
