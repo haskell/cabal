@@ -45,6 +45,7 @@ module Distribution.Package (
 	showPackageId,
 	PackageDescription(..),
         BuildInfo(..),
+        emptyBuildInfo,
         Executable(..),
 	emptyPackageDescription,
         parsePackageDesc,
