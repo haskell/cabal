@@ -104,11 +104,14 @@ exeDeps s d = fromJust $ lookup s (executableDeps d)
 
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
+  e <- doesFileExist localBuildInfoFile
+  let dieMsg = "error reading " ++ localBuildInfoFile ++ "; run \"setup configure\" command?\n"
+  when (not e) (die dieMsg)
   str <- readFile localBuildInfoFile
   let bi = read str
 #ifndef __NHC__
   evaluate bi `catch` \_ -> 
-	die "error reading .setup-config; run ./Setup.lhs configure?\n"
+	die dieMsg
 #else
 -- FIXME: Is there anything we can do here? DeepSeq?
 #endif
