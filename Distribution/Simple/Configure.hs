@@ -66,7 +66,7 @@ import HUnit
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {
-  	prefix	    :: String,
+  	prefix	    :: FilePath,
 		-- ^ The installation directory (eg. @/usr/local@, or
 		-- @C:/Program Files/foo-1.2@ on Windows.
 	compiler    :: Compiler,
