@@ -2,9 +2,13 @@
 The Common Architecture for Building Applications and Libraries.
 http://www.haskell.org/cabal
 
+IMPORTANT INFORMATION:
+
+See both the README file and the changelog.
+
 DOWNLOAD:
 
-The Haskell Cabal has reached pre-release stage, with a 0.1 version
+The Haskell Cabal has reached pre-release stage, with a 0.3 version
 The community should use this release to evaluate the interfaces and
 explore the concepts of these tools.
 
@@ -13,10 +17,8 @@ http://www.haskell.org/cabal/download.html
 
 BUGS:
 
-Please report bugs and wish-list items here:
-http://sourceforge.net/tracker/?func=add&group_id=44807&atid=440922
-
-Or email Isaac Jones: ijones@syntaxpolice.org
+Please report bugs and wish-list items to libraries@haskell.org and
+Isaac Jones: ijones@syntaxpolice.org.
 
 
 ABOUT:
@@ -60,4 +62,3 @@ release:
 
 http://www.haskell.org/cabal/
 
-NOTES 0.2: Adds more HUGS support and preprocessor support.
