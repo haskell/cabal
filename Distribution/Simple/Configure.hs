@@ -50,6 +50,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                      )
     where
 
+import Distribution.Misc(Dependency(..))
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), emptyPackageDescription,
                             PackageIdentifier(..)
@@ -121,7 +122,13 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
-	return LocalBuildInfo{prefix=prefix, compiler=compiler, packageDeps=[]}
+	return LocalBuildInfo{prefix=prefix, compiler=compiler,
+                              packageDeps=map buildDepToDep (buildDepends pkg_descr)}
+
+-- |Converts build dependencies to real dependencies.  FIX: doesn't
+-- set any version information.
+buildDepToDep :: Dependency -> PackageIdentifier
+buildDepToDep (Dependency s _) = PackageIdentifier s (Version [] [])
 
 system_default_prefix :: PackageDescription -> String
 system_default_prefix PackageDescription{package=package} = 

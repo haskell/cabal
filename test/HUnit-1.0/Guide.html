@@ -1,0 +1,715 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="Author" content="Dean Herington">
+  <meta name="KeyWords" content="HUnit, unit testing, test-first development, Haskell, JUnit">
+  <meta name="Content-Type" content="text/html; charset=iso-8859-1">
+  <title>HUnit 1.0 User's Guide</title>
+</head>
+<body>
+
+<h1>HUnit 1.0 User's Guide</h1>
+
+HUnit is a unit testing framework for Haskell, inspired by the JUnit
+tool for Java.&nbsp; This guide describes how to use HUnit, assuming
+you are familiar with Haskell, though not necessarily with
+JUnit.&nbsp; You can obtain HUnit, including this guide, at
+<a href="http://hunit.sourceforge.net">http://hunit.sourceforge.net</a>.
+
+<h2>Introduction</h2>
+
+A test-centered methodology for software development is most effective
+when tests are easy to create, change, and execute.&nbsp; The <a
+href="http://www.junit.org">JUnit</a> tool pioneered support for
+test-first development in <a href="http://java.sun.com">Java</a>.&nbsp;
+HUnit is an adaptation of JUnit to Haskell, a general-purpose, purely
+functional programming language.&nbsp; (To learn more about Haskell,
+see <a href="http://www.haskell.org">http://www.haskell.org</a>.)
+<p>
+With HUnit, as with JUnit, you can easily create tests, name them,
+group them into suites, and execute them, with the framework checking
+the results automatically.&nbsp; Test specification in HUnit is even
+more concise and flexible than in JUnit, thanks to the nature of the
+Haskell language.&nbsp; HUnit currently includes only a text-based
+test controller, but the framework is designed for easy
+extension.&nbsp; (Would anyone care to write a graphical test
+controller for HUnit?)
+<p>
+The next section helps you get started using HUnit in simple
+ways.&nbsp; Subsequent sections give details on <a
+href="#WritingTests">writing tests</a> and <a
+href="#RunningTests">running tests</a>.&nbsp; The document concludes
+with a section describing HUnit's <a
+href="#ConstituentFiles">constituent files</a> and a section giving
+<a href="#References">references</a> to further information.
+
+<h2><a name="GettingStarted">Getting Started</a></h2>
+
+In the Haskell module where your tests will reside, import module
+<tt>HUnit</tt>:
+<pre>
+    import HUnit
+</pre>
+Define test cases as appropriate:
+<pre>
+    test1 = TestCase (assertEqual "for (foo 3)," (1,2) (foo 3))
+    test2 = TestCase (do (x,y) &lt;- partA 3
+                         assertEqual "for the first result of partA," 5 x
+                         b &lt;- partB y
+                         assertBool ("(partB " ++ show y ++ ") failed") b)
+</pre>
+Name the test cases and group them together:
+<pre>
+    tests = TestList [TestLabel "test1" test1, TestLabel "test2" test2]
+</pre>
+Run the tests as a group.&nbsp; At a Haskell interpreter prompt, apply
+the function <tt>runTestTT</tt> to the collected tests.&nbsp; (The
+"<tt>TT</tt>" suggests <b><u>t</u></b>ext orientation with output to
+the <b><u>t</u></b>erminal.)
+<pre>
+    > runTestTT tests
+    Cases: 2  Tried: 2  Errors: 0  Failures: 0
+    >
+</pre>
+If the tests are proving their worth, you might see:
+<pre>
+    > runTestTT tests
+    ### Failure in: 0:test1
+    for (foo 3),
+    expected: (1,2)
+     but got: (1,3)
+    Cases: 2  Tried: 2  Errors: 0  Failures: 1
+    >
+</pre>
+Isn't that easy?
+<p>
+You can specify tests even more succinctly using operators and
+overloaded functions that HUnit provides:
+<pre>
+    tests = test [ "test1" ~: "(foo 3)" ~: (1,2) ~=? (foo 3),
+                   "test2" ~: do (x, y) &lt;- partA 3
+                                 assertEqual "for the first result of partA," 5 x
+                                 partB y @? "(partB " ++ show y ++ ") failed" ]
+</pre>
+Assuming the same test failures as before, you would see:
+<pre>
+    > runTestTT tests
+    ### Failure in: 0:test1:(foo 3)
+    expected: (1,2)
+     but got: (1,3)
+    Cases: 2  Tried: 2  Errors: 0  Failures: 1
+    >
+</pre>
+
+<h2><a name="WritingTests"></a>Writing Tests</h2>
+
+Tests are specified compositionally.&nbsp; <a
+href="#Assertions">Assertions</a> are combined to make a <a
+href="#TestCase">test case</a>, and test cases are combined into <a
+href="#Tests">tests</a>.&nbsp; HUnit also provides <a
+href="#AdvancedFeatures">advanced features</a> for more convenient
+test specification.
+
+<h3><a name="Assertions"></a>Assertions</h3>
+
+The basic building block of a test is an <b>assertion</b>.
+<pre>
+    type Assertion = IO ()
+</pre>
+An assertion is an <tt>IO</tt> computation that always produces a void
+result.&nbsp; Why is an assertion an <tt>IO</tt> computation?  So that
+programs with real-world side effects can be tested.&nbsp; How does an
+assertion assert anything if it produces no useful result?  The answer
+is that an assertion can signal failure by calling
+<tt>assertFailure</tt>.
+<pre>
+    assertFailure :: String -> Assertion
+    assertFailure msg = ioError (userError ("HUnit:" ++ msg))
+</pre>
+<tt>(assertFailure msg)</tt> raises an exception.&nbsp; The string
+argument identifies the failure.&nbsp; The failure message is prefixed
+by "<tt>HUnit:</tt>" to mark it as an HUnit assertion failure
+message.&nbsp; The HUnit test framework interprets such an exception
+as indicating failure of the test whose execution raised the
+exception.&nbsp; (Note: The details concerning the implementation of
+<tt>assertFailure</tt> are subject to change and should not be relied
+upon.)
+<p>
+<tt>assertFailure</tt> can be used directly, but it is much more
+common to use it indirectly through other assertion functions that
+conditionally assert failure.
+<pre>
+    assertBool :: String -> Bool -> Assertion
+    assertBool msg b = unless b (assertFailure msg)
+
+    assertString :: String -> Assertion
+    assertString s = unless (null s) (assertFailure s)
+
+    assertEqual :: (Eq a, Show a) => String -> a -> a -> Assertion
+    assertEqual preface expected actual =
+      unless (actual == expected) (assertFailure msg)
+     where msg = (if null preface then "" else preface ++ "\n") ++
+                 "expected: " ++ show expected ++ "\n but got: " ++ show actual
+</pre>
+With <tt>assertBool</tt> you give the assertion condition and failure
+message separately.&nbsp; With <tt>assertString</tt> the two are
+combined.&nbsp; With <tt>assertEqual</tt> you provide a "preface", an
+expected value, and an actual value; the failure message shows the two
+unequal values and is prefixed by the preface.&nbsp; Additional ways
+to create assertions are described later under <a
+href="#AdvancedFeatures">Advanced Features</a>.
+<p>
+Since assertions are <tt>IO</tt> computations, they may be
+combined--along with other <tt>IO</tt> computations--using
+<tt>(>>=)</tt>, <tt>(>>)</tt>, and the <tt>do</tt> notation.&nbsp; As
+long as its result is of type <tt>(IO ())</tt>, such a combination
+constitutes a single, collective assertion, incorporating any number
+of constituent assertions.&nbsp; The important features of such a
+collective assertion are that it fails if any of its constituent
+assertions is executed and fails, and that the first constituent
+assertion to fail terminates execution of the collective
+assertion.&nbsp; Such behavior is essential to specifying a test case.
+
+<h3><a name="TestCase"></a>Test Case</h3>
+
+A <b>test case</b> is the unit of test execution.&nbsp; That is,
+distinct test cases are executed independently.&nbsp; The failure of
+one is independent of the failure of any other.
+<p>
+A test case consists of a single, possibly collective,
+assertion.&nbsp; The possibly multiple constituent assertions in a
+test case's collective assertion are <b>not</b> independent.&nbsp;
+Their interdependence may be crucial to specifying correct operation
+for a test.&nbsp; A test case may involve a series of steps, each
+concluding in an assertion, where each step must succeed in order for
+the test case to continue.&nbsp; As another example, a test may
+require some "set up" to be performed that must be undone ("torn down"
+in JUnit parlance) once the test is complete.&nbsp; In this case, you
+could use Haskell's <tt>IO.bracket</tt> function to achieve the
+desired effect.
+<p>
+You can make a test case from an assertion by applying the
+<tt>TestCase</tt> constructor.&nbsp; For example,
+<tt>(TestCase&nbsp;(return&nbsp;()))</tt> is a test case that never
+fails, and
+<tt>(TestCase&nbsp;(assertEqual&nbsp;"for&nbsp;x,"&nbsp;3&nbsp;x))</tt>
+is a test case that checks that the value of <tt>x</tt> is 3.&nbsp;
+Additional ways to create test cases are described later under
+<a href="#AdvancedFeatures">Advanced Features</a>.
+
+<h3><a name="Tests"></a>Tests</h3>
+
+As soon as you have more than one test, you'll want to name them to
+tell them apart.&nbsp; As soon as you have more than several tests,
+you'll want to group them to process them more easily.&nbsp; So,
+naming and grouping are the two keys to managing collections of tests.
+<p>
+In tune with the "composite" design pattern [<a
+href="#DesignPatterns">1</a>], a <b>test</b> is defined as a package
+of test cases.&nbsp; Concretely, a test is either a single test case,
+a group of tests, or either of the first two identified by a label.
+<pre>
+    data Test = TestCase Assertion
+              | TestList [Test]
+              | TestLabel String Test
+</pre>
+There are three important features of this definition to note:
+<ul>
+<li>
+A <tt>TestList</tt> consists of a list of tests rather than a list of
+test cases.&nbsp; This means that the structure of a <tt>Test</tt> is
+actually a tree.&nbsp; Using a hierarchy helps organize tests just as
+it helps organize files in a file system.
+</li>
+<li>
+A <tt>TestLabel</tt> is attached to a test rather than to a test
+case.&nbsp; This means that all nodes in the test tree, not just test
+case (leaf) nodes, can be labeled.&nbsp; Hierarchical naming helps
+organize tests just as it helps organize files in a file system.
+</li>
+<li>
+A <tt>TestLabel</tt> is separate from both <tt>TestCase</tt> and
+<tt>TestList</tt>.&nbsp; This means that labeling is optional
+everywhere in the tree.&nbsp; Why is this a good thing?  Because of
+the hierarchical structure of a test, each constituent test case is
+uniquely identified by its path in the tree, ignoring all
+labels.&nbsp; Sometimes a test case's path (or perhaps its subpath
+below a certain node) is a perfectly adequate "name" for the test case
+(perhaps relative to a certain node).&nbsp; In this case, creating a
+label for the test case is both unnecessary and inconvenient.
+</li>
+</ul>
+<p>
+The number of test cases that a test comprises can be computed with
+<tt>testCaseCount</tt>.
+<pre>
+    testCaseCount :: Test -> Int
+</pre>
+<p>
+As mentioned above, a test is identified by its <b>path</b> in the
+test hierarchy.
+<pre>
+    data Node  = ListItem Int | Label String
+      deriving (Eq, Show, Read)
+
+    type Path = [Node]    -- Node order is from test case to root.
+</pre>
+Each occurrence of <tt>TestList</tt> gives rise to a <tt>ListItem</tt>
+and each occurrence of <tt>TestLabel</tt> gives rise to a
+<tt>Label</tt>.&nbsp; The <tt>ListItem</tt>s by themselves ensure
+uniqueness among test case paths, while the <tt>Label</tt>s allow you
+to add mnemonic names for individual test cases and collections of
+them.
+<p>
+Note that the order of nodes in a path is reversed from what you might
+expect: The first node in the list is the one deepest in the
+tree.&nbsp; This order is a concession to efficiency: It allows common
+path prefixes to be shared.
+<p>
+The paths of the test cases that a test comprises can be computed with
+<tt>testCasePaths</tt>.&nbsp; The paths are listed in the order in
+which the corresponding test cases would be executed.
+<pre>
+    testCasePaths :: Test -> [Path]
+</pre>
+<p>
+The three variants of <tt>Test</tt> can be constructed simply by
+applying <tt>TestCase</tt>, <tt>TestList</tt>, and <tt>TestLabel</tt>
+to appropriate arguments.&nbsp; Additional ways to create tests are
+described later under <a href="#AdvancedFeatures">Advanced
+Features</a>.
+<p>
+The design of the type <tt>Test</tt> provides great conciseness,
+flexibility, and convenience in specifying tests.&nbsp; Moreover, the
+nature of Haskell significantly augments these qualities:
+<ul>
+<li>
+Combining assertions and other code to construct test cases is easy
+with the <tt>IO</tt> monad.
+</li>
+<li>
+Using overloaded functions and special operators (see below),
+specification of assertions and tests is extremely compact.
+</li>
+<li>
+Structuring a test tree by value, rather than by name as in JUnit,
+provides for more convenient, flexible, and robust test suite
+specification.&nbsp; In particular, a test suite can more easily be
+computed "on the fly" than in other test frameworks.
+</li>
+<li>
+Haskell's powerful abstraction facilities provide unmatched support
+for test refactoring.
+</li>
+</ul>
+
+<h3><a name="AdvancedFeatures"></a>Advanced Features</h3>
+
+HUnit provides additional features for specifying assertions and tests
+more conveniently and concisely.&nbsp; These facilities make use of
+Haskell type classes.
+<p>
+The following operators can be used to construct assertions.
+<pre>
+    infix 1 @?, @=?, @?=
+
+    (@?) :: (AssertionPredicable t) => t -> String -> Assertion
+    pred @? msg = assertionPredicate pred >>= assertBool msg
+
+    (@=?) :: (Eq a, Show a) => a -> a -> Assertion
+    expected @=? actual = assertEqual "" expected actual
+
+    (@?=) :: (Eq a, Show a) => a -> a -> Assertion
+    actual @?= expected = assertEqual "" expected actual
+</pre>
+You provide a boolean condition and failure message separately to
+<tt>(@?)</tt>, as for <tt>assertBool</tt>, but in a different
+order.&nbsp; The <tt>(@=?)</tt> and <tt>(@?=)</tt> operators provide
+shorthands for <tt>assertEqual</tt> when no preface is required.&nbsp;
+They differ only in the order in which the expected and actual values
+are provided.&nbsp; (The actual value--the uncertain one--goes on the
+"?" side of the operator.)
+<p>
+The <tt>(@?)</tt> operator's first argument is something from which an
+assertion predicate can be made, that is, its type must be
+<tt>AssertionPredicable</tt>.
+<pre>
+    type AssertionPredicate = IO Bool
+
+    class AssertionPredicable t
+     where assertionPredicate :: t -> AssertionPredicate
+
+    instance AssertionPredicable Bool
+     where assertionPredicate = return
+
+    instance (AssertionPredicable t) => AssertionPredicable (IO t)
+     where assertionPredicate = (>>= assertionPredicate)
+</pre>
+The overloaded <tt>assert</tt> function in the <tt>Assertable</tt>
+type class constructs an assertion.
+<pre>
+    class Assertable t
+     where assert :: t -> Assertion
+
+    instance Assertable ()
+     where assert = return
+
+    instance Assertable Bool
+     where assert = assertBool ""
+
+    instance (ListAssertable t) => Assertable [t]
+     where assert = listAssert
+
+    instance (Assertable t) => Assertable (IO t)
+     where assert = (>>= assert)
+</pre>
+The <tt>ListAssertable</tt> class allows <tt>assert</tt> to be applied
+to <tt>[Char]</tt> (that is, <tt>String</tt>).
+<pre>
+    class ListAssertable t
+     where listAssert :: [t] -> Assertion
+
+    instance ListAssertable Char
+     where listAssert = assertString
+</pre>
+With the above declarations, <tt>(assert&nbsp;())</tt>,
+<tt>(assert&nbsp;True)</tt>, and <tt>(assert&nbsp;"")</tt> (as well as
+<tt>IO</tt> forms of these values, such as <tt>(return&nbsp;())</tt>)
+are all assertions that never fail, while <tt>(assert&nbsp;False)</tt>
+and <tt>(assert&nbsp;"some&nbsp;failure&nbsp;message")</tt> (and their
+<tt>IO</tt> forms) are assertions that always fail.&nbsp; You may
+define additional instances for the type classes <tt>Assertable</tt>,
+<tt>ListAssertable</tt>, and <tt>AssertionPredicable</tt> if that
+should be useful in your application.
+<p>
+The overloaded <tt>test</tt> function in the <tt>Testable</tt> type
+class constructs a test.
+<pre>
+    class Testable t
+     where test :: t -> Test
+
+    instance Testable Test
+     where test = id
+
+    instance (Assertable t) => Testable (IO t)
+     where test = TestCase . assert
+
+    instance (Testable t) => Testable [t]
+     where test = TestList . map test
+</pre>
+The <tt>test</tt> function makes a test from either an
+<tt>Assertion</tt> (using <tt>TestCase</tt>), a list of
+<tt>Testable</tt> items (using <tt>TestList</tt>), or a <tt>Test</tt>
+(making no change).
+<p>
+The following operators can be used to construct tests.
+<pre>
+    infix  1 ~?, ~=?, ~?=
+    infixr 0 ~:
+
+    (~?) :: (AssertionPredicable t) => t -> String -> Test
+    pred ~? msg = TestCase (pred @? msg)
+
+    (~=?) :: (Eq a, Show a) => a -> a -> Test
+    expected ~=? actual = TestCase (expected @=? actual)
+
+    (~?=) :: (Eq a, Show a) => a -> a -> Test
+    actual ~?= expected = TestCase (actual @?= expected)
+
+    (~:) :: (Testable t) => String -> t -> Test
+    label ~: t = TestLabel label (test t)
+</pre>
+<tt>(~?)</tt>, <tt>(~=?)</tt>, and <tt>(~?=)</tt> each make an
+assertion, as for <tt>(@?)</tt>, <tt>(@=?)</tt>, and <tt>(@?=)</tt>,
+respectively, and then a test case from that assertion.&nbsp;
+<tt>(~:)</tt> attaches a label to something that is
+<tt>Testable</tt>.&nbsp; You may define additional instances for the
+type class <tt>Testable</tt> should that be useful.
+
+<h2><a name="RunningTests"></a>Running Tests</h2>
+
+HUnit is structured to support multiple test controllers.&nbsp; The
+first subsection below describes the <a href="#TestExecution">test
+execution</a> characteristics common to all test controllers.&nbsp;
+The second subsection describes the
+<a href="#Text-BasedController">text-based controller</a> that is
+included with HUnit.
+
+<h3><a name="TestExecution">Test Execution</a></h3>
+
+All test controllers share a common test execution model.&nbsp; They
+differ only in how the results of test execution are shown.
+<p>
+The execution of a test (a value of type <tt>Test</tt>) involves the
+serial execution (in the <tt>IO</tt> monad) of its constituent test
+cases.&nbsp; The test cases are executed in a depth-first,
+left-to-right order.&nbsp; During test execution, four counts of test
+cases are maintained:
+<pre>
+    data Counts = Counts { cases, tried, errors, failures :: Int }
+      deriving (Eq, Show, Read)
+</pre>
+<ul>
+<li>
+<tt>cases</tt> is the number of test cases included in the test.&nbsp;
+This number is a static property of a test and remains unchanged
+during test execution.
+</li>
+<li>
+<tt>tried</tt> is the number of test cases that have been executed so
+far during the test execution.
+</li>
+<li>
+<tt>errors</tt> is the number of test cases whose execution ended with
+an unexpected exception being raised.&nbsp; Errors indicate problems
+with test cases, as opposed to the code under test.
+</li>
+<li>
+<tt>failures</tt> is the number of test cases whose execution asserted
+failure.&nbsp; Failures indicate problems with the code under test.
+</li>
+</ul>
+Why is there no count for test case successes?  The technical reason
+is that the counts are maintained such that the number of test case
+successes is always equal to
+<tt>(tried&nbsp;-&nbsp;(errors&nbsp;+&nbsp;failures))</tt>.&nbsp; The
+psychosocial reason is that, with test-centered development and the
+expectation that test failures will be few and short-lived, attention
+should be focused on the failures rather than the successes.
+<p>
+As test execution proceeds, three kinds of reporting event are
+communicated to the test controller.&nbsp; (What the controller does
+in response to the reporting events depends on the controller.)
+<ul>
+<li>
+<i>start</i> --
+Just prior to initiation of a test case, the path of the test case and
+the current counts (excluding the current test case) are reported.
+</li>
+<li>
+<i>error</i> --
+When a test case terminates with an error, the error message is
+reported, along with the test case path and current counts (including
+the current test case).
+</li>
+<li>
+<i>failure</i> --
+When a test case terminates with a failure, the failure message is
+reported, along with the test case path and current counts (including
+the current test case).
+</li>
+</ul>
+Typically, a test controller shows <i>error</i> and <i>failure</i>
+reports immediately but uses the <i>start</i> report merely to update
+an indication of overall test execution progress.
+
+<h3><a name="Text-BasedController">Text-Based Controller</a></h3>
+
+A text-based test controller is included with HUnit.
+<pre>
+    runTestText :: PutText st -> Test -> IO (Counts, st)
+</pre>
+<tt>runTestText</tt> is generalized on a <i>reporting scheme</i> given
+as its first argument.&nbsp; During execution of the test given as its
+second argument, the controller creates a string for each reporting
+event and processes it according to the reporting scheme.&nbsp; When
+test execution is complete, the controller returns the final counts
+along with the final state for the reporting scheme.
+<p>
+The strings for the three kinds of reporting event are as follows.
+<ul>
+<li>
+A <i>start</i> report is the result of the function
+<tt>showCounts</tt> applied to the counts current immediately prior to
+initiation of the test case being started.
+</li>
+<li>
+An <i>error</i> report is of the form
+"<tt>Error&nbsp;in:&nbsp;&nbsp;&nbsp;<i>path</i>\n<i>message</i></tt>",
+where <i>path</i> is the path of the test case in error, as shown by
+<tt>showPath</tt>, and <i>message</i> is a message describing the
+error.&nbsp; If the path is empty, the report has the form
+"<tt>Error:\n<i>message</i></tt>".
+</li>
+<li>
+A <i>failure</i> report is of the form
+"<tt>Failure&nbsp;in:&nbsp;<i>path</i>\n<i>message</i></tt>", where
+<i>path</i> is the path of the test case in error, as shown by
+<tt>showPath</tt>, and <i>message</i> is the failure message.&nbsp; If
+the path is empty, the report has the form
+"<tt>Failure:\n<i>message</i></tt>".
+</li>
+</ul>
+<p>
+The function <tt>showCounts</tt> shows a set of counts.
+<pre>
+    showCounts :: Counts -> String
+</pre>
+The form of its result is
+"<tt>Cases:&nbsp;<i>cases</i>&nbsp;&nbsp;Tried:&nbsp;<i>tried</i>&nbsp;&nbsp;Errors:&nbsp;<i>errors</i>&nbsp;&nbsp;Failures:&nbsp;<i>failures</i></tt>"
+where <i>cases</i>, <i>tried</i>, <i>errors</i>, and <i>failures</i>
+are the count values.
+<p>
+The function <tt>showPath</tt> shows a test case path.
+<pre>
+    showPath :: Path -> String
+</pre>
+The nodes in the path are reversed (so that the path reads from the
+root down to the test case), and the representations for the nodes are
+joined by '<tt>:</tt>' separators.&nbsp; The representation for
+<tt>(ListItem <i>n</i>)</tt> is <tt>(show n)</tt>.&nbsp; The
+representation for <tt>(Label <i>label</i>)</tt> is normally
+<i>label</i>.&nbsp; However, if <i>label</i> contains a colon or if
+<tt>(show <i>label</i>)</tt> is different from <i>label</i> surrounded
+by quotation marks--that is, if any ambiguity could exist--then
+<tt>(Label <i>label</i>)</tt> is represented as <tt>(show
+<i>label</i>)</tt>.
+<p>
+HUnit includes two reporting schemes for the text-based test
+controller.&nbsp; You may define others if you wish.
+<pre>
+    putTextToHandle :: Handle -> Bool -> PutText Int
+</pre>
+<tt>putTextToHandle</tt> writes error and failure reports, plus a
+report of the final counts, to the given handle.&nbsp; Each of these
+reports is terminated by a newline.&nbsp; In addition, if the given
+flag is <tt>True</tt>, it writes start reports to the handle as
+well.&nbsp; A start report, however, is not terminated by a
+newline.&nbsp; Before the next report is written, the start report is
+"erased" with an appropriate sequence of carriage return and space
+characters.&nbsp; Such overwriting realizes its intended effect on
+terminal devices.
+<pre>
+    putTextToShowS :: PutText ShowS
+</pre>
+<tt>putTextToShowS</tt> ignores start reports and simply accumulates
+error and failure reports, terminating them with newlines.&nbsp; The
+accumulated reports are returned (as the second element of the pair
+returned by <tt>runTestText</tt>) as a <tt>ShowS</tt> function (that
+is, one with type <tt>(String&nbsp;->&nbsp;String)</tt>) whose first
+argument is a string to be appended to the accumulated report lines.
+<p>
+HUnit provides a shorthand for the most common use of the text-based
+test controller.
+<pre>
+    runTestTT :: Test -> IO Counts
+</pre>
+<tt>runTestTT</tt> invokes <tt>runTestText</tt>, specifying
+<tt>(putTextToHandle stderr True)</tt> for the reporting scheme, and
+returns the final counts from the test execution.
+
+<h2><a name="ConstituentFiles">Constituent Files</a></h2>
+
+HUnit 1.0 consists of the following files.
+<dl>
+
+<dt> Guide.html
+<dd>
+This document.
+<dt> Example.hs
+<dd>
+Haskell module that includes the examples given in the <a
+href="#GettingStarted">Getting Started</a> section.&nbsp; Run this
+program to make sure you understand how to use HUnit.
+<dt> HUnit.lhs
+<dd>
+Haskell module that you import to use HUnit.
+<dt> HUnitBase.lhs
+<dd>
+Haskell module that defines HUnit's basic facilities.
+<dt> HUnitLang.lhs
+<dd>
+Haskell module that defines how assertion failure is signaled and
+caught.&nbsp; By default, it is a copy of
+<tt>HUnitLang98.lhs</tt>.&nbsp; Replace it by a copy of
+<tt>HUnitLangExc.lhs</tt> for more robust exception behavior.
+<dt> HUnitLang98.lhs
+<dd>
+Haskell module that defines generic assertion failure handling.&nbsp;
+It is compliant to Haskell 98 but catches only <tt>IO</tt> errors.
+<dt> HUnitLangExc.lhs
+<dd>
+Haskell module that defines more robust assertion failure
+handling.&nbsp; It catches more (though unfortunately not all) kinds
+of exceptions.&nbsp; However, it works only with Hugs (Dec. 2001 or
+later) and GHC (5.00 and later).
+<dt> HUnitTest98.lhs
+<dd>
+Haskell module that tests HUnit, assuming the generic assertion
+failure handling of <tt>HUnitLang98.lhs</tt>.
+<dt> HUnitTestBase.lhs
+<dd>
+Haskell module that defines testing support and basic (Haskell 98
+compliant) tests of HUnit (using HUnit, of course!).&nbsp; Contains
+more extensive and advanced examples of testing with HUnit.
+<dt> HUnitTestExc.lhs
+<dd>
+Haskell module that tests HUnit, assuming the extended assertion
+failure handling of <tt>HUnitLangExc.lhs</tt>.
+<dt> HUnitText.lhs
+<dd>
+Haskell module that defines HUnit's text-based test controller.
+<dt> License
+<dd>
+The license for use of HUnit.
+<dt> Terminal.lhs
+<dd>
+Haskell module that assists in checking the output of HUnit tests
+performed by the text-based test controller.
+<dt> TerminalTest.lhs
+<dd>
+Haskell module that tests <tt>Terminal.lhs</tt> (using HUnit, of
+course!).
+</dl>
+
+<h2><a name="References">References</a></h2>
+
+<dl>
+
+<dt>
+<a name="DesignPatterns"></a>[1] Gamma, E., et al. Design Patterns:
+Elements of Reusable Object-Oriented Software, Addison-Wesley,
+Reading, MA, 1995.
+<dd>
+The classic book describing design patterns in an object-oriented
+context.
+
+<dt>
+<a href="http://www.junit.org">http://www.junit.org</a>
+<dd>
+Web page for JUnit, the tool after which HUnit is modeled.
+
+<dt>
+<a href="http://junit.sourceforge.net/doc/testinfected/testing.htm">
+http://junit.sourceforge.net/doc/testinfected/testing.htm</a>
+<dd>
+A good introduction to test-first development and the use of JUnit.
+
+<dt>
+<a href="http://junit.sourceforge.net/doc/cookstour/cookstour.htm">
+http://junit.sourceforge.net/doc/cookstour/cookstour.htm</a>
+<dd>
+A description of the internal structure of JUnit.&nbsp; Makes for an
+interesting comparison between JUnit and HUnit.
+
+</dl>
+
+<p>
+<hr>
+
+The HUnit software and this guide were written by Dean Herington
+(<a href="mailto:heringto@cs.unc.edu">heringto@cs.unc.edu</a>).
+
+<p>
+HUnit development is supported by
+<a href="http://sourceforge.net">
+<img src="http://sourceforge.net/sflogo.php?group_id=46796&type=1"
+     width="88" height="31" border="0" alt="SourceForge.net Logo">
+</a>
+
+<p>
+[$Revision: 1.1 $ $Date: 2002/02/21 19:09:27 $]
+
+</body>
+</html>

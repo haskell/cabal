@@ -52,7 +52,7 @@ module Distribution.Package (
 #endif
   ) where
 
-import Distribution.Version(Version, showVersion)
+import Distribution.Version(Version(..), showVersion)
 import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
 
@@ -65,6 +65,7 @@ data PackageIdentifier
       deriving (Read, Show, Eq)
 
 showPackageId :: PackageIdentifier -> String
+showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
 showPackageId pkgid = 
   pkgName pkgid ++ '-': showVersion (pkgVersion pkgid)
 
