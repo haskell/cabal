@@ -25,11 +25,15 @@ import Distribution.Simple.Utils(pathJoin)
 
 import Text.PrettyPrint.HughesPJ
 import System(getEnv)
+import System.Directory (doesFileExist)
 
--- |Where ghc keeps the --user files.
-localPackageConfig :: IO FilePath
+
+-- |Where ghc keeps the --user files, the bool is for whether it exists
+localPackageConfig :: IO (FilePath, Bool)
 localPackageConfig = do u <- getEnv "HOME"
-                        return $ pathJoin [u, ".ghc-packages"]
+                        let f = pathJoin [u, ".ghc-packages"]
+                        b <- doesFileExist f
+                        return (f, b)
 -- -----------------------------------------------------------------------------
 -- GHC 6.2 PackageConfig type
 
