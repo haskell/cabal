@@ -65,8 +65,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withHappy   :: Maybe FilePath, -- ^Might be the location of the Happy executable.
         withAlex    :: Maybe FilePath, -- ^Might be the location of the Alex executable.
         withHsc2hs  :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
-        withCpphs   :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
-        executableDeps :: [(String,[PackageIdentifier])] -- FIX: No longer used?!
+        withCpphs   :: Maybe FilePath  -- ^Might be the location of the Cpphs executable.
   }
   deriving (Show, Read, Eq)
 

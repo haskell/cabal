@@ -47,8 +47,6 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       LocalBuildInfo(..),
  			  	      configure,
                                       localBuildInfoFile,
-                                      exeDeps,
-				      buildDepToDep,
                                       findProgram,
 #ifdef DEBUG
                                       hunitTests
@@ -69,20 +67,23 @@ import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Extension(extensionsToGHCFlag,
                          extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags(..),CompilerFlavor(..), Compiler(..))
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId, 
+			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage)
 import Distribution.Simple.Utils (die, withTempFile,maybeExit)
-import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
-			     parseVersion, showVersion)
+import Distribution.Version (Version(..), Dependency(..),
+			     parseVersion, showVersion, withinRange,
+			     showVersionRange)
 
-import Data.List (intersperse, nub)
+import Data.List (intersperse, nub, maximumBy)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt)
 import System.Cmd		( system )
+import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)
@@ -100,10 +101,6 @@ import Foreign.C
 #ifdef DEBUG
 import HUnit
 #endif
-
--- |Throws an error if it's not found.
-exeDeps :: String -> LocalBuildInfo -> [PackageIdentifier]
-exeDeps s d = fromMaybe (error "Incorrect executableDeps in .setup-config file.  Re-run configure?") (lookup s (executableDeps d))
 
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
@@ -169,14 +166,18 @@ configure pkg_descr cfg
         reportProgram "alex"    alex
         reportProgram "hsc2hs"  hsc2hs
         reportProgram "cpphs"   cpphs
+        -- FIXME: currently only GHC has hc-pkg
+        dep_pkgs <- if f' == GHC then do
+            ipkgs <-  getInstalledPackages comp (configUser cfg)
+	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
+          else return [PackageIdentifier pname (Version [] []) |
+                       Dependency pname _ <- buildDepends pkg_descr]
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
-                              packageDeps=map buildDepToDep (buildDepends pkg_descr),
+                              packageDeps=dep_pkgs,
                               withHaddock=haddock,
                               withHappy=happy, withAlex=alex,
-                              withHsc2hs=hsc2hs, withCpphs=cpphs,
-                              executableDeps = [(n, map buildDepToDep (buildDepends pkg_descr))
-                                                | Executable n _ _ <- executables pkg_descr]
+                              withHsc2hs=hsc2hs, withCpphs=cpphs
                              }
 
 -- |Return the explicit path if given, otherwise look for the program
@@ -192,16 +193,38 @@ reportProgram :: String -> Maybe FilePath -> IO ()
 reportProgram name Nothing = message ("No " ++ name ++ " found")
 reportProgram name (Just p) = message ("Using " ++ name ++ ": " ++ p)
 
--- |Converts build dependencies to real dependencies.  FIX: doesn't
--- set any version information - will need to query HC-PKG for this.
-buildDepToDep :: Dependency -> PackageIdentifier
 
--- if they specify the exact version, use that:
-buildDepToDep (Dependency s (ThisVersion v)) = PackageIdentifier s v
+-- | Test for a package dependency and record the version we have installed.
+configDependency :: [PackageIdentifier] -> Dependency -> IO PackageIdentifier
+configDependency ps (Dependency pkgname vrange) = do
+  let
+	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
+  --
+  case filter ok ps of
+    [] -> die ("cannot satisfy dependency " ++ 
+			pkgname ++ showVersionRange vrange)
+    qs -> let 
+	    pkg = maximumBy versions qs
+	    versions a b = pkgVersion a `compare` pkgVersion b
+	  in do message ("Dependency " ++ pkgname ++ showVersionRange vrange ++
+			 ": using " ++ showPackageId pkg)
+		return pkg
 
--- otherwise, calculate it from the installed module. FIX: not
--- implemented because HC-PKG doesn't yet do this.
-buildDepToDep (Dependency s _) = PackageIdentifier s (Version [] [])
+getInstalledPackages :: Compiler -> Bool -> IO [PackageIdentifier]
+getInstalledPackages comp user = do
+   message "Reading installed packages..."
+   withTempFile "." "" $ \tmp -> do
+      let user_flag = if user then " --user" else " --global"
+      res <- system (compilerPkgTool comp ++ user_flag ++ " list >" ++ tmp)
+      case res of
+        ExitFailure _ -> die ("cannot get package list")
+        ExitSuccess -> do
+	  str <- readFile tmp
+	  let str1 = unlines (filter (':' `notElem`) (lines str))
+	      str2 = filter (`notElem` ",()") str1
+	  case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
+	    [ps] -> return ps
+	    _   -> die "cannot parse package list"
 
 system_default_prefix :: PackageDescription -> IO String
 #ifdef mingw32_TARGET_OS

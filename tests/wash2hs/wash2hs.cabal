@@ -1,7 +1,7 @@
 Name: Wash-2hs
 Version: 1.4.34
 License: BSD3
-Build-Depends: text
+Build-Depends: text, lang
 
 executable: wash2hs
 hs-source-dir: hs
