@@ -105,17 +105,7 @@ data Version =
 	   versionTags :: [String]  -- really a bag
 		-- ^ A version can be tagged with an arbitrary list of strings.
 		-- The interpretation of the list of tags is entirely dependent
-		-- on the entity that this version applies to, but the following
-		-- conventions are recommended:
-		--
-		--  * a tag can be of the form @"name=value"@ to specify a
-		--    property, or simply @name@ to specify a boolean property.
-		--
-		--  * released versions should have the tag @"release"@,
-		--
-		--  * the date of a release or snapshot can be included by
-		--    giving the tag @"date=@/date/@"@, where /date/ is a
-		--    date readable by the 'Read' instance for 'ClockTime'.
+		-- on the entity that this version applies to.
 	}
   deriving (Read,Show)
 
@@ -132,25 +122,15 @@ instance Eq Version where
 
 -- Our conventions:
 --
---	* Released versions have the tag "release", and are printed
---	  with the branch only (e.g. 6.2.1)
---	  
---	* Snapshot versions have the tag "date=<date>" and are printed
---	  with the branch followed by '-<date>' (e.g. 6.2-12-Nov-2004).
+--	* Versions are of the form  A.B.C-tag1-tag2
+--
+--	* Ordering is determined by lexicographic ordering of the
+--	  numeric part of the version only.
 
 showVersion :: Version -> String
 showVersion (Version branch tags)
-  | "release" `elem` tags
-  = branch_str
-  | otherwise 
-  = case getDate tags of
-	Just date -> branch_str  ++ '-' : date
-	_         -> error "Distribution.Version.showVer: release or date required"
-  where branch_str = concat (intersperse "." (map show branch))
-
-	getDate [] = Nothing
-	getDate (('d':'a':'t':'e':'=':date):_) = Just date	
-	getDate (_:rest) = getDate rest
+  = concat (intersperse "." (map show branch)) ++ 
+    concat (map ('-':) tags)
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -374,12 +354,10 @@ branch2 = [1,2]
 branch3 = [1,2,3]
 branch4 = [1,2,3,4]
 
-release1 = Version{versionBranch=branch1, versionTags=["release"]}
-release2 = Version{versionBranch=branch2, versionTags=["release"]}
-release3 = Version{versionBranch=branch3, versionTags=["release"]}
-release4 = Version{versionBranch=branch4, versionTags=["release"]}
-snap     = Version{versionBranch=branch3, versionTags=["date=2003.10.31"]}
-snapdash = Version{versionBranch=branch3, versionTags=["date=2003-10-31"]}
+release1 = Version{versionBranch=branch1, versionTags=[]}
+release2 = Version{versionBranch=branch2, versionTags=[]}
+release3 = Version{versionBranch=branch3, versionTags=[]}
+release4 = Version{versionBranch=branch4, versionTags=[]}
 
 hunitTests :: [Test]
 hunitTests
@@ -388,10 +366,6 @@ hunitTests
             ~: (Right $ release1) ~=? doVersionParse "1",
        "released version 3" ~: "failed"
             ~: (Right $ release3) ~=? doVersionParse "1.2.3",
-       "simple dot date" ~: "failed" ~: Right snap
-            ~=? doVersionParse "1.2.3-2003.10.31",
-       "simple dash date" ~: "failed" ~: Right snapdash
-            ~=? doVersionParse "1.2.3-2003-10-31",
 
        -- Version ranges
        "Any version" ~: "failed"
