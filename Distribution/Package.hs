@@ -299,34 +299,28 @@ testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-foo-bar-bang\nLicens
 
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
-                                                 pkgVersion = Version {versionBranch = [0,1],
-                                                 versionTags = []}},
+                                                 pkgVersion = Version {versionBranch = [0,1,1,1,1],
+                                                 versionTags = ["date=foo"]}},
                     license = LGPL,
-                    copyright = "",
+                    copyright = "Free Text String",
                     maintainer = "",
-                    stability = "",
+                    stability = "Free Text String",
                     buildDepends = [Dependency "haskell-src" AnyVersion,
-                                    Dependency "HUnit-1.0" AnyVersion],
+                                    Dependency "HUnit"
+                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["date=foo"]))
+                                       (LaterVersion (Version [1,0,0] ["date=foo"])))],
 
                     allModules = ["Distribution.Package","Distribution.Version",
-                                  "Distribution.Misc","Distribution.Setup",
-                                  "Distribution.InstalledPackageInfo",
-                                  "Distribution.Make","Distribution.Simple",
-                                  "Distribution.Simple.Build",
-                                  "Distribution.Simple.Install","Distribution.Simple.SrcDist",
-                                  "Distribution.Simple.Configure","Distribution.Simple.Utils",
-                                  "Distribution.Simple.Register",
-                                  "Distribution.Simple.GHCPackageConfig",
-                                  "Distribution.GetOpt"],
+                                  "Distribution.Simple.GHCPackageConfig"],
 
-                    mainModules = [],
-                    cSources = [],
-                    hsSourceDir = ".",
-                    exposedModules = [],
+                    mainModules = ["Distribution.Main"],
+                    cSources = ["foo/bar/bang"],
+                    hsSourceDir = "src",
+                    exposedModules = ["Distribution.Void", "Foo.Bar"],
                     extensions = [],
-                    extraLibs = [],
-                    includeDirs = [],
-                    includes = [],
+                    extraLibs = ["libfoo", "bar", "bang"],
+                    includeDirs = ["foo/bar", "fang/fong"],
+                    includes = ["/foo/bar", "jedi/night"],
                     options = []
 }
 
@@ -372,29 +366,30 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
               TestLabel "license parsers" $ 
                         TestCase (sequence_ [assertRight ("license " ++ lName) lVal
                                                     (parse parseLicense "" lName)
-                                             | (lName, lVal) <- licenses])
+                                             | (lName, lVal) <- licenses]),
 
---              TestLabel "Required fields" $ TestCase $
---                 do assertRight "some fields"
---                       emptyPackageDescription{package=(PackageIdentifier "foo"
---                                                        (Version [0,0] ["date=asdf"]))}
---                       (doParseReqFields "Name: foo\nVersion: 0.0-asdf")
---                    assertRight "more fields foo"
---                       emptyPackageDescription{package=(PackageIdentifier "foo"
---                                                        (Version [0,0]["date=asdf"])),
---                                               license=GPL}
---                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
---                                          
---                    assertRight "required fields for foo"
---                       emptyPackageDescription{package=(PackageIdentifier "foo"
---                                                        (Version [0,0]["date=asdf"])),
---                                        license=GPL, copyright="2004 isaac jones"}
---                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL")
---                                          
---
---              TestLabel "Package description" $ TestCase $ 
---                 assertRight "entire package description" testPkgDescAnswer
---                                                          (parse parseDesc "" testPkgDesc),
+              TestLabel "Required fields" $ TestCase $
+                 do assertRight "some fields"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0] ["date=asdf"]))}
+                       (parseDescription "Name: foo\nVersion: 0.0-asdf")
+
+                    assertRight "more fields foo"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0]["date=asdf"])),
+                                               license=GPL}
+                       (parseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+
+                    assertRight "required fields for foo"
+                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                                                        (Version [0,0]["date=asdf"])),
+                                        license=GPL, copyright="2004 isaac jones"}
+                       (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
+                                          
+
+             TestLabel "Package description" $ TestCase $ 
+                assertRight "entire package description" testPkgDescAnswer
+                                                         (parseDescription testPkgDesc)
 
              ]
 
