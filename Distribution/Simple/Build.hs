@@ -54,7 +54,7 @@ import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   pathSeperatorStr, split, createIfNotExists,
-                                  mkLibName
+                                  mkLibName, moveSources
                                  )
 
 
@@ -71,12 +71,14 @@ import HUnit (Test)
 build :: FilePath -- ^Build location
          -> PackageDescription -> LocalBuildInfo -> IO ()
 build pref pkg_descr lbi = do
-  setupMessage "Building" pkg_descr
   createIfNotExists True pref
+  preprocessSources pkg_descr lbi pref
+  setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi
    NHC -> buildNHC pkg_descr lbi
-   _   -> die ("only building with GHC is implemented")
+   Hugs -> return ()
+   _   -> die ("building with GHC & NHC is implemented, preprocessing for hugs.")
 
 -- |FIX: For now, the target must contain a main module :(
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
@@ -129,6 +131,20 @@ objsuffix = ".o"
 
 dotToSep :: String -> String
 dotToSep s = concat $ intersperse pathSeperatorStr (split '.' s)
+
+-- |Copy and (possibly) preprocess sources from hsSourceDirs
+preprocessSources :: PackageDescription 
+		  -> LocalBuildInfo 
+		  -> FilePath           -- ^ Directory to put preprocessed 
+					-- sources in
+		  -> IO ()
+preprocessSources pkg_descr lbi pref = 
+    do
+    setupMessage "Preprocessing" pkg_descr
+    putStrLn (hsSourceDir pkg_descr)
+    moveSources (hsSourceDir pkg_descr) pref 
+		    (allModules pkg_descr) (mainModules pkg_descr)
+                    ["hs","lhs"] 
 
   -- Todo: includes, includeDirs
 

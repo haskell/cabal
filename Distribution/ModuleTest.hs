@@ -131,7 +131,7 @@ tests = [TestCase $
             instRetCode <- system "./setup install --user"
             let targetDir = ",tmp/lib/test-1.0/"
             checkTargetDir targetDir [".hs"]
-            assertEqual "install returned error code" ExitSuccess instRetCode
+            assertEqual "install HUGS returned error code" ExitSuccess instRetCode
          ]
 
 main :: IO ()
