@@ -209,9 +209,10 @@ buildHugs pkg_descr lbi verbose = do
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
             let exeMods = otherModules bi
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
-	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
+	    let exeDir = destDir `joinFileName` exeName exe
+	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-	    compileBuildInfo destDir (library pkg_descr >>= Just . hsSourceDir . libBuildInfo) exeMods bi
+	    compileBuildInfo exeDir (library pkg_descr >>= Just . hsSourceDir . libBuildInfo) exeMods bi
 	    compileFFI bi destMainFile
 	
 	compileBuildInfo :: FilePath

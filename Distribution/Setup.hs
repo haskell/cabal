@@ -111,7 +111,8 @@ data ConfigFlags = ConfigFlags {
         configAlex     :: Maybe FilePath, -- ^Alex path
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
-        configPrefix   :: Maybe FilePath  -- ^installation prefix
+        configPrefix   :: Maybe FilePath, -- ^installation prefix
+        configVerbose  :: Int             -- ^verbosity level
     }
     deriving (Show, Eq)
 
@@ -125,18 +126,21 @@ emptyConfigFlags = ConfigFlags {
         configAlex     = Nothing,
         configHsc2hs   = Nothing,
         configCpphs    = Nothing,
-        configPrefix   = Nothing
+        configPrefix   = Nothing,
+        configVerbose  = 0
     }
 
--- |Most of these flags are for Configure, but InstPrefix is for Install.
+-- |Most of these flags are for Configure, but InstPrefix is for Copy.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithCpphs FilePath
+          -- For install and register:
           | UserFlag | GlobalFlag
-          | HelpFlag
-          -- For install:
+          -- For copy:
           | InstPrefix FilePath
+          -- For everyone:
+          | HelpFlag
           | Verbose Int
 --          | Version?
           | Lift a
@@ -153,7 +157,7 @@ cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
 globalOptions = [
-  cmd_help, cmd_verbose
+  cmd_help
   ]
 
 liftCustomOpts :: [OptDescr a] -> [OptDescr (Flag a)]
@@ -184,7 +188,7 @@ lookupCommand name = find ((==name) . cmdName)
 
 printGlobalHelp :: IO ()
 printGlobalHelp = do pname <- getProgName
-                     let syntax_line = "Usage: " ++ pname ++ " [GLOBAL FLAGS] COMMAND [FLAGS]\n\nGlobal flags:"
+                     let syntax_line = "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n  or:  " ++ pname ++ " COMMAND [FLAGS]\n\nGlobal flags:"
                      putStrLn (usageInfo syntax_line globalOptions)
                      putStrLn "Commands:"
                      let maxlen = maximum [ length (cmdName cmd) | cmd <- commandList ]
@@ -198,7 +202,7 @@ printGlobalHelp = do pname <- getProgName
 
 printCmdHelp :: Cmd a -> [OptDescr a] -> IO ()
 printCmdHelp cmd opts = do pname <- getProgName
-                           let syntax_line = "Usage: " ++ pname ++ " [GLOBAL FLAGS] " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
+                           let syntax_line = "Usage: " ++ pname ++ " " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
                            putStrLn (usageInfo syntax_line (cmdOptions cmd ++ liftCustomOpts opts))
                            putStr (cmdDescription cmd)
 
@@ -231,8 +235,8 @@ configureCmd :: Cmd a
 configureCmd = Cmd {
         cmdName        = "configure",
         cmdHelp        = "Prepare to build the package.",
-        cmdDescription = "This is the long description for configure.\n", -- Multi-line!
-        cmdOptions     = [cmd_help,
+        cmdDescription = "",  -- This can be a multi-line description
+        cmdOptions     = [cmd_help, cmd_verbose,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
@@ -281,6 +285,7 @@ parseConfigureArgs cfg args customOpts =
             WithHsc2hs path   -> t { configHsc2hs   = Just path }
             WithCpphs path    -> t { configCpphs    = Just path }
             Prefix path       -> t { configPrefix   = Just path }
+            Verbose n         -> t { configVerbose  = n }
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
@@ -289,7 +294,7 @@ buildCmd :: Cmd a
 buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
-        cmdDescription = "This is the long description for build.\n", -- Multi-line!
+        cmdDescription = "",  -- This can be a multi-line description
         cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = BuildCmd
         }
@@ -326,7 +331,7 @@ cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
         cmdDescription = "Removes .hi, .o, preprocessed sources, etc.\n", -- Multi-line!
-        cmdOptions     = [cmd_help],
+        cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = CleanCmd
         }
 
@@ -417,7 +422,7 @@ sdistCmd :: Cmd a
 sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
-        cmdDescription = "This is the long description for sdist.\n", -- Multi-line!
+        cmdDescription = "",  -- This can be a multi-line description
         cmdOptions     = [cmd_help,cmd_verbose],
         cmdAction      = SDistCmd
         }
@@ -429,7 +434,7 @@ registerCmd :: Cmd a
 registerCmd = Cmd {
         cmdName        = "register",
         cmdHelp        = "Register this package with the compiler.",
-        cmdDescription = "This is the long description for register.\n", -- Multi-line!
+        cmdDescription = "",  -- This can be a multi-line description
         cmdOptions     = [cmd_help, cmd_verbose,
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
@@ -467,7 +472,7 @@ unregisterCmd :: Cmd a
 unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
-        cmdDescription = "This is the long description for unregister.\n", -- Multi-line!
+        cmdDescription = "",  -- This can be a multi-line description
         cmdOptions     = [cmd_help, cmd_verbose],
         cmdAction      = UnregisterCmd
         }
