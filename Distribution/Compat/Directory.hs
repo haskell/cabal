@@ -1,5 +1,5 @@
 module Distribution.Compat.Directory (
- 	findExecutable, copyFile, getHomeDirectory
+ 	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing, removeDirectoryRecursive
   ) where
 
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
@@ -8,7 +8,7 @@ module Distribution.Compat.Directory (
 
 #if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
 
-import System.Directory 	( findExecutable, copyFile, getHomeDirectory )
+import System.Directory 	( findExecutable, copyFile, getHomeDirectory,createDirectoryIfMissing,removeDirectoryRecursive )
 
 #else /* to end of file... */
 
@@ -18,7 +18,7 @@ import System.IO
 import Foreign
 import System.Directory
 import Distribution.Compat.Exception (bracket)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 #ifndef mingw32_TARGET_OS
 import System.Posix (getFileStatus,setFileMode,fileMode,accessTime,
 		     setFileMode,modificationTime,setFileTimes)
@@ -91,5 +91,31 @@ copyFile src dest
 
 getHomeDirectory :: IO FilePath
 getHomeDirectory = getEnv "HOME"
+
+createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
+		         -> FilePath -- ^ The path to the directory you want to make
+		         -> IO ()
+createDirectoryIfMissing parents file = do
+  b <- doesDirectoryExist file
+  case (b,parents, file) of 
+    (_,     _, "") -> return ()
+    (True,  _,  _) -> return ()
+    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) (tail (pathParents file))
+    (_, False,  _) -> createDirectory file
+
+removeDirectoryRecursive :: FilePath -> IO ()
+removeDirectoryRecursive startLoc = do
+  cont <- getDirectoryContents startLoc
+  sequence_ [rm (startLoc `joinFileName` x) | x <- cont, x /= "." && x /= ".."]
+  removeDirectory startLoc
+  where
+    rm :: FilePath -> IO ()
+    rm f = do temp <- try (removeFile f)
+              case temp of
+                Left e  -> do isDir <- doesDirectoryExist f
+                              -- If f is not a directory, re-throw the error
+                              unless isDir $ ioError e
+                              removeDirectoryRecursive f
+                Right _ -> return ()
 
 #endif

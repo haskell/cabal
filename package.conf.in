@@ -28,7 +28,6 @@ exposed-modules:
 	Distribution.Simple.Utils
 
 hidden-modules:
-	Distribution.Compat.Error,
 	Distribution.Compat.Exception,
 	Distribution.Compat.RawSystem,
 	Distribution.Compat.FilePath,

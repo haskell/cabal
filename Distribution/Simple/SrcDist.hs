@@ -50,7 +50,7 @@ module Distribution.Simple.SrcDist (
   )  where
 
 import Distribution.PackageDescription
-	(PackageDescription(..), BuildInfo(..), buildInfo, setupMessage, biModules)
+	(PackageDescription(..), BuildInfo(..), Executable(buildInfo), setupMessage, biModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Utils(moveSources, die)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)

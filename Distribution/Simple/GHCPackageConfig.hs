@@ -25,7 +25,11 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkLibDir)
 
+#ifndef __NHC__
 import Control.Exception (try)
+#else
+import IO (try)
+#endif
 import Control.Monad(unless)
 import Text.PrettyPrint.HughesPJ
 import System.Directory (doesFileExist, getPermissions, Permissions (..))

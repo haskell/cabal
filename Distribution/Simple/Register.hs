@@ -64,16 +64,16 @@ import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Simple.Utils (rawSystemExit, die, removeFileRecursive, createIfNotExists)
+import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.Install (hugsPackageDir, hugsProgramsDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
-import Distribution.Compat.Directory (copyFile)
+import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing,removeDirectoryRecursive)
 import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile)
-import System.IO (try)
+import System.IO.Error (try)
 
 import Control.Monad (when, unless)
 import Data.Maybe (isNothing, fromJust)
@@ -128,7 +128,7 @@ register pkg_descr lbi userInst
                               ++ config_flags)
       -- FIX (HUGS):
       Hugs -> do
-	createIfNotExists True (hugsPackageDir pkg_descr lbi)
+	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
 	copyFile installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
       _   -> die ("only registering with GHC is implemented")
@@ -206,8 +206,8 @@ unregister pkg_descr lbi = do
 	rawSystemExit (compilerPkgTool (compiler lbi))
 	    ["--remove-package=" ++ pkgName (package pkg_descr)]
     Hugs -> do
-        try $ removeFileRecursive (hugsPackageDir pkg_descr lbi)
-        try $ removeFileRecursive (hugsProgramsDir pkg_descr lbi)
+        try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
+        try $ removeDirectoryRecursive (hugsProgramsDir pkg_descr lbi)
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")

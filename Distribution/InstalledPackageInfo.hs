@@ -55,7 +55,7 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils (
-	StanzaField(..), singleStanza, PError(..),
+	StanzaField(..), singleStanza, ParseResult,
 	simpleField, listField, licenseField,
 	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, parseReadS, parseOptVersion, parseQuoted,
@@ -144,7 +144,7 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 -- -----------------------------------------------------------------------------
 -- Parsing
 
-parseInstalledPackageInfo :: String -> Either PError InstalledPackageInfo
+parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
 parseInstalledPackageInfo inp = do
   lines <- singleStanza inp
 	-- not interested in stanzas, so just allow blank lines in

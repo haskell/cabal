@@ -48,13 +48,13 @@ import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..),
 					biModules, withLib)
-import Distribution.Setup (CompilerFlavor(..), compilerFlavor)
+import Distribution.Setup (CompilerFlavor(..), Compiler(compilerFlavor))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, moduleToFilePath, die)
 import Control.Monad (when)
 import Data.Maybe (fromMaybe, maybeToList)
 import System.Exit (ExitCode(..))
-import System.Directory (removeFile)
+import System.Directory (removeFile, getModificationTime)
 import Distribution.Compat.FilePath
 	(splitFileExt, joinFileName, joinFileExt)
 
@@ -82,40 +82,49 @@ preprocessSources pkg_descr lbi handlers = do
 
     withLib pkg_descr () $ \ bi -> do
 	let biHandlers = localHandlers bi
-	sequence_ [preprocessModule [hsSourceDir bi] mod biHandlers |
+	sequence_ [preprocessModule [hsSourceDir bi] mod builtinSuffixes biHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
     setupMessage "Preprocessing executables for" pkg_descr
     foreachBuildInfo False pkg_descr $ \ bi -> do
 	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir)))
-                                     mod biHandlers |
+                                     mod builtinSuffixes biHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
 	  | otherwise = ["hs", "lhs"]
-	trivialHandlers = [(ext, Nothing) | ext <- builtinSuffixes]
-	localHandlers bi = trivialHandlers ++
-		[(ext, Just (h pkg_descr bi lbi)) | (ext, h) <- handlers]
+	localHandlers bi = [(ext, h pkg_descr bi lbi) | (ext, h) <- handlers]
 
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessModule
     :: [FilePath]			-- ^source directories
     -> String				-- ^module name
-    -> [(String, Maybe PreProcessor)]	-- ^possible preprocessors
+    -> [String]				-- ^builtin suffixes
+    -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ExitCode
-preprocessModule searchLoc mod handlers = do
-    srcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
-    case srcFiles of
-	[] -> die ("can't find source for " ++ mod ++ " in " ++ show searchLoc )
-	(srcFile:_) -> do
-	    let (srcStem, ext) = splitFileExt srcFile
-	    case fromMaybe (error "Internal error in preProcess module: Just expected")
-                     (lookup ext handlers) of -- FIX: can't fail?
-		Nothing -> return ExitSuccess
-		Just pp -> pp srcFile (srcStem `joinFileExt` "hs")
+preprocessModule searchLoc mod builtinSuffixes handlers = do
+    bsrcFiles <- moduleToFilePath searchLoc mod builtinSuffixes
+    psrcFiles <- moduleToFilePath searchLoc mod (map fst handlers)
+    case psrcFiles of
+	[] -> case bsrcFiles of
+	          [] -> die ("can't find source for " ++ mod ++ " in " ++ show searchLoc)
+	          _  -> return ExitSuccess
+	(psrcFile:_) -> do
+	    let (srcStem, ext) = splitFileExt psrcFile
+	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
+	                       (lookup ext handlers)
+	    recomp <- case bsrcFiles of
+	                  [] -> return True
+	                  (bsrcFile:_) -> do
+	                      btime <- getModificationTime bsrcFile
+	                      ptime <- getModificationTime psrcFile
+	                      return (btime < ptime)
+	    if recomp
+	      then pp psrcFile (srcStem `joinFileExt` "hs")
+	      else return ExitSuccess
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
