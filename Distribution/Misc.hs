@@ -41,9 +41,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Misc(Compiler, License(..), Dependency,
-                         Extension, Opt, LocalBuildInfo,
-                         CompilerFlavor(..),
+module Distribution.Misc(License(..), Dependency,
+                         Extension, Opt, LocalBuildInfo(..),
+                         CompilerFlavor(..), Compiler(..),
                          writePersistBuildConfig, getPersistBuildConfig)
     where
 
@@ -54,12 +54,12 @@ import Distribution.Version(VersionRange)
 -- ------------------------------------------------------------
 
 data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
-              deriving Show
+              deriving (Show, Eq)
 
 data Compiler = Compiler {flavor        :: CompilerFlavor,
                           path          :: FilePath,
                           packagingTool :: FilePath}
-                deriving Show
+                deriving (Show, Eq)
 
 emptyCompiler :: Compiler
 emptyCompiler = Compiler (OtherCompiler "") "" ""
@@ -71,6 +71,7 @@ emptyCompiler = Compiler (OtherCompiler "") "" ""
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {prefix :: String,
                                       compiler :: Compiler}
+     deriving (Show, Eq)
 
 emptyLocalBuildInfo :: LocalBuildInfo
 emptyLocalBuildInfo = LocalBuildInfo "" emptyCompiler

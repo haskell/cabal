@@ -44,7 +44,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Setup (parseArgs, Action(..)) where
 
 -- Local
-import Distribution.Misc(LocalBuildInfo)
+import Distribution.Misc(LocalBuildInfo, CompilerFlavor(..),
+                         Compiler(..), LocalBuildInfo(..))
+
+-- Misc:
+import HUnit (Test, (~:), (~=?))
 
 -- |Parse the standard command-line arguments
 parseArgs :: [String] -> CommandLineOpts
@@ -67,6 +71,7 @@ data Action = ConfigCmd LocalBuildInfo
             | TestCmd
 --             | Register
 --             | BDist
+    deriving (Show, Eq)
 
 
 -- options :: [ OptDescr (Options -> IO Options) ]
@@ -74,3 +79,32 @@ data Action = ConfigCmd LocalBuildInfo
 --     [Option "p" ["prefix"]
 --        (OptArg
 --           (\arg opt -> return opt{command=useinfo...
+
+
+
+hunitTests :: IO [Test]
+hunitTests =
+    do let basicGhcConfig = (ConfigCmd (LocalBuildInfo "/lib"
+                                     (Compiler GHC "/bin/ghc"
+                                                   "/bin/ghc-pkg")), [])
+       let realGhcConfig = (ConfigCmd (LocalBuildInfo "" (Compiler Hugs "" "")), [])
+       return ["config prefix hugs given package tool" ~: "failed" ~:
+                        basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
+                                                        "--with-compiler=/bin/ghc",
+                                                        "--with-pkg=/bin/hugs/ghc-pkg",
+                                                        "configure"]),
+               "find package tool" ~: "failed" ~:
+                        basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
+                                                       "--with-compiler=/bin/ghc",
+                                                       "configure"]),
+               "locate compiler and package tool" ~: "failed" ~: 
+                        realGhcConfig ~=? (parseArgs ["configure", "--ghc"]),
+               "should we default to the current compiler?" ~: "failed" ~:
+                        realGhcConfig ~=? (parseArgs ["configure"])
+              ]
+
+{- Testing ideas:
+   * IO to look for hugs and hugs-pkg (which hugs, etc)
+   * quickCheck to test permutations of arguments
+   * what other options can we over-ride with a command-line flag?
+-}
