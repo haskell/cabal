@@ -47,25 +47,32 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Extension (extensionsToGHCFlag, extensionsToNHCFlag)
+import Distribution.Extension (Extension(..),
+				extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), 
 			     		setupMessage, withLib, Executable(..),
-                                        libModules)
+                                        libModules, biModules)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
+import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   createIfNotExists,
-                                  mkLibName, moveSources, dotToSep
+                                  mkLibName, moveSources, dotToSep,
+				  moduleToFilePath, currentDir,
+				  getOptionsFromSource, stripComments
                                  )
 
 
 import Control.Monad (unless, when)
 import Control.Exception (try)
-import Data.List(nub)
-import System.Directory (removeFile)
-import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt)
+import Data.Char (isAlpha, isAlphaNum)
+import Data.List(nub, sort, isSuffixOf)
+import System.Directory (removeFile, copyFile)
+import System.Exit (ExitCode(..))
+import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
+				searchPathSeparator)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -165,22 +172,119 @@ constructGHCCmdLine buildInfo' deps =
 
 -- |
 buildHugs :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
-buildHugs pref pkg_descr lbi
-    = do -- move library-related source files into place.
-         withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} -> 
-                               do let targetDir = pref `joinFileName` (hsSourceDir buildInfo)
-                                  moveSources srcDir pref (libModules pkg_descr) ["hs", "lhs"]
-                           )
+buildHugs pref pkg_descr lbi = do
+    withLib pkg_descr $ compileBuildInfo pref
+    mapM_ (compileExecutable (pref `joinFileName` "programs"))
+	(executables pkg_descr)
+  where
+	{- FIX (HUGS): we need to create a shell script or bat file or
+	   something to call runhugs on the modulePath. -}
+	compileExecutable :: FilePath -> Executable -> IO ()
+	compileExecutable destDir (Executable {modulePath=mainPath, buildInfo=bi}) = do
+	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
+	    let destMainFile = destDir `joinFileName` mainPath
+	    copyModule (CPP `elem` extensions bi) srcMainFile destMainFile
+	    compileBuildInfo destDir bi
+	    compileFFI bi destMainFile
+	
+	compileBuildInfo :: FilePath -> BuildInfo -> IO ()
+	compileBuildInfo destDir bi = do
+	    -- Pass 1: copy or cpp files from src directory to build directory
+	    let useCpp = CPP `elem` extensions bi
+	    let srcDir = hsSourceDir bi
+	    fileLists <- sequence [moduleToFilePath srcDir mod suffixes |
+			mod <- biModules bi]
+	    let trimSrcDir
+		  | null srcDir || srcDir == currentDir = id
+		  | otherwise = drop (length srcDir + 1)
+	    let copy_or_cpp f =
+		    copyModule useCpp f (destDir `joinFileName` trimSrcDir f)
+	    mapM_ copy_or_cpp (concat fileLists)
+	    -- Pass 2: compile foreign stubs in build directory
+	    fileLists <- sequence [moduleToFilePath destDir mod suffixes |
+			mod <- biModules bi]
+	    mapM_ (compileFFI bi) (concat fileLists)
 
+	suffixes = ["hs", "lhs"]
 
-         {- FIX (HUGS): something smart must happen here; we need to
-            create a shell script or bat file or something to call
-            runhugs for running the executable file.  For now, ignore
-            executables -}
-         when (not $ null $ executables $ pkg_descr)
-              (setupMessage "Warning: executable stanzas ignored for HUGS.\nNot yet implemented in cabal." pkg_descr)
-         return ()
+	-- Copy or cpp a file from the source directory to the build directory.
+	copyModule :: Bool -> FilePath -> FilePath -> IO ()
+	copyModule cppAll srcFile destFile = do
+	    createIfNotExists True (dirOf destFile)
+	    (exts, opts) <- getOptionsFromSource srcFile
+	    let ghcOpts = hcOptions GHC opts
+	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then
+	    	cppFile srcFile destFile
+	      else
+	    	copyFile srcFile destFile
 
+	{- FIX (HUGS): assumes gcc -}
+	cppFile inFile outFile =
+	    rawSystemExit "cpp"
+		(["-traditional", "-P", "-D__HUGS__"] ++
+			ccOptions pkg_descr ++ [inFile, outFile])
+
+	compileFFI :: BuildInfo -> FilePath -> IO ()
+	compileFFI bi file = do
+	    -- Only compile FFI stubs for a file if it contains some FFI stuff
+	    inp <- readHaskellFile file
+	    when ("foreign" `elem` identifiers (stripComments False inp)) $ do
+		(_, opts) <- getOptionsFromSource file
+		let ghcOpts = hcOptions GHC opts
+		let srcDir = hsSourceDir bi
+		let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
+		let incs = uniq (sort (includeOpts ghcOpts ++ pkg_incs))
+		let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
+		let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
+		cfiles <- getCFiles file
+		let cArgs =
+			ccOptions pkg_descr ++
+			map (joinFileName srcDir) cfiles ++
+			["-L" ++ dir | dir <- extraLibDirs bi] ++
+			ldOptions pkg_descr ++
+			["-l" ++ lib | lib <- extraLibs bi] ++
+			concat [["-framework", f] | f <- frameworks pkg_descr]
+		rawSystemExit ffihugs (hugsArgs ++ file : cArgs)
+
+	ffihugs = compilerPath (compiler lbi)
+
+	includeOpts :: [String] -> [String]
+	includeOpts [] = []
+	includeOpts ("-#include" : arg : opts) = arg : includeOpts opts
+	includeOpts (_ : opts) = includeOpts opts
+
+	-- get C file names from CFILES pragmas throughout the source file
+	getCFiles :: FilePath -> IO [String]
+	getCFiles file = do
+	    inp <- readHaskellFile file
+	    return [cfile |
+		"{-#" : "CFILES" : rest <-
+			map words $ lines $ stripComments True inp,
+		last rest == "#-}",
+		cfile <- init rest]
+
+	-- List of variable identifiers (and reserved words) in a source file.
+	identifiers :: String -> [String]
+	identifiers cs = case dropWhile (not . isStartChar) cs of
+	    [] -> []
+	    rest -> ident : identifiers cs'
+	      where (ident, cs') = span isFollowChar rest
+
+	isStartChar c = c == '_' || isAlpha c
+	isFollowChar c = c == '_' || c == '\'' || isAlphaNum c
+
+	-- Get the non-literate source of a Haskell module.
+	readHaskellFile :: FilePath -> IO String
+	readHaskellFile file = do
+	    text <- readFile file
+	    return $ if ".lhs" `isSuffixOf` file then unlit file text else text
+
+hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
+hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
+
+uniq :: Ord a => [a] -> [a]
+uniq [] = []
+uniq (x:xs) = x : uniq (dropWhile (== x) xs)
 
 objsuffix :: String
 objsuffix = "o"
