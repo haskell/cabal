@@ -46,7 +46,8 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       LocalBuildInfo(..),
  			  	      configure,
-                                      hunitTests
+                                      hunitTests,
+                                      localBuildInfoFile
                                      )
     where
 

@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Register (
 	register,
 	unregister,
+        installedPkgConfigFile,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -84,7 +85,7 @@ register pkg_descr lbi userInst = do
    _   -> die ("only registering with GHC is implemented")
 
 installedPkgConfigFile :: String
-installedPkgConfigFile = "installed-pkg-config"
+installedPkgConfigFile = ".installed-pkg-config"
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
