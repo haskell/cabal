@@ -264,11 +264,7 @@ defaultMainWorker pkg_descr_in action args hooks
                     Just h -> do maybeDesc <- (f h) $ i
                                  case maybeDesc of
                                   Nothing -> return pkg_descr_in
-                                  Just x  -> return x
-        postHook f = case hooks of
-                      Nothing -> return ExitSuccess
-                      Just h  -> f h
-
+                                  Just x  -> return (unionPackageDescription pkg_descr_in x)
         hookOrInArgs :: (UserHooks -> (a -> b -> IO (Maybe PackageDescription)))
                      -> a
                      -> b
@@ -279,7 +275,10 @@ defaultMainWorker pkg_descr_in action args hooks
                     Just h -> do maybeDesc <- (f h) a i
                                  case maybeDesc of
                                   Nothing -> return pkg_descr_in
-                                  Just x  -> return x
+                                  Just x  -> return (unionPackageDescription pkg_descr_in x)
+        postHook f = case hooks of
+                      Nothing -> return ExitSuccess
+                      Just h  -> f h
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
