@@ -28,15 +28,15 @@ import Distribution.Simple.Install (mkLibDir)
 import Control.Exception (try)
 import Control.Monad(unless)
 import Text.PrettyPrint.HughesPJ
-import System.Environment(getEnv)
 import System.Directory (doesFileExist, getPermissions, Permissions (..))
 import Distribution.Compat.FilePath (joinFileName)
+import Distribution.Compat.Directory (getHomeDirectory)
 
 -- |Where ghc keeps the --user files.
 -- |return the file, whether it exists, and whether it's readable
 
 localPackageConfig :: IO FilePath
-localPackageConfig = do u <- getEnv "HOME"
+localPackageConfig = do u <- getHomeDirectory
                         return $ (u `joinFileName` ".ghc-packages")
 
 -- |If the package file doesn't exist, we should try to create it.  If

@@ -1,5 +1,5 @@
 module Distribution.Compat.Directory (
- 	findExecutable, copyFile
+ 	findExecutable, copyFile, getHomeDirectory
   ) where
 
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 603
@@ -8,7 +8,7 @@ module Distribution.Compat.Directory (
 
 #if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
 
-import System.Directory 	( findExecutable, copyFile )
+import System.Directory 	( findExecutable, copyFile, getHomeDirectory )
 
 #else /* to end of file... */
 
@@ -88,5 +88,8 @@ copyFile src dest
                 when (count > 0) $ do hPutBuf hDest buffer count
                                       copyContents hSrc hDest buffer
 #endif
+
+getHomeDirectory :: IO FilePath
+getHomeDirectory = getEnv "HOME"
 
 #endif
