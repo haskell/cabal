@@ -444,7 +444,7 @@ registerCmd = Cmd {
         cmdAction      = RegisterCmd False
         }
 
--- | Flags to @register@: (user package, verbose)
+-- | Flags to @register@ and @unregister@: (user package, verbose)
 type RegisterFlags = (Bool,Int)
 
 parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
