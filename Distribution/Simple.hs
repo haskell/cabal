@@ -134,7 +134,7 @@ defaultMainNoRead pkg_descr
                 ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		install buildPref pkg_descr localbuildinfo mprefix
+		install buildPref pkg_descr localbuildinfo mprefix uInst
                 when (isNothing mprefix && hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo uInst)
 

@@ -72,7 +72,7 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- Registration
 
--- |Be sure to call writeInstalledConfig first.  If the --uesr flag
+-- |Be sure to call writeInstalledConfig first.  If the --user flag
 -- was passed, and ~/.ghc-packages is writable, or can be created,
 -- then we use that file, perhaps creating it.
 
@@ -97,6 +97,8 @@ register pkg_descr lbi userInst = do
                               ++ (if userInst
                                   then ["--config-file=" ++ localConf]
                                   else []))
+   -- FIX (HUGS):
+   Hugs -> setupMessage "Warning: Hugs has no packaging tool\nLibrary files will just be moved into place." pkg_descr
    _   -> die ("only registering with GHC is implemented")
 
 -- |Register doesn't drop the register info file, it must be done in a separate step.
@@ -105,6 +107,7 @@ writeInstalledConfig pkg_descr lbi = do
   case compilerFlavor (compiler lbi) of
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
              writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+   Hugs -> return ()
    _   -> die ("only registering with GHC is implemented")
 
 installedPkgConfigFile :: String

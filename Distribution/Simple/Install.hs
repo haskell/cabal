@@ -55,15 +55,16 @@ module Distribution.Simple.Install (
 #endif
 
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..),
-                             showPackageId, setupMessage, hasLibs)
+                             showPackageId, setupMessage, hasLibs, withLib)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
-import Distribution.Simple.Utils(moveSources,
+import Distribution.Simple.Utils(moveSources, rawSystemExit,
                                  mkLibName, pathJoin,
                                  copyFile, die, createIfNotExists
                                 )
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when)
+import Data.Maybe(maybeToList)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -73,15 +74,25 @@ import HUnit (Test)
 install :: FilePath  -- ^build location
         -> PackageDescription -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
+        -> Bool -- ^Install for user?
         -> IO ()
-install buildPref pkg_descr lbi install_prefixM = do
+install buildPref pkg_descr lbi install_prefixM uInst = do
   let libPref = mkLibDir pkg_descr lbi install_prefixM
   let binPref = mkBinDir pkg_descr lbi install_prefixM
-  setupMessage ("Installing: " ++ libPref ++ "&" ++ binPref) pkg_descr
+  setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
-     Hugs -> do when (hasLibs pkg_descr) (installHugs libPref buildPref pkg_descr)
+     Hugs -> do -- FIX (HUGS): fix 'die' checks commands below.
+                when uInst (die "Hugs cannot yet install user-only packages.")
+                withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
+                                     do let targetDir = pathJoin [buildPref,
+                                                                  srcDir]
+                                        let args = targetDir
+                                                    : (maybeToList install_prefixM)
+                                        let hugsPkg = compilerPkgTool $ compiler $ lbi
+                                        rawSystemExit hugsPkg args)
+                -- FIX (HUGS): Install executables, still needs work in build step
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
