@@ -1,3 +1,4 @@
+CABALVERSION=0.4
 GHCFLAGS= --make -W -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
@@ -118,15 +119,21 @@ pushdist: pushall dist
 	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
 #	rm -f /tmp/cabal-code.tgz
 
+deb: dist
+	cd $(TMPDISTLOC) && ln -s $(CABALBALL) haskell-cabal_$(CABALVERSION).orig.tar.gz
+	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL)
+	mv $(TMPDISTLOC)/cabal $(TMPDISTLOC)/haskell-cabal-$(CABALVERSION)
+	cd $(TMPDISTLOC)/haskell-cabal-$(CABALVERSION) && debuild
+
 $(CABALBALL):
+	rm -rf /tmp/cabal* /tmp/Cabal*
+	rm -rf $(TMPDISTLOC)
 	darcs dist
 	mv Cabal.tar.gz $(CABALBALL)
 
 TMPDISTLOC=/tmp/cabaldist
 
 dist: haddock $(CABALBALL)
-	rm -rf /tmp/cabal* /tmp/Cabal*
-	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
 	mv $(CABALBALL) $(TMPDISTLOC)
 	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL) && mv Cabal cabal
@@ -135,6 +142,6 @@ dist: haddock $(CABALBALL)
 	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
 	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal/doc
 
-	cd $(TMPDISTLOC) && tar -zcvf /tmp/cabal-code.tgz cabal
+	cd $(TMPDISTLOC) && tar -zcvf $(CABALBALL) cabal
 #	rm -f /tmp/Cabal.tar.gz
 #	rm -rf /tmp/cabal
