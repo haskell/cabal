@@ -98,7 +98,7 @@ prepareDir :: Int       -- ^verbose
            -> [String] -- ^Modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods bi@BuildInfo{hsSourceDir=srcDir}
+prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
          moveSources verbose srcDir pref mods (suff ++ ["hs", "lhs"])
