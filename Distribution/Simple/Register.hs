@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Register (
 	register,
 	unregister,
+        writeInstalledConfig,
         installedPkgConfigFile,
 #ifdef DEBUG
         hunitTests
@@ -60,6 +61,7 @@ import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageC
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
 import System(getEnv)
+import System.Directory(doesFileExist)
 
 import Control.Monad (when, unless)
 
@@ -70,6 +72,7 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- Registration
 
+-- |Be sure to call writeInstalledConfig first
 register :: PackageDescription -> LocalBuildInfo
          -> Bool -- ^Install in the user's database?
          -> IO ()
@@ -80,11 +83,20 @@ register pkg_descr lbi userInst = do
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
              (localConf, pkgConfExists) <- GHC.localPackageConfig
              unless pkgConfExists $ writeFile localConf "[]\n"
-             writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+             instConfExists <- doesFileExist installedPkgConfigFile
+             unless instConfExists (writeInstalledConfig pkg_descr lbi)
              rawSystemExit (compilerPkgTool (compiler lbi))
 	                     (["--auto-ghci-libs", "--add-package",
                                "--input-file="++installedPkgConfigFile]
                               ++ (if userInst then ["--config-file=" ++ localConf] else []))
+   _   -> die ("only registering with GHC is implemented")
+
+-- |Register doesn't drop the register info file, it must be done in a separate step.
+writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> IO ()
+writeInstalledConfig pkg_descr lbi = do
+  case compilerFlavor (compiler lbi) of
+   GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
+             writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
    _   -> die ("only registering with GHC is implemented")
 
 installedPkgConfigFile :: String
