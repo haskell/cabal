@@ -7,4 +7,5 @@ Extensions: ForeignFunctionInterface
 
 Executable: testA
 Modules: A, Main
+Main-is: Main.hs
 Extensions: OverlappingInstances
