@@ -44,7 +44,7 @@ hugsbootstrap:
 	mkdir dist/hugs
 	cp -r Distribution dist/tmp
 	hugs-package dist/tmp dist/hugs
-	cp Setup.lhs Setup.description dist/hugs
+	cp Setup.lhs Cabal.cabal dist/hugs
 
 hugsinstall: hugsbootstrap
 	cd dist/hugs && ./Setup.lhs configure --hugs
