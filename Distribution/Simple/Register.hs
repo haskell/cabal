@@ -57,10 +57,13 @@ import Control.Monad (when)
 -- -----------------------------------------------------------------------------
 -- Registration
 
-register :: PackageDescription -> LocalBuildInfo -> IO ()
-register pkg_descr lbi = do
+register :: PackageDescription -> LocalBuildInfo
+         -> Bool -- ^Install in the user's database? FIX: doesn't use this yet.
+         -> IO ()
+register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
-  
+  when userInst (putStrLn "Would install for --user, but not implemented")
+
   case compilerFlavor (compiler lbi) of
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
              writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
