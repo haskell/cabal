@@ -91,8 +91,8 @@ data Action = ConfigCmd ConfigFlags       -- config
             | ProgramaticaCmd             -- pfesetup
             | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
-            | RegisterCmd Bool            -- register (--user flag)
-            | UnregisterCmd Bool          -- unregister (--user flag)
+            | RegisterCmd   Bool Bool     -- register (--user flag, --gen-script)
+            | UnregisterCmd Bool Bool     -- unregister (--user flag, --gen-script)
 	    | HelpCmd			  -- help
 --            | NoCmd -- error case, help case.
 --             | TestCmd 1.0?
@@ -137,8 +137,10 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithCpphs FilePath
-          -- For install and register:
+          -- For install, register, and unregister:
           | UserFlag | GlobalFlag
+          -- for register & unregister
+          | GenScriptFlag
           -- For copy:
           | InstPrefix FilePath
           -- For everyone:
@@ -447,13 +449,15 @@ registerCmd = Cmd {
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
-               "(default) upon registration, register this package in the system-wide package database"
+               "(default) upon registration, register this package in the system-wide package database",
+           Option "" ["gen-script"] (NoArg GenScriptFlag)
+               "Instead of performing the register command, generate a script to register later"
            ],
-        cmdAction      = RegisterCmd False
+        cmdAction      = RegisterCmd False False
         }
 
--- | Flags to @register@ and @unregister@: (user package, verbose)
-type RegisterFlags = (Bool,Int)
+-- | Flags to @register@ and @unregister@: (user package, gen-script, verbose)
+type RegisterFlags = (Bool, Bool, Int)
 
 parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                      IO (RegisterFlags, [a], [String])
@@ -467,12 +471,13 @@ parseRegisterArgs cfg args customOpts =
     (_, _, errs) -> do putStrLn "Errors: "
                        mapM_ putStrLn errs
                        exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) (uFlag,verbose) = updateCfg flags $
+  where updateCfg (fl:flags) (uFlag, genScriptFlag, verbose) = updateCfg flags $
           case fl of
-            UserFlag        -> (True,verbose)
-            GlobalFlag      -> (False,verbose)
-            Verbose n       -> (uFlag,n)
-            Lift _          -> (uFlag,verbose)
+            UserFlag        -> (True, genScriptFlag, verbose)
+            GlobalFlag      -> (False, genScriptFlag, verbose)
+            Verbose n       -> (uFlag,genScriptFlag, n)
+            GenScriptFlag   -> (uFlag, True, verbose)
+            Lift _          -> (uFlag,genScriptFlag, verbose)
             _               -> error $ "Unexpected flag!"
         updateCfg [] t = t
 
@@ -485,9 +490,12 @@ unregisterCmd = Cmd {
            Option "" ["user"] (NoArg UserFlag)
                "unregister this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
-               "(default) unregister this package in the system-wide package database"
+               "(default) unregister this package in the system-wide package database",
+           Option "" ["gen-script"] (NoArg GenScriptFlag)
+               "Instead of performing the unregister command, generate a script to unregister later"
+
            ],
-        cmdAction      = UnregisterCmd False
+        cmdAction      = UnregisterCmd False False
         }
 
 parseUnregisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->

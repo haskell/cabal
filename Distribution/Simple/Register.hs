@@ -99,13 +99,12 @@ unregScriptLocation = "unregister.sh"
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi (userInst,verbose)
+register pkg_descr lbi (userInst, genScript, verbose)
   | isNothing (library pkg_descr) = do
     setupMessage "No package to register" pkg_descr
     return ()
   | otherwise = do
-    let writeRegScript = verbose > 10 -- FIX, thread new flag.
-    setupMessage (if writeRegScript
+    setupMessage (if genScript
                      then ("Writing registration script: " ++ regScriptLocation)
                      else "Registering")
                  pkg_descr
@@ -121,13 +120,13 @@ register pkg_descr lbi (userInst,verbose)
 			  GHC.maybeCreateLocalPackageConfig
 		          localConf <- GHC.localPackageConfig
 			  pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-		          when (not pkgConfWriteable && not writeRegScript)
+		          when (not pkgConfWriteable && not genScript)
                                    $ userPkgConfErr localConf
 			  return ["--config-file=" ++ localConf]
 		else return []
 
         instConfExists <- doesFileExist installedPkgConfigFile
-        when (not instConfExists && not writeRegScript) $ do
+        when (not instConfExists && not genScript) $ do
           when (verbose > 0) $
             putStrLn ("create "++installedPkgConfigFile)
           writeInstalledConfig pkg_descr lbi
@@ -135,7 +134,7 @@ register pkg_descr lbi (userInst,verbose)
 	let register_flags 
 		| ghc_63_plus = ["update", installedPkgConfigFile]
 		| otherwise   = "--update-package":
-				 if writeRegScript
+				 if genScript
                                     then []
                                     else ["--input-file="++installedPkgConfigFile]
         
@@ -144,7 +143,7 @@ register pkg_descr lbi (userInst,verbose)
                         ++ config_flags)
         let pkgTool = compilerPkgTool (compiler lbi)
 
-        if writeRegScript
+        if genScript
          then rawSystemPipe regScriptLocation verbose
                            (showInstalledConfig pkg_descr lbi)
                            pkgTool allFlags
@@ -229,7 +228,7 @@ mkInstalledPackageInfo pkg_descr lbi
 -- Unregistration
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
-unregister pkg_descr lbi (user_unreg, verbose) = do
+unregister pkg_descr lbi (user_unreg, genScript, verbose) = do
   setupMessage "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
   let theName = pkgName (package pkg_descr)
@@ -248,7 +247,7 @@ unregister pkg_descr lbi (user_unreg, verbose) = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",theName]
                         else ["--remove-package="++theName]
-	rawSystemEmit unregScriptLocation (verbose>10) verbose (compilerPkgTool (compiler lbi))
+	rawSystemEmit unregScriptLocation genScript verbose (compilerPkgTool (compiler lbi))
 	    (removeCmd++config_flags)
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)

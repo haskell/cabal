@@ -159,11 +159,11 @@ defaultMainNoRead pkg_descr
 
             SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
 
-            RegisterCmd uInst -> basicCommand "Register" "make register"
-                                              (parseRegisterArgs (uInst,0) args [])
+            RegisterCmd uInst genScript -> basicCommand "Register" "make register"
+                                           (parseRegisterArgs (uInst,genScript, 0) args [])
 
-            UnregisterCmd uInst -> basicCommand "Unregister" "make unregister"
-                                              (parseUnregisterArgs (uInst, 0) args [])
+            UnregisterCmd uInst genScript -> basicCommand "Unregister" "make unregister"
+                                           (parseUnregisterArgs (uInst, genScript, 0) args [])
             ProgramaticaCmd -> basicCommand "Programatica" "make programatica"
                                         (parseProgramaticaArgs args [])
 
