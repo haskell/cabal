@@ -55,13 +55,20 @@ import Distribution.Simple.Default()
 import Distribution.Simple.Install()
 import Distribution.Simple.Build()
 
-import HUnit(runTestTT, Test(TestList))
+import HUnit(runTestTT, Test(..))
+
+label t = "-= " ++ t ++ " =-"
+
+runTestTT' t@(TestList _) = runTestTT t
+runTestTT'  (TestLabel l t)
+    = putStrLn (label l) >> runTestTT t
+runTestTT' t = runTestTT t
 
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupTests <- Distribution.Setup.hunitTests
-          runTestTT $ TestList setupTests
+          mapM runTestTT' setupTests
           return ()
 
 -- Local Variables:
