@@ -64,7 +64,7 @@ import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
 				  getOptionsFromSource, stripComments
                                  )
 
-
+import Data.Maybe(maybeToList)
 import Control.Monad (unless, when)
 import Control.Exception (try)
 import Data.List(nub, sort, isSuffixOf)
@@ -125,7 +125,7 @@ buildGHC pkg_descr lbi = do
                   "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
                   "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
                  ]
-              ++ constructGHCCmdLine buildInfo' (packageDeps lbi)
+              ++ constructGHCCmdLine Nothing buildInfo' (packageDeps lbi)
               ++ (exposedModules buildInfo' ++ hiddenModules buildInfo')
       unless (null (hiddenModules buildInfo' ++ exposedModules buildInfo')) $
         rawSystemExit ghcPath args
@@ -160,7 +160,8 @@ buildGHC pkg_descr lbi = do
                              "-hidir", exeDir,
                              "-o",     targetDir `joinFileName` exeName'
                             ]
-                         ++ constructGHCCmdLine exeBi (exeDeps exeName' lbi)
+                         ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir)
+                                                exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions pkg_descr
                  rawSystemExit ghcPath args
@@ -169,11 +170,15 @@ buildGHC pkg_descr lbi = do
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
 
-constructGHCCmdLine :: BuildInfo -> [PackageIdentifier] -> [String]
-constructGHCCmdLine buildInfo' deps = 
+constructGHCCmdLine :: Maybe FilePath  -- If we're building an executable, we need the library's filepath
+                    -> BuildInfo
+                    -> [PackageIdentifier]
+                    -> [String]
+constructGHCCmdLine mSrcLoc buildInfo' deps = 
     -- Unsupported extensions have already been checked by configure
     let flags = snd $ extensionsToGHCFlag (extensions buildInfo')
      in [ "--make", "-i" ++ hsSourceDir buildInfo' ]
+     ++ maybe []  (\l -> ["-i" ++ l]) mSrcLoc
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes buildInfo' ]
      ++ nub (flags ++ hcOptions GHC (options buildInfo'))
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
@@ -182,7 +187,7 @@ constructGHCCmdLine buildInfo' deps =
 buildHugs :: PackageDescription -> LocalBuildInfo -> IO ()
 buildHugs pkg_descr lbi = do
     let pref = buildDir lbi
-    withLib pkg_descr $ compileBuildInfo pref
+    withLib pkg_descr $ compileBuildInfo pref Nothing
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
 	(executables pkg_descr)
   where
@@ -191,15 +196,18 @@ buildHugs pkg_descr lbi = do
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
 	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) srcMainFile destMainFile
-	    compileBuildInfo destDir bi
+	    compileBuildInfo destDir (library pkg_descr >>= Just . hsSourceDir) bi
 	    compileFFI bi destMainFile
 	
-	compileBuildInfo :: FilePath -> BuildInfo -> IO ()
-	compileBuildInfo destDir bi = do
+	compileBuildInfo :: FilePath
+                         -> Maybe FilePath -- ^The library source dir, if building exes
+                         -> BuildInfo -> IO ()
+	compileBuildInfo destDir mLibSrcDir bi = do
 	    -- Pass 1: copy or cpp files from src directory to build directory
 	    let useCpp = CPP `elem` extensions bi
-	    let srcDir = hsSourceDir bi
-	    fileLists <- sequence [moduleToFilePath srcDir mod suffixes |
+            let srcDir = hsSourceDir bi
+	    let srcDirs = srcDir:(maybeToList mLibSrcDir)
+	    fileLists <- sequence [moduleToFilePath srcDirs mod suffixes |
 			mod <- biModules bi]
 	    let trimSrcDir
 		  | null srcDir || srcDir == currentDir = id
@@ -208,7 +216,7 @@ buildHugs pkg_descr lbi = do
 		    copyModule useCpp f (destDir `joinFileName` trimSrcDir f)
 	    mapM_ copy_or_cpp (concat fileLists)
 	    -- Pass 2: compile foreign stubs in build directory
-	    fileLists <- sequence [moduleToFilePath destDir mod suffixes |
+	    fileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
 			mod <- biModules bi]
 	    mapM_ (compileFFI bi) (concat fileLists)
 

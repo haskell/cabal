@@ -163,15 +163,18 @@ createDirectoryParents file
 -- filenames.
 -- Returns Nothing if the file doesn't exist.
 
-moduleToFilePath :: FilePath -- ^search location
+moduleToFilePath :: [FilePath] -- ^search locations
                  -> String   -- ^Module Name
                  -> [String] -- ^possible suffixes
                  -> IO [FilePath]
 
 moduleToFilePath pref s possibleSuffixes
-    = do let possiblePaths = moduleToPossiblePaths pref s possibleSuffixes
+    = do let possiblePaths = concatMap (searchModuleToPossiblePaths s possibleSuffixes) pref
          matchList <- sequenceMap (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
          return [x | (x, True) <- matchList]
+    where searchModuleToPossiblePaths :: String -> [String] -> FilePath -> [FilePath]
+          searchModuleToPossiblePaths s suffs searchP
+              = moduleToPossiblePaths searchP s suffs
 
 -- |Get the possible file paths based on this module name.
 moduleToPossiblePaths :: FilePath -- ^search prefix
@@ -211,7 +214,7 @@ moveSources pref targetDir sources searchSuffixes
                       | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
 	 return ()
     where moduleToFPErr m
-              = do p <- moduleToFilePath pref m searchSuffixes
+              = do p <- moduleToFilePath [pref] m searchSuffixes
                    when (null p)
                             (putStrLn ("Error: Could not find module: " ++ m
                                        ++ " with any suffix: " ++ (show searchSuffixes))
@@ -399,8 +402,8 @@ hunitTests
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
 #else
-       do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
-          mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
+       do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
+          mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
                    ["Distribution/Simple/Build.hs"] mp1
           assertEqual "not existing not nothing failed" [] mp2,
