@@ -1,3 +1,9 @@
+haskell-cabal (0.3-1) unstable; urgency=low
+
+  * new upstream version
+
+ -- Isaac Jones <ijones@debian.org>  Sat, 15 Jan 2005 12:55:49 -0800
+
 haskell-cabal (0.2-3) unstable; urgency=low
 
   * added depends on posix (Closes: #280244).
