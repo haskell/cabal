@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Build
@@ -46,17 +47,16 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Misc (extensionsToGHCFlag, extensionsToNHCFlag)
+import Distribution.Extension (extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
-import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
-                             BuildInfo(..), showPackageId, setupMessage,
-                             withLib, Executable(..))
+import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), 
+			     		setupMessage, withLib, Executable(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
-                                  split, createIfNotExists,
-                                  mkLibName, pathJoin, moveSources,
-                                  splitFilePath, joinFilenameDir, joinExt
+                                  createIfNotExists,
+                                  mkLibName, moveSources, dotToSep
                                  )
 
 
@@ -64,6 +64,7 @@ import Control.Monad (unless, when)
 import Control.Exception (try)
 import Data.List(nub)
 import System.Directory (removeFile)
+import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -110,11 +111,11 @@ buildGHC pref pkg_descr lbi = do
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr $ \buildInfo' -> do
-      createIfNotExists True (pathJoin [pref, hsSourceDir buildInfo'])
+      createIfNotExists True (pref `joinFileName` (hsSourceDir buildInfo'))
       let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
-                  "-odir", pathJoin [pref, hsSourceDir buildInfo'],
-                  "-hidir", pathJoin [pref, hsSourceDir buildInfo']
+                  "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
+                  "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
                  ]
               ++ constructGHCCmdLine buildInfo' (packageDeps lbi)
               ++ modules buildInfo'
@@ -123,30 +124,30 @@ buildGHC pref pkg_descr lbi = do
 
       -- build any C sources
       unless (null (cSources buildInfo')) $
-         sequence_ [do let odir = pathJoin [pref, dirOf c]
+         sequence_ [do let odir = pref `joinFileName` dirOf c
                        createIfNotExists True odir
                        rawSystemExit ghcPath (c: ["-odir", odir , "-hidir", pref, "-c"])
                                    | c <- cSources buildInfo']
 
       -- link:
-      let hObjs = [ pathJoin [hsSourceDir buildInfo', dotToSep x `joinExt` objsuffix]
+      let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objsuffix
                   | x <- modules buildInfo' ]
-          cObjs = [ path `joinFilenameDir` file `joinExt` objsuffix
+          cObjs = [ path `joinFileName` file `joinFileExt` objsuffix
                   | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
         try (removeFile lib) -- first remove library if it exists
-        rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- hObjs ++ cObjs])
+        rawSystemPathExit "ar" (["q", lib] ++ [pref `joinFileName` x | x <- hObjs ++ cObjs])
 
   -- build any executables
-  sequence_ [ do createIfNotExists True (pathJoin [pref, hsSourceDir exeBi])
+  sequence_ [ do createIfNotExists True (pref `joinFileName` (hsSourceDir exeBi))
                  let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
-                         ++ ["-odir", pathJoin [pref, hsSourceDir exeBi],
-                             "-hidir", pathJoin [pref, hsSourceDir exeBi],
-                             "-o", pathJoin [pref, hsSourceDir exeBi, exeName']
+                         ++ ["-odir",  pref `joinFileName` (hsSourceDir exeBi),
+                             "-hidir", pref `joinFileName` (hsSourceDir exeBi),
+                             "-o",     pref `joinFileName` (hsSourceDir exeBi) `joinFileName` exeName'
                             ]
                          ++ constructGHCCmdLine exeBi (exeDeps exeName' lbi)
-                         ++ [pathJoin [hsSourceDir exeBi, modPath]]
+                         ++ [hsSourceDir exeBi `joinFileName` modPath]
                  rawSystemExit ghcPath args
              | Executable exeName' modPath exeBi <- executables pkg_descr]
 
@@ -166,7 +167,7 @@ buildHugs :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildHugs pref pkg_descr lbi
     = do -- move library-related source files into place.
          withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir, modules=mods} -> 
-                               do let targetDir = pathJoin [pref, hsSourceDir buildInfo]
+                               do let targetDir = pref `joinFileName` (hsSourceDir buildInfo)
                                   moveSources srcDir pref mods ["hs", "lhs"]
                            )
 
@@ -182,9 +183,6 @@ buildHugs pref pkg_descr lbi
 
 objsuffix :: String
 objsuffix = "o"
-
-dotToSep :: String -> String
-dotToSep s = pathJoin (split '.' s)
 
 -- ------------------------------------------------------------
 -- * Testing

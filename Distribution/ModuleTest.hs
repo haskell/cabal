@@ -46,9 +46,11 @@ module Main where
 
 import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
-import qualified Distribution.Misc as D.M (hunitTests)
+import qualified Distribution.License as D.L
+import qualified Distribution.Extension as D.E (hunitTests)
 import qualified Distribution.Make ()
-import qualified Distribution.Package as D.P (hunitTests)
+import qualified Distribution.Package as D.P ()
+import qualified Distribution.PackageDescription as D.PD (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
@@ -56,7 +58,7 @@ import qualified Distribution.Simple.Install as D.S.I (hunitTests)
 import qualified Distribution.Simple.Build as D.S.B (hunitTests)
 import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
 import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
-import Distribution.Simple.Utils(pathJoin)
+import Distribution.Compat.FilePath(joinFileName)
 import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildInfoFile)
 import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
 
@@ -109,8 +111,9 @@ assertCmd command comment
 
 tests :: FilePath -> [Test]
 tests currDir
-    = [TestLabel "testing the wash2hs package" $ TestCase $ 
-         do setCurrentDirectory $ pathJoin [currDir, "test", "wash2hs"]
+    = let testdir = currDir `joinFileName` "test" in
+      [TestLabel "testing the wash2hs package" $ TestCase $ 
+         do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
             system "make clean"
             system "make"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
@@ -123,7 +126,7 @@ tests currDir
             perms <- getPermissions ",tmp/bin/wash2hs"
             assertBool "wash2hs isn't +x" (executable perms),
          TestLabel "testing the HUnit package" $ TestCase $ 
-         do setCurrentDirectory $ pathJoin [currDir, "test", "HUnit-1.0"]
+         do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             pkgConf <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
@@ -157,7 +160,7 @@ tests currDir
          do pkgConf  <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
-            setCurrentDirectory $ pathJoin [currDir, "test", "A"]
+            setCurrentDirectory $ (testdir `joinFileName` "A")
             system "make clean"
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
@@ -183,14 +186,14 @@ tests currDir
          do let targetDir = ",tmp2"
             instRetCode <- system $ "./setup install --install-prefix=" ++ targetDir
             checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
-            doesFileExist (pathJoin [",tmp2/lib/test-1.0/", "libHStest-1.0.a"])
+            doesFileExist (",tmp2/lib/test-1.0/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package A: GHC and install w/ no prefix" $ TestCase $
          do let targetDir = ",tmp/lib/test-1.0/"
             instRetCode <- system $ "./setup install --user"
             checkTargetDir targetDir [".hi"]
-            doesFileExist (pathJoin [targetDir, "libHStest-1.0.a"])
+            doesFileExist (targetDir `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package A: GHC and clean" $ TestCase $
@@ -219,7 +222,7 @@ main = do putStrLn "compile successful"
                           (D.S.R.hunitTests ++ D.V.hunitTests ++
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                           D.P.hunitTests ++ D.M.hunitTests)
+                           D.PD.hunitTests ++ D.E.hunitTests)
           dir <- getCurrentDirectory
           count2 <- runTestTT' $ TestList (tests dir)
           putStrLn "-------------"

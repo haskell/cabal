@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Setup
@@ -9,7 +10,6 @@
 --
 -- Explanation: Data types and parser for the standard command-line
 -- setup.  Will also return commands it doesn't know about.
-
 
 {- All rights reserved.
 
@@ -59,12 +59,11 @@ module Distribution.Setup (--parseArgs,
 import HUnit (Test(..), (~:), (~=?))
 #endif
 
+import Distribution.Version (Version)
 import Data.List(find)
 import System.Console.GetOpt
 import System.Exit
 import System.Environment
-
-import Compat.H98 () -- FIX: is this line necessary for some platform?
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports
@@ -74,6 +73,7 @@ data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
               deriving (Show, Read, Eq)
 
 data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
+			  compilerVersion :: Version,
                           compilerPath  :: FilePath,
                           compilerPkgTool :: FilePath}
                 deriving (Show, Read, Eq)

@@ -49,11 +49,12 @@ module Distribution.Make (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
+import Distribution.PackageDescription
 import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
 
 import Distribution.Simple.Utils (maybeExit)
 
-import Distribution.Misc (License(..))
+import Distribution.License (License(..))
 import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)

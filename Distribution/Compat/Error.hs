@@ -1,5 +1,5 @@
 {-# OPTIONS -cpp #-}
-module Compat.H98 (Error(..)) where
+module Distribution.Compat.Error (Error(..)) where
 
 #ifndef __NHC__
 import Control.Monad.Error (Error(..))

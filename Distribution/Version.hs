@@ -1,13 +1,14 @@
+{-# OPTIONS -cpp -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: Represents and parses versions like Nov-2003, 1.2-4, etc.
+-- Versions for packages, based on the 'Version' datatype.
 
 {- Copyright (c) 2003-2004, Isaac Jones
 All rights reserved.
@@ -41,30 +42,36 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Version (
-  -- * The Version type
-  Version(..),
-
   -- * Package versions
+  Version(..),
   showVersion,
   parseVersion,
 
-  -- ** Version ranges
+  -- * Version ranges
   VersionRange(..), 
   orLaterVersion, orEarlierVersion,
   betweenVersionsInclusive,
   withinRange,
   showVersionRange,
   parseVersionRange,
+
+  -- * Dependencies
+  Dependency(..),
+
 #ifdef DEBUG
   hunitTests
 #endif
  ) where
 
+#if __GLASGOW_HASKELL__ >= 603
+import Data.Version	( Version(..), showVersion, parseVersion )
+#endif
+
 import Control.Monad    ( liftM )
 import Data.Char        ( isDigit, isAlphaNum )
 import Data.List	( intersperse )
 
-import Compat.ReadP
+import Distribution.Compat.ReadP
 
 #ifdef DEBUG
 import HUnit
@@ -73,23 +80,53 @@ import HUnit
 -- -----------------------------------------------------------------------------
 -- The Version type
 
+#if __GLASGOW_HASKELL__ < 603
+
+-- Code copied from Data.Version in GHC 6.3+ :
+
+-- These #ifdefs are necessary because this code might be compiled as
+-- part of ghc/lib/compat, and hence might be compiled by an older version
+-- of GHC.  In which case, we might need to pick up ReadP from 
+-- Distribution.Compat.ReadP, because the version in 
+-- Text.ParserCombinators.ReadP doesn't have all the combinators we need.
+#if __GLASGOW_HASKELL__ <= 602
+import Distribution.Compat.ReadP
+#else
+import Text.ParserCombinators.ReadP
+#endif
+
+#if __GLASGOW_HASKELL__ < 602
+import Data.Dynamic	( Typeable(..), TyCon, mkTyCon, mkAppTy )
+#else
+import Data.Typeable 	( Typeable )
+#endif
+
+import Data.List	( intersperse )
+import Control.Monad	( liftM )
+import Data.Char	( isDigit, isAlphaNum )
+
 {- |
-A 'Version' represents the version of a software entity.
+A 'Version' represents the version of a software entity.  
 
-An instance 'Eq' is provided, which implements exact equality modulo
-reordering of the tags in the 'versionTags' field.  
+An instance of 'Eq' is provided, which implements exact equality
+modulo reordering of the tags in the 'versionTags' field.
 
-The interpretation of ordering is dependent on the entity being
-versioned, and perhaps the application.  For example, simple branch
-ordering is probably sufficient for many uses (see the 'versionBranch'
-field), but some versioning schemes may include pre-releases which
-have tags @"pre1"@, @"pre2"@, and so on, and these would need to be
-taken into account when determining ordering.  In some cases, date
+An instance of 'Ord' is also provided, which gives lexicographic
+ordering on the 'versionBranch' fields (i.e. 2.1 > 2.0, 1.2.3 > 1.2.2,
+etc.).  This is expected to be sufficient for many uses, but note that
+you may need to use a more specific ordering for your versioning
+scheme.  For example, some versioning schemes may include pre-releases
+which have tags @"pre1"@, @"pre2"@, and so on, and these would need to
+be taken into account when determining ordering.  In some cases, date
 ordering may be more appropriate, so the application would have to
 look for @date@ tags in the 'versionTags' field and compare those.
+The bottom line is, don't always assume that 'compare' and other 'Ord'
+operations are the right thing for every 'Version'.
 
-Similarly, concrete representations of versions may differ, so we leave
-parsing and printing up to the application.
+Similarly, concrete representations of versions may differ.  One
+possible concrete representation is provided (see 'showVersion' and
+'parseVersion'), but depending on the application a different concrete
+representation may be more appropriate.
 -}
 data Version = 
   Version { versionBranch :: [Int],
@@ -111,30 +148,52 @@ data Version =
 		-- The interpretation of the list of tags is entirely dependent
 		-- on the entity that this version applies to.
 	}
-  deriving (Read,Show)
+  deriving (Read,Show
+#if __GLASGOW_HASKELL__ >= 602
+	,Typeable
+#endif
+	)
+
+#if __GLASGOW_HASKELL__ < 602
+versionTc :: TyCon
+versionTc = mkTyCon "Version"
+
+instance Typeable Version where
+  typeOf _ = mkAppTy versionTc []
+#endif
 
 instance Eq Version where
   v1 == v2  =  versionBranch v1 == versionBranch v2 
 		&& all (`elem` (versionTags v2)) (versionTags v1)
 		-- tags may be in any order
 
+instance Ord Version where
+  v1 `compare` v2 = versionBranch v1 `compare` versionBranch v2
+
 -- -----------------------------------------------------------------------------
--- Package Versions
+-- A concrete representation of 'Version'
 
--- Todo: maybe move this to Distribution.Package.Version?
--- (package-specific versioning scheme).
-
--- Our conventions:
+-- | Provides one possible concrete representation for 'Version'.  For
+-- a version with 'versionBranch' @= [1,2,3]@ and 'versionTags' 
+-- @= ["tag1","tag2"]@, the output will be @1.2.3-tag1-tag2@.
 --
---	* Versions are of the form  A.B.C-tag1-tag2
---
---	* Ordering is determined by lexicographic ordering of the
---	  numeric part of the version only.
-
 showVersion :: Version -> String
 showVersion (Version branch tags)
   = concat (intersperse "." (map show branch)) ++ 
      concatMap ('-':) tags
+
+-- | A parser for versions in the format produced by 'showVersion'.
+--
+#if __GLASGOW_HASKELL__ <= 602
+parseVersion :: ReadP r Version
+#else
+parseVersion :: ReadP Version
+#endif
+parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
+                  tags   <- many (char '-' >> munch1 isAlphaNum)
+                  return Version{versionBranch=branch, versionTags=tags}
+
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -199,6 +258,13 @@ showVersionRange (IntersectVersionRanges r1 r2)
   = showVersionRange r1 ++ "&&" ++ showVersionRange r2
 
 -- ------------------------------------------------------------
+-- * Package dependencies
+-- ------------------------------------------------------------
+
+data Dependency = Dependency String VersionRange
+                  deriving (Read, Show, Eq)
+
+-- ------------------------------------------------------------
 -- * Parsing
 -- ------------------------------------------------------------
 
@@ -226,13 +292,6 @@ parseVersionRange = do
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
-
---  -----------------------------------------------------------
--- |Parse any kind of version
-parseVersion :: ReadP r Version
-parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
-                  tags   <- many (char '-' >> munch1 isAlphaNum)
-                  return Version{versionBranch=branch, versionTags=tags}
 
 #ifdef DEBUG
 -- ------------------------------------------------------------

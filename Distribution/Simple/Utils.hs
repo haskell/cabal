@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -41,15 +42,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
-	splitFilePath,
-	joinFilenameDir,
-        joinExt,
-        pathInits,
-	isPathSeparator,
-        pathSeparatorStr,
-        split,
 	die,
-	findBinary,
 	rawSystemPath,
 	rawSystemExit,
         maybeExit,
@@ -58,13 +51,12 @@ module Distribution.Simple.Utils (
         moduleToFilePath,
         createIfNotExists,
         mkLibName,
-        copyFile,
-        pathJoin,
         removeFileRecursive,
         sequenceMap,
         removeFiles,
-        hasExt,
         currentDir,
+        dotToSep,
+	withTempFile,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -74,164 +66,31 @@ module Distribution.Simple.Utils (
 #include "config.h"
 #endif
 
+import Distribution.Compat.RawSystem (rawSystem)
+import Distribution.Compat.Exception (finally)
+
 import Control.Monad(when, unless, liftM, mapM)
-import Data.List(nub, intersperse, findIndices)
-import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
-import System.IO (hPutStr, stderr, hFlush, stdout
-#ifdef __GLASGOW_HASKELL__
-                 , openBinaryFile, IOMode(..), hGetBuf, hPutBuf, hClose
-#endif
-                 )
+import Data.List(nub)
+import Data.Maybe(Maybe, catMaybes)
+import System.IO (hPutStr, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
-import Compat.RawSystem (rawSystem)
-import Compat.Exception (bracket)
-import System.Environment
+#if defined(__GLASGOW_HASKELL__) && !defined(mingw32_TARGET_OS)
+import System.Posix.Internals (c_getpid)
+#endif
 
+import Distribution.Compat.FilePath
+	(splitFileName, splitFileExt, joinFileName, joinFileExt,
+	pathParents, pathSeparator)
 import System.Directory (getDirectoryContents, removeDirectory,
                         setCurrentDirectory, getCurrentDirectory,
-                        doesDirectoryExist, doesFileExist, removeFile,
+                        doesDirectoryExist, doesFileExist, removeFile, 
                         createDirectory)
 
-#ifdef mingw32_TARGET_OS
-import System.Directory (getPermissions,setPermissions)
-#endif
-
-import Foreign.Marshal (allocaBytes)
-
-#ifndef mingw32_TARGET_OS
-import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes, fileMode, setFileMode)
-#endif
+import Distribution.Compat.Directory (copyFile,findExecutable)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
-#endif
-
--- -----------------------------------------------------------------------------
--- Pathname-related utils
-
--- | Split the path into (directory, filename sans extension, extension)
-splitFilePath :: FilePath -> (String, String, String)
-splitFilePath p =
-  case pre of
-    []       -> (reverse real_dir, reverse suf, [])
-    (_:pre') -> (reverse real_dir, reverse pre', reverse suf)
-  where
-#ifdef mingw32_TARGET_OS
-    (path,drive) = break (== ':') (reverse p)
-#else
-    (path,drive) = (reverse p,"")
-#endif
-    (file,dir)   = break isPathSeparator path
-    (suf,pre)    = case file of
-                     ".." -> ("..", "")
-                     _    -> break (== '.') file
-    
-    real_dir = case dir of
-      []       -> "."++drive
-      [_]      -> pathSeparatorStr++drive
-      (_:dir') -> dir'++drive
-
--- | Join extension to file path
-joinExt :: FilePath -> String -> String
-joinExt path ""  = path
-joinExt path ext = path++'.':ext
-
--- |Not exported.  Does this file have the given extension?
-hasExt :: FilePath -- ^Does this file
-       -> String   -- ^Have this extension?
-       -> Bool
-hasExt f testExt = let (_, _, realExt) = splitFilePath f
-                       in testExt == realExt
-
--- Join file name to directory
-joinFilenameDir :: String -> String -> FilePath
-joinFilenameDir dir ""    = dir
-joinFilenameDir dir fname = dir++pathSeparator:fname
-
--- |Get this path and all its parents.
-pathInits :: FilePath -> [FilePath]
-pathInits p =
-    map ((++) root') (dropEmptyPath $ inits path')
-    where
-#ifdef mingw32_TARGET_OS
-       (root,path) = case break (== ':') p of
-          (path,    "") -> ("",path)
-          (root,_:path) -> (root++":",path)
-#else
-       (root,path) = ("",p)
-#endif
-       (root',path') = case path of
-         (c:path'') | isPathSeparator c -> (root++pathSeparatorStr,path'')
-         _                              -> (root,path)
-         
-       dropEmptyPath ("":paths) = paths
-       dropEmptyPath paths      = paths
-
-       inits :: String -> [String]
-       inits [] =  [""]
-       inits cs = 
-         case pre of
-           "."  -> inits suf
-           ".." -> map (joinFilenameDir pre) (dropEmptyPath $ inits suf)
-           _    -> "" : map (joinFilenameDir pre) (inits suf)
-         where
-           (pre,suf) = case break isPathSeparator cs of
-              (pre',"")    -> (pre', "")
-              (pre',_:suf') -> (pre',suf')
-
-isPathSeparator :: Char -> Bool
-isPathSeparator ch =
-#ifdef mingw32_TARGET_OS
-  ch == '/' || ch == '\\'
-#else
-  ch == '/'
-#endif
-
-pathSeparator :: Char
-#ifdef mingw32_TARGET_OS
-pathSeparator = '\\'
-#else
-pathSeparator = '/'
-#endif
-
-pathSeparatorStr :: String
-pathSeparatorStr = [pathSeparator]
-
-split :: Char -> String -> [String]
-split c s = case rest of
-		[]     -> [chunk] 
-		_:rest' -> chunk : split c rest'
-  where (chunk, rest) = break (==c) s
-
--- ToDo: add cacheing?
-findBinary :: String -> IO (Maybe FilePath)
-findBinary binary = do
-  path <- getEnv "PATH"
-  search (parsePath path)
-  where
-    search :: [FilePath] -> IO (Maybe FilePath)
-    search [] = return Nothing
-    search (d:ds) = do
-	let path = d `joinFilenameDir` binary `joinExt` exeSuffix
-	b <- doesFileExist path
-	if b then return (Just path)
-             else search ds
-
-exeSuffix :: String
-#ifdef mingw32_TARGET_OS
-exeSuffix = "exe"
-#else
-exeSuffix = ""
-#endif
-
-parsePath :: String -> [FilePath]
-parsePath path = split pathSep path
-  where
-#ifdef mingw32_TARGET_OS
-	pathSep = ';'
-#else
-	pathSep = ':'
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -244,7 +103,7 @@ die msg = do hFlush stdout; hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 -- rawSystem variants
 rawSystemPath :: String -> [String] -> IO ExitCode
 rawSystemPath prog args = do
-  r <- findBinary prog
+  r <- findExecutable prog
   case r of
     Nothing -> die ("Cannot find: " ++ prog)
     Just path -> rawSystem path args
@@ -290,33 +149,7 @@ createIfNotExists parents file
 -- |like mkdir -p.  Create this directory and its parents
 createDirectoryParents :: FilePath -> IO()
 createDirectoryParents file
-    = mapM_ (createIfNotExists False) (pathInits file)
-
--- |Give a list of lists breaking apart elements who match the given criteria
---  mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
-mySplit :: Eq a => a -> [a] -> [[a]]
-mySplit a l = let (upto, rest) = break (== a) l
-		  in if null rest
-		     then [upto]
-		     else upto:(mySplit a (tail rest))
-
--- |Find the last slash and remove it and everything after it. Turns
--- Foo\/Bar.lhs into Foo
-removeFilename :: FilePath -> FilePath
-removeFilename path
-    = case findIndices (== pathSeparator) path of
-      [] -> path
-      l  -> fst $ splitAt (maximum l) path
-
--- |If this filename doesn't end in the path separator, add it.
-maybeAddSep :: FilePath -> FilePath
-maybeAddSep [] = []
-maybeAddSep p  = if isPathSeparator (last p) then p else p ++ pathSeparatorStr
-
--- |If this filename ends in the path separator, remove it.
-maybeRemoveSep :: FilePath -> FilePath
-maybeRemoveSep [] = []
-maybeRemoveSep p  = if isPathSeparator (last p) then init p else p
+    = mapM_ (createIfNotExists False) (tail (pathParents file))
 
 -- |Get the file path for this particular module.  In the IO monad
 -- because it looks for the actual file.  Might eventually interface
@@ -339,16 +172,15 @@ moduleToPossiblePaths :: FilePath -- ^search prefix
                       -> String -- ^module name
                       -> [String] -- ^possible suffixes
                       -> [FilePath]
-moduleToPossiblePaths searchPref s possibleSuffixes
-    =  let splitted = mySplit '.' s
-           lastElem = last splitted
-           pref = if (not $ null $ init splitted)
-                  then maybeAddSep (pathJoin (init splitted))
-                  else ""
-        in [(maybeAddSep searchPref) ++ pref ++ x
-             | x <- map (lastElem++) (map ("."++)possibleSuffixes)]
+moduleToPossiblePaths searchPref s possibleSuffixes =
+  let fname = searchPref `joinFileName` (dotToSep s)
+  in [fname `joinFileExt` ext | ext <- possibleSuffixes]
 
-
+dotToSep :: String -> String
+dotToSep = map dts
+  where
+    dts '.' = pathSeparator
+    dts c   = c
 
 -- |Put the source files into the right directory in preperation for
 -- something like sdist or installHugs.
@@ -357,9 +189,8 @@ moveSources :: FilePath -- ^build prefix (location of objects)
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
             -> IO ()
-moveSources pref _targetDir sources searchSuffixes
-    = do let targetDir = maybeAddSep _targetDir
-         createIfNotExists True targetDir
+moveSources pref targetDir sources searchSuffixes
+    = do createIfNotExists True targetDir
 	 -- Create parent directories for everything:
          sourceLocs' <- sequenceMap moduleToFPErr sources
          let sourceLocs = concat sourceLocs'
@@ -367,10 +198,10 @@ moveSources pref _targetDir sources searchSuffixes
                  = if null pref then sourceLocs
                    else map (drop ((length pref) +1)) sourceLocs
 	 mapM (createIfNotExists True)
-		  $ nub [(removeFilename $ targetDir ++ x)
-		   | x <- sourceLocsNoPref, (removeFilename x /= "")]
+		  $ nub [fst (splitFileName (targetDir `joinFileName` x))
+		   | x <- sourceLocsNoPref, fst (splitFileName x) /= "."]
 	 -- Put sources into place:
-	 sequence_ [copyFile x (pathJoin [targetDir, y])
+	 sequence_ [copyFile x (targetDir `joinFileName` y)
                       | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
 	 return ()
     where moduleToFPErr m
@@ -386,60 +217,11 @@ moveSources pref _targetDir sources searchSuffixes
 currentDir :: FilePath
 currentDir = "."
 
+
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
-mkLibName pref lib = pathJoin [pref, ("libHS" ++ lib ++ ".a")]
-
--- | Create a path from a list of path elements
-pathJoin :: [String] -> FilePath
-pathJoin = concat . intersperse pathSeparatorStr
-
-
-copyPermissions :: FilePath -> FilePath -> IO ()
-#ifndef mingw32_TARGET_OS
-copyPermissions src dest
-    = do srcStatus <- getFileStatus src
-         setFileMode dest (fileMode srcStatus)
-#else
-copyPermissions src dest
-    = getPermissions src >>= setPermissions dest
-#endif
-
-
-copyFileTimes :: FilePath -> FilePath -> IO ()
-#ifndef mingw32_TARGET_OS
-copyFileTimes src dest
-   = do st <- getFileStatus src
-	let atime = accessTime st
-	    mtime = modificationTime st
-	setFileTimes dest atime mtime
-#else
-copyFileTimes src dest
-    = return ()
-#endif
-
--- |Preserves permissions and, if possible, atime+mtime
-copyFile :: FilePath -> FilePath -> IO ()
-copyFile src dest 
-    | dest == src = fail "copyFile: source and destination are the same file"
-#if (!(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 600))
-    | otherwise = do readFile src >>= writeFile dest
-                     try (copyPermissions src dest)
-                     return ()
-#else
-    | otherwise = bracket (openBinaryFile src ReadMode) hClose $ \hSrc ->
-                  bracket (openBinaryFile dest WriteMode) hClose $ \hDest ->
-                  do allocaBytes bufSize $ \buffer -> copyContents hSrc hDest buffer
-                     try (copyPermissions src dest)
-                     try (copyFileTimes src dest)
-                     return ()
-  where bufSize = 1024
-        copyContents hSrc hDest buffer
-           = do count <- hGetBuf hSrc buffer bufSize
-                when (count > 0) $ do hPutBuf hDest buffer count
-                                      copyContents hSrc hDest buffer
-#endif
+mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
 
 partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
 partitionIO f l
@@ -486,10 +268,40 @@ filesWithExtensions :: FilePath -- ^Directory to look in
                                      extension in this directory. -}
 filesWithExtensions dir extension 
     = do allFiles <- getDirectoryContents dir
-         return $ filter ((flip hasExt) extension) allFiles
+         return $ filter hasExt allFiles
+    where
+      hasExt f = snd (splitFileExt f) == extension
 
 sequenceMap :: (Monad m) => (a -> m b) -> [a] -> m [b]
 sequenceMap f l = sequence $ map f l
+
+
+-- -----------------------------------------------------------------------------
+-- * temporary file names
+-- -----------------------------------------------------------------------------
+
+-- use a temporary filename that doesn't already exist.
+-- NB. *not* secure (we don't atomically lock the tmp file we get)
+withTempFile :: FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempFile tmp_dir extn action
+  = do x <- getProcessID
+       findTempName tmp_dir x
+  where 
+    findTempName tmp_dir x
+      = do let filename = ("tmp" ++ show x) `joinFileExt` extn
+	       path = tmp_dir `joinFileName` filename
+  	   b  <- doesFileExist filename
+	   if b then findTempName tmp_dir (x+1)
+		else action filename `finally` try (removeFile filename)
+
+#ifdef mingw32_HOST_OS
+foreign import ccall unsafe "_getpid" getProcessID :: IO Int -- relies on Int == Int32 on Windows
+#elif defined(__GLASGOW_HASKELL__)
+getProcessID :: IO Int
+getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
+#else
+#error ToDo: getProcessID
+#endif
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -512,44 +324,6 @@ hunitTests
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
-              
-        TestLabel "splitFilePath" $ TestList 
-           ["simpleCase"   ~: ("c:\\foo",   "bar", "txt") ~=? (splitFilePath "c:\\foo\\bar.txt"),
-            "dotInDirName" ~: ("\\foo.txt", "bar",    "") ~=? (splitFilePath "\\foo.txt\\bar"),
-            "justName"     ~: (".",         "bar",    "") ~=? (splitFilePath "bar"),
-            "justExt"      ~: (".",            "", "txt") ~=? (splitFilePath ".txt"),
-            "rootDir"      ~: ("\\",        "foo",    "") ~=? (splitFilePath "\\foo"),
-            "noFile"       ~: ("\\foo\\bar",   "",    "") ~=? (splitFilePath "\\foo\\bar\\"),
-            "parentDir"    ~: (".",          "..",    "") ~=? (splitFilePath ".."),
-            "curDir"       ~: (".",            "",    "") ~=? (splitFilePath "."),
-	    "root"         ~: ("\\",           "",    "") ~=? (splitFilePath "\\"),
-	    "curDirDrive"  ~: ("c:.",          "",    "") ~=? (splitFilePath "c:."),
-	    "rootDrive1"   ~: ("c:\\",         "",    "") ~=? (splitFilePath "c:\\"),
-	    "rootDrive2"   ~: ("c:.",          "",    "") ~=? (splitFilePath "c:"),
-	    "rootDrive2"   ~: ("c:.",      "test", "txt") ~=? (splitFilePath "c:test.txt")
-	   ],
-        TestLabel "joinFilenameDir&joinExt" $ TestList
-           ["simpleCase"   ~: ("\\foo\\bar.txt") ~=? ("\\foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
-            "justDir"      ~: ("\\foo")          ~=? ("\\foo" `joinFilenameDir` (""    `joinExt` "")),
-            "justExt"      ~: (".\\.txt")        ~=? ("."     `joinFilenameDir` (""    `joinExt` "txt")),
-            "curDir"       ~: (".")              ~=? ("."     `joinFilenameDir` (""    `joinExt` "")),
-            "root"         ~: ("\\")             ~=? ("\\"    `joinFilenameDir` (""    `joinExt` ""))
-	   ],
-
-	TestLabel "pathInits" $ TestList
-           ["simpleCase"    ~: ["c:\\foo","c:\\foo\\bar.txt"] ~=? (pathInits "c:\\foo\\bar.txt"),
-            "justName"      ~: ["bar.txt"] ~=? (pathInits "bar.txt"),
-            "driveAndName1" ~: ["c:bar.txt"] ~=? (pathInits "c:bar.txt"),
-            "driveAndName2" ~: ["c:\\bar.txt"] ~=? (pathInits "c:\\bar.txt"),
-            "locDir"        ~: ["bar.txt"] ~=? (pathInits ".\\bar.txt"),
-            "midLocDir"     ~: ["foo","foo\\bar.txt"] ~=? (pathInits "foo\\.\\bar.txt"),
-            "withParentDir1"~: ["..\\foo"] ~=? (pathInits "..\\foo"),
-            "withParentDir2"~: ["foo\\..\\bar", "foo\\..\\bar\\baz"] ~=? (pathInits "foo\\..\\bar\\baz"),
-            "parentDir"     ~: [] ~=? (pathInits ".."),
-            "rootFile"      ~: ["\\bar.txt"] ~=? (pathInits "\\bar.txt"),
-            "curDir"        ~: [] ~=? (pathInits "."),
-            "root"          ~: [] ~=? (pathInits "\\")
-	   ]
 #else
        do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
@@ -563,39 +337,6 @@ hunitTests
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
 
-        TestLabel "splitFilePath" $ TestList 
-           ["simpleCase"   ~: ("/foo",     "bar", "txt") ~=? (splitFilePath "/foo/bar.txt"),
-            "dotInDirName" ~: ("/foo.txt", "bar",    "") ~=? (splitFilePath "/foo.txt/bar"),
-            "justName"     ~: (".",        "bar",    "") ~=? (splitFilePath "bar"),
-            "justExt"      ~: (".",           "", "txt") ~=? (splitFilePath ".txt"),
-            "rootDir"      ~: ("/",        "foo",    "") ~=? (splitFilePath "/foo"),
-            "noFile"       ~: ("/foo/bar",    "",    "") ~=? (splitFilePath "/foo/bar/"),
-            "parentDir"    ~: (".",         "..",    "") ~=? (splitFilePath ".."),
-            "curDir"       ~: (".",           "",    "") ~=? (splitFilePath "."),
-	    "root"         ~: ("/",           "",    "") ~=? (splitFilePath "/"),
-            "hasExt"       ~: True                       ~=? (hasExt "foo/bang.hs" "hs")
-	   ],
-
-        TestLabel "joinFilenameDir&joinExt" $ TestList
-           ["simpleCase"   ~: ("/foo/bar.txt") ~=? ("/foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
-            "justDir"      ~: ("/foo")         ~=? ("/foo" `joinFilenameDir` (""    `joinExt` "")),
-            "justExt"      ~: ("./.txt")       ~=? ("."    `joinFilenameDir` (""    `joinExt` "txt")),
-            "curDir"       ~: (".")            ~=? ("."    `joinFilenameDir` (""    `joinExt` "")),
-            "root"         ~: ("/")            ~=? ("/"    `joinFilenameDir` (""    `joinExt` ""))
-	   ],
-
-	TestLabel "pathInits" $ TestList
-           ["simpleCase"    ~: ["/foo","/foo/bar.txt"] ~=? (pathInits "/foo/bar.txt"),
-            "justName"      ~: ["bar.txt"] ~=? (pathInits "bar.txt"),
-            "locDir"        ~: ["bar.txt"] ~=? (pathInits "./bar.txt"),
-            "midLocDir"     ~: ["foo","foo/bar.txt"] ~=? (pathInits "foo/./bar.txt"),
-            "rootFile"      ~: ["/bar.txt"] ~=? (pathInits "/bar.txt"),
-            "withParentDir1"~: ["../foo"] ~=? (pathInits "../foo"),
-            "withParentDir2"~: ["foo/../bar", "foo/../bar/baz"] ~=? (pathInits "foo/../bar/baz"),
-            "parentDir"     ~: [] ~=? (pathInits ".."),
-            "curDir"        ~: [] ~=? (pathInits "."),
-            "root"          ~: [] ~=? (pathInits "/")
-	   ],
         TestCase (do files <- filesWithExtensions "." "description"
                      assertEqual "filesWithExtensions" "Setup.description" (head files))
 #endif

@@ -1,6 +1,7 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Text.ParserCombinators.ReadP
+-- Module      :  Distribution.Compat.ReadP
 -- Copyright   :  (c) The University of Glasgow 2002
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
@@ -19,9 +20,10 @@
 --
 -- This version of ReadP has been locally hacked to make it H98, by
 -- Martin Sjögren <msjogren@gmail.com>
+--
 -----------------------------------------------------------------------------
 
-module Compat.ReadP
+module Distribution.Compat.ReadP
   ( 
   -- * The 'ReadP' type
   ReadP,      -- :: * -> *; instance Functor, Monad, MonadPlus
@@ -63,12 +65,23 @@ module Compat.ReadP
   -- * Running a parser
   ReadS,      -- :: *; = String -> [(a,String)]
   readP_to_S, -- :: ReadP a -> ReadS a
-  readS_to_P, -- :: ReadS a -> ReadP a
+  readS_to_P  -- :: ReadS a -> ReadP a
   
+#if __GLASGOW_HASKELL__ < 603
   -- * Properties
   -- $properties
+#endif
   )
  where
+
+#if __GLASGOW_HASKELL__ >= 603
+
+import Text.ParserCombinators.ReadP hiding (ReadP)
+import qualified Text.ParserCombinators.ReadP as ReadP
+
+type ReadP r a = ReadP.ReadP a
+
+#else
 
 import Control.Monad( MonadPlus(..), liftM2 )
 import Data.Char (isSpace)
@@ -466,3 +479,5 @@ Here follow the properties:
 >  prop_ReadS r s =
 >    readP_to_S (readS_to_P r) s =~. r s
 -}
+
+#endif

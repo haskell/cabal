@@ -1,13 +1,13 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Package
+-- Module      :  Distribution.License
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Packages.
+-- The License datatype.
 
 {- All rights reserved.
 
@@ -39,34 +39,11 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Package (
-	PackageIdentifier(..), 
-	showPackageId, parsePackageId, parsePackageName,
+module Distribution.License (
+	License(..)
   ) where
 
-import Distribution.Version
-import Distribution.Compat.ReadP as ReadP
-import Data.Char ( isAlphaNum )
-import Data.List ( intersperse )
 
-data PackageIdentifier
-    = PackageIdentifier {
-	pkgName    :: String,
-	pkgVersion :: Version
-     }
-     deriving (Read, Show, Eq)
-
-showPackageId :: PackageIdentifier -> String
-showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
-showPackageId pkgid = 
-  pkgName pkgid ++ '-': showVersion (pkgVersion pkgid)
-
-parsePackageName :: ReadP r String
-parsePackageName = do ns <- sepBy1 (munch1 isAlphaNum) (char '-')
-                      return (concat (intersperse "-" ns))
-
-parsePackageId :: ReadP r PackageIdentifier
-parsePackageId = do 
-  n <- parsePackageName
-  v <- (ReadP.char '-' >> parseVersion) <++ return (Version [] [])
-  return PackageIdentifier{pkgName=n,pkgVersion=v}
+data License = GPL | LGPL | BSD3 | BSD4 | PublicDomain | AllRightsReserved
+             | {- ... | -} OtherLicense FilePath
+               deriving (Read, Show, Eq)
