@@ -275,14 +275,13 @@ moduleToPossiblePaths searchPref s possibleSuffixes
 moveSources :: FilePath -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
-            -> [String] -- ^Main modules
             -> [String] -- ^search suffixes
             -> IO ()
-moveSources pref _targetDir sources mains searchSuffixes
+moveSources pref _targetDir sources searchSuffixes
     = do let targetDir = maybeAddSep _targetDir
          createIfNotExists True targetDir
 	 -- Create parent directories for everything:
-         sourceLocs <- sequence $ map moduleToFPErr (sources ++ mains)
+         sourceLocs <- sequence $ map moduleToFPErr sources
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref then sourceLocs
                    else map (drop ((length pref) +1)) sourceLocs

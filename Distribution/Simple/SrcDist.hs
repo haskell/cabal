@@ -47,7 +47,7 @@ module Distribution.Simple.SrcDist (
 #endif
   )  where
 
-import Distribution.Package(PackageDescription(..), showPackageId)
+import Distribution.Package(PackageDescription(..), BuildInfo(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin)
 
@@ -64,19 +64,17 @@ import HUnit (Test)
 sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> PackageDescription -> LocalBuildInfo -> IO ()
-sdist tmpDir targetPref
-      pkg_descr@PackageDescription{allModules=mods,
-                                   mainModules=mainMods,
-                                   hsSourceDir=srcDir
-                                  } _
-    = do
+sdist tmpDir targetPref pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
-  let tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
-  let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
-  moveSources srcDir tmpLoc1  mods      mainMods ["lhs", "hs"]
-  moveSources ""     tmpLoc2 ["Setup"] []        ["lhs", "hs"]
+  case library pkg_descr of
+    Just lib -> let srcDir = hsSourceDir lib
+                    tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
+                 in moveSources srcDir tmpLoc1 (modules lib) ["lhs", "hs"]
+    Nothing  -> return ()
+  let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
+  moveSources ""     tmpLoc2 ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (pathJoin [targetPref, tarBallName pkg_descr])
 		    ++ " " ++ (nameVersion pkg_descr)

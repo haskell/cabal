@@ -50,7 +50,7 @@ module Distribution.Simple.Install (
 #endif
   ) where
 
-import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources,
                                  mkLibName, pathJoin,
@@ -85,7 +85,7 @@ installGHC :: FilePath -- ^install location
            -> FilePath -- ^Build location
            -> PackageDescription -> IO ()
 installGHC pref buildPref pkg_descr
-    = do moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["hi"]
+    = do moveSources buildPref pref (maybe [] modules (library pkg_descr)) ["hi"]
          copyFile (mkLibName buildPref (showPackageId (package pkg_descr)))
                     (mkLibName pref (showPackageId (package pkg_descr)))
 
@@ -94,7 +94,7 @@ installHugs :: FilePath -- ^Install location
             -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
 installHugs pref buildPref pkg_descr
-    = moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
+    = moveSources buildPref pref (maybe [] modules (library pkg_descr)) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies

@@ -49,7 +49,7 @@ module Distribution.Simple.Build (
 
 import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
-import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
@@ -85,15 +85,16 @@ build pref pkg_descr lbi = do
 -- |FIX: For now, the target must contain a main module :(
 buildNHC :: PackageDescription -> LocalBuildInfo -> IO ()
 buildNHC pkg_descr lbi = do
-  let (unsupported, flags) = extensionsToNHCFlag (extensions pkg_descr)
+  let (unsupported, flags) = extensionsToNHCFlag (maybe [] extensions (library pkg_descr))
   when (not $ null unsupported)
            (die $ "Unsupported extension for NHC: "
                   ++ (concat $ intersperse ", " (map show unsupported)))
   rawSystemExit (compilerPath (compiler lbi))
                 (["-nhc98"]
                 ++ flags
-                ++ [ opt | (NHC,opts) <- options pkg_descr, opt <- opts ]
-                ++ allModules pkg_descr)
+                ++ [ opt | (NHC,opts) <- maybe [] options (library pkg_descr),
+                           opt <- opts ]
+                ++ maybe [] modules (library pkg_descr))
 
 -- |Building for GHC
 buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
@@ -106,27 +107,28 @@ buildGHC pref pkg_descr lbi = do
   rawSystemExit (compilerPath (compiler lbi)) args
 
   -- build any C sources
-  when (not (null (cSources pkg_descr))) $
-     rawSystemExit (compilerPath (compiler lbi)) (cSources pkg_descr)
+  when (not (null (maybe [] cSources (library pkg_descr)))) $
+     rawSystemExit (compilerPath (compiler lbi)) (maybe [] cSources (library pkg_descr))
 
   -- now, build the library
-  let objs = map (++objsuffix) (map dotToSep (allModules pkg_descr))
+  let objs = map (++objsuffix) (map dotToSep (maybe [] modules (library pkg_descr)))
       lib  = mkLibName pref (showPackageId (package pkg_descr))
   rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- objs])
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr lbi = 
-    let (unsupported, flags) = extensionsToGHCFlag (extensions pkg_descr)
+    let (unsupported, flags) = extensionsToGHCFlag (maybe [] extensions (library pkg_descr))
         in if null unsupported
            then [
                  "--make", "-odir " ++ pref, "-hidir " ++ pref,
                  "-package-name", showPackageId (package pkg_descr)
                 ] 
                 ++ flags
-                ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
+                ++ [ opt | (GHC,opts) <- maybe [] options (library pkg_descr),
+                           opt <- opts ]
                 ++ [ "-i" ++ pref ]
                 ++ [ "-package " ++ showPackageId pkg | pkg <- packageDeps lbi ] 
-                ++ allModules pkg_descr
+                ++ maybe [] modules (library pkg_descr)
            else error $ "Unsupported extension for GHC: "
                       ++ (concat $ intersperse ", " (map show unsupported))
 
@@ -149,10 +151,9 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr lbi pref = 
     do
     setupMessage "Preprocessing" pkg_descr
-    putStrLn (hsSourceDir pkg_descr)
-    moveSources (hsSourceDir pkg_descr) pref 
-		    (allModules pkg_descr) (mainModules pkg_descr)
-                    ["hs","lhs"] 
+    case library pkg_descr of
+      Just lib -> moveSources (hsSourceDir lib) pref (modules lib) ["hs","lhs"] 
+      Nothing  -> return ()
 
   -- Todo: includes, includeDirs
 

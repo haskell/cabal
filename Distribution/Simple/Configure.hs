@@ -53,7 +53,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 import Distribution.Misc(Dependency(..))
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), emptyPackageDescription,
-                            PackageIdentifier(..)
+                            PackageIdentifier(..), BuildInfo(..)
                            )
 import Distribution.Simple.Utils (die, setupMessage,
                                   findBinary, splitFilenameDir)
@@ -111,6 +111,7 @@ configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
   = do
 	setupMessage "Configuring" pkg_descr
+        let lib = library pkg_descr
 	-- prefix
 	let prefix = case maybe_prefix of
 			Just path -> path
@@ -123,7 +124,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=prefix, compiler=compiler,
-                              packageDeps=map buildDepToDep (buildDepends pkg_descr)}
+                              packageDeps=map buildDepToDep (maybe [] buildDepends lib)}
 
 -- |Converts build dependencies to real dependencies.  FIX: doesn't
 -- set any version information.
