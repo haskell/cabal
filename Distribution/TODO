@@ -1,5 +1,9 @@
 * 0.1
 RC:
+** have build -nhc output an error rather than doing something broken
+** ask about dashes in package names. 
+- igloo thinks they should be [a-z0-0][a-z0-9]+ case sensitive
+** look carefully at "rawSystem" and error handing stuff for nhc.
 ** grep for "FIX"
 ** make sure module documentation (haddock) builds.
 -- tricky because of need to preprocess :(
@@ -8,6 +12,7 @@ RC:
 -- but what does this mean? ghc & hugs?
 ** add description file format to doc. - esp field descriptions
 ** Look over rest of TODO list.  Should anything be promoted?
+** Fix section on "why must we list hidden modules?"
 
 HIGH: 
 ** Clean up field parsers:
@@ -20,8 +25,6 @@ LOW
 ** clean 
 - should .installed-pkg-config be removed after successful register?
 ** Change name of Setup.description?
-** the ./setup -h output should document which commands exist, and
-   which options are relevant to which commands.
 
 * 1.0 
 ** add a make target or command for tests we know will fail?
