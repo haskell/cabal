@@ -22,21 +22,24 @@
 >
 > myPreConf [] _ = error "--woohoo flag (for testing) not passed to ./setup configure."
 
-> ppTestHandler :: FilePath -- ^InFile
+> ppTestHandler :: a -> b -> FilePath -- ^InFile
 >               -> FilePath -- ^OutFile
 >               -> Int      -- ^verbose
 >               -> IO ExitCode
-> ppTestHandler inFile outFile verbose
+> ppTestHandler _ _ inFile outFile verbose
 >     = do when (verbose > 0) $
 >            putStrLn (inFile++" has been preprocessed as a test to "++outFile)
 >          stuff <- readFile inFile
 >          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
 >          return ExitSuccess
 
+
+Override "gc" to test the overriding mechanism.
+
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
 >         postConf=(\_ _ _-> return ExitSuccess),
->         hookedPreProcessors=  [("testSuffix", \ _ _ -> ppTestHandler)],
+>         hookedPreProcessors=  [("testSuffix", ppTestHandler), ("gc", ppTestHandler)],
 >         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
 >        }

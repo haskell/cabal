@@ -1,9 +1,5 @@
 * misc
 
-* I guess we should take the "OtherLicense"
-  option out of license type, add a licenseFile field, and make either
-   /or required.
-
 * make preprocessors in hooks override the built-in ones
 
 * Fix up sdist! 

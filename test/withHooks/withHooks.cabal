@@ -1,6 +1,6 @@
 Name: withHooks
 Version: 1.0
-exposed-modules: Main, C
+exposed-modules: Main, C, D
 
 Executable: withHooks
 Other-Modules: Main
