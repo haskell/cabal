@@ -56,6 +56,7 @@ module Distribution.Simple (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
+import Distribution.PreProcess (knownSuffixHandlers)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
@@ -140,7 +141,7 @@ defaultMainNoRead pkg_descr
                 (_, args) <- parseSDistArgs args []
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		sdist srcPref distPref [] pkg_descr localbuildinfo
+		sdist srcPref distPref knownSuffixHandlers pkg_descr localbuildinfo
 
             RegisterCmd uInst -> do
                 (uInst, _, args) <- parseRegisterArgs uInst args []

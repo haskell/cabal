@@ -38,7 +38,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
-                                ppSuffixes, PPSuffixHandler, PreProcessor)
+                                ppSuffixes, PPSuffixHandler, PreProcessor,
+                                removePreprocessed)
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
@@ -132,8 +133,6 @@ removePreprocessed searchLoc mods suffixesIn
                                   when (length hsFiles > 1)
                                     (putStrLn "Internal Error: multiple \".hs\" files found while removing preprocessed element."
                                      >> exitWith (ExitFailure 1))
-                                  putStrLn $ show hsFiles
-                                  putStrLn $ show l
                                   removeFiles hsFiles
                                   return ()
                -- the files in this list only differ by their extension

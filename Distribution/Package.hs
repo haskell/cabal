@@ -52,6 +52,7 @@ module Distribution.Package (
         emptyBuildInfo,
         Executable(..),
         emptyExecutable,
+        allModules,
 #ifdef DEBUG
         hunitTests,
         test
@@ -115,6 +116,12 @@ emptyPackageDescription
                       library      = Nothing,
                       executables  = []
                      }
+
+-- |Get all the module names from this package
+allModules :: PackageDescription -> [String]
+allModules PackageDescription{executables=execs, library=lib}
+    = (concat $ map (\e -> modules $ buildInfo e) execs)
+         ++ (maybe [] modules lib)
 
 -- |Set the name for this package. Convenience function.
 setPkgName :: String -> PackageDescription -> PackageDescription
