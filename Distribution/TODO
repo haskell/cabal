@@ -10,3 +10,7 @@
 ** Parsing of command-lint opts
 ** use-cases based on SimonPJ's doc
 ** 
+
+* Isaac
+- test cases for option parsing
+-- difference bt flags and opts...
