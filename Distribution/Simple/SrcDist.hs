@@ -82,7 +82,7 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
   maybe (return ()) (\l -> prepareDir verbose targetDir pps (libModules pkg_descr) (libBuildInfo l))
                     (library pkg_descr)
   -- move the executables into place
-  sequence_ [prepareDir verbose targetDir pps exeM exeBi | (Executable _ exeM _ exeBi) <- executables pkg_descr]
+  sequence_ [prepareDir verbose targetDir pps [] exeBi | (Executable _ _ exeBi) <- executables pkg_descr]
   -- setup isn't listed in the description file.
   smartCopySources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
@@ -95,13 +95,13 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
 prepareDir :: Int       -- ^verbose
            -> FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
-           -> [String] -- ^Modules
+           -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir}
+prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, hiddenModules=mods'}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         smartCopySources verbose srcDir pref mods (suff ++ ["hs", "lhs"])
+         smartCopySources verbose srcDir pref (mods++mods') (suff ++ ["hs", "lhs"])
          removePreprocessed pref mods (suff ++ ["hs", "lhs"])
 
 ------------------------------------------------------------
