@@ -295,7 +295,7 @@ binfoFields =
                            text               parseLibNameQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
-                           text               parseLibName
+                           text               parseLibNameQ
                            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
  , listField   "includes"
                            showFilePath       parseFilePathQ
@@ -480,7 +480,7 @@ hunitTests :: [Test]
 hunitTests = [
               TestLabel "license parsers" $ TestCase $
                  sequence_ [assertRight ("license " ++ show lVal) lVal
-                                        (runP 1 "license" parseLicense (show lVal))
+                                        (runP 1 "license" parseLicenseQ (show lVal))
                            | lVal <- [GPL,LGPL,BSD3,BSD4]],
 
               TestLabel "Required fields" $ TestCase $
