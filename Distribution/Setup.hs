@@ -1,11 +1,11 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Install
+-- Module      :  Distribution.Setup
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  
 --
 -- Explanation: <FIX>
 -- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
@@ -41,10 +41,35 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Install(install) where
+module Distribution.Setup (parseArgs, defaultMain) where
 
+-- Base
+import System(getArgs)
+
+-- Local
+import Distribution.Build(build)
+import Distribution.Install(install)
+import Distribution.Misc(CommandLineOpts(..), Action(..),
+                         LocalBuildInfo, getPersistBuildConfig)
 import Distribution.Package(PackageConfig)
-import Distribution.Misc(LocalBuildInfo)
 
-install :: PackageConfig -> LocalBuildInfo -> IO ()
-install _ _ = return ()
+-- |Reads local build info, executes function
+doBuildInstall :: (PackageConfig -> LocalBuildInfo -> IO ()) -- ^function to apply
+               -> PackageConfig
+               -> IO ()
+doBuildInstall f pkgConf
+    = do lbi <- getPersistBuildConfig
+         f pkgConf lbi
+
+-- |Parse the standard command-line arguments
+parseArgs :: [String] -> CommandLineOpts
+parseArgs _ = (BuildCmd, [])
+
+defaultMain :: PackageConfig -> IO ()
+defaultMain p
+    = do args <- getArgs
+         case parseArgs args of
+          (BuildCmd,       _) -> doBuildInstall build p
+          (InstallCmd,     _) -> doBuildInstall install p
+          (PackageInfoCmd, _) -> print p
+         return ()

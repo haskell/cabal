@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Compiler
+-- Module      :  Distribution.Misc
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -41,7 +41,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Misc(Compiler, License, Dependency, Extension, Opt)
+module Distribution.Misc(Compiler, License(..), Dependency,
+                         Extension, Opt, LocalBuildInfo,
+                         Action(..), CommandLineOpts,
+                         writePersistBuildConfig, getPersistBuildConfig)
     where
 
 import Distribution.Version(VersionRange)
@@ -51,11 +54,51 @@ import Distribution.Version(VersionRange)
 -- ------------------------------------------------------------
 
 data Flavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
+              deriving Show
 
-data Compiler = Compiler {flavor        :: Compiler,
+data Compiler = Compiler {flavor        :: Flavor,
                           path          :: FilePath,
                           packagingTool :: FilePath}
+                deriving Show
 
+emptyCompiler :: Compiler
+emptyCompiler = Compiler (OtherCompiler "") "" ""
+
+-- ------------------------------------------------------------
+-- * Command-Line
+-- ------------------------------------------------------------
+
+type CommandLineOpts = (Action,
+                        [String]) -- The un-parsed remainder
+
+data Action = ConfigCmd LocalBuildInfo
+            | BuildCmd
+            | InstallCmd
+            | SDistCmd
+            | PackageInfoCmd
+            | UseInfoCmd
+            | TestCmd
+--             | Register
+--             | BDist
+
+
+
+-- ------------------------------------------------------------
+-- * build config
+-- ------------------------------------------------------------
+
+-- |Data cached after configuration step.
+data LocalBuildInfo = LocalBuildInfo {prefix :: String,
+                                      compiler :: Compiler}
+
+emptyLocalBuildInfo :: LocalBuildInfo
+emptyLocalBuildInfo = LocalBuildInfo "" emptyCompiler
+
+getPersistBuildConfig :: IO LocalBuildInfo
+getPersistBuildConfig = return emptyLocalBuildInfo -- FIX
+
+writePersistBuildConfig :: LocalBuildInfo -> IO ()
+writePersistBuildConfig _ = return () --FIX
 
 -- ------------------------------------------------------------
 -- * Misc
@@ -72,6 +115,6 @@ data Dependency = Dependency String VersionRange
 -- |This represents non-standard compiler extensions which each
 -- package might employ.  Not yet implemented.
 
-data Extension = Foo | Bar
+data Extension = Foo | Bar deriving Show
 
 type Opt = String

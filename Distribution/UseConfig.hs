@@ -2,8 +2,9 @@
 
 module Distribution.UseConfig where
 
-import Distribution.Misc(License, Dependency, Opt)
-import Distribution.Package(PackageIdentifier)
+import Distribution.Misc(License(..), Dependency, Opt, LocalBuildInfo)
+import Distribution.Package(PackageIdentifier(..), PackageConfig)
+import Distribution.Version(Version(NoVersion))
 
 data UseConfig
    = UseConfig {
@@ -13,14 +14,6 @@ data UseConfig
         maintainer      :: String,
         stability       :: String,
         auto            :: Bool,
---         provides        :: [String],
-{- A bit pi-in-the-sky; might indicate that this package provides
-    functionality that other packages also provide, such as a compiler
-    or GUI framework, and upon which other packages might depend. -}
-
---         isDefault       :: Bool,
--- might indicate if this is the default compiler or GUI framework.
-
         importDirs     :: [FilePath],
         sourceDirs     :: [FilePath],
         libraryDirs    :: [FilePath],
@@ -35,3 +28,11 @@ data UseConfig
         frameworkDirs  :: [FilePath],
         extraFrameworks:: [String]}
     deriving (Read, Show)
+
+emptyUseConfig :: UseConfig
+emptyUseConfig = UseConfig (PackageIdentifier "" NoVersion)
+                   AllRightsReserved "" "" "" False [] [] [] [] [] []
+                   [] [] [] [] [] [] []
+
+getUseInfo :: LocalBuildInfo -> PackageConfig -> UseConfig
+getUseInfo _ _ = emptyUseConfig -- FIX
