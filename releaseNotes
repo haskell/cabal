@@ -1,5 +1,6 @@
                       The Haskell Cabal
 The Common Architecture for Building Applications and Libraries.
+http://www.haskell.org/cabal
 
 DOWNLOAD:
 
@@ -7,7 +8,7 @@ The Haskell Cabal has reached pre-release stage, with a 0.1 version
 The community should use this release to evaluate the interfaces and
 explore the concepts of these tools.
 
-Download the Cabal here:
+Download the Cabal here (source and debian versions available):
 http://www.haskell.org/cabal/download.html
 
 BUGS:
