@@ -119,7 +119,8 @@ buildGHC pkg_descr lbi = do
   -- Build lib
   withLib pkg_descr $ \buildInfo' -> do
       createIfNotExists True (pref `joinFileName` (hsSourceDir buildInfo'))
-      let args = ccOptions pkg_descr
+      let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
+              ++ ccOptions pkg_descr
               ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
                   "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
@@ -134,7 +135,8 @@ buildGHC pkg_descr lbi = do
       unless (null (cSources buildInfo')) $
          sequence_ [do let odir = pref `joinFileName` dirOf c
                        createIfNotExists True odir
-		       let args = ccOptions pkg_descr
+		       let args = ["-I" ++ dir | dir <- includeDirs buildInfo']
+		               ++ ccOptions pkg_descr
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
                        rawSystemExit ghcPath (args ++ [c])
                                    | c <- cSources buildInfo']
@@ -154,7 +156,8 @@ buildGHC pkg_descr lbi = do
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createIfNotExists True exeDir
-                 let args = ccOptions pkg_descr
+                 let args = ["-I" ++ dir | dir <- includeDirs exeBi]
+                         ++ ccOptions pkg_descr
                          ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
                          ++ ["-odir",  exeDir,
                              "-hidir", exeDir,
@@ -195,7 +198,7 @@ buildHugs pkg_descr lbi = do
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
 	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
-	    copyModule (CPP `elem` extensions bi) srcMainFile destMainFile
+	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
 	    compileBuildInfo destDir (library pkg_descr >>= Just . hsSourceDir) bi
 	    compileFFI bi destMainFile
 	
@@ -213,7 +216,7 @@ buildHugs pkg_descr lbi = do
 		  | null srcDir || srcDir == currentDir = id
 		  | otherwise = drop (length srcDir + 1)
 	    let copy_or_cpp f =
-		    copyModule useCpp f (destDir `joinFileName` trimSrcDir f)
+		    copyModule useCpp bi f (destDir `joinFileName` trimSrcDir f)
 	    mapM_ copy_or_cpp (concat fileLists)
 	    -- Pass 2: compile foreign stubs in build directory
 	    fileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
@@ -223,20 +226,21 @@ buildHugs pkg_descr lbi = do
 	suffixes = ["hs", "lhs"]
 
 	-- Copy or cpp a file from the source directory to the build directory.
-	copyModule :: Bool -> FilePath -> FilePath -> IO ()
-	copyModule cppAll srcFile destFile = do
+	copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
+	copyModule cppAll bi srcFile destFile = do
 	    createIfNotExists True (dirOf destFile)
 	    (exts, opts) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then
-	    	cppFile srcFile destFile
+	    	cppFile bi srcFile destFile
 	      else
 	    	copyFile srcFile destFile
 
 	{- FIX (HUGS): assumes gcc -}
-	cppFile inFile outFile =
+	cppFile bi inFile outFile =
 	    rawSystemExit "cpp"
 		(["-traditional", "-P", "-D__HUGS__"] ++
+			["-I" ++ dir | dir <- includeDirs bi] ++
 			ccOptions pkg_descr ++ [inFile, outFile])
 
 	compileFFI :: BuildInfo -> FilePath -> IO ()
@@ -253,6 +257,7 @@ buildHugs pkg_descr lbi = do
 		let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
 		cfiles <- getCFiles file
 		let cArgs =
+			["-I" ++ dir | dir <- includeDirs bi] ++
 			ccOptions pkg_descr ++
 			map (joinFileName srcDir) cfiles ++
 			["-L" ++ dir | dir <- extraLibDirs bi] ++

@@ -66,7 +66,7 @@ type PreProcessor = FilePath  -- ^Location of the source file in need of preproc
 -- |A preprocessor for turning non-Haskell files with the given extension
 -- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, PackageDescription -> LocalBuildInfo -> PreProcessor)
+    = (String, PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor)
 
 -- |Apply preprocessors to the sources from 'hsSourceDir', to obtain
 -- a Haskell source file for each module.
@@ -78,21 +78,24 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr lbi handlers = do
     setupMessage "Preprocessing library" pkg_descr
 
-    withLib pkg_descr $ \ bi ->
-	sequence_ [preprocessModule [hsSourceDir bi] mod localHandlers |
+    withLib pkg_descr $ \ bi -> do
+	let biHandlers = localHandlers bi
+	sequence_ [preprocessModule [hsSourceDir bi] mod biHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
     setupMessage "Preprocessing executables for" pkg_descr
-    foreachBuildInfo False pkg_descr $ \ bi ->
+    foreachBuildInfo False pkg_descr $ \ bi -> do
+	let biHandlers = localHandlers bi
 	sequence_ [preprocessModule ((hsSourceDir bi)
                                      :(maybeToList (library pkg_descr >>= Just . hsSourceDir)))
-                                     mod localHandlers |
+                                     mod biHandlers |
 			    mod <- biModules bi] -- FIX: output errors?
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
 	  | otherwise = ["hs", "lhs"]
-	localHandlers = [(ext, Nothing) | ext <- builtinSuffixes] ++
-			[(ext, Just (h pkg_descr lbi)) | (ext, h) <- handlers]
+	trivialHandlers = [(ext, Nothing) | ext <- builtinSuffixes]
+	localHandlers bi = trivialHandlers ++
+		[(ext, Just (h pkg_descr bi lbi)) | (ext, h) <- handlers]
 
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
@@ -147,10 +150,8 @@ foreachBuildInfo includeLib pkg_descr action = do
 -- * known preprocessors
 -- ------------------------------------------------------------
 
-ppCpp, ppGreenCard, ppC2hs :: PreProcessor
+ppGreenCard, ppC2hs :: PreProcessor
 
-ppCpp inFile outFile
-    = rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
 ppGreenCard inFile outFile
     = rawSystemPath "green-card" ["-tffi", "-o" ++ outFile, inFile]
 ppC2hs inFile outFile
@@ -164,19 +165,31 @@ ppUnlit inFile outFile = do
     writeFile outFile (unlit inFile contents)
     return ExitSuccess
 
+ppCpp :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp pkg_descr bi lbi = pp
+  where pp inFile outFile
+	  = rawSystemPath "cpphs" (extraArgs ++ ["-O" ++ outFile, inFile])
+	extraArgs = hcFlags hc ++
+		["-I" ++ dir | dir <- includeDirs bi] ++ ccOptions pkg_descr
+	hc = compilerFlavor (compiler lbi)
+
 -- FIX (non-GHC): This uses hsc2hs as supplied with GHC, but this may
 -- not be present, and if present will pass GHC-specific cpp defines to
 -- the C compiler.
-ppHsc2hs :: PackageDescription -> LocalBuildInfo -> PreProcessor
-ppHsc2hs pkg_descr lbi
-    = standardPP "hsc2hs" (hcFlags hc ++ ccOptions pkg_descr)
+ppHsc2hs :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppHsc2hs pkg_descr bi lbi
+    = standardPP "hsc2hs" (hcFlags hc ++ incOptions ++ ccOptions pkg_descr)
   where hc = compilerFlavor (compiler lbi)
-	hcFlags NHC = ["-D__NHC__"]
-	hcFlags Hugs = ["-D__HUGS__"]
-	hcFlags _ = []
+	incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
-ppHappy :: PackageDescription -> LocalBuildInfo -> PreProcessor
-ppHappy _ lbi
+-- FIX: should add NHC versions too (maybe just use nhc as cpp?)
+hcFlags :: CompilerFlavor -> [String]
+hcFlags NHC = ["-D__NHC__"]
+hcFlags Hugs = ["-D__HUGS__"]
+hcFlags _ = []
+
+ppHappy :: PackageDescription -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppHappy _ _ lbi
     = standardPP "happy" (hcFlags hc)
   where hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
@@ -200,11 +213,11 @@ ppSuffixes = map fst
 
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     \ _ _ -> ppGreenCard)
-  , ("chs",    \ _ _ -> ppC2hs)
+  [ ("gc",     \ _ _ _ -> ppGreenCard)
+  , ("chs",    \ _ _ _ -> ppC2hs)
   , ("hsc",    ppHsc2hs)
   , ("y",      ppHappy)
   , ("ly",     ppHappy)
-  , ("cpphs",  \ _ _ -> ppCpp)
-  , ("testSuffix", \ _ _ -> ppTestHandler)
+  , ("cpphs",  ppCpp)
+  , ("testSuffix", \ _ _ _ -> ppTestHandler)
   ]
