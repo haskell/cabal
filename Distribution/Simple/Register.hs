@@ -70,7 +70,9 @@ import Distribution.Simple.Install (hugsPackageDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
-import Distribution.Compat.Directory (createDirectoryIfMissing,removeDirectoryRecursive)
+import Distribution.Compat.Directory (createDirectoryIfMissing,removeDirectoryRecursive,
+                                      setPermissions, getPermissions, executable
+                                     )
 import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile)
@@ -265,11 +267,13 @@ rawSystemEmit :: FilePath -- ^Script name
               -> IO ()
 rawSystemEmit _ False verbosity path args
     = rawSystemExit verbosity path args
-rawSystemEmit scriptName True verbosity path args
-    = writeFile scriptName ("#!/bin/sh\n\n"
-                           ++ (path ++ concatMap (' ':) args)
-                           ++ "\n")
-      >> putStrLn (path ++ concatMap (' ':) args)
+rawSystemEmit scriptName True verbosity path args = do
+  writeFile scriptName ("#!/bin/sh\n\n"
+                        ++ (path ++ concatMap (' ':) args)
+                        ++ "\n")
+  putStrLn (path ++ concatMap (' ':) args)
+  p <- getPermissions scriptName
+  setPermissions scriptName p{executable=True}
 
 -- |Like rawSystemEmit, except it has string for pipeFrom. FIX: chmod +x
 rawSystemPipe :: FilePath -- ^Script location
@@ -278,12 +282,14 @@ rawSystemPipe :: FilePath -- ^Script location
               -> FilePath -- ^Program to run
               -> [String] -- ^Args
               -> IO ()
-rawSystemPipe scriptName verbose pipeFrom path args
-    = writeFile scriptName ("#!/bin/sh\n\n"
-                            ++ "echo '" ++ pipeFrom
-                            ++ "' |" 
-                            ++ (path ++ concatMap (' ':) args)
-                            ++ "\n")
+rawSystemPipe scriptName verbose pipeFrom path args = do
+  writeFile scriptName ("#!/bin/sh\n\n"
+                        ++ "echo '" ++ pipeFrom
+                        ++ "' |" 
+                        ++ (path ++ concatMap (' ':) args)
+                        ++ "\n")
+  p <- getPermissions scriptName
+  setPermissions scriptName p{executable=True}
 
 -- ------------------------------------------------------------
 -- * Testing
