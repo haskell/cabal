@@ -121,7 +121,7 @@ defaultMainNoRead pkg_descr
                 (_, args) <- parseBuildArgs args []
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		build buildPref pkg_descr localbuildinfo
+		build buildPref pkg_descr localbuildinfo knownSuffixHandlers
                 writeInstalledConfig pkg_descr localbuildinfo
 
             CleanCmd -> do

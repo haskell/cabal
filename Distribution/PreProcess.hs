@@ -77,7 +77,7 @@ preprocessSources :: PackageDescription
 preprocessSources pkg_descr _ handlers = 
     do
     setupMessage "Preprocessing" pkg_descr
-    allSources <- findAllSourceFiles pkg_descr (ppSuffixes knownSuffixHandlers)
+    allSources <- findAllSourceFiles pkg_descr (ppSuffixes handlers)
     sequence [dispatchPP src handlers | src <- allSources] -- FIX: output errors?
     return ()
 
