@@ -84,7 +84,6 @@ import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
 -- Base
-import System.Cmd	(rawSystem)
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..))
 import System.Directory(removeFile, doesFileExist)
@@ -406,7 +405,8 @@ emptyUserHooks
 --
 -- * on non-Windows systems, 'postConf' runs @.\/configure@, if present.
 --
--- * all pre-hooks except 'preConf' read additional build information from
+-- * the pre-hooks 'preBuild', 'preClean', 'preCopy', 'preInst',
+--   'preReg' and 'preUnreg' read additional build information from
 --   /package/@.buildinfo@, if present.
 --
 -- Thus @configure@ can use local system information to generate
@@ -423,7 +423,6 @@ defaultUserHooks
        preClean  = readHook id,
        preCopy   = readHook snd,
        preInst   = readHook snd,
-       preSDist  = readHook id,
        preReg    = readHook thd3,
        preUnreg  = readHook thd3
       }
