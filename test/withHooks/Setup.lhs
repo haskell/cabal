@@ -36,6 +36,7 @@
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
+>         postConf=(\_ _ _-> return ExitSuccess),
 >         hookedPreProcessors=  [("testSuffix", \ _ _ -> ppTestHandler)],
->         postClean=(\_ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
+>         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
 >        }
