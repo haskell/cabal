@@ -47,7 +47,7 @@ module Distribution.Setup (--parseArgs,
 #ifdef DEBUG
                            hunitTests,
 #endif
-                           parseGlobalArgs, commandList,
+                           parseGlobalArgs,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
                            parseHaddockArgs, parseProgramaticaArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,

@@ -40,32 +40,36 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PackageDescription (
+        -- * Package descriptions
 	PackageDescription(..),
 	emptyPackageDescription,
         readPackageDescription,
 	parseDescription,
         writePackageDescription,
 	showPackageDescription,
-	updatePackageDescription,
+        sanityCheckPackage,
+        setupMessage,
+        Library(..),
+        withLib,
+        hasLibs,
+        libModules,
+        Executable(..),
+        exeModules,
+        -- * Build information
+        BuildInfo(..),
+        emptyBuildInfo,
+        -- ** Supplementary build information
 	HookedBuildInfo,
 	emptyHookedBuildInfo,
 	readHookedBuildInfo,
 	parseHookedBuildInfo,
 	writeHookedBuildInfo,
 	showHookedBuildInfo,        
-	basicStanzaFields,
-        setupMessage,
-        withLib,
-        hasLibs,
-        BuildInfo(..),
-        emptyBuildInfo,
-        Executable(..),
-        Library(..),
-        emptyExecutable,
-        exeModules,
-        libModules,
+	updatePackageDescription,
+        -- * Utilities
+        ParseResult(..),
+        PError, showError,
         hcOptions,
-        sanityCheckPackage,
 #ifdef DEBUG
         hunitTests,
         test

@@ -8,12 +8,12 @@
 -- Portability :  GHC
 --
 -- Explanation: Simple build system; basically the interface for
--- Distribution/Simple/\* modules.  When given the parsed command-line
+-- Distribution.Simple.\* modules.  When given the parsed command-line
 -- args and package information, is able to perform basic commands
 -- like configure, build, install, register, etc.
 --
--- This module isn't called "Simple" because it's simple.  Far from
--- it.  It's called "Simple" because it does complicated things to
+-- This module isn't called \"Simple\" because it's simple.  Far from
+-- it.  It's called \"Simple\" because it does complicated things to
 -- simple software.
 
 {- All rights reserved.
@@ -48,11 +48,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple (
 	module Distribution.Package,
-	License(..), Version(..), VersionRange(..), 
+	module Distribution.License,
+	Version(..), VersionRange(..), 
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        defaultUserHooks, UserHooks (..), emptyUserHooks, defaultHookedPackageDesc,
+        UserHooks(..), Args, defaultUserHooks, emptyUserHooks,
+        defaultHookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -76,7 +78,7 @@ import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
-import Distribution.License (License(..))
+import Distribution.License
 import Distribution.Extension (Extension(..))
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
 			     orLaterVersion, orEarlierVersion,

@@ -7,11 +7,11 @@
 -- Stability   :  Stable
 -- Portability :  All
 --
--- Remove the "literal" markups from a Haskell source file, including
--- ">", "\begin{code}, \end{code}", and "#"
+-- Remove the \"literal\" markups from a Haskell source file, including
+-- \"@>@\", \"@\\begin{code}@\", \"@\\end{code}@\", and \"@#@\"
 --
 -- Part of the following code is from
--- "Report on the Programming Language Haskell",
+-- /Report on the Programming Language Haskell/,
 --   version 1.2, appendix C.
 
 module Distribution.PreProcess.Unlit(unlit,plain) where
