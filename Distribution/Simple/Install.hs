@@ -75,11 +75,12 @@ import HUnit (Test)
 #endif
 
 -- |FIX: nhc isn't implemented yet.
-install :: FilePath  -- ^build location
-        -> PackageDescription -> LocalBuildInfo
+install :: PackageDescription
+        -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
-install buildPref pkg_descr lbi install_prefixM = do
+install pkg_descr lbi install_prefixM = do
+  let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi install_prefixM
   let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr

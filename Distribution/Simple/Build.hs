@@ -69,8 +69,9 @@ import Control.Monad (unless, when)
 import Control.Exception (try)
 import Data.Char (isAlpha, isAlphaNum)
 import Data.List(nub, sort, isSuffixOf)
-import System.Directory (removeFile, copyFile)
+import System.Directory (removeFile)
 import System.Exit (ExitCode(..))
+import Distribution.Compat.Directory (copyFile)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
 				searchPathSeparator)
 import qualified Distribution.Simple.GHCPackageConfig
@@ -83,18 +84,17 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- Build the library
 
-build :: FilePath -- ^Build location
-         -> PackageDescription
+build :: PackageDescription
          -> LocalBuildInfo
          -> [ PPSuffixHandler ]
          -> IO ()
-build pref pkg_descr lbi suffixes = do
-  createIfNotExists True pref
+build pkg_descr lbi suffixes = do
+  createIfNotExists True (buildDir lbi)
   preprocessSources pkg_descr lbi suffixes
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
-   GHC -> buildGHC pref pkg_descr lbi
-   Hugs -> buildHugs pref pkg_descr lbi
+   GHC -> buildGHC pkg_descr lbi
+   Hugs -> buildHugs pkg_descr lbi
    _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
 
 -- |FIX: For now, the target must contain a main module.  Not used
@@ -112,15 +112,17 @@ buildNHC pkg_descr lbi = do
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
 -- it to the command-line.
-buildGHC :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
-buildGHC pref pkg_descr lbi = do
+buildGHC :: PackageDescription -> LocalBuildInfo -> IO ()
+buildGHC pkg_descr lbi = do
+  let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
   pkgConf <- GHC.localPackageConfig
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr $ \buildInfo' -> do
       createIfNotExists True (pref `joinFileName` (hsSourceDir buildInfo'))
-      let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+      let args = ccOptions pkg_descr
+              ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
                   "-odir",  pref `joinFileName` (hsSourceDir buildInfo'),
                   "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
@@ -134,7 +136,9 @@ buildGHC pref pkg_descr lbi = do
       unless (null (cSources buildInfo')) $
          sequence_ [do let odir = pref `joinFileName` dirOf c
                        createIfNotExists True odir
-                       rawSystemExit ghcPath (c: ["-odir", odir , "-hidir", pref, "-c"])
+		       let args = ccOptions pkg_descr
+			       ++ ["-odir", odir, "-hidir", pref, "-c"]
+                       rawSystemExit ghcPath (args ++ [c])
                                    | c <- cSources buildInfo']
 
       -- link:
@@ -149,13 +153,16 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any executables
   sequence_ [ do createIfNotExists True (pref `joinFileName` (hsSourceDir exeBi))
-                 let args = (if pkgConfReadable then ["-package-conf", pkgConf] else [])
-                         ++ ["-odir",  pref `joinFileName` (hsSourceDir exeBi),
-                             "-hidir", pref `joinFileName` (hsSourceDir exeBi),
-                             "-o",     pref `joinFileName` (hsSourceDir exeBi) `joinFileName` exeName'
+		 let targetDir = pref `joinFileName` hsSourceDir exeBi
+                 let args = ccOptions pkg_descr
+                         ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+                         ++ ["-odir",  targetDir,
+                             "-hidir", targetDir,
+                             "-o",     targetDir `joinFileName` exeName'
                             ]
                          ++ constructGHCCmdLine exeBi (exeDeps exeName' lbi)
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
+			 ++ ldOptions pkg_descr
                  rawSystemExit ghcPath args
              | Executable exeName' modPath exeBi <- executables pkg_descr]
 
@@ -167,12 +174,14 @@ constructGHCCmdLine buildInfo' deps =
     -- Unsupported extensions have already been checked by configure
     let flags = snd $ extensionsToGHCFlag (extensions buildInfo')
      in [ "--make", "-i" ++ hsSourceDir buildInfo' ]
+     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes buildInfo' ]
      ++ nub (flags ++ [ opt | (GHC,opts) <- options buildInfo', opt <- opts ])
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 -- |
-buildHugs :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
-buildHugs pref pkg_descr lbi = do
+buildHugs :: PackageDescription -> LocalBuildInfo -> IO ()
+buildHugs pkg_descr lbi = do
+    let pref = buildDir lbi
     withLib pkg_descr $ compileBuildInfo pref
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
 	(executables pkg_descr)

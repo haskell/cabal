@@ -188,10 +188,10 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.includes	      = includes lib,
         IPI.depends           = packageDeps lbi,
         IPI.extraHugsOpts     = concat [opts | (Hugs,opts) <- options lib],
-        IPI.extraCcOpts       = [],
-        IPI.extraLdOpts       = [],
+        IPI.extraCcOpts       = ccOptions pkg_descr,
+        IPI.extraLdOpts       = ldOptions pkg_descr,
         IPI.frameworkDirs     = [],
-        IPI.extraFrameworks   = [],
+        IPI.extraFrameworks   = frameworks pkg_descr,
 	IPI.haddockInterfaces = [],
 	IPI.haddockHTMLs      = []
   }	
