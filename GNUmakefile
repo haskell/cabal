@@ -67,11 +67,11 @@ clean-cabal:
 
 clean-hunit:
 	-rm -f hunit-stamp hunitInstall-stamp
-	cd test/HUnit-1.0 && make clean
+	cd tests/HUnit-1.0 && make clean
 
 clean-test:
-	cd test/A && make clean
-	cd test/wash2hs && make clean
+	cd tests/A && make clean
+	cd tests/wash2hs && make clean
 
 remove: remove-cabal remove-hunit
 remove-cabal:
@@ -85,25 +85,25 @@ remove-hunit:
 
 hunit: hunit-stamp
 hunit-stamp:
-	cd test/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
+	cd tests/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
 	touch $@
 
 hunitInstall: hunitInstall-stamp
 hunitInstall-stamp: hunit-stamp
-	cd test/HUnit-1.0 && ./setup install $(USER_FLAG)
+	cd tests/HUnit-1.0 && ./setup install $(USER_FLAG)
 	touch $@
 
 # testing...
 
 moduleTest:
 	mkdir -p dist/debug
-	ghc -main-is Distribution.ModuleTest.main $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:test/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
+	ghc -main-is Distribution.ModuleTest.main $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:.:tests/HUnit-1.0/src Distribution/ModuleTest -o moduleTest
 
 tests: moduleTest clean
-	cd test/A && make clean
-	cd test/HUnit-1.0 && make clean
-	cd test/A && make
-	cd test/HUnit-1.0 && make
+	cd tests/A && make clean
+	cd tests/HUnit-1.0 && make clean
+	cd tests/A && make
+	cd tests/HUnit-1.0 && make
 
 check:
 	rm -f moduleTest
