@@ -51,23 +51,51 @@ import Distribution.GetOpt
 -- Misc:
 import HUnit (Test(..), (~:), (~=?))
 
--- |Parse the standard command-line arguments.  FIX: is there a way to
--- use getOpts and still get the unknown flags?
-parseArgs :: [String] -> CommandLineOpts
-parseArgs _ = (NoCmd, [])
+-- Locate the compiler based on the flavor
+exeLoc :: CompilerFlavor -> IO FilePath
+exeLoc _ = return "error, not yet implemented" -- FIX
+
+pkgLoc :: CompilerFlavor -> IO FilePath
+pkgLoc _ = return "error, not yet implemented" -- FIX
 
 -- ------------------------------------------------------------
--- * command line
+-- * Command Line Types and Exports
 -- ------------------------------------------------------------
 
 type CommandLineOpts = (Action,
                         [String]) -- The un-parsed remainder
 
+-- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag = GhcFlag | NhcFlag | HugsFlag
-          | WithCompiler String | Prefix String | InstPrefix String
+          | WithCompiler FilePath | Prefix FilePath
+          -- For install:
+          | InstPrefix FilePath
 --          | Verbose | Version?
             deriving (Show, Eq)
 
+
+data Action = ConfigCmd LocalBuildInfo    -- config
+            | BuildCmd                    -- build
+            | InstallCmd (Maybe FilePath) -- install
+            | SDistCmd                    -- sdist
+            | PackageInfoCmd              -- packageinfo
+            | RegisterCmd                 -- register
+            | UnregisterCmd               -- unregister
+            | NoCmd -- error case?
+--             | TestCmd 1.0?
+--             | BDist -- 1.0
+--            | CleanCmd                 -- clean
+    deriving (Show, Eq)
+
+-- |Parse the standard command-line arguments.
+parseArgs :: [String] -> CommandLineOpts
+parseArgs _ = (NoCmd, [])
+
+-- ------------------------------------------------------------
+-- * Option Specifications
+-- ------------------------------------------------------------
+
+-- |Flag-type options (not commands)
 options :: [OptDescr Flag]
 options = [Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
@@ -90,26 +118,6 @@ commands = [("configure", "configure this package"),
             ("register", ""),
             ("unregister","")
            ]
-
-data Action = ConfigCmd LocalBuildInfo -- config
-            | BuildCmd                 -- build
-            | InstallCmd               -- install
-            | SDistCmd                 -- sdist
-            | PackageInfoCmd           -- packageinfo
-            | RegisterCmd              -- register
-            | UnregisterCmd            -- unregister
-            | NoCmd -- error case?
---             | TestCmd 1.0?
---             | BDist -- 1.0
---            | CleanCmd                 -- clean
-    deriving (Show, Eq)
-
--- Locate the compiler based on the flavor
-exeLoc :: CompilerFlavor -> IO FilePath
-exeLoc _ = return "error, not yet implemented" -- FIX
-
-pkgLoc :: CompilerFlavor -> IO FilePath
-pkgLoc _ = return "error, not yet implemented" -- FIX
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -168,7 +176,7 @@ hunitTests =
                TestLabel "simpler commands" $ TestList
                [flag ~: "failed" ~: (flagCmd, []) ~=? (parseArgs [flag])
                    | (flag, flagCmd) <- [("build", BuildCmd),
-                                         ("install", InstallCmd),
+                                         ("install", InstallCmd Nothing),
                                          ("sdist", SDistCmd),
                                          ("packageinfo", PackageInfoCmd),
                                          ("register", RegisterCmd)]
