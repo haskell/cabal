@@ -50,11 +50,12 @@ module Distribution.Package (
         parsePackageDesc,
         parseField,
 #ifdef DEBUG        
-        hunitTests
+        hunitTests,
+        main
 #endif
   ) where
 
-import Control.Monad(when)
+import Control.Monad(when, liftM)
 import Data.Char(isSpace)
 
 import Distribution.Version(Version(..), VersionRange(..), showVersion, parseVersion)
@@ -151,27 +152,56 @@ parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p
     = openFile p ReadMode >>= hGetContents >>= return . read
 
-parseDesc :: GenParser Char st PackageDescription
-parseDesc = notImp "parseDesc"
+-- |Wrapper function for 'parseDesc'
+doParseDesc :: String -> Either ParseError PackageDescription
+doParseDesc = runParser parseReqFields emptyPackageDescription ""
 
---doParseReqFields :: String -> Either PackageDescription a
+-- |High-level parser for package descriptions
+parseDesc :: GenParser Char PackageDescription PackageDescription
+parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
+    where
+    parseDescHelp
+           -- Free string and file paths:
+        =  try (parseField "Stability" False word
+               >>= updateState . (\l pkgD -> pkgD{stability=l}))
+           <|> try (parseField "C-Sources" True parseFilePath
+               >>= updateState . (\l pkgD -> pkgD{cSources=l}))
+           <|> try (parseField "Include-Dirs" True parseFilePath
+               >>= updateState . (\l pkgD -> pkgD{includeDirs=l}))
+           <|> try (parseField "Includes" True parseFilePath
+               >>= updateState . (\l pkgD -> pkgD{includes=l}))
+           <|> try (parseField "HS-Source-Dir" True parseFilePath
+               >>= updateState . (\l pkgD -> pkgD{hsSourceDir=l}))
+
+-- Parsing remains for:
+--
+-- Build-Depends: haskell-src, HUnit>=1.0.0-foo
+-- Modules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig
+-- Main-Modules: Distribution.Main
+-- Exposed-Modules: Distribution.Void, Foo.Bar
+-- Extra-Libs: libfoo, bar, bang
+-- Options: ghc: -fTH, hugs: +TH
+-- Extensions: {some known extensions}
+
+-- |Wrapper function for 'parseReqFields'
+doParseReqFields :: String -> Either ParseError PackageDescription
 doParseReqFields = runParser parseReqFields emptyPackageDescription ""
 
 -- |Parse the required fields. We'll basically run through these a
 -- bunch of times updating the state as we go along, as is noted.
 
-parseReqFields = do many1 parseReqFieldsHelp
-                    getState
+parseReqFields :: GenParser Char PackageDescription PackageDescription
+parseReqFields = many1 parseReqFieldsHelp >> getState
     where
     parseReqFieldsHelp :: GenParser Char PackageDescription ()
     parseReqFieldsHelp
-        = try (parseField "Version" True parseVersion
-               >>= (updateState . setPkgVersion))
-          <|> try (parseField "Name" False word
+        =  try (parseField "Name" False word
                >>= (updateState . setPkgName))
-          <|> try (parseField "Copyright" True parseFreeText
+           <|> try (parseField "Version" True parseVersion
+               >>= (updateState . setPkgVersion))
+           <|> try (parseField "Copyright" True parseFreeText
                >>= (updateState . (\l pkgD -> pkgD{copyright=l})))
-          <|> try (parseField "License" True parseLicense
+           <|> try (parseField "License" True parseLicense
                >>= (updateState . (\c pkgD -> pkgD{license=c})))
 
 -- |A parser for any of the given parsers.  This actually seems to
@@ -180,6 +210,14 @@ parseReqFields = do many1 parseReqFieldsHelp
 anyOf :: [GenParser tok st a] -> GenParser tok st a
 anyOf [a] = a
 anyOf (h:t) = foldl ((<|>) . try) (try h) t
+
+-- |FIX: must learn to escape whitespace
+parseFilePath :: GenParser Char st [FilePath]
+parseFilePath
+    = parseCommaList (many1 (do try word
+                                <|> toStr digit
+                                <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{")
+                            ) >>= return . concat)
 
 parseLicense :: GenParser Char st License
 parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
@@ -193,20 +231,32 @@ licenses= [("GPL", GPL),
            ("PublicDomain", PublicDomain),
            ("AllRightsReserved", AllRightsReserved)]
 
--- |Must know when to stop, but still not eat the next field!
-parseFreeText = notImp "parseFreeText"
+-- |FIX: Could be better.  The problem is making it free enough without
+-- eating the next field.
+parseFreeText = many1 (do try word
+                          <|> toStr digit
+                          <|> toStr parseWhite
+                          <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{")
+                      )
+                >>= return . concat
+toStr c = c >>= \x -> return [x]
 
 word :: GenParser Char st String
 word = many1 letter <?> "word"
+
+number  :: Parser Integer
+number  = do{ ds <- many1 digit
+            ; return (read ds)
+            }
+        <?> "number"
 
 --parseWordCommaList :: GenParser Char st [t]
 parseCommaList :: GenParser Char st a -- ^The parser for the stuff between commas
                -> GenParser Char st [a]
 parseCommaList p
     = do words <- sepBy1 p separator
-         newline
          return words
-    where separator = skipMany1 (space <|> char ',')
+    where separator =  (skipMany parseWhite) >> char ',' >> (skipMany parseWhite)
 
 parseWhite = try parseSpaceNotNewline
             <|> (try (char '\n' >> parseWhite))
@@ -310,6 +360,11 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                         TestCase (sequence_ [assertRight ("license " ++ lName) lVal
                                                     (parse parseLicense "" lName)
                                              | (lName, lVal) <- licenses]),
+              TestLabel "misc fields" $ TestCase $
+                 do assertRight "path field"
+                       ["foo/bar/bang","/baz/boom/pow", "/", "foob"]
+                       (parse (parseField "Includes" False parseFilePath) ""
+                         "Includes: foo/bar/bang   , /baz/boom/pow, /, foob"),
 
               TestLabel "Required fields" $ TestCase $
                  do assertRight "some fields"
@@ -321,6 +376,11 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                                                         (Version [0,0]["date=asdf"])),
                                                license=GPL}
                        (doParseReqFields "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+
+                    assertRight "copyright field"
+                       "(c) 2004 foo bar bang"
+                       (parse (parseField "Copyright" False parseFreeText) ""
+                                 "Copyright: (c) 2004 foo bar\n bang")
                                           
                     assertRight "required fields for foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
@@ -331,7 +391,7 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
 
               TestLabel "Package description" $ TestCase $ 
                  assertRight "entire package description" testPkgDescAnswer
-                                                          (parse parseDesc "" testPkgDesc)
+                                                          (doParseDesc testPkgDesc)
              ]
 
 
