@@ -98,7 +98,7 @@ import Distribution.Simple.Utils(currentDir, die)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 
 #ifdef DEBUG
-import HUnit (Test(..), assertBool, Assertion, runTestTT)
+import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts)
 import Distribution.ParseUtils	(runP)
 #endif
 
@@ -601,6 +601,7 @@ hasMods pkg_descr
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
+testPkgDesc :: String
 testPkgDesc = unlines [
         "-- Required",
         "Name: Cabal",
@@ -643,6 +644,7 @@ testPkgDesc = unlines [
         "Extensions: OverlappingInstances"
         ]
 
+testPkgDescAnswer :: PackageDescription
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
                                                  pkgVersion = Version {versionBranch = [0,1,1,1,1],
@@ -739,5 +741,6 @@ assertParseOk mes expected actual
              ParseOk v -> v == expected
              _         -> False)
 
+test :: IO Counts
 test = runTestTT (TestList hunitTests)
 #endif
