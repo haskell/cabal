@@ -42,7 +42,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Package(PackageIdentifier(..),
-                            PackageDescription(..),
                             PackageConfig(..))
 
 where
@@ -54,16 +53,12 @@ data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
       deriving (Read, Show, Eq)
 
-data PackageDescription
-    = PackageDescription { package      :: PackageIdentifier,
-                           licenese     :: License,
-                           copyright    :: String,
-                           maintainer   :: String,
-                           stability    :: String}
-      deriving Show
-
 data PackageConfig
-    =  PackageConfig {packageDescription :: PackageDescription,
+    =  PackageConfig {package      :: PackageIdentifier,
+                      licenese     :: License,
+                      copyright    :: String,
+                      maintainer   :: String,
+                      stability    :: String,
                       buildDepends :: [ Dependency ],
                       sources      :: [ FilePath ],
                       extensions   :: [ Extension ],

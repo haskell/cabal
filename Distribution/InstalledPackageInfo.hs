@@ -1,12 +1,12 @@
 -- This module is meant to be local-only to Distribution...
 
-module Distribution.UseConfig where
+module Distribution.InstalledPackageInfo where
 
 import Distribution.Misc(License(..), Dependency, Opt, LocalBuildInfo)
 import Distribution.Package(PackageIdentifier(..), PackageConfig)
 
-data UseConfig
-   = UseConfig {
+data InstalledPackageInfo
+   = InstalledPackageInfo {
         pkgIdent        :: PackageIdentifier,
         license         :: License,
         copyright       :: String,
@@ -28,10 +28,10 @@ data UseConfig
         extraFrameworks:: [String]}
     deriving (Read, Show)
 
-emptyUseConfig :: UseConfig
-emptyUseConfig = UseConfig (PackageIdentifier "" (error "no version"))
+emptyInstalledPackageInfo :: InstalledPackageInfo
+emptyInstalledPackageInfo = InstalledPackageInfo (PackageIdentifier "" (error "no version"))
                    AllRightsReserved "" "" "" False [] [] [] [] [] []
                    [] [] [] [] [] [] []
 
-getUseInfo :: LocalBuildInfo -> PackageConfig -> UseConfig
-getUseInfo _ _ = emptyUseConfig -- FIX
+getUseInfo :: LocalBuildInfo -> PackageConfig -> InstalledPackageInfo
+getUseInfo _ _ = emptyInstalledPackageInfo -- FIX

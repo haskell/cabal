@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (parseArgs, Action(..), hunitTests) where
 
--- Local
+ -- Local
 import Distribution.Misc(LocalBuildInfo, CompilerFlavor(..),
                          Compiler(..), LocalBuildInfo(..))
 
@@ -71,6 +71,7 @@ data Action = ConfigCmd LocalBuildInfo
             | NoCmd -- error case?
 --             | TestCmd 1.0?
 --             | BDist -- 1.0
+--            | CleanCmd                 -- clean
     deriving (Show, Eq)
 
 
@@ -86,6 +87,10 @@ exeLoc _ = return "error, not yet implemented" -- FIX
 
 pkgLoc :: CompilerFlavor -> IO FilePath
 pkgLoc _ = return "error, not yet implemented" -- FIX
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
 
 hunitTests :: IO [Test]
 hunitTests =
