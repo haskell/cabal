@@ -48,19 +48,25 @@ module Distribution.Package (
 	PackageDescription(..),
 	emptyPackageDescription,
         parsePackageDesc,
+        parseField,
 #ifdef DEBUG        
         hunitTests
 #endif
   ) where
 
-import Distribution.Version(Version(..), showVersion)
+import Control.Monad(when)
+import Data.Char(isSpace)
+
+import Distribution.Version(Version(..), showVersion, parseVersion)
 import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
 
 import System.IO(openFile, IOMode(..), hGetContents)
 
+import Text.ParserCombinators.Parsec
+
 #ifdef DEBUG
-import HUnit (Test)
+import HUnit (Test(..), (~:), (~=?), assertEqual, assertBool, Assertion, runTestTT)
 #endif
 
 data PackageIdentifier
@@ -122,15 +128,97 @@ emptyPackageDescription
                       options      = []
                      }
 
+
+-- ------------------------------------------------------------
+-- * Parsing
+-- ------------------------------------------------------------
+
 -- |Parse the given package file.  FIX: don't use read / show.
 parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p
     = openFile p ReadMode >>= hGetContents >>= return . read
+
+word :: Parser String
+word = many1 letter <?> "word"
+
+--parseWordCommaList :: GenParser Char st [t]
+parseCommaList :: GenParser Char st a -- ^The parser for the stuff between commas
+               -> GenParser Char st [a]
+parseCommaList p
+    = do words <- sepBy1 p separator
+         newline
+         return words
+    where separator = skipMany1 (space <|> char ',')
+
+parseWhite = try parseSpaceNotNewline
+            <|> (char '\n' >> parseWhite)
+
+parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
+    where isSpaceNotNewline :: Char -> Bool
+          isSpaceNotNewline '\n' = False
+          isSpaceNotNewline n    = isSpace n
+
+parseField :: String              -- ^The field name to parse
+           -> Bool                -- ^Require newline?
+           -> GenParser Char st t -- ^The parser to use for this field
+           -> GenParser Char st t
+parseField s newline p
+    = do when newline (char '\n'>>return ())
+         string s
+         skipMany parseWhite
+         char ':'
+         skipMany parseWhite
+         p
 
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
 hunitTests :: [Test]
-hunitTests = []
+hunitTests = [TestLabel "newline before word" $ TestCase $
+                    assertRight "newline before word"
+                     "foo" (parse (skipMany parseWhite>>char '\n'>>word) "" "   \n  \nfoo"),
+
+              TestLabel "skip spaces not newlines" $ TestCase $
+                 do assertRight "spaces with newlines"
+                     "foo" (parse (skipMany parseWhite>>word) "" "   \n  foo")
+                    assertRight "spaces with newlines"
+                     "foo" (parse (skipMany parseWhite>>word) "" "   \n \t\n   foo")
+                    assertRight "no preceding spaces"
+                     "foo" (parse (skipMany parseWhite>>word) "" "foo")
+                    assertBool "newline before data without in-between spaces"
+                     (isError (parse (skipMany parseWhite>>word) "" "   \n  \nfoo")),
+
+              TestLabel "basic fields" $ TestCase $
+              do let p1 = parse (do w1 <- parseField "Foo" False parseVersion
+                                    skipMany parseWhite
+                                    w2 <- parseField "Bar" True word
+                                    return (w1, w2)
+                                ) ""
+                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["date=one"]},"boo")
+                 assertRight "basic spaces 1"
+                   knownVal1 (p1 "Foo: 3.2-one\nBar: boo")
+                 assertRight "basic spaces 2"
+                   knownVal1 (p1 "Foo: 3.2-one \t   \nBar: boo")
+                 assertRight "basic spaces 3"
+                   knownVal1 (p1 "Foo : 3.2-one \t   \nBar:    boo  ")
+                 assertRight "basic spaces 3"
+                   knownVal1 (p1 "Foo:3.2-one \t   \nBar:    boo  ")
+                 assertRight "basic spaces with newline"
+                   knownVal1 (p1 "Foo:\n 3.2-one \t   \nBar:    boo  ")
+                 assertRight "basic spaces with newline"
+                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  ")
+             ]
+
+assertRight :: (Eq val) => String -> val -> (Either a val) -> Assertion
+assertRight mes expected actual
+    =  assertBool mes
+           (case actual of
+             (Right v) -> v == expected
+             _         -> False)
+
+isError (Left _) = True
+isError _        = False
+
+main = runTestTT (TestList hunitTests)
 #endif

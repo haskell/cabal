@@ -1,4 +1,5 @@
 * misc
+** version parser is probably too greedy.
 ** Possibly create a (native?) zlib library?
 ** port code to windows
 ** ./Setup.lhs build for nhc
