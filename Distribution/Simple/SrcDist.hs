@@ -53,13 +53,15 @@ import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          setupMessage, libModules)
 import Distribution.Package (showPackageId)
-import Distribution.Simple.Utils(smartCopySources, die, findPackageDesc)
+import Distribution.Simple.Utils
+        (smartCopySources, die, findPackageDesc, copyFileVerbose)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
 import System.Cmd (system)
-import Distribution.Compat.Directory (doesDirectoryExist, getCurrentDirectory, copyFile)
-import Distribution.Compat.FilePath (joinFileName)
+import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
+         getCurrentDirectory, createDirectoryIfMissing)
+import Distribution.Compat.FilePath (joinFileName, splitFileName)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -82,14 +84,26 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
   maybe (return ()) (\l -> prepareDir verbose targetDir pps (libModules pkg_descr) (libBuildInfo l))
                     (library pkg_descr)
   -- move the executables into place
-  sequence_ [prepareDir verbose targetDir pps [] exeBi | (Executable _ _ exeBi) <- executables pkg_descr]
+  flip mapM_ (executables pkg_descr) $ \ (Executable _ mainPath exeBi) -> do
+    prepareDir verbose targetDir pps [] exeBi
+    copyFileTo verbose targetDir (hsSourceDir exeBi `joinFileName` mainPath)
+  when (not (null (licenseFile pkg_descr))) $
+    copyFileTo verbose targetDir (licenseFile pkg_descr)
   -- setup isn't listed in the description file.
-  smartCopySources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
+  hsExists <- doesFileExist "Setup.hs"
+  lhsExists <- doesFileExist "Setup.lhs"
+  if hsExists then copyFileTo verbose targetDir "Setup.hs"
+    else if lhsExists then copyFileTo verbose targetDir "Setup.lhs"
+    else writeFile (targetDir `joinFileName` "Setup.hs") $ unlines [
+                "import Distribution.Simple",
+                "main = defaultMainWithHooks defaultUserHooks"]
+  -- the description file itself
   descFile <- getCurrentDirectory >>= findPackageDesc
-  copyFile descFile (joinFileName targetDir descFile)
-  system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
-	     (targetPref `joinFileName` (tarBallName pkg_descr))
-		    ++ " " ++ (nameVersion pkg_descr)
+  copyFileTo verbose targetDir descFile
+
+  system $ "(cd " ++ tmpDir
+           ++ ";tar cf - " ++ (nameVersion pkg_descr) ++ ") | gzip -9 >"
+           ++ (targetPref `joinFileName` (tarBallName pkg_descr))
   system $ "rm -rf " ++ tmpDir
   putStrLn "Source tarball created."
 
@@ -100,11 +114,18 @@ prepareDir :: Int       -- ^verbose
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, otherModules=mods'}
+prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, otherModules=mods', cSources=cfiles}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps  ++ ["hs", "lhs"]
          smartCopySources verbose srcDir pref (mods++mods') suff
          removePreprocessed pref mods suff
+         mapM_ (copyFileTo verbose inPref) cfiles
+
+copyFileTo :: Int -> FilePath -> FilePath -> IO ()
+copyFileTo verbose dir file = do
+  let targetFile = dir `joinFileName` file
+  createDirectoryIfMissing True (fst (splitFileName targetFile))
+  copyFileVerbose verbose file targetFile
 
 ------------------------------------------------------------
 

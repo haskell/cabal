@@ -369,12 +369,6 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
-
- , listField   "exposed-modules"
-                           text               parseModuleNameQ
-                           (\p -> maybe [] exposedModules (library p))
-                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
-                                              pkg{library = Just lib{exposedModules=xs}})
  ]
 
 executableStanzaFields :: [StanzaField Executable]
@@ -464,10 +458,22 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
         parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
-        parseBasicStanza [] pkg (lineNo, f, val) = do
-          let lib = fromMaybe emptyLibrary (library pkg)
-	  bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
-          return pkg{library=Just lib{libBuildInfo=bi}}
+          {-     
+     , listField   "exposed-modules"
+                           text               parseModuleNameQ
+                           (\p -> maybe [] exposedModules (library p))
+                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
+                                              pkg{library = Just lib{exposedModules=xs}})
+-}
+        parseBasicStanza [] pkg (lineNo, f, val)
+          | "exposed-modules" == f = do
+               mods <- runP lineNo f (parseOptCommaList parseModuleNameQ) val
+               return pkg{library=Just lib{exposedModules=mods}}
+          | otherwise = do
+	       bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
+               return pkg{library=Just lib{libBuildInfo=bi}}
+          where
+            lib = fromMaybe emptyLibrary (library pkg)
 
         parseExecutableStanza st@((_, "executable",eName):_) =
           case lookupField "main-is" st of
@@ -534,7 +540,9 @@ showPackageDescription pkg = render $
   ppFields pkg basicStanzaFields $$
   (case library pkg of
      Nothing  -> empty
-     Just lib -> ppFields (libBuildInfo lib) binfoFields) $$
+     Just lib -> 
+        text "exposed-modules" <> colon <+> fsep (punctuate comma (map text (exposedModules lib))) $$
+        ppFields (libBuildInfo lib) binfoFields) $$
   vcat (map ppExecutable (executables pkg))
   where
     ppExecutable exe =

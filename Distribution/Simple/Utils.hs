@@ -205,7 +205,7 @@ smartCopySources verbose pref targetDir sources searchSuffixes
          sourceLocs' <- mapM moduleToFPErr sources
          let sourceLocs = concat sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
-                 = if null pref then sourceLocs
+                 = if null pref || pref == currentDir then sourceLocs
                    else map (drop ((length pref) +1)) sourceLocs
 	 mapM (createDirectoryIfMissing True)
 		  $ nub [fst (splitFileName (targetDir `joinFileName` x))

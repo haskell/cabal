@@ -50,7 +50,7 @@ module Distribution.ParseUtils (
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
 	parsePackageNameQ, parseVersionRangeQ,
-	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList,
+	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
 	simpleField, listField, commaListField, optsField, 
 	parseReadS, parseQuoted,
@@ -272,7 +272,8 @@ showFilePath = showToken
 
 showToken :: String -> Doc
 showToken str
- | not (any dodgy str)  = text str
+ | not (any dodgy str) &&
+   not (null str)       = text str
  | otherwise            = text (show str)
   where dodgy c = isSpace c || c == ','
 

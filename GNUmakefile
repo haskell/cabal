@@ -26,7 +26,7 @@ all: moduleTest
 
 setup::
 	mkdir -p dist/tmp
-	$(HC) $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
+	$(HC) $(GHCFLAGS) -package Cabal -odir dist/tmp -hidir dist/tmp Setup -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
