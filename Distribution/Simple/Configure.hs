@@ -266,7 +266,7 @@ hunitTests
           simonMarGHC <- configure emptyPackageDescription {package=packageID}
                                        (Just GHC,
 				       Just simonMarGHCLoc,
-				       Nothing)
+				       Nothing, Nothing)
 	  assertEqual "finding ghc, etc on simonMar's machine failed"
              (LocalBuildInfo "/usr" (Compiler GHC 
 	                    simonMarGHCLoc
