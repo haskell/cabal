@@ -144,6 +144,7 @@ $(CABALBALL):
 TMPDISTLOC=/tmp/cabaldist
 
 dist: haddock $(CABALBALL)
+	darcs record
 	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
 	mv $(CABALBALL) $(TMPDISTLOC)
