@@ -47,26 +47,24 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFlag)
+import Distribution.Misc (extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
-                             BuildInfo(..), showPackageId, Executable(..), hasLibs)
+                             BuildInfo(..), showPackageId, Executable(..))
 import Distribution.PreProcess (preprocessSources)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
-                                  mkLibName, moveSources, pathJoin, 
+                                  mkLibName, pathJoin, 
                                   splitFilePath, joinFilenameDir, joinExt,
                                   withLib
                                  )
 
 
-import Control.Monad (when, unless)
+import Control.Monad (unless)
 import Control.Exception (try)
-import Data.List(intersperse, nub)
-import Data.Maybe(fromJust)
-import System.Environment (getEnv)
+import Data.List(nub)
 import System.Directory (removeFile)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
@@ -108,25 +106,25 @@ buildGHC pref pkg_descr lbi = do
   (pkgConf, pkgConfExists) <- GHC.localPackageConfig
   unless pkgConfExists $ writeFile pkgConf "[]\n"
   -- Build lib
-  withLib pkg_descr $ \build -> do
+  withLib pkg_descr $ \buildInfo' -> do
       let args = ["-package-conf", pkgConf,
                   "-package-name", pkgName (package pkg_descr),
-                  "-odir", pathJoin [pref, hsSourceDir build],
-                  "-hidir", pathJoin [pref, hsSourceDir build]
+                  "-odir", pathJoin [pref, hsSourceDir buildInfo'],
+                  "-hidir", pathJoin [pref, hsSourceDir buildInfo']
                  ]
-              ++ constructGHCCmdLine pref build (packageDeps lbi)
-              ++ modules build
-      unless (null (modules build)) $
+              ++ constructGHCCmdLine pref buildInfo' (packageDeps lbi)
+              ++ modules buildInfo'
+      unless (null (modules buildInfo')) $
         rawSystemExit ghcPath args
 
       -- build any C sources
-      unless (null (cSources build)) $
-         rawSystemExit ghcPath (cSources build ++ ["-odir", pref, "-hidir", pref, "-c"])
+      unless (null (cSources buildInfo')) $
+         rawSystemExit ghcPath (cSources buildInfo' ++ ["-odir", pref, "-hidir", pref, "-c"])
 
-      let hObjs = [ pathJoin [hsSourceDir build, dotToSep x `joinExt` objsuffix]
-                  | x <- modules build ]
+      let hObjs = [ pathJoin [hsSourceDir buildInfo', dotToSep x `joinExt` objsuffix]
+                  | x <- modules buildInfo' ]
           cObjs = [ path `joinFilenameDir` file `joinExt` objsuffix
-                  | (path, file, _) <- (map splitFilePath (cSources build)) ]
+                  | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs) $ do
         try (removeFile lib) -- first remove library if it exists
@@ -134,19 +132,19 @@ buildGHC pref pkg_descr lbi = do
 
   -- build any executables
   sequence_ [ do let args = ["-package-conf", pkgConf,
-                             "-o", pathJoin [pref, hsSourceDir exeBi, exeName]
+                             "-o", pathJoin [pref, hsSourceDir exeBi, exeName']
                             ]
-                         ++ constructGHCCmdLine pref exeBi (exeDeps exeName lbi)
+                         ++ constructGHCCmdLine pref exeBi (exeDeps exeName' lbi)
                          ++ [pathJoin [pref, hsSourceDir exeBi, modPath]]
                  rawSystemExit ghcPath args
-             | Executable exeName modPath exeBi <- executables pkg_descr]
+             | Executable exeName' modPath exeBi <- executables pkg_descr]
 
 constructGHCCmdLine :: FilePath -> BuildInfo -> [PackageIdentifier] -> [String]
-constructGHCCmdLine pref build deps = 
+constructGHCCmdLine pref buildInfo' deps = 
     -- Unsupported extensions have already been checked by configure
-    let flags = snd $ extensionsToGHCFlag (extensions build)
-     in [ "--make", "-i" ++ pathJoin [pref, hsSourceDir build] ]
-     ++ nub (flags ++ [ opt | (GHC,opts) <- options build, opt <- opts ])
+    let flags = snd $ extensionsToGHCFlag (extensions buildInfo')
+     in [ "--make", "-i" ++ pathJoin [pref, hsSourceDir buildInfo'] ]
+     ++ nub (flags ++ [ opt | (GHC,opts) <- options buildInfo', opt <- opts ])
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 objsuffix :: String
