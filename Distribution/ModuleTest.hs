@@ -41,7 +41,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module ModuleTest where
+module Main where
 
 -- Import everything, since we want to test the compilation of them:
 
@@ -53,4 +53,9 @@ import Distribution.Misc()
 import Distribution.Package()
 
 main :: IO ()
-main = return ()
+main = do putStrLn "compile successful"
+       
+
+-- Local Variables:
+-- compile-command: "ghc --make ModuleTest.hs -o moduleTest"
+-- End:
