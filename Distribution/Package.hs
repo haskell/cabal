@@ -310,8 +310,8 @@ splitStanzas = map merge . groupStanzas . filter validLine . zip [1..] . lines
         groupStanzas xs = let (ys,zs) = break allSpaces xs
                            in ys : groupStanzas (dropWhile allSpaces zs)
         merge ((n,x):(_,' ':s):ys) = case dropWhile isSpace s of
-                                       "." -> merge ((n,x++"\n"):ys)
-                                       s'  -> merge ((n,x++"\n"++s'):ys)
+                                       ('.':s') -> merge ((n,x++"\n"++s'):ys)
+                                       s'       -> merge ((n,x++"\n"++s'):ys)
         merge ((n,x):ys) = brk n x : merge ys
         merge []         = []
         brk n xs = case break (==':') xs of
