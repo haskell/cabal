@@ -55,7 +55,8 @@ import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
-                                  mkLibName, moveSources, pathJoin, splitExt
+                                  mkLibName, moveSources, pathJoin, 
+                                  splitExt, joinExt
                                  )
 
 
@@ -118,9 +119,9 @@ buildGHC pref pkg_descr lbi = do
       unless (null (cSources build)) $
          rawSystemExit ghcPath (cSources build ++ ["-odir", pref, "-hidir", pref, "-c"])
 
-      let hObjs = [ pathJoin [hsSourceDir build, dotToSep x ++ objsuffix]
+      let hObjs = [ pathJoin [hsSourceDir build, dotToSep x `joinExt` objsuffix]
                   | x <- modules build ]
-          cObjs = [ file ++ objsuffix
+          cObjs = [ file `joinExt` objsuffix
                   | (file, _) <- (map splitExt (cSources build)) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
       unless (null hObjs && null cObjs)
@@ -144,11 +145,7 @@ constructGHCCmdLine pref build deps =
      ++ (concat [ ["-package", pkgName pkg] | pkg <- deps ])
 
 objsuffix :: String
-#ifdef mingw32_TARGET_OS
-objsuffix = ".obj"
-#else
-objsuffix = ".o"
-#endif
+objsuffix = "o"
 
 dotToSep :: String -> String
 dotToSep s = pathJoin (split '.' s)

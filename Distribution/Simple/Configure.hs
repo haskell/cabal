@@ -59,8 +59,9 @@ import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), emptyPackageDescription,
                             PackageIdentifier(..), BuildInfo(..), Executable(..)
                            )
-import Distribution.Simple.Utils (die, setupMessage,
-                                  findBinary, splitFilenameDir)
+import Distribution.Simple.Utils (die, setupMessage, findBinary, 
+                                  splitFilenameDir, splitExt,
+                                  joinFilenameDir,  joinExt)
 import Distribution.Package	( PackageIdentifier )
 import Distribution.Version (Version(..), VersionRange(..))
 
@@ -234,8 +235,9 @@ compilerPkgToolName Hugs = "hugs-package"
 guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath flavor path
   = do let pkgToolName = compilerPkgToolName flavor
-           (dir,_) = splitFilenameDir path
-           pkgtool = dir ++ '/':pkgToolName
+           (dir,fname) = splitFilenameDir path
+           (_,ext)     = splitExt fname
+           pkgtool     = dir `joinFilenameDir` pkgToolName `joinExt` ext
        message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
        when (not exists) $

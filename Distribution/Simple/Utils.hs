@@ -43,6 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
 	splitFilenameDir,
+	joinFilenameDir,
 	split,
 	isPathSeparator,
         pathSeparatorStr,
@@ -61,6 +62,7 @@ module Distribution.Simple.Utils (
         pathJoin,
         removeFileRecursive,
         splitExt,
+        joinExt,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -102,6 +104,10 @@ splitFilenameDir str
 		 | otherwise = dir
     in  (real_dir, rest)
 
+-- "foo/bar" "xyzzy.ext" -> "foo/bar/xyzzy.ext"
+joinFilenameDir :: String -> String -> FilePath
+joinFilenameDir dir fname = dir++pathSeparator:fname
+
 split :: Char -> String -> [String]
 split c s = case rest of
 		[]     -> [chunk] 
@@ -115,9 +121,18 @@ split_longest_prefix s pred'
 	(_:pre') -> (reverse pre', reverse suf)
   where (suf,pre) = break pred' (reverse s)
 
--- |Split the path into filename and extension
+-- | Split the path into filename and extension
 splitExt :: FilePath -> (String, String)
-splitExt p = split_longest_prefix p (== '.')
+splitExt p
+  = case pre of
+	[]       -> (reverse suf, [])
+	(_:pre') -> (reverse pre', reverse suf)
+  where (suf,pre) = break (== '.') (reverse p)
+
+-- |Split the path into filename and extension
+joinExt :: FilePath -> String -> String
+joinExt path ""  = path
+joinExt path ext = path ++ '.':ext
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =
@@ -136,10 +151,17 @@ findBinary binary = do
     search :: [FilePath] -> IO (Maybe FilePath)
     search [] = return Nothing
     search (d:ds) = do
-	let path = d ++ '/':binary
+	let path = d `joinFilenameDir` binary `joinExt` exeSuffix
 	b <- doesFileExist path
 	if b then return (Just path)
              else search ds
+
+exeSuffix :: String
+#ifdef mingw32_TARGET_OS
+exeSuffix = "exe"
+#else
+exeSuffix = ""
+#endif
 
 parsePath :: String -> [FilePath]
 parsePath path = split pathSep path
@@ -227,7 +249,16 @@ createDirectoryParents file
 -- |Get this path and all its parents.
 pathInits :: FilePath -> [FilePath]
 pathInits path
-    = map pathJoin (inits $ mySplit pathSeparator path)
+    = map (\x -> device++pathJoin x) (tail $ inits $ mySplit pathSeparator path')
+    where
+#ifdef mingw32_TARGET_OS    -- Should we do this only on Windows? What about file://usr/bin?
+       (device,path') = case break (== ':') path of
+         (path,"") -> ("",path)
+         (device,c1:c2:path) | isPathSeparator c2 -> (device++[c1,c2],path)
+         (device,c1:path) -> (device++[c1],path)
+#else
+       (device,path') = ("",path)
+#endif
 
 -- |Give a list of lists breaking apart elements who match the given criteria
 
