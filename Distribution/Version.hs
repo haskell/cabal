@@ -62,7 +62,7 @@ module Distribution.Version (
  ) where
 
 import Control.Monad    ( liftM )
-import Data.Char        ( isDigit, isAlpha )
+import Data.Char        ( isDigit, isAlphaNum )
 import Data.List	( intersperse )
 
 import Compat.ReadP
