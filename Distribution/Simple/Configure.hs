@@ -93,8 +93,12 @@ configure pkgconfig (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
 			Just path -> path
 			Nothing   -> system_default_prefix pkgconfig
 
+        message $ "Using build prefix: " ++ prefix
 	-- detect compiler
-	compiler <- configCompiler maybe_hc_flavor maybe_hc_path pkgconfig 
+	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path pkgconfig 
+        message $ "Using compiler flavor: " ++ (show f')
+        message $ "Using compiler: " ++ p'
+        message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=prefix, compiler=compiler}
 
 system_default_prefix PackageConfig{package=package} = 

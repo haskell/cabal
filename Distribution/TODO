@@ -3,7 +3,6 @@
 ** x-pkg command-line interface
 
 * Code
-** make "configure" more verbose
 ** build
 ** install
 ** register
