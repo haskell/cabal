@@ -135,6 +135,7 @@ register pkg_descr lbi (userInst,verbose)
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
       _   -> die ("only registering with GHC is implemented")
 
+userPkgConfErr :: String -> IO a
 userPkgConfErr local_conf = 
   die ("--user flag passed, but cannot write to local package config: "
     	++ local_conf )

@@ -56,7 +56,7 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils (
-	StanzaField(..), singleStanza, ParseResult(..),
+	StanzaField(..), singleStanza, ParseResult(..), LineNo,
 	simpleField, listField, parseLicenseQ,
 	parseFilePathQ, parseLibNameQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, parseReadS, parseOptVersion, parseQuoted,
@@ -153,11 +153,14 @@ parseInstalledPackageInfo inp = do
 	-- the package info.
   foldM (parseBasicStanza fields) emptyInstalledPackageInfo stLines
 
+parseBasicStanza :: [StanzaField a]
+		    -> a
+		    -> (LineNo, String, String)
+		    -> ParseResult a
 parseBasicStanza ((StanzaField name _ _ set):fields) pkg (lineNo, f, val)
   | name == f = set lineNo val pkg
   | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
-parseBasicStanza [] pkg (lineNo, f, val) = return pkg
-
+parseBasicStanza [] pkg (_, _, _) = return pkg
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
@@ -274,4 +277,5 @@ installedStanzaFields = [
 	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
+parsePackageId' :: ReadP.Parser r Char PackageIdentifier
 parsePackageId' = parseQuoted parsePackageId <++ parsePackageId
