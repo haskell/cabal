@@ -41,10 +41,37 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Compiler where
+module Distribution.Misc(Compiler, License, Dependency, Extension, Opt)
+    where
+
+import Distribution.Version(VersionRange)
+
+-- ------------------------------------------------------------
+-- * Compiler
+-- ------------------------------------------------------------
 
 data Flavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
 
 data Compiler = Compiler {flavor        :: Compiler,
                           path          :: FilePath,
                           packagingTool :: FilePath}
+
+
+-- ------------------------------------------------------------
+-- * Misc
+-- ------------------------------------------------------------
+
+data License = GPL | LGPL | BSD3 | BSD4 | PublicDomain | AllRightsReserved
+             | {- ... | -} OtherLicense FilePath
+               deriving (Read, Show)
+
+-- |Maybe move to Distribution.Version?
+data Dependency = Dependency String VersionRange
+                  deriving (Read, Show)
+
+-- |This represents non-standard compiler extensions which each
+-- package might employ.  Not yet implemented.
+
+data Extension = Foo | Bar
+
+type Opt = String
