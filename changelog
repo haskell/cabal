@@ -1,0 +1,59 @@
+-*-change-log-*-
+
+0.3  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
+
+	* Interface Changes:
+
+	** WARNING: this is a pre-release and the interfaces are still
+	likely to change until we reach a 1.0 release.
+
+	** Instead of Package.description, you should name your
+	description files <something>.cabal.  In particular, we suggest
+	that you name it <packagename>.cabal, but this is not enforced
+	(yet).  Multiple .cabal files in the same directory is an error,
+	at least for now.
+
+	** ./setup install --install-prefix is gone.  Use ./setup copy
+	--copy-prefix instead.
+
+	** The "Modules" field is gone.  Use "hidden-modules",
+	"exposed-modules", and "executable-modules".
+
+	** Build-depends is now a package-only field, and can't go into
+	executable stanzas.  Build-depends is a package-to-package
+	relationship.
+
+	** Some new fields.  Use the Source.
+
+	* New Features
+
+	** Cabal is now included as a package in the CVS version of
+	fptools.  That means it'll be released as "-package Cabal" in
+	future versions of the compilers, and if you are a bleeding-edge
+	user, you can grab it from the CVS repository with the compilers.
+
+	** Hugs compatibility and NHC98 compatibility should both be
+	improved.
+
+	** Hooks Interface / Autoconf compatibility: Most of the hooks
+	interface is hidden for now, because it's not finalized.  I have
+	exposed only "defaultMainWithHooks" and "defaultUserHooks".  This
+	allows you to use a ./configure script to preprocess
+	"foo.buildinfo", which gets merged with "foo.cabal".  In future
+	releases, we'll expose UserHooks, but we're definitely going to
+	change the interface to those.  The interface to the two functions
+	I've exposed should stay the same, though.
+
+	** ./setup haddock is a baby feature which pre-processes the
+	source code with hscpp and runs haddock on it.  This is brand new
+	and hardly tested, so you get to knock it around and see what you
+	think.
+
+	** Some commands now actually implement verbosity.
+
+	** The preprocessors have been tested a bit more, and seem to work
+	OK.  Please give feedback if you use these.
+
+0.2  Isaac Jones  <ijones@syntaxpolice.org>
+
+	* Adds more HUGS support and preprocessor support.
