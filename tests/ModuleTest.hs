@@ -134,13 +134,14 @@ tests currDir
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
             assertBool "wash2hs isn't +x" (executable perms)
+            -- no unregister, because it has no libs!
          ,TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             pkgConf <- GHC.localPackageConfig
             GHC.maybeCreateLocalPackageConfig
-            system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
+            system "setup unregister --user"
             system $ "touch " ++ D.S.C.localBuildInfoFile
             system $ "touch " ++ D.S.R.installedPkgConfigFile
             doesFileExist D.S.C.localBuildInfoFile >>= 
@@ -166,7 +167,7 @@ tests currDir
             assertCmd "./setup install --user" "hunit install"
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
-            assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove"
+            assertCmd "./setup unregister --user" "unregister failed"
 
          ,TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf  <- GHC.localPackageConfig
@@ -213,6 +214,7 @@ tests currDir
             doesFileExist (targetDir `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode
+            assertCmd "./setup unregister --user" "unregister failed"
          ,TestLabel "package HSQL (make-based): GHC building" $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
             system "make distclean"

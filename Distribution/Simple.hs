@@ -140,8 +140,8 @@ data UserHooks = UserHooks
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
      postReg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
-     preUnreg  :: Args -> Int -> IO HookedBuildInfo,
-     postUnreg :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
+     preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+     postUnreg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
      preHaddock  :: Args -> Int -> IO HookedBuildInfo,
      postHaddock :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
@@ -316,8 +316,8 @@ defaultMainWorker pkg_descr_in action args hooks
 		when (hasLibs pkg_descr) (register pkg_descr localbuildinfo flags)
                 postHook postReg args flags localbuildinfo
 
-            UnregisterCmd -> do
-                (flags,_, args) <- parseUnregisterArgs args []
+            UnregisterCmd uInst -> do
+                (flags,_, args) <- parseUnregisterArgs (uInst,0) args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo flags
