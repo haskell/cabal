@@ -91,9 +91,7 @@ import Compat.Exception (bracket)
 import System.Environment
 import System.Directory
 import Foreign.Marshal (allocaBytes)
-#ifdef HAVE_UNIX_PACKAGE
-import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes)
-#endif
+import System.Posix.Files (getFileStatus, accessTime, modificationTime, setFileTimes, fileMode, setFileMode)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -386,19 +384,24 @@ mkLibName pref lib = pathJoin [pref, ("libHS" ++ lib ++ ".a")]
 pathJoin :: [String] -> FilePath
 pathJoin = concat . intersperse pathSeparatorStr
 
+
+copyPermissions src dest
+    = do srcStatus <- getFileStatus src
+         setFileMode dest (fileMode srcStatus)
+
 -- |Preserves permissions and, if possible, atime+mtime
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
 #ifndef __GLASGOW_HASKELL__
     | otherwise = do readFile src >>= writeFile dest
-                     try (getPermissions src >>= setPermissions dest)
+                     try (copyPermissions src dest)
                      return ()
 #else
     | otherwise = bracket (openBinaryFile src ReadMode) hClose $ \hSrc ->
                   bracket (openBinaryFile dest WriteMode) hClose $ \hDest ->
                   do allocaBytes bufSize $ \buffer -> copyContents hSrc hDest buffer
-                     try (getPermissions src >>= setPermissions dest)
+                     try (copyPermissions src dest)
 #ifdef HAVE_UNIX_PACKAGE
                      try $ do st <- getFileStatus src
                               let atime = accessTime st
