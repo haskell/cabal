@@ -78,7 +78,7 @@ data PackageDescription
     =  PackageDescription {
 	-- the following are required by all packages:
 	package        :: PackageIdentifier,
-        licenese       :: License,
+        license        :: License,
         copyright      :: String,
         maintainer     :: String,
         stability      :: String,
@@ -100,7 +100,7 @@ data PackageDescription
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {package      = undefined,
-                      licenese     = AllRightsReserved,
+                      license      = AllRightsReserved,
                       copyright    = "",
                       maintainer   = "",
                       stability    = "",
