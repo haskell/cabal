@@ -1,6 +1,7 @@
 * 0.1
 RC:
 ** grep for "FIX"
+** make sure module documentation (haddock) builds.
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types?
@@ -12,14 +13,15 @@ HIGH:
 
 LOW
 ** clean 
-- does clean remove installed-pkg-config and .setup-config or whatever? 
 - should .installed-pkg-config be removed after successful register?
-** add "clean" to doc?
-** add description file format to doc.
 ** Change name of Setup.description?
 ** the ./setup -h output should document which commands exist, and
    which options are relevant to which commands.
-** add note to doc that we're going to chase dependencies and make the
+
+** DOC
+*** add "clean" to doc?
+*** add description file format to doc.
+*** add note to doc that we're going to chase dependencies and make the
    "modules" field unnecessary in the future.
 
 * 1.0 

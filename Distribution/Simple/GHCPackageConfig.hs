@@ -7,8 +7,8 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Performs registration for GHC.  Specific to
+-- ghc-pkg. Creates a GHC package config file.
 
 module Distribution.Simple.GHCPackageConfig (
 	GHCPackageConfig(..),

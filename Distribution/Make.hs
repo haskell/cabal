@@ -7,11 +7,11 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Uses the parsed command-line from Distribution.Setup
+-- in order to build haskell tools using a backend build system based
+-- on Make.
 
-{- Copyright (c) 2004, Martin Sjögren
-All rights reserved.
+{- All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are

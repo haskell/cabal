@@ -9,11 +9,11 @@
 -- Stability   :  alpha
 -- Portability :  
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Data types and parser for the standard command-line
+-- setup.  Will also return commands it doesn't know about.
 
-{- Copyright (c) 2003-2004, Isaac Jones
-All rights reserved.
+
+{- All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
