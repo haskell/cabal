@@ -287,7 +287,26 @@ parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
-testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-rain\nLicense: LGPL\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-rain\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: not/even/rain.c, such/small/hands\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: your/slightest, look/will\nIncludes: /easily/unclose, /me\nOptions: ghc: -fTH, hugs: +TH"
+testPkgDesc = unlines [
+        "-- Required",
+        "Name: Cabal",
+        "Version: 0.1.1.1.1-rain",
+        "License: LGPL",
+        "Copyright: Free Text String",
+        "-- Optional - may be in source?",
+        "Stability: Free Text String",
+        "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
+        "Modules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig",
+        "Main-Modules: Distribution.Main",
+        "C-Sources: not/even/rain.c, such/small/hands",
+        "HS-Source-Dir: src",
+        "Exposed-Modules: Distribution.Void, Foo.Bar",
+        "Extensions: {some known extensions}",
+        "Extra-Libs: libfoo, bar, bang",
+        "Include-Dirs: your/slightest, look/will",
+        "Includes: /easily/unclose, /me",
+        "Options: ghc: -fTH, hugs: +TH"
+        ]
 
 testPkgDescAnswer = 
  PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
