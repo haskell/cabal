@@ -108,10 +108,10 @@ assertCmd :: String -- ^Command
 assertCmd command comment
     = system command >>= assertEqual (command ++ ":" ++ comment) ExitSuccess
 
-tests :: [Test]
-tests = [TestLabel "testing the wash2hs package" $ TestCase $ 
-         do oldDir <- getCurrentDirectory
-            setCurrentDirectory "test/wash2hs"
+tests :: FilePath -> [Test]
+tests currDir
+    = [TestLabel "testing the wash2hs package" $ TestCase $ 
+         do setCurrentDirectory $ pathJoin [currDir, "test", "wash2hs"]
             system "make clean"
             system "make"
             assertCmd "./setup configure --prefix=\",tmp\"" "wash2hs configure"
@@ -123,10 +123,8 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
               >>= assertBool "wash2hs didn't put executable into place."
             perms <- getPermissions ",tmp/bin/wash2hs"
             assertBool "wash2hs isn't +x" (executable perms),
---            setCurrentDirectory oldDir,
          TestLabel "testing the HUnit package" $ TestCase $ 
-         do oldDir <- getCurrentDirectory
-            setCurrentDirectory "../HUnit-1.0"
+         do setCurrentDirectory $ pathJoin [currDir, "test", "HUnit-1.0"]
             (pkgConf, pkgConfExists) <- GHC.localPackageConfig
             unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
@@ -155,13 +153,12 @@ tests = [TestLabel "testing the wash2hs package" $ TestCase $
             assertCmd ("ghc -package-conf " ++ pkgConf ++ " -package HUnit HUnitTester.hs -o ./hunitTest") "compile w/ hunit"
             assertCmd "./hunitTest" "hunit test"
             assertCmd ("ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit") "package remove",
---            setCurrentDirectory oldDir,
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
          do (pkgConf, pkgConfExists) <- GHC.localPackageConfig
             unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
-            setCurrentDirectory "../A"
+            setCurrentDirectory $ pathJoin [currDir, "test", "A"]
             system "make clean"
             system "make"
             assertCmd "./setup configure --ghc --prefix=,tmp"
@@ -217,7 +214,8 @@ main = do putStrLn "compile successful"
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
                            D.P.hunitTests ++ D.M.hunitTests)
-          count2 <- runTestTT' $ TestList tests
+          dir <- getCurrentDirectory
+          count2 <- runTestTT' $ TestList (tests dir)
           putStrLn "-------------"
           putStrLn "Test Summary:"
           putStrLn $ showCounts $ combineCounts count1 count2

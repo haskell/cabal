@@ -7,13 +7,11 @@ RC:
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
+
 HIGH: 
 ** under what conditions does library == Nothing?
-** make sure tests will work on other machines. why doesn't make work
-   in test/A on lex?
-** fix test cases so a single failure doesn't cascade
 ** Clean up field parsers (Martin: what else goes here?)
-*** license parser parses either known strings, or a filename.
+
 LOW
 ** clean 
 - does clean remove installed-pkg-config and .setup-config or whatever? 
@@ -23,7 +21,8 @@ LOW
 ** Change name of Setup.description?
 ** the ./setup -h output should document which commands exist, and
    which options are relevant to which commands.
-** refactor createGhcCommandLine?
+** add note to doc that we're going to chase dependencies and make the
+   "modules" field unnecessary in the future.
 
 * 1.0 
 ** HC-PKG (see "Depends on HC-PKG" below)
