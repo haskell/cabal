@@ -50,6 +50,7 @@ import Distribution.GetOpt
 
 -- Misc:
 import HUnit (Test(..), (~:), (~=?))
+import Control.Monad.Error
 
 -- Locate the compiler based on the flavor
 exeLoc :: CompilerFlavor -> IO FilePath
@@ -65,17 +66,7 @@ pkgLoc _ = return "error, not yet implemented" -- FIX
 type CommandLineOpts = (Action,
                         [String]) -- The un-parsed remainder
 
--- |Most of these flags are for Configure, but InstPrefix is for Install.
-data Flag = GhcFlag | NhcFlag | HugsFlag
-          | WithCompiler FilePath | Prefix FilePath
-          | HelpFlag
-          -- For install:
-          | InstPrefix FilePath
---          | Verbose | Version?
-            deriving (Show, Eq)
-
-
-data Action = ConfigCmd [Flag]            -- config
+data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | InstallCmd (Maybe FilePath) -- install
             | SDistCmd                    -- sdist
@@ -87,6 +78,10 @@ data Action = ConfigCmd [Flag]            -- config
 --             | BDist -- 1.0
 --            | CleanCmd                 -- clean
     deriving (Show, Eq)
+
+type ConfigFlags = (Maybe CompilerFlavor,
+                    Maybe FilePath, -- given compiler location
+                    Maybe FilePath) -- prefix
 
 -- |Parse the standard command-line arguments.
 parseArgs :: [String] -> Either [String] CommandLineOpts
@@ -105,7 +100,9 @@ parseArgs args
                   -> Either [String] CommandLineOpts
     parseCommands "configure" flags unkFlags
         | not (any isInstallPrefix flags)
-            = Right (ConfigCmd flags, unkFlags)
+          = case getConfigFlags flags of
+               Left err          -> Left [err]
+               Right configFlags -> Right (ConfigCmd configFlags, unkFlags)
     parseCommands "install" [InstPrefix m] unkFlags
         = Right (InstallCmd $ Just m, unkFlags)
     parseCommands "install" [] unkFlags
@@ -127,9 +124,34 @@ parseArgs args
     isInstallPrefix (InstPrefix m) = True
     isInstallPrefix _              = False
 
+getConfigFlags :: [Flag] -> Either String ConfigFlags
+getConfigFlags flags
+    = do flavor  <- getOneOpt [f | Just f <- map convert flags]
+         prefix  <- getOneOpt [f | Prefix f <- flags]
+         withCom <- getOneOpt [f | WithCompiler f <- flags]
+         return (flavor,withCom,prefix)
+    where
+    convert GhcFlag  = Just GHC
+    convert NhcFlag  = Just NHC
+    convert HugsFlag = Just Hugs
+    convert _        = Nothing
+
+    getOneOpt [] = return Nothing
+    getOneOpt [one] = return (Just one)
+    getOneOpt many = fail "Multiple prefix options"
+
 -- ------------------------------------------------------------
 -- * Option Specifications
 -- ------------------------------------------------------------
+
+-- |Most of these flags are for Configure, but InstPrefix is for Install.
+data Flag = GhcFlag | NhcFlag | HugsFlag
+          | WithCompiler FilePath | Prefix FilePath
+          | HelpFlag
+          -- For install:
+          | InstPrefix FilePath
+--          | Verbose | Version?
+            deriving (Show, Eq)
 
 optionHelpString :: String -> String
 optionHelpString prefix = usageInfo prefix options
@@ -168,10 +190,10 @@ hunitTests :: IO [Test]
 hunitTests =
     do m <- sequence [do loc <- exeLoc comp
                          pkg <- pkgLoc comp
-                         return (name, comp, loc, pkg, flag)
-                      | (name, comp, flag) <- [("ghc", GHC, GhcFlag),
-                                               ("nhc", NHC, NhcFlag),
-                                               ("hugs", Hugs, HugsFlag)]]
+                         return (name, comp, loc, pkg)
+                      | (name, comp) <- [("ghc", GHC),
+                                         ("nhc", NHC),
+                                         ("hugs", Hugs)]]
        let (flags, commands, unkFlags, ers)
                = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo"]
        return $ [TestLabel "very basic option parsing" $ TestList [
@@ -186,17 +208,16 @@ hunitTests =
 
                TestLabel "test location of various compilers" $ TestList
                ["configure parsing for prefix and compiler flag" ~: "failed" ~:
-                    (Right (ConfigCmd [Prefix "/usr/local", compFlag], []))
+                    (Right (ConfigCmd (Just comp, Nothing, Just "/usr/local"), []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name, "configure"])
-                   | (name, comp, comploc, pkgloc, compFlag) <- m],
+                   | (name, comp, comploc, pkgloc) <- m],
 
                TestLabel "find the package tool" $ TestList
                ["configure parsing for prefix comp flag, withcompiler" ~: "failed" ~:
-                    (Right (ConfigCmd [Prefix "/usr/local", compFlag,
-                                WithCompiler name], []))
+                    (Right (ConfigCmd (Just comp, Just "/foo/comp", Just "/usr/local"), []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name,
-                                   "--with-compiler="++name, "configure"])
-                   | (name, comp, comploc, pkgloc, compFlag) <- m],
+                                   "--with-compiler=/foo/comp", "configure"])
+                   | (name, comp, comploc, pkgloc) <- m],
 
                TestLabel "simpler commands" $ TestList
                [flag ~: "failed" ~: (Right (flagCmd, [])) ~=? (parseArgs [flag])
@@ -205,7 +226,8 @@ hunitTests =
                                          ("sdist", SDistCmd),
                                          ("info", InfoCmd),
                                          ("register", RegisterCmd)]
-                  ]]
+                  ]
+               ]
 
 {- Testing ideas:
    * IO to look for hugs and hugs-pkg (which hugs, etc)

@@ -6,6 +6,7 @@
 ** Version (simonMar)
 ** configure step
 ** cross-platform compiler location(simonmar?)
+** help action without command... help command?
 ** build
 ** install
 ** register
@@ -16,9 +17,7 @@
 ** command-line parsing errors
 
 * Testing
-** testing of altered version of getopt
-** Parsing of command-line opts
-** passing unknown options through.
+** error cases for parsing command-line args
 ** reading & writing configuration-dropping
 
 ** use-cases based on SimonPJ's doc
