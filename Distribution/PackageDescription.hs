@@ -55,6 +55,7 @@ module Distribution.PackageDescription (
         hasLibs,
         libModules,
         Executable(..),
+        withExe,
         exeModules,
         -- * Build information
         BuildInfo(..),
@@ -220,6 +221,12 @@ emptyExecutable = Executable {
                       modulePath = "",
                       buildInfo = emptyBuildInfo
                      }
+
+-- | Perform the action on each buildable 'Executable' in the package
+-- description.
+withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
+withExe pkg_descr f =
+  sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
