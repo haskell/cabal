@@ -71,7 +71,7 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, removeFileRecursive, currentDir,
                                   defaultPackageDesc, hookedPackageDesc,
-                                  createIfNotExists, moduleToFilePath, rawSystemPath)
+                                  createIfNotExists, moduleToFilePath)
 import Distribution.License (License(..))
 import Distribution.Extension (Extension(..))
 import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
@@ -84,8 +84,7 @@ import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist)
 
-import Control.Monad(when, unless)
-import Data.Maybe(isNothing)
+import Control.Monad(when)
 import Data.List	( intersperse )
 import System.IO (try)
 import Distribution.GetOpt
@@ -132,14 +131,6 @@ data UserHooks = UserHooks
      preUnreg  :: Args -> IO (Maybe PackageDescription),
      postUnreg :: IO ExitCode
     }
-
--- |Reads local build info, executes function
-doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function to apply
-               -> PackageDescription
-               -> IO ()
-doBuildInstall f pkgConf
-    = do lbi <- getPersistBuildConfig
-         f pkgConf lbi
 
 -- |Reads the package description file using IO.
 defaultMain :: IO ()
@@ -261,6 +252,8 @@ defaultMainWorker pkg_descr_in action args hooks
 		localbuildinfo <- getPersistBuildConfig
 		unregister pkg_descr localbuildinfo
                 postHook postUnreg
+
+            HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
         mJoinPaths :: Maybe FilePath -> FilePath -> Maybe FilePath
         mJoinPaths f1 f2 = do f1' <- f1
@@ -310,10 +303,6 @@ buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
 buildDirOpt = Option "b" ["builddir"] (ReqArg setBuildDir "DIR")
 		"directory to receive the built package [dist/build]"
   where setBuildDir dir lbi = lbi { buildDir = dir }
-
-helpprefix :: String
-helpprefix = "Syntax: ./Setup.hs command [flags]\n"
-
 
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks

@@ -59,9 +59,8 @@ import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)
 
-import Control.Monad (when)
-import Data.Maybe (isNothing, maybe)
-import Data.List	( intersperse )
+import Data.Maybe (maybe)
+import Data.List  ( intersperse )
 import System.IO (hPutStr, stderr)
 import System.Cmd
 import System.Exit
@@ -160,6 +159,3 @@ no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
   do hPutStr stderr $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))
      exitWith (ExitFailure 1)
-
-helpprefix :: String
-helpprefix = "Syntax: ./Setup.hs command [flags]\n"

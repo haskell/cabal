@@ -306,14 +306,6 @@ doVersionParse input = case results of
                          _   -> Left "Ambigous parse"
   where results = [ x | (x,"") <- readP_to_S parseVersion input ]
 
--- |Version range parsing
-doVersionRangeParse :: String -> Either String VersionRange
-doVersionRangeParse input = case results of
-                              [y] -> Right y
-                              []  -> Left "No parse"
-                              _   -> Left "Ambigous parse"
-  where results = [ x | (x,"") <- readP_to_S parseVersionRange input ]
-
 branch1 :: [Int]
 branch1 = [1]
 
@@ -323,9 +315,6 @@ branch2 = [1,2]
 branch3 :: [Int]
 branch3 = [1,2,3]
 
-branch4 :: [Int]
-branch4 = [1,2,3,4]
-
 release1 :: Version
 release1 = Version{versionBranch=branch1, versionTags=[]}
 
@@ -334,9 +323,6 @@ release2 = Version{versionBranch=branch2, versionTags=[]}
 
 release3 :: Version
 release3 = Version{versionBranch=branch3, versionTags=[]}
-
-release4 :: Version
-release4 = Version{versionBranch=branch4, versionTags=[]}
 
 hunitTests :: [Test]
 hunitTests

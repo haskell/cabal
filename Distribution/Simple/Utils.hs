@@ -52,8 +52,6 @@ module Distribution.Simple.Utils (
         createIfNotExists,
         mkLibName,
         removeFileRecursive,
-        sequenceMap,
-        removeFiles,
         currentDir,
         dotToSep,
 	withTempFile,
@@ -154,7 +152,7 @@ createIfNotExists parents file
     = do b <- doesDirectoryExist file
 	 case (b,parents, file) of 
 		  (_, _, "")    -> return ()
-		  (True, _, _)  -> return()
+		  (True, _, _)  -> return ()
 		  (_, True, _)  -> createDirectoryParents file
 		  (_, False, _) -> createDirectory file
 
@@ -176,7 +174,7 @@ moduleToFilePath :: [FilePath] -- ^search locations
 
 moduleToFilePath pref s possibleSuffixes
     = do let possiblePaths = concatMap (searchModuleToPossiblePaths s possibleSuffixes) pref
-         matchList <- sequenceMap (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
+         matchList <- mapM (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
          return [x | (x, True) <- matchList]
     where searchModuleToPossiblePaths :: String -> [String] -> FilePath -> [FilePath]
           searchModuleToPossiblePaths s suffs searchP
@@ -207,7 +205,7 @@ moveSources :: FilePath -- ^build prefix (location of objects)
 moveSources pref targetDir sources searchSuffixes
     = do createIfNotExists True targetDir
 	 -- Create parent directories for everything:
-         sourceLocs' <- sequenceMap moduleToFPErr sources
+         sourceLocs' <- mapM moduleToFPErr sources
          let sourceLocs = concat sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref then sourceLocs
@@ -232,17 +230,10 @@ moveSources pref targetDir sources searchSuffixes
 currentDir :: FilePath
 currentDir = "."
 
-
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
 mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
-
-partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
-partitionIO f l
-    = do bools <- sequenceMap f l
-         let both = zip l bools
-         return ([x | (x, True) <- both], [y | (y, False) <- both])
 
 -- |Remove a list of files; if it encounters a directory, it doesn't
 -- remove it, but returns it.  Throws everything that removeFile
@@ -270,7 +261,7 @@ removeFileRecursive startLoc
          curDir <- getCurrentDirectory
          setCurrentDirectory startLoc
          dirs <- removeFiles cont
-         sequenceMap removeFileRecursive dirs
+         mapM removeFileRecursive dirs
          setCurrentDirectory curDir
          removeDirectory startLoc
 
@@ -287,9 +278,6 @@ filesWithExtensions dir extension
     where
       hasExt f = snd (splitFileExt f) == extension
 
-sequenceMap :: (Monad m) => (a -> m b) -> [a] -> m [b]
-sequenceMap f l = sequence $ map f l
-
 
 -- -----------------------------------------------------------------------------
 -- * temporary file names
@@ -305,9 +293,9 @@ withTempFile tmp_dir extn action
     findTempName tmp_dir x
       = do let filename = ("tmp" ++ show x) `joinFileExt` extn
 	       path = tmp_dir `joinFileName` filename
-  	   b  <- doesFileExist filename
+  	   b  <- doesFileExist path
 	   if b then findTempName tmp_dir (x+1)
-		else action filename `finally` try (removeFile filename)
+		else action path `finally` try (removeFile path)
 
 #ifdef mingw32_TARGET_OS
 foreign import ccall unsafe "_getpid" getProcessID :: IO Int

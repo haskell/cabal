@@ -58,8 +58,7 @@ import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
-                                  createIfNotExists,
-                                  mkLibName, moveSources, dotToSep,
+                                  createIfNotExists, mkLibName, dotToSep,
 				  moduleToFilePath, currentDir,
 				  getOptionsFromSource, stripComments
                                  )
@@ -69,7 +68,6 @@ import Control.Monad (unless, when)
 import Control.Exception (try)
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
-import System.Exit (ExitCode(..))
 import Distribution.Compat.Directory (copyFile)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
 				searchPathSeparator, objExtension, joinPaths)

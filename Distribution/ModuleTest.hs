@@ -66,7 +66,6 @@ import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 -- base
-import Control.Monad(when, unless)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory,
                  getPermissions, Permissions(..))

@@ -87,7 +87,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 
 #ifdef DEBUG
 import Control.Monad	(liftM)
-import HUnit (Test(..), (~:), (~=?), assertEqual, assertBool, Assertion, runTestTT)
+import HUnit (Test(..), assertBool, Assertion, runTestTT)
 import Distribution.ParseUtils	(runP)
 #endif
 
@@ -161,16 +161,6 @@ exeModules :: PackageDescription -> [String]
 exeModules PackageDescription{executables=execs}
     = concatMap (\e -> executableModules $ buildInfo e) execs
 
--- |Set the name for this package. Convenience function.
-setPkgName :: String -> PackageDescription -> PackageDescription
-setPkgName n desc@PackageDescription{package=pkgIdent}
-    = desc{package=pkgIdent{pkgName=n}}
-
--- |Set the version for this package. Convenience function.
-setPkgVersion :: Version -> PackageDescription -> PackageDescription
-setPkgVersion v desc@PackageDescription{package=pkgIdent}
-    = desc{package=pkgIdent{pkgVersion=v}}
-
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = case library p of
@@ -214,12 +204,6 @@ emptyBuildInfo = BuildInfo {
                       options           = []
                      }
                      
--- |Add options for a specific compiler. Convenience function.
-setOptions :: CompilerFlavor -> [String] -> BuildInfo -> BuildInfo
-setOptions c xs desc@BuildInfo{options=opts}
-    = desc{options=(c,xs):opts}
-
-
 data Executable = Executable {
         exeName    :: String,
         modulePath :: FilePath,
@@ -676,9 +660,6 @@ assertRight mes expected actual
            (case actual of
              (Right v) -> v == expected
              _         -> False)
-
-isError (Left _) = True
-isError _        = False
 
 test = runTestTT (TestList hunitTests)
 #endif

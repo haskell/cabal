@@ -62,14 +62,12 @@ import Distribution.PackageDescription (
 	hcOptions)
 import Distribution.Package (showPackageId, pkgName)
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
-import Distribution.Simple.Utils(moveSources, rawSystemExit,
-                                 mkLibName, removeFileRecursive,
-                                 die, createIfNotExists
-                                )
+import Distribution.Simple.Utils(moveSources, mkLibName, removeFileRecursive,
+                                 die, createIfNotExists)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when, unless)
-import Data.Maybe(maybeToList, fromMaybe)
+import Data.Maybe(fromMaybe)
 import Distribution.Compat.Directory(copyFile)
 import Distribution.Compat.FilePath(joinFileName, dllExtension,
 				    splitFileExt, joinFileExt)
@@ -113,10 +111,12 @@ installLibGHC :: FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
 installLibGHC pref buildPref pd@PackageDescription{library=Just l,
-                                                package=p}
+                                                   package=p}
     = do moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (libModules pd) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
+installLibGHC _ _ PackageDescription{library=Nothing}
+    = die $ "Internal Error. installLibGHC called with no library."
 
 -- |Install for Hugs
 installHugs
