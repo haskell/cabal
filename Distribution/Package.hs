@@ -164,10 +164,13 @@ setOptions c xs desc@BuildInfo{options=opts}
 notImp :: String -> a
 notImp s = error $ s ++ " not yet implemented"
 
--- |Parse the given package file.  FIX: don't use read / show.
+-- |Parse the given package file.
 parsePackageDesc :: FilePath -> IO PackageDescription
-parsePackageDesc p
-    = openFile p ReadMode >>= hGetContents >>= return . read
+parsePackageDesc p = do h <- openFile p ReadMode
+                        str <- hGetContents h
+                        case parseDescription str of
+                          Left  e -> error (show e) -- FIXME
+                          Right x -> return x
 
 data PError = Parsec ParseError | FromString String
         deriving Show
