@@ -42,7 +42,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Misc(License(..), Dependency, Extension, Opt
+module Distribution.Misc(License(..), Dependency, Extension(..), Opt
 #ifdef DEBUG        
         ,hunitTests
 #endif
@@ -70,7 +70,11 @@ data Dependency = Dependency String VersionRange
 -- |This represents non-standard compiler extensions which each
 -- package might employ.  Not yet implemented.
 
-data Extension = Foo | Bar deriving Show
+data Extension = 
+	       OverlappingInstances
+	       | TypeSynonymInstances
+	       | TemplateHaskell
+	       deriving Show
 
 type Opt = String
 
