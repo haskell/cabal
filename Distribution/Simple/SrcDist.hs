@@ -53,7 +53,7 @@ import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          setupMessage, libModules)
 import Distribution.Package (showPackageId)
-import Distribution.Simple.Utils(moveSources, die)
+import Distribution.Simple.Utils(smartCopySources, die)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
@@ -84,7 +84,7 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
   -- move the executables into place
   sequence_ [prepareDir verbose targetDir pps exeM exeBi | (Executable _ exeM _ exeBi) <- executables pkg_descr]
   -- setup isn't listed in the description file.
-  moveSources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
+  smartCopySources verbose ""     targetDir ["Setup"] ["lhs", "hs"]
   system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (targetPref `joinFileName` (tarBallName pkg_descr))
 		    ++ " " ++ (nameVersion pkg_descr)
@@ -101,7 +101,7 @@ prepareDir :: Int       -- ^verbose
 prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         moveSources verbose srcDir pref mods (suff ++ ["hs", "lhs"])
+         smartCopySources verbose srcDir pref mods (suff ++ ["hs", "lhs"])
          removePreprocessed pref mods (suff ++ ["hs", "lhs"])
 
 ------------------------------------------------------------

@@ -1,6 +1,5 @@
 * misc
 
-** Add package sanity checker?
 ** add hooks to haddock cmd
 
 ** make debian watchfile
@@ -22,8 +21,6 @@
 
 ** How about replacing the modules field with hidden-modules, to avoid
    repetition?
-
-** Rename moveSources
 
 ** Preprocessors
 *** chain of preprocessors
@@ -102,8 +99,6 @@
 ** make reference to "layered tools" appendix where approprote
 ** integrate hscpp, use it for preprocessing step.
 ** SDist for windows machines, or machines without tar.
-** sanity checking tool for configuration; are all the .hs files
-   included, etc.
 ** add sanity checking command?
 
 * testing
@@ -124,6 +119,9 @@
 ** configure: check for presence of build dependencies
 
 * Misc
+** sanity checking tool for configuration; are all the .hs files
+   included, etc.
+
 ** create a (native?) zlib library?
 
 ** sign flag?
