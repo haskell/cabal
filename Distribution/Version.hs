@@ -135,7 +135,7 @@ instance Eq Version where
 showVersion :: Version -> String
 showVersion (Version branch tags)
   = concat (intersperse "." (map show branch)) ++ 
-    concat (map ('-':) tags)
+     concatMap ('-':) tags
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
