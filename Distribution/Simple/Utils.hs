@@ -49,6 +49,7 @@ module Distribution.Simple.Utils (
         maybeExit,
 	rawSystemPathExit,
         moveSources,
+        copyFileVerbose,
         moduleToFilePath,
         mkLibName,
         currentDir,
@@ -189,12 +190,13 @@ dotToSep = map dts
 
 -- |Put the source files into the right directory in preperation for
 -- something like sdist or installHugs.
-moveSources :: FilePath -- ^build prefix (location of objects)
+moveSources :: Int      -- ^verbose
+            -> FilePath -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
             -> IO ()
-moveSources pref targetDir sources searchSuffixes
+moveSources verbose pref targetDir sources searchSuffixes
     = do createDirectoryIfMissing True targetDir
 	 -- Create parent directories for everything:
          sourceLocs' <- mapM moduleToFPErr sources
@@ -206,7 +208,7 @@ moveSources pref targetDir sources searchSuffixes
 		  $ nub [fst (splitFileName (targetDir `joinFileName` x))
 		   | x <- sourceLocsNoPref, fst (splitFileName x) /= "."]
 	 -- Put sources into place:
-	 sequence_ [copyFile x (targetDir `joinFileName` y)
+	 sequence_ [copyFileVerbose verbose x (targetDir `joinFileName` y)
                       | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
 	 return ()
     where moduleToFPErr m
@@ -216,6 +218,12 @@ moveSources pref targetDir sources searchSuffixes
                                        ++ " with any suffix: " ++ (show searchSuffixes))
                              >> exitWith (ExitFailure 1))
                    return p
+
+copyFileVerbose :: Int -> FilePath -> FilePath -> IO ()
+copyFileVerbose verbose src dest = do
+  when (verbose > 0) $
+    putStrLn ("copy " ++ src ++ " to " ++ dest)
+  copyFile src dest
 
 -- |The path name that represents the current directory.  May be
 -- system-specific.  In Unix, it's "." FIX: What about other arches?

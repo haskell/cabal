@@ -127,13 +127,13 @@ defaultMainNoRead pkg_descr
                 exec "make clean"
 
             CopyCmd mprefix -> do
-                (mprefix, _, args) <- parseCopyArgs mprefix args []
+                ((mprefix,verbose), _, args) <- parseCopyArgs (mprefix,0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install" ++
                                      maybe "" (" prefix="++) mprefix
 
             InstallCmd uInst -> do
-                (uInst, _, args) <- parseInstallArgs uInst args []
+                ((uInst,verbose), _, args) <- parseInstallArgs (uInst,0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
                 exec "make register"
@@ -144,7 +144,7 @@ defaultMainNoRead pkg_descr
                 exec "make dist"
 
             RegisterCmd uInst -> do
-                (uInst, _, args) <- parseRegisterArgs uInst args []
+                ((uInst,0), _, args) <- parseRegisterArgs (uInst,0) args []
                 no_extra_flags args
                 exec "make register"
 
