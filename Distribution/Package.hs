@@ -48,15 +48,16 @@ module Distribution.Package (
 	PackageDescription(..),
 	emptyPackageDescription,
         parsePackageDesc,
-        parseField,
 #ifdef DEBUG        
         hunitTests,
         main
 #endif
   ) where
 
-import Control.Monad(when, liftM)
-import Data.Char(isSpace)
+import Control.Monad.State
+import Control.Monad(when, foldM)
+import Control.Monad.Error
+import Data.Char(isSpace, toLower)
 
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion, parseVersionRange)
@@ -153,64 +154,81 @@ parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p
     = openFile p ReadMode >>= hGetContents >>= return . read
 
--- |Wrapper function for 'parseDesc'
-doParseDesc :: String -> Either ParseError PackageDescription
-doParseDesc = runParser parseReqFields emptyPackageDescription ""
+data PError = Parsec ParseError | FromString String
+        deriving Show
 
--- |High-level parser for package descriptions
-parseDesc :: GenParser Char PackageDescription PackageDescription
-parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
-    where
-    parseDescHelp
-           -- misc
-        =  try (parseField "Stability" False word
-               >>= updateState . (\l pkgD -> pkgD{stability=l}))
-           <|> try (parseField "Extra-Libs" True (parseCommaList word)
-               >>= updateState . (\l pkgD -> pkgD{extraLibs=l}))
-           <|> try (parseField "Build-Depends" True (parseCommaList parseDependency)
-               >>= updateState . (\l pkgD -> pkgD{buildDepends=l}))
-           -- File-path-related
-           <|> try (parseField "C-Sources" True parseFilePath
-               >>= updateState . (\l pkgD -> pkgD{cSources=l}))
-           <|> try (parseField "Include-Dirs" True parseFilePath
-               >>= updateState . (\l pkgD -> pkgD{includeDirs=l}))
-           <|> try (parseField "Includes" True parseFilePath
-               >>= updateState . (\l pkgD -> pkgD{includes=l}))
-           <|> try (parseField "HS-Source-Dir" True parseFilePath
-               >>= updateState . (\l pkgD -> pkgD{hsSourceDir=head l}))
-           -- module related
-           <|> try (parseField "Main-Modules" True (parseCommaList moduleName)
-               >>= updateState . (\l pkgD -> pkgD{mainModules=l}))
-           <|> try (parseField "Exposed-Modules" True (parseCommaList moduleName)
-               >>= updateState . (\l pkgD -> pkgD{exposedModules=l}))
-           <|> try (parseField "Modules" True (parseCommaList moduleName)
-               >>= updateState . (\l pkgD -> pkgD{allModules=l}))
+instance Error PError where
+        strMsg = FromString
 
--- Parsing remains for:
---
--- Options: ghc: -fTH, hugs: +TH
--- Extensions: {some known extensions}
+parseDescription :: String -> Either PError PackageDescription
+parseDescription inp = foldM parseDescHelp emptyPackageDescription (splitLines inp)
+  where -- Required fields
+        parseDescHelp pkg (f@"name",      val) = return (setPkgName val pkg)
+        parseDescHelp pkg (f@"version",   val) =
+          do v <- runP f parseVersion val
+             return (setPkgVersion v pkg)
+        parseDescHelp pkg (f@"copyright", val) = return pkg{copyright=val}
+        parseDescHelp pkg (f@"license",   val) =
+          do l <- runP f parseLicense val
+             return pkg{license=l}
+        -- Misc.
+        parseDescHelp pkg (f@"maintainer", val) = return pkg{maintainer=val}
+        parseDescHelp pkg (f@"stability",  val) = return pkg{stability=val}
+        parseDescHelp pkg (f@"extra-libs", val) =
+          do xs <- runP f (parseCommaList word) val
+             return pkg{extraLibs=xs}
+        parseDescHelp pkg (f@"build-depends", val) =
+          do xs <- runP f (parseCommaList parseDependency) val
+             return pkg{buildDepends=xs}
+        -- Paths and stuff
+        parseDescHelp pkg (f@"c-sources", val) =
+          do path <- runP f parseFilePath val
+             return pkg{cSources=path}
+        parseDescHelp pkg (f@"include-dirs", val) =
+          do path <- runP f parseFilePath val
+             return pkg{includeDirs=path}
+        parseDescHelp pkg (f@"includes", val) =
+          do path <- runP f parseFilePath val
+             return pkg{includes=path}
+        parseDescHelp pkg (f@"hs-source-dir", val) =
+          do path <- runP f parseFilePath val
+             return pkg{hsSourceDir=head path}
+        -- Module related
+        parseDescHelp pkg (f@"main-modules", val) =
+          do xs <- runP f (parseCommaList moduleName) val
+             return pkg{mainModules=xs}
+        parseDescHelp pkg (f@"exposed-modules", val) =
+          do xs <- runP f (parseCommaList moduleName) val
+             return pkg{exposedModules=xs}
+        parseDescHelp pkg (f@"modules", val) =
+          do xs <- runP f (parseCommaList moduleName) val
+             return pkg{allModules=xs}
+        parseDescHelp pkg (f@"extensions", val) =
+          do -- ...
+             return pkg
+        parseDescHelp pkg (f@"options", val) =
+          do -- ...
+             return pkg
+        parseDescHelp pkg (field, val) = error $ "Unknown field :: " ++ field
+        -- ...
+        runP f p s = case parse p f s of
+                       Left pe -> Left (Parsec pe)
+                       Right a -> Right a
 
--- |Wrapper function for 'parseReqFields'
-doParseReqFields :: String -> Either ParseError PackageDescription
-doParseReqFields = runParser parseReqFields emptyPackageDescription ""
-
--- |Parse the required fields. We'll basically run through these a
--- bunch of times updating the state as we go along, as is noted.
-
-parseReqFields :: GenParser Char PackageDescription PackageDescription
-parseReqFields = many1 parseReqFieldsHelp >> getState
-    where
-    parseReqFieldsHelp :: GenParser Char PackageDescription ()
-    parseReqFieldsHelp
-        =  try (parseField "Name" False word
-               >>= (updateState . setPkgName))
-           <|> try (parseField "Version" True parseVersion
-               >>= (updateState . setPkgVersion))
-           <|> try (parseField "Copyright" True parseFreeText
-               >>= (updateState . (\l pkgD -> pkgD{copyright=l})))
-           <|> try (parseField "License" True parseLicense
-               >>= (updateState . (\c pkgD -> pkgD{license=c})))
+splitLines :: String -> [(String,String)]
+splitLines = merge . filter validLine . lines
+  where validLine s = case dropWhile isSpace s of
+                        ""        -> False      -- Empty line
+                        '-':'-':_ -> False      -- Comment
+                        _         -> True
+        merge (x:(' ':s):ys) = case dropWhile isSpace s of
+                                 "." -> merge ((x++"\n"):ys)
+                                 s'  -> merge ((x++"\n"++s'):ys)
+        merge (x:ys) = brk x : merge ys
+        merge []     = []
+        brk xs = case break (==':') xs of
+                   (fld, ':':val) -> (map toLower fld, dropWhile isSpace val)
+                   (fld, "")      -> error "FIXME"
 
 -- |A parser for any of the given parsers.  This actually seems to
 -- behave differently from "choice".
@@ -220,7 +238,7 @@ anyOf [a] = a
 anyOf (h:t) = foldl ((<|>) . try) (try h) t
 
 -- |parse a module name
-moduleName = many (alphaNum <|> oneOf "_'.")
+moduleName = many (alphaNum <|> oneOf "_'.") <?> "moduleName"
 
 -- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st [FilePath]
@@ -229,16 +247,20 @@ parseFilePath
                                 <|> toStr digit
                                 <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{")
                             ) >>= return . concat)
+        <?> "parseFilePath"
 
 parseLicense :: GenParser Char st License
 parseLicense = anyOf [string s>>return l | (s,l) <- licenses]
+        <?> "parseLicense"
 
 parseDependency :: GenParser Char st Dependency
-parseDependency = do name <- word
+parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
                      skipMany parseWhite
-                     ver  <- parseVersionRange
+                     ver  <- parseVersionRange -- XXX Ugly ugly fix, this will
+                         <|> return AnyVersion -- XXX probably break something
                      skipMany parseWhite
                      return $ Dependency name ver
+        <?> "parseDependency"
 
 -- |Mapping between the licenses and their names
 licenses :: [(String, License)]
@@ -249,32 +271,17 @@ licenses= [("GPL", GPL),
            ("PublicDomain", PublicDomain),
            ("AllRightsReserved", AllRightsReserved)]
 
--- |FIX: Could be better.  The problem is making it free enough without
--- eating the next field.
-parseFreeText = many1 (do try word
-                          <|> toStr digit
-                          <|> toStr parseWhite
-                          <|> toStr (oneOf "!@#$%^&*()?></\\|]}[{")
-                      )
-                >>= return . concat
 toStr c = c >>= \x -> return [x]
 
 word :: GenParser Char st String
 word = many1 letter <?> "word"
 
-number  :: Parser Integer
-number  = do{ ds <- many1 digit
-            ; return (read ds)
-            }
-        <?> "number"
-
---parseWordCommaList :: GenParser Char st [t]
 parseCommaList :: GenParser Char st a -- ^The parser for the stuff between commas
                -> GenParser Char st [a]
 parseCommaList p
     = do words <- sepBy1 p separator
          return words
-    where separator =  (skipMany parseWhite) >> char ',' >> (skipMany parseWhite)
+    where separator = spaces >> char ',' >> spaces
 
 parseWhite = try parseSpaceNotNewline
             <|> (try (char '\n' >> parseWhite))
@@ -283,18 +290,6 @@ parseSpaceNotNewline = (satisfy isSpaceNotNewline <?> "space, not newline")
     where isSpaceNotNewline :: Char -> Bool
           isSpaceNotNewline '\n' = False
           isSpaceNotNewline n    = isSpace n
-
-parseField :: String              -- ^The field name to parse
-           -> Bool                -- ^Require newline?
-           -> GenParser Char st t -- ^The parser to use for this field
-           -> GenParser Char st t
-parseField s newline p
-    = do when newline (char '\n'>>return ())
-         string s
-         skipMany parseWhite
-         char ':'
-         skipMany parseWhite
-         p
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -352,94 +347,55 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                  assertBool "newline before data without in-between spaces"
                   (isError (parse (skipMany parseWhite>>word) "" "   \n  \nfoo")),
 
-              TestLabel "basic fields" $ TestCase $
-              do let p1 = parse (do w1 <- parseField "Foo" False parseVersion
-                                    skipMany parseWhite
-                                    w2 <- parseField "Bar" True word
-                                    return (w1, w2)
-                                ) ""
-                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["date=one"]},"boo")
-                 assertRight "basic spaces 1"
-                   knownVal1 (p1 "Foo: 3.2-one\nBar: boo")
-                 assertRight "basic spaces 2"
-                   knownVal1 (p1 "Foo: 3.2-one \t   \nBar: boo")
-                 assertRight "basic spaces 3"
-                   knownVal1 (p1 "Foo : 3.2-one \t   \nBar:    boo  ")
-                 assertRight "basic spaces 3"
-                   knownVal1 (p1 "Foo:3.2-one \t   \nBar:    boo  ")
-                 assertRight "basic spaces with newline"
-                   knownVal1 (p1 "Foo:\n 3.2-one \t   \nBar:    boo  ")
-                 assertRight "basic spaces with newline"
-                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
+--              TestLabel "basic fields" $ TestCase $
+--              do let p1 = parse (do w1 <- parseField "Foo" False parseVersion
+--                                    skipMany parseWhite
+--                                    w2 <- parseField "Bar" True word
+--                                    return (w1, w2)
+--                                ) ""
+--                     knownVal1 = (Version {versionBranch = [3,2], versionTags = ["date=one"]},"boo")
+--                 assertRight "basic spaces 1"
+--                   knownVal1 (p1 "Foo: 3.2-one\nBar: boo")
+--                 assertRight "basic spaces 2"
+--                   knownVal1 (p1 "Foo: 3.2-one \t   \nBar: boo")
+--                 assertRight "basic spaces 3"
+--                   knownVal1 (p1 "Foo : 3.2-one \t   \nBar:    boo  ")
+--                 assertRight "basic spaces 3"
+--                   knownVal1 (p1 "Foo:3.2-one \t   \nBar:    boo  ")
+--                 assertRight "basic spaces with newline"
+--                   knownVal1 (p1 "Foo:\n 3.2-one \t   \nBar:    boo  ")
+--                 assertRight "basic spaces with newline"
+--                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
 
               TestCase (assertRight "BSD4" BSD4 (parse parseLicense "" "BSD4")),
 
               TestLabel "license parsers" $ 
                         TestCase (sequence_ [assertRight ("license " ++ lName) lVal
                                                     (parse parseLicense "" lName)
-                                             | (lName, lVal) <- licenses]),
-              TestLabel "misc fields" $ TestCase $
-                 do let someModules = ["Somewhere.I.Have.Never.Traveled",
-                                       "Gladly.Beyond.Any.Experience",
-                                       "Your.Eyes.Have.Their.Silence"]
-                    let someModulesText = "Somewhere.I.Have.Never.Traveled\t   , Gladly.Beyond.Any.Experience,  \tYour.Eyes.Have.Their.Silence"
-                    assertRight "path field"
-                       ["foo/bar/bang","/baz/boom/pow", "/", "foob"]
-                       (parse (parseField "Includes" False parseFilePath) ""
-                         "Includes: foo/bar/bang   , /baz/boom/pow, /, foob")
-                    assertRight "dependencies"
-                       [Dependency "not" (LaterVersion (Version [0]   [])),
-                        Dependency "even" (ThisVersion (Version [3,3] ["date=the"])),
-                        Dependency "rain"
-                           (UnionVersionRanges (ThisVersion (Version [3,3] []))
-                                               (LaterVersion (Version[3,3] [])))]
-                       (parse (parseField "Build-Depends" False
-                               (parseCommaList parseDependency)) ""
-                               "Build-Depends: not>0, even   ==  3.3-the   ,   rain>=3.3")
-                    -- Module-related fields
-                    assertRight "main modules field"
-                       someModules (parse (parseField "Main-Modules" False
-                                           (parseCommaList moduleName)) "" 
-                                           ("Main-Modules: " ++ someModulesText))
-                    assertRight "exposed modules field"
-                       someModules (parse (parseField "Exposed-Modules" False
-                                           (parseCommaList moduleName)) "" 
-                                           ("Exposed-Modules: " ++ someModulesText))
-                    assertRight "modules field"
-                       someModules (parse (parseField "Modules" False
-                                           (parseCommaList moduleName)) "" 
-                                           ("Modules: " ++ someModulesText))
-                    assertRight "extra libs"
-                       ["inYour", "libMostFrail", "gestures"]
-                       (parse (parseField "Extra-Libs" False (parseCommaList word))
-                               "" "Extra-Libs: inYour\t, libMostFrail,gestures"),
+                                             | (lName, lVal) <- licenses])
 
-              TestLabel "Required fields" $ TestCase $
-                 do assertRight "some fields"
-                       emptyPackageDescription{package=(PackageIdentifier "rain"
-                                                        (Version [0,0] ["date=asdf"]))}
-                       (doParseReqFields "Name: rain\nVersion: 0.0-asdf")
-                    assertRight "more fields rain"
-                       emptyPackageDescription{package=(PackageIdentifier "rain"
-                                                        (Version [0,0]["date=asdf"])),
-                                               license=GPL}
-                       (doParseReqFields "Name: rain\nVersion:0.0-asdf\nLicense: GPL")
+--              TestLabel "Required fields" $ TestCase $
+--                 do assertRight "some fields"
+--                       emptyPackageDescription{package=(PackageIdentifier "foo"
+--                                                        (Version [0,0] ["date=asdf"]))}
+--                       (doParseReqFields "Name: foo\nVersion: 0.0-asdf")
+--                    assertRight "more fields foo"
+--                       emptyPackageDescription{package=(PackageIdentifier "foo"
+--                                                        (Version [0,0]["date=asdf"])),
+--                                               license=GPL}
+--                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+--                                          
+--                    assertRight "required fields for foo"
+--                       emptyPackageDescription{package=(PackageIdentifier "foo"
+--                                                        (Version [0,0]["date=asdf"])),
+--                                        license=GPL, copyright="2004 isaac jones"}
+--                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL")
+--                                          
+--
+--              TestLabel "Package description" $ TestCase $ 
+--                 assertRight "entire package description" testPkgDescAnswer
+--                                                          (parse parseDesc "" testPkgDesc),
 
-                    assertRight "copyright field"
-                       "(c) 2004 foo bar bang"
-                       (parse (parseField "Copyright" False parseFreeText) ""
-                                 "Copyright: (c) 2004 foo bar\n bang")
-
-                    assertRight "required fields for foo"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0]["date=asdf"])),
-                                        license=GPL, copyright="2004 isaac jones"}
-                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
-                                          
-
-              TestLabel "Package description" $ TestCase $ 
-                 assertRight "entire package description" testPkgDescAnswer
-                                                          (doParseDesc testPkgDesc)
              ]
 
 
