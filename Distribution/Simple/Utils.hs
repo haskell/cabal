@@ -72,7 +72,7 @@ import Control.Monad(when, unless, liftM, mapM)
 import Data.List(inits, nub, intersperse, findIndices, partition)
 import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust, catMaybes)
 import System.IO (hPutStr, stderr
-#ifndef __NHC__
+#ifdef __GLASGOW_HASKELL__
                  , openBinaryFile, IOMode(..), hGetBuf, hPutBuf, hClose
 #endif
                  )
@@ -327,13 +327,13 @@ pathJoin = concat . intersperse pathSeparatorStr
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
-#ifdef __NHC__
+#ifndef __GLASGOW_HASKELL__
     | otherwise = do readFile src >>= writeFile dest
                      try (getPermissions src >>= setPermissions dest)
                      return ()
 #else
     | otherwise = bracket (openBinaryFile src ReadMode) hClose $ \hSrc ->
-                  bracket (openBinaryFile src WriteMode) hClose $ \hDest ->
+                  bracket (openBinaryFile dest WriteMode) hClose $ \hDest ->
                   do allocaBytes bufSize $ \buffer -> copyContents hSrc hDest buffer
                      try (getPermissions src >>= setPermissions dest)
 #ifdef HAVE_UNIX_PACKAGE
