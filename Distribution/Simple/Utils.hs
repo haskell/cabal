@@ -102,13 +102,18 @@ splitFilePath p =
     []      -> (reverse real_dir, reverse suf, [])
     (_:pre) -> (reverse real_dir, reverse pre, reverse suf)
   where
-    (file,dir) = break isPathSeparator (reverse p)
-    (suf,pre)  = break (== '.') file
+#ifdef mingw32_TARGET_OS
+    (path,drive) = break (== ':') (reverse p)
+#else
+    (path,drive) = (reverse p,"")
+#endif
+    (file,dir)   = break isPathSeparator path
+    (suf,pre)    = break (== '.') file
     
     real_dir = case dir of
-      []      -> "."
-      [_]     -> pathSeparatorStr
-      (_:dir) -> dir
+      []      -> "."++drive
+      [_]     -> pathSeparatorStr++drive
+      (_:dir) -> dir++drive
 
 -- | Join extension to file path
 joinExt :: FilePath -> String -> String
@@ -416,17 +421,53 @@ hunitTests :: [Test]
 hunitTests
     = let suffixes = ["hs", "lhs"]
           in [TestCase $
+#ifdef mingw32_TARGET_OS
+       do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
+          mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
+          assertEqual "existing not found failed"
+                   (Just "Distribution\\Simple\\Build.hs") mp1
+          assertEqual "not existing not nothing failed" Nothing mp2,
+
+        "moduleToPossiblePaths 1" ~: "failed" ~:
+             ["Foo\\Bar\\Bang.hs","Foo\\Bar\\Bang.lhs"]
+                ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
+        "moduleToPossiblePaths2 " ~: "failed" ~:
+              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
+              
+        TestLabel "splitFilePath" $ TestList 
+           ["simpleCase"   ~: ("c:\\foo",   "bar", "txt") ~=? (splitFilePath "c:\\foo\\bar.txt"),
+            "dotInDirName" ~: ("\\foo.txt", "bar",    "") ~=? (splitFilePath "\\foo.txt\\bar"),
+            "justName"     ~: (".",         "bar",    "") ~=? (splitFilePath "bar"),
+            "justExt"      ~: (".",            "", "txt") ~=? (splitFilePath ".txt"),
+            "rootDir"      ~: ("\\",        "foo",    "") ~=? (splitFilePath "\\foo"),
+            "noFile"       ~: ("\\foo\\bar",   "",    "") ~=? (splitFilePath "\\foo\\bar\\"),
+            "curDir"       ~: (".",            "",    "") ~=? (splitFilePath "."),
+	    "root"         ~: ("\\",           "",    "") ~=? (splitFilePath "\\"),
+	    "curDirDrive"  ~: ("c:.",          "",    "") ~=? (splitFilePath "c:."),
+	    "rootDrive1"   ~: ("c:\\",         "",    "") ~=? (splitFilePath "c:\\"),
+	    "rootDrive2"   ~: ("c:.",          "",    "") ~=? (splitFilePath "c:"),
+	    "rootDrive2"   ~: ("c:.",      "test", "txt") ~=? (splitFilePath "c:test.txt")
+	   ],
+        TestLabel "joinFilenameDir&joinExt" $ TestList
+           ["simpleCase"   ~: ("\\foo\\bar.txt") ~=? ("\\foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
+            "justDir"      ~: ("\\foo")          ~=? ("\\foo" `joinFilenameDir` (""    `joinExt` "")),
+            "justExt"      ~: (".\\.txt")        ~=? ("."     `joinFilenameDir` (""    `joinExt` "txt")),
+            "curDir"       ~: (".")              ~=? ("."     `joinFilenameDir` (""    `joinExt` "")),
+            "root"         ~: ("\\")             ~=? ("\\"    `joinFilenameDir` (""    `joinExt` ""))
+	   ]
+#else
        do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
                    (Just "Distribution/Simple/Build.hs") mp1
           assertEqual "not existing not nothing failed" Nothing mp2,
-       
+
         "moduleToPossiblePaths 1" ~: "failed" ~:
              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
+
         TestLabel "splitFilePath" $ TestList 
            ["simpleCase"   ~: ("/foo",     "bar", "txt") ~=? (splitFilePath "/foo/bar.txt"),
             "dotInDirName" ~: ("/foo.txt", "bar",    "") ~=? (splitFilePath "/foo.txt/bar"),
@@ -441,8 +482,9 @@ hunitTests
            ["simpleCase"   ~: ("/foo/bar.txt") ~=? ("/foo" `joinFilenameDir` ("bar" `joinExt` "txt")),
             "justDir"      ~: ("/foo")         ~=? ("/foo" `joinFilenameDir` (""    `joinExt` "")),
             "justExt"      ~: ("./.txt")       ~=? ("."    `joinFilenameDir` (""    `joinExt` "txt")),
-            "curDir"       ~: ("/")            ~=? ("/"    `joinFilenameDir` (""    `joinExt` "")),
-            "root"         ~: (".")            ~=? ("."    `joinFilenameDir` (""    `joinExt` ""))
+            "curDir"       ~: (".")            ~=? ("."    `joinFilenameDir` (""    `joinExt` "")),
+            "root"         ~: ("/")            ~=? ("/"    `joinFilenameDir` (""    `joinExt` ""))
 	   ]
+#endif
           ]
 #endif
