@@ -94,7 +94,7 @@ import Data.Maybe (isNothing, fromJust)
 import System.IO.Error (try)
 import Distribution.GetOpt
 
-import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
+import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive, copyFile)
 import Distribution.Compat.FilePath(joinFileName, joinPaths, splitFileName, joinFileExt,
                                     splitFileExt, changeFileExt)
 
@@ -206,9 +206,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
-                      if (needsCpp pkg_descr)
-                        then (mapM_ (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles)
-                        else return ()
+                      mapM_ (mockPP pkg_descr bi lbi tmpDir verbose) inFiles
                       let showPkg = showPackageId (package pkg_descr)
                       let prologName = showPkg ++ "-haddock-prolog.txt"
                       writeFile prologName ((description pkg_descr) ++ "\n")
@@ -305,13 +303,15 @@ defaultMainWorker pkg_descr_in action args hooks
         postHook f = case hooks of
                       Nothing -> return ExitSuccess
                       Just h  -> f h
-        mockCpp pkg_descr bi lbi pref verbose file
+        mockPP pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
                  let targetFile = joinFileName targetDir fileName
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
-                 ret <- ppCpp pkg_descr bi lbi file targetFile verbose
+                 if (needsCpp pkg_descr)
+                    then ppCpp pkg_descr bi lbi file targetFile verbose
+                    else copyFile file targetFile >> return ExitSuccess
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
         needsCpp :: PackageDescription -> Bool
