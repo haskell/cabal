@@ -63,6 +63,7 @@ module Distribution.Simple.Utils (
         copyFile,
         pathJoin,
         removeFileRecursive,
+        withLib,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -72,7 +73,8 @@ module Distribution.Simple.Utils (
 #include "config.h"
 #endif
 
-import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Package (PackageDescription(..), showPackageId,
+                             BuildInfo(..), hasLibs)
 
 import Control.Monad(when, unless, liftM, mapM)
 import Data.List(inits, nub, intersperse, findIndices, partition)
@@ -457,6 +459,12 @@ filesWithExtensions :: FilePath -- ^Directory to look in
 filesWithExtensions dir extension 
     = do allFiles <- getDirectoryContents dir
          return $ filter ((flip hasExt) extension) allFiles
+
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.
+withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
+withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
 
 -- ------------------------------------------------------------
 -- * Testing

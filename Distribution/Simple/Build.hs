@@ -51,12 +51,14 @@ import Distribution.Misc (Extension(..), extensionsToNHCFlag, extensionsToGHCFla
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
                              BuildInfo(..), showPackageId, Executable(..), hasLibs)
+import Distribution.PreProcess (preprocessSources)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
                                   mkLibName, moveSources, pathJoin, 
-                                  splitFilePath, joinFilenameDir, joinExt
+                                  splitFilePath, joinFilenameDir, joinExt,
+                                  withLib
                                  )
 
 
@@ -152,27 +154,6 @@ objsuffix = "o"
 
 dotToSep :: String -> String
 dotToSep s = pathJoin (split '.' s)
-
--- |Copy and (possibly) preprocess sources from hsSourceDirs
-preprocessSources :: PackageDescription 
-		  -> LocalBuildInfo 
-		  -> FilePath           -- ^ Directory to put preprocessed 
-					-- sources in
-		  -> IO ()
-preprocessSources pkg_descr lbi pref = 
-    do
-    setupMessage "Preprocessing" pkg_descr
-    withLib pkg_descr $ \lib ->
-        moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
-    sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
-              | Executable exeName modPath exeBi <- executables pkg_descr]
-
-  -- FIX: includes, includeDirs
-
--- |If the package description has a library section, call the given
---  function with the library build info as argument.
-withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
-withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
 
 -- ------------------------------------------------------------
 -- * Testing
