@@ -1,76 +1,65 @@
-* priorities
-** Extension
-- constructorless data-types
-** Change mainModules to [(String, String)] for (Module, executable
-   name)
+* 0.1
 ** Build executables for mainModules
 ** Extensions
-- complain if their use makes the code non-portable
-
+- complain if their use makes the code non-portable?
+- constructorless data-types
+** grep for "FIX"
 ** does clean remove installed-pkg-config and .setup-config or
-   whatever? should the former be a . file?
-** license parser parses either known strings, or a filename.
+   whatever? should the former be a . file?  should it be removed
+   after successful register?
+** Clean up field parsers (Martin: what else goes here?)
+*** license parser parses either known strings, or a filename.
+** add "clean" to doc?
+** add description file format to doc.
+** Change name of Setup.description?
+
+* 1.0 
+** HC-PKG (see "Depends on HC-PKG" below)
 ** port code to windows
 ** ./Setup.lhs build for nhc
-** nhc-pkg (see old package manager code)
-** hugs-pkg
 ** better command-line parsing interface
 ** ./Setup.lhs bdist
 ** add more layered tools to appendix?
 ** make reference to "layered tools" appendix where approprote
-** add "clean" to doc?
-
-* ideas
-** Possibly create a (native?) zlib library?
 ** integrate hscpp, use it for preprocessing step.
-** sign flag?
-
+** SDist for windows machines, or machines without tar.
+** Better way to find 'tar'; is there a library?
 
 * testing
 ** setup test suite to run on --push?
 ** redirect non-hunit outputs to a file?
 ** test / port code for Hugs and nhc
+** error cases for parsing command-line args
+** reading & writing configuration-dropping
+** use-cases based on SimonPJ's doc
+** discovering the location of the given flavor of compiler and pkg tool
+
+* Depends on HC-PKG
+** buildDepToDep in Configure doesn't set version dependency
+** nhc-pkg (see old package manager code)
+** hugs-pkg
+** register
+*** for hugs & nhc
+** configure: check for presence of build dependencies
 
 * Misc
+** create a (native?) zlib library?
 
-** buildDepToDep in Configure doesn't set version dependency.
+** sign flag?
 
 ** for fields like allModules, allow user to specify "Foo.Bar.*" or
    something to indicate all haskell modules under that?
 
-** SDist for windows machines, or machines without tar.
-*** Better way to find 'tar'; is there a library?
-
-** grep for "FIX".
-
 ** Get function from hmake that creates a directory based on arch.
-
-** clean up Setup parsing code.
-
-** register
-*** for hugs & nhc
-
-** configure: check for presence of build dependencies
 
 ** ./Setup test
 - this may be something that's easy to break off and give to someone else.
 
-* later todo
 ** writePersistBuildConfig robustify + diagnostics
 ** elaborate command-line help text
 ** configure should check for 'ar' args + properties (see fptools/aclocal.m4)
 ** most commands should accept a -v flag to show command lines?
 ** configure should check sanity of PackageDescription, eg. library /= "" ?
-
-* Testing
-** error cases for parsing command-line args
-** reading & writing configuration-dropping
-
-** use-cases based on SimonPJ's doc
-** discovering the location of the given flavor of compiler and pkg tool
-
-* Isaac
--- difference bt flags and opts...
 
 ------------------------------------------------------------
 * Setup Command-line interface
@@ -80,6 +69,7 @@
 - configure (+flags)
 - packageinfo
 - sdist
+- clean
 - register (maybe system)
 - unregister (maybe system)
 
@@ -95,14 +85,12 @@
 * 1.0
 ** actions
 - bdist
-- clean
 - doc stuff?
 
 ** flags
 --hbc
 --helium
 --with-compiler=
-
 
 
 ------------------------------------------------------------
