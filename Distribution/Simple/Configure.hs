@@ -138,7 +138,7 @@ configure pkg_descr cfg
 	defPrefix <- system_default_prefix pkg_descr
         let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
-	comp@(Compiler f' ver p' pkg) <- configCompiler (configHcFlavor cfg) (configHcPath cfg) (configHcPkg cfg) pkg_descr
+	comp@(Compiler f' ver p' pkg) <- configCompiler cfg
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -168,7 +168,7 @@ configure pkg_descr cfg
         reportProgram "cpphs"   cpphs
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
-            ipkgs <-  getInstalledPackages comp (configUser cfg)
+            ipkgs <-  getInstalledPackages comp cfg
 	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
           else return $ map setDepByVersion (buildDepends pkg_descr)
 	return LocalBuildInfo{prefix=pref, compiler=comp,
@@ -220,12 +220,15 @@ configDependency ps (Dependency pkgname vrange) = do
 			 ": using " ++ showPackageId pkg)
 		return pkg
 
-getInstalledPackages :: Compiler -> Bool -> IO [PackageIdentifier]
-getInstalledPackages comp user = do
+getInstalledPackages :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
+getInstalledPackages comp cfg = do
    message "Reading installed packages..."
    withTempFile "." "" $ \tmp -> do
-      let user_flag = if user then " --user" else " --global"
-      res <- system (compilerPkgTool comp ++ user_flag ++ " list >" ++ tmp)
+      let user_flag = if configUser cfg then " --user" else " --global"
+          cmd_line  = compilerPkgTool comp ++ user_flag ++ " list >" ++ tmp
+      when (configVerbose cfg > 0) $
+        putStrLn cmd_line
+      res <- system cmd_line
       case res of
         ExitFailure _ -> die ("cannot get package list")
         ExitSuccess -> do
@@ -262,19 +265,20 @@ system_default_prefix _ =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-  -> PackageDescription -> IO Compiler
-
-configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
-  = do comp <- 
-	 case maybe_compiler of
+configCompiler :: ConfigFlags -> IO Compiler
+configCompiler cfg
+  = do let flavor = case configHcFlavor cfg of
+                      Just f  -> f
+                      Nothing -> defaultCompilerFlavor
+       comp <- 
+	 case configHcPath cfg of
 	   Just path -> return path
 	   Nothing   -> findCompiler flavor
 
-       ver <- configCompilerVersion flavor comp
+       ver <- configCompilerVersion flavor comp cfg
 
        pkgtool <-
-	 case maybe_pkgtool of
+	 case configHcPkg cfg of
 	   Just path -> return path
 	   Nothing   -> guessPkgToolFromHCPath flavor comp
 
@@ -282,10 +286,6 @@ configCompiler (Just flavor) maybe_compiler maybe_pkgtool _
 			compilerVersion=ver,
 			compilerPath=comp,
 			compilerPkgTool=pkgtool})
-
-configCompiler Nothing maybe_path maybe_hc_pkg pkg_descr
-  = configCompiler (Just defaultCompilerFlavor) 
-	maybe_path maybe_hc_pkg pkg_descr
 
 defaultCompilerFlavor :: CompilerFlavor
 defaultCompilerFlavor =
@@ -322,16 +322,19 @@ compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
-configCompilerVersion :: CompilerFlavor -> FilePath -> IO Version
-configCompilerVersion GHC compilerP =
+configCompilerVersion :: CompilerFlavor -> FilePath -> ConfigFlags -> IO Version
+configCompilerVersion GHC compilerP cfg =
   withTempFile "." "" $ \tmp -> do
-    maybeExit $ system (compilerP ++ " --version >" ++ tmp)
+    let cmd_line = compilerP ++ " --version >" ++ tmp
+    when (configVerbose cfg > 0) $
+      putStrLn cmd_line
+    maybeExit $ system cmd_line
     str <- readFile tmp
     case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
 	[v] -> return v
 	_   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "
 			++ str)
-configCompilerVersion _ _ = return Version{ versionBranch=[],versionTags=[] }
+configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]

@@ -396,7 +396,7 @@ binfoFields =
  , listField   "extensions"
                            (text . show)      parseExtensionQ
                            extensions         (\exts  binfo -> binfo{extensions=exts})
- , listField   "extra-libs"
+ , listField   "extra-libraries"
                            showToken	      parseTokenQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
@@ -414,11 +414,11 @@ binfoFields =
  , listField   "other-modules"         
                            text               parseModuleNameQ
                            otherModules       (\val binfo -> binfo{otherModules=val})
- , optsField   "options-ghc"  GHC
+ , optsField   "ghc-options"  GHC
                            options            (\path  binfo -> binfo{options=path})
- , optsField   "options-hugs" Hugs
+ , optsField   "hugs-options" Hugs
                            options            (\path  binfo -> binfo{options=path})
- , optsField   "options-nhc"  NHC
+ , optsField   "nhc-options"  NHC
                            options            (\path  binfo -> binfo{options=path})
  ]
 
@@ -631,12 +631,12 @@ testPkgDesc = unlines [
         "HS-Source-Dir: src",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
         "Extensions: OverlappingInstances, TypeSynonymInstances",
-        "Extra-Libs: libfoo, bar, bang",
+        "Extra-Libraries: libfoo, bar, bang",
 	"Extra-Lib-Dirs: \"/usr/local/libs\"",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
-        "Options-ghc: -fTH -fglasgow-exts",
-        "Options-hugs: +TH",
+        "GHC-Options: -fTH -fglasgow-exts",
+        "Hugs-Options: +TH",
         "",
         "-- Next is an executable",
         "Executable: somescript",

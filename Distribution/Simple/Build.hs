@@ -192,6 +192,8 @@ buildGHC pkg_descr lbi verbose = do
                          ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
 			 ++ ldOptions exeBi
+			 ++ ["-l"++lib | lib <- extraLibs exeBi]
+			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
 			 ++ (if verbose > 4 then ["-v"] else [])
                  rawSystemExit verbose ghcPath binArgs
 
