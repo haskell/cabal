@@ -133,11 +133,16 @@ defaultMainNoRead pkg_descr
                 no_extra_flags args
                 exec "make clean"
 
-            InstallCmd mprefix uInst -> do
-                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+            CopyCmd mprefix -> do
+                (mprefix, _, args) <- parseCopyArgs mprefix args []
                 no_extra_flags args
                 maybeExit $ system $ "make install" ++
                                      maybe "" (" prefix="++) mprefix
+
+            InstallCmd mprefix uInst -> do
+                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+                no_extra_flags args
+                maybeExit $ system $ "make install"
                 when (isNothing mprefix) (exec "make register")
 
             SDistCmd -> do
