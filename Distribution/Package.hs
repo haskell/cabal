@@ -172,13 +172,16 @@ parseDesc = (many1 (parseReqFields >> parseDescHelp)) >> getState
                >>= updateState . (\l pkgD -> pkgD{includes=l}))
            <|> try (parseField "HS-Source-Dir" True parseFilePath
                >>= updateState . (\l pkgD -> pkgD{hsSourceDir=head l}))
+           <|> try (parseField "Main-Modules" True (parseCommaList moduleName)
+               >>= updateState . (\l pkgD -> pkgD{mainModules=l}))
+           <|> try (parseField "Exposed-Modules" True (parseCommaList moduleName)
+               >>= updateState . (\l pkgD -> pkgD{exposedModules=l}))
+           <|> try (parseField "Modules" True (parseCommaList moduleName)
+               >>= updateState . (\l pkgD -> pkgD{allModules=l}))
 
 -- Parsing remains for:
 --
 -- Build-Depends: haskell-src, HUnit>=1.0.0-foo
--- Modules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig
--- Main-Modules: Distribution.Main
--- Exposed-Modules: Distribution.Void, Foo.Bar
 -- Extra-Libs: libfoo, bar, bang
 -- Options: ghc: -fTH, hugs: +TH
 -- Extensions: {some known extensions}
@@ -211,6 +214,8 @@ anyOf :: [GenParser tok st a] -> GenParser tok st a
 anyOf [a] = a
 anyOf (h:t) = foldl ((<|>) . try) (try h) t
 
+-- |parse a module name
+moduleName = many (alphaNum <|> oneOf "_'.")
 
 -- |FIX: must learn to escape whitespace
 parseFilePath :: GenParser Char st [FilePath]
@@ -362,27 +367,44 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                                                     (parse parseLicense "" lName)
                                              | (lName, lVal) <- licenses]),
               TestLabel "misc fields" $ TestCase $
-                 do assertRight "path field"
+                 do let someModules = ["Somewhere.I.Have.Never.Traveled",
+                                       "Gladly.Beyond.Any.Experience",
+                                       "Your.Eyes.Have.Their.Silence"]
+                    let someModulesText = "Somewhere.I.Have.Never.Traveled\t   , Gladly.Beyond.Any.Experience,  \tYour.Eyes.Have.Their.Silence"
+                    assertRight "path field"
                        ["foo/bar/bang","/baz/boom/pow", "/", "foob"]
                        (parse (parseField "Includes" False parseFilePath) ""
-                         "Includes: foo/bar/bang   , /baz/boom/pow, /, foob"),
+                         "Includes: foo/bar/bang   , /baz/boom/pow, /, foob")
+                    -- Module-related fields
+                    assertRight "main modules field"
+                       someModules (parse (parseField "Main-Modules" False
+                                           (parseCommaList moduleName)) "" 
+                                           ("Main-Modules: " ++ someModulesText))
+                    assertRight "exposed modules field"
+                       someModules (parse (parseField "Exposed-Modules" False
+                                           (parseCommaList moduleName)) "" 
+                                           ("Exposed-Modules: " ++ someModulesText))
+                    assertRight "modules field"
+                       someModules (parse (parseField "Modules" False
+                                           (parseCommaList moduleName)) "" 
+                                           ("Modules: " ++ someModulesText)),
 
               TestLabel "Required fields" $ TestCase $
                  do assertRight "some fields"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                       emptyPackageDescription{package=(PackageIdentifier "rain"
                                                         (Version [0,0] ["date=asdf"]))}
-                       (doParseReqFields "Name: foo\nVersion: 0.0-asdf")
-                    assertRight "more fields foo"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
+                       (doParseReqFields "Name: rain\nVersion: 0.0-asdf")
+                    assertRight "more fields rain"
+                       emptyPackageDescription{package=(PackageIdentifier "rain"
                                                         (Version [0,0]["date=asdf"])),
                                                license=GPL}
-                       (doParseReqFields "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+                       (doParseReqFields "Name: rain\nVersion:0.0-asdf\nLicense: GPL")
 
                     assertRight "copyright field"
                        "(c) 2004 foo bar bang"
                        (parse (parseField "Copyright" False parseFreeText) ""
                                  "Copyright: (c) 2004 foo bar\n bang")
-                                          
+
                     assertRight "required fields for foo"
                        emptyPackageDescription{package=(PackageIdentifier "foo"
                                                         (Version [0,0]["date=asdf"])),
