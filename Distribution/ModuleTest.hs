@@ -97,8 +97,9 @@ checkTargetDir targetDir suffixes
          return ()
 
 tests :: [Test]
-tests = [TestCase $
-         do setCurrentDirectory "test"
+tests = [TestLabel "configure GHC, sdist" $ TestCase $
+         do system "ghc-pkg -r test-1.0 --config-file=$HOME/.ghc-packages"
+            setCurrentDirectory "test"
             dirE1 <- doesDirectoryExist ",tmp"
             when dirE1 (system "rm -r ,tmp">>return())
             dirE2 <- doesDirectoryExist "dist"
@@ -116,14 +117,21 @@ tests = [TestCase $
               assertEqual "dist/src exists" False
             doesDirectoryExist "dist/build" >>=
               assertBool "dist/build doesn't exists",
-         TestCase $ -- GHC and --install-prefix (uses above config)
+         TestLabel "GHC and install-prefix" $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
             instRetCode <- system $ "./setup install --install-prefix=" ++ targetDir
             checkTargetDir ",tmp2/lib/test-1.0/" [".hi"]
             doesFileExist (pathJoin [",tmp2/lib/test-1.0/", "libHStest-1.0.a"])
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
-         TestCase $ -- no intsall-prefix and hugs
+         TestLabel "GHC and install w/ no prefix" $ TestCase $
+         do let targetDir = ",tmp/lib/test-1.0/"
+            instRetCode <- system $ "./setup install --user"
+            checkTargetDir targetDir [".hi"]
+            doesFileExist (pathJoin [targetDir, "libHStest-1.0.a"])
+              >>= assertBool "library doesn't exist"
+            assertEqual "install returned error code" ExitSuccess instRetCode,
+         TestLabel "no install-prefix and hugs" $ TestCase $
          do system "./setup configure --hugs --prefix=,tmp"
              >>= assertEqual "HUGS configure returned error code" ExitSuccess
             system "./setup build"
