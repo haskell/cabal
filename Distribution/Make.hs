@@ -88,15 +88,23 @@ defaultPackageDesc :: FilePath
 defaultPackageDesc = "Setup.description"
 
 configureArgs :: ConfigFlags -> String
-configureArgs (_, Just hc_path, maybe_prefix)
-    = "--with-hc=" ++ hc_path ++ maybe "" (" --prefix="++) maybe_prefix
-configureArgs (Just hc, Nothing, maybe_prefix)
-    = "--with-hc=" ++ showHC hc ++ maybe "" (" --prefix="++) maybe_prefix
-  where showHC GHC = "ghc"
+configureArgs (flavour, mb_hc_path, mb_hc_pkg_path, mb_prefix)
+  = unwords (hc_flag ++ hc_pkg_flag ++ prefix_flag)
+  where
+	hc_flag = case (flavour, mb_hc_path) of
+			(_, Just hc_path)  -> ["--with-hc=" ++ hc_path]
+			(Just hc, Nothing) -> ["--with-hc=" ++ showHC hc]
+			(Nothing,Nothing)  -> []
+	hc_pkg_flag = case mb_hc_pkg_path of
+			Just hc_pkg_path -> ["--with-hc-pkg=" ++ hc_pkg_path]
+			Nothing          -> []
+	prefix_flag = case mb_prefix of
+			Just p  -> ["--with-hc=" ++ p]
+			Nothing -> []
+
+  	showHC GHC = "ghc"
         showHC NHC = "nhc98"
         showHC Hugs = "hugs"
-configureArgs (Nothing, Nothing, maybe_prefix)
-    = maybe "" ("--prefix="++) maybe_prefix
 
 exec :: String -> IO a
 exec cmd = system cmd >>= exitWith
