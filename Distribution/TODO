@@ -19,18 +19,11 @@
 ** test / port code for Hugs and nhc
 
 * Code
-** FIX: does it try to register when we have "install --inst-prefix"?
-   (write test case)
-** FIX: install currently moves .hs, .hi, and .o files for any target.
-   make it do the right thing for hugs (just move .hs) and {g,n}hc
-   (move .hi and .o)
-** Write top-level Setup test cases (like "make check" under the test directory)
+** Extensions -> flags interface (Misc.hs)
 
-** Extensions -> flags interface
+** Change mainModules to [(String, String)] for (Module, executable name)
 
 ** parse Setup.description
-** build (for NHC and Hugs)
-** install (for GHC and NHC) - look for .o and .hi, register, etc
 
 ** for fields like allModules, allow user to specify "Foo.Bar.*" or
    something to indicate all haskell modules under that?

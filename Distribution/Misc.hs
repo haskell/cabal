@@ -68,7 +68,7 @@ data Dependency = Dependency String VersionRange
                   deriving (Read, Show)
 
 -- |This represents non-standard compiler extensions which each
--- package might employ.  Not yet implemented.
+-- package might employ.  FIX: Most extensions not yet implemented.
 
 data Extension = 
 	       OverlappingInstances
