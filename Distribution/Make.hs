@@ -139,11 +139,11 @@ defaultMainNoRead pkg_descr
                 maybeExit $ system $ "make install" ++
                                      maybe "" (" prefix="++) mprefix
 
-            InstallCmd mprefix uInst -> do
-                ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
+            InstallCmd uInst -> do
+                (uInst, _, args) <- parseInstallArgs uInst args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
-                when (isNothing mprefix) (exec "make register")
+                exec "make register"
 
             SDistCmd -> do
                 (_, args) <- parseSDistArgs args []
