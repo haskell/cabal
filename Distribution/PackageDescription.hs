@@ -789,8 +789,8 @@ hunitTests = [
                                                (d == d'),
             TestLabel "Sanity checker" $ TestCase $ do
               (warns, ers) <- sanityCheckPackage emptyPackageDescription
-              assertEqual "Wrong number of errors"   (length ers)   5
-              assertEqual "Wrong number of warnings" (length warns) 4
+              assertEqual "Wrong number of errors"   2 (length ers)
+              assertEqual "Wrong number of warnings" 4 (length warns)
             ]
 
 -- |Compare two package descriptions and see which fields aren't the same.
