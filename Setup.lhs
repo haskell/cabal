@@ -1,4 +1,4 @@
-#!/usr/bin/runhugs -98
+#!/usr/bin/runhaskell
 
 > module Main where
 
