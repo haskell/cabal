@@ -174,6 +174,7 @@ extensionsToHugsFlag l
       extensionToHugsFlag FlexibleInstances          = Right "-98"
       extensionToHugsFlag ForeignFunctionInterface   = Right ""
       extensionToHugsFlag EmptyDataDecls             = Right ""
+      extensionToHugsFlag CPP                        = Right ""
       extensionToHugsFlag e                          = Left e
 
 splitEither :: [Either a b] -> ([a], [b])

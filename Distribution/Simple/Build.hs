@@ -57,6 +57,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
+import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   createIfNotExists,
                                   mkLibName, moveSources, dotToSep,
@@ -186,12 +187,10 @@ buildHugs pkg_descr lbi = do
     mapM_ (compileExecutable (pref `joinFileName` "programs"))
 	(executables pkg_descr)
   where
-	{- FIX (HUGS): we need to create a shell script or bat file or
-	   something to call runhugs on the modulePath. -}
 	compileExecutable :: FilePath -> Executable -> IO ()
-	compileExecutable destDir (Executable {modulePath=mainPath, buildInfo=bi}) = do
+	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
 	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
-	    let destMainFile = destDir `joinFileName` mainPath
+	    let destMainFile = destDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) srcMainFile destMainFile
 	    compileBuildInfo destDir bi
 	    compileFFI bi destMainFile
