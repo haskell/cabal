@@ -8,11 +8,12 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Simple build system; basically the interface for
+-- Distribution/Simple/\* modules.  When given the parsed command-line
+-- args and package information, is able to perform basic commands
+-- like configure, build, install, register, etc.
 
-{- Copyright (c) 2003-2004, Isaac Jones
-All rights reserved.
+{- All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are

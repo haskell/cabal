@@ -8,11 +8,9 @@
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Test this module and sub modules.
 
-{- Copyright (c) 2003-2004, Isaac Jones
-All rights reserved.
+{- All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are

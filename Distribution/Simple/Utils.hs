@@ -2,17 +2,16 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  GHC
 --
--- Explanation: <FIX>
--- WHERE DOES THIS MODULE FIT IN AT A HIGH-LEVEL <FIX>
+-- Explanation: Misc. Utilities, especially file-related utilities.
+-- Stuff used by multiple modules that doesn't fit elsewhere.
 
-{- Copyright (c) 2003-2004, Isaac Jones
-All rights reserved.
+{- All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
