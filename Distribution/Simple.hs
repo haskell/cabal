@@ -92,9 +92,12 @@ import Distribution.Compat.FilePath(joinFileName, joinPaths)
 import HUnit (Test)
 #endif
 
+-- |Package description file (@Setup.description@)
 defaultPackageDesc :: FilePath
 defaultPackageDesc = "Setup.description"
 
+-- |Package build information file (@Setup.buildinfo@) used by
+-- 'defaultUserHooks'.
 hookedPackageDesc :: FilePath
 hookedPackageDesc = "Setup.buildinfo"
 
@@ -288,7 +291,7 @@ helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"
 
 
--- |Empty UserHooks which do nothing.
+-- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks
 emptyUserHooks
     = UserHooks
@@ -315,9 +318,15 @@ emptyUserHooks
     where rn _  = return Nothing
           res = return ExitSuccess
 
--- |Basic default 'UserHooks' which read and write to
--- 'hookedPackageDesc'.  It's likely that unless you have a very
--- basic /configure/ script, you will want to override preConf.
+-- |Basic default 'UserHooks':
+--
+-- * on non-Windows systems, 'preConf' runs @.\/configure@, if present.
+--
+-- * all pre-hooks read additional build information from 'hookedPackageDesc',
+--   if present.
+--
+-- Thus @configure@ can use local system information to generate
+-- 'hookedPackageDesc' and possibly other files.
 
 -- FIXME: do something sensible for windows, or do nothing in preConf.
 
@@ -334,32 +343,30 @@ defaultUserHooks
        preReg    = readHook2,
        preUnreg  = readHook
       }
-    where readHook a = no_extra_flags a
-                       >> readPackageDescription hookedPackageDesc
-                       >>= (return . Just)
-          readHook2 a _ = no_extra_flags a
-                          >> readPackageDescription hookedPackageDesc
-                          >>= (return . Just)
+    where readHook a = no_extra_flags a >> readHookedPackageDesc
+          readHook2 a _ = no_extra_flags a >> readHookedPackageDesc
           defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
+#ifdef mingw32_TARGET_OS
+          defaultPreConf = readHook2
+#else
           defaultPreConf args (_, _, _, mb_prefix)
               = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
                    confExists <- doesFileExist "configure"
-	           when confExists
-	                 (rawSystem "./configure"
+	           if confExists then do
+	               rawSystem "./configure"
 	                   (maybe id prefix_opt mb_prefix args)
-                           >> return ())
-                   unless confExists (no_extra_flags args)
-                   outDesc <- readPackageDescription hookedPackageDesc
-                   return $ Just outDesc
-
-
-
-whenM :: IO Bool -> IO a -> IO ()
-whenM cond act = do
-	b <- cond
-	when b $ do
-		act
-		return ()
+		       return ()
+		     else
+		       no_extra_flags args
+		   readHookedPackageDesc
+#endif
+          readHookedPackageDesc
+              = do exists <- doesFileExist hookedPackageDesc
+		   if exists then do
+		       pkg_descr <- readPackageDescription hookedPackageDesc
+		       return (Just pkg_descr)
+		     else
+		       return Nothing
 
 -- ------------------------------------------------------------
 -- * Testing

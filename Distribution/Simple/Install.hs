@@ -58,7 +58,8 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..),
-	setupMessage, hasLibs, withLib, libModules, exeModules, biModules)
+	setupMessage, hasLibs, withLib, libModules, exeModules, biModules,
+	hcOptions)
 import Distribution.Package (showPackageId, pkgName)
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(moveSources, rawSystemExit,
@@ -146,17 +147,20 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 	flip mapM_ (executables pkg_descr) $ \ exe -> do
 	    let fname = hugsMainFilename exe
 	    let installName = progInstallDir `joinFileName` fname
-	    let targetName = progTargetDir `joinFileName` fname
 	    copyFile (progBuildDir `joinFileName` fname) installName
-	    let exeFile = binPref `joinFileName` exeName exe
+#ifndef mingw32_TARGET_OS
 	    -- FIX (HUGS): works for Unix only
-	    -- FIX (HUGS): supply language options for runhugs?
+	    let targetName = progTargetDir `joinFileName` fname
+	    let exeFile = binPref `joinFileName` exeName exe
+	    -- FIX (HUGS): use extensions, and options from file too?
+	    let hugsOptions = hcOptions Hugs (options (buildInfo exe))
 	    let script = unlines [
 		    "#! /bin/sh", 
-		    "runhugs " ++ targetName]
+		    unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
 	    writeFile exeFile script
 	    perms <- getPermissions exeFile
 	    setPermissions exeFile perms { executable = True, readable = True }
+#endif
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = ["hs", "lhs", drop 1 dllExtension]
