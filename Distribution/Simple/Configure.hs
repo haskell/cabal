@@ -53,7 +53,8 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                      )
     where
 
-import Distribution.Misc(Dependency(..))
+import Distribution.Misc(Dependency(..), Extension(..),
+                         extensionsToGHCFlag, extensionsToNHCFlag, extensionsToHugsFlag)
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..), emptyPackageDescription,
                             PackageIdentifier(..), BuildInfo(..), Executable(..)
@@ -63,10 +64,11 @@ import Distribution.Simple.Utils (die, setupMessage,
 import Distribution.Package	( PackageIdentifier )
 import Distribution.Version (Version(..), VersionRange(..))
 
+import Data.List (intersperse, nub)
 import Data.Maybe(fromJust)
 import System.IO hiding (catch)
 import System.Directory
-import Control.Monad		( when )
+import Control.Monad		( when, unless )
 import Control.Exception	( catch, evaluate )
 import Prelude hiding (catch)
 
@@ -125,10 +127,22 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
 	let prefix = case maybe_prefix of
 			Just path -> path
 			Nothing   -> system_default_prefix pkg_descr
-
-        message $ "Using build prefix: " ++ prefix
 	-- detect compiler
 	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path pkg_descr 
+        -- check extensions
+        let extlist = nub $ maybe [] extensions lib ++
+                      concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
+        let exts = case f' of
+                     GHC  -> fst $ extensionsToGHCFlag extlist
+                     NHC  -> fst $ extensionsToNHCFlag extlist
+                     Hugs -> fst $ extensionsToHugsFlag extlist
+                     _    -> [] -- Hmm.
+        unless (null exts) $ putStrLn $ -- Just warn, FIXME: Should this be an error?
+            "Warning: " ++ show f' ++ " does not support the following extensions:\n " ++
+            concat (intersperse ", " (map show exts))
+
+        -- FIXME: maybe this should only be printed when verbose?
+        message $ "Using build prefix: " ++ prefix
         message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
