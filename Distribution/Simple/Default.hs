@@ -67,6 +67,6 @@ defaultMain p
     = do args <- getArgs
          case parseArgs args of
           (BuildCmd,       _) -> doBuildInstall build p
-          (InstallCmd,     _) -> doBuildInstall install p
+          (InstallCmd _,   _) -> doBuildInstall install p
           (PackageInfoCmd, _) -> print p
          return ()
