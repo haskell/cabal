@@ -53,7 +53,7 @@ import Distribution.Package()
 import qualified Distribution.Setup(hunitTests)
 
 import Distribution.Simple()
-import Distribution.Simple.Install()
+import qualified Distribution.Simple.Install(hunitTests)
 import Distribution.Simple.Build()
 import Distribution.Simple.Configure()
 import Distribution.Simple.Register()
@@ -72,6 +72,8 @@ main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupTests <- Distribution.Setup.hunitTests
           mapM runTestTT' setupTests
+          Distribution.Simple.Install.hunitTests >>= runTestTT'
+          
           return ()
 
 -- Local Variables:
