@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Make
--- Copyright   :  Martin Sjögren 2004
+-- Copyright   :  Martin Sj&#xF6;gren 2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
