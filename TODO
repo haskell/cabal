@@ -6,6 +6,15 @@
   directory, then copies them into the destination.  this is no good
   since we now won't be able to tell them from real source files the
   next time around.  clean is broken here...
+** several solutions to above problem:
+-- remember the source files to remove somehow
+-- move them into place first, then preprocess them, leave source
+   files there (depends on answer to below)
+-- preprocess them, and put them in place in the new
+   location. best solution, but not set up well for that right now,
+   since we concat together the entire filename (including module name)
+
+** for a source tarball, do we want to include JUST the unpreprocessed sources?
 
 ** clarify description filename issues
 - allow foo.hsproj?
