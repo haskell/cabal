@@ -1,8 +1,10 @@
-** where are we using allModules, is this the right place?
+* misc
 
 ** integrate w/ GHC distro
 
 ** what other preprocessors can't unlit?
+
+** find a real test case that uses a preprocessor
 
 ** is cpp ever run yet?
 
@@ -15,6 +17,7 @@
 - allow foo.hsproj?
 
 ** grep for "FIX"
+
 ** Compatibility
 *** add information for compiling w/ nhc
 *** add install target for hugs & nhc
@@ -90,7 +93,9 @@
 ** Get function from hmake that creates a directory based on arch.
 
 ** ./Setup test
-- this may be something that's easy to break off and give to someone else.
+- this may be something that's easy to break off and give to someone
+   else.
+- give to John Goerzen?
 
 ** writePersistBuildConfig robustify + diagnostics
 ** elaborate command-line help text
