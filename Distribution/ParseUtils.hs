@@ -125,7 +125,7 @@ listField name showF readF get set = StanzaField name
    (\st -> case get st of
         [] -> empty
         lst ->
-           text name <> colon <+> sep (punctuate comma (map showF lst)))
+           text name <> colon <+> fsep (punctuate comma (map showF lst)))
    (\st -> case get st of
         [] -> empty
         lst ->
