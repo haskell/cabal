@@ -49,7 +49,7 @@ module Distribution.Simple (
 	orLaterVersion, orEarlierVersion, betweenVersionsInclusive,
 	Extension(..), Dependency(..),
 	defaultMain, defaultMainNoRead, defaultMainWithHooks,
-        UserHooks (..), defaultUserHooks, emptyUserHooks, hookedPackageDesc,
+        UserHooks (..), defaultUserHooks, hookedPackageDesc,
 #ifdef DEBUG        
         simpleHunitTests
 #endif
@@ -77,9 +77,10 @@ import Distribution.Version (Version(..), VersionRange(..), Dependency(..),
 			     betweenVersionsInclusive)
 
 -- Base
+import System.Cmd	(rawSystem)
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..))
-import System.Directory(removeFile)
+import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad(when)
 import Data.Maybe(isNothing)
@@ -294,6 +295,7 @@ helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"
 
 
+-- |Empty UserHooks which do nothing.
 emptyUserHooks :: UserHooks
 emptyUserHooks
     = UserHooks
@@ -320,11 +322,15 @@ emptyUserHooks
     where rn _  = return Nothing
           res = return ExitSuccess
 
+-- |Basic default 'UserHooks' which read and write to
+-- 'hookedPackageDesc'.  It's likely that unless you have a very
+-- basic /configure/ script, you will want to override preConf.
+
 defaultUserHooks :: UserHooks
 defaultUserHooks
     = emptyUserHooks
       {
-       preConf   = \_ _ -> return Nothing,
+       preConf   = defaultPreConf,
        preBuild  = readHook,
        preClean  = readHook,
        preCopy   = \_ -> readHook,
@@ -334,8 +340,23 @@ defaultUserHooks
        preUnreg  = readHook
       }
     where readHook _ = readPackageDescription hookedPackageDesc >>= (return . Just)
+          defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
+          defaultPreConf args (_, _, _, mb_prefix)
+              = do let prefix_opt pref opts = ("--prefix=" ++ pref) : opts
+	           whenM (doesFileExist "configure") $
+	                 rawSystem "./configure"
+	                   (maybe id prefix_opt mb_prefix args)
+                   outDesc <- readPackageDescription hookedPackageDesc
+                   return $ Just outDesc
 
 
+
+whenM :: IO Bool -> IO a -> IO ()
+whenM cond act = do
+	b <- cond
+	when b $ do
+		act
+		return ()
 
 -- ------------------------------------------------------------
 -- * Testing
