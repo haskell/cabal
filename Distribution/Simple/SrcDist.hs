@@ -45,11 +45,12 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.Package(PackageDescription)
 import Distribution.Simple.Configure(LocalBuildInfo)
+import Distribution.Simple.Utils(setupMessage)
 
 import System.IO
 import System.Exit
 
 sdist :: PackageDescription -> LocalBuildInfo -> IO ()
 sdist pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: sdisting..."
+  setupMessage "Building source dist for" pkg_descr
   exitWith (ExitFailure 1)

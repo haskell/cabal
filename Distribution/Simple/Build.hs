@@ -43,15 +43,16 @@ module Distribution.Simple.Build (
 	build
   ) where
 
-import Distribution.Package(PackageDescription)
+import Distribution.Package
 import Distribution.Simple.Configure(LocalBuildInfo)
+import Distribution.Simple.Utils(setupMessage)
 
 import System.IO
 import System.Exit
 
 build :: PackageDescription -> LocalBuildInfo -> IO ()
 build pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: building..."
+  setupMessage "Configuring" pkg_descr
   exitWith (ExitFailure 1)
 
   -- construct ghc --make command line

@@ -49,16 +49,17 @@ module Distribution.Simple.Register (
 import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Package(PackageDescription)
 import Distribution.InstalledPackageInfo(InstalledPackageInfo)
+import Distribution.Simple.Utils(setupMessage)
 
 import System.IO
 import System.Exit
 
 register :: PackageDescription -> LocalBuildInfo -> IO ()
 register pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: registering..."
+  setupMessage "Registering" pkg_descr
   exitWith (ExitFailure 1)
 
 unregister :: PackageDescription -> LocalBuildInfo -> IO ()
 unregister pkg_descr lbi = do
-  hPutStrLn stderr "ToDo: unregistering..."
+  setupMessage "Unregistering" pkg_descr
   exitWith (ExitFailure 1)

@@ -50,7 +50,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..))
-import Distribution.Simple.Utils (splitFilenameDir, die, split)
+import Distribution.Simple.Utils (splitFilenameDir, die, split, setupMessage)
 
 import System.IO hiding (catch)
 import System.Exit
@@ -91,16 +91,17 @@ localBuildInfoFile = "./.setup-config"
 -- Configuration
 
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
-configure pkgconfig (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
+configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
   = do
+	setupMessage "Configuring" pkg_descr
 	-- prefix
 	let prefix = case maybe_prefix of
 			Just path -> path
-			Nothing   -> system_default_prefix pkgconfig
+			Nothing   -> system_default_prefix pkg_descr
 
         message $ "Using build prefix: " ++ prefix
 	-- detect compiler
-	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path pkgconfig 
+	compiler@(Compiler f' p' pkg) <- configCompiler maybe_hc_flavor maybe_hc_path pkg_descr 
         message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
@@ -119,21 +120,21 @@ system_default_prefix PackageDescription{package=package} =
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageDescription
   -> IO Compiler
 
-configCompiler (Just flavor) (Just path) pkgconfig
+configCompiler (Just flavor) (Just path) pkg_descr
   = do pkgtool <- guessPkgToolFromHCPath flavor path
        return (Compiler{compilerFlavor=flavor,
 			compilerPath=path,
 			compilerPkgTool=pkgtool})
 
-configCompiler (Just flavor) Nothing pkgconfig
+configCompiler (Just flavor) Nothing pkg_descr
   = do path <- findCompiler flavor
        pkgtool <- guessPkgToolFromHCPath flavor path
        return (Compiler{compilerFlavor=flavor,
 			compilerPath=path,
 			compilerPkgTool=pkgtool})
 
-configCompiler Nothing maybe_path pkgconfig
-  = configCompiler (Just defaultCompilerFlavor) maybe_path pkgconfig
+configCompiler Nothing maybe_path pkg_descr
+  = configCompiler (Just defaultCompilerFlavor) maybe_path pkg_descr
 
 defaultCompilerFlavor =
 #if defined(__GLASGOW_HASKELL__)
