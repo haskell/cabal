@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.ModuleTest
+-- Module      :  Distribution.Install
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -41,16 +41,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module ModuleTest where
+module Distribution.Install(install) where
 
--- Import everything, since we want to test the compilation of them:
+import Distribution.Package(PackageConfig)
+import Distribution.Misc(Compiler)
 
-import Distribution.Install()
-import Distribution.Build()
-import Distribution.Version()
-import Distribution.UseConfig()
-import Distribution.Misc()
-import Distribution.Package()
-
-main :: IO ()
-main = return ()
+install :: PackageConfig -> Compiler -> IO ()
+install _ _ = return ()
