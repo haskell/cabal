@@ -61,11 +61,11 @@ import HUnit (Test)
 
 data License = GPL | LGPL | BSD3 | BSD4 | PublicDomain | AllRightsReserved
              | {- ... | -} OtherLicense FilePath
-               deriving (Read, Show)
+               deriving (Read, Show, Eq)
 
 -- |Maybe move to Distribution.Version?
 data Dependency = Dependency String VersionRange
-                  deriving (Read, Show)
+                  deriving (Read, Show, Eq)
 
 -- |This represents non-standard compiler extensions which each
 -- package might employ.  FIX: Most extensions not yet implemented.
@@ -74,7 +74,7 @@ data Extension =
 	       OverlappingInstances
 	       | TypeSynonymInstances
 	       | TemplateHaskell
-	       deriving (Show, Read)
+	       deriving (Show, Read, Eq)
 
 type Opt = String
 

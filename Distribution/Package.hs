@@ -57,8 +57,8 @@ module Distribution.Package (
 import Control.Monad(when)
 import Data.Char(isSpace)
 
-import Distribution.Version(Version(..), showVersion, parseVersion)
-import Distribution.Misc(License(..), Dependency, Extension)
+import Distribution.Version(Version(..), VersionRange(..), showVersion, parseVersion)
+import Distribution.Misc(License(..), Dependency(..), Extension)
 import Distribution.Setup(CompilerFlavor)
 
 import System.IO(openFile, IOMode(..), hGetContents)
@@ -106,7 +106,17 @@ data PackageDescription
         includes       :: [ FilePath ],
         options        :: [ (CompilerFlavor, [String]) ]
     }
-    deriving (Show, Read)
+    deriving (Show, Read, Eq)
+
+-- |Set the name for this package. Convenience function.
+setPkgName :: String -> PackageDescription -> PackageDescription
+setPkgName n desc@PackageDescription{package=pkgIdent}
+    = desc{package=pkgIdent{pkgName=n}}
+
+-- |Set the version for this package. Convenience function.
+setPkgVersion :: Version -> PackageDescription -> PackageDescription
+setPkgVersion v desc@PackageDescription{package=pkgIdent}
+    = desc{package=pkgIdent{pkgVersion=v}}
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
@@ -137,6 +147,24 @@ emptyPackageDescription
 parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p
     = openFile p ReadMode >>= hGetContents >>= return . read
+
+
+parseDesc :: GenParser Char st PackageDescription
+parseDesc = error "not yet implemented"
+
+-- |Parse the required fields. FIX: implmenet.  We'll basically run
+-- through these a bunch of times updating the state as we go along,
+-- as is noted.
+-- parseReqFields 
+--     = try (do v <- parseField "Version" True parseVersion
+--               updateState(setPkgVersion v)
+--           )
+--       <|> (parseField "Name" False 
+--               updateState (setPkgName n)
+--       <|> (parseField 
+
+-- |Must know when to stop ... :)
+parseFreeText = error "not implemented"
 
 word :: Parser String
 word = many1 letter <?> "word"
@@ -174,6 +202,41 @@ parseField s newline p
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
+testPkgDesc = "-- Required\nName: Cabal\nVersion: 0.1.1.1.1-foo-bar-bang\nLicense: AllRightsReserved\nCopyright: Free Text String\n-- Optional - may be in source?\nStability: Free Text String\nBuild-Depends: haskell-src, HUnit>=1.0.0-foo\nModules: Distribution.Package, Distribution.Version, Distribution.Simple.GHCPackageConfig\nMain-Modules: Distribution.Main\nC-Sources: foo/bar/bang.c, bong/boing.h\nHS-Source-Dir: src\nExposed-Modules: Distribution.Void, Foo.Bar\nExtensions: {some known extensions}\nExtra-Libs: libfoo, bar, bang\nInclude-Dirs: foo/bar, fang/fong\nIncludes: /foo/bar, jedi/night\nOptions: ghc: -fTH, hugs: +TH"
+
+testPkgDescAnswer = 
+ PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
+                                                 pkgVersion = Version {versionBranch = [0,1],
+                                                 versionTags = []}},
+                    license = AllRightsReserved,
+                    copyright = "",
+                    maintainer = "",
+                    stability = "",
+                    buildDepends = [Dependency "haskell-src" AnyVersion,
+                                    Dependency "HUnit-1.0" AnyVersion],
+
+                    allModules = ["Distribution.Package","Distribution.Version",
+                                  "Distribution.Misc","Distribution.Setup",
+                                  "Distribution.InstalledPackageInfo",
+                                  "Distribution.Make","Distribution.Simple",
+                                  "Distribution.Simple.Build",
+                                  "Distribution.Simple.Install","Distribution.Simple.SrcDist",
+                                  "Distribution.Simple.Configure","Distribution.Simple.Utils",
+                                  "Distribution.Simple.Register",
+                                  "Distribution.Simple.GHCPackageConfig",
+                                  "Distribution.GetOpt"],
+
+                    mainModules = [],
+                    cSources = [],
+                    hsSourceDir = ".",
+                    exposedModules = [],
+                    extensions = [],
+                    extraLibs = [],
+                    includeDirs = [],
+                    includes = [],
+                    options = []
+}
+
 hunitTests :: [Test]
 hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
               do assertRight "newline before word 1"
@@ -209,7 +272,11 @@ hunitTests = [TestLabel "newline before word (parsewhite)" $ TestCase $
                  assertRight "basic spaces with newline"
                    knownVal1 (p1 "Foo:\n 3.2-one \t   \nBar:    boo  ")
                  assertRight "basic spaces with newline"
-                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  ")
+                   knownVal1 (p1 "Foo:\n 3.2-one \t \n  \nBar:    boo  "),
+
+              TestLabel "Package description" $ TestCase $ 
+                 assertRight "entire package description" testPkgDescAnswer
+                                                          (parse parseDesc "" testPkgDesc)
              ]
 
 assertRight :: (Eq val) => String -> val -> (Either a val) -> Assertion
