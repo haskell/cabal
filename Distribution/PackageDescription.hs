@@ -246,7 +246,6 @@ setupMessage :: String -> PackageDescription -> IO ()
 setupMessage msg pkg_descr = 
    putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
-
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing
 -- ------------------------------------------------------------
@@ -264,28 +263,28 @@ basicStanzaFields =
  , licenseField "license-file" True
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            copyright              (\val pkg -> pkg{copyright=val})
  , simpleField "maintainer"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            maintainer             (\val pkg -> pkg{maintainer=val})
  , simpleField "stability"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            stability              (\val pkg -> pkg{stability=val})
  , simpleField "homepage"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            homepage               (\val pkg -> pkg{homepage=val})
  , simpleField "package-url"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
  , simpleField "description"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            description            (\val pkg -> pkg{description=val})
  , simpleField "category"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            category               (\val pkg -> pkg{category=val})
  , simpleField "author"
-                           text                   (munch (const True))
+                           showFreeText           (munch (const True))
                            author                 (\val pkg -> pkg{author=val})
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
@@ -308,7 +307,7 @@ basicStanzaFields =
 executableStanzaFields :: [StanzaField Executable]
 executableStanzaFields =
  [ simpleField "executable"
-                           text               (munch (const True))
+                           showFreeText       (munch (const True))
                            exeName            (\xs    exe -> exe{exeName=xs})
  , simpleField "main-is"
                            showFilePath       parseFilePathQ
@@ -369,7 +368,7 @@ readPackageDescription fpath = do
   str <- readFile fpath
   case parseDescription str of
     Left  e -> error (showError e) -- FIXME
-    Right PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
+--    Right PackageDescription{library=Nothing, executables=[]} -> error "no library listed, and no executable stanza."
     Right x -> return x
 
 parseDescription :: String -> Either PError PackageDescription

@@ -50,7 +50,7 @@ module Distribution.ParseUtils (
 	parseModuleNameQ, parseDependency, parseOptVersion,
 	parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList,
-	showFilePath, showTestedWith, showDependency,
+	showFilePath, showTestedWith, showDependency, showFreeText,
 	simpleField, listField, licenseField, optsField, 
 	parseReadS, parseQuoted,
   ) where
@@ -280,3 +280,8 @@ showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRan
 
 showDependency :: Dependency -> Doc
 showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
+
+-- | Pretty-print free-format text, ensuring that it is vertically aligned,
+-- and with blank lines replaced by dots for correct re-parsing.
+showFreeText :: String -> Doc
+showFreeText s = vcat [text (if null l then "." else l) | l <- lines s]
