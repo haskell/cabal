@@ -197,7 +197,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInput preBuild args
                 withLib pkg_descr ExitSuccess (\bi ->
                    do lbi <- getPersistBuildConfig
-                      let targetDir = joinPaths (buildDir lbi) (joinPaths "doc" "html")
+                      let targetDir = joinPaths "dist" (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
                       createIfNotExists True targetDir
                       preprocessSources pkg_descr lbi knownSuffixHandlers
