@@ -1,41 +1,41 @@
-* misc
+------------------------------------------------------------
+-= 1.0 =-
 
-* Fix up sdist! 
+* Fix up sdist? hide sdist? bdist?
+** if there's a flag, --include-preprocessed-sources (or something
+   better) run the preprocessing phase and include both the
+   unpreprocessed and the preprocessed sources in the source tarball?
+** Better way to find 'tar'; is there a library? what does darcs do?
+
 * Write tests for hugs
 
 * Write semantic checker for package description file.  start w/
    sanity checker.  give error if buildInfo field given when no
    exposed or hidden modules for a library.
 
-** add hooks to haddock cmd
+* Decide on interface
+** Which fields are required
+** which Distribution.* things won't change?
 
-** make debian watchfile
-** find a real test case that uses preprocessors
-** unregistering the package, etc
-*** --user flag to unregister
+* unregistering the package, etc
+** --user flag to unregister
 
-*** think about HC-PKG's role here. maybe HC-PKG should do all this
-   instead
-*** Should "setup install" copy Setup.lhs, Setup.description, and
+** think about HC-PKG's role here. maybe HC-PKG should do all this instead
+
+** Should "setup install" copy Setup.lhs, Setup.description, and
    local-build-info into a common location for the sake of unregister?
    Will we have to make this a requirement of 'install'? (suggested by
    kosmikus) Would it be better for HC-PKG to have the unregister
    command?
-*** Add a flag to configure to specify where to put them?
+** Add a flag to configure to specify where to put them?
 
-** It would be useful to have alternatives in dependencies, e.g. HGL
-   could depend on X11 | Win32.
+* Preprocessors
+** chain of preprocessors
+** what other preprocessors can't unlit?
 
-** Preprocessors
-*** chain of preprocessors
-*** what other preprocessors can't unlit?
+* Hugs - look for "FIX (HUGS)"
 
-** Hugs
-- look for "FIX (HUGS)"
-- no way to tell Hugs to turn packages on or off
-- no register / unregister for hugs
-
-** Haddock
+* Haddock
   - should process hidden modules as well as exposed ones.  The hidden
     modules might contain entities that are re-exported by an exposed
     module.  Hidden modules should use the #hide haddock directive.
@@ -50,55 +50,28 @@
   - we should install the haddock interface, and fill in the location
     in haddock_interfaces.  Similarly for the HTML, and haddock_html.
 
-** for a source tarball:?
-- if there's a flag, --include-preprocessed-sources (or something
-   better) run the preprocessing phase and include both the
-   unpreprocessed and the preprocessed sources in the source tarball?
+* grep for "FIX"
 
-** grep for "FIX"
+* Compatibility
+** verify windows test suite
+** verify ghc6.4 test suite
 
-** Compatibility
-*** add information for compiling w/ nhc
-*** add install target for nhc
-*** verify windows test suite
-*** Better way to find 'tar'; is there a library? what does darcs do?
+* Parsing
+** Allow quoting in the options fields, to allow things like
+  -f"something with spaces"
+** Instead of freaking out on unknown fields, the parser should return
+   a list of those unknown fields so a warning can be printed. Or not.
 
-** Doc
-*** do comments have to start in the first column?
-*** clarify relationship between exposed-modules and modules, etc.
-*** add preprocessor explanation (see bottom of this TODO).
-*** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
-*** add information about executable stanzas
-*** elimintate need for cpphs in haddock makefile rule.
+* Doc
+** do comments have to start in the first column?
+** clarify relationship between exposed-modules and modules, etc.
+** add preprocessor explanation (see bottom of this TODO).
+** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
+** add information about executable stanzas
+** elimintate need for cpphs in haddock makefile rule.
 
-** look carefully at "rawSystem" and error handing stuff for nhc.
-
-** It actually makes sense to have several libraries ("hs-packages")
-   in one package ("cabal-package"), look at wxhaskell for example.
-   - So, Library stanzas, I suppose
-   - ./setup build should take an optional list of build targets
-     (that is, library and executable names)
-   - The overloaded terminology is *way* confusing. Feh.
-** API Versioning? Libtool-style or just a major number?
-** Extensions
-- complain if their use makes the code non-portable?
--- but what does this mean? ghc & hugs?
-
-** Reorganize compiler dependent code into Distribution.Compiler.*
-
-** Parsing
-*** Parser error reporting
-*** Allow quoting in the options fields, to allow things like
-   -f"something with spaces"
-*** Instead of freaking out on unknown fields, the parser should return
-    a list of those unknown fields so a warning can be printed. Or not.
-
-
-* 1.0 
-** add a make target or command for tests we know will fail?
+* Misc
 ** HC-PKG (see "Depends on HC-PKG" below)
-** ./Setup.lhs build for nhc
-** ./Setup.lhs bdist
 ** add more layered tools to appendix?
 ** make reference to "layered tools" appendix where approprote
 ** integrate hscpp, use it for preprocessing step.
@@ -106,23 +79,48 @@
 ** add sanity checking command?
 
 * testing
+** find a real test case that uses preprocessors
+** add a make target or command for tests we know will fail?
 ** setup test suite to run on --push?
 ** redirect non-hunit outputs to a file?
-** test / port code for Hugs and nhc
+** test / port code for Hugs
 ** error cases for parsing command-line args
 ** reading & writing configuration-dropping
 ** use-cases based on SimonPJ's doc
 ** discovering the location of the given flavor of compiler and pkg tool
 
+------------------------------------------------------------
+-= Future Releases =-
+
 * Depends on HC-PKG
 ** buildDepToDep in Configure doesn't set version dependency
-** nhc-pkg (see old package manager code)
 ** hugs-pkg
-** register
-*** for hugs & nhc
+** register for hugs
 ** configure: check for presence of build dependencies
 
+* NHC Support
+** look carefully at "rawSystem" and error handing stuff for nhc.
+** add install target for nhc
+** add information for compiling w/ nhc
+** nhc-pkg (see old package manager code)
+** register
+
+* Hugs
+- no way to tell Hugs to turn packages on or off
+- no register / unregister for hugs
+
 * Misc
+** ./Setup.lhs bdist
+** Reorganize compiler dependent code into Distribution.Compiler.*
+** API Versioning? Libtool-style or just a major number?
+** Extensions
+- complain if their use makes the code non-portable?
+-- but what does this mean? ghc & hugs?
+
+** "collections / distributions, etc" multiple cabal packages in one package
+** It would be useful to have alternatives in dependencies, e.g. HGL
+   could depend on X11 | Win32.
+
 ** sanity checking tool for configuration; are all the .hs files
    included, etc.
 
@@ -146,59 +144,14 @@
 ** most commands should accept a -v flag to show command lines?
 ** configure should check version of compiler
 
-------------------------------------------------------------
-* Setup Command-line interface
-** Actions
-- build
-- install (+maybe installprefix, maybe system)
-- configure (+flags)
-- packageinfo
-- sdist
-- clean
-- register (maybe system)
-- unregister (maybe system)
-
-** flags
---help
---ghc
---nhc
---hugs
---with-compiler=
---prefix=
---instprefix=
-
-* 1.0
-** actions
-- bdist
-- doc stuff?
-
-** flags
---hbc
---helium
---with-compiler=
-
-
-------------------------------------------------------------
-
-* Priorities for first beta release
-(basically what was in SPJ's document):
-
-** Basic command-line interface for configure, build, install,
-   register, unregister, info
-** Ability to wrap make
-** basic build system (think hmake)
-** binary distributions?
-
-* Priorities for 1.0
-** binary distributions?
-** basic pre-processor extensions
 ** hat support
-** haddock support
-** user use configuration vs system use configuration
-
-* looking ahead
 ** per-system source database
 ** rebuild for new compiler
+** helium
+** hbc
+
+
+------------------------------------------------------------
 
 * Orthogonal (layered?) tools
 
