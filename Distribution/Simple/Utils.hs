@@ -46,8 +46,11 @@ module Distribution.Simple.Utils (
 	splitFilenameDir,
 	split,
 	isPathSeparator,
-	die
+	setupMessage,
+	die,
   ) where
+
+import Distribution.Package
 
 import System.IO
 import System.Exit
@@ -80,6 +83,10 @@ isPathSeparator ch =
 #else
   ch == '/'
 #endif
+
+setupMessage :: String -> PackageDescription -> IO ()
+setupMessage msg pkg_descr = 
+   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 die :: String -> IO a
 die msg = do hPutStr stderr msg; exitWith (ExitFailure 1)

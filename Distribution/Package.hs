@@ -42,18 +42,23 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Package (
-	PackageIdentifier(..),
+	PackageIdentifier(..), 
+	showPackageId,
 	PackageDescription(..),
 	emptyPackageDescription
   ) where
 
-import Distribution.Version(Version)
+import Distribution.Version(Version, showVersion)
 import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
       deriving (Read, Show, Eq)
+
+showPackageId :: PackageIdentifier -> String
+showPackageId pkgid = 
+  pkgName pkgid ++ '-': showVersion (pkgVersion pkgid)
 
 -- | This data type is the internal representation of the file @pkg.descr@.
 -- It contains two kinds of information about the package: information

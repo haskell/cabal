@@ -41,10 +41,18 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.Install(install) where
+module Distribution.Simple.Install (
+	install
+  ) where
 
 import Distribution.Package(PackageDescription)
 import Distribution.Simple.Configure(LocalBuildInfo)
+import Distribution.Simple.Utils(setupMessage)
+
+import System.Exit
 
 install :: PackageDescription -> LocalBuildInfo -> IO ()
-install _ _ = return ()
+install pkg_descr localbuildinfo = do
+  setupMessage "Installing" pkg_descr
+  exitWith (ExitFailure 1)
+
