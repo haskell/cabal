@@ -49,7 +49,7 @@ module Distribution.Simple.Install (
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
-import Distribution.Simple.Utils(setupMessage, moveSources)
+import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
 
 import System.Cmd(system)
 import System.Directory(doesDirectoryExist, createDirectory, doesFileExist)
@@ -62,7 +62,8 @@ install :: PackageDescription -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
         -> IO ()
 install pkg_descr lbi install_prefixM = do
-  let pref = maybe (prefix lbi) id install_prefixM
+  let pref = (maybe (prefix lbi) id install_prefixM) ++
+             pathSeperatorStr ++ "lib" ++ pathSeperatorStr ++ (showPackageId $ package pkg_descr)
   setupMessage "Installing" pkg_descr
   moveSources pref (allModules pkg_descr) (mainModules pkg_descr)
   -- installation step should be performed by caller.

@@ -1,7 +1,9 @@
 * Code
+** Write top-level Setup test cases (like "make check" under the test directory)
+
 ** Extensions -> flags interface
 
-** parse pkg.desc
+** parse Setup.description
 ** build (for NHC and Hugs)
 ** install (for GHC and NHC) - look for .o and .hi, register, etc
 
@@ -20,8 +22,8 @@
 ** clean up Setup parsing code.
 
 ** register
-** generate InstalledPackageInfo
-** read & write config-droppings
+*** for hugs & nhc
+
 ** configure: check for presence of build dependencies
 
 ** ./Setup test

@@ -52,6 +52,8 @@ import Distribution.Package (PackageDescription, package, showPackageId)
 import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 
+import System(getEnv)
+
 import Control.Monad (when)
 
 -- -----------------------------------------------------------------------------
@@ -62,13 +64,14 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
-  when userInst (putStrLn "Would install for --user, but not implemented")
 
   case compilerFlavor (compiler lbi) of
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
              writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+             home <- getEnv "HOME"
              rawSystemExit (compilerPkgTool (compiler lbi))
-	                      ["--add-package", "--input-file="++installedPkgConfigFile]
+	                     (["--add-package", "--input-file="++installedPkgConfigFile]
+                              ++ (if userInst then ["--config-file=" ++ home ++ "/.ghc-packages"] else []))
    _   -> die ("only registering with GHC is implemented")
 
 installedPkgConfigFile :: String
