@@ -61,15 +61,14 @@ register :: PackageDescription -> LocalBuildInfo -> IO ()
 register pkg_descr lbi = do
   setupMessage "Registering" pkg_descr
   
-  when (compilerFlavor (compiler lbi) /= GHC) $
-	die ("only registering with GHC is implemented")
-	
-  let pkg_config = mkGHCPackageConfig pkg_descr lbi
-  writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+  case compilerFlavor (compiler lbi) of
+   GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
+             writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+             rawSystemExit (compilerPkgTool (compiler lbi))
+	                      ["--add-package", "--input-file="++installedPkgConfigFile]
+   _   -> die ("only registering with GHC is implemented")
 
-  rawSystemExit (compilerPkgTool (compiler lbi))
-	["--add-package", "--input-file="++installedPkgConfigFile]
-  
+installedPkgConfigFile :: String
 installedPkgConfigFile = "installed-pkg-config"
 
 -- -----------------------------------------------------------------------------
