@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Package
@@ -45,12 +46,19 @@ module Distribution.Package (
 	PackageIdentifier(..), 
 	showPackageId,
 	PackageDescription(..),
-	emptyPackageDescription
+	emptyPackageDescription,
+#ifdef DEBUG        
+        hunitTests
+#endif
   ) where
 
 import Distribution.Version(Version, showVersion)
 import Distribution.Misc(License(..), Dependency, Extension)
 import Distribution.Setup(CompilerFlavor)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
@@ -107,3 +115,10 @@ emptyPackageDescription
                       includes     = [],
                       options      = []
                      }
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif

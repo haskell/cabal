@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -45,6 +46,9 @@ module Distribution.Simple (
 	module Distribution.Package,
 	License(..), Version(..),
 	defaultMain,
+#ifdef DEBUG        
+        simpleHunitTests
+#endif
   ) where
 
 -- local
@@ -69,6 +73,10 @@ import Control.Monad(when)
 import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (hPutStr, stderr)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- |Reads local build info, executes function
 doBuildInstall :: (PackageDescription -> LocalBuildInfo -> IO ()) -- ^function to apply
@@ -127,3 +135,11 @@ no_extra_flags extra_flags  =
 
 helpprefix :: String
 helpprefix = "Syntax: ./Setup.hs command [flags]\n"
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+#ifdef DEBUG
+simpleHunitTests :: [Test]
+simpleHunitTests = []
+#endif

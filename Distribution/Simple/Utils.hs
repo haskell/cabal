@@ -58,7 +58,7 @@ module Distribution.Simple.Utils (
         createIfNotExists
   ) where
 
-import Distribution.Package
+import Distribution.Package (PackageDescription(..), showPackageId)
 
 import Control.Monad(when)
 import Data.List(inits, nub, intersperse, findIndices)
@@ -284,6 +284,7 @@ moveSources _targetDir sources mains
 -- * Testing
 -- ------------------------------------------------------------
 
+#ifdef DEBUG
 hunitTests :: IO Test
 hunitTests
     = do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
@@ -301,3 +302,4 @@ hunitTests
                    (Just "Distribution/Simple/Build.hs") ~=? mp1,
               "not existing not nothing" ~: "failed" ~: Nothing ~=? mp2
              ]
+#endif

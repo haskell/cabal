@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Misc
@@ -41,10 +42,18 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Misc(License(..), Dependency, Extension, Opt)
+module Distribution.Misc(License(..), Dependency, Extension, Opt
+#ifdef DEBUG        
+        ,hunitTests
+#endif
+                        )
     where
 
 import Distribution.Version(VersionRange)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- ------------------------------------------------------------
 -- * Misc
@@ -64,3 +73,12 @@ data Dependency = Dependency String VersionRange
 data Extension = Foo | Bar deriving Show
 
 type Opt = String
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif

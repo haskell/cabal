@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Register
@@ -44,6 +45,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Register (
 	register,
 	unregister,
+#ifdef DEBUG
+        hunitTests
+#endif
   ) where
 
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
@@ -55,6 +59,10 @@ import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageC
 import System(getEnv)
 
 import Control.Monad (when)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -89,3 +97,13 @@ unregister pkg_descr lbi = do
 	
   rawSystemExit (compilerPkgTool (compiler lbi))
 	["--remove-package=" ++ showPackageId (package pkg_descr)]
+
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif

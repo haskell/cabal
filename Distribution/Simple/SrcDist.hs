@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -DDEBUG #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.SrcDist
@@ -41,6 +42,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.SrcDist (
 	sdist
+#ifdef DEBUG        
+        ,hunitTests
+#endif
   )  where
 
 import Distribution.Package(PackageDescription(..), showPackageId)
@@ -48,6 +52,10 @@ import Distribution.Simple.Configure(LocalBuildInfo)
 import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
 
 import System.Cmd (system)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- |Create a source distribution. FIX: Calls tar directly (won't work
 -- on windows).
@@ -73,3 +81,12 @@ tarBallName p = (nameVersion p) ++ ".tgz"
 
 nameVersion :: PackageDescription -> String
 nameVersion = showPackageId . package
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif

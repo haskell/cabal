@@ -42,6 +42,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
 	build
+#ifdef DEBUG        
+        ,hunitTests
+#endif
   ) where
 
 import Distribution.Misc (Extension)
@@ -55,6 +58,10 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 
 import Control.Monad (when)
 import Data.List(intersperse)
+
+#ifdef DEBUG
+import HUnit (Test)
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Build the library
@@ -125,3 +132,12 @@ dotToSep :: String -> String
 dotToSep s = concat $ intersperse pathSeperatorStr (split '.' s)
 
   -- Todo: includes, includeDirs
+
+-- ------------------------------------------------------------
+-- * Testing
+-- ------------------------------------------------------------
+
+#ifdef DEBUG
+hunitTests :: [Test]
+hunitTests = []
+#endif

@@ -75,9 +75,6 @@ data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
                           compilerPkgTool :: FilePath}
                 deriving (Show, Read, Eq)
 
-emptyCompiler :: Compiler
-emptyCompiler = Compiler (OtherCompiler "") "" ""
-
 type CommandLineOpts = (Action,
                         [String]) -- The un-parsed remainder
 

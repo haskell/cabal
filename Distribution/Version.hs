@@ -55,6 +55,7 @@ module Distribution.Version (
   withinRange,
   showVersionRange,
   parseVersionRange,
+  hunitTests
  ) where
 
 import Data.List	( intersperse )
