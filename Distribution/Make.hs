@@ -117,7 +117,7 @@ defaultMainNoRead pkg_descr
                 exec $ "./configure " ++ configureArgs flags
 
             BuildCmd -> do
-                (_, _, args) <- parseBuildArgs 0 args []
+                (_, _, args) <- parseBuildArgs args []
                 no_extra_flags args
                 exec "make"
 

@@ -186,7 +186,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postConf
 
             BuildCmd -> do
-                (verbose, _, args) <- parseBuildArgs 0 args []
+                (verbose, _, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInput preBuild args
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo verbose knownSuffixHandlers
