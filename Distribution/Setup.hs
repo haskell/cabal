@@ -220,7 +220,7 @@ parseGlobalArgs args =
     (flags, _, _, []) | hasHelpFlag flags -> do
       printGlobalHelp
       exitWith ExitSuccess
-    (flags, cname:cargs, _, []) -> do
+    (_, cname:cargs, _, []) -> do
       case lookupCommand cname commandList of
         Just cmd -> return (cmdAction cmd,cargs)
         Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"

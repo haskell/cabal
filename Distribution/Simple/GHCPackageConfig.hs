@@ -55,6 +55,7 @@ maybeCreateLocalPackageConfig
 
 
 -- |Helper function for canReadPackageConfig and canWritePackageConfig
+checkPermission :: (Permissions -> Bool) -> IO Bool
 checkPermission perm
     = do f <- localPackageConfig
          exists <- doesFileExist f

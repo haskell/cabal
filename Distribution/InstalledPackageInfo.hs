@@ -140,6 +140,7 @@ emptyInstalledPackageInfo
 	haddockHTMLs      = []
     }
 
+noVersion :: Version
 noVersion = Version{ versionBranch=[], versionTags=[] }
 
 -- -----------------------------------------------------------------------------
@@ -147,10 +148,10 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
 parseInstalledPackageInfo inp = do
-  lines <- singleStanza inp
+  stLines <- singleStanza inp
 	-- not interested in stanzas, so just allow blank lines in
 	-- the package info.
-  foldM (parseBasicStanza fields) emptyInstalledPackageInfo lines
+  foldM (parseBasicStanza fields) emptyInstalledPackageInfo stLines
 
 parseBasicStanza ((StanzaField name _ _ set):fields) pkg (lineNo, f, val)
   | name == f = set lineNo val pkg
@@ -165,19 +166,20 @@ showInstalledPackageInfo :: InstalledPackageInfo -> String
 showInstalledPackageInfo pkg = render (ppFields fields)
   where
     ppFields [] = empty
-    ppFields ((StanzaField _ get _ _):flds) = get pkg $$ ppFields flds
+    ppFields ((StanzaField _ get' _ _):flds) = get' pkg $$ ppFields flds
 
 showInstalledPackageInfoField
 	:: String
 	-> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField field
-  = case [ get | (StanzaField f get _ _) <- fields, f == field ] of
+  = case [ get' | (StanzaField f get' _ _) <- fields, f == field ] of
 	[]      -> Nothing
-	(get:_) -> Just (render . get)
+	(get':_) -> Just (render . get')
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
+fields :: [StanzaField InstalledPackageInfo]
 fields = basicStanzaFields ++ installedStanzaFields
 
 basicStanzaFields :: [StanzaField InstalledPackageInfo]

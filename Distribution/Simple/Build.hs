@@ -233,8 +233,8 @@ buildHugs pkg_descr lbi verbose = do
 		    copyModule useCpp bi f (destDir `joinFileName` trimSrcDir f)
 	    mapM_ copy_or_cpp (concat fileLists)
 	    -- Pass 2: compile foreign stubs in build directory
-	    stubsFileLists <- sequence [moduleToFilePath [destDir] mod suffixes |
-			mod <- mods]
+	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
+			modu <- mods]
 	    mapM_ (compileFFI bi) (concat stubsFileLists)
 
 	suffixes = ["hs", "lhs"]
