@@ -255,10 +255,16 @@ tests currDir
               "configure returned error code"
             assertCmd "./setup build"
               "build returned error code"
-            doesFileExist "dist/build/mainForA" >>= 
+            assertCmd "./setup copy"
+              "instal returned error code"
+            doesFileExist "dist/build/mains/mainForA" >>= 
               assertBool "build did not create the executable: mainForA"
             doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
               >>= assertBool "library doesn't exist"
+            doesFileExist (",tmp/bin/mainForA")
+              >>= assertBool "installed bin doesn't exist"
+            doesFileExist (",tmp/lib/test-1.0/libHStest-1.0.a")
+              >>= assertBool "installed lib doesn't exist"
 
 --          TestLabel "package A:no install-prefix and hugs" $ TestCase $
 --          do assertCmd "./setup configure --hugs --prefix=,tmp"
