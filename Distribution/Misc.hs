@@ -85,6 +85,7 @@ data Extension =
                | ImplicitParams
                | FlexibleContexts
                | FlexibleInstances
+               | EmptyDataDecls
 
 	       | TypeSynonymInstances
 	       | TemplateHaskell
@@ -136,6 +137,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag ScopedTypeVariables          = Right "-fglasgow-exts"
     extensionToGHCFlag FlexibleContexts             = Right "-fglasgow-exts"
     extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
+    extensionToGHCFlag EmptyDataDecls               = Right "-fglasgow-exts"
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
@@ -151,6 +153,7 @@ extensionsToNHCFlag l
       extensionToNHCFlag NoMonomorphismRestriction = Right "" -- not implemented in NHC
       extensionToNHCFlag ForeignFunctionInterface  = Right ""
       extensionToNHCFlag ExistentialQuantification = Right ""
+      extensionToNHCFlag EmptyDataDecls            = Right ""
       extensionToNHCFlag NamedFieldPuns            = Right "-puns"
       extensionToNHCFlag e                         = Left e
 
@@ -175,6 +178,7 @@ extensionsToHugsFlag l
       extensionToHugsFlag RestrictedTypeSynonyms     = Right "-98"
       extensionToHugsFlag FlexibleContexts           = Right "-98"
       extensionToHugsFlag FlexibleInstances          = Right "-98"
+      extensionToHugsFlag EmptyDataDecls             = Right ""
       extensionToHugsFlag e                          = Left e
 
 splitEither :: [Either a b] -> ([a], [b])

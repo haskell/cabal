@@ -2,16 +2,14 @@
 RC:
 ** grep for "FIX"
 ** make sure module documentation (haddock) builds.
+-- tricky because of need to preprocess :(
 ** Extensions
 - complain if their use makes the code non-portable?
 -- but what does this mean? ghc & hugs?
-- constructorless data-types?
 ** add description file format to doc. - esp field descriptions
 ** Look over rest of TODO list.  Should anything be promoted?
 
 HIGH: 
-** Question: under what conditions does library == Nothing?
-- Answer: when any of the buildInfo is filled out?
 ** Clean up field parsers (Martin: what else goes here?)
 
 LOW
