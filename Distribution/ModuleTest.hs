@@ -193,8 +193,7 @@ tests currDir
               >>= assertBool "library doesn't exist"
             assertEqual "install returned error code" ExitSuccess instRetCode,
          TestLabel "package A: GHC and clean" $ TestCase $
-         do let targetDir = ",tmp/lib/test-1.0/"
-            system "make clean"
+         do system "./setup clean"
             doesFileExist "C.hs" >>=
                assertEqual "C.hs (a generated file) not cleaned." False
 

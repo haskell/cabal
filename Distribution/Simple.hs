@@ -56,7 +56,7 @@ module Distribution.Simple (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
-import Distribution.PreProcess (knownSuffixHandlers)
+import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, removePreprocessedPackage)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
@@ -97,6 +97,9 @@ doBuildInstall f pkgConf
     = do lbi <- getPersistBuildConfig
          f pkgConf lbi
 
+currentDir :: FilePath
+currentDir = "."-- FIX: FileUtils.currentDir
+
 defaultMain :: IO ()
 defaultMain = readPackageDescription defaultPackageDesc >>= defaultMainNoRead
 
@@ -120,13 +123,14 @@ defaultMainNoRead pkg_descr
 		localbuildinfo <- getPersistBuildConfig
 		build buildPref pkg_descr localbuildinfo
                 writeInstalledConfig pkg_descr localbuildinfo
- 
+
             CleanCmd -> do
                 (_, args) <- parseCleanArgs args []
                 no_extra_flags args
 		try $ removeFileRecursive buildPref
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
+                removePreprocessedPackage pkg_descr currentDir (ppSuffixes knownSuffixHandlers)
                 return ()
 
             InstallCmd mprefix uInst -> do
