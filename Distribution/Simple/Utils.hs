@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# OPTIONS -cpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
