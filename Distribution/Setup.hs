@@ -183,13 +183,15 @@ hunitTests =
                  "getOpt unknown opts" ~: "failed" ~:
                       ["--unknown1", "--unknown2"] ~=? unkFlags,
                  "getOpt errors" ~: "failed" ~: [] ~=? ers],
+
                TestLabel "test location of various compilers" $ TestList
-               ["locate " ++ name ++ " and pkg tool" ~: "failed" ~:
+               ["configure parsing for prefix and compiler flag" ~: "failed" ~:
                     (Right (ConfigCmd [Prefix "/usr/local", compFlag], []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name, "configure"])
                    | (name, comp, comploc, pkgloc, compFlag) <- m],
+
                TestLabel "find the package tool" $ TestList
-               ["locate pkg tool given " ++ name ~: "failed" ~:
+               ["configure parsing for prefix comp flag, withcompiler" ~: "failed" ~:
                     (Right (ConfigCmd [Prefix "/usr/local", compFlag,
                                 WithCompiler name], []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name,
