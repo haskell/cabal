@@ -59,9 +59,14 @@ import Distribution.GetOpt
 import HUnit (Test(..), (~:), (~=?))
 #endif
 
-import Control.Monad.Error
-import Data.List(intersperse)
+import Data.List(intersperse, find)
 import Data.Maybe(listToMaybe)
+
+#ifdef __NHC__
+import Compat.H98
+#else
+import Control.Monad.Error
+#endif
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports

@@ -10,7 +10,11 @@ RC:
 ** Look over rest of TODO list.  Should anything be promoted?
 
 HIGH: 
-** Clean up field parsers (Martin: what else goes here?)
+** Clean up field parsers:
+ - parseOption: Which characters are valid for arbitrary options
+    to the compilers? Yuck, that could be anything. Maybe we should
+    have a parseAnything function, that accepts anything that isn't
+    space or comma...
 
 LOW
 ** clean 
