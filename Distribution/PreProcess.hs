@@ -141,7 +141,7 @@ removePreprocessed searchLoc mods suffixesIn
                removeIfDup l = do when (not $ extensionProp l)
                                     (putStrLn "Internal Error: attempt to remove source with no matching preprocessed element."
                                      >> exitWith (ExitFailure 1))
-                                  let hsFiles = (filter (\x -> fst (splitFileExt x) == "hs") l)
+                                  let hsFiles = (filter (\x -> snd (splitFileExt x) == "hs") l)
                                   when (length hsFiles > 1)
                                     (putStrLn "Internal Error: multiple \".hs\" files found while removing preprocessed element."
                                      >> exitWith (ExitFailure 1))
