@@ -50,7 +50,7 @@ module Distribution.Simple.Build (
 import Distribution.Misc (Extension(..))
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
 import Distribution.Package (PackageDescription(..), showPackageId)
-import Distribution.Simple.Configure (LocalBuildInfo, compiler)
+import Distribution.Simple.Configure (LocalBuildInfo(..), compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
                                   split, createIfNotExists,
@@ -107,7 +107,7 @@ buildGHC pref pkg_descr lbi = do
   rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- objs])
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
-constructGHCCmdLine pref pkg_descr _ = 
+constructGHCCmdLine pref pkg_descr lbi = 
   [
     "--make", "-odir " ++ pref, "-hidir " ++ pref,
     "-package-name", showPackageId (package pkg_descr)
@@ -115,6 +115,7 @@ constructGHCCmdLine pref pkg_descr _ =
   ++ extensionsToGHCFlag (extensions pkg_descr)
   ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
   ++ [ "-i" ++ pref ]
+  ++ [ "-package " ++ showPackageId pkg | pkg <- packageDeps lbi ] 
   ++ allModules pkg_descr
 
 extensionsToGHCFlag :: [ Extension ] -> [String]
