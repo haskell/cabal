@@ -44,7 +44,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
 	install,
-	mkImportDir
+	mkImportDir,
+        hunitTests,
   ) where
 
 import Distribution.Package
@@ -52,9 +53,12 @@ import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage)
 
 import Data.List(inits, nub, intersperse, findIndices)
+import Data.Maybe(Maybe, listToMaybe)
 import System.Cmd(system)
-import System.Directory(doesDirectoryExist, createDirectory)
+import System.Directory(doesDirectoryExist, createDirectory, doesFileExist)
 import System.Exit
+
+import HUnit ((~:), (~=?), Test(..))
 
 
 -- |FIX: for now, only works with hugs or sdist-style
@@ -148,3 +152,40 @@ removeFilename path
 -- |If this filename doesn't end in the path separator, add it.
 maybeAddSep :: FilePath -> FilePath
 maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr
+
+-- |Get the file path for this particular module.  In the IO monad
+-- because it looks for the actual file.  Might eventually interface
+-- with preprocessor libraries in order to correctly locate more
+-- filenames.
+-- Returns Nothing if the file doesn't exist.
+
+moduleToFilePath :: String   -- ^Module Name
+                 -> IO (Maybe FilePath)
+
+moduleToFilePath s
+    = do let possiblePaths = moduleToPossiblePaths s
+         matchList <- sequence $ map (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
+--         sequence $ map (system . ("ls " ++)) possiblePaths
+         return $ listToMaybe [x | (x, True) <- matchList]
+
+-- |Get the possible file paths based on this module name.
+moduleToPossiblePaths :: String -> [FilePath]
+moduleToPossiblePaths s
+    =  let splitted = mySplit '.' s
+           lastElem = last splitted
+           possibleSuffixes = [".hs", ".lhs"]
+        in [(concat (intersperse pathSeperatorStr (init splitted))) ++ pathSeperatorStr ++ x
+            | x <- map (lastElem++) possibleSuffixes]
+
+
+hunitTests :: IO Test
+hunitTests
+    = do mp1 <- moduleToFilePath "Simple.Build" --exists
+         mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
+         return $ TestLabel "Install Tests" $ TestList
+             ["moduleToPossiblePaths" ~: "failed" ~:
+              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
+                ~=? (moduleToPossiblePaths "Foo.Bar.Bang"),
+              "existing not found" ~: "failed" ~: (Just "Simple/Build.hs") ~=? mp1,
+              "not existing not nothing" ~: "failed" ~: Nothing ~=? mp2
+             ]
