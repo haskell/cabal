@@ -52,7 +52,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
-import Distribution.Package (PackageDescription, package, showPackageId)
+import Distribution.Package (PackageDescription, package, pkgName)
 import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
@@ -97,7 +97,7 @@ unregister pkg_descr lbi = do
 	die ("only unregistering with GHC is implemented")
 	
   rawSystemExit (compilerPkgTool (compiler lbi))
-	["--remove-package=" ++ showPackageId (package pkg_descr)]
+	["--remove-package=" ++ pkgName (package pkg_descr)]
 
 
 -- ------------------------------------------------------------
