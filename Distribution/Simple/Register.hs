@@ -65,7 +65,7 @@ import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Simple.Utils (rawSystemExit, die, removeFileRecursive)
+import Distribution.Simple.Utils (rawSystemExit, die, removeFileRecursive, createIfNotExists)
 import Distribution.Simple.Install (hugsPackageDir, hugsProgramsDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
@@ -130,6 +130,7 @@ register pkg_descr lbi userInst
       -- FIX (HUGS):
       Hugs -> do
 	let 
+	createIfNotExists True (hugsPackageDir pkg_descr lbi)
 	copyFile installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
       _   -> die ("only registering with GHC is implemented")
