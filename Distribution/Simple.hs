@@ -11,6 +11,10 @@
 -- Distribution/Simple/\* modules.  When given the parsed command-line
 -- args and package information, is able to perform basic commands
 -- like configure, build, install, register, etc.
+--
+-- This module isn't called "Simple" because it's simple.  Far from
+-- it.  It's called "Simple" because it does complicated things to
+-- simple software.
 
 {- All rights reserved.
 
@@ -91,8 +95,7 @@ import System.IO.Error (try)
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
-import Distribution.Compat.FilePath(joinFileName, dropAbsolutePrefix,
-                                    joinPaths, splitFileName, joinFileExt,
+import Distribution.Compat.FilePath(joinFileName, joinPaths, splitFileName, joinFileExt,
                                     splitFileExt, changeFileExt)
 
 #ifdef DEBUG
@@ -203,7 +206,9 @@ defaultMainWorker pkg_descr_in action args hooks
                       preprocessSources pkg_descr lbi verbose knownSuffixHandlers
                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
-                      mapM (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles
+                      if (needsCpp pkg_descr)
+                        then (mapM_ (mockCpp pkg_descr bi lbi tmpDir verbose) inFiles)
+                        else return ()
                       let showPkg = showPackageId (package pkg_descr)
                       let prologName = showPkg ++ "-haddock-prolog.txt"
                       writeFile prologName ((description pkg_descr) ++ "\n")
@@ -309,7 +314,9 @@ defaultMainWorker pkg_descr_in action args hooks
                  ret <- ppCpp pkg_descr bi lbi file targetFile verbose
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
-                 
+        needsCpp :: PackageDescription -> Bool
+        needsCpp p | not (hasLibs p) = False
+                   | otherwise = any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
