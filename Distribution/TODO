@@ -13,7 +13,8 @@
 ** read & write config-droppings
 
 * Testing
-** Parsing of command-lint opts
+** testing of altered version of getopt
+** Parsing of command-line opts
 ** passing unknown options through.
 ** reading & writing configuration-dropping
 
