@@ -46,11 +46,15 @@ clean-hunit:
 
 clean-test:
 	cd test/A && make clean
+	cd test/wash2hs && make clean
 
-remove:
+remove: remove-cabal remove-hunit
+remove-cabal:
 	-ghc-pkg $(GHCPKGFLAGS) -r Cabal
+	-rm -rf $(PREF)/lib/Cabal-0.1
+remove-hunit:
 	-ghc-pkg $(GHCPKGFLAGS) -r HUnit
-	-rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
+	-rm -rf $(PREF)/lib/HUnit-1.0
 
 # dependencies (included):
 
