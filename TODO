@@ -1,5 +1,6 @@
 * misc
 ** two executables in same directory fails because both create Main.o
+** Executables that depend on the package itself
 ** make debian watchfile
 ** postinst, test
 ** multiple libraries?
