@@ -60,7 +60,6 @@ import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
-import System(getEnv)
 import System.Directory(doesFileExist)
 
 import Control.Monad (when, unless)
@@ -80,8 +79,7 @@ register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
 
   case compilerFlavor (compiler lbi) of
-   GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
-             (localConf, pkgConfExists) <- GHC.localPackageConfig
+   GHC -> do (localConf, pkgConfExists) <- GHC.localPackageConfig
              unless pkgConfExists $ writeFile localConf "[]\n"
              instConfExists <- doesFileExist installedPkgConfigFile
              unless instConfExists (writeInstalledConfig pkg_descr lbi)
