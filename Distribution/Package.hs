@@ -59,9 +59,7 @@ module Distribution.Package (
   ) where
 
 import Control.Monad(foldM, liftM)
-import Control.Exception(bracket)
 import Data.Char
-import Data.List(isPrefixOf)
 import Data.Maybe(fromMaybe)
 import Text.PrettyPrint.HughesPJ
 
@@ -70,8 +68,6 @@ import Distribution.Version(Version(..), VersionRange(..),
                             showVersionRange, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor(..))
-
-import System.IO(openFile, IOMode(..), hGetContents, hClose, hPutStrLn)
 
 import Compat.H98
 import Compat.ReadP
