@@ -315,11 +315,13 @@ mkLibName pref lib = pathJoin [pref, ("libHS" ++ lib ++ ".a")]
 pathJoin :: [String] -> FilePath
 pathJoin = concat . intersperse pathSeparatorStr
 
--- FIX: does not preserve dates, does not set permissions
+-- |Preserves permissions, FIX: does not preserve dates
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile src dest 
     | dest == src = fail "copyFile: source and destination are the same file"
-    | otherwise = readFile src >>= writeFile dest
+    | otherwise = do readFile src >>= writeFile dest
+                     p <- getPermissions src
+                     setPermissions dest p
 
 partitionIO :: (a -> IO Bool) -> [a] -> IO ([a], [a])
 partitionIO f l
