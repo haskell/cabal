@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -104,7 +104,7 @@ import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
 import Distribution.ParseUtils	(runP)
 #endif
 
--- | This data type is the internal representation of the file @pkg.descr@.
+-- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
 -- which is needed for all packages, such as the package name and version, and 
 -- information which is needed for the simple build system only, such as 
@@ -123,8 +123,8 @@ data PackageDescription
 	testedWith     :: [(CompilerFlavor,VersionRange)],
 	homepage       :: String,
 	pkgUrl         :: String,
-	synopsis       :: String,
-	description    :: String,
+	synopsis       :: String, -- ^A one-line summary of this package
+	description    :: String, -- ^A more verbose description of this package
 	category       :: String,
         buildDepends   :: [Dependency],
 	-- components
@@ -180,12 +180,12 @@ data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
-        frameworks        :: [String],
+        frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
-        hsSourceDir       :: FilePath,
-	otherModules      :: [String],
+        hsSourceDir       :: FilePath, -- ^ where to look for the haskell module hierarchy
+	otherModules      :: [String], -- ^ non-exposed or non-main modules
         extensions        :: [Extension],
-        extraLibs         :: [String],
+        extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath],
         includes          :: [FilePath],
