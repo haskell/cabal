@@ -292,26 +292,10 @@ parseDependency = do name <- many1 (letter <|> digit <|> oneOf "-_")
         <?> "parseDependency"
 
 parseLicense :: GenParser Char st License
-parseLicense = choice [ try (string s >> return l) | (s,l) <- licenses]
-        <?> "parseLicense"
-
--- |Mapping between the licenses and their names
-licenses :: [(String, License)]
-licenses= [("GPL", GPL),
-           ("LGPL", LGPL),
-           ("BSD3", BSD3),
-           ("BSD4", BSD4),
-           ("PublicDomain", PublicDomain),
-           ("AllRightsReserved", AllRightsReserved)]
+parseLicense = try parseReadS <|> liftM OtherLicense parseFilePath
 
 parseExtension :: GenParser Char st Extension
-parseExtension = choice [ try (string s >> return e) | (s,e) <- extensionsMap ]
-        <?> "parseExtension"
-
--- |Mapping between extensions and their names
-extensionsMap = [("OverlappingInstances", OverlappingInstances),
-                 ("TypeSynonymInstances", TypeSynonymInstances),
-                 ("TemplateHaskell", TemplateHaskell)]
+parseExtension = parseReadS
 
 parseOption = many1 (letter <|> digit <|> oneOf "-+/\\._") -- FIXME
 
