@@ -19,8 +19,8 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-        /usr/lib/ghc-6.2.1/bin/ghc-pkg-6.2.1 -r Cabal 
-        rm /usr/lib/haskell-packages/ghc6/lib/Cabal-0.1/HSCabal*.o
+        /usr/lib/ghc-6.2.2/bin/ghc-pkg-6.2.2 -r Cabal 
+        rm /usr/lib/haskell-packages/ghc6/lib/Cabal-0.2/HSCabal*.o
 
 #       install-info --quiet --remove /usr/info/missingh.info.gz
         ;;

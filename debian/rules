@@ -6,7 +6,7 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-GHCVERSION=6.2.1
+GHCVERSION=6.2.2
 GHCPATH=/usr/lib/ghc-$(GHCVERSION)/bin
 PATH:=$(GHCPATH):$(PATH)
 
