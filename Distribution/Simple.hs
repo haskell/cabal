@@ -146,7 +146,13 @@ defaultMainWorker pkg_descr action args
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes knownSuffixHandlers)
                 return ()
 
-            CopyCmd mprefix -> return ()
+            CopyCmd mprefix -> do
+                (mprefix, _, args) <- parseCopyArgs mprefix args []
+                no_extra_flags args
+		localbuildinfo <- getPersistBuildConfig
+		install buildPref pkg_descr localbuildinfo mprefix
+                return ()
+
             InstallCmd mprefix uInst -> do
                 ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
                 no_extra_flags args
