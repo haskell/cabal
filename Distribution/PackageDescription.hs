@@ -240,18 +240,8 @@ setupMessage :: String -> PackageDescription -> IO ()
 setupMessage msg pkg_descr = 
    putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
--- |This isn't quite the right way to go about this.  For one thing,
--- the Right Thing for excutables isn't exactly clear.  For another
--- thing, it's hard to tell whether or not the field was provided at
--- all in /p1/.  The only way to guess (as the parser is currently
--- implemented) is to compare it with the 'emptyPackageDescription'
--- variable, though it's possible that they will be equal, but the
--- user actually did provide that field.  Another question is what to
--- do about the "required," static fields which should not be in /p2/.
--- We should definitely check to be sure they're in /p1/, and not in
--- /p2/, though not in this function.
--- FIXME: executables not implemented correctly, library (buildinfo)
--- not yet implemented.
+-- |Update the given package description with the output from the
+-- pre-hooks.
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p
@@ -265,7 +255,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 
        --the lib only exists in the buildinfo file.  FIX: Is this
        --wrong?  If there aren't any exposedModules, then the library
-       --won't build anyway.
+       --won't build anyway.  add to sanity checker?
       updateLibrary (Just bi) Nothing     = Just emptyLibrary{libBuildInfo=bi}
 
       updateExecutables :: [(String, BuildInfo)] -> [Executable] -> [Executable]
@@ -493,12 +483,12 @@ parseHookedBuildInfo inp = do
         | otherwise = return Nothing
     parseLib [] = return Nothing
     parseExe :: Stanza -> ParseResult (String, BuildInfo)
-    parseExe ((_, fieldName, mName):bi)
+    parseExe ((lineNo, fieldName, mName):bi)
         | map toLower fieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
-        | otherwise = error "expecting 'executable' at top of stanza" -- FIX
-    parseExe [] = error "error in parsing buildinfo file" -- FIX
+        | otherwise = myError lineNo "expecting 'executable' at top of stanza"
+    parseExe [] = myError 0 "error in parsing buildinfo file. Expected executable stanza"
     parseBI :: Stanza -> ParseResult BuildInfo
     parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
 
