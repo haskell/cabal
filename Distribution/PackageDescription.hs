@@ -74,7 +74,7 @@ module Distribution.PackageDescription (
 
 import Control.Monad(foldM, when)
 import Data.Char
-import Data.Maybe(fromMaybe, fromJust)
+import Data.Maybe(fromMaybe, fromJust, isNothing)
 import Text.PrettyPrint.HughesPJ(text, render, ($$), (<+>), empty, space, vcat, fsep)
 import System.Directory(doesFileExist)
 
@@ -546,14 +546,21 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
 -- * Sanity Checking
 -- ------------------------------------------------------------
 
+-- |Fix: checking for required fields and such
 sanityCheckPackage :: PackageDescription -> IO Bool
 sanityCheckPackage pkg_descr
     = do libSane <- sanityCheckLib (library pkg_descr)
-         identSane <- if null (pkgName (package pkg_descr))
-                         || null (versionBranch (pkgVersion (package pkg_descr)))
-                      then sanityWarning "package identifier malformed, either empty name or empty version"
-                      else return False
-         return $ any (==True) [libSane, identSane]
+         identSane <- checkSanity
+                        (null (pkgName (package pkg_descr))
+                         || null (versionBranch (pkgVersion (package pkg_descr))))
+                        "package identifier malformed, either empty name or empty version"
+         nothingToDo <- checkSanity
+                         (null (executables pkg_descr) && isNothing (library pkg_descr))
+                         "No executables and no library found. Nothing to do."
+         noModules <- checkSanity (hasMods pkg_descr)
+                      "No non-hidden modules in this package."
+
+         return $ any (==True) [libSane, identSane, nothingToDo, noModules]
 
 sanityCheckLib :: Maybe Library -> IO Bool
 sanityCheckLib Nothing  = return True
@@ -562,9 +569,19 @@ sanityCheckLib (Just l)
       then sanityWarning "Non-empty library, but empty exposed modules list. Cabal may not build this library correctly"
       else return True
 
+checkSanity :: Bool -> String -> IO Bool
+checkSanity False _  = return False
+checkSanity True  s  = sanityWarning s
+
 sanityWarning :: String -> IO Bool
 sanityWarning s = do putStrLn $ "Sanity Check Warning: " ++ s
                      return True
+
+hasMods :: PackageDescription -> Bool
+hasMods pkg_descr
+    | isNothing (library pkg_descr) = null $ executables pkg_descr
+    | otherwise = null (executables pkg_descr)
+                   && null (exposedModules (fromJust (library pkg_descr)))
 
 -- ------------------------------------------------------------
 -- * Testing
