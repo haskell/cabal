@@ -59,7 +59,7 @@ import Distribution.Package (setupMessage, PackageDescription(..), PackageIdenti
 import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
-    as GHC (localPackageConfig, canWritePackageConfig, maybeCreatePackageConfig)
+    as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 
 import System.Directory(doesFileExist)
 
@@ -72,7 +72,10 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- Registration
 
--- |Be sure to call writeInstalledConfig first
+-- |Be sure to call writeInstalledConfig first.  If the --uesr flag
+-- was passed, and ~/.ghc-packages is writable, or can be created,
+-- then we use that file, perhaps creating it.
+
 register :: PackageDescription -> LocalBuildInfo
          -> Bool -- ^Install in the user's database?
          -> IO ()
@@ -80,9 +83,9 @@ register pkg_descr lbi userInst = do
   setupMessage "Registering" pkg_descr
 
   case compilerFlavor (compiler lbi) of
-   GHC -> do GHC.maybeCreatePackageConfig
+   GHC -> do when userInst (GHC.maybeCreateLocalPackageConfig >> return() )
              localConf <- GHC.localPackageConfig
-             pkgConfWriteable <- GHC.canWritePackageConfig
+             pkgConfWriteable <- GHC.canWriteLocalPackageConfig
              when (userInst && (not pkgConfWriteable))
                 (die ("--user flag passed, but cannot write to local package config: "
                       ++ localConf))

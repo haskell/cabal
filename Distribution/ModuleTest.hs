@@ -61,7 +61,7 @@ import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildI
 import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
 
 import qualified Distribution.Simple.GHCPackageConfig
-    as GHC (localPackageConfig, maybeCreatePackageConfig)
+    as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 -- base
 import Control.Monad(when, unless)
@@ -125,7 +125,7 @@ tests currDir
          TestLabel "testing the HUnit package" $ TestCase $ 
          do setCurrentDirectory $ pathJoin [currDir, "test", "HUnit-1.0"]
             pkgConf <- GHC.localPackageConfig
-            GHC.maybeCreatePackageConfig
+            GHC.maybeCreateLocalPackageConfig
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
@@ -155,7 +155,7 @@ tests currDir
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
          do pkgConf  <- GHC.localPackageConfig
-            GHC.maybeCreatePackageConfig
+            GHC.maybeCreateLocalPackageConfig
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
             setCurrentDirectory $ pathJoin [currDir, "test", "A"]
             system "make clean"

@@ -11,9 +11,6 @@
    command?
 *** Add a flag to configure to specify where to put them?
 
-** if we can't create ~/.ghc-packages, don't provide the -package-conf
-   flag to GHC.
-
 ** integrate w/ GHC distro
 
 ** what other preprocessors can't unlit?
