@@ -7,7 +7,6 @@ RC:
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
-- integrate suggestions from libraries@
 HIGH: 
 ** under what conditions does library == Nothing?
 ** make sure tests will work on other machines. why doesn't make work
