@@ -5,6 +5,7 @@ build-depends: haskell-src
 Modules: Distribution.Package, Distribution.Version, 
          Distribution.Misc, Distribution.Setup, 
          Distribution.PreProcess,
+         Distribution.PreProcess.Unlit,
          Distribution.InstalledPackageInfo, 
          Distribution.Make, Distribution.Simple, 
          Distribution.Simple.Build,
