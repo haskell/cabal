@@ -61,8 +61,8 @@ module Distribution.Simple (
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp, ppUnlit,
-                                removePreprocessedPackage, preprocessSources)
+import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCppHaddock,
+                                ppUnlit, removePreprocessedPackage, preprocessSources)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build )
@@ -298,7 +298,7 @@ defaultMainWorker pkg_descr_in action args hooks
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
-                    then ppCpp pkg_descr bi lbi file targetFile verbose
+                    then ppCppHaddock True pkg_descr bi lbi file targetFile verbose
                     else copyFile file targetFile >> return ExitSuccess
                  when (targetFileExt == "lhs")
                        (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
