@@ -246,7 +246,7 @@ tests currDir comp compConf = [
                  (do pkgConf <- GHC.localPackageConfig
                      assertCmd' compCmd "install --user" "hunit install"
                      assertCmd ("ghc -package-conf " ++ pkgConf
-                                ++ " -package HUnit HUnitTester.hs -o ./hunitTest")
+                                ++ " -package HUnitTest HUnitTester.hs -o ./hunitTest")
                                 "compile w/ hunit"
                      assertCmd "./hunitTest" "hunit test"
                      assertCmd' compCmd "unregister --user" "unregister failed")
