@@ -118,7 +118,7 @@ assertCmdFail command comment
 
 tests :: FilePath -> [Test]
 tests currDir
-    = let testdir = currDir `joinFileName` "test" in
+    = let testdir = currDir `joinFileName` "tests" in
       [TestLabel "testing the wash2hs package" $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "wash2hs")
             system "make clean"
