@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
 ghc-pkg -r Cabal
+# ditch that ghci library:
+rm /usr/lib/Cabal-0.1/HSCabal-0.1.o
 
 #DEBHELPER#

@@ -1,3 +1,9 @@
+haskell-cabal (0.0.1-2) unstable; urgency=low
+
+  * Cleaned up scripts and name of binary.
+
+ -- Isaac Jones <ijones@debian.org>  Thu, 29 Jul 2004 10:37:31 -0400
+
 haskell-cabal (0.0.1-1) unstable; urgency=low
 
   * Initial Release.
