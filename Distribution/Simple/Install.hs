@@ -53,7 +53,7 @@ module Distribution.Simple.Install (
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
 import Distribution.Simple.Utils(setupMessage, moveSources,
-                                 pathSeperatorStr, mkLibName, pathJoin,
+                                 mkLibName, pathJoin,
                                  copyFile, die
                                 )
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))

@@ -46,7 +46,7 @@ module Distribution.Simple.Utils (
 	splitFilenameDir,
 	split,
 	isPathSeparator,
-        pathSeperatorStr,
+        pathSeparatorStr,
 	setupMessage,
 	die,
 	findBinary,
@@ -179,11 +179,15 @@ rawSystemPathExit prog args = do
 
 -- |FIX: Do we actually have to make something differnet for windows,
 -- or does this work?
-pathSeperator :: Char
-pathSeperator = '/'
+pathSeparator :: Char
+#ifdef mingw32_TARGET_OS
+pathSeparator = '\\'
+#else
+pathSeparator = '/'
+#endif
 
-pathSeperatorStr :: String
-pathSeperatorStr = [pathSeperator]
+pathSeparatorStr :: String
+pathSeparatorStr = [pathSeparator]
 
 createIfNotExists :: Bool     -- ^Create its parents too?
 		  -> FilePath -- ^The path to the directory you want to make
@@ -204,8 +208,7 @@ createDirectoryParents file
 -- |Get this path and all its parents.
 pathInits :: FilePath -> [FilePath]
 pathInits path
-    = map (concat . intersperse pathSeperatorStr)
-      (inits $ mySplit pathSeperator path)
+    = map pathJoin (inits $ mySplit pathSeparator path)
 
 -- |Give a list of lists breaking apart elements who match the given criteria
 
@@ -220,14 +223,14 @@ mySplit a l = let (upto, rest) = break (== a) l
 -- Foo/Bar.lhs into Foo
 removeFilename :: FilePath -> FilePath
 removeFilename path
-    = case findIndices (== pathSeperator) path of
+    = case findIndices (== pathSeparator) path of
       [] -> path
       l  -> fst $ splitAt (maximum l) path
 
 -- |If this filename doesn't end in the path separator, add it.
 maybeAddSep :: FilePath -> FilePath
 maybeAddSep [] = []
-maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr
+maybeAddSep p = if last p == pathSeparator then p else p ++ pathSeparatorStr
 
 -- |Get the file path for this particular module.  In the IO monad
 -- because it looks for the actual file.  Might eventually interface
@@ -255,8 +258,7 @@ moduleToPossiblePaths searchPref s possibleSuffixes
     =  let splitted = mySplit '.' s
            lastElem = last splitted
            pref = if (not $ null $ init splitted)
-                  then concat (intersperse pathSeperatorStr (init splitted))
-                           ++ pathSeperatorStr
+                  then maybeAddSep (pathJoin (init splitted))
                   else ""
         in [(maybeAddSep searchPref) ++ pref ++ x
              | x <- map (lastElem++) (map ("."++)possibleSuffixes)]
@@ -298,11 +300,11 @@ moveSources pref _targetDir sources mains searchSuffixes
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
-mkLibName pref lib = pref ++ pathSeperatorStr ++ "libHS" ++ lib ++ ".a"
+mkLibName pref lib = pathJoin [pref, ("libHS" ++ lib ++ ".a")]
 
 -- | Create a path from a list of path elements
 pathJoin :: [String] -> FilePath
-pathJoin = concat . intersperse pathSeperatorStr
+pathJoin = concat . intersperse pathSeparatorStr
 
 -- FIX: does not preserve dates, does not set permissions
 copyFile :: FilePath -> FilePath -> IO ()

@@ -53,8 +53,8 @@ import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
-                                  pathSeperatorStr, split, createIfNotExists,
-                                  mkLibName, moveSources
+                                  split, createIfNotExists,
+                                  mkLibName, moveSources, pathJoin
                                  )
 
 
@@ -104,7 +104,7 @@ buildGHC pref pkg_descr lbi = do
   -- now, build the library
   let objs = map (++objsuffix) (map dotToSep (allModules pkg_descr))
       lib  = mkLibName pref (showPackageId (package pkg_descr))
-  rawSystemPathExit "ar" (["q", lib] ++ (map ((pref ++ pathSeperatorStr) ++) objs))
+  rawSystemPathExit "ar" (["q", lib] ++ [pathJoin [pref, x] | x <- objs])
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr _ = 
@@ -130,7 +130,7 @@ objsuffix = ".o"
 #endif
 
 dotToSep :: String -> String
-dotToSep s = concat $ intersperse pathSeperatorStr (split '.' s)
+dotToSep s = pathJoin (split '.' s)
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
 preprocessSources :: PackageDescription 
