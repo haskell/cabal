@@ -34,10 +34,11 @@ doc:
 clean: clean-cabal clean-hunit clean-test
 
 clean-cabal:
-	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
-	-rm -f Compat/*.{o,hi}
+	-rm -f Distribution/*.o Distribution/*.hi
+	-rm -f Distribution/Simple/*.o Distribution/Simple/*.hi
+	-rm -f Compat/*.o Compat/*.hi
 	-rm -f library-infrastructure--darcs.tar.gz
-	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
+	-rm -rf setup *.o *.hi moduleTest dist installed-pkg-config
 	-rm -f build-stamp
 
 clean-hunit:
