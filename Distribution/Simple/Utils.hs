@@ -48,7 +48,7 @@ module Distribution.Simple.Utils (
 	rawSystemExit,
         maybeExit,
 	rawSystemPathExit,
-        moveSources,
+        smartCopySources,
         copyFileVerbose,
         moduleToFilePath,
         mkLibName,
@@ -188,15 +188,18 @@ dotToSep = map dts
     dts '.' = pathSeparator
     dts c   = c
 
--- |Put the source files into the right directory in preperation for
--- something like sdist or installHugs.
-moveSources :: Int      -- ^verbose
+-- |Copy the source files into the right directory.  Looks in the
+-- build prefix for files that look like the input modules, based on
+-- the input search suffixes.  It copies the files into the target
+-- directory.
+
+smartCopySources :: Int      -- ^verbose
             -> FilePath -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
             -> IO ()
-moveSources verbose pref targetDir sources searchSuffixes
+smartCopySources verbose pref targetDir sources searchSuffixes
     = do createDirectoryIfMissing True targetDir
 	 -- Create parent directories for everything:
          sourceLocs' <- mapM moduleToFPErr sources

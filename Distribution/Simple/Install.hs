@@ -66,7 +66,7 @@ import Distribution.PackageDescription (
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
-import Distribution.Simple.Utils(moveSources, copyFileVerbose, mkLibName, die)
+import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName, die)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when, unless)
@@ -117,7 +117,7 @@ installLibGHC :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
-    = do moveSources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
+    = do smartCopySources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
          copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) (mkLibName pref (showPackageId p))
 installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
@@ -139,7 +139,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
 	let pkgDir = hugsInstallDir `joinFileName` "packages"
 		    `joinFileName` pkg_name
 	try $ removeDirectoryRecursive pkgDir
-	moveSources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
+	smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
     unless (null (executables pkg_descr)) $ do
 	let progBuildDir = buildPref `joinFileName` "programs"
 	let progInstallDir = hugsInstallDir `joinFileName` "programs"
@@ -147,7 +147,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
 	let progTargetDir = hugsTargetDir `joinFileName` "programs"
 		    `joinFileName` pkg_name
 	try $ removeDirectoryRecursive progInstallDir
-	moveSources verbose progBuildDir progInstallDir
+	smartCopySources verbose progBuildDir progInstallDir
 	    (exeModules pkg_descr) hugsInstallSuffixes
 	flip mapM_ (executables pkg_descr) $ \ exe -> do
 	    let fname = hugsMainFilename exe
