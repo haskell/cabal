@@ -54,7 +54,8 @@ module Distribution.Simple.Utils (
 	rawSystemExit,
 	rawSystemPathExit,
         moveSources,
-        hunitTests
+        hunitTests,
+        createIfNotExists
   ) where
 
 import Distribution.Package

@@ -1,3 +1,15 @@
+* euroHaskell
+** setup test suite to run on --push?
+** Possibly create a (native?) zib library?
+** port code to windows
+** test / port code for Hugs and nhc
+** ./Setup.lhs build for nhc
+** nhc-pkg (see old package manager code)
+** hugs-pkg
+** make -Wall clean
+** better command-line parsing interface
+** ./Setup.lhs bdist
+
 * Code
 ** Write top-level Setup test cases (like "make check" under the test directory)
 
