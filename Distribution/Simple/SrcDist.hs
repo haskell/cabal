@@ -61,19 +61,26 @@ import HUnit (Test)
 
 -- |Create a source distribution. FIX: Calls tar directly (won't work
 -- on windows).
-sdist :: FilePath -- ^build prefix
+sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> PackageDescription -> LocalBuildInfo -> IO ()
-sdist srcPref targetPref pkg_descr _ = do
+sdist tmpDir targetPref
+      pkg_descr@PackageDescription{allModules=mods,
+                                   mainModules=mainMods,
+                                   hsSourceDir=srcDir
+                                  } _
+    = do
   setupMessage "Building source dist for" pkg_descr
-  ex <- doesDirectoryExist srcPref
-  when ex (die $ "Source distribution already in place. please move: " ++ srcPref)
-  moveSources "" (pathJoin [srcPref, nameVersion pkg_descr])
-              (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
-  system $ "tar --directory=" ++ srcPref ++ " -zcf " ++
+  ex <- doesDirectoryExist tmpDir
+  let tmpLoc1 = pathJoin [tmpDir, nameVersion pkg_descr, srcDir]
+  let tmpLoc2 = pathJoin [tmpDir, nameVersion pkg_descr]
+  when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
+  moveSources srcDir tmpLoc1  mods      mainMods ["lhs", "hs"]
+  moveSources ""     tmpLoc2 ["Setup"] []        ["lhs", "hs"]
+  system $ "tar --directory=" ++ tmpDir ++ " -zcf " ++
 	     (pathJoin [targetPref, tarBallName pkg_descr])
 		    ++ " " ++ (nameVersion pkg_descr)
-  system $ "rm -rf " ++ srcPref
+  system $ "rm -rf " ++ tmpDir
   putStrLn "Source tarball created."
 
 ------------------------------------------------------------
