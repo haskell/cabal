@@ -3,6 +3,7 @@ Priority: optional
 Maintainer: Isaac Jones <ijones@debian.org>
 Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (<< 6.2.3)
 Standards-Version: 3.6.1
+Suggests: haddock, cpphs
 
 Package: libghc6-cabal-dev
 Section: devel
