@@ -9,12 +9,15 @@
    something to indicate all haskell modules under that?
 
 ** SDist for windows machines, or machines without tar.
-** Better way to find 'tar'; is there a library?
+*** Better way to find 'tar'; is there a library?
+
 ** sign flag?
 
 ** grep for "FIX".
 
 ** Get function from hmake that creates a directory based on arch.
+
+** clean up Setup parsing code.
 
 ** register
 ** generate InstalledPackageInfo

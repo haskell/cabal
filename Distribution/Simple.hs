@@ -94,21 +94,21 @@ defaultMain pkg_descr
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo
 
-             Right (InstallCmd install_prefixM, extra_flags) -> do
+             Right (InstallCmd install_prefixM userInst, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
 		install pkg_descr localbuildinfo install_prefixM
-                when (isNothing install_prefixM) (register pkg_descr localbuildinfo)
+                when (isNothing install_prefixM) (register pkg_descr localbuildinfo userInst)
 
              Right (SDistCmd, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
 		sdist pkg_descr localbuildinfo
 
-             Right (RegisterCmd, extra_flags) -> do
+             Right (RegisterCmd userFlag, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		register pkg_descr localbuildinfo
+		register pkg_descr localbuildinfo userFlag
 
              Right (UnregisterCmd, extra_flags) -> do
 		no_extra_flags extra_flags

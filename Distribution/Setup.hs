@@ -61,6 +61,7 @@ import HUnit (Test(..), (~:), (~=?))
 
 import Control.Monad.Error
 import Data.List(intersperse)
+import Data.Maybe(listToMaybe)
 
 -- ------------------------------------------------------------
 -- * Command Line Types and Exports
@@ -82,9 +83,9 @@ type CommandLineOpts = (Action,
 
 data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
-            | InstallCmd (Maybe FilePath) -- install
+            | InstallCmd (Maybe FilePath) Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
-            | RegisterCmd                 -- register
+            | RegisterCmd Bool            -- register (--user flag)
             | UnregisterCmd               -- unregister
 	    | HelpCmd			  -- help
 --            | NoCmd -- error case, help case.
@@ -111,6 +112,7 @@ parseArgs args
                      		[h] -> parseCommands h flags unkFlags
                      		c   -> Left ["Multiple commands: " ++ (concat $ intersperse ", " c)]
     where
+    -- FIX: really must clean up all this parsing code.
     parseCommands :: String -- command
                   -> [Flag]
                   -> [String] -- unknown flags
@@ -121,7 +123,7 @@ parseArgs args
 		"install"    -> parseInstall flags unkFlags
 		"build"      -> noFlags str BuildCmd flags unkFlags
 		"sdist"      -> noFlags str SDistCmd flags unkFlags
-        	"register"   -> noFlags str RegisterCmd flags unkFlags
+        	"register"   -> parseRegister flags unkFlags
         	"unregister" -> noFlags str UnregisterCmd flags unkFlags
     		_            -> Left ["Unrecognised command: " ++ str]
 
@@ -133,12 +135,24 @@ parseArgs args
 	| otherwise
 	  = commandSyntaxError "configure"
 
-    parseInstall [InstPrefix m] unkFlags
-        = Right (InstallCmd $ Just m, unkFlags)
-    parseInstall  [] unkFlags
-        = Right (InstallCmd Nothing, unkFlags)
-    parseInstall  _ _
-	= commandSyntaxError "install"
+    -- | FIX: no error checking for bad flags.
+    parseInstall flags unkFlags
+        = let pref = listToMaybe [f | InstPrefix f <- flags]
+              in isUser flags (\x -> Right (InstallCmd pref x, unkFlags))
+
+    parseRegister flags unkFlags
+        =  isUser flags (\x -> Right (RegisterCmd x, unkFlags))
+
+    isUser flags f
+        = if length (filter isUserGlobFlag flags) <= 1
+          then f $ not $ null (filter isUserFlag flags)
+          else commandSyntaxError "Specify only one of --user and --global"
+
+    isUserGlobFlag UserFlag = True
+    isUserGlobFlag GlobalFlag = True
+    isUserGlobFlag _ = False
+    isUserFlag UserFlag = True
+    isUserFlag _ = False
 
     noFlags _ cmd [] unkFlags 
 	= Right (cmd, unkFlags)
@@ -164,10 +178,10 @@ getConfigFlags flags
     convert HugsFlag = Just Hugs
     convert _        = Nothing
 
-    getOneOpt [] = return Nothing
-    getOneOpt [one] = return (Just one)
-    getOneOpt o = fail $ "Multiple options where one expected: "
-                    ++ (concat $ intersperse ", " (map show o))
+getOneOpt [] = return Nothing
+getOneOpt [one] = return (Just one)
+getOneOpt o = fail $ "Multiple options where one expected: "
+                ++ (concat $ intersperse ", " (map show o))
 
 -- ------------------------------------------------------------
 -- * Option Specifications
@@ -176,6 +190,7 @@ getConfigFlags flags
 -- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | Prefix FilePath
+          | UserFlag | GlobalFlag
           | HelpFlag
           -- For install:
           | InstPrefix FilePath
@@ -196,6 +211,10 @@ options = [Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
                "bake this prefix in preparation of installation",
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
                "specify the directory in which to place installed files",
+           Option "" ["user"] (NoArg UserFlag)
+               "upon registration, register this package in the user's local package database",
+           Option "" ["global"] (NoArg GlobalFlag)
+               "(default) upon registration, register this package in the system-wide package database",
            Option "h?" ["help"] (NoArg HelpFlag)
                "get information on options and commands"
           ]
@@ -218,11 +237,11 @@ hunitTests :: IO [Test]
 hunitTests =
     do let m = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
        let (flags, commands', unkFlags, ers)
-               = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo"]
+               = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo", "--user", "--global"]
        return $ [TestLabel "very basic option parsing" $ TestList [
                  "getOpt flags" ~: "failed" ~:
                  [Prefix "/foo", GhcFlag, NhcFlag, HugsFlag,
-                  WithCompiler "/comp", InstPrefix "/foo"]
+                  WithCompiler "/comp", InstPrefix "/foo", UserFlag, GlobalFlag]
                  ~=? flags,
                  "getOpt commands" ~: "failed" ~: ["configure", "foobar"] ~=? commands',
                  "getOpt unknown opts" ~: "failed" ~:
@@ -245,9 +264,9 @@ hunitTests =
                TestLabel "simpler commands" $ TestList
                [flag ~: "failed" ~: (Right (flagCmd, [])) ~=? (parseArgs [flag])
                    | (flag, flagCmd) <- [("build", BuildCmd),
-                                         ("install", InstallCmd Nothing),
+                                         ("install", InstallCmd Nothing False),
                                          ("sdist", SDistCmd),
-                                         ("register", RegisterCmd)]
+                                         ("register", RegisterCmd False)]
                   ]
                ]
 #endif
