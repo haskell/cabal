@@ -51,7 +51,7 @@ module Distribution.Setup (--parseArgs,
                            parseGlobalArgs, commandList,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
-                           parseUnregisterArgs
+                           parseUnregisterArgs, parseCopyArgs
                            ) where
 
 -- Misc:
@@ -84,7 +84,7 @@ data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
 data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | CleanCmd                    -- clean
-            | CopyCmd FilePath            -- copy
+            | CopyCmd (Maybe FilePath)    -- copy
             | InstallCmd (Maybe FilePath) Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
@@ -142,7 +142,7 @@ data Cmd a = Cmd {
 
 commandList :: [Cmd a]
 commandList = [configureCmd, buildCmd, cleanCmd, installCmd,
-               sdistCmd, registerCmd, unregisterCmd]
+               copyCmd, sdistCmd, registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
 lookupCommand name = find ((==name) . cmdName)
@@ -276,10 +276,10 @@ installCmd :: Cmd a
 installCmd = Cmd {
         cmdName        = "install",
         cmdHelp        = "Copy the files into the install locations.",
-        cmdDescription = "This is the long description for install.\nMulti-line!\n",
+        cmdDescription = "Unlike the copy command, 'install calls the register command.\nMulti-line!\n",
         cmdOptions     = [cmd_help,
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
-               "specify the directory in which to place installed files",
+               "[deprecated, use copy] specify the directory in which to place installed files",
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -287,6 +287,36 @@ installCmd = Cmd {
            ],
         cmdAction      = InstallCmd Nothing False
         }
+
+copyCmd :: Cmd a
+copyCmd = Cmd {
+        cmdName        = "copy",
+        cmdHelp        = "Copy the files into the install locations.",
+        cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the copy-prefix flag, configure determines location.\n",
+        cmdOptions     = [cmd_help,
+           Option "" ["copy-prefix"] (ReqArg InstPrefix "DIR")
+               "specify the directory in which to place installed files"
+           ],
+        cmdAction      = CopyCmd Nothing
+        }
+
+parseCopyArgs :: (Maybe FilePath) -> [String] -> [OptDescr a] ->
+                    IO ((Maybe FilePath), [a], [String])
+parseCopyArgs cfg args customOpts =
+  case getCmdOpt copyCmd customOpts args of
+    (flags, _, []) | hasHelpFlag flags -> do
+      printCmdHelp copyCmd customOpts
+      exitWith ExitSuccess
+    (flags, args', []) ->
+      return (updateCfg flags cfg, unliftFlags flags, args')
+    (_, _, errs) -> do mapM_ putStrLn errs
+                       exitWith (ExitFailure 1)
+  where updateCfg (fl:flags) mprefix = updateCfg flags $
+          case fl of
+            InstPrefix path -> Just path
+            Lift _          -> mprefix
+            _               -> error $ "Unexpected flag!"
+        updateCfg [] t = t
 
 parseInstallArgs :: (Maybe FilePath, Bool) -> [String] -> [OptDescr a] ->
                     IO ((Maybe FilePath, Bool), [a], [String])
@@ -301,7 +331,7 @@ parseInstallArgs cfg args customOpts =
                        exitWith (ExitFailure 1)
   where updateCfg (fl:flags) t@(mprefix, uFlag) = updateCfg flags $
           case fl of
-            InstPrefix path -> (Just path, uFlag)
+            InstPrefix path -> error "--install-prefix is deprecated. Use copy command instead."
             UserFlag        -> (mprefix, True)
             GlobalFlag      -> (mprefix, False)
             Lift _          -> t
