@@ -75,7 +75,7 @@ install buildPref pkg_descr lbi install_prefixM = do
   setupMessage ("Installing: " ++ pref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> installGHC pref buildPref pkg_descr
-     Hugs -> installHugs pref pkg_descr
+     Hugs -> installHugs pref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
@@ -91,9 +91,10 @@ installGHC pref buildPref pkg_descr
 
 -- |Install for hugs, .lhs and .hs
 installHugs :: FilePath -- ^Install location
+            -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
-installHugs pref pkg_descr
-    = moveSources "" pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
+installHugs pref buildPref pkg_descr
+    = moveSources buildPref pref (allModules pkg_descr) (mainModules pkg_descr) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies
