@@ -44,8 +44,7 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
 import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
-                                  withLib, rawSystemPath, splitFilePath,
+import Distribution.Simple.Utils (setupMessage, rawSystemPath, splitFilePath,
                                   joinFilenameDir, joinExt, moduleToFilePath)
 import System.Exit (ExitCode(..))
 
@@ -70,21 +69,15 @@ type PPSuffixHandler
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 
                   -> [PPSuffixHandler]  -- ^ preprocessors to try
-		  -> FilePath           {- ^ Directory to put preprocessed 
-				             sources in -}
 		  -> IO ()
 
-preprocessSources pkg_descr _ handlers pref = 
+preprocessSources pkg_descr _ handlers = 
     do
     setupMessage "Preprocessing" pkg_descr
     -- preprocess all sources before moving them
     allSources <- findAllSourceFiles pkg_descr [a | (a, _, _) <- knownSuffixHandlers]
     sequence [dispatchPP src handlers | src <- allSources] -- FIX: output errors?
-    -- move sources into place
-    withLib pkg_descr $ \lib ->
-        moveSources (hsSourceDir lib) (pathJoin [pref, hsSourceDir lib]) (modules lib) ["hs","lhs"] 
-    sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
-              | Executable _ _ exeBi <- executables pkg_descr]
+    return ()
 
 dispatchPP :: FilePath -> [ PPSuffixHandler ] -> IO ExitCode
 dispatchPP p handlers
