@@ -78,18 +78,15 @@ import HUnit (Test)
 install :: FilePath  -- ^build location
         -> PackageDescription -> LocalBuildInfo
         -> Maybe FilePath -- ^install-prefix
-        -> Bool -- ^Install for user?
         -> IO ()
-install buildPref pkg_descr lbi install_prefixM uInst = do
+install buildPref pkg_descr lbi install_prefixM = do
   let libPref = mkLibDir pkg_descr lbi install_prefixM
   let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC libPref buildPref pkg_descr)
                 installExeGhc binPref buildPref pkg_descr
-     Hugs -> do -- FIX (HUGS): fix 'die' checks commands below.
-                when uInst (die "Hugs cannot yet install user-only packages.")
-                withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
+     Hugs -> do withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} ->
                                      do let targetDir = buildPref `joinFileName` srcDir
                                         let args = targetDir
                                                     : (maybeToList install_prefixM)

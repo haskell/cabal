@@ -146,11 +146,15 @@ defaultMainWorker pkg_descr action args
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes knownSuffixHandlers)
                 return ()
 
+            CopyCmd mprefix -> return ()
             InstallCmd mprefix uInst -> do
                 ((mprefix,uInst), _, args) <- parseInstallArgs (mprefix,uInst) args []
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		install buildPref pkg_descr localbuildinfo mprefix uInst
+                -- FIX (HUGS): fix 'die' checks commands below.
+                when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
+                      (die "Hugs cannot yet install user-only packages.")
+		install buildPref pkg_descr localbuildinfo mprefix
                 when (isNothing mprefix && hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo uInst)
 

@@ -84,6 +84,7 @@ data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
 data Action = ConfigCmd ConfigFlags       -- config
             | BuildCmd                    -- build
             | CleanCmd                    -- clean
+            | CopyCmd FilePath            -- copy
             | InstallCmd (Maybe FilePath) Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | RegisterCmd Bool            -- register (--user flag)
