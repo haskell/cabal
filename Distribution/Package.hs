@@ -46,14 +46,19 @@ module Distribution.Package (
 	PackageDescription(..),
 	emptyPackageDescription,
         readPackageDescription,
+	parseDescription,
         writePackageDescription,
+	showPackageDescription,
+	basicStanzaFields,
+        setupMessage,
+        withLib,
         hasLibs,
         BuildInfo(..),
         emptyBuildInfo,
         Executable(..),
         emptyExecutable,
-        setupMessage,
-        withLib,
+	StanzaField(..),
+        allModules,
 #ifdef DEBUG
         hunitTests,
         test
@@ -103,7 +108,13 @@ data PackageDescription
         license        :: License,
         copyright      :: String,
         maintainer     :: String,
+	author         :: String,
         stability      :: String,
+	testedWith     :: [(CompilerFlavor,VersionRange)],
+	homepage       :: String,
+	pkgUrl         :: String,
+	description    :: String,
+	category       :: String,
         library        :: Maybe BuildInfo,
         executables    :: [Executable]
     }
@@ -115,16 +126,22 @@ emptyPackageDescription
                       license      = AllRightsReserved,
                       copyright    = "",
                       maintainer   = "",
+		      author       = "",
                       stability    = "",
+		      testedWith   = [],
+		      homepage     = "",
+		      pkgUrl       = "",
+		      description  = "",
+		      category     = "",
                       library      = Nothing,
                       executables  = []
                      }
 
 -- |Get all the module names from this package
--- allModules :: PackageDescription -> [String]
--- allModules PackageDescription{executables=execs, library=lib}
---     = (concatMap (\e -> modules $ buildInfo e) execs)
---          ++ (maybe [] modules lib)
+allModules :: PackageDescription -> [String]
+allModules PackageDescription{executables=execs, library=lib}
+    = (concatMap (\e -> modules $ buildInfo e) execs)
+         ++ (maybe [] modules lib)
 
 -- |Set the name for this package. Convenience function.
 setPkgName :: String -> PackageDescription -> PackageDescription
@@ -232,6 +249,7 @@ myError n s = Left $ FromString s (Just n)
 data StanzaField a 
   = StanzaField 
       { fieldName     :: String
+      , fieldShow     :: a -> Doc
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> Either PError a
       }
@@ -257,6 +275,25 @@ basicStanzaFields =
  , simpleField "stability"
                            text                   (munch (const True))
                            stability              (\val pkg -> pkg{stability=val})
+ , simpleField "homepage"
+                           text                   (munch (const True))
+                           homepage               (\val pkg -> pkg{homepage=val})
+ , simpleField "package-url"
+                           text                   (munch (const True))
+                           pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
+ , simpleField "description"
+                           text                   (munch (const True))
+                           description            (\val pkg -> pkg{description=val})
+ , simpleField "category"
+                           text                   (munch (const True))
+                           category               (\val pkg -> pkg{category=val})
+ , simpleField "author"
+                           text                   (munch (const True))
+                           author                 (\val pkg -> pkg{author=val})
+ , listField "tested-with"
+                           showTestedWith         parseTestedWith
+                           testedWith             (\val pkg -> pkg{testedWith=val})
+
  ]
 
 executableStanzaFields :: [StanzaField Executable]
@@ -309,6 +346,7 @@ binfoFields =
 simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
 simpleField name showF readF get set = StanzaField name
    (\st -> text name <> colon <+> showF (get st))
+   (showF . get)
    (\lineNo val st -> do
        x <- runP lineNo name readF val
        return (set x st))
@@ -317,9 +355,12 @@ listField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b ->
 listField name showF readF get set = StanzaField name
    (\st -> case get st of
         [] -> empty
-        (value:values) ->
-           text name <> vcat (               colon <+> showF value:
-                              map (\value' -> comma <+> showF value') values))
+        lst ->
+           text name <> vcat (map (\value -> comma <+> showF value) lst))
+   (\st -> case get st of
+        [] -> empty
+        lst ->
+           vcat (map (\value -> comma <+> showF value) lst))
    (\lineNo val st -> do
        xs <- runP lineNo name (parseCommaList readF) val
        return (set xs st))
@@ -330,6 +371,11 @@ licenseField name flag get set = StanzaField name
              OtherLicense path | flag      -> text name <> colon <+> showFilePath path
                                | otherwise -> empty
              license'          | not flag  -> text name <> colon <+> text (show license')
+                               | otherwise -> empty)
+   (\st -> case get st of
+             OtherLicense path | flag      -> showFilePath path
+                               | otherwise -> empty
+             license'          | not flag  -> text (show license')
                                | otherwise -> empty)
    (\lineNo val st ->
        if flag 
@@ -344,6 +390,9 @@ optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> (
 optsField name flavor get set = StanzaField name
    (\st -> case lookup flavor (get st) of
         Just args -> text name <> colon <+> hsep (map text args)
+        Nothing   -> empty)
+   (\st -> case lookup flavor (get st) of
+        Just args -> sep (map text args)
         Nothing   -> empty)
    (\_ val st -> 
        let
@@ -372,7 +421,7 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
   where -- The basic stanza, with library building info
-        parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
+        parseBasicStanza ((StanzaField name _ _ set):fields) pkg (lineNo, f, val)
           | name == f = set lineNo val pkg
           | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
         parseBasicStanza [] pkg (lineNo, f, val) = do
@@ -388,17 +437,17 @@ parseDescription inp = do let (st:sts) = splitStanzas inp
           myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
-        parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
+        parseExecutableField ((StanzaField name _ _ set):fields) exe (lineNo, f, val)
 	  | name == f = set lineNo val exe
 	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
 	parseExecutableField [] exe (lineNo, f, val) = do
 	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
-        parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
+        parseBInfoField ((StanzaField name _ _ set):fields) binfo (lineNo, f, val)
 	  | name == f = set lineNo val binfo
 	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
-	parseBInfoField [] _ (lineNo, f, _) =
+	parseBInfoField [] binfo (lineNo, f, _) =
 	  myError lineNo $ "Unknown field '" ++ f ++ "'"
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
@@ -448,6 +497,13 @@ parseModuleName = do c <- satisfy isUpper
                      cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
                      return (c:cs)
 
+parseTestedWith :: ReadP [(CompilerFlavor,VersionRange)] (CompilerFlavor,VersionRange)
+parseTestedWith = do compiler <- parseReadS
+		     skipSpaces
+		     version <- parseVersionRange <++ return AnyVersion
+		     skipSpaces
+		     return (compiler,version)
+
 parseFilePath :: ReadP r FilePath
 parseFilePath = parseReadS <++ (munch1 (\x -> isAlphaNum x || x `elem` "-+/_."))
 
@@ -491,6 +547,9 @@ parseCommaList p = sepBy1 p separator
 -- --------------------------------------------
 -- ** Pretty printing
 
+showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
+showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRange version)
+
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
 writePackageDescription fpath pkg = writeFile fpath (showPackageDescription pkg)
 
@@ -508,7 +567,7 @@ showPackageDescription pkg = render $
       ppFields (buildInfo exe) binfoFields
 
     ppFields _ [] = empty
-    ppFields pkg' ((StanzaField _ get _):flds) =
+    ppFields pkg' ((StanzaField _ get _ _):flds) =
            get pkg' $$ ppFields pkg' flds
         
 showDependency :: Dependency -> Doc
@@ -525,6 +584,12 @@ testPkgDesc = unlines [
         "License: LGPL",
         "Copyright: Free Text String",
         "-- Optional - may be in source?",
+        "Author: Happy Haskell Hacker",
+        "Homepage: http://www.haskell.org/foo",
+        "Package-url: http://www.haskell.org/foo",
+        "Description: a nice package!",
+        "Category: tools",
+        "Tested-with: GHC",
         "Stability: Free Text String",
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Modules: Distribution.Package, Distribution.Version,",
@@ -553,6 +618,12 @@ testPkgDescAnswer =
                                                  versionTags = ["rain"]}},
                     license = LGPL,
                     copyright = "Free Text String",
+                    author  = "Happy Haskell Hacker",
+                    homepage = "http://www.haskell.org/foo",
+                    pkgUrl   = "http://www.haskell.org/foo",
+                    description = "a nice package!",
+                    category = "tools",
+                    testedWith=[(GHC, AnyVersion)],
                     maintainer = "",
                     stability = "Free Text String",
 
