@@ -376,7 +376,6 @@ searchPathSeparator = ';'
 searchPathSeparator = ':'
 #endif
 
-#endif
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
 -- | Extension for executable files
 -- (typically @\"\"@ on Unix and @\".exe\"@ on Windows or OS\/2)
@@ -405,3 +404,5 @@ dllExtension = ".dll"
 #else
 dllExtension = ".so"
 #endif
+
+#endif /* __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 603 */
