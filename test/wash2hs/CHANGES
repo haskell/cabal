@@ -1,0 +1,5 @@
+* 20031112
+  added JSP-style string escape:
+   <%= my nice haskell code %>
+  is mapped to
+   text (my nice haskell code)
