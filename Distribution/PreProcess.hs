@@ -80,19 +80,19 @@ data PreProcessor = PreProcessor
 type PPSuffixHandler
     = (String, (String->String->String), PreProcessor)
 
---| FIX: Some preprocessors aren't respecting the output location; for
+-- |FIX: Some preprocessors aren't respecting the output location; for
 -- these, we should move the file?  Should we change it to "directory"?
 
-ppCommandLine :: PreProcessor
-              -> FilePath     -- ^Location of the source file
-              -> FilePath     -- ^Location of the output file
-              -> IO ()        -- ^The constructed command-line
-ppCommandLine (PreProcessor exeName inOpts outFun _) sourceFile outFile
+executePreprocessor :: PreProcessor
+                    -> FilePath     -- ^Location of the source file
+                    -> FilePath     -- ^Location of the output file
+                    -> IO ()        -- ^The constructed command-line
+executePreprocessor (PreProcessor exeName inOpts outFun _) sourceFile outFile
     = let opts = if (null (outFun outFile))
                  then inOpts ++ [sourceFile]
                  else (inOpts ++ [outFun outFile, sourceFile])
           in rawSystemPath exeName opts >> return ()
-ppCommandLine (PreProcessAction f _) sourceFile outFile
+executePreprocessor (PreProcessAction f _) sourceFile outFile
     = f sourceFile outFile
 
 -- |Leave in unlit since some preprocessors can't handle literated
