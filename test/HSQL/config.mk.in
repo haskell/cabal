@@ -1,0 +1,28 @@
+WithODBC=@WithODBC@
+WithPostgreSQL=@WithPostgreSQL@
+WithMySQL=@WithMySQL@
+WithSQLite=@WithSQLite@
+
+SO_EXT = @SO_EXT@
+
+WIN32=@WIN32@
+
+AR = @AR@
+LD = @LD@
+INSTALL = @INSTALL@
+
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+
+HSC2HS = @HSC2HS@
+
+HADDOCK = @HADDOCK@
+DOC_DIR = @DOC_DIR@
+
+GHC     = @GHC@
+GHC_DIR = @GHC_DIR@
+GHC_PKG = @GHC_PKG@
+
+HUGS     = @HUGS@
+HUGS_DIR = @HUGS_DIR@
+FFIHUGS  = @FFIHUGS@

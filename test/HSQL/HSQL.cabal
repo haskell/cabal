@@ -1,0 +1,5 @@
+name: hsql
+license: BSD3
+version: 1.4
+synopsis: interface to databases
+description: a simple library, which provides an interface to multiple databases. MySQL, PostgreSQL, ODBC and SQLite (new) are currently supported. 
