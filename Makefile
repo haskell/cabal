@@ -16,7 +16,7 @@ all: moduleTest
 setup:
 	ghc $(GHCFLAGS) Setup -o setup
 
-build: hunitInstall config
+build: hunitInstall-stamp config
 	./setup build
 
 config: setup
@@ -25,12 +25,18 @@ config: setup
 install: build
 	./setup install $(USER_FLAG)
 
-clean:
+clean: clean-cabal clean-hunit clean-test
+
+clean-cabal:
 	-rm -f Distribution/*.{o,hi} Distribution/Simple/*.{o,hi} 
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.{o,hi} moduleTest dist installed-pkg-config
+
+clean-hunit:
 	-rm -f hunit-stamp hunitInstall-stamp
 	cd test/HUnit-1.0 && make clean
+
+clean-test:
 	cd test/A && make clean
 
 remove:
@@ -45,8 +51,8 @@ hunit-stamp:
 	cd test/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
 	touch $@
 
-hunitInstall: hunit-stamp hunitInstall-stamp
-hunitInstall-stamp:
+hunitInstall: hunitInstall-stamp
+hunitInstall-stamp: hunit-stamp
 	cd test/HUnit-1.0 && ./setup install $(USER_FLAG)
 	touch $@
 
