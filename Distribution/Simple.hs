@@ -222,7 +222,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preCopy mprefix
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		install buildPref pkg_descr localbuildinfo mprefix
+		install buildPref pkg_descr localbuildinfo
                 postHook postCopy
 
             InstallCmd mprefix uInst -> do
@@ -233,7 +233,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 -- FIX (HUGS): fix 'die' checks commands below.
                 when (compilerFlavor (compiler (localbuildinfo)) == Hugs && uInst)
                       (die "Hugs cannot yet install user-only packages.")
-		install buildPref pkg_descr localbuildinfo mprefix
+		install buildPref pkg_descr localbuildinfo
                 when (isNothing mprefix && hasLibs pkg_descr)
                          (register pkg_descr localbuildinfo uInst)
                 postHook postInst
