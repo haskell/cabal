@@ -65,8 +65,8 @@ doBuildInstall f pkgConf
 defaultMain :: PackageConfig -> IO ()
 defaultMain p
     = do args <- getArgs
-         case parseArgs args of
-          (BuildCmd,       _) -> doBuildInstall build p
-          (InstallCmd _,   _) -> doBuildInstall install p
-          (PackageInfoCmd, _) -> print p
+--          case parseArgs args of
+--           (BuildCmd,       _) -> doBuildInstall build p
+--           (InstallCmd _,   _) -> doBuildInstall install p
+--           (InfoCmd, _) -> print p
          return ()

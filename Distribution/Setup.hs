@@ -68,17 +68,18 @@ type CommandLineOpts = (Action,
 -- |Most of these flags are for Configure, but InstPrefix is for Install.
 data Flag = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | Prefix FilePath
+          | HelpFlag
           -- For install:
           | InstPrefix FilePath
 --          | Verbose | Version?
             deriving (Show, Eq)
 
 
-data Action = ConfigCmd LocalBuildInfo    -- config
+data Action = ConfigCmd [Flag]            -- config
             | BuildCmd                    -- build
             | InstallCmd (Maybe FilePath) -- install
             | SDistCmd                    -- sdist
-            | PackageInfoCmd              -- packageinfo
+            | InfoCmd                     -- info
             | RegisterCmd                 -- register
             | UnregisterCmd               -- unregister
             | NoCmd -- error case?
@@ -88,12 +89,50 @@ data Action = ConfigCmd LocalBuildInfo    -- config
     deriving (Show, Eq)
 
 -- |Parse the standard command-line arguments.
-parseArgs :: [String] -> CommandLineOpts
-parseArgs _ = (NoCmd, [])
+parseArgs :: [String] -> Either [String] CommandLineOpts
+parseArgs args
+    = let (flags, commands, unkFlags, ers) = getOpt Permute options args
+          in case ers of
+             _:_ -> Left ers
+             []  -> case commands of
+                     []  -> Left ["No command detected"]
+                     [h] -> parseCommands h flags unkFlags
+                     _:_ -> Left ["More than one command detected"]
+    where
+    parseCommands :: String -- command
+                  -> [Flag]
+                  -> [String] -- unknown flags
+                  -> Either [String] CommandLineOpts
+    parseCommands "configure" flags unkFlags
+        | not (any isInstallPrefix flags)
+            = Right (ConfigCmd flags, unkFlags)
+    parseCommands "install" [InstPrefix m] unkFlags
+        = Right (InstallCmd $ Just m, unkFlags)
+    parseCommands "install" [] unkFlags
+        = Right (InstallCmd Nothing, unkFlags)
+    parseCommands "build" [] unkFlags
+        = Right (BuildCmd, unkFlags)
+    parseCommands "sdist" [] unkFlags
+        = Right (SDistCmd, unkFlags)
+    parseCommands "info" [] unkFlags
+        = Right (InfoCmd, unkFlags)
+    parseCommands "register" [] unkFlags
+        = Right (RegisterCmd, unkFlags)
+    parseCommands "unregister" [] unkFlags
+        = Right (UnregisterCmd, unkFlags)
+    parseCommands c _ _
+        = Left $ ["command line syntax error for command: " ++ c]
+
+    isInstallPrefix :: Flag -> Bool
+    isInstallPrefix (InstPrefix m) = True
+    isInstallPrefix _              = False
 
 -- ------------------------------------------------------------
 -- * Option Specifications
 -- ------------------------------------------------------------
+
+optionHelpString :: String -> String
+optionHelpString prefix = usageInfo prefix options
 
 -- |Flag-type options (not commands)
 options :: [OptDescr Flag]
@@ -105,7 +144,9 @@ options = [Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "" ["prefix"] (ReqArg Prefix "DIR")
                "bake this prefix in preparation of installation",
            Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
-               "specify the directory in which to place installed files"
+               "specify the directory in which to place installed files",
+           Option "h?" ["help"] (NoArg HelpFlag)
+               "get information on options and commands"
           ]
 
 -- |command, help string
@@ -114,7 +155,7 @@ commands = [("configure", "configure this package"),
             ("build", ""),
             ("install", ""),
             ("sdist", ""),
-            ("packageinfo", ""),
+            ("info", ""),
             ("register", ""),
             ("unregister","")
            ]
@@ -125,15 +166,12 @@ commands = [("configure", "configure this package"),
 
 hunitTests :: IO [Test]
 hunitTests =
-    do let basicGhcConfig = (ConfigCmd (LocalBuildInfo "/lib"
-                                     (Compiler GHC "/bin/ghc"
-                                                   "/bin/ghc-pkg")), [])
-       let realGhcConfig = (ConfigCmd (LocalBuildInfo "" (Compiler Hugs "" "")), [])
-
-       m <- sequence [do loc <- exeLoc comp
+    do m <- sequence [do loc <- exeLoc comp
                          pkg <- pkgLoc comp
-                         return (name, comp, loc, pkg)
-                      | (name, comp) <- [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]]
+                         return (name, comp, loc, pkg, flag)
+                      | (name, comp, flag) <- [("ghc", GHC, GhcFlag),
+                                               ("nhc", NHC, NhcFlag),
+                                               ("hugs", Hugs, HugsFlag)]]
        let (flags, commands, unkFlags, ers)
                = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo"]
        return $ [TestLabel "very basic option parsing" $ TestList [
@@ -145,40 +183,25 @@ hunitTests =
                  "getOpt unknown opts" ~: "failed" ~:
                       ["--unknown1", "--unknown2"] ~=? unkFlags,
                  "getOpt errors" ~: "failed" ~: [] ~=? ers],
-                TestLabel "Config" $ TestList [
-                "config prefix ghc given package tool" ~: "failed" ~:
-                        basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
-                                                        "--with-compiler=/bin/ghc",
-                                                        "--with-pkg=/bin/ghc-pkg",
-                                                        "configure"]),
-               "find package tool" ~: "failed" ~:
-                        basicGhcConfig ~=? (parseArgs ["--prefix=/lib", "--ghc",
-                                                       "--with-compiler=/bin/ghc",
-                                                       "configure"]),
-               "locate compiler and package tool" ~: "failed" ~: 
-                        realGhcConfig ~=? (parseArgs ["configure", "--ghc"]),
-               "should we default to the current compiler?" ~: "failed" ~:
-                        realGhcConfig ~=? (parseArgs ["configure"])],
                TestLabel "test location of various compilers" $ TestList
                ["locate " ++ name ++ " and pkg tool" ~: "failed" ~:
-                    (ConfigCmd (LocalBuildInfo "/usr/local"
-                                (Compiler comp comploc pkgloc)), [])
+                    (Right (ConfigCmd [Prefix "/usr/local", compFlag], []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name, "configure"])
-                   | (name, comp, comploc, pkgloc) <- m],
+                   | (name, comp, comploc, pkgloc, compFlag) <- m],
                TestLabel "find the package tool" $ TestList
                ["locate pkg tool given " ++ name ~: "failed" ~:
-                    (ConfigCmd (LocalBuildInfo "/usr/local"
-                                (Compiler comp comploc pkgloc)), [])
+                    (Right (ConfigCmd [Prefix "/usr/local", compFlag,
+                                WithCompiler name], []))
                    ~=? (parseArgs ["--prefix=/usr/local", "--"++name,
                                    "--with-compiler="++name, "configure"])
-                   | (name, comp, comploc, pkgloc) <- m],
+                   | (name, comp, comploc, pkgloc, compFlag) <- m],
 
                TestLabel "simpler commands" $ TestList
-               [flag ~: "failed" ~: (flagCmd, []) ~=? (parseArgs [flag])
+               [flag ~: "failed" ~: (Right (flagCmd, [])) ~=? (parseArgs [flag])
                    | (flag, flagCmd) <- [("build", BuildCmd),
                                          ("install", InstallCmd Nothing),
                                          ("sdist", SDistCmd),
-                                         ("packageinfo", PackageInfoCmd),
+                                         ("info", InfoCmd),
                                          ("register", RegisterCmd)]
                   ]]
 
