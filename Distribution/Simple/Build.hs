@@ -47,7 +47,7 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Misc (Extension)
+import Distribution.Misc (Extension(..))
 import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
@@ -59,7 +59,7 @@ import Distribution.Simple.Utils (rawSystemExit, setupMessage,
 
 
 import Control.Monad (when)
-import Data.List(intersperse)
+import Data.List(intersperse, nub)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -117,7 +117,11 @@ constructGHCCmdLine pref pkg_descr _ =
   ++ allModules pkg_descr
 
 extensionsToGHCFlag :: [ Extension ] -> [String]
-extensionsToGHCFlag _ = [] -- ToDo
+extensionsToGHCFlag = nub . map extensionToGHCFlag
+    where
+    extensionToGHCFlag OverlappingInstances = "-fallow-overlapping-instances"
+    extensionToGHCFlag TypeSynonymInstances = "-fglasgow-exts"
+    extensionToGHCFlag TemplateHaskell = "-fth"
 
 extensionsToNHCFlag :: [ Extension ] -> [String]
 extensionsToNHCFlag _ = [] -- ToDo
