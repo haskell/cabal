@@ -279,7 +279,7 @@ tests currDir comp compConf = [
          ,TestLabel ("package withHooks: "++compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "withHooks")
             testPrelude
-            assertCmd ("./setup configure --prefix=,tmp --woohoo " ++ compFlag)
+            assertCmd' compCmd ("configure --prefix=,tmp --woohoo " ++ compFlag)
               "configure returned error code"
             assertHaddock
             assertBuild
