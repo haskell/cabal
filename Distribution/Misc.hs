@@ -53,10 +53,10 @@ import Distribution.Version(VersionRange)
 -- * Compiler
 -- ------------------------------------------------------------
 
-data Flavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
+data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
               deriving Show
 
-data Compiler = Compiler {flavor        :: Flavor,
+data Compiler = Compiler {flavor        :: CompilerFlavor,
                           path          :: FilePath,
                           packagingTool :: FilePath}
                 deriving Show
