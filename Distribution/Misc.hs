@@ -87,6 +87,7 @@ data Extension =
                | FlexibleContexts
                | FlexibleInstances
                | EmptyDataDecls
+               | CPP
 
 	       | TypeSynonymInstances
 	       | TemplateHaskell
@@ -127,6 +128,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag Generics                     = Right "-fgenerics"
     extensionToGHCFlag NoImplicitPrelude            = Right "-fno-implicit-prelude"
     extensionToGHCFlag ImplicitParams               = Right "-fimplicit-params"
+    extensionToGHCFlag CPP                          = Right "-cpp"
 
     extensionToGHCFlag RecursiveDo                  = Right "-fglasgow-exts"
     extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
@@ -157,6 +159,7 @@ extensionsToNHCFlag l
       extensionToNHCFlag ExistentialQuantification = Right ""
       extensionToNHCFlag EmptyDataDecls            = Right ""
       extensionToNHCFlag NamedFieldPuns            = Right "-puns"
+      extensionToNHCFlag CPP                       = Right "-cpp"
       extensionToNHCFlag e                         = Left e
 
 -- |Hugs: Return the unsupported extensions, and the flags for the supported extensions
