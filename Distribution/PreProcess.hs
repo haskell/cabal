@@ -45,8 +45,10 @@ import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage, rawSystemPath, splitFilePath,
-                                  joinFilenameDir, joinExt, moduleToFilePath)
-import System.Exit (ExitCode(..))
+                                  joinFilenameDir, joinExt, moduleToFilePath,
+                                  sequenceMap, removeFiles, hasExt)
+import Control.Monad(when)
+import System.Exit (ExitCode(..), exitWith)
 
 import Data.Maybe(catMaybes)
 
@@ -94,7 +96,7 @@ findPP _ [] = Nothing
 
 
 -- |Locate the source files based on the module names, the search
--- pathes (both in PackageDescription) and the suffixes we might be
+-- paths (both in PackageDescription) and the suffixes we might be
 -- interested in.
 findAllSourceFiles :: PackageDescription
                    -> [String] -- ^search suffixes
@@ -110,6 +112,37 @@ findAllSourceFiles PackageDescription{executables=execs, library=lib} allSuffixe
               buildInfoSources BuildInfo{modules=mods, hsSourceDir=dir} suffixes
                   = sequence [moduleToFilePath dir modu suffixes | modu <- mods] >>= return . concat
 
+-- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
+removePreprocessed :: FilePath -- ^search Location
+                   -> [String] -- ^Modules
+                   -> [String] -- ^suffixes
+                   -> IO ()
+removePreprocessed searchLoc mods suffixesIn
+    = sequenceMap (\m -> moduleToFilePath searchLoc m suffixesIn) mods -- collect related files
+         >>= sequenceMap removeIfDup -- delete the .hs stuff.
+         >>  return ()
+         where -- ^Should give a list of files that only differ by the extension.
+               removeIfDup :: [FilePath] -> IO ()
+               removeIfDup []  = return ()
+               removeIfDup [x] = return () -- if there's only one, it needs to stay
+               removeIfDup l = do when (not $ extensionProp l)
+                                    (putStrLn "Internal Error: attempt to remove source with no matching preprocessed element."
+                                     >> exitWith (ExitFailure 1))
+                                  let hsFiles = (filter (\x -> hasExt x "hs") l)
+                                  when (length hsFiles > 1)
+                                    (putStrLn "Internal Error: multiple \".hs\" files found while removing preprocessed element."
+                                     >> exitWith (ExitFailure 1))
+                                  putStrLn $ show hsFiles
+                                  putStrLn $ show l
+                                  removeFiles hsFiles
+                                  return ()
+               -- the files in this list only differ by their extension
+               extensionProp []  = True
+               extensionProp [x] = True
+               extensionProp (x1:x2:xs)
+                   = let (dir1, name1, _) = splitFilePath x1
+                         (dir2, name2, _) = splitFilePath x2
+                         in dir1 == dir2 && name1 == name2 && (extensionProp (x2:xs))
 
 -- ------------------------------------------------------------
 -- * known preprocessors
