@@ -1,6 +1,16 @@
 ------------------------------------------------------------
 -= 1.0 =-
 
+* Write semantic checker for package description file.  start w/
+   sanity checker.  give error if buildInfo field given when no
+   exposed or hidden modules for a library.  Check for required
+   fields.
+
+* Decide on interface
+** Which fields are required, which targets required.
+** which Distribution.* things won't change?
+** document
+
 * add withGreencard=
 
 * Fix up sdist? hide sdist? bdist?
@@ -8,27 +18,6 @@
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
 ** Better way to find 'tar'; is there a library? what does darcs do?
-
-* Write semantic checker for package description file.  start w/
-   sanity checker.  give error if buildInfo field given when no
-   exposed or hidden modules for a library.
-
-* Decide on interface
-** Which fields are required
-** which Distribution.* things won't change?
-
-* un/registering the package on the target
-** dump shell scripts for registering and unregistering?
-** dry run, just to dump the .installed-pkg-config?
-
-** think about HC-PKG's role here. maybe HC-PKG should do all this instead
-
-** Should "setup install" copy Setup.lhs, Setup.description, and
-   local-build-info into a common location for the sake of unregister?
-   Will we have to make this a requirement of 'install'? (suggested by
-   kosmikus) Would it be better for HC-PKG to have the unregister
-   command?
-** Add a flag to configure to specify where to put them?
 
 * do we have to run configure before clean?
 
@@ -54,10 +43,6 @@
     in haddock_interfaces.  Similarly for the HTML, and haddock_html.
 
 * grep for "FIX"
-
-* Compatibility
-** verify windows test suite
-** verify ghc6.4 test suite
 
 * Parsing
 ** Allow quoting in the options fields, to allow things like
