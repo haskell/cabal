@@ -175,7 +175,7 @@ system_default_prefix PackageDescription{package=pkg} =
   "C:\\Program Files\\" ++ pkgName pkg
 #else
 system_default_prefix _ = 
-  "/usr"
+  "/usr/local"
 #endif
 
 -- -----------------------------------------------------------------------------
