@@ -163,7 +163,7 @@ installHugs libPref binPref targetLibPref buildPref pkg_descr = do
 #endif
 
 hugsInstallSuffixes :: [String]
-hugsInstallSuffixes = ["hs", "lhs", drop 1 dllExtension]
+hugsInstallSuffixes = ["hs", "lhs", dllExtension]
 
 -- |Prefix for Hugs package directories
 hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
