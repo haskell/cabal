@@ -1,5 +1,16 @@
 * misc
 
+** unregistering the package, etc
+
+*** think about HC-PKG's role here. maybe HC-PKG should do all this
+   instead
+*** Should "setup install" copy Setup.lhs, Setup.description, and
+   local-build-info into a common location for the sake of unregister?
+   Will we have to make this a requirement of 'install'? (suggested by
+   kosmikus) Would it be better for HC-PKG to have the unregister
+   command?
+*** Add a flag to configure to specify where to put them?
+
 ** integrate w/ GHC distro
 
 ** what other preprocessors can't unlit?
