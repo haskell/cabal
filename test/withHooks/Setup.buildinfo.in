@@ -1,0 +1,4 @@
+copyright: Copyright 2005 Happy New Year!!
+license: LGPL
+description: This program outputs very important information.
+exposed-modules: WithHooks
