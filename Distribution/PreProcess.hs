@@ -45,8 +45,10 @@ import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
-                                  withLib, rawSystemPath)
+                                  withLib, rawSystemPath, joinFilenameDir)
 import Distribution.Setup (CompilerFlavor(..))
+import System.Exit (ExitCode)
+import System.Directory (renameFile)
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
 preprocessSources :: PackageDescription 
@@ -76,6 +78,28 @@ data PreProcessor = PreProcessor
                    -> FilePath -- output file
                    -> IO ()),
          ppSuitable :: CompilerFlavor -> Bool}
+
+-- |If both output locations are null, just output to the default
+-- location for this preprocessor (may be stdout?).  If directory is
+-- null, default to "." if output file is null, use the default
+-- filename, but move to the output directory.
+type PreProcessor2 = FilePath        -- ^Location of the source file in need of preprocessing
+                   -> Maybe FilePath -- ^Directory to output the preprocessed file (output)
+                   -> Maybe FilePath -- ^Filename of the preprocessed file (output)
+                   -> IO ExitCode
+
+ppCpp2 :: PreProcessor2
+ppCpp2 inFile Nothing Nothing
+    = rawSystemPath "cpphs" ["-O" ++ inFile ++ ".hs", inFile]
+ppCpp2 inFile j@(Just outDir) Nothing
+    = ppCpp2 inFile j (Just (inFile ++ ".hs"))
+ppCpp2 inFile Nothing (Just outFile)
+    = rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
+ppCpp2 inFile (Just outDir) (Just outFile)
+    = do c <- rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
+         renameFile outFile (joinFilenameDir outDir outFile)
+         return c
+
 
 type PPSuffixHandler
     = (String, (String->String->String), PreProcessor)
