@@ -46,20 +46,45 @@ module Distribution.Simple.Register (
 	unregister,
   ) where
 
-import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Package(PackageDescription)
+import Distribution.Simple.Configure
+import Distribution.Setup
+import Distribution.Package
 import Distribution.InstalledPackageInfo(InstalledPackageInfo)
-import Distribution.Simple.Utils(setupMessage)
+import Distribution.Simple.Utils
+import Distribution.Simple.GHCPackageConfig
 
 import System.IO
 import System.Exit
 
+import Control.Monad
+
+-- -----------------------------------------------------------------------------
+-- Registration
+
 register :: PackageDescription -> LocalBuildInfo -> IO ()
 register pkg_descr lbi = do
   setupMessage "Registering" pkg_descr
-  exitWith (ExitFailure 1)
+  
+  when (compilerFlavor (compiler lbi) /= GHC) $
+	die ("only registering with GHC is implemented")
+	
+  let pkg_config = mkGHCPackageConfig pkg_descr lbi
+  writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
+
+  rawSystemExit (compilerPkgTool (compiler lbi))
+	["--add-package", "--input-file="++installedPkgConfigFile]
+  
+installedPkgConfigFile = "installed-pkg-config"
+
+-- -----------------------------------------------------------------------------
+-- Unregistration
 
 unregister :: PackageDescription -> LocalBuildInfo -> IO ()
 unregister pkg_descr lbi = do
   setupMessage "Unregistering" pkg_descr
-  exitWith (ExitFailure 1)
+
+  when (compilerFlavor (compiler lbi) /= GHC) $
+	die ("only unregistering with GHC is implemented")
+	
+  rawSystemExit (compilerPkgTool (compiler lbi))
+	["--remove-package=" ++ showPackageId (package pkg_descr)]

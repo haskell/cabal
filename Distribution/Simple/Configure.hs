@@ -51,6 +51,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 import Distribution.Setup(ConfigFlags,CompilerFlavor(..), Compiler(..))
 import Distribution.Package(PackageDescription(..))
 import Distribution.Simple.Utils
+import Distribution.Package	( PackageIdentifier )
 
 import System.IO hiding (catch)
 import System.Exit
@@ -66,8 +67,17 @@ import HUnit
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {
-  	prefix	 :: String,
-	compiler :: Compiler
+  	prefix	    :: String,
+		-- ^ The installation directory (eg. @/usr/local@, or
+		-- @C:/Program Files/foo-1.2@ on Windows.
+	compiler    :: Compiler,
+		-- ^ The compiler we're building with
+	packageDeps :: [PackageIdentifier]
+		-- ^ Which packages we depend on, *exactly*,  The
+		-- 'PackageDescription' specifies a set of build dependencies
+		-- that must be satisfied in terms of version ranges.  This
+		-- field fixes those dependencies to the specific versions
+		-- available on this machine for this compiler.
   }
   deriving (Show, Read, Eq)
 
@@ -79,7 +89,7 @@ getPersistBuildConfig = do
   str <- readFile localBuildInfoFile
   let bi = read str
   evaluate bi `catch` \e -> 
-	die "error reading .setup-config; perhaps run ./Setup.lhs configure?"
+	die "error reading .setup-config; run ./Setup.lhs configure?\n"
   return bi
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
@@ -107,7 +117,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using compiler flavor: " ++ (show f')
         message $ "Using compiler: " ++ p'
         message $ "Using package tool: " ++ pkg
-	return LocalBuildInfo{prefix=prefix, compiler=compiler}
+	return LocalBuildInfo{prefix=prefix, compiler=compiler, packageDeps=[]}
 
 system_default_prefix PackageDescription{package=package} = 
 #ifdef mingw32_TARGET_OS
@@ -194,6 +204,6 @@ hunitTests = do
 	     "finding ghc, etc on simonMar's machine" ~: "failed" ~:
              (LocalBuildInfo "/usr" (Compiler GHC 
 	                    simonMarGHCLoc
- 			    (simonMarGHCLoc ++ "-pkg")))
+ 			    (simonMarGHCLoc ++ "-pkg")) [])
              ~=? simonMarGHC]]
 #endif
