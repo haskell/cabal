@@ -14,15 +14,22 @@ module Distribution.Simple.GHCPackageConfig (
 	GHCPackageConfig(..),
 	mkGHCPackageConfig,
 	defaultGHCPackageConfig,
-	showGHCPackageConfig
+	showGHCPackageConfig,
+        localPackageConfig
   ) where
 
 import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkImportDir)
+import Distribution.Simple.Utils(pathJoin)
 
 import Text.PrettyPrint.HughesPJ
+import System(getEnv)
 
+-- |Where ghc keeps the --user files.
+localPackageConfig :: IO FilePath
+localPackageConfig = do u <- getEnv "HOME"
+                        return $ pathJoin [u, ".ghc-packages"]
 -- -----------------------------------------------------------------------------
 -- GHC 6.2 PackageConfig type
 
