@@ -60,7 +60,7 @@ import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig
 
 import System(getEnv)
 
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -77,7 +77,8 @@ register pkg_descr lbi userInst = do
 
   case compilerFlavor (compiler lbi) of
    GHC -> do let pkg_config = mkGHCPackageConfig pkg_descr lbi
-             localConf <- GHC.localPackageConfig
+             (localConf, pkgConfExists) <- GHC.localPackageConfig
+             unless pkgConfExists $ writeFile localConf "[]\n"
              writeFile installedPkgConfigFile (showGHCPackageConfig pkg_config)
              rawSystemExit (compilerPkgTool (compiler lbi))
 	                     (["--auto-ghci-libs", "--add-package",

@@ -65,7 +65,7 @@ import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkg
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 
 -- base
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory)
 import System.Cmd(system)
@@ -111,7 +111,8 @@ tests :: [Test]
 tests = [TestLabel "testing the HUnit package" $ TestCase $ 
          do oldDir <- getCurrentDirectory
             setCurrentDirectory "test/HUnit-1.0"
-            pkgConf <- GHC.localPackageConfig
+            (pkgConf, pkgConfExists) <- GHC.localPackageConfig
+            unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg --config-file=" ++ pkgConf ++ " -r HUnit"
             system "make clean"
             system "make"
@@ -141,7 +142,8 @@ tests = [TestLabel "testing the HUnit package" $ TestCase $
             setCurrentDirectory oldDir,
 
          TestLabel "package A: configure GHC, sdist" $ TestCase $
-         do pkgConf <- GHC.localPackageConfig
+         do (pkgConf, pkgConfExists) <- GHC.localPackageConfig
+            unless pkgConfExists $ writeFile pkgConf "[]\n"
             system $ "ghc-pkg -r test --config-file=" ++ pkgConf
             setCurrentDirectory "test/A"
             system "make clean"
