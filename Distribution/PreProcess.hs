@@ -63,8 +63,20 @@ import System.IO (stderr, hPutStrLn)
 import Distribution.Compat.FilePath
 	(splitFileExt, joinFileName, joinFileExt)
 
--- |A preprocessor must fulfill this basic interface.  It can be an
--- external program, or just a function.
+-- |The interface to a preprocessor, which may be implemented using an
+-- external program, but need not be.  The arguments are the name of
+-- the input file, the name of the output file and a verbosity level.
+-- Here is a simple example that merely prepends a comment to the given
+-- source file:
+--
+-- > ppTestHandler :: PreProcessor
+-- > ppTestHandler inFile outFile verbose
+-- >     = do when (verbose > 0) $
+-- >            putStrLn (inFile++" has been preprocessed to "++outFile)
+-- >          stuff <- readFile inFile
+-- >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
+-- >          return ExitSuccess
+--
 type PreProcessor = FilePath  -- Location of the source file in need of preprocessing
                   -> FilePath -- Output filename
                   -> Int      -- verbose
@@ -254,6 +266,7 @@ ppNone name inFile _ _ = do
 ppSuffixes :: [ PPSuffixHandler ] -> [String]
 ppSuffixes = map fst
 
+-- |Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
   [ ("gc",     \ _ _ -> ppGreenCard)
