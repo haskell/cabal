@@ -1,4 +1,4 @@
-include-dirs: /foo/bar, /bang/baz
+include-dirs: /tmp, /etc
 extensions: CPP
 
 executable: withHooks
