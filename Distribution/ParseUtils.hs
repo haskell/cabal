@@ -271,9 +271,12 @@ parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
 
 showFilePath :: FilePath -> Doc
 showFilePath fpath
-	| all (\x -> isAlphaNum x || x `elem` "-+/_.") fpath = text fpath
-	| otherwise = doubleQuotes (text fpath)
-
+	| all (\x -> isAlphaNum x || x `elem` "-+/_.") fpath = text (replaceSlash fpath)
+	| otherwise = doubleQuotes (text (replaceSlash fpath))
+        where
+        replaceSlash s = case break (== '\\') s of
+                         (a, (h:t)) -> a ++ (h:h:(replaceSlash t))
+                         (a, []) -> a
 
 showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
 showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRange version)

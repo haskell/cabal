@@ -69,7 +69,7 @@ import Control.Monad(foldM, when)
 import Data.Char
 import Data.List(concatMap)
 import Data.Maybe(fromMaybe, fromJust)
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint.HughesPJ(text, render, ($$), empty, space, vcat, fsep)
 import System.Directory(doesFileExist)
 
 import Distribution.ParseUtils
@@ -429,7 +429,7 @@ binfoFields =
                            exposedModules     (\xs    binfo -> binfo{exposedModules=xs})
  , listField   "executable-modules"
                            text               parseModuleNameQ
-                           exposedModules     (\xs    binfo -> binfo{executableModules=xs})
+                           executableModules  (\xs    binfo -> binfo{executableModules=xs})
  , listField   "c-sources"
                            showFilePath       parseFilePathQ
                            cSources           (\paths binfo -> binfo{cSources=paths})
@@ -447,7 +447,7 @@ binfoFields =
                            includes           (\paths binfo -> binfo{includes=paths})
  , listField   "include-dirs"
                            showFilePath       parseFilePathQ
-                           includes           (\paths binfo -> binfo{includeDirs=paths})
+                           includeDirs        (\paths binfo -> binfo{includeDirs=paths})
  , simpleField "hs-source-dir"
                            showFilePath       parseFilePathQ
                            hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
