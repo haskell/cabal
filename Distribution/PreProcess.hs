@@ -43,9 +43,10 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
-import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
+import Distribution.Package (setupMessage, PackageDescription(..),
+                             BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (setupMessage, rawSystemPath, splitFilePath,
+import Distribution.Simple.Utils (rawSystemPath, splitFilePath,
                                   joinFilenameDir, joinExt, moduleToFilePath,
                                   sequenceMap, removeFiles, hasExt, pathJoin)
 import Control.Monad(when)

@@ -55,9 +55,9 @@ module Distribution.Simple.Install (
 #endif
 
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..),
-                             showPackageId, hasLibs)
+                             showPackageId, setupMessage, hasLibs)
 import Distribution.Simple.Configure(LocalBuildInfo(..))
-import Distribution.Simple.Utils(setupMessage, moveSources,
+import Distribution.Simple.Utils(moveSources,
                                  mkLibName, pathJoin,
                                  copyFile, die, createIfNotExists
                                 )

@@ -53,16 +53,18 @@ module Distribution.Package (
         Executable(..),
         emptyExecutable,
         allModules,
+        setupMessage,
+        withLib,
 #ifdef DEBUG
         hunitTests,
         test
 #endif
   ) where
 
-import Control.Monad(foldM, liftM)
+import Control.Monad(foldM, liftM, when)
 import Data.Char
 import Data.List(concatMap)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, fromJust)
 import Text.PrettyPrint.HughesPJ
 
 import Distribution.Version(Version(..), VersionRange(..),
@@ -70,6 +72,7 @@ import Distribution.Version(Version(..), VersionRange(..),
                             showVersionRange, parseVersionRange)
 import Distribution.Misc(License(..), Dependency(..), Extension(..))
 import Distribution.Setup(CompilerFlavor(..))
+import Distribution.Simple.Utils(currentDir)
 
 import Compat.H98
 import Compat.ReadP hiding (get)
@@ -156,9 +159,6 @@ data BuildInfo = BuildInfo {
     }
     deriving (Show,Read,Eq)
 
-currentDir :: FilePath
-currentDir = "."-- FIX: FileUtils.currentDir
-
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
                       buildDepends   = [],
@@ -192,6 +192,20 @@ emptyExecutable = Executable {
                       modulePath = "",
                       buildInfo = emptyBuildInfo
                      }
+
+-- ------------------------------------------------------------
+-- * Utils
+-- ------------------------------------------------------------
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.
+withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
+withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
+
+setupMessage :: String -> PackageDescription -> IO ()
+setupMessage msg pkg_descr = 
+   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+
 
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing

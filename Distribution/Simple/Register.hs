@@ -55,8 +55,8 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
-import Distribution.Package (PackageDescription(..), PackageIdentifier(..))
-import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
+import Distribution.Package (setupMessage, PackageDescription(..), PackageIdentifier(..))
+import Distribution.Simple.Utils (rawSystemExit, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig as GHC (localPackageConfig)
 

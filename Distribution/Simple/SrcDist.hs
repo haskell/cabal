@@ -50,9 +50,10 @@ module Distribution.Simple.SrcDist (
 #endif
   )  where
 
-import Distribution.Package(PackageDescription(..), BuildInfo(..), buildInfo, showPackageId)
+import Distribution.Package(PackageDescription(..), BuildInfo(..), buildInfo,
+                            setupMessage, showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage, moveSources, die, pathJoin, sequenceMap)
+import Distribution.Simple.Utils(moveSources, die, pathJoin, sequenceMap)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)

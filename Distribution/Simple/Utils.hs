@@ -49,7 +49,6 @@ module Distribution.Simple.Utils (
 	isPathSeparator,
         pathSeparatorStr,
         split,
-	setupMessage,
 	die,
 	findBinary,
 	rawSystemPath,
@@ -63,10 +62,10 @@ module Distribution.Simple.Utils (
         copyFile,
         pathJoin,
         removeFileRecursive,
-        withLib,
         sequenceMap,
         removeFiles,
         hasExt,
+        currentDir,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -75,9 +74,6 @@ module Distribution.Simple.Utils (
 #if __GLASGOW_HASKELL__ < 603 
 #include "config.h"
 #endif
-
-import Distribution.Package (PackageDescription(..), showPackageId,
-                             BuildInfo(..), hasLibs)
 
 import Control.Monad(when, unless, liftM, mapM)
 import Data.List(nub, intersperse, findIndices)
@@ -242,10 +238,6 @@ parsePath path = split pathSep path
 -- -----------------------------------------------------------------------------
 -- Utils for setup
 
-setupMessage :: String -> PackageDescription -> IO ()
-setupMessage msg pkg_descr = 
-   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
-
 die :: String -> IO a
 die msg = do hFlush stdout; hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
 
@@ -390,6 +382,10 @@ moveSources pref _targetDir sources searchSuffixes
                              >> exitWith (ExitFailure 1))
                    return p
 
+-- |The path name that represents the current directory.  May be
+-- system-specific.  In Unix, it's "." FIX: What about other arches?
+currentDir :: FilePath
+currentDir = "."
 
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
@@ -492,12 +488,6 @@ filesWithExtensions :: FilePath -- ^Directory to look in
 filesWithExtensions dir extension 
     = do allFiles <- getDirectoryContents dir
          return $ filter ((flip hasExt) extension) allFiles
-
-
--- |If the package description has a library section, call the given
---  function with the library build info as argument.
-withLib :: PackageDescription -> (BuildInfo -> IO ()) -> IO ()
-withLib pkg_descr f = when (hasLibs pkg_descr) $ f (fromJust (library pkg_descr))
 
 sequenceMap :: (Monad m) => (a -> m b) -> [a] -> m [b]
 sequenceMap f l = sequence $ map f l

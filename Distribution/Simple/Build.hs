@@ -50,15 +50,14 @@ module Distribution.Simple.Build (
 import Distribution.Misc (extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.Package (PackageIdentifier(..), PackageDescription(..),
-                             BuildInfo(..), showPackageId, Executable(..))
+                             BuildInfo(..), showPackageId, setupMessage,
+                             withLib, Executable(..))
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
-import Distribution.Simple.Utils (rawSystemExit, setupMessage,
-                                  die, rawSystemPathExit,
+import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   split, createIfNotExists,
                                   mkLibName, pathJoin, 
-                                  splitFilePath, joinFilenameDir, joinExt,
-                                  withLib
+                                  splitFilePath, joinFilenameDir, joinExt
                                  )
 
 
