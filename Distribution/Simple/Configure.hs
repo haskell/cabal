@@ -47,6 +47,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
  			  	      configure,
                                       localBuildInfoFile,
                                       exeDeps,
+				      buildDepToDep,
 #ifdef DEBUG
                                       hunitTests
 #endif
