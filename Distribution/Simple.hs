@@ -62,7 +62,7 @@ import Distribution.Simple.Register	( register, unregister )
 import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 				     configure, writePersistBuildConfig)
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die)
+import Distribution.Simple.Utils (die, pathSeperatorStr)
 import Distribution.Misc (License(..))
 import Distribution.Version (Version(..))
 
@@ -89,6 +89,9 @@ doBuildInstall f pkgConf
 defaultMain :: PackageDescription -> IO ()
 defaultMain pkg_descr
     = do args <- getArgs
+         let distPref = "dist"
+         let buildPref = distPref ++ pathSeperatorStr ++ "build"
+         let srcPref = distPref ++ pathSeperatorStr ++ "src"
          case parseArgs args of
 	     Right (HelpCmd, _) -> hPutStr stderr (optionHelpString helpprefix)
 
@@ -100,18 +103,18 @@ defaultMain pkg_descr
              Right (BuildCmd, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		build pkg_descr localbuildinfo
+		build buildPref pkg_descr localbuildinfo
 
              Right (InstallCmd install_prefixM userInst, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo install_prefixM
+		install buildPref pkg_descr localbuildinfo install_prefixM
                 when (isNothing install_prefixM) (register pkg_descr localbuildinfo userInst)
 
              Right (SDistCmd, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
-		sdist pkg_descr localbuildinfo
+		sdist srcPref distPref pkg_descr localbuildinfo
 
              Right (RegisterCmd userFlag, extra_flags) -> do
 		no_extra_flags extra_flags

@@ -1,4 +1,4 @@
-module Main where
+module A where
 a = 42 :: Int
 
 main = print a

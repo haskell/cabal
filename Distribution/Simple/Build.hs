@@ -53,7 +53,9 @@ import Distribution.Package (PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo, compiler)
 import Distribution.Simple.Utils (rawSystemExit, setupMessage,
                                   die, rawSystemPathExit,
-                                  pathSeperatorStr, split, createIfNotExists)
+                                  pathSeperatorStr, split, createIfNotExists,
+                                  mkLibName
+                                 )
 
 
 import Control.Monad (when)
@@ -66,10 +68,10 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- Build the library
 
-build :: PackageDescription -> LocalBuildInfo -> IO ()
-build pkg_descr lbi = do
+build :: FilePath -- ^Build location
+         -> PackageDescription -> LocalBuildInfo -> IO ()
+build pref pkg_descr lbi = do
   setupMessage "Building" pkg_descr
-  let pref = ("dist" ++ pathSeperatorStr ++ "build")
   createIfNotExists True pref
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pref pkg_descr lbi
@@ -99,8 +101,8 @@ buildGHC pref pkg_descr lbi = do
 
   -- now, build the library
   let objs = map (++objsuffix) (map dotToSep (allModules pkg_descr))
-      lib  = mkLibName (showPackageId (package pkg_descr))
-  rawSystemPathExit "ar" (["q", lib] ++ (map (pref ++) objs))
+      lib  = mkLibName pref (showPackageId (package pkg_descr))
+  rawSystemPathExit "ar" (["q", lib] ++ (map ((pref ++ pathSeperatorStr) ++) objs))
 
 constructGHCCmdLine :: FilePath -> PackageDescription -> LocalBuildInfo -> [String]
 constructGHCCmdLine pref pkg_descr _ = 
@@ -124,9 +126,6 @@ objsuffix = ".obj"
 #else
 objsuffix = ".o"
 #endif
-
-mkLibName :: String -> String
-mkLibName lib = "libHS" ++ lib ++ ".a"
 
 dotToSep :: String -> String
 dotToSep s = concat $ intersperse pathSeperatorStr (split '.' s)
