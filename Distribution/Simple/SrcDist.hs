@@ -51,6 +51,6 @@ import System.IO
 import System.Exit
 
 sdist :: PackageDescription -> LocalBuildInfo -> IO ()
-sdist pkg_descr lbi = do
+sdist pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
   exitWith (ExitFailure 1)

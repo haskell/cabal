@@ -80,11 +80,11 @@ split c s = case rest of
   where (chunk, rest) = break (==c) s
 
 split_longest_prefix :: String -> (Char -> Bool) -> (String,String)
-split_longest_prefix s pred
+split_longest_prefix s pred'
   = case pre of
 	[]      -> ([], reverse suf)
-	(_:pre) -> (reverse pre, reverse suf)
-  where (suf,pre) = break pred (reverse s)
+	(_:pre') -> (reverse pre', reverse suf)
+  where (suf,pre) = break pred' (reverse s)
 
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =

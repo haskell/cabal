@@ -63,6 +63,7 @@ data GHCPackageConfig
 	extra_frameworks:: [String]  -- ignored everywhere but on Darwin/MacOS X
      }
 
+defaultGHCPackageConfig :: GHCPackageConfig
 defaultGHCPackageConfig
    = GHCPackage {
 	name = error "defaultPackage",
@@ -107,7 +108,7 @@ showGHCPackageConfig pkg = render $
       ])))
 
 dumpField :: String -> [String] -> Doc
-dumpField name val = hang (text name <+> equals) 2  (dumpFieldContents val)
+dumpField name' val = hang (text name' <+> equals) 2  (dumpFieldContents val)
 
 dumpFieldContents :: [String] -> Doc
 dumpFieldContents val = brackets (sep (punctuate comma (map (text . show) val)))

@@ -44,15 +44,14 @@ module Distribution.Simple.Build (
 	build
   ) where
 
-import Distribution.Setup
-import Distribution.Package
-import Distribution.Simple.Configure
-import Distribution.Simple.Utils
+import Distribution.Misc (Extension)
+import Distribution.Setup (CompilerFlavor(..), compilerFlavor, compilerPath)
+import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Simple.Configure (LocalBuildInfo, compiler)
+import Distribution.Simple.Utils (rawSystemExit, setupMessage,
+                                  die, rawSystemPathExit)
 
-import System.IO
-import System.Exit
-import System.Cmd (rawSystem)
-import Control.Monad
+import Control.Monad (when)
 
 -- -----------------------------------------------------------------------------
 -- Build the library
@@ -78,7 +77,7 @@ build pkg_descr lbi = do
   rawSystemPathExit "ar" (["q", lib] ++ objs)
 
 constructGHCCmdLine :: PackageDescription -> LocalBuildInfo -> [String]
-constructGHCCmdLine pkg_descr lbi = 
+constructGHCCmdLine pkg_descr _ = 
   [
     "--make",
     "-package-name", showPackageId (package pkg_descr)
@@ -87,6 +86,7 @@ constructGHCCmdLine pkg_descr lbi =
   ++ [ opt | (GHC,opts) <- options pkg_descr, opt <- opts ]
   ++ allModules pkg_descr
 
+extensionsToGHCFlag :: [ Extension ] -> [String]
 extensionsToGHCFlag _ = [] -- ToDo
 
 #ifdef mingw32_TARGET_OS
@@ -95,6 +95,7 @@ objsuffix = ".obj"
 objsuffix = ".o"
 #endif
 
+mkLibName :: String -> String
 mkLibName lib = "libHS" ++ lib ++ ".a"
 
   -- ToDo: includes, includeDirs

@@ -54,7 +54,7 @@ import Distribution.Simple.Utils(setupMessage)
 import System.Exit
 
 install :: PackageDescription -> LocalBuildInfo -> IO ()
-install pkg_descr localbuildinfo = do
+install pkg_descr _ = do
   setupMessage "Installing" pkg_descr
   exitWith (ExitFailure 1)
 

@@ -65,7 +65,6 @@ import Distribution.Misc (License(..))
 import Distribution.Version (Version(..))
 
 import System.IO
-import Control.Monad	( when )
 import Data.List	( intersperse )
 
 -- |Reads local build info, executes function
@@ -92,7 +91,7 @@ defaultMain pkg_descr
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo
 
-             Right (InstallCmd maybe_install_prefix, extra_flags) -> do
+             Right (InstallCmd _, extra_flags) -> do
 		no_extra_flags extra_flags
 		localbuildinfo <- getPersistBuildConfig
 		install pkg_descr localbuildinfo
@@ -117,6 +116,7 @@ defaultMain pkg_descr
 		hPutStr stderr (optionHelpString helpprefix)
          return ()
 
+no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
   die ("Unrecognised flags: " ++ concat (intersperse "," (extra_flags)))

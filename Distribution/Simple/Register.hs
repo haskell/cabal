@@ -46,17 +46,13 @@ module Distribution.Simple.Register (
 	unregister,
   ) where
 
-import Distribution.Simple.Configure
-import Distribution.Setup
-import Distribution.Package
-import Distribution.InstalledPackageInfo(InstalledPackageInfo)
-import Distribution.Simple.Utils
-import Distribution.Simple.GHCPackageConfig
+import Distribution.Simple.Configure (LocalBuildInfo, compiler)
+import Distribution.Setup (CompilerFlavor(..), Compiler(..))
+import Distribution.Package (PackageDescription, package, showPackageId)
+import Distribution.Simple.Utils (setupMessage, rawSystemExit, die)
+import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 
-import System.IO
-import System.Exit
-
-import Control.Monad
+import Control.Monad (when)
 
 -- -----------------------------------------------------------------------------
 -- Registration

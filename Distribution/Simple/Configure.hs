@@ -56,7 +56,6 @@ import Distribution.Package	( PackageIdentifier )
 import System.IO hiding (catch)
 import System.Exit
 import System.Directory
-import System.Environment	( getEnv )
 import Control.Monad		( when )
 import Control.Exception	( catch, evaluate )
 import Prelude hiding (catch)
@@ -88,7 +87,7 @@ getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   str <- readFile localBuildInfoFile
   let bi = read str
-  evaluate bi `catch` \e -> 
+  evaluate bi `catch` \_ -> 
 	die "error reading .setup-config; run ./Setup.lhs configure?\n"
   return bi
 
@@ -119,6 +118,7 @@ configure pkg_descr (maybe_hc_flavor, maybe_hc_path, maybe_prefix)
         message $ "Using package tool: " ++ pkg
 	return LocalBuildInfo{prefix=prefix, compiler=compiler, packageDeps=[]}
 
+system_default_prefix :: PackageDescription -> String
 system_default_prefix PackageDescription{package=package} = 
 #ifdef mingw32_TARGET_OS
   "C:\Program Files\" ++ pkgName package
@@ -132,13 +132,13 @@ system_default_prefix PackageDescription{package=package} =
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> PackageDescription
   -> IO Compiler
 
-configCompiler (Just flavor) (Just path) pkg_descr
+configCompiler (Just flavor) (Just path) _
   = do pkgtool <- guessPkgToolFromHCPath flavor path
        return (Compiler{compilerFlavor=flavor,
 			compilerPath=path,
 			compilerPkgTool=pkgtool})
 
-configCompiler (Just flavor) Nothing pkg_descr
+configCompiler (Just flavor) Nothing _
   = do path <- findCompiler flavor
        pkgtool <- guessPkgToolFromHCPath flavor path
        return (Compiler{compilerFlavor=flavor,
@@ -168,10 +168,12 @@ findCompiler flavor = do
 		   return path
    -- ToDo: check that compiler works? check compiler version?
 
+compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
 compilerBinaryName NHC  = "nhc98"
 compilerBinaryName Hugs = "hugs"
 
+compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "nhc98-pkg"
 compilerPkgToolName Hugs = "hugs-package"
@@ -188,6 +190,7 @@ guessPkgToolFromHCPath flavor path
        message $ "found package tool in " ++ pkgtool
        return pkgtool
 
+message :: String -> IO ()
 message s = putStrLn $ "configure: " ++ s
 
 -- -----------------------------------------------------------------------------

@@ -140,9 +140,9 @@ parseArgs args
     parseInstall  _ _
 	= commandSyntaxError "install"
 
-    noFlags str cmd [] unkFlags 
+    noFlags _ cmd [] unkFlags 
 	= Right (cmd, unkFlags)
-    noFlags str cmd _ unkFlags
+    noFlags str _ _ _
 	= commandSyntaxError str
 
     commandSyntaxError c = Left ["Syntax error for command: " ++ c]
@@ -151,7 +151,7 @@ parseArgs args
     isInstallPrefix (InstPrefix _) = True
     isInstallPrefix _              = False
 
--- Converts the abstract "flag" type to a more concrete type.
+-- |Converts the abstract "flag" type to a more concrete type.
 getConfigFlags :: [Flag] -> Either String ConfigFlags
 getConfigFlags flags
     = do flavor  <- getOneOpt [f | Just f <- map convert flags]
