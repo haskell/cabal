@@ -87,7 +87,7 @@ import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (try)
 import System.Console.GetOpt
-import Distribution.Compat.FilePath(joinFileName)
+import Distribution.Compat.FilePath(joinFileName, joinPaths)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -214,7 +214,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preCopy args mprefix
                 no_extra_flags args
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo mprefix
+		install pkg_descr localbuildinfo (mJoinPaths mprefix (prefix localbuildinfo))
                 postHook postCopy
 
             InstallCmd uInst -> do
@@ -255,6 +255,9 @@ defaultMainWorker pkg_descr_in action args hooks
 		unregister pkg_descr localbuildinfo
                 postHook postUnreg
         where
+        mJoinPaths :: Maybe FilePath -> FilePath -> Maybe FilePath
+        mJoinPaths f1 f2 = do f1' <- f1
+                              return $ joinPaths f1' f2
         hookOrInput :: (UserHooks -> (b -> IO (Maybe PackageDescription)))
                     -> b
                     -> IO PackageDescription

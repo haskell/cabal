@@ -295,7 +295,7 @@ copyCmd = Cmd {
         cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the copy-prefix flag, configure determines location.\n",
         cmdOptions     = [cmd_help,
            Option "" ["copy-prefix"] (ReqArg InstPrefix "DIR")
-               "specify the directory in which to place installed files"
+               "specify the directory in which to place installed files, prepended to configure-time install path"
            ],
         cmdAction      = CopyCmd Nothing
         }
