@@ -1,10 +1,13 @@
 -- This module is meant to be local-only to Distribution...
 
-module UseConfig where
+module Distribution.UseConfig where
+
+import Distribution.Misc(License, Dependency, Opt)
+import Distribution.Package(PackageIdentifier)
 
 data UseConfig
    = UseConfig {
-        pkgIdent        :: PkgIdentifier,
+        pkgIdent        :: PackageIdentifier,
         license         :: License,
         copyright       :: String,
         maintainer      :: String,

@@ -44,7 +44,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Package(PackageIdentifier(..),
                             PackageDescription(..),
                             PackageConfig(..))
-    where
+
+where
+
+import Distribution.Version(Version)
+import Distribution.Misc(License, Dependency, Extension, Compiler)
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
@@ -58,7 +62,7 @@ data PackageDescription
                            stability    :: String}
 
 data PackageConfig
-    =  PackageConfig {packageDescription :: Packagedescription,
+    =  PackageConfig {packageDescription :: PackageDescription,
                       buildDepends :: [ Dependency ],
                       sources      :: [ FilePath ],
                       extensions   :: [ Extension ],
