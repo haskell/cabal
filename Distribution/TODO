@@ -1,9 +1,11 @@
 * 0.1
 ** Build executables for mainModules
+** if library is Nothing, then don't build the library. sanity check
+   for both library and executables == nothing.
 ** Extensions
 - complain if their use makes the code non-portable?
 - constructorless data-types
-- parsing for the options isn't yet implemented?
+** clean up "make install"
 ** grep for "FIX"
 ** does clean remove installed-pkg-config and .setup-config or
    whatever? 
@@ -13,7 +15,6 @@
 ** add "clean" to doc?
 ** add description file format to doc.
 ** Change name of Setup.description?
-** build ghci libraries
 
 * 1.0 
 ** HC-PKG (see "Depends on HC-PKG" below)
