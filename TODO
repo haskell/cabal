@@ -1,6 +1,12 @@
 * misc
-
+** make debian watchfile
+** postinst, test, copy?
+** multiple libraries?
+** find a real test case that uses preprocessors
+** sync w/ GHC distro
+** add noregister and nopostinst flags to install?
 ** unregistering the package, etc
+*** --user flag to unregister
 
 *** think about HC-PKG's role here. maybe HC-PKG should do all this
    instead
@@ -11,7 +17,6 @@
    command?
 *** Add a flag to configure to specify where to put them?
 
-** integrate w/ GHC distro
 
 ** Preprocessors
 *** hscpp extensions
@@ -23,7 +28,6 @@
 - no way to tell Hugs to turn packages on or off
 - no register / unregister for hugs
 
-** find a real test case that uses a preprocessor
 
 ** for a source tarball:?
 - if there's a flag, --include-preprocessed-sources (or something
@@ -38,7 +42,6 @@
 ** Compatibility
 *** add information for compiling w/ nhc
 *** add install target for nhc
-*** Make runhugs stuff work
 *** verify windows test suite
 *** Better way to find 'tar'; is there a library? what does darcs do?
 
