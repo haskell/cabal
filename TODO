@@ -1,7 +1,7 @@
 * misc
 
 * Fix up sdist! 
-* Write tests for make and hugs
+* Write tests for hugs
 
 * Write semantic checker for package description file.  start w/
    sanity checker.  give error if buildInfo field given when no
