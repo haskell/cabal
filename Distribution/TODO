@@ -2,11 +2,17 @@
 ** Extensions -> flags interface
 
 ** parse pkg.desc
-** build
-** install
+** build (for NHC and Hugs)
+** install (for GHC and NHC) - look for .o and .hi, register, etc
 
-*** Installation for hugs-style (just copy source) is implemented.
-    also must implement for {g,n}hc style where we look for .o and .hi.
+** for fields like allModules, allow user to specify "Foo.Bar.*" or
+   something to indicate all haskell modules under that?
+
+** SDist for windows machines, or machines without tar.
+** Better way to find 'tar'; is there a library?
+** sign flag?
+
+** grep for "FIX".
 
 ** register
 ** generate InstalledPackageInfo
