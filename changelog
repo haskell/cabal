@@ -2,6 +2,9 @@
 
 0.3  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
 
+	* Much thanks to all the awesome fptools hackers who have been
+	working hard to build the Haskell Cabal!
+
 	* Interface Changes:
 
 	** WARNING: this is a pre-release and the interfaces are still
