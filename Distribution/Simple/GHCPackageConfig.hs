@@ -18,7 +18,7 @@ module Distribution.Simple.GHCPackageConfig (
         localPackageConfig
   ) where
 
-import Distribution.Package (PackageDescription(..), showPackageId)
+import Distribution.Package (PackageDescription(..), BuildInfo(..), showPackageId)
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (mkImportDir)
 import Distribution.Simple.Utils(pathJoin)
@@ -44,9 +44,9 @@ mkGHCPackageConfig pkg_descr lbi
 	import_dirs     = [mkImportDir pkg_descr lbi],
 	library_dirs     = [mkImportDir pkg_descr lbi],
 	hs_libraries    = ["HS"++pkg_name],
-	extra_libraries = extraLibs pkg_descr,
-	include_dirs    = includeDirs pkg_descr,
-	c_includes      = includes pkg_descr,
+	extra_libraries = maybe [] extraLibs (library pkg_descr),
+	include_dirs    = maybe [] includeDirs (library pkg_descr),
+	c_includes      = maybe [] includes (library pkg_descr),
 	package_deps    = map showPackageId (packageDeps lbi)
     }
  where
