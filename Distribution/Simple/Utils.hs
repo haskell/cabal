@@ -358,7 +358,7 @@ defaultPackageDesc :: IO FilePath
 defaultPackageDesc = getCurrentDirectory >>= findPackageDesc
 
 -- |Find a package description file in the given directory.  Looks for
--- .cabal files.
+-- @.cabal@ files.
 findPackageDesc :: FilePath    -- ^Where to look
                 -> IO FilePath -- <pkgname>.cabal
 findPackageDesc p = do ls <- getDirectoryContents p
@@ -416,8 +416,8 @@ hunitTests
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
 
-        TestCase (do files <- filesWithExtensions "." "description"
-                     assertEqual "filesWithExtensions" "Setup.description" (head files))
+        TestCase (do files <- filesWithExtensions "." "cabal"
+                     assertEqual "filesWithExtensions" "Cabal.cabal" (head files))
 #endif
           ]
 
