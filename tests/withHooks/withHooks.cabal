@@ -1,5 +1,8 @@
 Name: withHooks
 Version: 1.0
+copyright: filler for test suite
+maintainer: filler for test suite
+synopsis: filler for test suite
 exposed-modules: Main, C, D
 
 Executable: withHooks

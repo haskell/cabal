@@ -1,6 +1,9 @@
 Name: test
 Version: 1.0
 hs-source-dir: libs
+copyright: filler for test suite
+maintainer: filler for test suite
+synopsis: filler for test suite
 exposed-modules: A
 
 Executable: mainForA
