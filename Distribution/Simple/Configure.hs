@@ -73,7 +73,7 @@ import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage)
 import Distribution.Simple.Utils (die, withTempFile,maybeExit)
-import Distribution.Version (Version(..), Dependency(..),
+import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, withinRange,
 			     showVersionRange)
 
@@ -167,11 +167,10 @@ configure pkg_descr cfg
         reportProgram "hsc2hs"  hsc2hs
         reportProgram "cpphs"   cpphs
         -- FIXME: currently only GHC has hc-pkg
-        dep_pkgs <- if f' == GHC then do
+        dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
             ipkgs <-  getInstalledPackages comp (configUser cfg)
 	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
-          else return [PackageIdentifier pname (Version [] []) |
-                       Dependency pname _ <- buildDepends pkg_descr]
+          else return $ map setDepByVersion (buildDepends pkg_descr)
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
                               packageDeps=dep_pkgs,
@@ -179,6 +178,17 @@ configure pkg_descr cfg
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withCpphs=cpphs
                              }
+
+-- |Converts build dependencies to a versioned dependency.  only sets
+-- version information for exact versioned dependencies.
+setDepByVersion :: Dependency -> PackageIdentifier
+
+-- if they specify the exact version, use that:
+setDepByVersion (Dependency s (ThisVersion v)) = PackageIdentifier s v
+
+-- otherwise, just set it to empty
+setDepByVersion (Dependency s _) = PackageIdentifier s (Version [] [])
+
 
 -- |Return the explicit path if given, otherwise look for the program
 -- name in the path.
