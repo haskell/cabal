@@ -169,7 +169,7 @@ parsePackageDesc :: FilePath -> IO PackageDescription
 parsePackageDesc p = do h <- openFile p ReadMode
                         str <- hGetContents h
                         case parseDescription str of
-                          Left  e -> error (show e) -- FIXME
+                          Left  e -> error (showError e) -- FIXME
                           Right x -> return x
 
 data PError = Parsec ParseError | FromString String
@@ -177,6 +177,9 @@ data PError = Parsec ParseError | FromString String
 
 instance Error PError where
         strMsg = FromString
+
+showError (Parsec pe)    = show pe
+showError (FromString s) = s
 
 parseDescription :: String -> Either PError PackageDescription
 parseDescription inp = do let (st:sts) = splitStanzas inp
