@@ -56,7 +56,7 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..),
-	setupMessage, hasLibs, withLib)
+	setupMessage, hasLibs, withLib, libModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(moveSources, rawSystemExit,
@@ -110,9 +110,9 @@ installExeGhc pref buildPref pkg_descr
 installLibGHC :: FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLibGHC pref buildPref PackageDescription{library=Just l,
+installLibGHC pref buildPref pd@PackageDescription{library=Just l,
                                                 package=p}
-    = do moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (modules l) ["hi"]
+    = do moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (libModules pd) ["hi"]
          copyFile (mkLibName buildPref (showPackageId p))
                     (mkLibName pref (showPackageId p))
 
@@ -120,8 +120,8 @@ installLibGHC pref buildPref PackageDescription{library=Just l,
 installHugs :: FilePath -- ^Install location
             -> FilePath -- ^Build location
             -> PackageDescription -> IO ()
-installHugs pref buildPref PackageDescription{library=Just l}
-    = moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (modules l) ["lhs", "hs"]
+installHugs pref buildPref pd@PackageDescription{library=Just l}
+    = moveSources (buildPref `joinFileName` (hsSourceDir l)) pref (libModules pd) ["lhs", "hs"]
 
 -- -----------------------------------------------------------------------------
 -- Installation policies

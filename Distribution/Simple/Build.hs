@@ -50,7 +50,8 @@ module Distribution.Simple.Build (
 import Distribution.Extension (extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), 
-			     		setupMessage, withLib, Executable(..))
+			     		setupMessage, withLib, Executable(..),
+                                        libModules)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Configure (LocalBuildInfo(..), compiler, exeDeps)
@@ -100,7 +101,7 @@ buildNHC pkg_descr lbi = do
                 ++ flags
                 ++ [ opt | (NHC,opts) <- maybe [] options (library pkg_descr),
                            opt <- opts ]
-                ++ maybe [] modules (library pkg_descr))
+                ++ (libModules pkg_descr))
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
 -- it to the command-line.
@@ -118,8 +119,8 @@ buildGHC pref pkg_descr lbi = do
                   "-hidir", pref `joinFileName` (hsSourceDir buildInfo')
                  ]
               ++ constructGHCCmdLine buildInfo' (packageDeps lbi)
-              ++ modules buildInfo'
-      unless (null (modules buildInfo')) $
+              ++ (exposedModules buildInfo' ++ hiddenModules buildInfo')
+      unless (null (hiddenModules buildInfo' ++ exposedModules buildInfo')) $
         rawSystemExit ghcPath args
 
       -- build any C sources
@@ -131,7 +132,7 @@ buildGHC pref pkg_descr lbi = do
 
       -- link:
       let hObjs = [ (hsSourceDir buildInfo') `joinFileName` (dotToSep x) `joinFileExt` objsuffix
-                  | x <- modules buildInfo' ]
+                  | x <- exposedModules buildInfo' ++ hiddenModules buildInfo' ]
           cObjs = [ path `joinFileName` file `joinFileExt` objsuffix
                   | (path, file, _) <- (map splitFilePath (cSources buildInfo')) ]
           lib  = mkLibName pref (showPackageId (package pkg_descr))
@@ -166,9 +167,9 @@ constructGHCCmdLine buildInfo' deps =
 buildHugs :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildHugs pref pkg_descr lbi
     = do -- move library-related source files into place.
-         withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir, modules=mods} -> 
+         withLib pkg_descr (\buildInfo@BuildInfo{hsSourceDir=srcDir} -> 
                                do let targetDir = pref `joinFileName` (hsSourceDir buildInfo)
-                                  moveSources srcDir pref mods ["hs", "lhs"]
+                                  moveSources srcDir pref (libModules pkg_descr) ["hs", "lhs"]
                            )
 
 

@@ -2,6 +2,6 @@ Name: HUnit
 Version: 1.0
 License: AllRightsReserved
 Build-Depends: haskell-src
-Modules: HUnitText, HUnit, HUnitLang, HUnitTestBase, Terminal, HUnitBase
+Hidden-Modules: HUnitText, HUnitLang, HUnitTestBase, Terminal, HUnitBase
 Exposed-Modules: HUnit
 HS-Source-Dir: src

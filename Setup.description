@@ -3,13 +3,7 @@ Version: 0.2
 License: AllRightsReserved
 build-depends: haskell-src, posix
 Extensions: CPP
-Modules:
-        Distribution.Compat.Error,
-        Distribution.Compat.Exception,
-        Distribution.Compat.RawSystem,
-        Distribution.Compat.ReadP,
-        Distribution.Compat.FilePath,
-        Distribution.Compat.Directory,
+Exposed-Modules:
         Distribution.Simple,
         Distribution.Simple.Build,
         Distribution.Simple.Install,
@@ -29,3 +23,10 @@ Modules:
         Distribution.ParseUtils,
         Distribution.Make,
         Distribution.PreProcess
+Hidden-Modules:
+        Distribution.Compat.Error,
+        Distribution.Compat.Exception,
+        Distribution.Compat.RawSystem,
+        Distribution.Compat.ReadP,
+        Distribution.Compat.FilePath,
+        Distribution.Compat.Directory

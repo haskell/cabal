@@ -51,7 +51,7 @@ module Distribution.Simple.SrcDist (
   )  where
 
 import Distribution.PackageDescription
-	(PackageDescription(..), BuildInfo(..), buildInfo, setupMessage)
+	(PackageDescription(..), BuildInfo(..), buildInfo, setupMessage, biModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Utils(moveSources, die, sequenceMap)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
@@ -94,11 +94,11 @@ prepareDir :: FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
            -> BuildInfo
            -> IO ()
-prepareDir inPref pps BuildInfo{hsSourceDir=srcDir, modules=mods}
+prepareDir inPref pps bi@BuildInfo{hsSourceDir=srcDir}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps
-         moveSources srcDir pref mods suff
-         removePreprocessed pref mods suff
+         moveSources srcDir pref (biModules bi) suff
+         removePreprocessed pref (biModules bi) suff
 
 ------------------------------------------------------------
 
