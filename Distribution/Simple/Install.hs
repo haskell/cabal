@@ -45,21 +45,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Install (
 	install,
 	mkImportDir,
-        hunitTests,
   ) where
 
 import Distribution.Package
 import Distribution.Simple.Configure(LocalBuildInfo(..))
-import Distribution.Simple.Utils(setupMessage)
+import Distribution.Simple.Utils(setupMessage, moveSources)
 
-import Control.Monad(when)
-import Data.List(inits, nub, intersperse, findIndices)
-import Data.Maybe(Maybe, listToMaybe, isNothing, fromJust)
 import System.Cmd(system)
 import System.Directory(doesDirectoryExist, createDirectory, doesFileExist)
 import System.Exit
-
-import HUnit ((~:), (~=?), Test(..))
 
 -- |FIX: for now, only works with hugs or sdist-style
 -- installation... must implement for .hi files and such...  how do we
@@ -81,134 +75,3 @@ mkImportDir pkg_descr lbi =
 #endif
   where 
 	pkg_name = showPackageId (package pkg_descr)
-
--- |Put the source files into the right directory in preperation for
--- something like sdist or installHugs.
-moveSources :: FilePath   -- ^Target directory
-            -> [String] -- ^Modules
-            -> [String] -- ^Main modules
-            -> IO ()
-moveSources _targetDir sources mains
-    = do let targetDir = maybeAddSep _targetDir
-         createIfNotExists True targetDir
-	 -- Create parent directories for everything:
-         sourceLocs <- sequence $ map moduleToFPErr (sources ++ mains)
-	 mapM (createIfNotExists True)
-		  $ nub [(removeFilename $ targetDir ++ x)
-		   | x <- sourceLocs, (removeFilename x /= "")]
-	 -- Put sources into place:
-	 mapM system ["cp -r " ++ x ++ " " ++ targetDir ++ x
-				  | x <- sourceLocs]
-	 return ()
-    where moduleToFPErr m
-              = do p <- moduleToFilePath m
-                   when (isNothing p)
-                            (putStrLn ("Error: Could not find module: " ++ m)
-                             >> exitWith (ExitFailure 1))
-                   return $ fromJust p
-
--- ------------------------------------------------------------
--- * utility functions
--- ------------------------------------------------------------
-
--- |FIX: Do we actually have to make something differnet for windows,
--- or does this work?
-pathSeperator :: Char
-pathSeperator = '/'
-
-pathSeperatorStr :: String
-pathSeperatorStr = [pathSeperator]
-
-createIfNotExists :: Bool     -- ^Create its parents too?
-		  -> FilePath -- ^The path to the directory you want to make
-		  -> IO ()
-createIfNotExists parents file
-    = do b <- doesDirectoryExist file
-	 case (b,parents, file) of 
-		  (_, _, "")    -> return ()
-		  (True, _, _)  -> return()
-		  (_, True, _)  -> createDirectoryParents file
-		  (_, False, _) -> createDirectory file
-
--- |like mkdir -p.  Create this directory and its parents
-createDirectoryParents :: FilePath -> IO()
-createDirectoryParents file
-    = mapM_ (createIfNotExists False) (pathInits file)
-
--- |Get this path and all its parents.
-pathInits :: FilePath -> [FilePath]
-pathInits path
-    = map (concat . intersperse pathSeperatorStr)
-      (inits $ mySplit pathSeperator path)
-
--- |Give a list of lists breaking apart elements who match the given criteria
-
---  > mySplit '.' "foo.bar.bang" => ["foo","bar","bang"] :: [[Char]]
-mySplit :: Eq a => a -> [a] -> [[a]]
-mySplit a l = let (upto, rest) = break (== a) l
-		  in if null rest
-		     then [upto]
-		     else upto:(mySplit a (tail rest))
-
--- |Find the last slash and remove it and everything after it. Turns
--- Foo/Bar.lhs into Foo
-removeFilename :: FilePath -> FilePath
-removeFilename path
-    = case findIndices (== pathSeperator) path of
-      [] -> path
-      l  -> fst $ splitAt (maximum l) path
-
--- |If this filename doesn't end in the path separator, add it.
-maybeAddSep :: FilePath -> FilePath
-maybeAddSep [] = []
-maybeAddSep p = if last p == pathSeperator then p else p ++ pathSeperatorStr
-
--- |Get the file path for this particular module.  In the IO monad
--- because it looks for the actual file.  Might eventually interface
--- with preprocessor libraries in order to correctly locate more
--- filenames.
--- Returns Nothing if the file doesn't exist.
-
-moduleToFilePath :: String   -- ^Module Name
-                 -> IO (Maybe FilePath)
-
-moduleToFilePath s
-    = do let possiblePaths = moduleToPossiblePaths s
-         matchList <- sequence $ map (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
---         sequence $ map (system . ("ls " ++)) possiblePaths
-         return $ listToMaybe [x | (x, True) <- matchList]
-
--- |Get the possible file paths based on this module name.
-moduleToPossiblePaths :: String -> [FilePath]
-moduleToPossiblePaths s
-    =  let splitted = mySplit '.' s
-           lastElem = last splitted
-           possibleSuffixes = [".hs", ".lhs"]
-           pref = if (not $ null $ init splitted)
-                  then concat (intersperse pathSeperatorStr (init splitted))
-                           ++ pathSeperatorStr
-                  else ""
-        in [pref ++ x | x <- map (lastElem++) possibleSuffixes]
-
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-hunitTests :: IO Test
-hunitTests
-    = do mp1 <- moduleToFilePath "Distribution.Simple.Build" --exists
-         mp2 <- moduleToFilePath "Foo.Bar"      -- doesn't exist
-         return $ TestLabel "Install Tests" $ TestList
-             ["moduleToPossiblePaths 1" ~: "failed" ~:
-              ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
-                ~=? (moduleToPossiblePaths "Foo.Bar.Bang"),
-              "moduleToPossiblePaths2 " ~: "failed" ~:
-                (moduleToPossiblePaths "Foo")
-                ~=? ["Foo.hs", "Foo.lhs"],
-
-
-              "existing not found" ~: "failed" ~:
-                   (Just "Distribution/Simple/Build.hs") ~=? mp1,
-              "not existing not nothing" ~: "failed" ~: Nothing ~=? mp2
-             ]

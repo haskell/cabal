@@ -43,14 +43,34 @@ module Distribution.Simple.SrcDist (
 	sdist
   )  where
 
-import Distribution.Package(PackageDescription)
+import Distribution.Package(PackageDescription(..), showPackageId)
 import Distribution.Simple.Configure(LocalBuildInfo)
-import Distribution.Simple.Utils(setupMessage)
+import Distribution.Simple.Utils(setupMessage, moveSources, pathSeperatorStr)
 
-import System.IO
-import System.Exit
+import System.IO ()
+import System.Exit (ExitCode(..), exitWith)
+import System.Cmd (system)
 
+-- |Create a source distribution. FIX: Calls tar directly (won't work
+-- on windows).
 sdist :: PackageDescription -> LocalBuildInfo -> IO ()
 sdist pkg_descr _ = do
   setupMessage "Building source dist for" pkg_descr
-  exitWith (ExitFailure 1)
+  moveSources (distSrc++pathSeperatorStr++nameVersion pkg_descr)
+              (allModules pkg_descr) (mainModules pkg_descr)
+  system $ "tar --directory=" ++ distSrc ++ " -zcf"
+	     ++ " dist/" ++ (tarBallName pkg_descr)
+		    ++ " " ++ (nameVersion pkg_descr)
+  system $ "rm -rf " ++ distSrc
+  putStrLn "Source tarball created."
+
+------------------------------------------------------------
+
+distSrc :: FilePath
+distSrc = "dist/src"
+
+-- |The file name of the tarball
+tarBallName :: PackageDescription -> FilePath
+tarBallName p = (nameVersion p) ++ ".tgz"
+
+nameVersion = showPackageId . package
