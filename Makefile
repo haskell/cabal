@@ -36,7 +36,7 @@ clean:
 remove:
 	-ghc-pkg $(GHCPKGFLAGS) -r Cabal
 	-ghc-pkg $(GHCPKGFLAGS) -r HUnit
-	-rm -r $(PREF)/lib/{Cabal,HUnit}
+	-rm -r $(PREF)/lib/{Cabal-0.1,HUnit-1.0}
 
 # dependencies (included):
 
