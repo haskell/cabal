@@ -346,7 +346,7 @@ tests currDir comp compConf = [
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
                              doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
-          dumpScriptFlag = "-v11"
+          dumpScriptFlag = "--gen-script"
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
