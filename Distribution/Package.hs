@@ -52,7 +52,7 @@ import Distribution.Misc(License, Dependency, Extension, CompilerFlavor)
 
 data PackageIdentifier
     = PackageIdentifier {pkgName::String, pkgVersion::Version}
-      deriving (Read, Show, Eq, Ord)
+      deriving (Read, Show, Eq)
 
 data PackageDescription
     = PackageDescription { package      :: PackageIdentifier,

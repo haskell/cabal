@@ -4,7 +4,6 @@ module Distribution.UseConfig where
 
 import Distribution.Misc(License(..), Dependency, Opt, LocalBuildInfo)
 import Distribution.Package(PackageIdentifier(..), PackageConfig)
-import Distribution.Version(Version(NoVersion))
 
 data UseConfig
    = UseConfig {
@@ -30,7 +29,7 @@ data UseConfig
     deriving (Read, Show)
 
 emptyUseConfig :: UseConfig
-emptyUseConfig = UseConfig (PackageIdentifier "" NoVersion)
+emptyUseConfig = UseConfig (PackageIdentifier "" (error "no version"))
                    AllRightsReserved "" "" "" False [] [] [] [] [] []
                    [] [] [] [] [] [] []
 
