@@ -69,8 +69,8 @@ sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> PackageDescription
-      -> LocalBuildInfo -> IO ()
-sdist tmpDir targetPref pps pkg_descr _  = do
+      -> IO ()
+sdist tmpDir targetPref pps pkg_descr = do
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)

@@ -1,6 +1,3 @@
-** sdist probably doesn't look in the right place, doesn't put in the
-   files for executables
-
 ** where are we using allModules, is this the right place?
 
 ** move some of the junk in Utils up one level, then use currentDir =
@@ -16,7 +13,6 @@
 - if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
-- why does it need configure first?
 
 ** clarify description filename issues
 - allow foo.hsproj?
