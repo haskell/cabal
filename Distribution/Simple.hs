@@ -109,32 +109,32 @@ data UserHooks = UserHooks
      runTests :: Bool -> IO ExitCode, -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
 
-     preConf  :: Args -> ConfigFlags -> IO (Maybe PackageDescription),
+     preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      postConf :: IO ExitCode,
 
-     preBuild  :: Args -> Int -> IO (Maybe PackageDescription),
+     preBuild  :: Args -> Int -> IO HookedBuildInfo,
      postBuild :: IO ExitCode,
 
-     preClean  :: Args -> Int -> IO (Maybe PackageDescription),
+     preClean  :: Args -> Int -> IO HookedBuildInfo,
      postClean :: IO ExitCode,
 
      preCopy  :: Args
                  -> (Maybe FilePath,Int) -- Copy Location,verbose
-                 -> IO (Maybe PackageDescription),
+                 -> IO HookedBuildInfo,
      postCopy :: IO ExitCode,
 
-     preInst  :: Args -> (Bool,Int) -> IO (Maybe PackageDescription),
+     preInst  :: Args -> (Bool,Int) -> IO HookedBuildInfo,
      postInst :: IO ExitCode, -- ^guaranteed to be run on target
 
-     preSDist  :: Args -> Int -> IO (Maybe PackageDescription),
+     preSDist  :: Args -> Int -> IO HookedBuildInfo,
      postSDist :: IO ExitCode,
 
      preReg  :: Args
                 -> (Bool,Int) -- Install in the user's database?; verbose
-                -> IO (Maybe PackageDescription),
+                -> IO HookedBuildInfo,
      postReg :: IO ExitCode,
 
-     preUnreg  :: Args -> Int -> IO (Maybe PackageDescription),
+     preUnreg  :: Args -> Int -> IO HookedBuildInfo,
      postUnreg :: IO ExitCode
     }
 
@@ -279,17 +279,15 @@ defaultMainWorker pkg_descr_in action args hooks
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
-        hookOrInArgs :: (UserHooks -> ([String] -> b -> IO (Maybe PackageDescription)))
+        hookOrInArgs :: (UserHooks -> ([String] -> b -> IO HookedBuildInfo))
                      -> [String]
                      -> b
                      -> IO PackageDescription
         hookOrInArgs f a i
                  = case hooks of
                     Nothing -> no_extra_flags a >> return pkg_descr_in
-                    Just h -> do maybeDesc <- (f h) a i
-                                 case maybeDesc of
-                                   Nothing -> return pkg_descr_in
-                                   Just x  -> return (unionPackageDescription pkg_descr_in x) 
+                    Just h -> do pbi <- f h a i
+                                 return (updatePackageDescription pbi pkg_descr_in)
         postHook f = case hooks of
                       Nothing -> return ExitSuccess
                       Just h  -> f h
@@ -342,7 +340,7 @@ emptyUserHooks
        preUnreg  = rn,
        postUnreg = res
       }
-    where rn _ _ = return Nothing
+    where rn _ _ = return (Nothing, [])
           res    = return ExitSuccess
 
 -- |Basic default 'UserHooks':
@@ -370,8 +368,8 @@ defaultUserHooks
        preReg    = readHook,
        preUnreg  = readHook
       }
-    where readHook a _ = no_extra_flags a >> readHookedPackageDesc
-          defaultPreConf :: [String] -> ConfigFlags -> IO (Maybe PackageDescription)
+    where readHook a _ = no_extra_flags a >> readExistingHookedBuildInfo
+          defaultPreConf :: [String] -> ConfigFlags -> IO HookedBuildInfo
           defaultPreConf args flags
               = do let prefix_opt pref opts =
                            ("--prefix=" ++ pref) : opts
@@ -382,14 +380,12 @@ defaultUserHooks
 		       return ()
 		     else
 		       no_extra_flags args
-		   readHookedPackageDesc
-          readHookedPackageDesc
+		   readExistingHookedBuildInfo
+          readExistingHookedBuildInfo
               = do maybe_infoFile <- defaultHookedPackageDesc
 		   case maybe_infoFile of
-		       Nothing -> return Nothing
-		       Just infoFile -> do
-		           pkg_descr <- readPackageDescription infoFile
-		           return (Just pkg_descr)
+		       Nothing       -> return emptyHookedBuildInfo
+		       Just infoFile -> readHookedBuildInfo infoFile
 
 -- ------------------------------------------------------------
 -- * Testing
