@@ -1,0 +1,7 @@
+#!/bin/sh -e
+
+ghc-pkg -r #PACKAGE#
+# ditch that ghci library:
+rm /usr/lib/#PACKAGE#-#VERSION#/HS#PACKAGE#-#VERSION#.o
+
+#DEBHELPER#
