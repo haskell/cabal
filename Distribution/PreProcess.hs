@@ -38,17 +38,15 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixes,
-                                PPSuffixHandler, PreProcessor(..))
+                                PPSuffixHandler, PreProcessor)
     where
 
 import Distribution.PreProcess.Unlit(plain, unlit)
 import Distribution.Package (PackageDescription(..), BuildInfo(..), Executable(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (setupMessage,moveSources, pathJoin,
-                                  withLib, rawSystemPath, joinFilenameDir)
-import Distribution.Setup (CompilerFlavor(..))
-import System.Exit (ExitCode)
-import System.Directory (renameFile)
+                                  withLib, rawSystemPath)
+import System.Exit (ExitCode(..))
 
 -- |Copy and (possibly) preprocess sources from hsSourceDirs
 preprocessSources :: PackageDescription 
@@ -65,59 +63,33 @@ preprocessSources pkg_descr _ _ pref =
     sequence_ [ moveSources (hsSourceDir exeBi) (pathJoin [pref, hsSourceDir exeBi]) (modules exeBi) ["hs","lhs"]
               | Executable _ _ exeBi <- executables pkg_descr]
 
-data PreProcessor = PreProcessor
-	{ ppExecutableName   :: String,
-          ppDefaultOptions   :: [String],
-        -- |How to construct the output option
-	  ppOutputFileOption :: FilePath -> String,
-        -- |Whether the pp produces source appropriate for this compiler.
-	  ppSuitable         :: CompilerFlavor -> Bool
-	}
-      | PreProcessAction
-        {ppFun :: (FilePath    -- Input file
-                   -> FilePath -- output file
-                   -> IO ()),
-         ppSuitable :: CompilerFlavor -> Bool}
-
 -- |If both output locations are null, just output to the default
 -- location for this preprocessor (may be stdout?).  If directory is
 -- null, default to "." if output file is null, use the default
 -- filename, but move to the output directory.
-type PreProcessor2 = FilePath        -- ^Location of the source file in need of preprocessing
-                   -> Maybe FilePath -- ^Directory to output the preprocessed file (output)
-                   -> Maybe FilePath -- ^Filename of the preprocessed file (output)
-                   -> IO ExitCode
+type PreProcessor = FilePath  -- ^Location of the source file in need of preprocessing
+                  -> FilePath -- ^Output filename
+                  -> IO ExitCode
 
-ppCpp2 :: PreProcessor2
-ppCpp2 inFile Nothing Nothing
-    = rawSystemPath "cpphs" ["-O" ++ inFile ++ ".hs", inFile]
-ppCpp2 inFile j@(Just outDir) Nothing
-    = ppCpp2 inFile j (Just (inFile ++ ".hs"))
-ppCpp2 inFile Nothing (Just outFile)
+ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
+
+ppCpp inFile outFile
     = rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
-ppCpp2 inFile (Just outDir) (Just outFile)
-    = do c <- rawSystemPath "cpphs" ["-O" ++ outFile, inFile]
-         renameFile outFile (joinFilenameDir outDir outFile)
-         return c
+ppGreenCard inFile outFile
+    = rawSystemPath "green-card" ["-tffi", "-o" ++ outFile, inFile]
+ppHsc2hs = standardPP "hsc2hs"
+ppC2hs inFile outFile
+    = rawSystemPath "c2hs" ["-o " ++ outFile, inFile]
 
+ppHappy = standardPP "happy"
+ppNone _ _  = return ExitSuccess
+
+standardPP :: String -> PreProcessor
+standardPP eName inFile outFile
+    = rawSystemPath eName ["-o" ++ outFile, inFile]
 
 type PPSuffixHandler
     = (String, (String->String->String), PreProcessor)
-
--- |FIX: Some preprocessors aren't respecting the output location; for
--- these, we should move the file?  Should we change it to "directory"?
-
-executePreprocessor :: PreProcessor
-                    -> FilePath     -- ^Location of the source file
-                    -> FilePath     -- ^Location of the output file
-                    -> IO ()        -- ^The constructed command-line
-executePreprocessor (PreProcessor exeName inOpts outFun _) sourceFile outFile
-    = let opts = if (null (outFun outFile))
-                 then inOpts ++ [sourceFile]
-                 else (inOpts ++ [outFun outFile, sourceFile])
-          in rawSystemPath exeName opts >> return ()
-executePreprocessor (PreProcessAction f _) sourceFile outFile
-    = f sourceFile outFile
 
 -- |Leave in unlit since some preprocessors can't handle literated
 -- source?
@@ -131,43 +103,5 @@ knownSuffixes =
   , ("cpphs",  plain, ppCpp)
   , ("gc",     plain, ppNone)	-- note, for nhc98 only
   , ("hs",     plain, ppNone)
---  , ("lhs",    unlit, ppNone)
+  , ("lhs",    unlit, ppNone)
   ] 
-
-ppCpp, ppGreenCard, ppHsc2hs, ppC2hs, ppHappy, ppNone :: PreProcessor
-ppCpp = PreProcessor
- 	{ ppExecutableName = "cpphs"
- 	, ppDefaultOptions = []
- 	, ppOutputFileOption = \f-> "-O"++f
- 	, ppSuitable = \_-> True
- 	}
-ppGreenCard = PreProcessor
-	{ ppExecutableName = "green-card"
-	, ppDefaultOptions = ["-tffi"]	-- + includePath of compiler?
-	, ppOutputFileOption = \f-> "-o "++f
-	, ppSuitable = \hc-> hc == GHC
-	}
-ppHsc2hs = PreProcessor
-	{ ppExecutableName = "hsc2hs"
-	, ppDefaultOptions = []
-	, ppOutputFileOption = \_-> ""
-	, ppSuitable = \hc-> hc `elem` [GHC,NHC]
-	}
-ppC2hs = PreProcessor
-	{ ppExecutableName = "c2hs"
-	, ppDefaultOptions = []
-	, ppOutputFileOption = \_-> ""
-	, ppSuitable = \hc-> hc `elem` [GHC,NHC]
-	}
-ppHappy = PreProcessor
-	{ ppExecutableName = "happy"
-	, ppDefaultOptions = []
-	, ppOutputFileOption = \_-> ""
-	, ppSuitable = \_-> True
-	}
-ppNone = PreProcessor
-	{ ppExecutableName = ""
-	, ppDefaultOptions = []
-	, ppOutputFileOption = \_-> ""
-	, ppSuitable = \hc-> True
-	}
