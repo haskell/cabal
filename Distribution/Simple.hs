@@ -87,7 +87,7 @@ import Data.Maybe(isNothing)
 import Data.List	( intersperse )
 import System.IO (try)
 import Distribution.GetOpt
-import Distribution.Compat.FilePath(joinFileName, joinPaths)
+import Distribution.Compat.FilePath(joinFileName, dropAbsolutePrefix)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -243,7 +243,8 @@ defaultMainWorker pkg_descr_in action args hooks
         where
         mJoinPaths :: Maybe FilePath -> FilePath -> Maybe FilePath
         mJoinPaths f1 f2 = do f1' <- f1
-                              return $ joinPaths f1' f2
+                              let f2' = dropAbsolutePrefix f2
+                              return $ (joinFileName f1' f2')
         hookOrInput :: (UserHooks -> (b -> IO (Maybe PackageDescription)))
                     -> b
                     -> IO PackageDescription
