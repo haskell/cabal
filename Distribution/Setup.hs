@@ -50,7 +50,7 @@ module Distribution.Setup (--parseArgs,
 #endif
                            parseGlobalArgs,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
-                           parseHaddockArgs, parseProgramaticaArgs,
+                           parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
                            parseUnregisterArgs, parseCopyArgs
                            ) where
@@ -91,6 +91,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | ProgramaticaCmd             -- pfesetup
             | InstallCmd Bool -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
+            | TestCmd                     -- test
             | RegisterCmd   Bool Bool     -- register (--user flag, --gen-script)
             | UnregisterCmd Bool Bool     -- unregister (--user flag, --gen-script)
 	    | HelpCmd			  -- help
@@ -184,7 +185,7 @@ data Cmd a = Cmd {
 
 commandList :: [Cmd a]
 commandList = [configureCmd, buildCmd, cleanCmd, installCmd,
-               copyCmd, sdistCmd, haddockCmd, programaticaCmd,
+               copyCmd, sdistCmd, testCmd, haddockCmd, programaticaCmd,
                registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
@@ -439,6 +440,18 @@ sdistCmd = Cmd {
 
 parseSDistArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
 parseSDistArgs = parseNoArgs sdistCmd
+
+testCmd :: Cmd a
+testCmd = Cmd {
+        cmdName        = "test",
+        cmdHelp        = "Run the test suite, if any (configure with UserHooks).",
+        cmdDescription = "",  -- This can be a multi-line description
+        cmdOptions     = [cmd_help,cmd_verbose],
+        cmdAction      = TestCmd
+        }
+
+parseTestArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseTestArgs = parseNoArgs testCmd
 
 registerCmd :: Cmd a
 registerCmd = Cmd {

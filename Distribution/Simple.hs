@@ -310,6 +310,13 @@ defaultMainWorker pkg_descr_in action args hooks
 		sdist srcPref distPref verbose pps pkg_descr
                 postHook postSDist args verbose localbuildinfo
 
+            TestCmd -> do
+                (verbose,_, args) <- parseTestArgs args []
+                case hooks of
+                 Nothing -> return ExitSuccess
+                 Just h  -> do localbuildinfo <- getPersistBuildConfig
+                               (runTests h) args False localbuildinfo
+
             RegisterCmd uInst genScript -> do
                 (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
