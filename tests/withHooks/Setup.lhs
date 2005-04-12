@@ -33,12 +33,19 @@
 >          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
 >          return ExitSuccess
 
+> testing :: Args -> Bool -> a -> IO ExitCode
+> testing [] _ _ = return ExitSuccess
+> testing a@(h:_) _ _ = do putStrLn $ "testing: " ++ (show a)
+>                          if h == "--pass"
+>                             then return ExitSuccess
+>                             else return (ExitFailure 1)
 
 Override "gc" to test the overriding mechanism.
 
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
+>         runTests=testing,
 >         postConf=(\_ _ _-> return ExitSuccess),
 >         hookedPreProcessors=  [("testSuffix", ppTestHandler), ("gc", ppTestHandler)],
 >         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
