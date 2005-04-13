@@ -310,6 +310,9 @@ tests currDir comp compConf = [
             testPrelude
             assertCmd' compCmd ("configure --prefix=,tmp --woohoo " ++ compFlag)
               "configure returned error code"
+            assertCmdFail (compCmd ++ " test --asdf") "test was supposed to fail"
+            assertCmd' compCmd ("test --pass") "test should not have failed"
+
             assertHaddock
             assertBuild
             assertCopy
