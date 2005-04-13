@@ -85,7 +85,7 @@ import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   moduleToFilePath)
 -- Base
 import System.Environment(getArgs)
-import System.Exit(ExitCode(..))
+import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist)
 
 import Distribution.License
@@ -315,7 +315,9 @@ defaultMainWorker pkg_descr_in action args hooks
                 case hooks of
                  Nothing -> return ExitSuccess
                  Just h  -> do localbuildinfo <- getPersistBuildConfig
-                               (runTests h) args False localbuildinfo
+                               out <- (runTests h) args False localbuildinfo
+                               when (isFailure out) (exitWith out)
+                               return out
 
             RegisterCmd uInst genScript -> do
                 (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
@@ -348,6 +350,9 @@ defaultMainWorker pkg_descr_in action args hooks
                  = case hooks of
                     Nothing -> return ExitSuccess
                     Just h  -> f h args flags localbuildinfo
+        isFailure :: ExitCode -> Bool
+        isFailure (ExitFailure _) = True
+        isFailure _               = False
         mockPP inputArgs pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
