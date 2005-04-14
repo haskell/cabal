@@ -223,6 +223,7 @@ dropAbsolutePrefix (_:':':cs)                       = cs
 dropAbsolutePrefix cs = cs
 
 -- | Split the path into a list of strings constituting the filepath
+-- 
 -- >  breakFilePath "/usr/bin/ls" == ["/","usr","bin","ls"]
 breakFilePath :: FilePath -> [String]
 breakFilePath = worker []
@@ -232,6 +233,7 @@ breakFilePath = worker []
               where (less,current) = splitFileName path
 
 -- | Drops a specified prefix from a filepath.
+-- 
 -- >  stripPrefix "." "Src/Test.hs" == "Src/Test.hs"
 -- >  stripPrefix "Src" "Src/Test.hs" == "Test.hs"
 dropPrefix :: FilePath -> FilePath -> FilePath
