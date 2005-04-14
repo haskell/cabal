@@ -3,6 +3,7 @@ Version: 0.6
 Copyright: 2003-2005, Isaac Jones
 Build-Depends: base, util
 License: BSD3
+License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
 Homepage: http://www.haskell.org/cabal/
