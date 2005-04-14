@@ -208,7 +208,7 @@ ppCpp' inputArgs bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
-        extraArgs = "--noline" : hcDefines hc ++ sysDefines ++
+        extraArgs = "--noline" : "--strip" : hcDefines hc ++ sysDefines ++
                 incOptions ++ ccOptions bi ++ inputArgs
 	hc = compiler lbi
         sysDefines =
