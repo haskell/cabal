@@ -268,6 +268,22 @@ tests currDir comp compConf = [
             assertCmd "./,tmp/bin/testA isA" "A is not A"
             assertCmd "./,tmp/bin/testB isB" "B is not B"
             -- no register, since there's no library
+-- mutually recursive modules
+         ,TestLabel ("package recursive: building " ++ compIdent) $ TestCase $
+           when (comp == GHC) (do
+            setCurrentDirectory $ (testdir `joinFileName` "recursive")
+            testPrelude
+            assertConfigure ",tmp"
+            assertBuild
+            assertCopy
+            doesFileExist "dist/build/A.hi-boot" >>=
+              assertBool "build did not move A.hi-boot file into place lib"
+            doesFileExist ",tmp/lib/recursive-1.0/libHSrecursive-1.0.a" >>=
+              assertBool "recursive build didn't create library"
+            doesFileExist "dist/build/testExe-tmp/A.hi" >>=
+              assertBool "build did not move A.hi-boot file into place exe"
+            doesFileExist "dist/build/testExe" >>=
+              assertBool "recursive build didn't create binary")
 -- depOnLib
        ,TestLabel ("package depOnLib: (executable depending on its lib)"++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")
