@@ -199,12 +199,13 @@ smartCopySources :: Int      -- ^verbose
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
+            -> Bool     -- ^Exit if no such modules
             -> IO ()
-smartCopySources verbose pref targetDir sources searchSuffixes
+smartCopySources verbose pref targetDir sources searchSuffixes exitIfNone
     = do createDirectoryIfMissing True targetDir
 	 -- Create parent directories for everything:
          sourceLocs' <- mapM moduleToFPErr sources
-         let sourceLocs = concat sourceLocs'
+         let sourceLocs = concat $ filter (not . null) sourceLocs'
          let sourceLocsNoPref -- get rid of the prefix, for target location.
                  = if null pref || pref == currentDir then sourceLocs
                    else map (dropPrefix pref) sourceLocs
@@ -217,7 +218,7 @@ smartCopySources verbose pref targetDir sources searchSuffixes
 	 return ()
     where moduleToFPErr m
               = do p <- moduleToFilePath [pref] m searchSuffixes
-                   when (null p)
+                   when (null p && exitIfNone)
                             (putStrLn ("Error: Could not find module: " ++ m
                                        ++ " with any suffix: " ++ (show searchSuffixes))
                              >> exitWith (ExitFailure 1))

@@ -117,7 +117,7 @@ prepareDir :: Int       -- ^verbose
 prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, otherModules=mods', cSources=cfiles}
     = do let pref = inPref `joinFileName` srcDir
          let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbose srcDir pref (mods++mods') suff
+         smartCopySources verbose srcDir pref (mods++mods') suff True
          removePreprocessed pref mods suff
          mapM_ (copyFileTo verbose inPref) cfiles
 

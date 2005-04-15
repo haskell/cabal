@@ -61,7 +61,8 @@ import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, dotToSep,
 				  moduleToFilePath, currentDir,
-				  getOptionsFromSource, stripComments
+				  getOptionsFromSource, stripComments,
+                                  smartCopySources
                                  )
 
 import Data.Maybe(maybeToList)
@@ -123,13 +124,17 @@ buildGHC pkg_descr lbi verbose = do
   -- Build lib
   withLib pkg_descr () $ \lib -> do
       let libBi = libBuildInfo lib
-      createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir libBi))
+          libTargetDir = pref `joinFileName` (hsSourceDir libBi)
+      createDirectoryIfMissing True libTargetDir
+      -- put hi-boot files into place for mutually recurive modules
+      smartCopySources verbose (hsSourceDir libBi)
+                       libTargetDir (libModules pkg_descr) ["hi-boot"] False
       let ghcArgs = ["-I" ++ dir | dir <- includeDirs libBi]
               ++ ["-optc" ++ opt | opt <- ccOptions libBi]
               ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr),
-                  "-odir",  pref `joinFileName` (hsSourceDir libBi),
-                  "-hidir", pref `joinFileName` (hsSourceDir libBi)
+                  "-odir",  libTargetDir,
+                  "-hidir", libTargetDir
                  ]
               ++ constructGHCCmdLine Nothing libBi (packageDeps lbi)
               ++ (libModules pkg_descr)
@@ -167,6 +172,11 @@ buildGHC pkg_descr lbi verbose = do
 		 let targetDir = pref `joinFileName` hsSourceDir exeBi
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True exeDir
+                 -- put hi-boot files into place for mutually recurive modules
+                 -- FIX: what about exeName.hi-boot?
+                 smartCopySources verbose (hsSourceDir exeBi)
+                                  exeDir (otherModules exeBi) ["hi-boot"] False
+
                  -- build executables
                  unless (null (cSources exeBi)) $
                   sequence_ [do let cSrcODir = exeDir `joinFileName` (fst $ splitFileName c)
