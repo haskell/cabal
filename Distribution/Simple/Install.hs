@@ -117,7 +117,7 @@ installLibGHC :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
-    = do smartCopySources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"]
+    = do smartCopySources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"] True
          copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) (mkLibName pref (showPackageId p))
 installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
@@ -144,7 +144,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         let pkgDir = libPref `joinFileName` "packages"
                     `joinFileName` pkg_name
         try $ removeDirectoryRecursive pkgDir
-        smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes
+        smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes True
     let progBuildDir = buildPref `joinFileName` "programs"
     let progInstallDir = libPref `joinFileName` "programs"
     let progTargetDir = targetLibPref `joinFileName` "programs"
@@ -156,7 +156,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         let targetDir = progTargetDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose buildDir installDir
-            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes
+            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
 #ifndef mingw32_TARGET_OS
         -- FIX (HUGS): works for Unix only
         let targetName = targetDir `joinFileName` hugsMainFilename exe
