@@ -241,6 +241,7 @@ tests currDir comp compConf = [
 
             assertConfigure ",tmp"
             assertHaddock
+            doesDirectoryExist "dist/doc" >>= assertEqual "create of dist/doc" True
             assertBuild
             when (comp == GHC) -- tests building w/ an installed -package
                  (do pkgConf <- GHC.localPackageConfig
@@ -251,6 +252,7 @@ tests currDir comp compConf = [
                      assertCmd "./hunitTest" "hunit test"
                      assertCmd' compCmd "unregister --user" "unregister failed")
             assertClean
+            doesDirectoryExist "dist/doc" >>= assertEqual "clean dist/doc" False
             assertCmd "make clean" "make clean failed"
 
 -- twoMains

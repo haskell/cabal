@@ -227,7 +227,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       mHaddock <- findProgram "haddock" (withHaddock lbi)
                       when (isNothing mHaddock) (error "haddock command not found")
                       let bi = libBuildInfo lib
-                      let targetDir = joinPaths "dist" (joinPaths "doc" "html")
+                      let targetDir = joinPaths distPref (joinPaths "doc" "html")
                       let tmpDir = joinPaths (buildDir lbi) "tmp"
                       createDirectoryIfMissing True tmpDir
                       createDirectoryIfMissing True targetDir
@@ -278,6 +278,7 @@ defaultMainWorker pkg_descr_in action args hooks
 		localbuildinfo <- getPersistBuildConfig
 		let buildPref = buildDir localbuildinfo
 		try $ removeDirectoryRecursive buildPref
+                try $ removeDirectoryRecursive (joinPaths distPref "doc")
                 try $ removeFile installedPkgConfigFile
                 try $ removeFile localBuildInfoFile
                 try $ removeFile regScriptLocation
@@ -302,7 +303,6 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postInst args flags localbuildinfo
 
             SDistCmd -> do
-                let distPref = "dist"
                 let srcPref   = distPref `joinFileName` "src"
                 (verbose,_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args verbose
@@ -337,6 +337,8 @@ defaultMainWorker pkg_descr_in action args hooks
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
+        distPref :: FilePath
+        distPref = "dist"
         hookOrInArgs :: (UserHooks -> ([String] -> b -> IO HookedBuildInfo))
                      -> [String]
                      -> b
