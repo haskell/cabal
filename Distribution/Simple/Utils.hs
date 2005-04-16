@@ -160,7 +160,7 @@ rawSystemPathExit verbose prog args = do
 -- because it looks for the actual file.  Might eventually interface
 -- with preprocessor libraries in order to correctly locate more
 -- filenames.
--- Returns Nothing if the file doesn't exist.
+-- Returns empty list if no such files exist.
 
 moduleToFilePath :: [FilePath] -- ^search locations
                  -> String   -- ^Module Name
