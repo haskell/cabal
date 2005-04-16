@@ -47,6 +47,7 @@ module Distribution.Simple.Utils (
         rawSystemVerbose,
 	rawSystemExit,
         maybeExit,
+        matchesDescFile,
 	rawSystemPathExit,
         smartCopySources,
         copyFileVerbose,
