@@ -1,0 +1,10 @@
+Name:            testffi
+Version:         0.0
+Build-Depends:   base
+hs-source-dir:   src
+Exposed-modules: TestFFI
+Extensions:      ForeignFunctionInterface
+
+executable: foo
+main-is:    TestFFIExe.hs
+Extensions:      ForeignFunctionInterface
