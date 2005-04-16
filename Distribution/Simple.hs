@@ -273,6 +273,7 @@ defaultMainWorker pkg_descr_in action args hooks
                        postHook postPFE args verbose localbuildinfo)
 
             CleanCmd -> do
+                putStrLn "cleaning..."
                 (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInArgs preClean args verbose
 		localbuildinfo <- getPersistBuildConfig
@@ -284,6 +285,23 @@ defaultMainWorker pkg_descr_in action args hooks
                 try $ removeFile regScriptLocation
                 try $ removeFile unregScriptLocation
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
+
+                -- remove source stubs for library
+                withLib pkg_descr () (\Library{libBuildInfo=BuildInfo{hsSourceDir=dir}} -> do
+                                      s <- sequence [moduleToFilePath [dir] (x ++"_stub") ["h", "c"]
+                                                 | x <- libModules pkg_descr ]
+                                      mapM_ removeFile (concat s)
+                                     )
+                -- remove source stubs for executables
+                withExe pkg_descr (\Executable{modulePath=exeSrcName
+                                              ,buildInfo=BuildInfo{hsSourceDir=dir}} -> do
+                                   s <- sequence [moduleToFilePath [dir] (x ++"_stub") ["h", "c"]
+                                              | x <- exeModules pkg_descr ]
+                                   mapM_ removeFile (concat s)
+                                   let (startN, _) = splitFileExt exeSrcName
+                                   try $ removeFile (startN ++ "_stub.h")
+                                   try $ removeFile (startN ++ "_stub.c")
+                                  )
                 postHook postClean args verbose localbuildinfo
 
             CopyCmd mprefix -> do

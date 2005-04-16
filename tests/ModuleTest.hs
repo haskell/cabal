@@ -212,7 +212,7 @@ tests currDir comp compConf = [
                   libForA ",tmp"
                   assertCmd' compCmd "unregister --user" "unregister failed")
 -- HUnit
-         ,TestLabel "testing the HUnit package" $ TestCase $ 
+         ,TestLabel ("testing the HUnit package" ++ compIdent) $ TestCase $ 
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             GHC.maybeCreateLocalPackageConfig
             system "make clean"
@@ -286,6 +286,23 @@ tests currDir comp compConf = [
               assertBool "build did not move A.hi-boot file into place exe"
             doesFileExist "dist/build/testExe" >>=
               assertBool "recursive build didn't create binary")
+-- linking in ffi stubs
+         ,TestLabel ("package ffi: " ++ compIdent) $ TestCase $
+         do setCurrentDirectory (testdir `joinFileName` "ffi-package")
+            testPrelude
+            assertConfigure "/tmp"
+            assertBuild
+            -- install it so we can test building with it.
+            assertCmd' compCmd "install --user" "ffi-package install"
+            assertClean
+            doesFileExist "src/TestFFI_stub.c" >>=
+                assertEqual "FFI-generated stub not cleaned." False
+            -- now build something that depends on it
+            setCurrentDirectory (".." `joinFileName` "ffi-bin")
+            testPrelude
+            assertConfigure ",tmp"
+            assertBuild
+            assertCopy
 -- depOnLib
        ,TestLabel ("package depOnLib: (executable depending on its lib)"++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "depOnLib")

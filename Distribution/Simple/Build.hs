@@ -159,11 +159,16 @@ buildGHC pkg_descr lbi verbose = do
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
           libName  = mkLibName pref (showPackageId (package pkg_descr))
-      unless (null hObjs && null cObjs) $ do
+
+      stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
+                           |  x <- libModules pkg_descr ]  >>= return . concat
+
+      unless (null hObjs && null cObjs && null stubObjs) $ do
         try (removeFile libName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
                 ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
+                ++ stubObjs
         rawSystemPathExit verbose "ar" arArgs
 
   -- build any executables
