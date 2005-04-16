@@ -82,7 +82,7 @@ import Distribution.Extension (Extension)
 import Distribution.Setup (CompilerFlavor(..))
 import Distribution.PreProcess.Unlit (unlit)
 
-import Control.Monad(when)
+import Control.Monad(when, filterM)
 import Data.Char(isSpace)
 import Data.List(nub, isSuffixOf)
 import Data.Maybe(mapMaybe)
@@ -168,9 +168,8 @@ moduleToFilePath :: [FilePath] -- ^search locations
                  -> IO [FilePath]
 
 moduleToFilePath pref s possibleSuffixes
-    = do let possiblePaths = concatMap (searchModuleToPossiblePaths s possibleSuffixes) pref
-         matchList <- mapM (\x -> do y <- doesFileExist x; return (x, y)) possiblePaths
-         return [x | (x, True) <- matchList]
+    = filterM doesFileExist $
+          concatMap (searchModuleToPossiblePaths s possibleSuffixes) pref
     where searchModuleToPossiblePaths :: String -> [String] -> FilePath -> [FilePath]
           searchModuleToPossiblePaths s' suffs searchP
               = moduleToPossiblePaths searchP s' suffs
