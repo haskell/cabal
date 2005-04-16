@@ -89,6 +89,7 @@ data Extension =
                | Generics
                | NoImplicitPrelude
                | NamedFieldPuns
+               | PatternGuards
 
                | ExtensibleRecords
                | RestrictedTypeSynonyms
@@ -129,6 +130,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag FlexibleContexts             = Right "-fglasgow-exts"
     extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
     extensionToGHCFlag EmptyDataDecls               = Right "-fglasgow-exts"
+    extensionToGHCFlag PatternGuards                = Right "-fglasgow-exts"
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
