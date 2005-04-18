@@ -41,15 +41,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PackageDescription (
         -- * Package descriptions
-	PackageDescription(..),
-	emptyPackageDescription,
+        PackageDescription(..),
+        emptyPackageDescription,
         readPackageDescription,
-	parseDescription,
+        parseDescription,
         StanzaField(..),
         LineNo,
         basicStanzaFields,
         writePackageDescription,
-	showPackageDescription,
+        showPackageDescription,
         sanityCheckPackage, errorOut,
         setupMessage,
         Library(..),
@@ -63,13 +63,13 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         -- ** Supplementary build information
-	HookedBuildInfo,
-	emptyHookedBuildInfo,
-	readHookedBuildInfo,
-	parseHookedBuildInfo,
-	writeHookedBuildInfo,
-	showHookedBuildInfo,        
-	updatePackageDescription,
+        HookedBuildInfo,
+        emptyHookedBuildInfo,
+        readHookedBuildInfo,
+        parseHookedBuildInfo,
+        writeHookedBuildInfo,
+        showHookedBuildInfo,        
+        updatePackageDescription,
         -- * Utilities
         ParseResult(..),
         PError, showError,
@@ -88,7 +88,7 @@ import System.Directory(doesFileExist)
 
 import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
-			    parsePackageName)
+                            parsePackageName)
 import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion)
 import Distribution.License(License(..))
@@ -101,7 +101,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 
 #ifdef DEBUG
 import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
-import Distribution.ParseUtils	(runP)
+import Distribution.ParseUtils  (runP)
 #endif
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
@@ -112,30 +112,32 @@ import Distribution.ParseUtils	(runP)
 -- 
 data PackageDescription
     =  PackageDescription {
-	-- the following are required by all packages:
-	package        :: PackageIdentifier,
+        -- the following are required by all packages:
+        package        :: PackageIdentifier,
         license        :: License,
         licenseFile    :: FilePath,
         copyright      :: String,
         maintainer     :: String,
-	author         :: String,
+        author         :: String,
         stability      :: String,
-	testedWith     :: [(CompilerFlavor,VersionRange)],
-	homepage       :: String,
-	pkgUrl         :: String,
-	synopsis       :: String, -- ^A one-line summary of this package
-	description    :: String, -- ^A more verbose description of this package
-	category       :: String,
+        testedWith     :: [(CompilerFlavor,VersionRange)],
+        homepage       :: String,
+        pkgUrl         :: String,
+        synopsis       :: String, -- ^A one-line summary of this package
+        description    :: String, -- ^A more verbose description of this package
+        category       :: String,
         buildDepends   :: [Dependency],
-	-- components
+        -- components
         library        :: Maybe Library,
         executables    :: [Executable]
     }
     deriving (Show, Read, Eq)
 
-data Library = Library { exposedModules    :: [String],
-                         libBuildInfo      :: BuildInfo }
-             deriving (Show, Eq, Read)
+data Library = Library {
+        exposedModules    :: [String],
+        libBuildInfo      :: BuildInfo
+    }
+    deriving (Show, Eq, Read)
 
 emptyLibrary :: Library
 emptyLibrary = Library [] emptyBuildInfo
@@ -147,15 +149,15 @@ emptyPackageDescription
                       licenseFile  = "",
                       copyright    = "",
                       maintainer   = "",
-		      author       = "",
+                      author       = "",
                       stability    = "",
-		      testedWith   = [],
+                      testedWith   = [],
                       buildDepends = [],
-		      homepage     = "",
-		      pkgUrl       = "",
-		      synopsis     = "",
-		      description  = "",
-		      category     = "",
+                      homepage     = "",
+                      pkgUrl       = "",
+                      synopsis     = "",
+                      description  = "",
+                      category     = "",
                       library      = Nothing,
                       executables  = []
                      }
@@ -183,7 +185,7 @@ data BuildInfo = BuildInfo {
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
         hsSourceDir       :: FilePath, -- ^ where to look for the haskell module hierarchy
-	otherModules      :: [String], -- ^ non-exposed or non-main modules
+        otherModules      :: [String], -- ^ non-exposed or non-main modules
         extensions        :: [Extension],
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraLibDirs      :: [String],
@@ -195,13 +197,13 @@ data BuildInfo = BuildInfo {
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
-		      buildable         = True,
-		      ccOptions         = [],
-		      ldOptions         = [],
-		      frameworks        = [],
-		      cSources          = [],
-		      hsSourceDir       = currentDir,
-		      otherModules      = [],
+                      buildable         = True,
+                      ccOptions         = [],
+                      ldOptions         = [],
+                      frameworks        = [],
+                      cSources          = [],
+                      hsSourceDir       = currentDir,
+                      otherModules      = [],
                       extensions        = [],
                       extraLibs         = [],
                       extraLibDirs      = [],
@@ -298,12 +300,12 @@ unionBuildInfo b1 b2
       combine f = f b1 ++ f b2
       override :: (Eq a) => (BuildInfo -> a) -> String -> a
       override f s
-	| v1 == def = v2
-	| v2 == def = v1
-	| otherwise = error $ "union: Two non-empty fields found in union attempt: " ++ s
+        | v1 == def = v2
+        | v2 == def = v1
+        | otherwise = error $ "union: Two non-empty fields found in union attempt: " ++ s
         where v1 = f b1
-	      v2 = f b2
-	      def = f emptyBuildInfo
+              v2 = f b2
+              def = f emptyBuildInfo
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
@@ -387,13 +389,13 @@ binfoFields =
                            (text . show)      parseReadS
                            buildable          (\val binfo -> binfo{buildable=val})
  , listField "cc-options"
-                           showToken	      parseTokenQ
+                           showToken          parseTokenQ
                            ccOptions          (\val binfo -> binfo{ccOptions=val})
  , listField "ld-options"
-                           showToken	      parseTokenQ
+                           showToken          parseTokenQ
                            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , listField "frameworks"
-                           showToken	      parseTokenQ
+                           showToken          parseTokenQ
                            frameworks         (\val binfo -> binfo{frameworks=val})
  , listField   "c-sources"
                            showFilePath       parseFilePathQ
@@ -402,7 +404,7 @@ binfoFields =
                            (text . show)      parseExtensionQ
                            extensions         (\exts  binfo -> binfo{extensions=exts})
  , listField   "extra-libraries"
-                           showToken	      parseTokenQ
+                           showToken          parseTokenQ
                            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
                            showFilePath       parseFilePathQ
@@ -470,24 +472,24 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
                mods <- runP lineNo f (parseOptCommaList parseModuleNameQ) val
                return pkg{library=Just lib{exposedModules=mods}}
           | otherwise = do
-	       bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
+               bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
                return pkg{library=Just lib{libBuildInfo=bi}}
           where
             lib = fromMaybe emptyLibrary (library pkg)
 
         parseExecutableStanza st@((_, "executable",eName):_) =
           case lookupField "main-is" st of
-	    Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
-	    Nothing           -> fail $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
+            Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
+            Nothing           -> fail $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
         parseExecutableStanza ((lineNo, f,_):_) = 
           myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
         parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
-	  | name == f = set lineNo val exe
-	  | otherwise = parseExecutableField fields exe (lineNo, f, val)
-	parseExecutableField [] exe (lineNo, f, val) = do
-	  binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
+          | name == f = set lineNo val exe
+          | otherwise = parseExecutableField fields exe (lineNo, f, val)
+        parseExecutableField [] exe (lineNo, f, val) = do
+          binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
         -- ...
@@ -524,10 +526,10 @@ parseHookedBuildInfo inp = do
 
 parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
 parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
-	  | name == f = set lineNo val binfo
-	  | otherwise = parseBInfoField fields binfo (lineNo, f, val)
+          | name == f = set lineNo val binfo
+          | otherwise = parseBInfoField fields binfo (lineNo, f, val)
 parseBInfoField [] _ (lineNo, f, _) =
-	  myError lineNo $ "Unknown field '" ++ f ++ "'"
+          myError lineNo $ "Unknown field '" ++ f ++ "'"
 
 -- --------------------------------------------
 -- ** Pretty printing
@@ -675,7 +677,7 @@ testPkgDesc = unlines [
         "Exposed-Modules: Distribution.Void, Foo.Bar",
         "Extensions: OverlappingInstances, TypeSynonymInstances",
         "Extra-Libraries: libfoo, bar, bang",
-	"Extra-Lib-Dirs: \"/usr/local/libs\"",
+        "Extra-Lib-Dirs: \"/usr/local/libs\"",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
         "GHC-Options: -fTH -fglasgow-exts",
