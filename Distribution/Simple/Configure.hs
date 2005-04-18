@@ -48,8 +48,6 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
  			  	      configure,
                                       localBuildInfoFile,
                                       findProgram,
-                                      getInstalledPackages,
-                                      configCompiler,
 #ifdef DEBUG
                                       hunitTests
 #endif
