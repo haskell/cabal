@@ -38,11 +38,11 @@ Exposed-Modules:
 	Distribution.Simple.Register,
 	Distribution.Simple.SrcDist,
 	Distribution.Simple.Utils,
+	Distribution.Compat.FilePath,
+	Distribution.GetOpt,
 	Distribution.Version
 Other-Modules:
-	Distribution.GetOpt,
 	Distribution.Compat.Directory,
 	Distribution.Compat.Exception,
-	Distribution.Compat.FilePath,
 	Distribution.Compat.RawSystem
 Extensions: CPP
