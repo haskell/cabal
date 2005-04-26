@@ -48,6 +48,9 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
  			  	      configure,
                                       localBuildInfoFile,
                                       findProgram,
+                                      getInstalledPackages,
+                                      getInstalledPackagesAux,
+                                      configCompilerAux,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -221,12 +224,15 @@ configDependency ps (Dependency pkgname vrange) = do
 		return pkg
 
 getInstalledPackages :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
-getInstalledPackages comp cfg = do
-   message "Reading installed packages..."
+getInstalledPackages comp cfg = getInstalledPackagesAux comp (configUser cfg) (configVerbose cfg)
+
+getInstalledPackagesAux :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
+getInstalledPackagesAux comp user verbose = do
+   when (verbose > 0) $ message "Reading installed packages..."
    withTempFile "." "" $ \tmp -> do
-      let user_flag = if configUser cfg then " --user" else " --global"
+      let user_flag = if user then " --user" else " --global"
           cmd_line  = compilerPkgTool comp ++ user_flag ++ " list >" ++ tmp
-      when (configVerbose cfg > 0) $
+      when (verbose > 0) $
         putStrLn cmd_line
       res <- system cmd_line
       case res of
@@ -266,21 +272,27 @@ system_default_prefix _ =
 -- Determining the compiler details
 
 configCompiler :: ConfigFlags -> IO Compiler
-configCompiler cfg
-  = do let flavor = case configHcFlavor cfg of
+configCompiler cfg = configCompilerAux (configHcFlavor cfg)
+                                       (configHcPath cfg)
+                                       (configHcPkg cfg)
+                                       (configVerbose cfg)
+
+configCompilerAux :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath -> Int -> IO Compiler
+configCompilerAux hcFlavor hcPath hcPkg verbose
+  = do let flavor = case hcFlavor of
                       Just f  -> f
                       Nothing -> defaultCompilerFlavor
        comp <- 
-	 case configHcPath cfg of
+	 case hcPath of
 	   Just path -> return path
-	   Nothing   -> findCompiler flavor
+	   Nothing   -> findCompiler verbose flavor
 
-       ver <- configCompilerVersion flavor comp cfg
+       ver <- configCompilerVersion flavor comp verbose
 
        pkgtool <-
-	 case configHcPkg cfg of
+	 case hcPkg of
 	   Just path -> return path
-	   Nothing   -> guessPkgToolFromHCPath flavor comp
+	   Nothing   -> guessPkgToolFromHCPath verbose flavor comp
 
        return (Compiler{compilerFlavor=flavor,
 			compilerVersion=ver,
@@ -299,14 +311,14 @@ defaultCompilerFlavor =
    error "Unknown compiler"
 #endif
 
-findCompiler :: CompilerFlavor -> IO FilePath
-findCompiler flavor = do
+findCompiler :: Int -> CompilerFlavor -> IO FilePath
+findCompiler verbose flavor = do
   let prog = compilerBinaryName flavor
-  message $ "searching for " ++ prog ++ " in path."
+  when (verbose > 0) $ message $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of
    Nothing   -> die ("Cannot find compiler for " ++ prog)
-   Just path -> do message ("found " ++ prog ++ " at "++ path)
+   Just path -> do when (verbose > 0) $ message ("found " ++ prog ++ " at "++ path)
 		   return path
    -- ToDo: check that compiler works? check compiler version?
 
@@ -322,11 +334,11 @@ compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
-configCompilerVersion :: CompilerFlavor -> FilePath -> ConfigFlags -> IO Version
-configCompilerVersion GHC compilerP cfg =
+configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
+configCompilerVersion GHC compilerP verbose =
   withTempFile "." "" $ \tmp -> do
     let cmd_line = compilerP ++ " --version >" ++ tmp
-    when (configVerbose cfg > 0) $
+    when (verbose > 0) $
       putStrLn cmd_line
     maybeExit $ system cmd_line
     str <- readFile tmp
@@ -339,16 +351,16 @@ configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
-guessPkgToolFromHCPath :: CompilerFlavor -> FilePath -> IO FilePath
-guessPkgToolFromHCPath flavor path
+guessPkgToolFromHCPath :: Int -> CompilerFlavor -> FilePath -> IO FilePath
+guessPkgToolFromHCPath verbose flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
            (dir,_,ext) = splitFilePath path
            pkgtool         = dir `joinFileName` pkgToolName `joinFileExt` ext
-       message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
+       when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
        when (not exists) $
 	  die ("Cannot find package tool: " ++ pkgtool)
-       message $ "found package tool in " ++ pkgtool
+       when (verbose > 0) $ message $ "found package tool in " ++ pkgtool
        return pkgtool
 
 message :: String -> IO ()
