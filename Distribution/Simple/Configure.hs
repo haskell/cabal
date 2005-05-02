@@ -49,8 +49,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                       localBuildInfoFile,
                                       findProgram,
                                       getInstalledPackages,
-                                      getInstalledPackagesAux,
-                                      configCompilerAux,
+                                      configCompiler,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -141,7 +140,7 @@ configure pkg_descr cfg
 	defPrefix <- system_default_prefix pkg_descr
         let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
-	comp@(Compiler f' ver p' pkg) <- configCompiler cfg
+	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -271,14 +270,14 @@ system_default_prefix _ =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompiler :: ConfigFlags -> IO Compiler
-configCompiler cfg = configCompilerAux (configHcFlavor cfg)
+configCompilerAux :: ConfigFlags -> IO Compiler
+configCompilerAux cfg = configCompiler (configHcFlavor cfg)
                                        (configHcPath cfg)
                                        (configHcPkg cfg)
                                        (configVerbose cfg)
 
-configCompilerAux :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath -> Int -> IO Compiler
-configCompilerAux hcFlavor hcPath hcPkg verbose
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath -> Int -> IO Compiler
+configCompiler hcFlavor hcPath hcPkg verbose
   = do let flavor = case hcFlavor of
                       Just f  -> f
                       Nothing -> defaultCompilerFlavor
