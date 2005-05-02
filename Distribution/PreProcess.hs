@@ -190,7 +190,7 @@ ppGreenCard, ppC2hs :: PreProcessor
 ppGreenCard inFile outFile verbose
     = rawSystemPath verbose "green-card" ["-tffi", "-o" ++ outFile, inFile]
 ppC2hs inFile outFile verbose
-    = rawSystemPath verbose "c2hs" ["-o " ++ outFile, inFile]
+    = rawSystemPath verbose "c2hs" ["-o", outFile, inFile]
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
