@@ -1,5 +1,18 @@
 -*-change-log-*-
 
+1.1  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 19 2005
+	* Handles recursive modules for GHC 6.2
+	* Added "setup test" command (Used with UserHook)
+	* implemented handling of _stub.{c,h,o} files
+	* Added pattern guards as a language extension
+	* Register / unregister .bat files for windows
+	* Exposed some API stuff
+	* Several bug fixes
+
+1.0  Isaac Jones  <ijones@syntaxpolice.org> March 11 2005
+	* Released with GHC 6.4, Hugs March 2005, and nhc98 1.18
+	* Some sanity checking
+
 0.5  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 19 2005
 	* WARNING: this is a pre-release and the interfaces are still
 	likely to change until we reach a 1.0 release.
