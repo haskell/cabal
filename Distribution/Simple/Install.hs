@@ -66,12 +66,14 @@ import Distribution.PackageDescription (
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
-import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName, die)
+import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
+                                 die, rawSystemVerbose)
 import Distribution.Setup (CompilerFlavor(..), Compiler(..))
 
 import Control.Monad(when)
 import Data.Maybe(fromMaybe)
-import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive)
+import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
+                                     findExecutable)
 import Distribution.Compat.FilePath(joinFileName, dllExtension,
 				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
@@ -118,7 +120,21 @@ installLibGHC :: Int      -- ^verbose
 installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
     = do smartCopySources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"] True
-         copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) (mkLibName pref (showPackageId p))
+         let libTargetLoc = mkLibName pref (showPackageId p)
+         copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
+
+         -- use ranlib or ar -s to build an index. this is necessary
+         -- on some systems like MacOS X.  If we can't find those,
+         -- don't worry too much about it.
+         mRanlibLoc <- findExecutable "ranlib"
+         case mRanlibLoc of
+          Just ranLibLoc -> rawSystemVerbose verbose "ranlib" [libTargetLoc] >> return ()
+          Nothing -> do mArLoc <- findExecutable "ar"
+                        case mArLoc of
+                         Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
+                         Just arLoc -> rawSystemVerbose verbose
+                                         "ar" ["-s", libTargetLoc] >> return ()
+
 installLibGHC _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
