@@ -170,7 +170,7 @@ configure pkg_descr cfg
         reportProgram "cpphs"   cpphs
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
-            ipkgs <-  getInstalledPackages comp cfg
+            ipkgs <-  getInstalledPackagesAux comp cfg
 	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
           else return $ map setDepByVersion (buildDepends pkg_descr)
 	return LocalBuildInfo{prefix=pref, compiler=comp,
@@ -222,11 +222,11 @@ configDependency ps (Dependency pkgname vrange) = do
 			 ": using " ++ showPackageId pkg)
 		return pkg
 
-getInstalledPackages :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
-getInstalledPackages comp cfg = getInstalledPackagesAux comp (configUser cfg) (configVerbose cfg)
+getInstalledPackagesAux :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
+getInstalledPackagesAux comp cfg = getInstalledPackages comp (configUser cfg) (configVerbose cfg)
 
-getInstalledPackagesAux :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
-getInstalledPackagesAux comp user verbose = do
+getInstalledPackages :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
+getInstalledPackages comp user verbose = do
    when (verbose > 0) $ message "Reading installed packages..."
    withTempFile "." "" $ \tmp -> do
       let user_flag = if user then " --user" else " --global"
