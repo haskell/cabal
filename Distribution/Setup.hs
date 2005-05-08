@@ -111,6 +111,7 @@ data ConfigFlags = ConfigFlags {
         configHappy    :: Maybe FilePath, -- ^Happy path
         configAlex     :: Maybe FilePath, -- ^Alex path
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
+        configC2hs     :: Maybe FilePath, -- ^C2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
         configPrefix   :: Maybe FilePath, -- ^installation prefix
         configVerbose  :: Int,            -- ^verbosity level
@@ -127,6 +128,7 @@ emptyConfigFlags = ConfigFlags {
         configHappy    = Nothing,
         configAlex     = Nothing,
         configHsc2hs   = Nothing,
+        configC2hs     = Nothing,
         configCpphs    = Nothing,
         configPrefix   = Nothing,
         configVerbose  = 0,
@@ -137,7 +139,7 @@ emptyConfigFlags = ConfigFlags {
 data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
-          | WithHsc2hs FilePath | WithCpphs FilePath
+          | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -259,6 +261,8 @@ configureCmd = Cmd {
                "give the path to alex",
            Option "" ["with-hsc2hs"] (ReqArg WithHsc2hs "PATH")
                "give the path to hsc2hs",
+           Option "" ["with-c2hs"] (ReqArg WithC2hs "PATH")
+               "give the path to c2hs",
            Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
                "give the path to cpphs",
            Option "" ["user"] (NoArg UserFlag)
@@ -292,6 +296,7 @@ parseConfigureArgs cfg args customOpts =
             WithHappy path    -> t { configHappy    = Just path }
             WithAlex path     -> t { configAlex     = Just path }
             WithHsc2hs path   -> t { configHsc2hs   = Just path }
+            WithC2hs path     -> t { configC2hs     = Just path }
             WithCpphs path    -> t { configCpphs    = Just path }
             Prefix path       -> t { configPrefix   = Just path }
             Verbose n         -> t { configVerbose  = n }
