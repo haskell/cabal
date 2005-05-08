@@ -120,34 +120,55 @@ data UserHooks = UserHooks
      hookedPreProcessors :: [ PPSuffixHandler ],
         -- ^Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
 
+      -- |Hook to run before configure command
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
+      -- |Hook to run after configure command
      postConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before build command.  Second arg indicates verbosity level.
      preBuild  :: Args -> Int -> IO HookedBuildInfo,
+      -- |Hook to run after build command.  Second arg indicates verbosity level.
      postBuild :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> Int -> IO HookedBuildInfo,
+      -- |Hook to run after clean command.  Second arg indicates verbosity level.
      postClean :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
+      -- |Hook to run after copy command
      postCopy :: Args -> CopyFlags -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before install command
      preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
-     postInst :: Args -> InstallFlags -> LocalBuildInfo -> IO ExitCode, -- ^guaranteed to be run on target
+      -- |Hook to run after install command.  postInst should be run
+      -- on the target, not on the build machine.
+     postInst :: Args -> InstallFlags -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> Int -> IO HookedBuildInfo,
+      -- |Hook to run after sdist command.  Second arg indicates verbosity level.
      postSDist :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before register command
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+      -- |Hook to run after register command
      postReg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before unregister command
      preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+      -- |Hook to run after unregister command
      postUnreg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before haddock command.  Second arg indicates verbosity level.
      preHaddock  :: Args -> Int -> IO HookedBuildInfo,
+      -- |Hook to run after haddock command.  Second arg indicates verbosity level.
      postHaddock :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
+      -- |Hook to run before pfe command.  Second arg indicates verbosity level.
      prePFE  :: Args -> Int -> IO HookedBuildInfo,
+      -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
      postPFE :: Args -> Int -> LocalBuildInfo -> IO ExitCode
 
     }
