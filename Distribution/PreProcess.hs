@@ -185,12 +185,9 @@ removePreprocessed searchLoc mods suffixesIn
 -- * known preprocessors
 -- ------------------------------------------------------------
 
-ppGreenCard, ppC2hs :: PreProcessor
-
+ppGreenCard :: PreProcessor
 ppGreenCard inFile outFile verbose
     = rawSystemPath verbose "green-card" ["-tffi", "-o" ++ outFile, inFile]
-ppC2hs inFile outFile verbose
-    = rawSystemPath verbose "c2hs" ["-o", outFile, inFile]
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
@@ -208,21 +205,28 @@ ppCpp' inputArgs bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
-        extraArgs = "--noline" : "--strip" : hcDefines hc ++ sysDefines ++
-                incOptions ++ ccOptions bi ++ inputArgs
-	hc = compiler lbi
+        extraArgs = "--noline" : "--strip" :
+                sysDefines ++ cppOptions bi lbi ++ inputArgs
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
         locations = ["BUILD", "HOST"]
-        incOptions = ["-I" ++ dir | dir <- includeDirs bi]
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n (hcDefines hc ++ incOptions ++ ccOptions bi)
-        hc = compiler lbi
-	incOptions = ["-I" ++ dir | dir <- includeDirs bi]
+  where pp n = standardPP n (cppOptions bi lbi)
+
+ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppC2hs bi lbi
+    = maybe (ppNone "c2hs") pp (withC2hs lbi)
+  where pp n = standardPP n (concat [["-C", opt] | opt <- cppOptions bi lbi])
+
+cppOptions :: BuildInfo -> LocalBuildInfo -> [String]
+cppOptions bi lbi
+    = hcDefines (compiler lbi) ++
+            ["-I" ++ dir | dir <- includeDirs bi] ++
+            [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
 
 hcDefines :: Compiler -> [String]
 hcDefines Compiler { compilerFlavor=NHC, compilerVersion=version }
@@ -255,7 +259,7 @@ ppAlex _ lbi
 
 standardPP :: String -> [String] -> PreProcessor
 standardPP eName args inFile outFile verbose
-    = rawSystemVerbose verbose eName (args ++ ["-o" ++ outFile, inFile])
+    = rawSystemVerbose verbose eName (args ++ ["-o", outFile, inFile])
 
 ppNone :: String -> PreProcessor
 ppNone name inFile _ _ = do
@@ -270,7 +274,7 @@ ppSuffixes = map fst
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
   [ ("gc",     \ _ _ -> ppGreenCard)
-  , ("chs",    \ _ _ -> ppC2hs)
+  , ("chs",    ppC2hs)
   , ("hsc",    ppHsc2hs)
   , ("x",      ppAlex)
   , ("y",      ppHappy)

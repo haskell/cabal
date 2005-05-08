@@ -177,7 +177,9 @@ Executable:      program2
 Main-Is:         Main.hs
 Hs-Source-Dir:   prog2
 Other-Modules:   A, C, Utils</programlisting>
-      <para>with <filename>Setup.hs</filename> the same as above.</para>
+      <para>with <filename>Setup.hs</filename> the same as above.
+      Note that any library modules required (directly or indirectly)
+      by an executable must be listed again.</para>
     </example>
 
     <para>The trivial setup script used in these examples uses
@@ -486,7 +488,7 @@ Other-Modules:   A, C, Utils</programlisting>
       <para>This stanza may also contain build information fields
         (see <xref linkend="buildinfo"/>) relating to the library.</para>
 
-      <section id="executable">
+      <sect3 id="executable">
         <title>Executables</title>
 
         <para>Subsequent stanzas (if present) describe executable programs
@@ -517,9 +519,9 @@ Other-Modules:   A, C, Utils</programlisting>
             </listitem>
           </varlistentry>
         </variablelist>
-      </section>
+      </sect3>
 
-      <section id="buildinfo">
+      <sect3 id="buildinfo">
         <title>Build information</title>
 
         <para>The following fields may be optionally present
@@ -739,7 +741,7 @@ Other-Modules:   A, C, Utils</programlisting>
             </listitem>
           </varlistentry>
         </variablelist>
-      </section>
+      </sect3>
     </sect2>
 
     <sect2 id="system-dependent">
@@ -1097,6 +1099,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
           <term><option>--with-hsc2hs</option>=<replaceable>path</replaceable></term>
           <listitem>
             <para>Specify the path to <command>hsc2hs</command>.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--with-c2hs</option>=<replaceable>path</replaceable></term>
+          <listitem>
+            <para>Specify the path to <command>c2hs</command>.</para>
           </listitem>
         </varlistentry>
 
