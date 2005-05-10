@@ -79,7 +79,7 @@ import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersi
 			     parseVersion, showVersion, withinRange,
 			     showVersionRange)
 
-import Data.List (intersperse, nub, maximumBy)
+import Data.List (intersperse, nub, maximumBy, isPrefixOf)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
@@ -241,8 +241,11 @@ getInstalledPackages comp user verbose = do
         ExitFailure _ -> die ("cannot get package list")
         ExitSuccess -> do
 	  str <- readFile tmp
-	  let str1 = unlines (filter (':' `notElem`) (lines str))
+	  let 
+	      keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
+	      str1 = unlines (filter keep_line (lines str))
 	      str2 = filter (`notElem` ",()") str1
+	  --
 	  case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
 	    [ps] -> return ps
 	    _   -> die "cannot parse package list"
