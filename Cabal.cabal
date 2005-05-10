@@ -9,40 +9,40 @@ Maintainer: Isaac Jones <ijones@syntaxpolice.org>
 Homepage: http://www.haskell.org/cabal/
 Synopsis: A framework for packaging Haskell software
 Description:
-	The Haskell Common Architecture for Building Applications and
+        The Haskell Common Architecture for Building Applications and
         Libraries: a framework defining a common interface for authors to more
-	easily build their Haskell applications in a portable way.
-	.
-	The Haskell Cabal is meant to be a part of a larger infrastructure
-	for distributing, organizing, and cataloging Haskell libraries
-	and tools.
+        easily build their Haskell applications in a portable way.
+        .
+        The Haskell Cabal is meant to be a part of a larger infrastructure
+        for distributing, organizing, and cataloging Haskell libraries
+        and tools.
 Category: Distribution
 Exposed-Modules:
-	Distribution.Compat.ReadP,
-	Distribution.Extension,
-	Distribution.InstalledPackageInfo,
-	Distribution.License,
-	Distribution.Make,
-	Distribution.Package,
-	Distribution.PackageDescription,
-	Distribution.ParseUtils,
-	Distribution.PreProcess,
-	Distribution.PreProcess.Unlit,
-	Distribution.Setup,
-	Distribution.Simple,
-	Distribution.Simple.Build,
-	Distribution.Simple.Configure,
-	Distribution.Simple.GHCPackageConfig,
-	Distribution.Simple.Install,
-	Distribution.Simple.LocalBuildInfo,
-	Distribution.Simple.Register,
-	Distribution.Simple.SrcDist,
-	Distribution.Simple.Utils,
-	Distribution.Compat.FilePath,
-	Distribution.Version
+        Distribution.Compat.ReadP,
+        Distribution.Extension,
+        Distribution.InstalledPackageInfo,
+        Distribution.License,
+        Distribution.Make,
+        Distribution.Package,
+        Distribution.PackageDescription,
+        Distribution.ParseUtils,
+        Distribution.PreProcess,
+        Distribution.PreProcess.Unlit,
+        Distribution.Setup,
+        Distribution.Simple,
+        Distribution.Simple.Build,
+        Distribution.Simple.Configure,
+        Distribution.Simple.GHCPackageConfig,
+        Distribution.Simple.Install,
+        Distribution.Simple.LocalBuildInfo,
+        Distribution.Simple.Register,
+        Distribution.Simple.SrcDist,
+        Distribution.Simple.Utils,
+        Distribution.Compat.FilePath,
+        Distribution.Version
 Other-Modules:
-	Distribution.GetOpt,
-	Distribution.Compat.Directory,
-	Distribution.Compat.Exception,
-	Distribution.Compat.RawSystem
+        Distribution.GetOpt,
+        Distribution.Compat.Directory,
+        Distribution.Compat.Exception,
+        Distribution.Compat.RawSystem
 Extensions: CPP
