@@ -1,14 +1,14 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Build
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  
 --
 
-{- Copyright (c) 2003-2004, Isaac Jones
+{- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -56,6 +56,7 @@ import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
 import Distribution.PreProcess.Unlit (unlit)
+import Distribution.Version (Version(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
@@ -136,7 +137,7 @@ buildGHC pkg_descr lbi verbose = do
                   "-odir",  libTargetDir,
                   "-hidir", libTargetDir
                  ]
-              ++ constructGHCCmdLine Nothing libBi (packageDeps lbi)
+              ++ constructGHCCmdLine (compiler lbi) Nothing libBi (packageDeps lbi)
               ++ (libModules pkg_descr)
               ++ (if verbose > 4 then ["-v"] else [])
       unless (null (libModules pkg_descr)) $
@@ -202,7 +203,7 @@ buildGHC pkg_descr lbi verbose = do
                              "-hidir", exeDir,
                              "-o",     targetDir `joinFileName` exeName'
                             ]
-                         ++ constructGHCCmdLine (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
+                         ++ constructGHCCmdLine (compiler lbi) (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
                                                 exeBi (packageDeps lbi)
                          ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [hsSourceDir exeBi `joinFileName` modPath]
@@ -215,14 +216,18 @@ buildGHC pkg_descr lbi verbose = do
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
 
-constructGHCCmdLine :: Maybe FilePath  -- If we're building an executable, we need the library's filepath
+constructGHCCmdLine :: Compiler
+                    -> Maybe FilePath  -- If we're building an executable, we need the library's filepath
                     -> BuildInfo
                     -> [PackageIdentifier]
                     -> [String]
-constructGHCCmdLine mSrcLoc bi deps = 
+constructGHCCmdLine comp mSrcLoc bi deps = 
     -- Unsupported extensions have already been checked by configure
     let flags = snd $ extensionsToGHCFlag (extensions bi)
-     in [ "--make", "-i" ++ hsSourceDir bi ]
+     in (if compilerVersion comp > Version [6,4] []
+            then ["-fhide-all-packages"]
+            else [])
+     ++ ["--make", "-i" ++ hsSourceDir bi ]
      ++ maybe []  (\l -> ["-i" ++ l]) mSrcLoc
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ nub (flags ++ hcOptions GHC (options bi))
