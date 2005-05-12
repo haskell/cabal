@@ -9,9 +9,9 @@ changes.
 
 DOWNLOAD:
 
-The Haskell Cabal has reached pre-release stage, with a 0.4 version
-The community should use this release to evaluate the interfaces and
-explore the concepts of these tools.
+The Haskell Cabal has reached version 1.0.2.  The community should use
+this release to evaluate the interfaces and explore the concepts of
+these tools.  It is still possible that some interfaces may change.
 
 Download the Cabal here (source and debian versions available):
 http://www.haskell.org/cabal/download.html
@@ -20,7 +20,6 @@ BUGS:
 
 Please report bugs and wish-list items to libraries@haskell.org and
 Isaac Jones: ijones@syntaxpolice.org.
-
 
 ABOUT:
 
@@ -43,10 +42,10 @@ owners; and so on.
 
 NOTES:
 
-You cannot currently execute the setup scripts with "./Setup.lhs"
-since Cabal Hugs support isn't ready-for-prime-time.  You can compile
-it with ghc thusly: "ghc -package Cabal Setup.lhs -o setup" and then
-use the "setup" executable after that.
+You cannot currently execute most setup scripts with "./Setup.lhs"
+since most systems do not have a runHaskell executable installed.  You
+can compile it with ghc thusly: "ghc -package Cabal Setup.lhs -o
+setup" and then use the "setup" executable after that.
 
 This release is meant to provide the community with concrete
 information about how the interfaces are shaping up.  This release
