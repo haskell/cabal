@@ -88,7 +88,7 @@ type PreProcessor = FilePath  -- Location of the source file in need of preproce
 type PPSuffixHandler
     = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
 
--- |Apply preprocessors to the sources from 'hsSourceDir', to obtain
+-- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
 -- a Haskell source file for each module.
 preprocessSources :: PackageDescription 
 		  -> LocalBuildInfo 
@@ -101,7 +101,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
         setupMessage "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
-	sequence_ [do retVal <- preprocessModule [hsSourceDir bi] modu
+	sequence_ [do retVal <- preprocessModule (hsSourceDirs bi) modu
                                                  verbose builtinSuffixes biHandlers
                       unless (retVal == ExitSuccess)
                              (error $ "got error code while preprocessing: " ++ modu)
@@ -111,9 +111,8 @@ preprocessSources pkg_descr lbi verbose handlers = do
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
-	sequence_ [do retVal <- preprocessModule ((hsSourceDir bi)
-                                     :(maybeToList (library pkg_descr
-                                                     >>= Just . hsSourceDir . libBuildInfo)))
+	sequence_ [do retVal <- preprocessModule ((hsSourceDirs bi)
+                                     ++(maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
                                      modu verbose builtinSuffixes biHandlers
                       unless (retVal == ExitSuccess)
                              (error $ "got error code while preprocessing: " ++ modu)
@@ -161,23 +160,23 @@ removePreprocessedPackage :: PackageDescription
 removePreprocessedPackage  pkg_descr r suff
     = do withLib pkg_descr () (\lib -> do
                      let bi = libBuildInfo lib
-                     removePreprocessed (r `joinFileName` hsSourceDir bi) (libModules pkg_descr) suff)
+                     removePreprocessed (map (joinFileName r) (hsSourceDirs bi)) (libModules pkg_descr) suff)
          withExe pkg_descr (\theExe -> do
                      let bi = buildInfo theExe
-                     removePreprocessed (r `joinFileName` hsSourceDir bi) (otherModules bi) suff)
+                     removePreprocessed (map (joinFileName r) (hsSourceDirs bi)) (otherModules bi) suff)
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
-removePreprocessed :: FilePath -- ^search Location
+removePreprocessed :: [FilePath] -- ^search Location
                    -> [String] -- ^Modules
                    -> [String] -- ^suffixes
                    -> IO ()
-removePreprocessed searchLoc mods suffixesIn
+removePreprocessed searchLocs mods suffixesIn
     = mapM_ removePreprocessedModule mods
   where removePreprocessedModule m = do
 	    -- collect related files
-	    fs <- moduleToFilePath [searchLoc] m otherSuffixes
+	    fs <- moduleToFilePath searchLocs m otherSuffixes
 	    -- does M.hs also exist?
-	    hs <- moduleToFilePath [searchLoc] m ["hs"]
+	    hs <- moduleToFilePath searchLocs m ["hs"]
 	    unless (null fs) (mapM_ removeFile hs)
 	otherSuffixes = filter (/= "hs") suffixesIn
 

@@ -63,7 +63,8 @@ import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, dotToSep,
 				  moduleToFilePath, currentDir,
 				  getOptionsFromSource, stripComments,
-                                  smartCopySources
+                                  smartCopySources,
+                                  findFile
                                  )
 
 import Data.Maybe(maybeToList)
@@ -76,7 +77,8 @@ import IO (try)
 import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
-import Distribution.Compat.FilePath (splitFilePath, joinFileName, joinFileExt,
+import Distribution.Compat.FilePath (splitFilePath, joinFileName,
+                                splitFileExt, joinFileExt,
 				searchPathSeparator, objExtension, joinPaths, splitFileName)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
@@ -125,10 +127,10 @@ buildGHC pkg_descr lbi verbose = do
   -- Build lib
   withLib pkg_descr () $ \lib -> do
       let libBi = libBuildInfo lib
-          libTargetDir = pref `joinFileName` (hsSourceDir libBi)
+          libTargetDir = pref
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
-      smartCopySources verbose (hsSourceDir libBi)
+      smartCopySources verbose (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False
       let ghcArgs = ["-I" ++ dir | dir <- includeDirs libBi]
               ++ ["-optc" ++ opt | opt <- ccOptions libBi]
@@ -137,7 +139,7 @@ buildGHC pkg_descr lbi verbose = do
                   "-odir",  libTargetDir,
                   "-hidir", libTargetDir
                  ]
-              ++ constructGHCCmdLine (compiler lbi) Nothing libBi (packageDeps lbi)
+              ++ constructGHCCmdLine (compiler lbi) [] libBi (packageDeps lbi)
               ++ (libModules pkg_descr)
               ++ (if verbose > 4 then ["-v"] else [])
       unless (null (libModules pkg_descr)) $
@@ -155,7 +157,7 @@ buildGHC pkg_descr lbi verbose = do
                                    | c <- cSources libBi]
 
       -- link:
-      let hObjs = [ (hsSourceDir libBi) `joinFileName` (dotToSep x) `joinFileExt` objExtension
+      let hObjs = [ (dotToSep x) `joinFileExt` objExtension
                   | x <- libModules pkg_descr ]
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
@@ -174,13 +176,13 @@ buildGHC pkg_descr lbi verbose = do
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
-                 createDirectoryIfMissing True (pref `joinFileName` (hsSourceDir exeBi))
-		 let targetDir = pref `joinFileName` hsSourceDir exeBi
+		 let targetDir = pref `joinFileName` exeName'
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
+                 createDirectoryIfMissing True targetDir
                  createDirectoryIfMissing True exeDir
-                 -- put hi-boot files into place for mutually recurive modules
+                 -- put hi-boot files into place for mutually recursive modules
                  -- FIX: what about exeName.hi-boot?
-                 smartCopySources verbose (hsSourceDir exeBi)
+                 smartCopySources verbose (hsSourceDirs exeBi)
                                   exeDir (otherModules exeBi) ["hi-boot"] False
 
                  -- build executables
@@ -194,6 +196,8 @@ buildGHC pkg_descr lbi verbose = do
                                 rawSystemExit verbose ghcPath (cArgs ++ [c])
                                     | c <- cSources exeBi]
 
+                 srcMainFile <- findFile (hsSourceDirs exeBi) modPath
+
                  let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                                    | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
                  let binArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
@@ -203,10 +207,10 @@ buildGHC pkg_descr lbi verbose = do
                              "-hidir", exeDir,
                              "-o",     targetDir `joinFileName` exeName'
                             ]
-                         ++ constructGHCCmdLine (compiler lbi) (library pkg_descr >>= Just . hsSourceDir . libBuildInfo)
+                         ++ constructGHCCmdLine (compiler lbi) (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr))
                                                 exeBi (packageDeps lbi)
                          ++ [exeDir `joinFileName` x | x <- cObjs]
-                         ++ [hsSourceDir exeBi `joinFileName` modPath]
+                         ++ [srcMainFile]
 			 ++ ldOptions exeBi
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
@@ -217,18 +221,18 @@ dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
 
 constructGHCCmdLine :: Compiler
-                    -> Maybe FilePath  -- If we're building an executable, we need the library's filepath
+                    -> [FilePath]  -- If we're building an executable, we need the library's filepath
                     -> BuildInfo
                     -> [PackageIdentifier]
                     -> [String]
-constructGHCCmdLine comp mSrcLoc bi deps = 
+constructGHCCmdLine comp srcLocs bi deps = 
     -- Unsupported extensions have already been checked by configure
     let flags = snd $ extensionsToGHCFlag (extensions bi)
      in (if compilerVersion comp > Version [6,4] []
             then ["-fhide-all-packages"]
             else [])
-     ++ ["--make", "-i" ++ hsSourceDir bi ]
-     ++ maybe []  (\l -> ["-i" ++ l]) mSrcLoc
+     ++ ["--make"]
+     ++ ["-i" ++ l | l <- hsSourceDirs bi ++ srcLocs]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ nub (flags ++ hcOptions GHC (options bi))
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- deps ])
@@ -237,37 +241,37 @@ constructGHCCmdLine comp mSrcLoc bi deps =
 buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 buildHugs pkg_descr lbi verbose = do
     let pref = buildDir lbi
-    withLib pkg_descr () $ (\l -> compileBuildInfo pref Nothing (libModules pkg_descr) (libBuildInfo l))
+    withLib pkg_descr () $ (\l -> compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l))
     withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
   where
 	compileExecutable :: FilePath -> Executable -> IO ()
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
             let exeMods = otherModules bi
-	    let srcMainFile = hsSourceDir bi `joinFileName` mainPath
+	    srcMainFile <- findFile (hsSourceDirs bi) mainPath
 	    let exeDir = destDir `joinFileName` exeName exe
 	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-	    compileBuildInfo exeDir (library pkg_descr >>= Just . hsSourceDir . libBuildInfo) exeMods bi
+	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
 	    compileFFI bi destMainFile
 	
 	compileBuildInfo :: FilePath
-                         -> Maybe FilePath -- ^The library source dir, if building exes
+                         -> [FilePath] -- ^library source dirs, if building exes
                          -> [String] -- ^Modules
                          -> BuildInfo -> IO ()
-	compileBuildInfo destDir mLibSrcDir mods bi = do
+	compileBuildInfo destDir mLibSrcDirs mods bi = do
 	    -- Pass 1: copy or cpp files from src directory to build directory
 	    let useCpp = CPP `elem` extensions bi
-            let srcDir = hsSourceDir bi
-	    let srcDirs = srcDir:(maybeToList mLibSrcDir)
+	    let srcDirs = hsSourceDirs bi ++ mLibSrcDirs
             when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
-	    fileLists <- sequence [moduleToFilePath srcDirs modu suffixes |
-			modu <- mods]
-	    let trimSrcDir
-		  | null srcDir || srcDir == currentDir = id
-		  | otherwise = drop (length srcDir + 1)
-	    let copy_or_cpp f =
-		    copyModule useCpp bi f (destDir `joinFileName` trimSrcDir f)
-	    mapM_ copy_or_cpp (concat fileLists)
+            flip mapM_ mods $ \ m -> do
+                fs <- moduleToFilePath srcDirs m suffixes
+                if null fs then
+                    die ("can't find source for module " ++ m)
+                  else do
+                    let srcFile = head fs
+                    let (_, ext) = splitFileExt srcFile
+                    copyModule useCpp bi srcFile
+                        (destDir `joinFileName` dotToSep m `joinFileExt` ext)
 	    -- Pass 2: compile foreign stubs in build directory
 	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
 			modu <- mods]
@@ -295,7 +299,6 @@ buildHugs pkg_descr lbi verbose = do
                 when (verbose > 2) (putStrLn "Compiling FFI stubs")
 		(_, opts, file_incs) <- getOptionsFromSource file
 		let ghcOpts = hcOptions GHC opts
-		let srcDir = hsSourceDir bi
 		let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
 		let incs = uniq (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
 		let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
@@ -304,7 +307,7 @@ buildHugs pkg_descr lbi verbose = do
 		let cArgs =
 			["-I" ++ dir | dir <- includeDirs bi] ++
 			ccOptions bi ++
-			map (joinFileName srcDir) cfiles ++
+			cfiles ++
 			["-L" ++ dir | dir <- extraLibDirs bi] ++
 			ldOptions bi ++
 			["-l" ++ lib | lib <- extraLibs bi] ++

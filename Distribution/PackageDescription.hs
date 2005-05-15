@@ -129,7 +129,8 @@ data PackageDescription
         buildDepends   :: [Dependency],
         -- components
         library        :: Maybe Library,
-        executables    :: [Executable]
+        executables    :: [Executable],
+        otherFiles     :: [FilePath]
     }
     deriving (Show, Read, Eq)
 
@@ -159,7 +160,8 @@ emptyPackageDescription
                       description  = "",
                       category     = "",
                       library      = Nothing,
-                      executables  = []
+                      executables  = [],
+                      otherFiles   = []
                      }
 
 -- |Get all the module names from the libraries in this package
@@ -184,7 +186,7 @@ data BuildInfo = BuildInfo {
         ldOptions         :: [String],  -- ^ options for linker
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
-        hsSourceDir       :: FilePath, -- ^ where to look for the haskell module hierarchy
+        hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
         otherModules      :: [String], -- ^ non-exposed or non-main modules
         extensions        :: [Extension],
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
@@ -202,7 +204,7 @@ emptyBuildInfo = BuildInfo {
                       ldOptions         = [],
                       frameworks        = [],
                       cSources          = [],
-                      hsSourceDir       = currentDir,
+                      hsSourceDirs      = [currentDir],
                       otherModules      = [],
                       extensions        = [],
                       extraLibs         = [],
@@ -286,7 +288,7 @@ unionBuildInfo b1 b2
          ldOptions         = combine ldOptions,
          frameworks        = combine frameworks,
          cSources          = combine cSources,
-         hsSourceDir       = override hsSourceDir "hs-source-dir",
+         hsSourceDirs      = combine hsSourceDirs,
          otherModules      = combine otherModules,
          extensions        = combine extensions,
          extraLibs         = combine extraLibs,
@@ -298,14 +300,6 @@ unionBuildInfo b1 b2
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
       combine f = f b1 ++ f b2
-      override :: (Eq a) => (BuildInfo -> a) -> String -> a
-      override f s
-        | v1 == def = v2
-        | v2 == def = v1
-        | otherwise = error $ "union: Two non-empty fields found in union attempt: " ++ s
-        where v1 = f b1
-              v2 = f b2
-              def = f emptyBuildInfo
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
@@ -371,6 +365,8 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
+ , listField "other-files" showFilePath           parseFilePathQ
+                           otherFiles             (\val pkg -> pkg{otherFiles=val})
  ]
 
 executableStanzaFields :: [StanzaField Executable]
@@ -415,9 +411,9 @@ binfoFields =
  , listField   "include-dirs"
                            showFilePath       parseFilePathQ
                            includeDirs        (\paths binfo -> binfo{includeDirs=paths})
- , simpleField "hs-source-dir"
+ , listField   "hs-source-dirs"
                            showFilePath       parseFilePathQ
-                           hsSourceDir        (\path  binfo -> binfo{hsSourceDir=path})
+                           hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
  , listField   "other-modules"         
                            text               parseModuleNameQ
                            otherModules       (\val binfo -> binfo{otherModules=val})
