@@ -457,6 +457,18 @@ Other-Modules:   A, C, Utils</programlisting>
 
         <varlistentry>
           <term>
+            <literal>other-files:</literal>
+            <replaceable>filename list</replaceable>
+          </term>
+          <listitem>
+            <para>A list of additional files to be included in source
+              distributions built with <command>setup sdist</command>
+              (see <xref linkend="setup-sdist"/>).</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
             <literal>exposed-modules:</literal>
             <replaceable>identifier list</replaceable>
             (required if this package contains a library)
@@ -514,8 +526,8 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>The name of the source file containing the
-                <literal>Main</literal> module, relative to the
-                <literal>hs-source-dir</literal> directory.</para>
+                <literal>Main</literal> module, relative to one of the
+                directories listed in <literal>hs-source-dirs</literal>.</para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -561,13 +573,15 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>hs-source-dir:</literal>
-              <replaceable>directory</replaceable>
+              <literal>hs-source-dirs:</literal>
+              <replaceable>directory list</replaceable>
               (default: <quote><literal>.</literal></quote>)
             </term>
             <listitem>
-              <para>The name of root directory of the module
-                hierarchy.</para>
+              <para>Root directories for the module hierarchy.</para>
+
+              <para>For backwards compatibility, the old variant
+                <literal>hs-source-dir</literal> is also recognized.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
@@ -747,10 +761,11 @@ Other-Modules:   A, C, Utils</programlisting>
     <sect2 id="system-dependent">
       <title>System-dependent parameters</title>
 
-      <para>For some packages, implementation details and the build
-        procedure depend on the build environment.  The simple build
-        infrastructure can handle many such situations using a slightly
-        longer <filename>Setup.hs</filename>:</para>
+      <para>For some packages, especially those interfacing with C
+        libraries, implementation details and the build procedure depend
+        on the build environment.  The simple build infrastructure
+        can handle many such situations using a slightly longer
+        <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
 main = defaultMainWithHooks defaultUserHooks</programlisting>
@@ -861,6 +876,15 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
           various tests.  This file may be included by C source files
           and preprocessed Haskell source files in the package.</para>
       </example>
+
+      <note>
+        <para>Packages using these features will also need to list
+          additional files such as <filename>configure</filename>,
+          templates for <literal>.buildinfo</literal> files, files named
+          only in <literal>.buildinfo</literal> files, header files and
+          so on in the <literal>other-files</literal> field, to ensure
+          that they are included in source distributions.</para>
+      </note>
     </sect2>
 
     <sect2 id="complex-packages">
@@ -1026,7 +1050,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       other options will be reported as errors, except in the case of
       the <literal>configure</literal> command.</para>
 
-    <sect2>
+    <sect2 id="setup-configure">
       <title>setup configure</title>
       <para>Prepare to build the package.
         Typically, this step checks that the target platform is capable
@@ -1156,19 +1180,19 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-build">
       <title>setup build</title>
       <para>Perform any preprocessing or compilation needed to make this
         package ready for installation.</para>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-haddock">
       <title>setup haddock</title>
       <para>Build the interface documentation for a library using
         &Haddock;.</para>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-install">
       <title>setup install</title>
       <para>Copy the files into the install locations and (for library
         packages) register the package with the compiler, i.e. make the
@@ -1195,7 +1219,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       </variablelist>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-copy">
       <title>setup copy</title>
       <para>Copy the files without registering them.  This command
         is mainly of use to those creating binary packages.</para>
@@ -1215,7 +1239,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       </variablelist>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-register">
       <title>setup register</title>
       <para>Register this package with the compiler, i.e. make the
         modules it contains available to programs.  This only makes sense
@@ -1257,7 +1281,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       </variablelist>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-unregister">
       <title>setup unregister</title>
       <para>Deregister this package with the compiler.</para>
 
@@ -1300,16 +1324,21 @@ runhaskell Setup.hs unregister --gen-script</screen>
         steps.</para>
     </sect2>
 
-    <sect2>
+    <sect2 id="setup-sdist">
       <title>setup sdist</title>
       <para>Create a system- and compiler-independent source distribution
         in a file
         <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
-        that can be distributed to package builders.  When unpacked,
-        the commands listed in this section will be available.</para>
+        in the <filename>dist</filename> subdirectory, for distribution
+        to package builders.  When unpacked, the commands listed in this
+        section will be available.</para>
 
-      <para>However this command is not yet working in the simple build
-        infrastructure.</para>
+      <para>The files placed in this distribution are the package
+        description file, the setup script, the sources of the modules
+        named in the package description file, and files named in the
+        <literal>license-file</literal>, <literal>main-is</literal>,
+        <literal>c-sources</literal> and <literal>other-files</literal>
+        fields.</para>
     </sect2>
   </sect1>
 
@@ -1320,11 +1349,6 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
     <itemizedlist>
       <listitem>
-        <para>In the simple build infrastructure, the
-          <literal>sdist</literal> command does not work.</para>
-      </listitem>
-
-      <listitem>
         <para>The scheme described in <xref linkend="system-dependent"/>
           will not work on Windows without MSYS or Cygwin.</para>
       </listitem>
@@ -1334,16 +1358,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
           and building packages for it:</para>
         <itemizedlist>
           <listitem>
-            <para>Cabal does not work with the current stable release
-              (Nov 2003), just the development version.</para>
+            <para>Cabal requires the latest release (Mar 2005).</para>
           </listitem>
 
           <listitem>
             <para>It doesn't work with Windows.</para>
-          </listitem>
-
-          <listitem>
-            <para>The <option>--user</option> option is unavailable.</para>
           </listitem>
 
           <listitem>

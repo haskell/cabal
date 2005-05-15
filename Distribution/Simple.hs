@@ -253,7 +253,7 @@ defaultMainWorker pkg_descr_in action args hooks
                       createDirectoryIfMissing True tmpDir
                       createDirectoryIfMissing True targetDir
                       preprocessSources pkg_descr lbi verbose pps
-                      inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
+                      inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
                                              | m <- exposedModules lib] >>= return . concat
                       mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
                       let showPkg = showPackageId (package pkg_descr)
@@ -286,7 +286,7 @@ defaultMainWorker pkg_descr_in action args hooks
                        let bi = libBuildInfo lib
                        let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
                        preprocessSources pkg_descr lbi verbose pps
-                       inFiles <- sequence [moduleToFilePath [hsSourceDir bi] m ["hs", "lhs"]
+                       inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
                                               | m <- mods] >>= return . concat
                        code <- rawSystemVerbose verbose (fromJust mPfe)
                                 ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
@@ -308,15 +308,15 @@ defaultMainWorker pkg_descr_in action args hooks
                 removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
 
                 -- remove source stubs for library
-                withLib pkg_descr () (\Library{libBuildInfo=BuildInfo{hsSourceDir=dir}} -> do
-                                      s <- sequence [moduleToFilePath [dir] (x ++"_stub") ["h", "c"]
+                withLib pkg_descr () (\Library{libBuildInfo=BuildInfo{hsSourceDirs=dirs}} -> do
+                                      s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
                                                  | x <- libModules pkg_descr ]
                                       mapM_ removeFile (concat s)
                                      )
                 -- remove source stubs for executables
                 withExe pkg_descr (\Executable{modulePath=exeSrcName
-                                              ,buildInfo=BuildInfo{hsSourceDir=dir}} -> do
-                                   s <- sequence [moduleToFilePath [dir] (x ++"_stub") ["h", "c"]
+                                              ,buildInfo=BuildInfo{hsSourceDirs=dirs}} -> do
+                                   s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
                                               | x <- exeModules pkg_descr ]
                                    mapM_ removeFile (concat s)
                                    let (startN, _) = splitFileExt exeSrcName
