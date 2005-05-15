@@ -110,7 +110,7 @@ installExeGhc :: Int      -- ^verbose
 installExeGhc verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
          withExe pkg_descr $ \ (Executable e _ b) ->
-             copyFileVerbose verbose (buildPref `joinFileName` e) (pref `joinFileName` e)
+             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` e) (pref `joinFileName` e)
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: Int      -- ^verbose

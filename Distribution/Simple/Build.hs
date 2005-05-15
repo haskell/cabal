@@ -61,7 +61,7 @@ import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, dotToSep,
-				  moduleToFilePath, currentDir,
+				  moduleToFilePath,
 				  getOptionsFromSource, stripComments,
                                   smartCopySources,
                                   findFile
@@ -176,6 +176,7 @@ buildGHC pkg_descr lbi verbose = do
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
+                 putStrLn $ "hsSourceDirs: " ++ (show (hsSourceDirs exeBi))
 		 let targetDir = pref `joinFileName` exeName'
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True targetDir
@@ -195,7 +196,6 @@ buildGHC pkg_descr lbi verbose = do
 			                    ++ (if verbose > 4 then ["-v"] else [])
                                 rawSystemExit verbose ghcPath (cArgs ++ [c])
                                     | c <- cSources exeBi]
-
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
 
                  let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
@@ -232,7 +232,7 @@ constructGHCCmdLine comp srcLocs bi deps =
             then ["-fhide-all-packages"]
             else [])
      ++ ["--make"]
-     ++ ["-i" ++ l | l <- hsSourceDirs bi ++ srcLocs]
+     ++ ["-i" ++ l | l <- nub (hsSourceDirs bi ++ srcLocs)]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ nub (flags ++ hcOptions GHC (options bi))
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- deps ])
@@ -261,7 +261,7 @@ buildHugs pkg_descr lbi verbose = do
 	compileBuildInfo destDir mLibSrcDirs mods bi = do
 	    -- Pass 1: copy or cpp files from src directory to build directory
 	    let useCpp = CPP `elem` extensions bi
-	    let srcDirs = hsSourceDirs bi ++ mLibSrcDirs
+	    let srcDirs = nub $ hsSourceDirs bi ++ mLibSrcDirs
             when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
             flip mapM_ mods $ \ m -> do
                 fs <- moduleToFilePath srcDirs m suffixes
