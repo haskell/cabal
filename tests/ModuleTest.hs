@@ -167,11 +167,11 @@ tests currDir comp compConf = [
             when (comp == GHC) -- are these tests silly?
               (do doesDirectoryExist "dist/build" >>=
                     assertBool "dist/build doesn't exist"
-                  doesFileExist "dist/build/testA" >>= 
+                  doesFileExist "dist/build/testA/testA" >>= 
                     assertBool "build did not create the executable: testA"
-                  doesFileExist "dist/build/testB" >>= 
+                  doesFileExist "dist/build/testB/testB" >>= 
                     assertBool "build did not create the executable: testB"
-                  doesFileExist "dist/build/testA-tmp/c_src/hello.o" >>=
+                  doesFileExist "dist/build/testA/testA-tmp/c_src/hello.o" >>=
                     assertBool "build did not build c source for testA"
                   doesFileExist "dist/build/hello.o" >>=
                     assertBool "build did not build c source for A library"
@@ -264,9 +264,9 @@ tests currDir comp compConf = [
             assertBuild
             assertCopy
             doesFileExist ",tmp/bin/testA" >>= 
-              assertBool "build did not create the executable: testA"
+              assertBool "install did not create the executable: testA"
             doesFileExist ",tmp/bin/testB" >>= 
-              assertBool "build did not create the executable: testB"
+              assertBool "install did not create the executable: testB"
             assertCmd "./,tmp/bin/testA isA" "A is not A"
             assertCmd "./,tmp/bin/testB isB" "B is not B"
             -- no register, since there's no library
@@ -282,9 +282,9 @@ tests currDir comp compConf = [
               assertBool "build did not move A.hi-boot file into place lib"
             doesFileExist ",tmp/lib/recursive-1.0/libHSrecursive-1.0.a" >>=
               assertBool "recursive build didn't create library"
-            doesFileExist "dist/build/testExe-tmp/A.hi" >>=
+            doesFileExist "dist/build/testExe/testExe-tmp/A.hi" >>=
               assertBool "build did not move A.hi-boot file into place exe"
-            doesFileExist "dist/build/testExe" >>=
+            doesFileExist "dist/build/testExe/testExe" >>=
               assertBool "recursive build didn't create binary")
 -- linking in ffi stubs
          ,TestLabel ("package ffi: " ++ compIdent) $ TestCase $
@@ -314,7 +314,7 @@ tests currDir comp compConf = [
             registerAndExecute comp "pkg depOnLib: register with script failed"
             unregisterAndExecute comp "pkg DepOnLib: unregister with script failed"
             when (comp == GHC) (do 
-                                doesFileExist "dist/build/mains/mainForA" >>= 
+                                doesFileExist "dist/build/mainForA/mainForA" >>= 
                                   assertBool "build did not create the executable: mainForA"
                                 doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
                                   >>= assertBool "library doesn't exist"

@@ -201,12 +201,13 @@ moduleToPossiblePaths searchPref s possibleSuffixes =
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
-findFile prefPaths locPath = do
+findFile prefPathsIn locPath = do
+  let prefPaths = nub prefPathsIn -- ignore dups
   paths <- filterM doesFileExist [prefPath `joinFileName` locPath | prefPath <- prefPaths]
-  case paths of
+  case nub paths of -- also ignore dups, though above nub should fix this.
     [path] -> return path
     []     -> die (locPath ++ " doesn't exists")
-    paths  -> die (locPath ++ "is found in multiple places:" ++ unlines (map ((++) "    ") paths))
+    paths  -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths))
 
 dotToSep :: String -> String
 dotToSep = map dts

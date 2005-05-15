@@ -56,6 +56,7 @@ import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
 import Distribution.Version (Version(..))
 import Control.Monad (unless)
 import Data.Maybe (fromMaybe, maybeToList)
+import Data.List (nub)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
@@ -111,7 +112,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi
-	sequence_ [do retVal <- preprocessModule ((hsSourceDirs bi)
+	sequence_ [do retVal <- preprocessModule (nub $ (hsSourceDirs bi)
                                      ++(maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
                                      modu verbose builtinSuffixes biHandlers
                       unless (retVal == ExitSuccess)

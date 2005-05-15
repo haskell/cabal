@@ -83,6 +83,7 @@ module Distribution.PackageDescription (
 import Control.Monad(liftM, foldM, when, unless)
 import Data.Char
 import Data.Maybe(fromMaybe, fromJust, isNothing, catMaybes)
+import Data.List (nub)
 import Text.PrettyPrint.HughesPJ
 import System.Directory(doesFileExist)
 
@@ -299,7 +300,7 @@ unionBuildInfo b1 b2
         }
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
-      combine f = f b1 ++ f b2
+      combine f = nub $ f b1 ++ f b2
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
@@ -668,8 +669,9 @@ testPkgDesc = unlines [
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Other-Modules: Distribution.Package, Distribution.Version,",
         "                Distribution.Simple.GHCPackageConfig",
+        "Other-Files: file1, file2",
         "C-Sources: not/even/rain.c, such/small/hands",
-        "HS-Source-Dir: src",
+        "HS-Source-Dirs: src, src2",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
         "Extensions: OverlappingInstances, TypeSynonymInstances",
         "Extra-Libraries: libfoo, bar, bang",
@@ -705,6 +707,7 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
+                    otherFiles=["file1", "file2"],
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
@@ -721,7 +724,7 @@ testPkgDescAnswer =
                            ldOptions = ["-BStatic", "-dn"],
                            frameworks = ["foo"],
                            cSources = ["not/even/rain.c", "such/small/hands"],
-                           hsSourceDir = "src",
+                           hsSourceDirs = ["src", "src2"],
                            otherModules = ["Distribution.Package",
                                            "Distribution.Version",
                                            "Distribution.Simple.GHCPackageConfig"],
@@ -737,7 +740,7 @@ testPkgDescAnswer =
                        "SomeFile.hs" (
                       emptyBuildInfo{
                         otherModules=["Foo1","Util","Main"],
-                        hsSourceDir = "scripts",
+                        hsSourceDirs = ["scripts"],
                         extensions = [OverlappingInstances],
                         options = [(NHC,[]),(Hugs,[]),(GHC,[])]
                       })]
