@@ -54,7 +54,7 @@ import Distribution.PackageDescription
          setupMessage, libModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Utils
-        (smartCopySources, die, findPackageDesc, copyFileVerbose)
+        (smartCopySources, die, findPackageDesc, findFile, copyFileVerbose)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
@@ -86,9 +86,12 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
   -- move the executables into place
   flip mapM_ (executables pkg_descr) $ \ (Executable _ mainPath exeBi) -> do
     prepareDir verbose targetDir pps [] exeBi
-    copyFileTo verbose targetDir (hsSourceDir exeBi `joinFileName` mainPath)
+    srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
+    copyFileTo verbose targetDir srcMainFile
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbose targetDir (licenseFile pkg_descr)
+  flip mapM_ (otherFiles pkg_descr) $ \ fpath -> do
+    copyFileTo verbose targetDir fpath
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
   lhsExists <- doesFileExist "Setup.lhs"
@@ -114,11 +117,10 @@ prepareDir :: Int       -- ^verbose
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods BuildInfo{hsSourceDir=srcDir, otherModules=mods', cSources=cfiles}
-    = do let pref = inPref `joinFileName` srcDir
-         let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbose srcDir pref (mods++mods') suff True
-         removePreprocessed pref mods suff
+prepareDir verbose inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
+    = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
+         smartCopySources verbose srcDirs inPref (mods++mods') suff True
+         removePreprocessed (map (joinFileName inPref) srcDirs) mods suff
          mapM_ (copyFileTo verbose inPref) cfiles
 
 copyFileTo :: Int -> FilePath -> FilePath -> IO ()

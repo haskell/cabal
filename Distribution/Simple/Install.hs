@@ -110,7 +110,7 @@ installExeGhc :: Int      -- ^verbose
 installExeGhc verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
          withExe pkg_descr $ \ (Executable e _ b) ->
-             copyFileVerbose verbose (buildPref `joinFileName` (hsSourceDir b) `joinFileName` e) (pref `joinFileName` e)
+             copyFileVerbose verbose (buildPref `joinFileName` e) (pref `joinFileName` e)
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: Int      -- ^verbose
@@ -119,7 +119,7 @@ installLibGHC :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installLibGHC verbose pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
-    = do smartCopySources verbose (buildPref `joinFileName` (hsSourceDir $ libBuildInfo l)) pref (libModules pd) ["hi"] True
+    = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True
          let libTargetLoc = mkLibName pref (showPackageId p)
          copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
 
@@ -160,7 +160,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         let pkgDir = libPref `joinFileName` "packages"
                     `joinFileName` pkg_name
         try $ removeDirectoryRecursive pkgDir
-        smartCopySources verbose buildPref pkgDir (libModules pkg_descr) hugsInstallSuffixes True
+        smartCopySources verbose [buildPref] pkgDir (libModules pkg_descr) hugsInstallSuffixes True
     let progBuildDir = buildPref `joinFileName` "programs"
     let progInstallDir = libPref `joinFileName` "programs"
     let progTargetDir = targetLibPref `joinFileName` "programs"
@@ -171,7 +171,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         let installDir = progInstallDir `joinFileName` exeName exe
         let targetDir = progTargetDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
-        smartCopySources verbose buildDir installDir
+        smartCopySources verbose [buildDir] installDir
             ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
 #ifndef mingw32_TARGET_OS
         -- FIX (HUGS): works for Unix only

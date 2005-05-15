@@ -63,7 +63,7 @@ import Distribution.Extension
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Setup(CompilerFlavor(..))
-
+import Debug.Trace
 import Data.Char
 
 -- -----------------------------------------------------------------------------
@@ -186,7 +186,10 @@ mkStanza []          = return []
 mkStanza ((n,xs):ys) =
   case break (==':') xs of
     (fld', ':':val) -> do
-       let fld = map toLower fld'
+       let fld'' = map toLower fld'
+           fld | fld'' == "hs-source-dir"
+                           = trace "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs." "hs-source-dirs"
+               | otherwise = fld''
        ss <- mkStanza ys
        checkDuplField fld ss
        return ((n, fld, dropWhile isSpace val):ss)

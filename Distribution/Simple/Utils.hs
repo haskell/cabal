@@ -58,6 +58,7 @@ module Distribution.Simple.Utils (
 	withTempFile,
 	getOptionsFromSource,
 	stripComments,
+	findFile,
         defaultPackageDesc,
         findPackageDesc,
 	defaultHookedPackageDesc,
@@ -174,6 +175,20 @@ moduleToFilePath pref s possibleSuffixes
           searchModuleToPossiblePaths s' suffs searchP
               = moduleToPossiblePaths searchP s' suffs
 
+-- |Like 'moduleToFilePath', but return the location and the rest of
+-- the path as separate results.
+moduleToFilePath2
+    :: [FilePath] -- ^search locations
+    -> String   -- ^Module Name
+    -> [String] -- ^possible suffixes
+    -> IO [(FilePath, FilePath)] -- ^locations and relative names
+moduleToFilePath2 locs mname possibleSuffixes
+    = filterM exists $
+        [(loc, fname `joinFileExt` ext) | loc <- locs, ext <- possibleSuffixes]
+  where
+    fname = dotToSep mname
+    exists (loc, relname) = doesFileExist (loc `joinFileName` relname)
+
 -- |Get the possible file paths based on this module name.
 moduleToPossiblePaths :: FilePath -- ^search prefix
                       -> String -- ^module name
@@ -182,6 +197,16 @@ moduleToPossiblePaths :: FilePath -- ^search prefix
 moduleToPossiblePaths searchPref s possibleSuffixes =
   let fname = searchPref `joinFileName` (dotToSep s)
   in [fname `joinFileExt` ext | ext <- possibleSuffixes]
+
+findFile :: [FilePath]    -- ^search locations
+         -> FilePath      -- ^File Name
+         -> IO FilePath
+findFile prefPaths locPath = do
+  paths <- filterM doesFileExist [prefPath `joinFileName` locPath | prefPath <- prefPaths]
+  case paths of
+    [path] -> return path
+    []     -> die (locPath ++ " doesn't exists")
+    paths  -> die (locPath ++ "is found in multiple places:" ++ unlines (map ((++) "    ") paths))
 
 dotToSep :: String -> String
 dotToSep = map dts
@@ -195,29 +220,26 @@ dotToSep = map dts
 -- directory.
 
 smartCopySources :: Int      -- ^verbose
-            -> FilePath -- ^build prefix (location of objects)
+            -> [FilePath] -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
             -> Bool     -- ^Exit if no such modules
             -> IO ()
-smartCopySources verbose pref targetDir sources searchSuffixes exitIfNone
+smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone
     = do createDirectoryIfMissing True targetDir
+         allLocations <- mapM moduleToFPErr sources
+         let copies = [(srcDir `joinFileName` name,
+                        targetDir `joinFileName` name) |
+                       (srcDir, name) <- concat allLocations]
 	 -- Create parent directories for everything:
-         sourceLocs' <- mapM moduleToFPErr sources
-         let sourceLocs = concat $ filter (not . null) sourceLocs'
-         let sourceLocsNoPref -- get rid of the prefix, for target location.
-                 = if null pref || pref == currentDir then sourceLocs
-                   else map (dropPrefix pref) sourceLocs
-	 mapM (createDirectoryIfMissing True)
-		  $ nub [fst (splitFileName (targetDir `joinFileName` x))
-		   | x <- sourceLocsNoPref, fst (splitFileName x) /= "."]
+	 mapM_ (createDirectoryIfMissing True) $ nub $
+             [fst (splitFileName targetFile) | (_, targetFile) <- copies]
 	 -- Put sources into place:
-	 sequence_ [copyFileVerbose verbose x (targetDir `joinFileName` y)
-                      | (x,y) <- (zip sourceLocs sourceLocsNoPref)]
-	 return ()
+	 sequence_ [copyFileVerbose verbose srcFile destFile |
+                    (srcFile, destFile) <- copies]
     where moduleToFPErr m
-              = do p <- moduleToFilePath [pref] m searchSuffixes
+              = do p <- moduleToFilePath2 srcDirs m searchSuffixes
                    when (null p && exitIfNone)
                             (putStrLn ("Error: Could not find module: " ++ m
                                        ++ " with any suffix: " ++ (show searchSuffixes))
@@ -427,8 +449,8 @@ hunitTests
     = let suffixes = ["hs", "lhs"]
           in [TestCase $
 #ifdef mingw32_TARGET_OS
-       do mp1 <- moduleToFilePath "" "Distribution.Simple.Build" suffixes --exists
-          mp2 <- moduleToFilePath "" "Foo.Bar" suffixes    -- doesn't exist
+       do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
+          mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
                    (Just "Distribution\\Simple\\Build.hs") mp1
           assertEqual "not existing not nothing failed" Nothing mp2,
