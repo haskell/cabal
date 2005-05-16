@@ -229,7 +229,7 @@ constructGHCCmdLine comp srcLocs bi deps =
     -- Unsupported extensions have already been checked by configure
     let flags = snd $ extensionsToGHCFlag (extensions bi)
      in (if compilerVersion comp > Version [6,4] []
-            then ["-fhide-all-packages"]
+            then ["-hide-all-packages"]
             else [])
      ++ ["--make"]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi ++ srcLocs)]
