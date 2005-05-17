@@ -46,3 +46,34 @@ Other-Modules:
         Distribution.Compat.Exception,
         Distribution.Compat.RawSystem
 Extensions: CPP
+
+executable: cabal-setup
+main-is: DefaultSetup.lhs
+Other-Modules:
+        Distribution.Compat.ReadP,
+        Distribution.Extension,
+        Distribution.InstalledPackageInfo,
+        Distribution.License,
+        Distribution.Make,
+        Distribution.Package,
+        Distribution.PackageDescription,
+        Distribution.ParseUtils,
+        Distribution.PreProcess,
+        Distribution.PreProcess.Unlit,
+        Distribution.Setup,
+        Distribution.Simple,
+        Distribution.Simple.Build,
+        Distribution.Simple.Configure,
+        Distribution.Simple.GHCPackageConfig,
+        Distribution.Simple.Install,
+        Distribution.Simple.LocalBuildInfo,
+        Distribution.Simple.Register,
+        Distribution.Simple.SrcDist,
+        Distribution.Simple.Utils,
+        Distribution.Compat.FilePath,
+        Distribution.Version,
+        Distribution.GetOpt,
+        Distribution.Compat.Directory,
+        Distribution.Compat.Exception,
+        Distribution.Compat.RawSystem
+Extensions: CPP
