@@ -176,7 +176,9 @@ configure pkg_descr cfg
                               withHaddock=haddock,
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
-                              withCpphs=cpphs
+                              withCpphs=cpphs,
+                              withProfLib=configProfLib cfg,
+                              withProfExe=configProfExe cfg
                              }
 
 -- |Converts build dependencies to a versioned dependency.  only sets

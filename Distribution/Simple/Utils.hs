@@ -53,6 +53,7 @@ module Distribution.Simple.Utils (
         copyFileVerbose,
         moduleToFilePath,
         mkLibName,
+        mkProfLibName,
         currentDir,
         dotToSep,
 	withTempFile,
@@ -262,6 +263,11 @@ mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
 mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
+
+mkProfLibName :: FilePath -- ^file Prefix
+              -> String   -- ^library name.
+              -> String
+mkProfLibName pref lib = mkLibName pref (lib++"_p")
 
 -- -----------------------------------------------------------------------------
 -- * temporary file names
