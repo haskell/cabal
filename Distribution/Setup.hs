@@ -113,6 +113,8 @@ data ConfigFlags = ConfigFlags {
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
         configC2hs     :: Maybe FilePath, -- ^C2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
+        configProfLib  :: Bool,           -- ^Enable profiling in the library
+        configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configPrefix   :: Maybe FilePath, -- ^installation prefix
         configVerbose  :: Int,            -- ^verbosity level
 	configUser     :: Bool		  -- ^--user flag?
@@ -129,6 +131,8 @@ emptyConfigFlags = ConfigFlags {
         configAlex     = Nothing,
         configHsc2hs   = Nothing,
         configC2hs     = Nothing,
+        configProfLib  = False,
+        configProfExe  = False,
         configCpphs    = Nothing,
         configPrefix   = Nothing,
         configVerbose  = 0,
@@ -140,6 +144,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
+          | WithProfLib | WithoutProfLib
+          | WithProfExe | WithoutProfExe
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -265,6 +271,14 @@ configureCmd = Cmd {
                "give the path to c2hs",
            Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
                "give the path to cpphs",
+           Option "p" ["enable-library-profiling"] (NoArg WithProfLib)
+               "Enable library profiling",
+           Option "" ["disable-library-profiling"] (NoArg WithoutProfLib)
+               "Disable library profiling",
+           Option "" ["enable-executable-profiling"] (NoArg WithProfExe)
+               "Enable executable profiling",
+           Option "" ["disable-executable-profiling"] (NoArg WithoutProfExe)
+               "Disable executable profiling",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -298,6 +312,10 @@ parseConfigureArgs cfg args customOpts =
             WithHsc2hs path   -> t { configHsc2hs   = Just path }
             WithC2hs path     -> t { configC2hs     = Just path }
             WithCpphs path    -> t { configCpphs    = Just path }
+            WithProfLib       -> t { configProfLib  = True }
+            WithoutProfLib    -> t { configProfLib  = False }
+            WithProfExe       -> t { configProfExe  = True }
+            WithoutProfExe    -> t { configProfExe  = False }
             Prefix path       -> t { configPrefix   = Just path }
             Verbose n         -> t { configVerbose  = n }
 	    UserFlag	      -> t { configUser     = True }

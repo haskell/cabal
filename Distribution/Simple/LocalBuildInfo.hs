@@ -47,26 +47,28 @@ import Distribution.Setup (Compiler)
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {
-  	prefix	    :: FilePath,
+  	prefix	      :: FilePath,
 		-- ^ The installation directory (eg. @/usr/local@, or
 		-- @C:/Program Files/foo-1.2@ on Windows.
-	compiler    :: Compiler,
+	compiler      :: Compiler,
 		-- ^ The compiler we're building with
-	buildDir    :: FilePath,
+	buildDir      :: FilePath,
 		-- ^ Where to put the result of building.
-	packageDeps :: [PackageIdentifier],
+	packageDeps   :: [PackageIdentifier],
 		-- ^ Which packages we depend on, /exactly/.
 		-- The 'Distribution.PackageDescription.PackageDescription'
 		-- specifies a set of build dependencies
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
-        withHaddock :: Maybe FilePath, -- ^Might be the location of the Haddock executable.
-        withHappy   :: Maybe FilePath, -- ^Might be the location of the Happy executable.
-        withAlex    :: Maybe FilePath, -- ^Might be the location of the Alex executable.
-        withHsc2hs  :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
-        withC2hs    :: Maybe FilePath, -- ^Might be the location of the C2hs executable.
-        withCpphs   :: Maybe FilePath  -- ^Might be the location of the Cpphs executable.
+        withHaddock   :: Maybe FilePath, -- ^Might be the location of the Haddock executable.
+        withHappy     :: Maybe FilePath, -- ^Might be the location of the Happy executable.
+        withAlex      :: Maybe FilePath, -- ^Might be the location of the Alex executable.
+        withHsc2hs    :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
+        withC2hs      :: Maybe FilePath, -- ^Might be the location of the C2hs executable.
+        withCpphs     :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
+        withProfLib   :: Bool,
+        withProfExe   :: Bool
   }
   deriving (Show, Read, Eq)
 
