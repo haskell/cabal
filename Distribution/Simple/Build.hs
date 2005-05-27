@@ -60,14 +60,14 @@ import Distribution.Version (Version(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
-                                  mkLibName, dotToSep,
+                                  mkLibName, mkProfLibName, dotToSep,
 				  moduleToFilePath,
 				  getOptionsFromSource, stripComments,
                                   smartCopySources,
                                   findFile
                                  )
 
-import Data.Maybe(maybeToList)
+import Data.Maybe(maybeToList, fromMaybe)
 import Control.Monad (unless, when)
 #ifndef __NHC__
 import Control.Exception (try)
@@ -122,6 +122,7 @@ buildGHC :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 buildGHC pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
+      ifProfLib = when (withProfLib lbi)
   pkgConf <- GHC.localPackageConfig
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
@@ -142,8 +143,15 @@ buildGHC pkg_descr lbi verbose = do
               ++ constructGHCCmdLine (compiler lbi) [] libBi (packageDeps lbi)
               ++ (libModules pkg_descr)
               ++ (if verbose > 4 then ["-v"] else [])
+          ghcArgsProf = ghcArgs
+              ++ ["-prof",
+                  "-hisuf", "p_hi",
+                  "-osuf", "p_o"
+                 ]
+              ++ profOptions libBi
       unless (null (libModules pkg_descr)) $
-        rawSystemExit verbose ghcPath ghcArgs
+        do rawSystemExit verbose ghcPath ghcArgs
+           ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
 
       -- build any C sources
       unless (null (cSources libBi)) $
@@ -162,6 +170,9 @@ buildGHC pkg_descr lbi verbose = do
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
           libName  = mkLibName pref (showPackageId (package pkg_descr))
+          hProfObjs = [ (dotToSep x) `joinFileExt` "p_"++objExtension
+                      | x <- libModules pkg_descr ]
+          profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
 
       stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
@@ -173,7 +184,12 @@ buildGHC pkg_descr lbi verbose = do
                 ++ [libName]
                 ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
                 ++ stubObjs
+            arProfArgs = ["q"++ (if verbose > 4 then "v" else "")]
+                ++ [profLibName]
+                ++ [pref `joinFileName` x | x <- hProfObjs ++ cObjs]
+                ++ stubObjs
         rawSystemPathExit verbose "ar" arArgs
+        ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
@@ -216,6 +232,9 @@ buildGHC pkg_descr lbi verbose = do
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
 			 ++ (if verbose > 4 then ["-v"] else [])
+                         ++ if withProfExe lbi
+                               then "-prof":profOptions exeBi
+                               else []
                  rawSystemExit verbose ghcPath binArgs
 
 dirOf :: FilePath -> FilePath

@@ -194,7 +194,8 @@ data BuildInfo = BuildInfo {
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
-        options           :: [(CompilerFlavor,[String])]
+        options           :: [(CompilerFlavor,[String])],
+        profOptions       :: [String]
     }
     deriving (Show,Read,Eq)
 
@@ -212,7 +213,8 @@ emptyBuildInfo = BuildInfo {
                       extraLibDirs      = [],
                       includeDirs       = [],
                       includes          = [],
-                      options           = []
+                      options           = [],
+                      profOptions       = []
                      }
 
 data Executable = Executable {
@@ -418,6 +420,9 @@ binfoFields =
  , listField   "other-modules"         
                            text               parseModuleNameQ
                            otherModules       (\val binfo -> binfo{otherModules=val})
+ , listField   "prof-options"         
+                           text               parseTokenQ
+                           profOptions        (\val binfo -> binfo{profOptions=val})
  , optsField   "ghc-options"  GHC
                            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
