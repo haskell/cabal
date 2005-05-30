@@ -147,24 +147,26 @@ configure pkg_descr cfg
         unless (null exts) $ putStrLn $ -- Just warn, FIXME: Should this be an error?
             "Warning: " ++ show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
-        haddock <- findProgram "haddock" (configHaddock cfg)
-        happy   <- findProgram "happy"   (configHappy cfg)
-        alex    <- findProgram "alex"    (configAlex cfg)
-        hsc2hs  <- findProgram "hsc2hs"  (configHsc2hs cfg)
-        c2hs    <- findProgram "c2hs"    (configC2hs cfg)
-        cpphs   <- findProgram "cpphs"   (configCpphs cfg)
+        haddock   <- findProgram "haddock"   (configHaddock cfg)
+        happy     <- findProgram "happy"     (configHappy cfg)
+        alex      <- findProgram "alex"      (configAlex cfg)
+        hsc2hs    <- findProgram "hsc2hs"    (configHsc2hs cfg)
+        c2hs      <- findProgram "c2hs"      (configC2hs cfg)
+        cpphs     <- findProgram "cpphs"     (configCpphs cfg)
+        greencard <- findProgram "greencard" (configGreencard cfg)
         -- FIXME: maybe this should only be printed when verbose?
         message $ "Using install prefix: " ++ pref
         message $ "Using compiler: " ++ p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
-        reportProgram "haddock" haddock
-        reportProgram "happy"   happy
-        reportProgram "alex"    alex
-        reportProgram "hsc2hs"  hsc2hs
-        reportProgram "c2hs"    c2hs
-        reportProgram "cpphs"   cpphs
+        reportProgram "haddock"   haddock
+        reportProgram "happy"     happy
+        reportProgram "alex"      alex
+        reportProgram "hsc2hs"    hsc2hs
+        reportProgram "c2hs"      c2hs
+        reportProgram "cpphs"     cpphs
+        reportProgram "greencard" greencard
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
             ipkgs <-  getInstalledPackagesAux comp cfg
@@ -177,6 +179,7 @@ configure pkg_descr cfg
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
                               withCpphs=cpphs,
+                              withGreencard=greencard,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg
                              }

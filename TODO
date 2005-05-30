@@ -10,8 +10,6 @@
 ** which Distribution.* things won't change?
 ** document
 
-* add withGreencard=
-
 * Fix up sdist? hide sdist? bdist?
 ** if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the

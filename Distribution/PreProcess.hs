@@ -185,9 +185,14 @@ removePreprocessed searchLocs mods suffixesIn
 -- * known preprocessors
 -- ------------------------------------------------------------
 
-ppGreenCard :: PreProcessor
-ppGreenCard inFile outFile verbose
-    = rawSystemPath verbose "green-card" ["-tffi", "-o" ++ outFile, inFile]
+ppGreenCard :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppGreenCard = ppGreenCard' []
+
+ppGreenCard' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppGreenCard' inputArgs bi lbi
+    = maybe (ppNone "greencard") pp (withGreencard lbi)
+    where pp greencard inFile outFile verbose
+              = rawSystemPath verbose greencard (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
@@ -273,7 +278,7 @@ ppSuffixes = map fst
 -- |Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     \ _ _ -> ppGreenCard)
+  [ ("gc",     ppGreenCard)
   , ("chs",    ppC2hs)
   , ("hsc",    ppHsc2hs)
   , ("x",      ppAlex)

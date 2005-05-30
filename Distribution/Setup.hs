@@ -113,6 +113,7 @@ data ConfigFlags = ConfigFlags {
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
         configC2hs     :: Maybe FilePath, -- ^C2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
+        configGreencard:: Maybe FilePath, -- ^GreenCard path
         configProfLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configPrefix   :: Maybe FilePath, -- ^installation prefix
@@ -134,6 +135,7 @@ emptyConfigFlags = ConfigFlags {
         configProfLib  = False,
         configProfExe  = False,
         configCpphs    = Nothing,
+        configGreencard= Nothing,
         configPrefix   = Nothing,
         configVerbose  = 0,
 	configUser     = False
@@ -144,6 +146,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
           | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
+          | WithGreencard FilePath
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
           -- For install, register, and unregister:
@@ -271,6 +274,8 @@ configureCmd = Cmd {
                "give the path to c2hs",
            Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
                "give the path to cpphs",
+           Option "" ["with-greencard"] (ReqArg WithGreencard "PATH")
+               "give the path to greencard",
            Option "p" ["enable-library-profiling"] (NoArg WithProfLib)
                "Enable library profiling",
            Option "" ["disable-library-profiling"] (NoArg WithoutProfLib)
@@ -312,6 +317,7 @@ parseConfigureArgs cfg args customOpts =
             WithHsc2hs path   -> t { configHsc2hs   = Just path }
             WithC2hs path     -> t { configC2hs     = Just path }
             WithCpphs path    -> t { configCpphs    = Just path }
+            WithGreencard path-> t { configGreencard= Just path }
             WithProfLib       -> t { configProfLib  = True }
             WithoutProfLib    -> t { configProfLib  = False }
             WithProfExe       -> t { configProfExe  = True }
