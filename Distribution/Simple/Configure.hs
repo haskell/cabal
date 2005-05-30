@@ -110,14 +110,9 @@ getPersistBuildConfig = do
   let dieMsg = "error reading " ++ localBuildInfoFile ++ "; run \"setup configure\" command?\n"
   when (not e) (die dieMsg)
   str <- readFile localBuildInfoFile
-  let bi = read str
-#ifndef __NHC__
-  evaluate bi `catch` \_ -> 
-	die dieMsg
-#else
--- FIXME: Is there anything we can do here? DeepSeq?
-#endif
-  return bi
+  case reads str of
+    [(bi,_)] -> return bi
+    _        -> die dieMsg
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
