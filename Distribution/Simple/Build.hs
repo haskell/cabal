@@ -168,6 +168,7 @@ buildGHC pkg_descr lbi verbose = do
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
         try (removeFile libName) -- first remove library if it exists
+        try (removeFile profLibName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
                 ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
