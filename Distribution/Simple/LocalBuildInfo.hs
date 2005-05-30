@@ -67,6 +67,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withHsc2hs    :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
         withC2hs      :: Maybe FilePath, -- ^Might be the location of the C2hs executable.
         withCpphs     :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
+        withGreencard :: Maybe FilePath, -- ^Might be the location of the GreenCard executable.
         withProfLib   :: Bool,
         withProfExe   :: Bool
   }
