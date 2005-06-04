@@ -9,6 +9,7 @@
 	* Added pattern guards as a language extension
 	* Register / unregister .bat files for windows
 	* Exposed more of the API
+	* Added support for the hide-all-packages flag in GHC > 6.4
 	* Several bug fixes
 
 1.0  Isaac Jones  <ijones@syntaxpolice.org> March 11 2005
