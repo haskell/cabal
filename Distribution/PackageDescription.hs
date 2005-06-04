@@ -739,6 +739,7 @@ testPkgDescAnswer =
                            includeDirs = ["your/slightest", "look/will"],
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
                            -- Note reversed order:
+                           profOptions = [],
                            options = [(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
                     executables = [Executable "somescript" 
