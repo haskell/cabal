@@ -192,8 +192,8 @@ data BuildInfo = BuildInfo {
         extensions        :: [Extension],
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraLibDirs      :: [String],
-        includeDirs       :: [FilePath],
-        includes          :: [FilePath],
+        includeDirs       :: [FilePath], -- ^directories to find .h files
+        includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
         options           :: [(CompilerFlavor,[String])]
     }
     deriving (Show,Read,Eq)
