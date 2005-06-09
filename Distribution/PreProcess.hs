@@ -192,7 +192,7 @@ ppGreenCard' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGreenCard' inputArgs bi lbi
     = maybe (ppNone "greencard") pp (withGreencard lbi)
     where pp greencard inFile outFile verbose
-              = rawSystemPath verbose greencard (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
+              = rawSystemVerbose verbose greencard (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
