@@ -156,7 +156,7 @@ buildGHC pkg_descr lbi verbose = do
                   "-hisuf", "p_hi",
                   "-osuf", "p_o"
                  ]
-              ++ profOptions libBi
+              ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
         do rawSystemExit verbose ghcPath ghcArgs
            ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
@@ -241,7 +241,7 @@ buildGHC pkg_descr lbi verbose = do
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
 			 ++ (if verbose > 4 then ["-v"] else [])
                          ++ if withProfExe lbi
-                               then "-prof":profOptions exeBi
+                               then "-prof":ghcProfOptions exeBi
                                else []
                  rawSystemExit verbose ghcPath binArgs
 
