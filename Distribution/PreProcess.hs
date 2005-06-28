@@ -49,18 +49,17 @@ import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
-import Distribution.Setup (CompilerFlavor(..), Compiler(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
-                                  moduleToFilePath, die)
+                                  moduleToFilePath, die, dieWithLocation)
 import Distribution.Version (Version(..))
 import Control.Monad (unless)
-import Data.Maybe (fromMaybe, maybeToList)
+import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
-import System.IO (stderr, hPutStrLn)
 import Distribution.Compat.FilePath
 	(splitFileExt, joinFileName, joinFileExt)
 
@@ -105,7 +104,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
 	sequence_ [do retVal <- preprocessModule (hsSourceDirs bi) modu
                                                  verbose builtinSuffixes biHandlers
                       unless (retVal == ExitSuccess)
-                             (error $ "got error code while preprocessing: " ++ modu)
+                             (die $ "got error code while preprocessing: " ++ modu)
                    | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
         setupMessage "Preprocessing executables for" pkg_descr
@@ -116,7 +115,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
                                      ++(maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
                                      modu verbose builtinSuffixes biHandlers
                       unless (retVal == ExitSuccess)
-                             (error $ "got error code while preprocessing: " ++ modu)
+                             (die $ "got error code while preprocessing: " ++ modu)
                    | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
@@ -209,7 +208,11 @@ ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp' inputArgs bi lbi
     = maybe (ppNone "cpphs") pp (withCpphs lbi)
   where pp cpphs inFile outFile verbose
+#if __HUGS__ && mingw32_TARGET_OS
+	  = rawSystemVerbose verbose "sh" (cpphs : extraArgs ++ ["-O" ++ outFile, inFile])
+#else
 	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
+#endif
         extraArgs = "--noline" : "--strip" :
                 sysDefines ++ cppOptions bi lbi ++ inputArgs
         sysDefines =
@@ -220,7 +223,11 @@ ppCpp' inputArgs bi lbi
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
+#if __HUGS__ && mingw32_TARGET_OS
+  where pp n = standardPP "sh" (n : cppOptions bi lbi)
+#else
   where pp n = standardPP n (cppOptions bi lbi)
+#endif
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi
@@ -267,9 +274,8 @@ standardPP eName args inFile outFile verbose
     = rawSystemVerbose verbose eName (args ++ ["-o", outFile, inFile])
 
 ppNone :: String -> PreProcessor
-ppNone name inFile _ _ = do
-    hPutStrLn stderr (inFile ++ ": no " ++ name ++ " preprocessor available")
-    return (ExitFailure 1)
+ppNone name inFile _ _ =
+    dieWithLocation inFile Nothing $ "no " ++ name ++ " preprocessor available"
 
 -- |Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [ PPSuffixHandler ] -> [String]

@@ -62,7 +62,7 @@ import Distribution.ParseUtils (
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
 import Distribution.License 	( License(..) )
-import Distribution.Extension 	( Opt )
+import Distribution.Compiler 	( Opt )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
 				  parsePackageId )
 import Distribution.Version	( Version(..), showVersion )

@@ -269,21 +269,24 @@ data Dependency = Dependency String VersionRange
 parseVersionRange :: ReadP r VersionRange
 parseVersionRange = do
   f1 <- factor
+  skipSpaces
   (do
      string "||"
+     skipSpaces
      f2 <- factor
      return (UnionVersionRanges f1 f2)
    +++
    do    
      string "&&"
+     skipSpaces
      f2 <- factor
      return (IntersectVersionRanges f1 f2)
    +++
    return f1)
   where 
         factor   = choice ((string "-any" >> return AnyVersion) :
-	                            [ string s >> liftM f parseVersion
-                                    | (s,f) <- rangeOps ])
+                                    map parseRangeOp rangeOps)
+        parseRangeOp (s,f) = string s >> skipSpaces >> liftM f parseVersion
         rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
