@@ -198,7 +198,7 @@ data BuildInfo = BuildInfo {
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
         options           :: [(CompilerFlavor,[String])],
-        profOptions       :: [String]
+        ghcProfOptions       :: [String]
     }
     deriving (Show,Read,Eq)
 
@@ -217,7 +217,7 @@ emptyBuildInfo = BuildInfo {
                       includeDirs       = [],
                       includes          = [],
                       options           = [],
-                      profOptions       = []
+                      ghcProfOptions       = []
                      }
 
 data Executable = Executable {
@@ -423,9 +423,9 @@ binfoFields =
  , listField   "other-modules"         
                            text               parseModuleNameQ
                            otherModules       (\val binfo -> binfo{otherModules=val})
- , listField   "prof-options"         
+ , listField   "ghc-prof-options"         
                            text               parseTokenQ
-                           profOptions        (\val binfo -> binfo{profOptions=val})
+                           ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
  , optsField   "ghc-options"  GHC
                            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
@@ -747,7 +747,7 @@ testPkgDescAnswer =
                            includeDirs = ["your/slightest", "look/will"],
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
                            -- Note reversed order:
-                           profOptions = [],
+                           ghcProfOptions = [],
                            options = [(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
                     executables = [Executable "somescript" 
