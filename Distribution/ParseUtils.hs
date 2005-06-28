@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- #hide
 module Distribution.ParseUtils (
-	LineNo, PError(..), showError, myError, runP,
+        LineNo, PError(..), locatedErrorMsg, showError, syntaxError, runP,
 	ParseResult(..),
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
 	parseFilePathQ, parseTokenQ,
@@ -57,14 +57,14 @@ module Distribution.ParseUtils (
   ) where
 
 import Text.PrettyPrint.HughesPJ
+import Distribution.Compiler (CompilerFlavor)
 import Distribution.License
 import Distribution.Version
-import Distribution.Extension
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.Setup(CompilerFlavor(..))
 import Debug.Trace
 import Data.Char
+import Language.Haskell.Extension (Extension)
 
 -- -----------------------------------------------------------------------------
 
@@ -95,14 +95,20 @@ runP lineNo field p s =
     _   -> ParseFailed (AmbigousParse field lineNo)
   where results = readP_to_S p s
 
+-- TODO: deprecated
 showError :: PError -> String
-showError (AmbigousParse f n)     = "Line "++show n++": Ambigous parse in field '"++f++"'"
-showError (NoParse f n)           = "Line "++show n++": Parse of field '"++f++"' failed"
-showError (FromString s (Just n)) = "Line "++show n++": " ++ s
-showError (FromString s Nothing)  = s
+showError e =
+  case locatedErrorMsg e of
+    (Just n,  s) -> "Line "++show n++": " ++ s
+    (Nothing, s) -> s
 
-myError :: LineNo -> String -> ParseResult a
-myError n s = ParseFailed $ FromString s (Just n)
+locatedErrorMsg :: PError -> (Maybe LineNo, String)
+locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambigous parse in field '"++f++"'")
+locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed")
+locatedErrorMsg (FromString s n)    = (n, s)
+
+syntaxError :: LineNo -> String -> ParseResult a
+syntaxError n s = ParseFailed $ FromString s (Just n)
 
 data StanzaField a 
   = StanzaField 
@@ -193,11 +199,11 @@ mkStanza ((n,xs):ys) =
        ss <- mkStanza ys
        checkDuplField fld ss
        return ((n, fld, dropWhile isSpace val):ss)
-    (_, _)       -> fail $ "Line "++show n++": Invalid syntax (no colon after field name)"
+    (_, _)       -> syntaxError n "Invalid syntax (no colon after field name)"
   where
     checkDuplField _ [] = return ()
     checkDuplField fld ((n',fld',_):xs')
-      | fld' == fld = fail ("The field "++fld++" is defined on both line "++show n++" and "++show n')
+      | fld' == fld = syntaxError (max n n') $ "The field "++fld++" was already defined on line " ++ show (min n n')
       | otherwise   = checkDuplField fld xs'
 
 -- |parse a module name

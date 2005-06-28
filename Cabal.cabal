@@ -19,6 +19,7 @@ Description:
 Category: Distribution
 Exposed-Modules:
         Distribution.Compat.ReadP,
+        Distribution.Compiler,
         Distribution.Extension,
         Distribution.InstalledPackageInfo,
         Distribution.License,
@@ -39,7 +40,8 @@ Exposed-Modules:
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
         Distribution.Compat.FilePath,
-        Distribution.Version
+        Distribution.Version,
+	Language.Haskell.Extension
 Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.Directory,

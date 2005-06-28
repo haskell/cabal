@@ -46,9 +46,8 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Extension (Extension(..),
+import Distribution.Compiler (Compiler(..), CompilerFlavor(..),
 				extensionsToGHCFlag, extensionsToNHCFlag)
-import Distribution.Setup (Compiler(..), CompilerFlavor(..))
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 			     		setupMessage, withLib,
                                         Executable(..), withExe,
@@ -62,12 +61,13 @@ import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, mkProfLibName, dotToSep,
 				  moduleToFilePath,
-				  getOptionsFromSource, stripComments,
                                   smartCopySources,
                                   findFile
                                  )
+import Language.Haskell.Extension (Extension(..))
 
-import Data.Maybe(maybeToList, fromMaybe)
+import Data.Char(isSpace)
+import Data.Maybe(mapMaybe, maybeToList)
 import Control.Monad (unless, when)
 #ifndef __NHC__
 import Control.Exception (try)
@@ -96,6 +96,14 @@ build :: PackageDescription
          -> [ PPSuffixHandler ]
          -> IO ()
 build pkg_descr lbi verbose suffixes = do
+  -- check that there's something to build
+  let buildInfos =
+          map libBuildInfo (maybeToList (library pkg_descr)) ++
+          map buildInfo (executables pkg_descr)
+  unless (any buildable buildInfos) $ do
+    let name = showPackageId (package pkg_descr)
+    die ("Package " ++ name ++ " can't be built on this system.")
+
   createDirectoryIfMissing True (buildDir lbi)
   preprocessSources pkg_descr lbi verbose suffixes
   setupMessage "Building" pkg_descr
@@ -366,6 +374,76 @@ buildHugs pkg_descr lbi verbose = do
 uniq :: Ord a => [a] -> [a]
 uniq [] = []
 uniq (x:xs) = x : uniq (dropWhile (== x) xs)
+
+-- ------------------------------------------------------------
+-- * options in source files
+-- ------------------------------------------------------------
+
+-- |Read the initial part of a source file, before any Haskell code,
+-- and return the contents of any LANGUAGE, OPTIONS and INCLUDE pragmas.
+getOptionsFromSource
+    :: FilePath
+    -> IO ([Extension],                 -- LANGUAGE pragma, if any
+           [(CompilerFlavor,[String])], -- OPTIONS_FOO pragmas
+           [String]                     -- INCLUDE pragmas
+          )
+getOptionsFromSource file = do
+    text <- readFile file
+    return $ foldr appendOptions ([],[],[]) $ map getOptions $
+	takeWhileJust $ map getPragma $
+	filter textLine $ map (dropWhile isSpace) $ lines $
+	stripComments True $
+	if ".lhs" `isSuffixOf` file then unlit file text else text
+  where textLine [] = False
+	textLine ('#':_) = False
+	textLine _ = True
+
+	getPragma :: String -> Maybe [String]
+	getPragma line = case words line of
+	    ("{-#" : rest) | last rest == "#-}" -> Just (init rest)
+	    _ -> Nothing
+
+	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)], [])
+	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)], [])
+	getOptions ("OPTIONS_NHC98":opts) = ([], [(NHC, opts)], [])
+	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)], [])
+	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [], [])
+	  where	readExtension :: String -> Maybe Extension
+		readExtension w = case reads w of
+		    [(ext, "")] -> Just ext
+		    [(ext, ",")] -> Just ext
+		    _ -> Nothing
+	getOptions ("INCLUDE":ws) = ([], [], ws)
+	getOptions _ = ([], [], [])
+
+	appendOptions (exts, opts, incs) (exts', opts', incs')
+          = (exts++exts', opts++opts', incs++incs')
+
+-- takeWhileJust f = map fromJust . takeWhile isJust
+takeWhileJust :: [Maybe a] -> [a]
+takeWhileJust (Just x:xs) = x : takeWhileJust xs
+takeWhileJust _ = []
+
+-- |Strip comments from Haskell source.
+stripComments
+    :: Bool	-- ^ preserve pragmas?
+    -> String	-- ^ input source text
+    -> String
+stripComments keepPragmas = stripCommentsLevel 0
+  where stripCommentsLevel :: Int -> String -> String
+	stripCommentsLevel 0 ('-':'-':cs) =	-- FIX: symbols like -->
+	    stripCommentsLevel 0 (dropWhile (/= '\n') cs)
+	stripCommentsLevel 0 ('{':'-':'#':cs)
+	  | keepPragmas = '{' : '-' : '#' : copyPragma cs
+	stripCommentsLevel n ('{':'-':cs) = stripCommentsLevel (n+1) cs
+	stripCommentsLevel 0 (c:cs) = c : stripCommentsLevel 0 cs
+	stripCommentsLevel n ('-':'}':cs) = stripCommentsLevel (n-1) cs
+	stripCommentsLevel n (c:cs) = stripCommentsLevel n cs
+	stripCommentsLevel _ [] = []
+
+	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
+	copyPragma (c:cs) = c : copyPragma cs
+	copyPragma [] = []
 
 -- ------------------------------------------------------------
 -- * Testing

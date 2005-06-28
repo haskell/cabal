@@ -43,7 +43,7 @@ module Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
     where
 
 import Distribution.Package (PackageIdentifier)
-import Distribution.Setup (Compiler)
+import Distribution.Compiler (Compiler)
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {

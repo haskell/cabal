@@ -68,13 +68,13 @@ import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
                                  mkProfLibName, die, rawSystemVerbose)
-import Distribution.Setup (CompilerFlavor(..), Compiler(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..), showCompilerId)
 
 import Control.Monad(when)
 import Data.Maybe(fromMaybe)
 import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
                                      findExecutable)
-import Distribution.Compat.FilePath(joinFileName, dllExtension,
+import Distribution.Compat.FilePath(joinFileName, dllExtension, exeExtension,
 				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
 import System.Directory(Permissions(..), getPermissions, setPermissions)
@@ -109,8 +109,9 @@ installExeGhc :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installExeGhc verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
-         withExe pkg_descr $ \ (Executable e _ b) ->
-             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` e) (pref `joinFileName` e)
+         withExe pkg_descr $ \ (Executable e _ b) -> do
+             let exeName = e `joinFileExt` exeExtension
+             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` exeName) (pref `joinFileName` exeName)
 
 -- |Install for ghc, .hi and .a
 installLibGHC :: Int      -- ^verbose
@@ -222,10 +223,18 @@ hugsMainFilename exe = "Main" `joinFileExt` ext
 
 mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkLibDir pkg_descr lbi install_prefixM = 
-  case compilerFlavor (compiler lbi) of
+  case compilerFlavor hc of
     Hugs -> libDir `joinFileName` "hugs"
-    _ -> libDir `joinFileName` showPackageId (package pkg_descr)
-  where libDir = (fromMaybe (prefix lbi) install_prefixM)
+    _    ->
+#ifdef mingw32_TARGET_OS
+		libDir `joinFileName`showCompilerId hc
+#else
+		libDir `joinFileName` showPackageId (package pkg_descr)
+			`joinFileName`showCompilerId hc
+#endif
+  where 
+	hc = compiler lbi
+	libDir = (fromMaybe (prefix lbi) install_prefixM)
 #ifndef mingw32_TARGET_OS
                  `joinFileName` "lib"
 #endif

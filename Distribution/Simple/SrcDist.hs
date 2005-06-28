@@ -52,13 +52,17 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          setupMessage, libModules)
-import Distribution.Package (showPackageId)
+import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
+import Distribution.Version (Version(versionBranch))
 import Distribution.Simple.Utils
         (smartCopySources, die, findPackageDesc, findFile, copyFileVerbose)
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
+import Data.Char (isSpace, toLower)
+import Data.List (isPrefixOf)
 import System.Cmd (system)
+import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, createDirectoryIfMissing)
 import Distribution.Compat.FilePath (joinFileName, splitFileName)
@@ -72,14 +76,23 @@ import HUnit (Test)
 sdist :: FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> Int      -- ^verbose
+      -> Bool     -- ^snapshot
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> PackageDescription
       -> IO ()
-sdist tmpDir targetPref verbose pps pkg_descr = do
+sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
+  time <- getClockTime
+  ct <- toCalendarTime time
+  let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
+  let pkg_descr
+        | snapshot  = updatePackage (updatePkgVersion
+                        (updateVersionBranch (++ [date]))) pkg_descr_orig
+        | otherwise = pkg_descr_orig
   setupMessage "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
+  createDirectoryIfMissing True targetDir
   -- maybe move the library files into place
   maybe (return ()) (\l -> prepareDir verbose targetDir pps (libModules pkg_descr) (libBuildInfo l))
                     (library pkg_descr)
@@ -102,13 +115,34 @@ sdist tmpDir targetPref verbose pps pkg_descr = do
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
   descFile <- getCurrentDirectory >>= findPackageDesc
-  copyFileTo verbose targetDir descFile
+  let targetDescFile = targetDir `joinFileName` descFile
+  -- We could just writePackageDescription targetDescFile pkg_descr,
+  -- but that would lose comments and formatting.
+  if snapshot then do
+      contents <- readFile descFile
+      writeFile targetDescFile $
+          unlines $ map (appendVersion date) $ lines $ contents
+    else copyFileVerbose verbose descFile targetDescFile
 
   system $ "(cd " ++ tmpDir
            ++ ";tar cf - " ++ (nameVersion pkg_descr) ++ ") | gzip -9 >"
            ++ (targetPref `joinFileName` (tarBallName pkg_descr))
   system $ "rm -rf " ++ tmpDir
   putStrLn "Source tarball created."
+
+  where
+    updatePackage f pd = pd { package = f (package pd) }
+    updatePkgVersion f pkg = pkg { pkgVersion = f (pkgVersion pkg) }
+    updateVersionBranch f v = v { versionBranch = f (versionBranch v) }
+
+    appendVersion :: Int -> String -> String
+    appendVersion n line
+      | "version:" `isPrefixOf` map toLower line =
+            trimTrailingSpace line ++ "." ++ show n
+      | otherwise = line
+
+    trimTrailingSpace :: String -> String
+    trimTrailingSpace = reverse . dropWhile isSpace . reverse
 
 -- |Move the sources into place based on buildInfo
 prepareDir :: Int       -- ^verbose
