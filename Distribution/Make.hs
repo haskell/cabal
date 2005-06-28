@@ -52,14 +52,13 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.PackageDescription
 import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
 
-import Distribution.Simple.Utils (maybeExit, defaultPackageDesc)
+import Distribution.Simple.Utils (die, maybeExit, defaultPackageDesc)
 
 import Distribution.License (License(..))
 import Distribution.Version (Version(..))
 
 import System.Environment(getArgs)
 import Data.List  ( intersperse )
-import System.IO (hPutStrLn, stderr)
 import System.Cmd
 import System.Exit
 
@@ -187,5 +186,4 @@ basicCommand commandName commandCommand commandParseFun = do
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
-  do hPutStrLn stderr $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))
-     exitWith (ExitFailure 1)
+  die $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))

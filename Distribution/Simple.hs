@@ -50,7 +50,8 @@ module Distribution.Simple (
 	module Distribution.Package,
 	module Distribution.Version,
 	module Distribution.License,
-	module Distribution.Extension,
+	module Distribution.Compiler,
+	module Language.Haskell.Extension,
         -- * Simple interface
 	defaultMain, defaultMainNoRead,
         -- * Customization
@@ -63,6 +64,7 @@ module Distribution.Simple (
   ) where
 
 -- local
+import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
@@ -83,6 +85,7 @@ import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
+import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
@@ -91,7 +94,7 @@ import System.Directory(removeFile, doesFileExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isNothing, fromJust, maybeToList )
+import Data.Maybe       ( isNothing, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 
@@ -101,10 +104,8 @@ import Distribution.Compat.FilePath(joinFileName, joinPaths, splitFileName, join
 
 #ifdef DEBUG
 import HUnit (Test)
-import Distribution.Extension hiding (hunitTests)
 import Distribution.Version hiding (hunitTests)
 #else
-import Distribution.Extension
 import Distribution.Version
 #endif
 
@@ -228,101 +229,31 @@ defaultMainWorker pkg_descr_in action args hooks
             BuildCmd -> do
                 (flags, _, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInArgs preBuild args flags
-                let buildInfos =
-                        map libBuildInfo (maybeToList (library pkg_descr)) ++
-                        map buildInfo (executables pkg_descr)
-                when (not (any buildable buildInfos)) $ do
-                    let name = showPackageId (package pkg_descr)
-                    die ("Package " ++ name ++ " can't be built on this system.")
 		localbuildinfo <- getPersistBuildConfig
 		build pkg_descr localbuildinfo flags pps
                 when (hasLibs pkg_descr) $
                     writeInstalledConfig pkg_descr localbuildinfo
                 postHook postBuild args flags localbuildinfo
+
             HaddockCmd -> do
                 (verbose, _, args) <- parseHaddockArgs args []
                 pkg_descr <- hookOrInArgs preHaddock args verbose
 		localbuildinfo <- getPersistBuildConfig
-                withLib pkg_descr ExitSuccess (\lib ->
-                   do lbi <- getPersistBuildConfig
-                      mHaddock <- findProgram "haddock" (withHaddock lbi)
-                      when (isNothing mHaddock) (error "haddock command not found")
-                      let bi = libBuildInfo lib
-                      let targetDir = joinPaths distPref (joinPaths "doc" "html")
-                      let tmpDir = joinPaths (buildDir lbi) "tmp"
-                      createDirectoryIfMissing True tmpDir
-                      createDirectoryIfMissing True targetDir
-                      preprocessSources pkg_descr lbi verbose pps
-                      inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                                             | m <- exposedModules lib] >>= return . concat
-                      mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
-                      let showPkg = showPackageId (package pkg_descr)
-                      let prologName = showPkg ++ "-haddock-prolog.txt"
-                      writeFile prologName ((description pkg_descr) ++ "\n")
-                      setupMessage "Running Haddock for" pkg_descr
-                      let outFiles = map (joinFileName tmpDir)
-                                     (map ((flip changeFileExt) "hs") inFiles)
-                      code <- rawSystemVerbose verbose (fromJust mHaddock)
-                              (["-h",
-                                "-o", targetDir,
-                                "-t", showPkg,
-                                "-p", prologName]
-                              ++ (if verbose > 4 then ["-v"] else [])
-                              ++ outFiles
-                              )
-                      removeDirectoryRecursive tmpDir
-                      removeFile prologName
-                      postHook postHaddock args verbose localbuildinfo)
+                haddock pkg_descr localbuildinfo verbose pps
+                postHook postHaddock args verbose localbuildinfo
+
             ProgramaticaCmd -> do
-                 (verbose, _, args) <- parseProgramaticaArgs args []
-                 pkg_descr <- hookOrInArgs prePFE args verbose
-		 localbuildinfo <- getPersistBuildConfig
-                 unless (hasLibs pkg_descr) (error "no libraries found in this project.")
-                 withLib pkg_descr ExitSuccess (\lib ->
-                    do lbi <- getPersistBuildConfig
-                       mPfe <- findProgram "pfesetup" Nothing
-                       when (isNothing mPfe) (error "pfe command not found")
-                       putStrLn $ "using : " ++ fromJust mPfe
-                       let bi = libBuildInfo lib
-                       let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
-                       preprocessSources pkg_descr lbi verbose pps
-                       inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                                              | m <- mods] >>= return . concat
-                       code <- rawSystemVerbose verbose (fromJust mPfe)
-                                ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
-                               ++ inFiles)
-                       postHook postPFE args verbose localbuildinfo)
+                (verbose, _, args) <- parseProgramaticaArgs args []
+                pkg_descr <- hookOrInArgs prePFE args verbose
+                localbuildinfo <- getPersistBuildConfig
+                pfe pkg_descr localbuildinfo verbose pps
+                postHook postPFE args verbose localbuildinfo
 
             CleanCmd -> do
-                putStrLn "cleaning..."
                 (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInArgs preClean args verbose
 		localbuildinfo <- getPersistBuildConfig
-		let buildPref = buildDir localbuildinfo
-		try $ removeDirectoryRecursive buildPref
-                try $ removeDirectoryRecursive (joinPaths distPref "doc")
-                try $ removeFile installedPkgConfigFile
-                try $ removeFile localBuildInfoFile
-                try $ removeFile regScriptLocation
-                try $ removeFile unregScriptLocation
-                removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
-
-                -- remove source stubs for library
-                withLib pkg_descr () (\Library{libBuildInfo=BuildInfo{hsSourceDirs=dirs}} -> do
-                                      s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
-                                                 | x <- libModules pkg_descr ]
-                                      mapM_ removeFile (concat s)
-                                     )
-                -- remove source stubs for executables
-                withExe pkg_descr (\Executable{modulePath=exeSrcName
-                                              ,buildInfo=BuildInfo{hsSourceDirs=dirs}} -> do
-                                   s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
-                                              | x <- exeModules pkg_descr ]
-                                   mapM_ removeFile (concat s)
-                                   let (startN, _) = splitFileExt exeSrcName
-                                   try $ removeFile (startN ++ "_stub.h")
-                                   try $ removeFile (startN ++ "_stub.c")
-                                  )
+                clean pkg_descr localbuildinfo verbose pps
                 postHook postClean args verbose localbuildinfo
 
             CopyCmd mprefix -> do
@@ -343,10 +274,10 @@ defaultMainWorker pkg_descr_in action args hooks
 
             SDistCmd -> do
                 let srcPref   = distPref `joinFileName` "src"
-                (verbose,_, args) <- parseSDistArgs args []
+                ((snapshot,verbose),_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args verbose
                 localbuildinfo <- getPersistBuildConfig
-		sdist srcPref distPref verbose pps pkg_descr
+                sdist srcPref distPref verbose snapshot pps pkg_descr
                 postHook postSDist args verbose localbuildinfo
 
             TestCmd -> do
@@ -364,7 +295,7 @@ defaultMainWorker pkg_descr_in action args hooks
 		localbuildinfo <- getPersistBuildConfig
 		if hasLibs pkg_descr
                    then register pkg_descr localbuildinfo flags
-                   else putStrLn "Package contains no library to register."
+                   else die "Package contains no library to register"
                 postHook postReg args flags localbuildinfo
 
             UnregisterCmd uInst genScript -> do
@@ -376,8 +307,6 @@ defaultMainWorker pkg_descr_in action args hooks
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
-        distPref :: FilePath
-        distPref = "dist"
         hookOrInArgs :: (UserHooks -> ([String] -> b -> IO HookedBuildInfo))
                      -> [String]
                      -> b
@@ -394,6 +323,45 @@ defaultMainWorker pkg_descr_in action args hooks
         isFailure :: ExitCode -> Bool
         isFailure (ExitFailure _) = True
         isFailure _               = False
+
+        overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
+        overridesPP = unionBy (\x y -> fst x == fst y)
+-- (filter (\x -> notElem x overriders) overridden) ++ overriders
+
+distPref :: FilePath
+distPref = "dist"
+
+haddock :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
+haddock pkg_descr lbi verbose pps =
+    withLib pkg_descr () $ \lib -> do
+        mHaddock <- findProgram "haddock" (withHaddock lbi)
+        when (isNothing mHaddock) (die "haddock command not found")
+        let bi = libBuildInfo lib
+        let targetDir = joinPaths distPref (joinPaths "doc" "html")
+        let tmpDir = joinPaths (buildDir lbi) "tmp"
+        createDirectoryIfMissing True tmpDir
+        createDirectoryIfMissing True targetDir
+        preprocessSources pkg_descr lbi verbose pps
+        inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
+                               | m <- exposedModules lib] >>= return . concat
+        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
+        let showPkg = showPackageId (package pkg_descr)
+        let prologName = showPkg ++ "-haddock-prolog.txt"
+        writeFile prologName ((description pkg_descr) ++ "\n")
+        setupMessage "Running Haddock for" pkg_descr
+        let outFiles = map (joinFileName tmpDir)
+                       (map ((flip changeFileExt) "hs") inFiles)
+        code <- rawSystemVerbose verbose (fromJust mHaddock)
+                (["-h",
+                  "-o", targetDir,
+                  "-t", showPkg,
+                  "-p", prologName]
+                ++ (if verbose > 4 then ["-v"] else [])
+                ++ outFiles
+                )
+        removeDirectoryRecursive tmpDir
+        removeFile prologName
+  where
         mockPP inputArgs pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
@@ -403,15 +371,64 @@ defaultMainWorker pkg_descr_in action args hooks
                  if (needsCpp pkg_descr)
                     then ppCpp' inputArgs bi lbi file targetFile verbose
                     else copyFile file targetFile >> return ExitSuccess
-                 when (targetFileExt == "lhs")
-                       (ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose >> return ())
+                 when (targetFileExt == "lhs") $ do
+                       ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose
+                       return ()
         needsCpp :: PackageDescription -> Bool
         needsCpp p | not (hasLibs p) = False
                    | otherwise = any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
-        overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
-        overridesPP = unionBy (\x y -> fst x == fst y)
--- (filter (\x -> notElem x overriders) overridden) ++ overriders
-        
+
+pfe :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
+pfe pkg_descr _lbi verbose pps = do
+    unless (hasLibs pkg_descr) $
+        die "no libraries found in this project"
+    withLib pkg_descr () $ \lib -> do
+        lbi <- getPersistBuildConfig
+        mPfe <- findProgram "pfesetup" Nothing
+        when (isNothing mPfe) (die "pfe command not found")
+        putStrLn $ "using : " ++ fromJust mPfe
+        let bi = libBuildInfo lib
+        let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
+        preprocessSources pkg_descr lbi verbose pps
+        inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
+                                | m <- mods] >>= return . concat
+        rawSystemVerbose verbose (fromJust mPfe)
+                ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
+                ++ inFiles)
+        return ()
+
+clean :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
+clean pkg_descr lbi verbose pps = do
+    putStrLn "cleaning..."
+    let buildPref = buildDir lbi
+    try $ removeDirectoryRecursive buildPref
+    try $ removeDirectoryRecursive (joinPaths distPref "doc")
+    try $ removeFile installedPkgConfigFile
+    try $ removeFile localBuildInfoFile
+    try $ removeFile regScriptLocation
+    try $ removeFile unregScriptLocation
+    removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
+    case compilerFlavor (compiler lbi) of
+      GHC -> cleanGHCExtras
+      _   -> return ()
+  where
+        cleanGHCExtras = do
+            -- remove source stubs for library
+            withLib pkg_descr () $ \ Library{libBuildInfo=bi} ->
+                removeGHCModuleStubs bi (libModules pkg_descr)
+            -- remove source stubs for executables
+            withExe pkg_descr $ \ Executable{modulePath=exeSrcName
+                                            ,buildInfo=bi} -> do
+                removeGHCModuleStubs bi (exeModules pkg_descr)
+                let (startN, _) = splitFileExt exeSrcName
+                try $ removeFile (startN ++ "_stub.h")
+                try $ removeFile (startN ++ "_stub.c")
+        removeGHCModuleStubs :: BuildInfo -> [String] -> IO ()
+        removeGHCModuleStubs (BuildInfo{hsSourceDirs=dirs}) mods = do
+                s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
+                                 | x <- mods ]
+                mapM_ removeFile (concat s)
+
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 

@@ -66,32 +66,29 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Register (removeInstalledConfig)
-import Distribution.Extension(extensionsToGHCFlag,
-                         extensionsToNHCFlag, extensionsToHugsFlag)
-import Distribution.Setup(ConfigFlags(..),CompilerFlavor(..), Compiler(..))
+import Distribution.Setup(ConfigFlags(..))
+import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
+			     compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage)
-import Distribution.Simple.Utils (die, withTempFile,maybeExit)
+import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, withinRange,
 			     showVersionRange)
 
 import Data.List (intersperse, nub, maximumBy, isPrefixOf)
 import Data.Char (isSpace)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, isJust)
 import System.Directory
-import Distribution.Compat.FilePath (splitFileName, joinFileName, joinFileExt)
+import Distribution.Compat.FilePath (splitFileName, joinFileName)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)
-#ifndef __NHC__
-import Control.Exception	( catch, evaluate )
-#endif
 import Data.Char (isDigit)
 import Prelude hiding (catch)
 #ifdef mingw32_TARGET_OS
@@ -136,16 +133,18 @@ configure pkg_descr cfg
         let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
+<<<<<<< Configure.hs
+=======
+	-- prefix
+	defPrefix <- system_default_prefix pkg_descr
+        let pref = fromMaybe defPrefix (configPrefix cfg)
+>>>>>>> 1.36
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
-        let exts = case f' of
-                     GHC  -> fst $ extensionsToGHCFlag extlist
-                     NHC  -> fst $ extensionsToNHCFlag extlist
-                     Hugs -> fst $ extensionsToHugsFlag extlist
-                     _    -> [] -- Hmm.
-        unless (null exts) $ putStrLn $ -- Just warn, FIXME: Should this be an error?
-            "Warning: " ++ show f' ++ " does not support the following extensions:\n " ++
+        let exts = fst $ extensionsToFlags f' extlist
+        unless (null exts) $ warn $ -- Just warn, FIXME: Should this be an error?
+            show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
         haddock   <- findProgram "haddock"   (configHaddock cfg)
         happy     <- findProgram "happy"     (configHappy cfg)
@@ -252,11 +251,13 @@ getInstalledPackages comp user verbose = do
 
 system_default_prefix :: PackageDescription -> IO String
 #ifdef mingw32_TARGET_OS
-system_default_prefix PackageDescription{package=pkg} =
+system_default_prefix pkg_descr@PackageDescription{package=pkg} =
   allocaBytes long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr csidl_PROGRAM_FILES nullPtr 0 pPath
      s <- peekCString pPath
-     return (s++'\\':pkgName pkg)
+     if isJust (library pkg_descr)
+	then return (s `joinFileName` "Haskell" `joinFileName` showPackageId pkg)
+	else return (s `joinFileName` showPackageId pkg)
   where
     csidl_PROGRAM_FILES = 0x0026
     long_path_size      = 1024
@@ -327,12 +328,15 @@ findCompiler verbose flavor = do
 		   return path
    -- ToDo: check that compiler works? check compiler version?
 
+<<<<<<< Configure.hs
 compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
 compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
 compilerBinaryName Hugs = "ffihugs"
 compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
+=======
+>>>>>>> 1.36
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist

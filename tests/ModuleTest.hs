@@ -47,12 +47,12 @@ module Main where
 import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
 import qualified Distribution.License as D.L
-import qualified Distribution.Extension as D.E (hunitTests)
+import qualified Distribution.Compiler as D.C (hunitTests)
 import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P ()
 import qualified Distribution.PackageDescription as D.PD (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
-import Distribution.Setup (CompilerFlavor(..))
+import Distribution.Compiler (CompilerFlavor(..))
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
 import qualified Distribution.Simple.Install as D.S.I (hunitTests)
@@ -431,7 +431,7 @@ main = do putStrLn "compile successful"
                           (D.S.R.hunitTests ++ D.V.hunitTests ++
                            D.S.S.hunitTests ++ D.S.B.hunitTests ++
                            D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                           D.PD.hunitTests ++ D.E.hunitTests)
+                           D.PD.hunitTests ++ D.C.hunitTests)
           dir <- getCurrentDirectory
 --          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
           globalTests <- sequence [runTestTT' $ TestList (tests dir x x)

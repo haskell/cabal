@@ -8,6 +8,7 @@ exposed:	True
 
 exposed-modules:
 	Distribution.Compat.ReadP,
+	Distribution.Compiler,
 	Distribution.Extension,
 	Distribution.GetOpt,
 	Distribution.InstalledPackageInfo,
@@ -28,7 +29,8 @@ exposed-modules:
 	Distribution.Simple.LocalBuildInfo,
 	Distribution.Simple.Register,
 	Distribution.Simple.SrcDist,
-	Distribution.Simple.Utils
+	Distribution.Simple.Utils,
+	Language.Haskell.Extension
 
 hidden-modules:
 	Distribution.Compat.Exception,

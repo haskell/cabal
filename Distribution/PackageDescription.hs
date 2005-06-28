@@ -80,12 +80,15 @@ module Distribution.PackageDescription (
 #endif
   ) where
 
-import Control.Monad(liftM, foldM, when, unless)
+import Control.Monad(liftM, foldM, when)
 import Data.Char
 import Data.Maybe(fromMaybe, fromJust, isNothing, catMaybes)
 import Data.List (nub)
 import Text.PrettyPrint.HughesPJ
 import System.Directory(doesFileExist)
+import System.Environment(getProgName)
+import System.IO(hPutStrLn, stderr)
+import System.Exit
 
 import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
@@ -94,9 +97,9 @@ import Distribution.Version(Version(..), VersionRange(..),
                             showVersion, parseVersion)
 import Distribution.License(License(..))
 import Distribution.Version(Dependency(..))
-import Distribution.Extension(Extension(..))
-import Distribution.Setup(CompilerFlavor(..))
-import Distribution.Simple.Utils(currentDir, die)
+import Distribution.Compiler(CompilerFlavor(..))
+import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn)
+import Language.Haskell.Extension(Extension(..))
 
 import Distribution.Compat.ReadP as ReadP hiding (get)
 
@@ -443,8 +446,11 @@ readAndParseFile parser fpath = do
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
   str <- readFile fpath
   case parser str of
-    ParseFailed e -> error (showError e) -- FIXME
+    ParseFailed e -> do
+        let (lineNo, message) = locatedErrorMsg e
+        dieWithLocation fpath lineNo message
     ParseOk x -> return x
+  where
 
 -- |Parse the given package file.
 readPackageDescription :: FilePath -> IO PackageDescription
@@ -479,12 +485,12 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
           where
             lib = fromMaybe emptyLibrary (library pkg)
 
-        parseExecutableStanza st@((_, "executable",eName):_) =
+        parseExecutableStanza st@((lineNo, "executable",eName):_) =
           case lookupField "main-is" st of
             Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
-            Nothing           -> fail $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
+            Nothing           -> syntaxError lineNo $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
         parseExecutableStanza ((lineNo, f,_):_) = 
-          myError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
+          syntaxError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
 
         parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
@@ -521,8 +527,8 @@ parseHookedBuildInfo inp = do
         | map toLower inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
-        | otherwise = myError lineNo "expecting 'executable' at top of stanza"
-    parseExe [] = myError 0 "error in parsing buildinfo file. Expected executable stanza"
+        | otherwise = syntaxError lineNo "expecting 'executable' at top of stanza"
+    parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
     parseBI :: Stanza -> ParseResult BuildInfo
     parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
 
@@ -531,7 +537,7 @@ parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
           | name == f = set lineNo val binfo
           | otherwise = parseBInfoField fields binfo (lineNo, f, val)
 parseBInfoField [] _ (lineNo, f, _) =
-          myError lineNo $ "Unknown field '" ++ f ++ "'"
+          syntaxError lineNo $ "Unknown field '" ++ f ++ "'"
 
 -- --------------------------------------------
 -- ** Pretty printing
@@ -612,9 +618,11 @@ errorOut :: [String]  -- ^Warnings
          -> [String]  -- ^errors
          -> IO ()
 errorOut warnings errors = do
-  mapM (putStrLn . ("Warning: " ++)) warnings
-  mapM (putStrLn . ("Error: " ++))   errors
-  unless (null errors) (error "Errors detected. See above.")
+  mapM warn warnings
+  when (not (null errors)) $ do
+    pname <- getProgName
+    mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
+    exitWith (ExitFailure 1)
 
 checkMissingFields :: PackageDescription -> [Maybe String]
 checkMissingFields pkg_descr = 

@@ -41,9 +41,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Setup (--parseArgs,
+                           module Distribution.Compiler,
                            Action(..), ConfigFlags(..),
                            CopyFlags, InstallFlags, RegisterFlags,
-                           CompilerFlavor(..), Compiler(..),
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,
@@ -55,30 +55,18 @@ module Distribution.Setup (--parseArgs,
                            parseUnregisterArgs, parseCopyArgs
                            ) where
 
+
 -- Misc:
 #ifdef DEBUG
 import HUnit (Test(..))
 #endif
 
-import Control.Monad(when)
-import Distribution.Version (Version)
+import Distribution.Compiler
+import Distribution.Simple.Utils (die)
 import Data.List(find)
 import Distribution.GetOpt
 import System.Exit
 import System.Environment
-
--- ------------------------------------------------------------
--- * Command Line Types and Exports
--- ------------------------------------------------------------
-
-data CompilerFlavor = GHC | NHC | Hugs | HBC | Helium | OtherCompiler String
-              deriving (Show, Read, Eq)
-
-data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
-			  compilerVersion :: Version,
-                          compilerPath  :: FilePath,
-                          compilerPkgTool :: FilePath}
-                deriving (Show, Read, Eq)
 
 -- type CommandLineOpts = (Action,
 --                         [String]) -- The un-parsed remainder
@@ -155,6 +143,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | GenScriptFlag
           -- For copy:
           | InstPrefix FilePath
+          -- For sdist:
+          | Snapshot
           -- For everyone:
           | HelpFlag
           | Verbose Int
@@ -182,9 +172,6 @@ liftCustomOpts flags = [ Option shopt lopt (f adesc) help
   where f (NoArg x)    = NoArg (Lift x)
         f (ReqArg g s) = ReqArg (Lift . g) s
         f (OptArg g s) = OptArg (Lift . g) s
-
-unliftFlags :: [Flag a] -> [a]
-unliftFlags flags = [ fl | Lift fl <- flags ]
 
 data Cmd a = Cmd {
         cmdName         :: String,
@@ -239,13 +226,9 @@ parseGlobalArgs args =
     (_, cname:cargs, _, []) -> do
       case lookupCommand cname commandList of
         Just cmd -> return (cmdAction cmd,cargs)
-        Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"
-                       exitWith (ExitFailure 1)
-    (_, [], _, [])  -> do putStrLn $ "No command given (try --help)"
-                          exitWith (ExitFailure 1)
-    (_, _, _, errs) -> do putStrLn "Errors:"
-                          mapM_ putStrLn errs
-                          exitWith (ExitFailure 1)
+        Nothing  -> die $ "Unrecognised command: " ++ cname ++ " (try --help)"
+    (_, [], _, [])  -> die $ "No command given (try --help)"
+    (_, _, _, errs) -> putErrors errs
 
 configureCmd :: Cmd a
 configureCmd = Cmd {
@@ -294,6 +277,7 @@ configureCmd = Cmd {
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])
+<<<<<<< Setup.hs
 parseConfigureArgs cfg args customOpts =
   case getCmdOpt configureCmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
@@ -329,6 +313,29 @@ parseConfigureArgs cfg args customOpts =
             Lift _            -> t
             _                 -> error $ "Unexpected flag!"
         updateCfg [] t = t
+=======
+parseConfigureArgs = parseArgs configureCmd updateCfg
+  where updateCfg t GhcFlag             = t { configHcFlavor = Just GHC }
+        updateCfg t NhcFlag             = t { configHcFlavor = Just NHC }
+        updateCfg t HugsFlag            = t { configHcFlavor = Just Hugs }
+        updateCfg t (WithCompiler path) = t { configHcPath   = Just path }
+        updateCfg t (WithHcPkg path)    = t { configHcPkg    = Just path }
+        updateCfg t (WithHaddock path)  = t { configHaddock  = Just path }
+        updateCfg t (WithHappy path)    = t { configHappy    = Just path }
+        updateCfg t (WithAlex path)     = t { configAlex     = Just path }
+        updateCfg t (WithHsc2hs path)   = t { configHsc2hs   = Just path }
+        updateCfg t (WithC2hs path)     = t { configC2hs     = Just path }
+        updateCfg t (WithCpphs path)    = t { configCpphs    = Just path }
+        updateCfg t WithProfLib         = t { configProfLib  = True }
+        updateCfg t WithoutProfLib      = t { configProfLib  = False }
+        updateCfg t WithProfExe         = t { configProfExe  = True }
+        updateCfg t WithoutProfExe      = t { configProfExe  = False }
+        updateCfg t (Prefix path)       = t { configPrefix   = Just path }
+        updateCfg t (Verbose n)         = t { configVerbose  = n }
+        updateCfg t UserFlag            = t { configUser     = True }
+        updateCfg t GlobalFlag          = t { configUser     = False }
+        updateCfg t _                   = error $ "Unexpected flag!"
+>>>>>>> 1.37
 
 buildCmd :: Cmd a
 buildCmd = Cmd {
@@ -411,64 +418,46 @@ type CopyFlags = (Maybe FilePath,Int)
 
 parseCopyArgs :: CopyFlags -> [String] -> [OptDescr a] ->
                     IO (CopyFlags, [a], [String])
-parseCopyArgs cfg args customOpts =
-  case getCmdOpt copyCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp copyCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) (mprefix,verbose) = updateCfg flags $
-          case fl of
-            InstPrefix path -> (Just path,verbose)
-            Verbose n       -> (mprefix,n)
-            Lift _          -> (mprefix,verbose)
+parseCopyArgs = parseArgs copyCmd updateCfg
+  where updateCfg (mprefix,verbose) fl = case fl of
+            InstPrefix path -> (Just path, verbose)
+            Verbose n       -> (mprefix,   n)
             _               -> error $ "Unexpected flag!"
-        updateCfg [] t = t
 
 -- | Flags to @install@: (user package, verbose)
 type InstallFlags = (Bool,Int)
 
 parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
                     IO (InstallFlags, [a], [String])
-parseInstallArgs cfg args customOpts =
-  case getCmdOpt installCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp installCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      when (any isInstallPref flags) (error "--install-prefix is deprecated. Use copy command instead.") >>
-      return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where updateCfg :: [Flag a] -> (Bool,Int) -> (Bool,Int)
-        updateCfg (fl:flags) (uFlag,verbose) = updateCfg flags $
-          case fl of
-            InstPrefix _ -> error "--install-prefix is deprecated. Use copy command instead."
-            UserFlag     -> (True,verbose)
-            GlobalFlag   -> (False,verbose)
-            Verbose n    -> (uFlag,n)
-            Lift _       -> (uFlag,verbose)
+parseInstallArgs = parseArgs installCmd updateCfg
+  where updateCfg (uFlag,verbose) fl = case fl of
+            InstPrefix _ -> error "--install-prefix is obsolete. Use copy command instead."
+            UserFlag     -> (True,  verbose)
+            GlobalFlag   -> (False, verbose)
+            Verbose n    -> (uFlag, n)
             _            -> error $ "Unexpected flag!"
-        updateCfg [] t = t
-        isInstallPref (InstPrefix _) = True
-        isInstallPref _              = False
 
 sdistCmd :: Cmd a
 sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help,cmd_verbose],
+        cmdOptions     = [cmd_help,cmd_verbose,
+           Option "" ["snapshot"] (NoArg Snapshot)
+               "Produce a snapshot source distribution"
+           ],
         cmdAction      = SDistCmd
         }
 
-parseSDistArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseSDistArgs = parseNoArgs sdistCmd
+-- | Flags to @sdist@: (snapshot, verbose)
+type SDistFlags = (Bool, Int)
+
+parseSDistArgs :: [String] -> [OptDescr a] -> IO (SDistFlags, [a], [String])
+parseSDistArgs = parseArgs sdistCmd updateCfg (False, 0)
+  where updateCfg (snapshot, verbose) fl = case fl of
+            Snapshot        -> (True,     verbose)
+            Verbose n       -> (snapshot, n)
+            _               -> error $ "Unexpected flag!"
 
 testCmd :: Cmd a
 testCmd = Cmd {
@@ -503,25 +492,13 @@ type RegisterFlags = (Bool, Bool, Int)
 
 parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                      IO (RegisterFlags, [a], [String])
-parseRegisterArgs cfg args customOpts =
-  case getCmdOpt registerCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp registerCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) (uFlag, genScriptFlag, verbose) = updateCfg flags $
-          case fl of
-            UserFlag        -> (True, genScriptFlag, verbose)
+parseRegisterArgs = parseArgs registerCmd updateCfg
+  where updateCfg (uFlag, genScriptFlag, verbose) fl = case fl of
+            UserFlag        -> (True,  genScriptFlag, verbose)
             GlobalFlag      -> (False, genScriptFlag, verbose)
-            Verbose n       -> (uFlag,genScriptFlag, n)
-            GenScriptFlag   -> (uFlag, True, verbose)
-            Lift _          -> (uFlag,genScriptFlag, verbose)
+            Verbose n       -> (uFlag, genScriptFlag, n)
+            GenScriptFlag   -> (uFlag, True,          verbose)
             _               -> error $ "Unexpected flag!"
-        updateCfg [] t = t
 
 unregisterCmd :: Cmd a
 unregisterCmd = Cmd {
@@ -548,23 +525,32 @@ parseUnregisterArgs = parseRegisterArgs
 -- and help.
 
 parseNoArgs :: (Cmd a) -> [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseNoArgs cmd args customOpts =
+parseNoArgs cmd = parseArgs cmd updateCfg 0
+  where
+    updateCfg _ (Verbose n) = n
+    updateCfg _ _           = error "Unexpected flag!"
+
+-- |Helper function for commands with more options.
+
+parseArgs :: Cmd a -> (cfg -> Flag a -> cfg) -> cfg ->
+        [String] -> [OptDescr a] -> IO (cfg, [a], [String])
+parseArgs cmd updateCfg cfg args customOpts =
   case getCmdOpt cmd customOpts args of
     (flags, _, []) | hasHelpFlag flags -> do
       printCmdHelp cmd customOpts
       exitWith ExitSuccess
     (flags, args', []) ->
-      return (updateCmd flags 0, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
+      let flags' = filter (not.isLift) flags in
+      return (foldl updateCfg cfg flags', unliftFlags flags, args')
+    (_, _, errs) -> putErrors errs
   where
-    updateCmd (fl:flags) _ = updateCmd flags $
-          case fl of
-            Verbose n -> n
-            _         -> error $ "Unexpected flag!"
-    updateCmd [] t = t
+    isLift (Lift _) = True
+    isLift _        = False
+    unliftFlags :: [Flag a] -> [a]
+    unliftFlags flags = [ fl | Lift fl <- flags ]
 
+putErrors :: [String] -> IO a
+putErrors errs = die $ "Errors:" ++ concat ['\n':err | err <- errs]
 
 
 #ifdef DEBUG

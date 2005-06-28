@@ -4,7 +4,7 @@
     <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution.Simple.html">Distribution.Simple</ulink>'>
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
-    <!ENTITY Extension '<ulink url="../libraries/Cabal/Distribution.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
+    <!ENTITY Extension '<ulink url="../libraries/Cabal/Language.Haskell.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
     <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/">Haddock</ulink>'>
   ]>
 
@@ -50,17 +50,18 @@
     test cases, auxiliary tools etc.</para>
 
     <para>A package is identified by a globally-unique
-      <firstterm>package name</firstterm>, an identifier containing
-      no spaces. Chaos will result if two distinct packages with the
+      <firstterm>package name</firstterm>, which consists of one or
+      more alphanumeric words separated by hyphens.  To avoid ambiguity,
+      each of these words should contain at least one letter.
+      Chaos will result if two distinct packages with the
       same name are installed on the same system, but there is not
       yet a mechanism for allocating these names.
       A particular version of the package is distinguished by a
       <firstterm>version number</firstterm>, consisting of a sequence
-      of one or more integers.  These can be combined to form a single
-      text string called the <firstterm>package ID</firstterm>, using
-      a hyphen to separate the version from the name, and dots to
-      separate the version components, e.g.
-      <quote><literal>HUnit-1.1</literal></quote>.</para>
+      of one or more integers separated by dots.  These can be combined
+      to form a single text string called the <firstterm>package
+      ID</firstterm>, using a hyphen to separate the name from the
+      version, e.g. <quote><literal>HUnit-1.1</literal></quote>.</para>
 
     <note>
       <para>Packages are not part of the Haskell language;
@@ -148,11 +149,11 @@ Build-Depends:  HUnit
 
 Executable:     program1
 Main-Is:        Main.hs
-Hs-Source-Dir:  prog1
+Hs-Source-Dirs: prog1
 
 Executable:     program2
 Main-Is:        Main.hs
-Hs-Source-Dir:  prog2
+Hs-Source-Dirs: prog2
 Other-Modules:  Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
@@ -170,12 +171,12 @@ Exposed-Modules: A, B, C
 
 Executable:      program1
 Main-Is:         Main.hs
-Hs-Source-Dir:   prog1
+Hs-Source-Dirs:  prog1
 Other-Modules:   A, B
 
 Executable:      program2
 Main-Is:         Main.hs
-Hs-Source-Dir:   prog2
+Hs-Source-Dirs:  prog2
 Other-Modules:   A, C, Utils</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.
       Note that any library modules required (directly or indirectly)
@@ -201,12 +202,30 @@ Other-Modules:   A, C, Utils</programlisting>
 
       <para>The package description file should have a name ending in
         <quote><literal>.cabal</literal></quote>.  There must be exactly
-        one such file in the directory, and the first part of the name is
+        one such file in the directory.  The first part of the name is
         immaterial, but it is conventional to use the package name.</para>
 
-      <para>This file should contain several
-        <firstterm>stanzas</firstterm> separated by blank lines.
-        Each stanza consists of a number of field/value pairs, with a
+      <para>In the package description file, lines beginning with
+        <quote><literal>--</literal></quote> are treated as comments
+        and ignored.</para>
+
+      <para>This file should contain one or more
+        <firstterm>stanzas</firstterm> separated by blank lines:</para>
+      <itemizedlist>
+        <listitem>
+          <para>The first stanza describes the package as a whole
+            (see <xref linkend="general-fields"/>), as well as an optional
+            library (see <xref linkend="library"/>) and relevant build
+            information (see <xref linkend="buildinfo"/>).</para>
+        </listitem>
+        <listitem>
+          <para>Each subsequent stanza (if any) describes an executable
+            program (see <xref linkend="executable"/>) and relevant
+            build information (see <xref linkend="buildinfo"/>).</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>Each stanza consists of a number of field/value pairs, with a
         syntax like mail message headers.</para>
       <itemizedlist>
 	<listitem>
@@ -220,9 +239,6 @@ Other-Modules:   A, C, Utils</programlisting>
             <quote><literal>.</literal></quote></para>
 	</listitem>
       </itemizedlist>
-      <para>Lines beginning with <quote><literal>--</literal></quote>
-        are treated as comments and ignored.</para>
-
       <para>The syntax of the value depends on the field.  Field types
         include:</para>
 
@@ -271,214 +287,6 @@ Other-Modules:   A, C, Utils</programlisting>
         </varlistentry>
       </variablelist>
 
-      <para>Some fields take lists of values, which
-        are optionally separated by commas, except for the
-        <literal>build-depends</literal> field, where the commas are
-        mandatory.</para>
-
-      <para>Some fields are marked as required.  All others are optional,
-        and unless otherwise specified have empty default values.</para>
-
-      <para>The first stanza describes the package
-        as a whole, as well as the library it contains (if any), using
-        the following fields:</para>
-      <variablelist>
-        <varlistentry>
-          <term>
-            <literal>name:</literal> <replaceable>identifier</replaceable>
-            (required)
-          </term>
-          <listitem>
-            <para>The unique name of the package, without the version
-              number.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>version:</literal> <replaceable>numbers</replaceable>
-            (required)
-          </term>
-          <listitem>
-            <para>The package version number, usually consisting of a
-              sequence of natural numbers separated by dots.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>license:</literal> <replaceable>identifier</replaceable>
-            (default: <literal>AllRightsReserved</literal>)
-          </term>
-          <listitem>
-            <para>The type of license under which this package is distributed.
-              License names are the constants of the &License; type.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>license-file:</literal>
-            <replaceable>filename</replaceable>
-          </term>
-          <listitem>
-            <para>The name of a file containing the precise license for
-              this package.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>copyright:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>The content of a copyright notice, typically the name of
-              the holder of the copyright on the package and the year(s)
-              from which copyright is claimed.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>author:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>The original author of the package.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>maintainer:</literal>
-            <replaceable>address</replaceable>
-          </term>
-          <listitem>
-            <para>The current maintainer or maintainers of the package.
-              This is an e-mail address to which users should send bug
-              reports, feature requests and patches.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>stability:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>The stability level of the package, e.g.
-              <literal>alpha</literal>, <literal>experimental</literal>,
-              <literal>provisional</literal>, <literal>stable</literal>.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>homepage:</literal> <replaceable>URL</replaceable>
-          </term>
-          <listitem>
-            <para>The package homepage.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>package-url:</literal> <replaceable>URL</replaceable>
-          </term>
-          <listitem>
-            <para>The location of a source bundle for the package.
-              The distribution should be a Cabal package.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>synopsis:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>A very short description of the package, for use in a
-              table of packages.  This is your headline, so keep it short
-              (one line) but as informative as possible.  Save space
-              by not including the package name or saying it's written
-              in Haskell.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>description:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>Description of the package.  This may be several
-              paragraphs, and should be aimed at a Haskell programmer
-              who has never heard of your package before.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>category:</literal>
-            <replaceable>freeform</replaceable>
-          </term>
-          <listitem>
-            <para>A classification category for future use by the package
-              catalogue <firstterm>Hackage</firstterm>.  These categories
-              have not yet been specified, but the upper levels of the
-              module hierarchy make a good start.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>tested-with:</literal>
-            <replaceable>compiler list</replaceable>
-          </term>
-          <listitem>
-            <para>A list of compilers and versions against which the
-              package has been tested (or at least built).</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>build-depends:</literal>
-            <replaceable>package list</replaceable>
-          </term>
-          <listitem>
-            <para>A list of packages, possibly annotated with versions,
-              needed to build this one, e.g. <literal>foo > 1.2, bar</literal>.
-              If no version constraint is specified, any version is assumed
-              to be acceptable.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>other-files:</literal>
-            <replaceable>filename list</replaceable>
-          </term>
-          <listitem>
-            <para>A list of additional files to be included in source
-              distributions built with <command>setup sdist</command>
-              (see <xref linkend="setup-sdist"/>).</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <literal>exposed-modules:</literal>
-            <replaceable>identifier list</replaceable>
-            (required if this package contains a library)
-          </term>
-          <listitem>
-            <para>A list of modules added by this package.</para>
-          </listitem>
-        </varlistentry>
-      </variablelist>
-
       <note>
         <para>Module names may correspond to Haskell source files, i.e.
           with names ending in <quote><literal>.hs</literal></quote>
@@ -497,8 +305,233 @@ Other-Modules:   A, C, Utils</programlisting>
           automatically as required.</para>
       </note>
 
-      <para>This stanza may also contain build information fields
-        (see <xref linkend="buildinfo"/>) relating to the library.</para>
+      <para>Some fields take lists of values, which
+        are optionally separated by commas, except for the
+        <literal>build-depends</literal> field, where the commas are
+        mandatory.</para>
+
+      <para>Some fields are marked as required.  All others are optional,
+        and unless otherwise specified have empty default values.</para>
+
+      <sect3 id="general-fields">
+        <title>Package properties</title>
+
+        <para>These fields may occur in the first stanza, and describe
+          the package as a whole:</para>
+
+        <variablelist>
+          <varlistentry>
+            <term>
+              <literal>name:</literal> <replaceable>package-name</replaceable>
+              (required)
+            </term>
+            <listitem>
+              <para>The unique name of the package
+                (see <xref linkend="packages"/>), without the version
+                number.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>version:</literal> <replaceable>numbers</replaceable>
+              (required)
+            </term>
+            <listitem>
+              <para>The package version number, usually consisting of a
+                sequence of natural numbers separated by dots.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>license:</literal> <replaceable>identifier</replaceable>
+              (default: <literal>AllRightsReserved</literal>)
+            </term>
+            <listitem>
+              <para>The type of license under which this package is
+                distributed.  License names are the constants of the
+                &License; type.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>license-file:</literal>
+              <replaceable>filename</replaceable>
+            </term>
+            <listitem>
+              <para>The name of a file containing the precise license
+                for this package.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>copyright:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>The content of a copyright notice, typically the
+                name of the holder of the copyright on the package and
+                the year(s) from which copyright is claimed.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>author:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>The original author of the package.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>maintainer:</literal>
+              <replaceable>address</replaceable>
+            </term>
+            <listitem>
+              <para>The current maintainer or maintainers of the package.
+                This is an e-mail address to which users should send bug
+                reports, feature requests and patches.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>stability:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>The stability level of the package, e.g.
+                <literal>alpha</literal>, <literal>experimental</literal>,
+                <literal>provisional</literal>,
+                <literal>stable</literal>.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>homepage:</literal> <replaceable>URL</replaceable>
+            </term>
+            <listitem>
+              <para>The package homepage.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>package-url:</literal> <replaceable>URL</replaceable>
+            </term>
+            <listitem>
+              <para>The location of a source bundle for the package.
+                The distribution should be a Cabal package.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>synopsis:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>A very short description of the package, for use in
+                a table of packages.  This is your headline, so keep
+                it short (one line) but as informative as possible.
+                Save space by not including the package name or saying
+                it's written in Haskell.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>description:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>Description of the package.  This may be several
+                paragraphs, and should be aimed at a Haskell programmer
+                who has never heard of your package before.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>category:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>A classification category for future use by the
+                package catalogue <firstterm>Hackage</firstterm>.  These
+                categories have not yet been specified, but the upper
+                levels of the module hierarchy make a good start.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>tested-with:</literal>
+              <replaceable>compiler list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of compilers and versions against which the
+                package has been tested (or at least built).</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>build-depends:</literal>
+              <replaceable>package list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of packages, possibly annotated with versions,
+                needed to build this one,
+                e.g. <literal>foo > 1.2, bar</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>other-files:</literal>
+              <replaceable>filename list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of additional files to be included in source
+                distributions built with <command>setup sdist</command>
+                (see <xref linkend="setup-sdist"/>).</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+      </sect3>
+
+      <sect3 id="library">
+        <title>Library</title>
+
+        <para>If the package contains a library, the first stanza should
+          also contain the following field:</para>
+
+        <variablelist>
+          <varlistentry>
+            <term>
+              <literal>exposed-modules:</literal>
+              <replaceable>identifier list</replaceable>
+              (required if this package contains a library)
+            </term>
+            <listitem>
+              <para>A list of modules added by this package.</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+
+        <para>The first stanza may also contain build information fields
+          (see <xref linkend="buildinfo"/>) relating to the library.</para>
+      </sect3>
 
       <sect3 id="executable">
         <title>Executables</title>
@@ -531,6 +564,9 @@ Other-Modules:   A, C, Utils</programlisting>
             </listitem>
           </varlistentry>
         </variablelist>
+
+        <para>These stanzas may also contain build information fields
+          (see <xref linkend="buildinfo"/>) relating to the executable.</para>
       </sect3>
 
       <sect3 id="buildinfo">
@@ -1320,8 +1356,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
     <sect2>
       <title>setup clean</title>
-      <para>Remove any files created during the configure or build
-        steps.</para>
+      <para>Remove any local files created during the
+        <literal>configure</literal>, <literal>build</literal>,
+        <literal>haddock</literal>, <literal>register</literal> or
+        <literal>unregister</literal> steps.</para>
     </sect2>
 
     <sect2 id="setup-sdist">
@@ -1339,6 +1377,20 @@ runhaskell Setup.hs unregister --gen-script</screen>
         <literal>license-file</literal>, <literal>main-is</literal>,
         <literal>c-sources</literal> and <literal>other-files</literal>
         fields.</para>
+
+      <para>This command takes the following option:</para>
+
+      <variablelist>
+        <varlistentry>
+          <term><option>--snapshot</option></term>
+          <listitem>
+            <para>Append today's date
+              (in <replaceable>YYYYMMDD</replaceable> form) to the version
+              number for the generated source package.  The original
+              package is unaffected.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </sect2>
   </sect1>
 

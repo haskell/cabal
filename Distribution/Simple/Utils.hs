@@ -43,6 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
 	die,
+	dieWithLocation,
+	warn,
 	rawSystemPath,
         rawSystemVerbose,
 	rawSystemExit,
@@ -57,8 +59,6 @@ module Distribution.Simple.Utils (
         currentDir,
         dotToSep,
 	withTempFile,
-	getOptionsFromSource,
-	stripComments,
 	findFile,
         defaultPackageDesc,
         findPackageDesc,
@@ -79,16 +79,11 @@ module Distribution.Simple.Utils (
 
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally)
-import Distribution.Compat.FilePath (dropPrefix)
-import Distribution.Extension (Extension)
-import Distribution.Setup (CompilerFlavor(..))
-import Distribution.PreProcess.Unlit (unlit)
 
 import Control.Monad(when, filterM)
-import Data.Char(isSpace)
-import Data.List(nub, isSuffixOf)
-import Data.Maybe(mapMaybe)
-import System.IO (hPutStr, stderr, hFlush, stdout)
+import Data.List (nub)
+import System.Environment (getProgName)
+import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
 #if (__GLASGOW_HASKELL__ || __HUGS__) && !defined(mingw32_TARGET_OS)
@@ -107,14 +102,24 @@ import Distribution.Compat.Directory (copyFile,findExecutable,createDirectoryIfM
 import HUnit ((~:), (~=?), Test(..), assertEqual)
 #endif
 
--- -----------------------------------------------------------------------------
--- Utils for setup
+-- ------------------------------------------------------------------------------- Utils for setup
+
+dieWithLocation :: FilePath -> (Maybe Int) -> String -> IO a
+dieWithLocation fname Nothing msg = die (fname ++ ": " ++ msg)
+dieWithLocation fname (Just n) msg = die (fname ++ ":" ++ show n ++ ": " ++ msg)
 
 die :: String -> IO a
-die msg = do hFlush stdout; hPutStr stderr (msg++"\n"); exitWith (ExitFailure 1)
+die msg = do
+  hFlush stdout
+  pname <- getProgName
+  hPutStrLn stderr (pname ++ ": " ++ msg)
+  exitWith (ExitFailure 1)
 
 warn :: String -> IO ()
-warn msg = do hFlush stdout; hPutStr stderr ("Warning: " ++ msg++"\n")
+warn msg = do
+  hFlush stdout
+  pname <- getProgName
+  hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -243,9 +248,8 @@ smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone
     where moduleToFPErr m
               = do p <- moduleToFilePath2 srcDirs m searchSuffixes
                    when (null p && exitIfNone)
-                            (putStrLn ("Error: Could not find module: " ++ m
-                                       ++ " with any suffix: " ++ (show searchSuffixes))
-                             >> exitWith (ExitFailure 1))
+                            (die ("Error: Could not find module: " ++ m
+                                       ++ " with any suffix: " ++ (show searchSuffixes)))
                    return p
 
 copyFileVerbose :: Int -> FilePath -> FilePath -> IO ()
@@ -297,79 +301,6 @@ getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 -- error ToDo: getProcessID
 foreign import ccall unsafe "getpid" getProcessID :: IO Int
 #endif
-
--- ------------------------------------------------------------
--- * options in source files
--- ------------------------------------------------------------
-
--- |Read the initial part of a source file, before any Haskell code,
--- and return the contents of any LANGUAGE, OPTIONS and INCLUDE pragmas.
-getOptionsFromSource
-    :: FilePath
-    -> IO ([Extension],                 -- LANGUAGE pragma, if any
-           [(CompilerFlavor,[String])], -- OPTIONS_FOO pragmas
-           [String]                     -- INCLUDE pragmas
-          )
-getOptionsFromSource file = do
-    text <- readFile file
-    return $ foldr appendOptions ([],[],[]) $ map getOptions $
-	takeWhileJust $ map getPragma $
-	filter textLine $ map (dropWhile isSpace) $ lines $
-	stripComments True $
-	if ".lhs" `isSuffixOf` file then unlit file text else text
-  where textLine [] = False
-	textLine ('#':_) = False
-	textLine _ = True
-
-	getPragma :: String -> Maybe [String]
-	getPragma line = case words line of
-	    ("{-#" : rest) | last rest == "#-}" -> Just (init rest)
-	    _ -> Nothing
-
-	getOptions ("OPTIONS":opts) = ([], [(GHC, opts)], [])
-	getOptions ("OPTIONS_GHC":opts) = ([], [(GHC, opts)], [])
-	getOptions ("OPTIONS_NHC98":opts) = ([], [(NHC, opts)], [])
-	getOptions ("OPTIONS_HUGS":opts) = ([], [(Hugs, opts)], [])
-	getOptions ("LANGUAGE":ws) = (mapMaybe readExtension ws, [], [])
-	  where	readExtension :: String -> Maybe Extension
-		readExtension w = case reads w of
-		    [(ext, "")] -> Just ext
-		    [(ext, ",")] -> Just ext
-		    _ -> Nothing
-	getOptions ("INCLUDE":ws) = ([], [], ws)
-	getOptions _ = ([], [], [])
-
-	appendOptions (exts, opts, incs) (exts', opts', incs')
-          = (exts++exts', opts++opts', incs++incs')
-
--- takeWhileJust f = map fromJust . takeWhile isJust
-takeWhileJust :: [Maybe a] -> [a]
-takeWhileJust (Just x:xs) = x : takeWhileJust xs
-takeWhileJust _ = []
-
--- |Strip comments from Haskell source.
-stripComments
-    :: Bool	-- ^ preserve pragmas?
-    -> String	-- ^ input source text
-    -> String
-stripComments keepPragmas = stripCommentsLevel 0
-  where stripCommentsLevel :: Int -> String -> String
-	stripCommentsLevel 0 ('-':'-':cs) =	-- FIX: symbols like -->
-	    stripCommentsLevel 0 (dropWhile (/= '\n') cs)
-	stripCommentsLevel 0 ('{':'-':'#':cs)
-	  | keepPragmas = '{' : '-' : '#' : copyPragma cs
-	stripCommentsLevel n ('{':'-':cs) = stripCommentsLevel (n+1) cs
-	stripCommentsLevel 0 (c:cs) = c : stripCommentsLevel 0 cs
-	stripCommentsLevel n ('-':'}':cs) = stripCommentsLevel (n-1) cs
-	stripCommentsLevel n (c:cs) = stripCommentsLevel n cs
-	stripCommentsLevel _ [] = []
-
-	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
-	copyPragma (c:cs) = c : copyPragma cs
-	copyPragma [] = []
-
-
-
 
 -- ------------------------------------------------------------
 -- * Finding the description file

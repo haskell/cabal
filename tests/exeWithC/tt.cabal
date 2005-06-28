@@ -5,6 +5,7 @@ Maintainer:     Isaac Jones
 Synopsis:       Provided as a test.
 License:        BSD3
 Author:         This Test Case Contributed by: Einar Karttunen  Thanks!
+Build-Depends:  base
 
 Executable:     tt
 Main-Is:        test.hs
