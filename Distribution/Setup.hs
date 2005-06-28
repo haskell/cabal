@@ -61,7 +61,7 @@ module Distribution.Setup (--parseArgs,
 import HUnit (Test(..))
 #endif
 
-import Distribution.Compiler
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
 import Data.List(find)
 import Distribution.GetOpt
@@ -277,65 +277,29 @@ configureCmd = Cmd {
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])
-<<<<<<< Setup.hs
-parseConfigureArgs cfg args customOpts =
-  case getCmdOpt configureCmd customOpts args of
-    (flags, _, []) | hasHelpFlag flags -> do
-      printCmdHelp configureCmd customOpts
-      exitWith ExitSuccess
-    (flags, args', []) ->
-      return (updateCfg flags cfg, unliftFlags flags, args')
-    (_, _, errs) -> do putStrLn "Errors: "
-                       mapM_ putStrLn errs
-                       exitWith (ExitFailure 1)
-  where updateCfg (fl:flags) t = updateCfg flags $
-          case fl of
-            GhcFlag           -> t { configHcFlavor = Just GHC }
-            NhcFlag           -> t { configHcFlavor = Just NHC }
-            HugsFlag          -> t { configHcFlavor = Just Hugs }
-            WithCompiler path -> t { configHcPath   = Just path }
-            WithHcPkg path    -> t { configHcPkg    = Just path }
-            WithHaddock path  -> t { configHaddock  = Just path }
-            WithHappy path    -> t { configHappy    = Just path }
-            WithAlex path     -> t { configAlex     = Just path }
-            WithHsc2hs path   -> t { configHsc2hs   = Just path }
-            WithC2hs path     -> t { configC2hs     = Just path }
-            WithCpphs path    -> t { configCpphs    = Just path }
-            WithGreencard path-> t { configGreencard= Just path }
-            WithProfLib       -> t { configProfLib  = True }
-            WithoutProfLib    -> t { configProfLib  = False }
-            WithProfExe       -> t { configProfExe  = True }
-            WithoutProfExe    -> t { configProfExe  = False }
-            Prefix path       -> t { configPrefix   = Just path }
-            Verbose n         -> t { configVerbose  = n }
-	    UserFlag	      -> t { configUser     = True }
-	    GlobalFlag	      -> t { configUser     = False }
-            Lift _            -> t
-            _                 -> error $ "Unexpected flag!"
-        updateCfg [] t = t
-=======
 parseConfigureArgs = parseArgs configureCmd updateCfg
-  where updateCfg t GhcFlag             = t { configHcFlavor = Just GHC }
-        updateCfg t NhcFlag             = t { configHcFlavor = Just NHC }
-        updateCfg t HugsFlag            = t { configHcFlavor = Just Hugs }
-        updateCfg t (WithCompiler path) = t { configHcPath   = Just path }
-        updateCfg t (WithHcPkg path)    = t { configHcPkg    = Just path }
-        updateCfg t (WithHaddock path)  = t { configHaddock  = Just path }
-        updateCfg t (WithHappy path)    = t { configHappy    = Just path }
-        updateCfg t (WithAlex path)     = t { configAlex     = Just path }
-        updateCfg t (WithHsc2hs path)   = t { configHsc2hs   = Just path }
-        updateCfg t (WithC2hs path)     = t { configC2hs     = Just path }
-        updateCfg t (WithCpphs path)    = t { configCpphs    = Just path }
-        updateCfg t WithProfLib         = t { configProfLib  = True }
-        updateCfg t WithoutProfLib      = t { configProfLib  = False }
-        updateCfg t WithProfExe         = t { configProfExe  = True }
-        updateCfg t WithoutProfExe      = t { configProfExe  = False }
-        updateCfg t (Prefix path)       = t { configPrefix   = Just path }
-        updateCfg t (Verbose n)         = t { configVerbose  = n }
-        updateCfg t UserFlag            = t { configUser     = True }
-        updateCfg t GlobalFlag          = t { configUser     = False }
-        updateCfg t _                   = error $ "Unexpected flag!"
->>>>>>> 1.37
+  where updateCfg t GhcFlag              = t { configHcFlavor = Just GHC }
+        updateCfg t NhcFlag              = t { configHcFlavor = Just NHC }
+        updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
+        updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
+        updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
+        updateCfg t (WithHaddock path)   = t { configHaddock  = Just path }
+        updateCfg t (WithHappy path)     = t { configHappy    = Just path }
+        updateCfg t (WithAlex path)      = t { configAlex     = Just path }
+        updateCfg t (WithHsc2hs path)    = t { configHsc2hs   = Just path }
+        updateCfg t (WithC2hs path)      = t { configC2hs     = Just path }
+        updateCfg t (WithCpphs path)     = t { configCpphs    = Just path }
+        updateCfg t (WithGreencard path) = t { configGreencard= Just path }
+        updateCfg t WithProfLib          = t { configProfLib  = True }
+        updateCfg t WithoutProfLib       = t { configProfLib  = False }
+        updateCfg t WithProfExe          = t { configProfExe  = True }
+        updateCfg t WithoutProfExe       = t { configProfExe  = False }
+        updateCfg t (Prefix path)        = t { configPrefix   = Just path }
+        updateCfg t (Verbose n)          = t { configVerbose  = n }
+        updateCfg t UserFlag             = t { configUser     = True }
+        updateCfg t GlobalFlag           = t { configUser     = False }
+        updateCfg t (Lift _)             = t
+        updateCfg t _                    = error $ "Unexpected flag!"
 
 buildCmd :: Cmd a
 buildCmd = Cmd {
