@@ -133,12 +133,6 @@ configure pkg_descr cfg
         let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
-<<<<<<< Configure.hs
-=======
-	-- prefix
-	defPrefix <- system_default_prefix pkg_descr
-        let pref = fromMaybe defPrefix (configPrefix cfg)
->>>>>>> 1.36
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -328,15 +322,6 @@ findCompiler verbose flavor = do
 		   return path
    -- ToDo: check that compiler works? check compiler version?
 
-<<<<<<< Configure.hs
-compilerBinaryName :: CompilerFlavor -> String
-compilerBinaryName GHC  = "ghc"
-compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
-compilerBinaryName Hugs = "ffihugs"
-compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
-
-=======
->>>>>>> 1.36
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
