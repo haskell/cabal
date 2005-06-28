@@ -126,7 +126,7 @@ pushall:
 	darcs push --all ijones@cvs.haskell.org:/home/darcs/cabal
 
 pushdist: pushall dist
-	scp /tmp/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
+	scp $(TMPDISTLOC)/cabal-code.tgz ijones@www.haskell.org:~/cabal/cabal-code.tgz
 #	rm -f /tmp/cabal-code.tgz
 
 deb: dist
