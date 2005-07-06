@@ -81,7 +81,7 @@ import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersi
 
 import Data.List (intersperse, nub, maximumBy, isPrefixOf)
 import Data.Char (isSpace)
-import Data.Maybe(fromMaybe, isJust)
+import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName)
 import System.Cmd		( system )
@@ -129,7 +129,7 @@ configure pkg_descr cfg
 	removeInstalledConfig
         let lib = library pkg_descr
 	-- prefix
-	defPrefix <- system_default_prefix pkg_descr
+	defPrefix <- system_default_prefix
         let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
@@ -243,15 +243,12 @@ getInstalledPackages comp user verbose = do
 	    [ps] -> return ps
 	    _   -> die "cannot parse package list"
 
-system_default_prefix :: PackageDescription -> IO String
+system_default_prefix :: IO String
 #ifdef mingw32_TARGET_OS
-system_default_prefix pkg_descr@PackageDescription{package=pkg} =
+system_default_prefix =
   allocaBytes long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr csidl_PROGRAM_FILES nullPtr 0 pPath
-     s <- peekCString pPath
-     if isJust (library pkg_descr)
-	then return (s `joinFileName` "Haskell" `joinFileName` showPackageId pkg)
-	else return (s `joinFileName` showPackageId pkg)
+     peekCString pPath
   where
     csidl_PROGRAM_FILES = 0x0026
     long_path_size      = 1024
@@ -264,7 +261,7 @@ foreign import stdcall unsafe "SHGetFolderPath"
                               -> CString 
                               -> IO CInt
 #else
-system_default_prefix _ = 
+system_default_prefix = 
   return "/usr/local"
 #endif
 

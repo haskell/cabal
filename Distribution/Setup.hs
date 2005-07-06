@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Setup (--parseArgs,
                            module Distribution.Compiler,
                            Action(..), ConfigFlags(..),
-                           CopyFlags, InstallFlags, RegisterFlags,
+                           CopyFlags, InstallFlags, RegisterFlags, SDistFlags,
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,

@@ -225,23 +225,24 @@ mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkLibDir pkg_descr lbi install_prefixM = 
   case compilerFlavor hc of
     Hugs -> libDir `joinFileName` "hugs"
-    _    ->
-#ifdef mingw32_TARGET_OS
-		libDir `joinFileName`showCompilerId hc
-#else
-		libDir `joinFileName` showPackageId (package pkg_descr)
-			`joinFileName`showCompilerId hc
-#endif
+    _    -> libDir `joinFileName` showPackageId (package pkg_descr)
+                   `joinFileName` showCompilerId hc
   where 
 	hc = compiler lbi
 	libDir = (fromMaybe (prefix lbi) install_prefixM)
-#ifndef mingw32_TARGET_OS
+#ifdef mingw32_TARGET_OS
+                 `joinFileName` "Haskell"
+#else
                  `joinFileName` "lib"
 #endif
 
 mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
-mkBinDir _ lbi install_prefixM = 
-  (fromMaybe (prefix lbi) install_prefixM) `joinFileName` "bin"
+mkBinDir pkg_descr lbi install_prefixM = 
+  (fromMaybe (prefix lbi) install_prefixM)
+#ifdef mingw32_TARGET_OS
+        `joinFileName` showPackageId (package pkg_descr)
+#endif
+        `joinFileName` "bin"
 
 -- ------------------------------------------------------------
 -- * Testing

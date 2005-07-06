@@ -51,7 +51,7 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemPath, rawSystemVerbose,
+import Distribution.Simple.Utils (rawSystemVerbose,
                                   moduleToFilePath, die, dieWithLocation)
 import Distribution.Version (Version(..))
 import Control.Monad (unless)
