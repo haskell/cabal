@@ -5,6 +5,8 @@ http://www.haskell.org/cabal
 -= Quirky things about the build system =-
 
 * "make install" as root, then try "ghci -package Cabal" to test it.
+  If you get an error about multiple versions of Cabal, read the section
+  below "Working with older versions of Cabal"
 
 * GNUmakefile is the one you're probably interested in.  If you see
   Makefile, it is probably from the fptools build tree, and it won't
@@ -17,6 +19,34 @@ http://www.haskell.org/cabal
 
 * HUnit is included both as a test case for Cabal, and because Cabal
   uses HUnit for testing.  Don't panic.
+
+-= Working with older versions of Cabal =-
+
+If you have an older version of Cabal installed, you may have to
+specify which version you want when you run ghci.  For instance:
+
+  $ ghci -package Cabal
+    ...
+    ghc-6.4: Error; multiple packages match Cabal: Cabal-1.0, Cabal-1.0.1
+  $ ghci -package Cabal-1.0.1
+    ...
+    (OK)
+
+If you want to avoid this situation, you can remove the older version
+with:
+
+  $ ghc-pkg unregister Cabal-1.0
+
+or
+
+  $ ghc-pkg unregister Cabal-1.0 --user
+
+If you don't have root access, and you need to install a newer version
+of Cabal in your user directory, then this formula may help to hide
+the global version:
+
+  $ ghc-pkg describe Cabal-1.0 | ghc-pkg --user regiser -
+  $ ghc-pkg --user hide Cabal-1.0
 
 -= Your Help =-
 
