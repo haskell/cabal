@@ -205,10 +205,11 @@ tests currDir comp compConf = [
               assertBool "testB not produced"
             libForA ",tmp2"
          ,TestLabel ("package A and install w/ no prefix: " ++ compIdent) $ TestCase $
-         do let targetDir = ",tmp/lib/test-1.0/ghc-6.2.2" -- FIX: Compiler-version
+         do let targetDir = ",tmp/lib/test-1.0/ghc-6.4" -- FIX: Compiler-version
             removeDirectoryRecursive ",tmp"
             when (comp == GHC) -- FIX: hugs can't do --user yet
-              (do assertCmd' compCmd "install --user" "install --user failed"
+              (do system $ "ghc-pkg unregister --user test-1.0"
+                  assertCmd' compCmd "install --user" "install --user failed"
                   libForA ",tmp"
                   assertCmd' compCmd "unregister --user" "unregister failed")
 -- HUnit
@@ -280,7 +281,7 @@ tests currDir comp compConf = [
             assertCopy
             doesFileExist "dist/build/A.hi-boot" >>=
               assertBool "build did not move A.hi-boot file into place lib"
-            doesFileExist ",tmp/lib/recursive-1.0/ghc-6.2.2/libHSrecursive-1.0.a" >>= -- FIX: Comp
+            doesFileExist ",tmp/lib/recursive-1.0/ghc-6.4/libHSrecursive-1.0.a" >>= -- FIX: Comp
               assertBool "recursive build didn't create library"
             doesFileExist "dist/build/testExe/testExe-tmp/A.hi" >>=
               assertBool "build did not move A.hi-boot file into place exe"
@@ -320,7 +321,7 @@ tests currDir comp compConf = [
                                   >>= assertBool "library doesn't exist"
                                 doesFileExist (",tmp/bin/mainForA")
                                   >>= assertBool "installed bin doesn't exist"
-                                doesFileExist (",tmp/lib/test-1.0/ghc-6.2.2/libHStest-1.0.a")
+                                doesFileExist (",tmp/lib/test-1.0/ghc-6.4/libHStest-1.0.a")
                                   >>= assertBool "installed lib doesn't exist")
 -- wash2hs
        ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
@@ -358,7 +359,7 @@ tests currDir comp compConf = [
                        assertBool "C.testSuffix did not get compiled to C.o."
                      doesFileExist "dist/build/D.o" >>=
                        assertBool "D.gc did not get compiled to D.o this is an overriding test"
-                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-6.2.2/" `joinFileName` "libHSwithHooks-1.0.a")
+                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-6.4/" `joinFileName` "libHSwithHooks-1.0.a")
                        >>= assertBool "library doesn't exist")
 
             doesFileExist ",tmp/bin/withHooks" >>= 
@@ -367,7 +368,7 @@ tests currDir comp compConf = [
             doesFileExist "C.hs" >>=
                assertEqual "C.hs (a generated file) not cleaned." False
 -- HSQL
-         ,TestLabel ("package HSQL (make-based): " ++ show compIdent) $
+{-         ,TestLabel ("package HSQL (make-based): " ++ show compIdent) $
          TestCase $ unless (compFlag == "--hugs") $ -- FIX: won't compile w/ hugs
          do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
             system "make distclean"
@@ -381,7 +382,7 @@ tests currDir comp compConf = [
             assertCopy
             when (comp == GHC) -- FIX: do something for hugs
                  (doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
-                   assertBool "libHSsql.a doesn't exist. copy failed.")
+                   assertBool "libHSsql.a doesn't exist. copy failed.")-}
       ]
     where testdir = currDir `joinFileName` "tests"
           compStr = show comp
@@ -401,7 +402,7 @@ tests currDir comp compConf = [
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
           libForA pref  -- checks to see if the lib exists, for tests/A
-              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.2.2/" in
+              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.4/" in
                  case compConf of
                   Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs"]
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]

@@ -1,7 +1,7 @@
 Name:            testffi
 Version:         0.0
 Build-Depends:   base
-hs-source-dir:   src
+hs-source-dir:  src
 Exposed-modules: TestFFI
 Extensions:      ForeignFunctionInterface
 
