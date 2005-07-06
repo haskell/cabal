@@ -658,6 +658,17 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
+              <literal>ghc-prof-options:</literal>
+              <replaceable>token list</replaceable>
+            </term>
+            <listitem>
+              <para>Additional options for GHC when the package is built
+                with profiling enabled.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
               <literal>hugs-options:</literal>
               <replaceable>token list</replaceable>
             </term>
@@ -1099,7 +1110,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
           <term><option>--prefix</option>=<replaceable>dir</replaceable></term>
           <listitem>
             <para>Specify the installation prefix
-              (default: <filename>/usr/local</filename> on Unix systems).</para>
+              (default: <filename>/usr/local</filename> on Unix systems,
+              the Program Files folder on Windows, e.g.
+              <filename>C:\Program Files</filename> in an English
+              locale).</para>
           </listitem>
         </varlistentry>
 
@@ -1170,6 +1184,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
         </varlistentry>
 
         <varlistentry>
+          <term><option>--with-greencard</option>=<replaceable>path</replaceable></term>
+          <listitem>
+            <para>Specify the path to <command>greencard</command>.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
           <term><option>--with-cpphs</option>=<replaceable>path</replaceable></term>
           <listitem>
             <para>Specify the path to <command>cpphs</command>.</para>
@@ -1189,6 +1210,42 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <listitem>
 	    <para>(default) Dependencies must be satisfied by the global
 	      package database.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>--enable-library-profiling</option> or
+            <option>-p</option></term>
+	  <listitem>
+	    <para>Request that an additional version of the library
+	      with profiling features enabled be built and installed
+	      (only for implementations that support profiling).</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>--disable-library-profiling</option></term>
+	  <listitem>
+	    <para>(default) Do not generate an additional profiling
+              version of the library.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>--enable-executable-profiling</option></term>
+	  <listitem>
+	    <para>Any executables generated should have profiling enabled
+	      (only for implementations that support profiling).  For this
+	      to work, all libraries used by these executables must also
+	      have been built with profiling support.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>--disable-executable-profiling</option></term>
+	  <listitem>
+	    <para>(default) Do not enable profiling in generated
+              executables.</para>
 	  </listitem>
 	</varlistentry>
       </variablelist>

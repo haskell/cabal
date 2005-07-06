@@ -3,7 +3,7 @@
 1.0.2  Isaac Jones  <ijones@syntaxpolice.org> June 2005
 	* WARNING: Interfaces not documented in the user's guide may
 	  change in future releases.
-	* Handles recursive modules for GHC 6.2 and GHC 6.4.
+ 	* Handles recursive modules for GHC 6.2 and GHC 6.4.
 	* Added "setup test" command (Used with UserHook)
 	* implemented handling of _stub.{c,h,o} files
 	* Added support for profiling
