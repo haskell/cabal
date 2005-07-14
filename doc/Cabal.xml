@@ -934,6 +934,20 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
       </note>
     </sect2>
 
+    <sect2 id="Preprocessors">
+      <title>Preprocessors</title>
+        <para>Cabal will automatically handle certain preprocessors
+          including GreenCard, hsc2hs, happy, and alex.  To use these
+          preprocessors, just specify the module name (without any
+          extension) in the <literal>exposed-modules</literal> or
+          <literal>extra-modules</literal> fields.  No further steps are
+          required.  Cabal will look for modules with extensions
+          corresponding to the preprocessors it knows about (".y" for
+          Happy files, ".gc" for GreenCard files, etc.), run the
+          appropriate preprocessor on those files, then compile the
+          output.</para>
+    </sect2>
+
     <sect2 id="complex-packages">
       <title>More complex packages</title>
 
@@ -942,12 +956,13 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
 
       <itemizedlist>
         <listitem>
-          <para>You can customize the simple build infrastructure using
-            <firstterm>hooks</firstterm>.  These allow you to perform
-            additional actions before and after each command is run,
-            and also to specify additional preprocessors.  See &Simple;
-            for the details, but note that this interface is experimental,
-            and likely to change in future releases..</para>
+          <para>You can customize the simple build infrastructure
+            using <firstterm>hooks</firstterm>.  These allow you to
+            perform additional actions before and after each command is
+            run, and also to specify additional preprocessors.  See
+            <literal>UserHooks</literal> in &Simple; for the details,
+            but note that this interface is experimental, and likely to
+            change in future releases.</para>
         </listitem>
 
         <listitem>
@@ -1417,6 +1432,17 @@ runhaskell Setup.hs unregister --gen-script</screen>
         <literal>configure</literal>, <literal>build</literal>,
         <literal>haddock</literal>, <literal>register</literal> or
         <literal>unregister</literal> steps.</para>
+    </sect2>
+
+    <sect2 id="setup-test">
+      <title>setup test</title>
+
+      <para>Run the test suite specified by the
+      <literal>runTests</literal> field of
+      <literal>Distribution.Simple.UserHooks</literal>.  See &Simple;
+      for information about creating hooks and using
+      <literal>defaultMainWithHooks</literal>.</para>
+
     </sect2>
 
     <sect2 id="setup-sdist">
