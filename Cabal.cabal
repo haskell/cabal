@@ -1,5 +1,5 @@
 Name: Cabal
-Version: 1.1.1
+Version: 1.1.2
 Copyright: 2003-2005, Isaac Jones
 Build-Depends: base, util
 License: BSD3
