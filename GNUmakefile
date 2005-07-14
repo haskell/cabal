@@ -1,4 +1,6 @@
-CABALVERSION=1.2-RC1
+CABALVERSION=1.1.1
+KIND=rc
+#KIND=latest
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
@@ -173,4 +175,4 @@ release: dist
 	cp -r $(TMPDISTLOC)/cabal/doc $(TMPDISTLOC)/release
 	cp $(TMPDISTLOC)/cabal.tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
 	scp -r $(TMPDISTLOC)/release ijones@www.haskell.org:~/cabal/release/cabal-$(CABALVERSION)
-	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f latest && ln -s cabal-$(CABALVERSION) latest'
+	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f latest && ln -s cabal-$(CABALVERSION) $(KIND)'
