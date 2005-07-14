@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-1.2  Isaac Jones  <ijones@syntaxpolice.org> June 2005
+1.1.1  Isaac Jones  <ijones@syntaxpolice.org> July 2005
 	* WARNING: Interfaces not documented in the user's guide may
 	  change in future releases.
  	* Handles recursive modules for GHC 6.2 and GHC 6.4.
