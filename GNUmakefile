@@ -175,4 +175,4 @@ release: dist
 	cp -r $(TMPDISTLOC)/cabal/doc $(TMPDISTLOC)/release
 	cp $(TMPDISTLOC)/cabal.tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
 	scp -r $(TMPDISTLOC)/release ijones@www.haskell.org:~/cabal/release/cabal-$(CABALVERSION)
-	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f latest && ln -s cabal-$(CABALVERSION) $(KIND)'
+	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
