@@ -1,4 +1,4 @@
-CABALVERSION=1.1.1
+CABALVERSION=1.1.2
 KIND=rc
 #KIND=latest
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
