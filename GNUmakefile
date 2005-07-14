@@ -1,4 +1,4 @@
-CABALVERSION=0.6
+CABALVERSION=1.2-RC1
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
@@ -26,7 +26,7 @@ all: moduleTest
 
 setup::
 	mkdir -p dist/tmp
-	$(HC) $(GHCFLAGS) -package Cabal -odir dist/tmp -hidir dist/tmp Setup -o setup
+	$(HC) $(GHCFLAGS) -odir dist/tmp -hidir dist/tmp Setup -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
@@ -125,8 +125,11 @@ check:
 pushall:
 	darcs push --all ijones@cvs.haskell.org:/home/darcs/cabal
 
+
 pushdist: pushall dist
 	scp $(TMPDISTLOC)/cabal.tar.gz ijones@www.haskell.org:~/cabal/cabal-code.tgz
+#	PUSH ELSEWHERE: scp changelog ijones@www.haskell.org:~/cabal/release/changelog
+#	PUSH ELSEWHERE: scp releaseNotes ijones@www.haskell.org:~/cabal/release/notes
 #	rm -f /tmp/cabal-code.tgz
 
 deb: dist
@@ -144,6 +147,9 @@ $(CABALBALL):
 
 TMPDISTLOC=/tmp/cabaldist
 
+# after this command, there will be cabal.tar.gz in $(TMPDISTLOC),
+# which will have built docs, haddock, and source code.
+
 dist: haddock $(CABALBALL)
 	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
@@ -159,3 +165,12 @@ dist: haddock $(CABALBALL)
 	cd $(TMPDISTLOC) && tar -zcvf $(CABALBALL) cabal
 #	rm -f /tmp/Cabal.tar.gz
 #	rm -rf /tmp/cabal
+
+release: dist
+	mkdir $(TMPDISTLOC)/release
+	cp $(TMPDISTLOC)/cabal/releaseNotes $(TMPDISTLOC)/release
+	cp $(TMPDISTLOC)/cabal/changelog $(TMPDISTLOC)/release
+	cp -r $(TMPDISTLOC)/cabal/doc $(TMPDISTLOC)/release
+	cp $(TMPDISTLOC)/cabal.tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
+	scp -r $(TMPDISTLOC)/release ijones@www.haskell.org:~/cabal/release/cabal-$(CABALVERSION)
+	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f latest && ln -s cabal-$(CABALVERSION) latest'
