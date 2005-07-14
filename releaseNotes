@@ -5,13 +5,13 @@ http://www.haskell.org/cabal
 IMPORTANT INFORMATION:
 
 See both the README file and the changelog for important interface
-changes.
+changes and installation instructions.
 
 DOWNLOAD:
 
-The Haskell Cabal has reached version 1.0.2.  The community should use
-this release to evaluate the interfaces and explore the concepts of
-these tools.  It is still possible that some interfaces may change.
+The Haskell Cabal has reached version 1.2-RC1.  This pre-release has a
+number of new features including a hook for testing, support for
+profiling, and support for _stub files, as well as several bug fixes.
 
 Download the Cabal here (source and debian versions available):
 http://www.haskell.org/cabal/download.html
