@@ -163,7 +163,11 @@ buildGHC pkg_descr lbi verbose = do
 
       -- build any C sources
       unless (null (cSources libBi)) $
-         sequence_ [do let odir = pref `joinFileName` dirOf c
+         sequence_ [do let ghc_vers = compilerVersion (compiler lbi)
+			   odir | versionBranch ghc_vers >= [6,4,1] = pref
+				| otherwise = pref `joinFileName` dirOf c
+				-- ghc 6.4.1 fixed a bug in -odir handling
+				-- for C compilations.
                        createDirectoryIfMissing True odir
 		       let cArgs = ["-I" ++ dir | dir <- includeDirs libBi]
 			       ++ ["-optc" ++ opt | opt <- ccOptions libBi]
