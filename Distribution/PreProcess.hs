@@ -205,20 +205,33 @@ ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp' inputArgs bi lbi
-    = maybe (ppNone "cpphs") pp (withCpphs lbi)
-  where pp cpphs inFile outFile verbose
+ppCpp' inputArgs bi lbi =
+  case withCpphs lbi of
+     Just path                          -> use_cpphs path
+     Nothing | compilerFlavor hc == GHC -> use_ghc
+     _otherwise                         -> ppNone "cpphs (or GHC)"
+  where 
+	hc = compiler lbi
+
+	use_cpphs cpphs inFile outFile verbose
 #if __HUGS__ && mingw32_TARGET_OS
-	  = rawSystemVerbose verbose "sh" (cpphs : extraArgs ++ ["-O" ++ outFile, inFile])
+	  = rawSystemVerbose verbose "sh" (cpphs : cpphsArgs)
 #else
-	  = rawSystemVerbose verbose cpphs (extraArgs ++ ["-O" ++ outFile, inFile])
+	  = rawSystemVerbose verbose cpphs cpphsArgs
 #endif
-        extraArgs = "--noline" : "--strip" :
-                sysDefines ++ cppOptions bi lbi ++ inputArgs
+	  where cpphsArgs = ("-O"++outFile) : inFile : "--noline" : "--strip"
+				 : extraArgs
+
+        extraArgs = sysDefines ++ cppOptions bi lbi ++ inputArgs
+
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
         locations = ["BUILD", "HOST"]
+
+	use_ghc inFile outFile verbose
+	  = rawSystemVerbose verbose (compilerPath hc) 
+		(["-E", "-cpp", "-optP-P", "-o", outFile, inFile] ++ extraArgs)
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
