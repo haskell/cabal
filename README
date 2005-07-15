@@ -22,8 +22,13 @@ http://www.haskell.org/cabal
 
 -= Working with older versions of Cabal =-
 
-If you have an older version of Cabal installed, you may have to
-specify which version you want when you run ghci.  For instance:
+* Installing as root / Administrator (GHC's global package file)
+
+This is the recommended method of installing Cabal.
+
+If you have an older version of Cabal installed, in order to use the
+new one after installation you may have to specify which version you
+want when you run ghci.  For instance:
 
   $ ghci -package Cabal
     ...
@@ -45,7 +50,7 @@ If you don't have root access, and you need to install a newer version
 of Cabal in your user directory, then this formula may help to hide
 the global version:
 
-  $ ghc-pkg describe Cabal-1.0 | ghc-pkg --user regiser -
+  $ ghc-pkg describe Cabal-1.0 | ghc-pkg --user register -
   $ ghc-pkg --user hide Cabal-1.0
 
 -= Your Help =-
