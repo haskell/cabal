@@ -99,7 +99,7 @@ import Data.Dynamic	( Typeable(..), TyCon, mkTyCon, mkAppTy )
 import Data.Typeable 	( Typeable )
 #endif
 
-import Data.List	( intersperse )
+import Data.List	( intersperse, sort )
 import Data.Char	( isDigit, isAlphaNum )
 
 {- |
@@ -161,7 +161,7 @@ instance Typeable Version where
 
 instance Eq Version where
   v1 == v2  =  versionBranch v1 == versionBranch v2 
-		&& all (`elem` (versionTags v2)) (versionTags v1)
+                && sort (versionTags v1) == sort (versionTags v2)
 		-- tags may be in any order
 
 instance Ord Version where
