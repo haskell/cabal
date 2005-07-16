@@ -387,7 +387,7 @@ hunitTests
     = let suffixes = ["hs", "lhs"]
           in [TestCase $
 #ifdef mingw32_TARGET_OS
-       do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
+       do mp1 <- moduleToFilePath ["src"] "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
                    (Just "Distribution\\Simple\\Build.hs") mp1
