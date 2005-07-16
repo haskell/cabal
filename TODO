@@ -24,6 +24,9 @@ helpful.
 
 I hope this can sneak into the Cabal release, but don't worry if not.
 
+* add a haskell-version field?
+* ignore unknown fields? (--force?)
+
 -= 1.0 =-
 
 * Install libraries in $libdir/ghc-$ghc_version/ rather than $libdir.
