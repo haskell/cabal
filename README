@@ -1,12 +1,18 @@
 Cabal home page:
 http://www.haskell.org/cabal
 
+WARNING If you already have Cabal installed, including GHC 6.4 users,
+read "Working with older versions of Cabal" for information first!  If
+you do this out of order, stuff might get screwy.  If stuff gets
+screwy, post to libraries@haskell.org for help.
 
 -= Quirky things about the build system =-
 
-* "make install" as root, then try "ghci -package Cabal" to test it.
-  If you get an error about multiple versions of Cabal, read the section
-  below "Working with older versions of Cabal"
+* If you don't already have Cabal installed: "make install" as root,
+then try "ghci -package Cabal" to
+  test it.  If you get an error about multiple versions of Cabal, read
+  the section below "Working with older versions of Cabal" You were
+  supposed to read this first.
 
 * GNUmakefile is the one you're probably interested in.  If you see
   Makefile, it is probably from the fptools build tree, and it won't
@@ -26,9 +32,16 @@ http://www.haskell.org/cabal
 
 This is the recommended method of installing Cabal.
 
-If you have an older version of Cabal installed, in order to use the
-new one after installation you may have to specify which version you
-want when you run ghci.  For instance:
+If you have an older version of Cabal installed, you probably just
+want to remove it:
+
+  $ ghc-pkg unregister Cabal
+
+
+If you don't want to remove it, and want both the old and new versions
+installed, that's fine... In order to use the new one after
+installation you may have to specify which version you want when you
+run ghci.  For instance:
 
   $ ghci -package Cabal
     ...
@@ -37,18 +50,22 @@ want when you run ghci.  For instance:
     ...
     (OK)
 
-If you want to avoid this situation, you can remove the older version
-with:
+* Installing as a user (no root or administer access)
 
-  $ ghc-pkg unregister Cabal-1.0
+If you have cabal installed already, you can this command to remove
+it:
 
-or
+  $ ghc-pkg unregister Cabal --user
 
-  $ ghc-pkg unregister Cabal-1.0 --user
+If:
 
-If you don't have root access, and you need to install a newer version
-of Cabal in your user directory, then this formula may help to hide
-the global version:
+1) Cabal is installed in the global package file (use ghc-pkg -l to see)
+
+2) You don't have root access
+
+3) You need to install a newer version of Cabal in your user directory, 
+
+then this formula may help to hide the global version:
 
   $ ghc-pkg describe Cabal-1.0 | ghc-pkg --user register -
   $ ghc-pkg --user hide Cabal-1.0
@@ -87,7 +104,7 @@ Cabal Coders:
 - Martin Sjögren
 - Malcolm Wallace (via hmake)
 
-Cabal proposal:
+Cabal spec:
 - Isaac Jones
 - Simon Marlow
 - Ross Patterson

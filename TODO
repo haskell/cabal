@@ -1,8 +1,9 @@
 ------------------------------------------------------------
 -= 1.2 =-
 
-* Move Distribution and everything into a subdirectory, so we can
-  build the Setup file with the normal invocation of cabal.
+* MOVED FOR DARCS BUT NOT CVS.  Move Distribution and everything
+  into a subdirectory, so we can build the Setup file with the normal
+  invocation of cabal.
 
 * Clean up readme according to Simon's suggestions
   - to install globally / with root access: should "just work"
