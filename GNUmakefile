@@ -72,6 +72,7 @@ clean-cabal:
 	-rm -f Distribution/*.o Distribution/*.hi
 	-rm -f Distribution/Simple/*.o Distribution/Simple/*.hi
 	-rm -f Compat/*.o Compat/*.hi
+	-rm -f darcs* out.build *~ semantic.cache* x*.html
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.o *.hi moduleTest dist installed-pkg-config
 	-rm -f build-stamp
