@@ -5,6 +5,7 @@ Build-Depends: base, util
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
+hs-source-dir: src
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
 Homepage: http://www.haskell.org/cabal/
 Synopsis: A framework for packaging Haskell software
@@ -51,6 +52,7 @@ Extensions: CPP
 
 executable: cabal-setup
 main-is: DefaultSetup.lhs
+hs-source-dir: src
 Other-Modules:
         Distribution.Compat.ReadP,
         Distribution.Extension,
