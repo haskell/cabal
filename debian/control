@@ -1,7 +1,7 @@
 Source: haskell-cabal
 Priority: optional
 Maintainer: Isaac Jones <ijones@debian.org>
-Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (== 6.4)
+Build-Depends: debhelper (>= 4.0.0), ghc6 (>= 6.2.2), ghc6 (6.4)
 Standards-Version: 3.6.1
 Suggests: haddock, cpphs
 
