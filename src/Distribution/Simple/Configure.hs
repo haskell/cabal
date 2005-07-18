@@ -253,7 +253,7 @@ system_default_prefix =
     csidl_PROGRAM_FILES = 0x0026
     long_path_size      = 1024
 
-foreign import stdcall unsafe "SHGetFolderPath" 
+foreign import stdcall unsafe "SHGetFolderPathW" 
             c_SHGetFolderPath :: Ptr () 
                               -> CInt 
                               -> Ptr () 
