@@ -5,27 +5,8 @@
   into a subdirectory, so we can build the Setup file with the normal
   invocation of cabal.
 
-* Clean up readme according to Simon's suggestions
-  - to install globally / with root access: should "just work"
-
-  - to install just for me: copy+hide Cabal-1.0, then install the
-    new one with --user.
-
-* grab and test:
-> Another option is to patch the PreProcess.hs module to check to see if
-> cpphs exists and if not, to use "raw" cpp, or cpp through ghc or
-> something.  If someone does this, they should also patch the sanity
-> checker to add a warning.
-
-I've fixed this now (as per your last paragraph above), and done some
-rudimentary testing.  I didn't add a warning though; perhaps we should,
-but since it's using the same preprocessor that will be used when
-compiling with GHC anyway, I'm not sure a warning will be terribly
-helpful.
-
-I hope this can sneak into the Cabal release, but don't worry if not.
-
 * add a haskell-version field?
+
 * ignore unknown fields? (--force?)
 
 -= 1.0 =-
