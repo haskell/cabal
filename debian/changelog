@@ -1,3 +1,23 @@
+haskell-cabal (1.1.1) unstable; urgency=low
+
+  * Release candidate for 1.2.
+  * WARNING: Interfaces not documented in the user's guide may
+    change in future releases.
+  * Handles recursive modules for GHC 6.2 and GHC 6.4.
+  * Added "setup test" command (Used with UserHook)
+  * implemented handling of _stub.{c,h,o} files
+  * Added support for profiling
+  * Changed install prefix of libraries (pref/pkgname-version
+     to prefix/pkgname-version/compname-version)
+  * Added pattern guards as a language extension
+  * Moved some functionality to Language.Haskell.Extension
+  * Register / unregister .bat files for windows
+  * Exposed more of the API
+  * Added support for the hide-all-packages flag in GHC > 6.4
+  * Several bug fixes
+
+ -- Isaac Jones <ijones@debian.org>  Sun, 17 Jul 2005 22:16:42 -0700
+
 haskell-cabal (0.5-1) unstable; urgency=low
 
   * new upstream version.  see upstream changelog for more info.
