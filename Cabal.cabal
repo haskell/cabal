@@ -5,7 +5,6 @@ Build-Depends: base, util
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
-hs-source-dir: src
 Maintainer: Isaac Jones <ijones@syntaxpolice.org>
 Homepage: http://www.haskell.org/cabal/
 Synopsis: A framework for packaging Haskell software
