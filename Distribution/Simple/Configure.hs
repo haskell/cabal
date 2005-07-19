@@ -83,7 +83,8 @@ import Data.List (intersperse, nub, maximumBy, isPrefixOf)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
-import Distribution.Compat.FilePath (splitFileName, joinFileName)
+import Distribution.Compat.FilePath (splitFileName, joinFileName,
+                                  joinFileExt, exeExtension)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -345,8 +346,8 @@ pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 guessPkgToolFromHCPath :: Int -> CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath verbose flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
-           (dir,name)      = splitFileName path
-           pkgtool         = dir `joinFileName` pkgToolName ++ drop (length (compilerBinaryName flavor)) name
+           (dir,_)         = splitFileName path
+           pkgtool         = dir `joinFileName` pkgToolName `joinFileExt` exeExtension
        when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
        exists <- doesFileExist pkgtool
        when (not exists) $
