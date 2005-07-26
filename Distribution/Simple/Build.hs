@@ -59,7 +59,7 @@ import Distribution.Version (Version(..))
 import Distribution.Simple.Configure (LocalBuildInfo(..))
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
-                                  mkLibName, mkProfLibName, dotToSep,
+                                  mkLibName, mkProfLibName, mkGHCiLibName, dotToSep,
 				  moduleToFilePath,
                                   smartCopySources,
                                   findFile
@@ -132,6 +132,7 @@ buildGHC pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
       ifProfLib = when (withProfLib lbi)
+      ifGHCiLib = when (withGHCiLib lbi)
   pkgConf <- GHC.localPackageConfig
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
@@ -186,6 +187,7 @@ buildGHC pkg_descr lbi verbose = do
           hProfObjs = [ (dotToSep x) `joinFileExt` "p_"++objExtension
                       | x <- libModules pkg_descr ]
           profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
+	  ghciLibName = mkGHCiLibName pref (showPackageId (package pkg_descr))
 
       stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
@@ -193,6 +195,7 @@ buildGHC pkg_descr lbi verbose = do
       unless (null hObjs && null cObjs && null stubObjs) $ do
         try (removeFile libName) -- first remove library if it exists
         try (removeFile profLibName) -- first remove library if it exists
+	try (removeFile ghciLibName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
                 ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
@@ -201,8 +204,14 @@ buildGHC pkg_descr lbi verbose = do
                 ++ [profLibName]
                 ++ [pref `joinFileName` x | x <- hProfObjs ++ cObjs]
                 ++ stubObjs
+	    ldArgs = ["-r"]
+                ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
+	        ++ ["-o", ghciLibName]
+		++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
+		++ stubObjs
         rawSystemPathExit verbose "ar" arArgs
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
+	ifGHCiLib (rawSystemPathExit verbose "ld" ldArgs)
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do

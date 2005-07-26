@@ -108,7 +108,8 @@ data ConfigFlags = ConfigFlags {
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configPrefix   :: Maybe FilePath, -- ^installation prefix
         configVerbose  :: Int,            -- ^verbosity level
-	configUser     :: Bool		  -- ^--user flag?
+	configUser     :: Bool,		  -- ^--user flag?
+	configGHCiLib  :: Bool            -- ^Enable compiling library for GHCi
     }
     deriving (Show, Eq)
 
@@ -128,7 +129,8 @@ emptyConfigFlags = ConfigFlags {
         configGreencard= Nothing,
         configPrefix   = Nothing,
         configVerbose  = 0,
-	configUser     = False
+	configUser     = False,
+	configGHCiLib  = True
     }
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
@@ -139,6 +141,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithGreencard FilePath
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
+	  | WithGHCiLib | WithoutGHCiLib
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -269,6 +272,10 @@ configureCmd = Cmd {
                "Enable executable profiling",
            Option "" ["disable-executable-profiling"] (NoArg WithoutProfExe)
                "Disable executable profiling",
+	   Option "" ["enable-library-for-ghci"] (NoArg WithGHCiLib)
+               "compile library for use with GHCi",
+	   Option "" ["disable-library-for-ghci"] (NoArg WithoutGHCiLib)
+               "do not compile libraries for GHCi",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -302,6 +309,8 @@ parseConfigureArgs = parseArgs configureCmd updateCfg
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
         updateCfg t WithoutProfExe       = t { configProfExe  = False }
+	updateCfg t WithGHCiLib          = t { configGHCiLib  = True }
+	updateCfg t WithoutGHCiLib       = t { configGHCiLib  = False }
         updateCfg t (Prefix path)        = t { configPrefix   = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configUser     = True }
