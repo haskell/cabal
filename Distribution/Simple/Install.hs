@@ -67,7 +67,7 @@ import Distribution.PackageDescription (
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
-                                 mkProfLibName, die, rawSystemVerbose)
+                                 mkProfLibName, mkGHCiLibName, die, rawSystemVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..), showCompilerId)
 
 import Control.Monad(when)
@@ -95,7 +95,7 @@ install pkg_descr lbi (install_prefixM,verbose) = do
   let binPref = mkBinDir pkg_descr lbi install_prefixM
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withProfLib lbi) libPref buildPref pkg_descr)
+     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
                 installExeGhc verbose binPref buildPref pkg_descr
      Hugs -> installHugs verbose libPref binPref targetLibPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
@@ -113,13 +113,14 @@ installExeGhc verbose pref buildPref pkg_descr
              let exeName = e `joinFileExt` exeExtension
              copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` exeName) (pref `joinFileName` exeName)
 
--- |Install for ghc, .hi and .a
+-- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLibGHC :: Int      -- ^verbose
               -> Bool     -- ^has profiling library
+	      -> Bool     -- ^has GHCi libs
               -> FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLibGHC verbose hasProf pref buildPref pd@PackageDescription{library=Just l,
+installLibGHC verbose hasProf hasGHCi pref buildPref pd@PackageDescription{library=Just l,
                                                    package=p}
     = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True
          ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True
@@ -127,6 +128,7 @@ installLibGHC verbose hasProf pref buildPref pd@PackageDescription{library=Just 
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
          copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
          ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
+	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libTargetLoc
 
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
@@ -143,7 +145,8 @@ installLibGHC verbose hasProf pref buildPref pd@PackageDescription{library=Just 
                                           ifProf $ rawSystemVerbose verbose "ar" ["-s", profLibTargetLoc]
                                           return ()
     where ifProf action = when hasProf (action >> return ())
-installLibGHC _ _ _ _ PackageDescription{library=Nothing}
+	  ifGHCi action = when hasGHCi (action >> return ())
+installLibGHC _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
 -- Install for Hugs

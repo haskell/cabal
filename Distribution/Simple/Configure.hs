@@ -175,7 +175,8 @@ configure pkg_descr cfg
                               withCpphs=cpphs,
                               withGreencard=greencard,
                               withProfLib=configProfLib cfg,
-                              withProfExe=configProfExe cfg
+                              withProfExe=configProfExe cfg,
+			      withGHCiLib=configGHCiLib cfg
                              }
 
 -- |Converts build dependencies to a versioned dependency.  only sets

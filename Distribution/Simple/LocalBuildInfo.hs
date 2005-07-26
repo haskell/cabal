@@ -69,7 +69,8 @@ data LocalBuildInfo = LocalBuildInfo {
         withCpphs     :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
         withGreencard :: Maybe FilePath, -- ^Might be the location of the GreenCard executable.
         withProfLib   :: Bool,
-        withProfExe   :: Bool
+        withProfExe   :: Bool,
+	withGHCiLib   :: Bool
   }
   deriving (Show, Read, Eq)
 

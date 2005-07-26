@@ -56,6 +56,7 @@ module Distribution.Simple.Utils (
         moduleToFilePath,
         mkLibName,
         mkProfLibName,
+	mkGHCiLibName,
         currentDir,
         dotToSep,
 	withTempFile,
@@ -272,6 +273,11 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
+
+mkGHCiLibName :: FilePath -- ^file Prefix
+              -> String   -- ^library name.
+              -> String
+mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
 
 -- -----------------------------------------------------------------------------
 -- * temporary file names
