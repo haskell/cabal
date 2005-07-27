@@ -126,9 +126,10 @@ installLibGHC verbose hasProf hasGHCi pref buildPref pd@PackageDescription{libra
          ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
+	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
          copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
          ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
-	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libTargetLoc
+	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
