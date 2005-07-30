@@ -153,6 +153,8 @@ tests currDir comp compConf = [
             setCurrentDirectory $ (testdir `joinFileName` "exeWithC")
             testPrelude
             assertConfigure targetDir
+            assertClean
+            assertConfigure targetDir
             assertBuild
             assertCopy
             assertCmd ",tmp/bin/tt" "exeWithC failed"
@@ -393,7 +395,7 @@ tests currDir comp compConf = [
           compIdent = compStr ++ "/" ++ compFlag
           testPrelude = system "make clean >> out.build" >> system "make >> out.build"
           assertConfigure pref
-              = assertCmd' compCmd ("configure --prefix=" ++ pref ++ " " ++ compFlag)
+              = assertCmd' compCmd ("configure --user --prefix=" ++ pref ++ " " ++ compFlag)
                            "configure returned error code"
           assertBuild = assertCmd' compCmd "build" "build returned error code"
           assertCopy  = assertCmd' compCmd "copy"  "copy returned error code"
