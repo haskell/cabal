@@ -86,7 +86,7 @@ import System.Environment (getProgName)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
-#if (__GLASGOW_HASKELL__ || __HUGS__) && !defined(mingw32_TARGET_OS)
+#if (__GLASGOW_HASKELL__ || __HUGS__) && !(mingw32_HOST_OS || mingw32_TARGET_OS)
 import System.Posix.Internals (c_getpid)
 #endif
 
@@ -291,7 +291,7 @@ withTempFile tmp_dir extn action
 	   if b then findTempName (x+1)
 		else action path `finally` try (removeFile path)
 
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 foreign import ccall unsafe "_getpid" getProcessID :: IO Int
 		 -- relies on Int == Int32 on Windows
 #elif __GLASGOW_HASKELL__ || __HUGS__
@@ -386,7 +386,7 @@ hunitTests :: [Test]
 hunitTests
     = let suffixes = ["hs", "lhs"]
           in [TestCase $
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
        do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
