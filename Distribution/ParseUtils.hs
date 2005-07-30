@@ -62,7 +62,9 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
+import Distribution.Compat.FilePath (platformPath)
 import Debug.Trace
+import Control.Monad (liftM)
 import Data.Char
 import Language.Haskell.Extension (Extension)
 
@@ -215,7 +217,7 @@ parseModuleNameQ = parseQuoted modu <++ modu
 	  return (c:cs)
 
 parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseTokenQ
+parseFilePathQ = liftM platformPath parseTokenQ
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads

@@ -25,6 +25,7 @@ module Distribution.Compat.FilePath
          , isPathSeparator
          , pathSeparator
          , searchPathSeparator
+         , platformPath
 
 	 -- * Filename extensions
 	 , exeExtension
@@ -70,7 +71,7 @@ import Data.List(intersperse)
 -- This is a special case because the \"\\\\\" path doesn\'t refer to
 -- an object (file or directory) which resides within a directory.
 splitFileName :: FilePath -> (String, String)
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 splitFileName p = (reverse (path2++drive), reverse fname)
   where
     (path,drive) = case p of
@@ -171,7 +172,7 @@ joinPaths :: FilePath -> FilePath -> FilePath
 joinPaths path1 path2
   | isRootedPath path2 = path2
   | otherwise          = 
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
         case path2 of
           d:':':path2' | take 2 path1 == [d,':'] -> path1 `joinFileName` path2'
                        | otherwise               -> path2
@@ -196,7 +197,7 @@ changeFileExt path ext = joinFileExt name ext
 -- the drive letter and the full file path.
 isRootedPath :: FilePath -> Bool
 isRootedPath (c:_) | isPathSeparator c = True
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 isRootedPath (_:':':c:_) | isPathSeparator c = True  -- path with drive letter
 #endif
 isRootedPath _ = False
@@ -204,7 +205,7 @@ isRootedPath _ = False
 -- | Returns 'True' if this path\'s meaning is independent of any OS
 -- \"working directory\", or 'False' if it isn\'t.
 isAbsolutePath :: FilePath -> Bool
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 isAbsolutePath (_:':':c:_) | isPathSeparator c = True
 #else
 isAbsolutePath (c:_)       | isPathSeparator c = True
@@ -216,7 +217,7 @@ isAbsolutePath _ = False
 -- Unix the prefix is always \"\/\".
 dropAbsolutePrefix :: FilePath -> FilePath
 dropAbsolutePrefix (c:cs) | isPathSeparator c = cs
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 dropAbsolutePrefix (_:':':c:cs) | isPathSeparator c = cs  -- path with drive letter
 dropAbsolutePrefix (_:':':cs)                       = cs
 #endif
@@ -272,7 +273,7 @@ pathParents :: FilePath -> [FilePath]
 pathParents p =
     root'' : map ((++) root') (dropEmptyPath $ inits path')
     where
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
        (root,path) = case break (== ':') p of
           (path,    "") -> ("",path)
           (root,_:path) -> (root++":",path)
@@ -303,7 +304,7 @@ commonParent :: [FilePath] -> Maybe FilePath
 commonParent []           = Nothing
 commonParent paths@(p:ps) = 
   case common Nothing "" p ps of
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
     Nothing | all (not . isAbsolutePath) paths -> 
       let
 	 getDrive (d:':':_) ds 
@@ -376,7 +377,7 @@ mkSearchPath paths = concat (intersperse [searchPathSeparator] paths)
 -- checks for it on this platform, too.
 isPathSeparator :: Char -> Bool
 isPathSeparator ch =
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
   ch == '/' || ch == '\\'
 #else
   ch == '/'
@@ -387,7 +388,7 @@ isPathSeparator ch =
 -- separator is a slash (@\"\/\"@) on Unix and Macintosh, and a backslash
 -- (@\"\\\"@) on the Windows operating system.
 pathSeparator :: Char
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 pathSeparator = '\\'
 #else
 pathSeparator = '/'
@@ -397,17 +398,27 @@ pathSeparator = '/'
 -- environment variables. The separator is a colon (\":\") on Unix and Macintosh, 
 -- and a semicolon (\";\") on the Windows operating system.
 searchPathSeparator :: Char
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 searchPathSeparator = ';'
 #else
 searchPathSeparator = ':'
+#endif
+
+-- |Convert Unix-style path separators to the path separators for this platform.
+platformPath :: FilePath -> FilePath
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+platformPath = map slash
+  where slash '/' = '\\'
+        slash c = c
+#else
+platformPath = id
 #endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
 -- | Extension for executable files
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: String
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 exeExtension = "exe"
 #else
 exeExtension = ""
@@ -422,7 +433,7 @@ objExtension = "o"
 -- | Extension for dynamically linked (or shared) libraries
 -- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
 dllExtension :: String
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 dllExtension = "dll"
 #else
 dllExtension = "so"

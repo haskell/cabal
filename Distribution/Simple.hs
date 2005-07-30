@@ -435,7 +435,7 @@ no_extra_flags extra_flags  =
   die ("Unrecognised flags: " ++ concat (intersperse "," (extra_flags)))
 
 buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
-buildDirOpt = Option "b" ["builddir"] (ReqArg setBuildDir "DIR")
+buildDirOpt = Option "b" ["scratchdir"] (reqDirArg setBuildDir)
 		"directory to receive the built package [dist/build]"
   where setBuildDir dir lbi = lbi { buildDir = dir }
 

@@ -288,11 +288,15 @@ Other-Modules:   A, C, Utils</programlisting>
       </variablelist>
 
       <note>
-        <para>Module names may correspond to Haskell source files, i.e.
-          with names ending in <quote><literal>.hs</literal></quote>
-          or <quote><literal>.lhs</literal></quote>, or to inputs for
-          various Haskell preprocessors.  The simple build infrastructure
-          understands
+        <title>Modules and preprocessors</title>
+        <para>Haskell module names listed in the
+          <literal>exposed-modules</literal> and
+          <literal>other-modules</literal> fields may
+          correspond to Haskell source files, i.e. with names
+          ending in <quote><literal>.hs</literal></quote> or
+          <quote><literal>.lhs</literal></quote>, or to inputs for
+          various Haskell preprocessors.
+          The simple build infrastructure understands the extensions
           <quote><literal>.gc</literal></quote> (GreenCard),
           <quote><literal>.chs</literal></quote> (<command>c2hs</command>),
           <quote><literal>.hsc</literal></quote> (<command>hsc2hs</command>),
@@ -301,8 +305,8 @@ Other-Modules:   A, C, Utils</programlisting>
           <quote><literal>.x</literal></quote> (<command>alex</command>)
           and
           <quote><literal>.cpphs</literal></quote> (<command>cpphs</command>).
-          In such cases the appropriate preprocessor will be run
-          automatically as required.</para>
+          When building, Cabal will automatically run the appropriate
+          preprocessor and compile the Haskell module it produces.</para>
       </note>
 
       <para>Some fields take lists of values, which
@@ -934,20 +938,6 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
       </note>
     </sect2>
 
-    <sect2 id="Preprocessors">
-      <title>Preprocessors</title>
-        <para>Cabal will automatically handle certain preprocessors
-          including GreenCard, hsc2hs, happy, and alex.  To use these
-          preprocessors, just specify the module name (without any
-          extension) in the <literal>exposed-modules</literal> or
-          <literal>extra-modules</literal> fields.  No further steps are
-          required.  Cabal will look for modules with extensions
-          corresponding to the preprocessors it knows about (".y" for
-          Happy files, ".gc" for GreenCard files, etc.), run the
-          appropriate preprocessor on those files, then compile the
-          output.</para>
-    </sect2>
-
     <sect2 id="complex-packages">
       <title>More complex packages</title>
 
@@ -1269,7 +1259,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
         is recognized:</para>
       <variablelist>
         <varlistentry>
-          <term><option>--builddir</option>=<replaceable>dir</replaceable> or
+          <term><option>--scratchdir</option>=<replaceable>dir</replaceable> or
             <option>-b</option><replaceable>dir</replaceable></term>
           <listitem>
             <para>Specify the directory into which the package will be

@@ -96,14 +96,14 @@ import HUnit (Test)
 #endif
 
 regScriptLocation :: FilePath
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 regScriptLocation = "register.bat"
 #else
 regScriptLocation = "register.sh"
 #endif
 
 unregScriptLocation :: FilePath
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 unregScriptLocation = "unregister.bat"
 #else
 unregScriptLocation = "unregister.sh"
@@ -153,14 +153,14 @@ register pkg_descr lbi (userInst, genScript, verbose)
 
 	let register_flags 
 		| ghc_63_plus = "update":
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 		                 if genScript
                                     then []
                                     else 
 #endif
                                       [installedPkgConfigFile]
 		| otherwise   = "--update-package":
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 				 if genScript
                                     then []
                                     else
@@ -296,7 +296,7 @@ rawSystemEmit :: FilePath -- ^Script name
 rawSystemEmit _ False verbosity path args
     = rawSystemExit verbosity path args
 rawSystemEmit scriptName True verbosity path args = do
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
   writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
 #else
   writeFile scriptName ("#!/bin/sh\n\n"
@@ -314,7 +314,7 @@ rawSystemPipe :: FilePath -- ^Script location
               -> [String] -- ^Args
               -> IO ()
 rawSystemPipe scriptName verbose pipeFrom path args = do
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
   writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
 #else
   writeFile scriptName ("#!/bin/sh\n\n"

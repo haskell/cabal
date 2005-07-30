@@ -52,7 +52,8 @@ module Distribution.Setup (--parseArgs,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
                            parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
-                           parseUnregisterArgs, parseCopyArgs
+                           parseUnregisterArgs, parseCopyArgs,
+                           reqPathArg, reqDirArg
                            ) where
 
 
@@ -65,6 +66,7 @@ import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
 import Data.List(find)
 import Distribution.GetOpt
+import Distribution.Compat.FilePath (platformPath)
 import System.Exit
 import System.Environment
 
@@ -239,25 +241,25 @@ configureCmd = Cmd {
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
-           Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
+           Option "w" ["with-compiler"] (reqPathArg WithCompiler)
                "give the path to a particular compiler",
-           Option "" ["with-hc-pkg"] (ReqArg WithHcPkg "PATH")
+           Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
                "give the path to the package tool",
-           Option "" ["prefix"] (ReqArg Prefix "DIR")
+           Option "" ["prefix"] (reqDirArg Prefix)
                "bake this prefix in preparation of installation",
-           Option "" ["with-haddock"] (ReqArg WithHaddock "PATH")
+           Option "" ["with-haddock"] (reqPathArg WithHaddock)
                "give the path to haddock",
-           Option "" ["with-happy"] (ReqArg WithHappy "PATH")
+           Option "" ["with-happy"] (reqPathArg WithHappy)
                "give the path to happy",
-           Option "" ["with-alex"] (ReqArg WithAlex "PATH")
+           Option "" ["with-alex"] (reqPathArg WithAlex)
                "give the path to alex",
-           Option "" ["with-hsc2hs"] (ReqArg WithHsc2hs "PATH")
+           Option "" ["with-hsc2hs"] (reqPathArg WithHsc2hs)
                "give the path to hsc2hs",
-           Option "" ["with-c2hs"] (ReqArg WithC2hs "PATH")
+           Option "" ["with-c2hs"] (reqPathArg WithC2hs)
                "give the path to c2hs",
-           Option "" ["with-cpphs"] (ReqArg WithCpphs "PATH")
+           Option "" ["with-cpphs"] (reqPathArg WithCpphs)
                "give the path to cpphs",
-           Option "" ["with-greencard"] (ReqArg WithGreencard "PATH")
+           Option "" ["with-greencard"] (reqPathArg WithGreencard)
                "give the path to greencard",
            Option "p" ["enable-library-profiling"] (NoArg WithProfLib)
                "Enable library profiling",
@@ -274,6 +276,12 @@ configureCmd = Cmd {
            ],
         cmdAction      = ConfigCmd emptyConfigFlags
         }
+
+reqPathArg :: (FilePath -> a) -> ArgDescr a
+reqPathArg constr = ReqArg (constr . platformPath) "PATH"
+
+reqDirArg :: (FilePath -> a) -> ArgDescr a
+reqDirArg constr = ReqArg (constr . platformPath) "DIR"
 
 parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])
@@ -355,7 +363,7 @@ installCmd = Cmd {
         cmdHelp        = "Copy the files into the install locations. Run register.",
         cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
         cmdOptions     = [cmd_help, cmd_verbose,
-           Option "" ["install-prefix"] (ReqArg InstPrefix "DIR")
+           Option "" ["install-prefix"] (reqDirArg InstPrefix)
                "[DEPRECATED, use copy]",
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
@@ -371,7 +379,7 @@ copyCmd = Cmd {
         cmdHelp        = "Copy the files into the install locations.",
         cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the copy-prefix flag, configure determines location.\n",
         cmdOptions     = [cmd_help, cmd_verbose,
-           Option "" ["copy-prefix"] (ReqArg InstPrefix "DIR")
+           Option "" ["copy-prefix"] (reqDirArg InstPrefix)
                "specify the directory in which to place installed files"
            ],
         cmdAction      = CopyCmd Nothing

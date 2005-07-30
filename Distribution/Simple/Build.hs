@@ -68,7 +68,7 @@ import Language.Haskell.Extension (Extension(..))
 
 import Data.Char(isSpace)
 import Data.Maybe(mapMaybe, maybeToList)
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, filterM)
 #ifndef __NHC__
 import Control.Exception (try)
 #else
@@ -78,8 +78,9 @@ import Data.List(nub, sort, isSuffixOf)
 import System.Directory (removeFile)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName,
-                                splitFileExt, joinFileExt,
-				searchPathSeparator, objExtension, joinPaths, splitFileName)
+                                splitFileExt, joinFileExt, objExtension,
+                                searchPathSeparator, joinPaths,
+                                splitFileName, platformPath)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canReadLocalPackageConfig)
 
@@ -284,7 +285,7 @@ buildHugs pkg_descr lbi verbose = do
 	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
-	    compileFFI bi destMainFile
+	    compileFiles bi [destMainFile]
 	
 	compileBuildInfo :: FilePath
                          -> [FilePath] -- ^library source dirs, if building exes
@@ -307,7 +308,7 @@ buildHugs pkg_descr lbi verbose = do
 	    -- Pass 2: compile foreign stubs in build directory
 	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
 			modu <- mods]
-	    mapM_ (compileFFI bi) (concat stubsFileLists)
+            compileFiles bi (concat stubsFileLists)
 
 	suffixes = ["hs", "lhs"]
 
@@ -323,28 +324,37 @@ buildHugs pkg_descr lbi verbose = do
 	      else
 	    	copyFile srcFile destFile
 
-	compileFFI :: BuildInfo -> FilePath -> IO ()
-	compileFFI bi file = do
-	    -- Only compile FFI stubs for a file if it contains some FFI stuff
-	    inp <- readHaskellFile file
-	    when ("foreign" `elem` symbols (stripComments False inp)) $ do
+        compileFiles :: BuildInfo -> [FilePath] -> IO ()
+        compileFiles bi fileList = do
+	    ffiFileList <- filterM testFFI fileList
+            unless (null ffiFileList) $ do
                 when (verbose > 2) (putStrLn "Compiling FFI stubs")
-		(_, opts, file_incs) <- getOptionsFromSource file
-		let ghcOpts = hcOptions GHC opts
-		let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
-		let incs = uniq (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
-		let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
-		let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
-		cfiles <- getCFiles file
-		let cArgs =
-			["-I" ++ dir | dir <- includeDirs bi] ++
-			ccOptions bi ++
-			cfiles ++
-			["-L" ++ dir | dir <- extraLibDirs bi] ++
-			ldOptions bi ++
-			["-l" ++ lib | lib <- extraLibs bi] ++
-			concat [["-framework", f] | f <- frameworks bi]
-		rawSystemExit verbose ffihugs (hugsArgs ++ file : cArgs)
+	        mapM_ (compileFFI bi) ffiFileList
+
+        -- Only compile FFI stubs for a file if it contains some FFI stuff
+        testFFI :: FilePath -> IO Bool
+        testFFI file = do
+            inp <- readHaskellFile file
+            return ("foreign" `elem` symbols (stripComments False inp))
+
+        compileFFI :: BuildInfo -> FilePath -> IO ()
+        compileFFI bi file = do
+            (_, opts, file_incs) <- getOptionsFromSource file
+            let ghcOpts = hcOptions GHC opts
+            let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
+            let incs = uniq (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
+            let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
+            let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
+            cfiles <- getCFiles file
+            let cArgs =
+                    ["-I" ++ dir | dir <- includeDirs bi] ++
+                    ccOptions bi ++
+                    cfiles ++
+                    ["-L" ++ dir | dir <- extraLibDirs bi] ++
+                    ldOptions bi ++
+                    ["-l" ++ lib | lib <- extraLibs bi] ++
+                    concat [["-framework", f] | f <- frameworks bi]
+            rawSystemExit verbose ffihugs (hugsArgs ++ file : cArgs)
 
 	ffihugs = compilerPath (compiler lbi)
 
@@ -357,7 +367,7 @@ buildHugs pkg_descr lbi verbose = do
 	getCFiles :: FilePath -> IO [String]
 	getCFiles file = do
 	    inp <- readHaskellFile file
-	    return [cfile |
+	    return [platformPath cfile |
 		"{-#" : "CFILES" : rest <-
 			map words $ lines $ stripComments True inp,
 		last rest == "#-}",
@@ -435,6 +445,7 @@ stripComments
     -> String
 stripComments keepPragmas = stripCommentsLevel 0
   where stripCommentsLevel :: Int -> String -> String
+	stripCommentsLevel 0 ('"':cs) = '"':copyString cs
 	stripCommentsLevel 0 ('-':'-':cs) =	-- FIX: symbols like -->
 	    stripCommentsLevel 0 (dropWhile (/= '\n') cs)
 	stripCommentsLevel 0 ('{':'-':'#':cs)
@@ -444,6 +455,11 @@ stripComments keepPragmas = stripCommentsLevel 0
 	stripCommentsLevel n ('-':'}':cs) = stripCommentsLevel (n-1) cs
 	stripCommentsLevel n (c:cs) = stripCommentsLevel n cs
 	stripCommentsLevel _ [] = []
+
+	copyString ('\\':c:cs) = '\\' : c : copyString cs
+	copyString ('"':cs) = '"' : stripCommentsLevel 0 cs
+	copyString (c:cs) = c : copyString cs
+	copyString [] = []
 
 	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
 	copyPragma (c:cs) = c : copyPragma cs

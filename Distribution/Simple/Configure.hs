@@ -92,7 +92,7 @@ import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)
 import Data.Char (isDigit)
 import Prelude hiding (catch)
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign
 import Foreign.C
 #endif
@@ -245,7 +245,11 @@ getInstalledPackages comp user verbose = do
 	    _   -> die "cannot parse package list"
 
 system_default_prefix :: IO String
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+# if __HUGS__
+system_default_prefix =
+  return "C:\\Program Files"
+# else
 system_default_prefix =
   allocaBytes long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr csidl_PROGRAM_FILES nullPtr 0 pPath
@@ -254,13 +258,14 @@ system_default_prefix =
     csidl_PROGRAM_FILES = 0x0026
     long_path_size      = 1024
 
-foreign import stdcall unsafe "SHGetFolderPathW" 
+foreign import stdcall unsafe "shlobj.h SHGetFolderPathA" 
             c_SHGetFolderPath :: Ptr () 
                               -> CInt 
                               -> Ptr () 
                               -> CInt 
                               -> CString 
                               -> IO CInt
+# endif
 #else
 system_default_prefix = 
   return "/usr/local"
