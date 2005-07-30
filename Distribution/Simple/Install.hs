@@ -181,7 +181,7 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose [buildDir] installDir
             ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
         -- FIX (HUGS): works for Unix only
         let targetName = targetDir `joinFileName` hugsMainFilename exe
         let exeFile = binPref `joinFileName` exeName exe
@@ -230,7 +230,7 @@ mkLibDir pkg_descr lbi install_prefixM =
   where 
 	hc = compiler lbi
 	libDir = (fromMaybe (prefix lbi) install_prefixM)
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
                  `joinFileName` "Haskell"
 #else
                  `joinFileName` "lib"
@@ -239,7 +239,7 @@ mkLibDir pkg_descr lbi install_prefixM =
 mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
 mkBinDir pkg_descr lbi install_prefixM = 
   (fromMaybe (prefix lbi) install_prefixM)
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
         `joinFileName` showPackageId (package pkg_descr)
 #endif
         `joinFileName` "bin"

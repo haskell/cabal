@@ -214,11 +214,7 @@ ppCpp' inputArgs bi lbi =
 	hc = compiler lbi
 
 	use_cpphs cpphs inFile outFile verbose
-#if __HUGS__ && mingw32_TARGET_OS
-	  = rawSystemVerbose verbose "sh" (cpphs : cpphsArgs)
-#else
 	  = rawSystemVerbose verbose cpphs cpphsArgs
-#endif
 	  where cpphsArgs = ("-O"++outFile) : inFile : "--noline" : "--strip"
 				 : extraArgs
 
@@ -236,11 +232,7 @@ ppCpp' inputArgs bi lbi =
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-#if __HUGS__ && mingw32_TARGET_OS
-  where pp n = standardPP "sh" (n : cppOptions bi lbi)
-#else
   where pp n = standardPP n (cppOptions bi lbi)
-#endif
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi

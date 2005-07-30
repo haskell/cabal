@@ -24,7 +24,7 @@ import Foreign
 import System.Directory
 import Distribution.Compat.Exception (bracket)
 import Control.Monad (when, unless)
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 import System.Posix (getFileStatus,setFileMode,fileMode,accessTime,
 		     setFileMode,modificationTime,setFileTimes)
 #endif
@@ -43,14 +43,14 @@ findExecutable binary = do
              else search ds
 
 exeSuffix :: String
-#ifdef mingw32_TARGET_OS
+#if mingw32_HOST_OS || mingw32_TARGET_OS
 exeSuffix = "exe"
 #else
 exeSuffix = ""
 #endif
 
 copyPermissions :: FilePath -> FilePath -> IO ()
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 copyPermissions src dest
     = do srcStatus <- getFileStatus src
          setFileMode dest (fileMode srcStatus)
@@ -61,7 +61,7 @@ copyPermissions src dest
 
 
 copyFileTimes :: FilePath -> FilePath -> IO ()
-#ifndef mingw32_TARGET_OS
+#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 copyFileTimes src dest
    = do st <- getFileStatus src
         let atime = accessTime st
