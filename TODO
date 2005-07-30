@@ -1,6 +1,10 @@
 ------------------------------------------------------------
 -= 1.2 =-
 
+* add flags The patch adds a couple extra configure options,
+  --enable-library-for-ghci / --disable-library-for-ghci or whatever
+   they end up being, to the manual.
+
 * Something for gentoo which produces a package gen file but doesn't
   do the register??
 
