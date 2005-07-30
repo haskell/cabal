@@ -1,6 +1,11 @@
 ------------------------------------------------------------
 -= 1.2 =-
 
+* Something for gentoo which produces a package gen file but doesn't
+  do the register??
+
+* Mine Brian Smith emails for tests & patches
+
 * MOVED FOR DARCS BUT NOT CVS.  Move Distribution and everything
   into a subdirectory, so we can build the Setup file with the normal
   invocation of cabal.

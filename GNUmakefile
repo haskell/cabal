@@ -28,7 +28,7 @@ all: moduleTest
 
 setup::
 	mkdir -p dist/tmp
-	$(HC) $(GHCFLAGS) -isrc -odir dist/tmp -hidir dist/tmp Setup -o setup
+	$(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
