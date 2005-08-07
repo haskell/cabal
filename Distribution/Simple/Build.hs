@@ -211,7 +211,14 @@ buildGHC pkg_descr lbi verbose = do
 		++ stubObjs
         rawSystemPathExit verbose "ar" arArgs
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
-	ifGHCiLib (rawSystemPathExit verbose "ld" ldArgs)
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+        let (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
+            (baseDir, _)     = splitFileName compilerDir
+            ld = baseDir `joinFileName` "gcc-lib\\ld.exe"
+        ifGHCiLib (rawSystemExit verbose ld ldArgs)
+#else
+        ifGHCiLib (rawSystemPathExit verbose "ld" ldArgs)
+#endif
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
