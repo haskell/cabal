@@ -281,6 +281,7 @@ constructGHCCmdLine comp srcLocs bi deps =
             then ["-hide-all-packages"]
             else [])
      ++ ["--make"]
+     ++ ["-i"]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi ++ srcLocs)]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ nub (flags ++ hcOptions GHC (options bi))
