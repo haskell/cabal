@@ -185,19 +185,23 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose [buildDir] installDir
             ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
-#if !(mingw32_HOST_OS || mingw32_TARGET_OS)
-        -- FIX (HUGS): works for Unix only
-        let targetName = targetDir `joinFileName` hugsMainFilename exe
-        let exeFile = binPref `joinFileName` exeName exe
+        let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+        let exeFile = binPref `joinFileName` exeName exe `joinFileExt` "bat"
         let script = unlines [
-                "#! /bin/sh", 
+                "@echo off",
+                unwords ("runhugs" : hugsOptions ++ [targetName, "%*"])]
+#else
+        let exeFile = binPref `joinFileName` exeName exe
+        let script = unlines [
+                "#! /bin/sh",
                 unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
+#endif
         writeFile exeFile script
         perms <- getPermissions exeFile
         setPermissions exeFile perms { executable = True, readable = True }
-#endif
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = ["hs", "lhs", dllExtension]
