@@ -1,20 +1,43 @@
 ------------------------------------------------------------
 -= 1.2 =-
 
+For the release notes: 
+Cabal 1.1.1 cannot read Cabal 1.0's .setup-config files. Users will
+need to re-run the configure command for all their projects after
+upgrading from Cabal 1.0. Otherwise, they will get:
+C:\software\cabal>runghc Setup.lhs build
+Setup.lhs: error reading ./.setup-config; run "setup configure" command?
+
+It is not clear how to build an executable whose Main module is
+preprocessed. The following does not work:
+Executable: Foo
+Main-is: Main.hsc
+
+Cabal does not handle dependencies for HSC2HS correctly. For example,
+if Foo.hsc has
+     #include "x.h"
+then Foo.hs should get regenerated whenever x.h is modified. However,
+Cabal only regenerates Foo.hs when Foo.hsc has been modified. Please
+let me know if you want a complete testcase.
+
+- Brian
+
+
 * add flags The patch adds a couple extra configure options,
   --enable-library-for-ghci / --disable-library-for-ghci or whatever
-   they end up being, to the manual.
+   they end up being, to the manual.  Which is default?  Add test case
+   for this.
 
 * Something for gentoo which produces a package gen file but doesn't
   do the register??
 
 * Mine Brian Smith emails for tests & patches
 
-* MOVED FOR DARCS BUT NOT CVS.  Move Distribution and everything
+* Move Distribution and everything
   into a subdirectory, so we can build the Setup file with the normal
-  invocation of cabal.
+  invocation of cabal?
 
-* add a haskell-version field?
+* add a cabal-version field?
 
 * ignore unknown fields? (--force?)
 
