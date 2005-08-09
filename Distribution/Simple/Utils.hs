@@ -213,7 +213,7 @@ findFile prefPathsIn locPath = do
   paths <- filterM doesFileExist [prefPath `joinFileName` locPath | prefPath <- prefPaths]
   case nub paths of -- also ignore dups, though above nub should fix this.
     [path] -> return path
-    []     -> die (locPath ++ " doesn't exists")
+    []     -> die (locPath ++ " doesn't exist")
     paths  -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths))
 
 dotToSep :: String -> String
