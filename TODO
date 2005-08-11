@@ -42,6 +42,35 @@ let me know if you want a complete testcase.
 * ignore unknown fields? (--force?)
 
 -= 1.0 =-
+* new field  data-files, a list of files to be copied to a place where
+>> >    an executable can find them (e.g. template-hsc.h for hsc2hs):
+>> >         Hugs: the directory containing the Main module
+>> >         GHC/Windows: the directory containing the executable
+>> >         GHC/Unix: /usr/local/share/<exename>
+>> >    plus a new function in System.Directory to return the name of this
+>> >    directory.  That would address Dimitry's requirements in
+>> 
+>> How about allowing directories too, which would be copied recursively?
+
+Also, if we do this, we should probably specify the manner in which
+such a directory should be layed out so:
+
+1) it doesn't get too cluttered
+2) different packages don't stomp on each-other's files and
+3) different versions of different packages can use the same filenames.
+
+dataFileDir :: Distribution.Package.PackageIdentifier -> FilePath
+dataFileDir ident = dataFileDirRoot `joinFilePath` (showPackageId ident)
+
+which I like better, but that strongly couples "dataFileDir" to the
+Cabal package in that you need to have a PackageIdentifier.  How do
+you get that PackageIdentifier?  Well, your program will have to parse
+your .cabal file.  No problem! (if you have one)
+
+* New field extra-tmp-files, a list of extra files to be removed by
+   setup clean, beyond those that can be deduced.
+
+* Rename other-files as extra-source-files for consistency and clarity.
 
 * Install libraries in $libdir/ghc-$ghc_version/ rather than $libdir.
 
@@ -56,6 +85,27 @@ let me know if you want a complete testcase.
 ** if there's a flag, --include-preprocessed-sources (or something
    better) run the preprocessing phase and include both the
    unpreprocessed and the preprocessed sources in the source tarball?
+But really, there are two kinds of preprocessors, as Ross points out.
+The kind that produce OS-independent code, and the kind that produce
+OS-dependent code.  Perhaps this concept shoudl be added to the
+PreProcessor type, and a we could have two flags to sdist:
+
+--include-standalone-preprocessed-sources
+
+Which would generate the OS-independent sources from tools like Alex
+and Happy... 
+
+--include-all-preprocessed-sources
+
+Which just includes all of the preprocessed sources as above.
+
+A downside to this is in how it interacts with another proposal to add
+tool dependencies.  If a package tool-depends on "alex", and then a
+source tarball is created with
+--include-standalone-preprocessed-sources, then it actually no longer
+tool-depends on alex, so we should regenerate the .cabal file.  I
+guess that's no big deal.
+
 ** Better way to find 'tar'; is there a library? what does darcs do?
 
 * do we have to run configure before clean?
