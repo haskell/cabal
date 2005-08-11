@@ -191,6 +191,8 @@ buildGHC pkg_descr lbi verbose = do
 
       stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
+      stubProfObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["p_" ++ objExtension]
+                           |  x <- libModules pkg_descr ]  >>= return . concat
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
         try (removeFile libName) -- first remove library if it exists
@@ -203,7 +205,7 @@ buildGHC pkg_descr lbi verbose = do
             arProfArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [profLibName]
                 ++ [pref `joinFileName` x | x <- hProfObjs ++ cObjs]
-                ++ stubObjs
+                ++ stubProfObjs
 	    ldArgs = ["-r"]
                 ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
 	        ++ ["-o", ghciLibName]
@@ -222,7 +224,6 @@ buildGHC pkg_descr lbi verbose = do
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
-                 putStrLn $ "hsSourceDirs: " ++ (show (hsSourceDirs exeBi))
 		 let targetDir = pref `joinFileName` exeName'
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True targetDir
