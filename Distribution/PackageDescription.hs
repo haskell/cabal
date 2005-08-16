@@ -686,7 +686,8 @@ testPkgDesc = unlines [
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Other-Modules: Distribution.Package, Distribution.Version,",
         "                Distribution.Simple.GHCPackageConfig",
-        "Extra-Source-Files: file1, file2",
+        "Other-files: file1, file2",
+        "Extra-Tmp-Files:    file1, file2",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dirs: src, src2",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
@@ -724,7 +725,6 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
-                    extraSrcFiles=["file1", "file2"],
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
@@ -732,6 +732,8 @@ testPkgDescAnswer =
                     testedWith=[(GHC, AnyVersion)],
                     maintainer = "",
                     stability = "Free Text String",
+                    extraTmpFiles=["file1", "file2"],
+                    extraSrcFiles=["file1", "file2"],
 
                     library = Just $ Library {
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
