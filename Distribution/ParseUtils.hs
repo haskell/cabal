@@ -197,6 +197,8 @@ mkStanza ((n,xs):ys) =
        let fld'' = map toLower fld'
            fld | fld'' == "hs-source-dir"
                            = trace "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs." "hs-source-dirs"
+               | fld'' == "other-files"
+                           = trace "The field \"other-files\" is deprecated, please use extra-source-files." "extra-source-files"
                | otherwise = fld''
        ss <- mkStanza ys
        checkDuplField fld ss
