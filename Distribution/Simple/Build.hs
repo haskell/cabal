@@ -165,6 +165,7 @@ buildGHC pkg_descr lbi verbose = do
 
       -- build any C sources
       unless (null (cSources libBi)) $
+         -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
          sequence_ [do let ghc_vers = compilerVersion (compiler lbi)
 			   odir | versionBranch ghc_vers >= [6,4,1] = pref
 				| otherwise = pref `joinFileName` dirOf c
@@ -235,7 +236,10 @@ buildGHC pkg_descr lbi verbose = do
 
                  -- build executables
                  unless (null (cSources exeBi)) $
-                  sequence_ [do let cSrcODir = exeDir `joinFileName` (fst $ splitFileName c)
+                  sequence_ [do let cSrcODir |versionBranch (compilerVersion (compiler lbi))
+                                                    >= [6,4,1] = exeDir
+                                             | otherwise 
+                                                 = exeDir `joinFileName` (dirOf c)
                                 createDirectoryIfMissing True cSrcODir
 		                let cArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
 			                    ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
