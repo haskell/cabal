@@ -103,7 +103,7 @@ sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
     copyFileTo verbose targetDir srcMainFile
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbose targetDir (licenseFile pkg_descr)
-  flip mapM_ (otherFiles pkg_descr) $ \ fpath -> do
+  flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     copyFileTo verbose targetDir fpath
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
