@@ -134,7 +134,8 @@ data PackageDescription
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
-        otherFiles     :: [FilePath]
+        extraSrcFiles  :: [FilePath],
+        extraTmpFiles  :: [FilePath]
     }
     deriving (Show, Read, Eq)
 
@@ -165,7 +166,8 @@ emptyPackageDescription
                       category     = "",
                       library      = Nothing,
                       executables  = [],
-                      otherFiles   = []
+                      extraSrcFiles = [],
+                      extraTmpFiles = []
                      }
 
 -- |Get all the module names from the libraries in this package
@@ -371,8 +373,10 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
- , listField "other-files" showFilePath           parseFilePathQ
-                           otherFiles             (\val pkg -> pkg{otherFiles=val})
+ , listField "extra-source-files" showFilePath    parseFilePathQ
+                           extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
+ , listField "extra-tmp-files" showFilePath       parseFilePathQ
+                           extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
  ]
 
 executableStanzaFields :: [StanzaField Executable]
@@ -682,7 +686,7 @@ testPkgDesc = unlines [
         "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
         "Other-Modules: Distribution.Package, Distribution.Version,",
         "                Distribution.Simple.GHCPackageConfig",
-        "Other-Files: file1, file2",
+        "Extra-Source-Files: file1, file2",
         "C-Sources: not/even/rain.c, such/small/hands",
         "HS-Source-Dirs: src, src2",
         "Exposed-Modules: Distribution.Void, Foo.Bar",
@@ -720,7 +724,7 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
-                    otherFiles=["file1", "file2"],
+                    extraSrcFiles=["file1", "file2"],
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))

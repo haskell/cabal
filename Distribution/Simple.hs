@@ -89,7 +89,7 @@ import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
-import System.Directory(removeFile, doesFileExist)
+import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 
 import Distribution.License
 import Control.Monad(when, unless)
@@ -411,6 +411,7 @@ clean pkg_descr lbi verbose pps = do
     case compilerFlavor (compiler lbi) of
       GHC -> cleanGHCExtras
       _   -> return ()
+    mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
   where
         cleanGHCExtras = do
             -- remove source stubs for library
@@ -428,6 +429,13 @@ clean pkg_descr lbi verbose pps = do
                 s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
                                  | x <- mods ]
                 mapM_ removeFile (concat s)
+        removeFileOrDirectory :: FilePath -> IO ()
+        removeFileOrDirectory fname = do
+            isDir <- doesDirectoryExist fname
+            isFile <- doesFileExist fname
+            if isDir then removeDirectoryRecursive fname
+              else if isFile then removeFile fname
+              else return ()
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
