@@ -124,11 +124,12 @@ sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
           unlines $ map (appendVersion date) $ lines $ contents
     else copyFileVerbose verbose descFile targetDescFile
 
+  let tarBallFilePath = targetPref `joinFileName` tarBallName pkg_descr
   system $ "(cd " ++ tmpDir
            ++ ";tar cf - " ++ (nameVersion pkg_descr) ++ ") | gzip -9 >"
-           ++ (targetPref `joinFileName` (tarBallName pkg_descr))
+           ++ tarBallFilePath
   system $ "rm -rf " ++ tmpDir
-  putStrLn "Source tarball created."
+  putStrLn $ "Source tarball created: " ++ tarBallFilePath
 
   where
     updatePackage f pd = pd { package = f (package pd) }
@@ -167,7 +168,7 @@ copyFileTo verbose dir file = do
 
 -- |The file name of the tarball
 tarBallName :: PackageDescription -> FilePath
-tarBallName p = (nameVersion p) ++ ".tgz"
+tarBallName p = (nameVersion p) ++ ".tar.gz"
 
 nameVersion :: PackageDescription -> String
 nameVersion = showPackageId . package
