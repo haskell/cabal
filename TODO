@@ -22,8 +22,10 @@ let me know if you want a complete testcase.
 
 - Brian
 
+* Clarify build-depends; unix? posix? utils? see journal entry of aug
+   22, 2005.
 
-* add flags The patch adds a couple extra configure options,
+* REMOVE THESE FLAGS: add flags The patch adds a couple extra configure options,
   --enable-library-for-ghci / --disable-library-for-ghci or whatever
    they end up being, to the manual.  Which is default?  Add test case
    for this.
