@@ -7,7 +7,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Explanation: Perform the \"@.\/setup configure@\" action.
 -- Outputs the @.setup-config@ file.
