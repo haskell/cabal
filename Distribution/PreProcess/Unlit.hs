@@ -5,7 +5,7 @@
 -- 
 -- Maintainer  :  Malcolm Wallace <Malcolm.Wallace@cs.york.ac.uk>
 -- Stability   :  Stable
--- Portability :  All
+-- Portability :  portable
 --
 -- Remove the \"literal\" markups from a Haskell source file, including
 -- \"@>@\", \"@\\begin{code}@\", \"@\\end{code}@\", and \"@#@\"

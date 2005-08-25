@@ -6,7 +6,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Explanation: Misc. Utilities, especially file-related utilities.
 -- Stuff used by multiple modules that doesn't fit elsewhere.

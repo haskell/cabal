@@ -5,7 +5,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Explanation: Perform the \"@.\/setup install@\" action.  Move files into
 -- place based on the prefix argument.

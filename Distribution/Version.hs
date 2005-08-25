@@ -6,7 +6,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Versions for packages, based on the 'Version' datatype.
 

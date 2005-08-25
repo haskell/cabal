@@ -5,7 +5,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC, Hugs
+-- Portability :  portable
 --
 -- Explanation: Perform the \"@.\/setup register@\" action.
 -- Uses a drop-file for HC-PKG.  See also "Distribution.InstalledPackageInfo".

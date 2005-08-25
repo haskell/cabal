@@ -6,7 +6,7 @@
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
--- Portability :  non-portable (local universal quantification)
+-- Portability :  portable
 --
 -- This is a library of parser combinators, originally written by Koen Claessen.
 -- It parses all alternatives in parallel, so it never keeps hold of 

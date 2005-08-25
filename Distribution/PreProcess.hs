@@ -4,7 +4,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC, Hugs
+-- Portability :  portable
 --
 {- Copyright (c) 2003-2005, Isaac Jones, Malcolm Wallace
 All rights reserved.

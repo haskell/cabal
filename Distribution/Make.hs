@@ -5,7 +5,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Explanation: Uses the parsed command-line from Distribution.Setup
 -- in order to build haskell tools using a backend build system based
