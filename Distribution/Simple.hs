@@ -5,7 +5,7 @@
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
--- Portability :  GHC
+-- Portability :  portable
 --
 -- Explanation: Simple build system; basically the interface for
 -- Distribution.Simple.\* modules.  When given the parsed command-line
@@ -85,6 +85,9 @@ import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath)
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+import Distribution.Simple.Utils (rawSystemPath)
+#endif
 import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
@@ -506,16 +509,25 @@ defaultUserHooks
       }
     where defaultPostConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode
           defaultPostConf args flags lbi
-              = do let prefix_opt pref opts =
-                           ("--prefix=" ++ pref) : opts
+              = do let verbose = configVerbose flags
+                       args' = addOption "prefix" (configPrefix flags) args
                    confExists <- doesFileExist "configure"
-	           if confExists then do
-	               rawSystemVerbose (configVerbose flags) "sh"
-			   ("configure" : maybe id prefix_opt (configPrefix flags) args)
-		       return ()
-		     else
-		       no_extra_flags args
-                   return ExitSuccess
+                   if confExists then
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+                       -- FIXME: hack for script files under MinGW
+                       -- This assumes sh (check for #! line?)
+                       rawSystemPath verbose "sh" ("configure" : args')
+#else
+                       rawSystemVerbose verbose "./configure" args'
+#endif
+                     else do
+                       no_extra_flags args
+                       return ExitSuccess
+
+          addOption :: String -> Maybe String -> [String] -> [String]
+          addOption _flag Nothing opts = opts
+          addOption flag (Just value) opts =
+              ("--" ++ flag ++ "=" ++ value) : opts
 
           readHook :: (a -> Int) -> Args -> a -> IO HookedBuildInfo
           readHook verbose a flags = do
