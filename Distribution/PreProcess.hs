@@ -250,6 +250,8 @@ hcDefines Compiler { compilerFlavor=NHC, compilerVersion=version }
   = ["-D__NHC__=" ++ versionInt version]
 hcDefines Compiler { compilerFlavor=Hugs }
   = ["-D__HUGS__"]
+hcDefines Compiler { compilerFlavor=GHC, compilerVersion=version }
+  = ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
 hcDefines _ = []
 
 versionInt :: Version -> String
