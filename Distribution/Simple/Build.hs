@@ -289,7 +289,7 @@ constructGHCCmdLine comp srcLocs bi deps =
      ++ ["-i"]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi ++ srcLocs)]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
-     ++ nub (flags ++ hcOptions GHC (options bi))
+     ++ (flags ++ hcOptions GHC (options bi))
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- deps ])
 
 -- |Building a package for Hugs.
