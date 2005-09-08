@@ -353,7 +353,9 @@ tests currDir comp compConf = [
 
             assertHaddock
             assertBuild
-            assertCopy
+            assertCmd' compCmd "copy --copy-prefix=,tmp" "copy w/ prefix"
+            doesFileExist ",tmp/withHooks" >>=  -- this file is added w/ the hook.
+              assertBool "hooked copy, redirecting prefix didn't work."
             assertCmd' compCmd "register --user" "regular register returned error"
             assertCmd' compCmd "unregister --user" "regular unregister returned error"
             when (comp == GHC) -- FIX: come up with good test for Hugs
