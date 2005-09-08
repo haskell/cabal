@@ -3,10 +3,13 @@
 > module Main where
 
 > import Distribution.Simple
-> import Distribution.PackageDescription (readPackageDescription, readHookedBuildInfo)
+> import Distribution.PackageDescription (PackageDescription,
+>                                         readPackageDescription, readHookedBuildInfo)
+> import Distribution.Simple.Configure(LocalBuildInfo(..))
 > import Distribution.Compat.Directory (copyFile)
+> import Distribution.Compat.FilePath(joinPaths)
 > import Distribution.Simple.Utils (defaultHookedPackageDesc)
-> import System.Directory (removeFile)
+> import System.Directory (removeFile, createDirectoryIfMissing)
 > import System.Exit(ExitCode(..))
 > import Control.Monad(when)
 > import Data.Maybe(fromJust, isNothing)
@@ -40,6 +43,17 @@
 >                             then return ExitSuccess
 >                             else return (ExitFailure 1)
 
+> myCopyHook :: PackageDescription
+>            -> LocalBuildInfo
+>            -> (Maybe FilePath,Int) -- ^install-prefix, verbose
+>            -> IO ()
+> myCopyHook a b c@((Just p), _) = do
+>   createDirectoryIfMissing True p
+>   copyFile (foldl1 joinPaths ["dist", "build", "withHooks", "withHooks"])
+>                        (p `joinPaths` "withHooks")
+>   -- now call the default copy hook so the rest of the test case works nice ... so tricky ;)
+>   (copyHook defaultUserHooks) a b c
+
 Override "gc" to test the overriding mechanism.
 
 > main :: IO ()
@@ -48,5 +62,6 @@ Override "gc" to test the overriding mechanism.
 >         runTests=testing,
 >         postConf=(\_ _ _-> return ExitSuccess),
 >         hookedPreProcessors=  [("testSuffix", ppTestHandler), ("gc", ppTestHandler)],
->         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess)
+>         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess),
+>         copyHook=myCopyHook
 >        }
