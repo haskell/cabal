@@ -126,52 +126,91 @@ data UserHooks = UserHooks
 
       -- |Hook to run before configure command
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during configure.
+     confHook :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo,
       -- |Hook to run after configure command
      postConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before build command.  Second arg indicates verbosity level.
      preBuild  :: Args -> Int -> IO HookedBuildInfo,
+
+     -- |Over-ride this hook to get different behavior during build.
+     buildHook :: PackageDescription
+               -> LocalBuildInfo
+               -> Int                 -- verbose
+               -> [ PPSuffixHandler ]
+               -> IO (),
       -- |Hook to run after build command.  Second arg indicates verbosity level.
      postBuild :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> Int -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during clean.
+     cleanHook :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO (),
       -- |Hook to run after clean command.  Second arg indicates verbosity level.
      postClean :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during copy.
+     copyHook :: PackageDescription
+              -> LocalBuildInfo
+              -> (Maybe FilePath,Int) -- ^install-prefix, verbose
+              -> IO (),
       -- |Hook to run after copy command
      postCopy :: Args -> CopyFlags -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before install command
      preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
+
+     -- |Over-ride this hook to get different behavior during install.
+     instHook :: PackageDescription
+              -> LocalBuildInfo
+              -> Int -- verbose
+              -> Bool -- user install?
+              -> IO (),
       -- |Hook to run after install command.  postInst should be run
       -- on the target, not on the build machine.
      postInst :: Args -> InstallFlags -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> Int -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during sdist.
+     sDistHook :: FilePath -- ^build prefix (temp dir)
+               -> FilePath -- ^TargetPrefix
+               -> Int      -- ^verbose
+               -> Bool     -- ^snapshot
+               -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
+               -> PackageDescription
+               -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
      postSDist :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before register command
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during pfe.
+     regHook :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO (),
       -- |Hook to run after register command
      postReg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before unregister command
      preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
+      -- |Over-ride this hook to get different behavior during pfe.
+     unregHook :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO (),
       -- |Hook to run after unregister command
      postUnreg :: Args -> RegisterFlags -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before haddock command.  Second arg indicates verbosity level.
      preHaddock  :: Args -> Int -> IO HookedBuildInfo,
       -- |Hook to run after haddock command.  Second arg indicates verbosity level.
+     -- |Over-ride this hook to get different behavior during haddock.
+     haddockHook :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO (),
      postHaddock :: Args -> Int -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before pfe command.  Second arg indicates verbosity level.
      prePFE  :: Args -> Int -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during pfe.
+     pfeHook :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO (),
       -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
      postPFE :: Args -> Int -> LocalBuildInfo -> IO ExitCode
 
@@ -225,7 +264,10 @@ defaultMainWorker pkg_descr_in action args hooks
                 pkg_descr <- hookOrInArgs preConf args flags
                 (warns, ers) <- sanityCheckPackage pkg_descr
                 errorOut warns ers
-		localbuildinfo <- configure pkg_descr flags
+
+                let c = maybe (confHook defaultUserHooks) confHook hooks
+		localbuildinfo <- c pkg_descr flags
+
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf args flags localbuildinfo
 
@@ -233,46 +275,60 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, _, args) <- parseBuildArgs args []
                 pkg_descr <- hookOrInArgs preBuild args flags
 		localbuildinfo <- getPersistBuildConfig
-		build pkg_descr localbuildinfo flags pps
-                when (hasLibs pkg_descr) $
-                    writeInstalledConfig pkg_descr localbuildinfo
+
+                let bld = cmdHook buildHook
+                bld pkg_descr localbuildinfo flags pps
+
                 postHook postBuild args flags localbuildinfo
 
             HaddockCmd -> do
                 (verbose, _, args) <- parseHaddockArgs args []
                 pkg_descr <- hookOrInArgs preHaddock args verbose
 		localbuildinfo <- getPersistBuildConfig
-                haddock pkg_descr localbuildinfo verbose pps
+
+                let hdk = cmdHook haddockHook
+                hdk pkg_descr localbuildinfo verbose pps
+
                 postHook postHaddock args verbose localbuildinfo
 
             ProgramaticaCmd -> do
                 (verbose, _, args) <- parseProgramaticaArgs args []
                 pkg_descr <- hookOrInArgs prePFE args verbose
                 localbuildinfo <- getPersistBuildConfig
-                pfe pkg_descr localbuildinfo verbose pps
+
+                let p = cmdHook pfeHook
+                p pkg_descr localbuildinfo verbose pps
+
                 postHook postPFE args verbose localbuildinfo
 
             CleanCmd -> do
                 (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInArgs preClean args verbose
 		localbuildinfo <- getPersistBuildConfig
-                clean pkg_descr localbuildinfo verbose pps
+
+                let c = cmdHook cleanHook
+                c pkg_descr localbuildinfo verbose pps
+
                 postHook postClean args verbose localbuildinfo
 
             CopyCmd mprefix -> do
                 (flags, _, args) <- parseCopyArgs (mprefix,0) args []
                 pkg_descr <- hookOrInArgs preCopy args flags
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo flags
+
+		let c = maybe (copyHook defaultUserHooks) copyHook hooks
+                c pkg_descr localbuildinfo flags
+
                 postHook postCopy args flags localbuildinfo
 
             InstallCmd uInst -> do
                 (flags@(uInst, verbose), _, args) <- parseInstallArgs (uInst,0) args []
                 pkg_descr <- hookOrInArgs preInst args flags
 		localbuildinfo <- getPersistBuildConfig
-		install pkg_descr localbuildinfo (Nothing, verbose)
-                when (hasLibs pkg_descr)
-                         (register pkg_descr localbuildinfo (uInst, False, verbose))
+
+                let inst = cmdHook instHook
+                inst pkg_descr localbuildinfo verbose uInst
+
                 postHook postInst args flags localbuildinfo
 
             SDistCmd -> do
@@ -280,7 +336,10 @@ defaultMainWorker pkg_descr_in action args hooks
                 ((snapshot,verbose),_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args verbose
                 localbuildinfo <- getPersistBuildConfig
-                sdist srcPref distPref verbose snapshot pps pkg_descr
+
+                let sd = maybe (sDistHook defaultUserHooks) sDistHook hooks
+                sd srcPref distPref verbose snapshot pps pkg_descr
+
                 postHook postSDist args verbose localbuildinfo
 
             TestCmd -> do
@@ -296,16 +355,19 @@ defaultMainWorker pkg_descr_in action args hooks
                 (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
-		if hasLibs pkg_descr
-                   then register pkg_descr localbuildinfo flags
-                   else die "Package contains no library to register"
+
+                let r = maybe (regHook defaultUserHooks) regHook hooks
+                r pkg_descr localbuildinfo flags 
+
                 postHook postReg args flags localbuildinfo
 
             UnregisterCmd uInst genScript -> do
                 (flags,_, args) <- parseUnregisterArgs (uInst,genScript, 0) args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
-		unregister pkg_descr localbuildinfo flags
+
+                let ur = maybe (unregHook defaultUserHooks) unregHook hooks
+                ur pkg_descr localbuildinfo flags
                 postHook postUnreg args flags localbuildinfo
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
@@ -319,10 +381,12 @@ defaultMainWorker pkg_descr_in action args hooks
                     Nothing -> no_extra_flags a >> return pkg_descr_in
                     Just h -> do pbi <- f h a i
                                  return (updatePackageDescription pbi pkg_descr_in)
+        cmdHook f = maybe (f defaultUserHooks) f hooks
         postHook f args flags localbuildinfo
                  = case hooks of
                     Nothing -> return ExitSuccess
                     Just h  -> f h args flags localbuildinfo
+
         isFailure :: ExitCode -> Bool
         isFailure (ExitFailure _) = True
         isFailure _               = False
@@ -459,28 +523,39 @@ emptyUserHooks
        readDesc  = return Nothing,
        hookedPreProcessors = [],
        preConf   = rn,
+       confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
        postConf  = res,
        preBuild  = rn,
+       buildHook = ru,
        postBuild = res,
        preClean  = rn,
+       cleanHook = ru,
        postClean = res,
        preCopy   = rn,
+       copyHook  = (\_ _ _ -> return ()),
        postCopy  = res,
        preInst   = rn,
+       instHook  = ru,
        postInst  = res,
        preSDist  = rn,
+       sDistHook = (\_ _ _ _ _ _ -> return ()),
        postSDist = res,
        preReg    = rn,
+       regHook   = (\_ _ _ -> return ()),
        postReg   = res,
        preUnreg  = rn,
+       unregHook = (\_ _ _ -> return ()),
        postUnreg = res,
        prePFE    = rn,
+       pfeHook   = ru,
        postPFE   = res,
        preHaddock  = rn,
+       haddockHook = ru,
        postHaddock = res
       }
-    where rn  _ _   = return emptyHookedBuildInfo
-          res _ _ _ = return ExitSuccess
+    where rn  _ _    = return emptyHookedBuildInfo
+          res _ _ _  = return ExitSuccess
+          ru _ _ _ _ = return ()
 
 -- |Basic default 'UserHooks':
 --
@@ -500,11 +575,21 @@ defaultUserHooks
     = emptyUserHooks
       {
        postConf  = defaultPostConf,
+       confHook  = configure,
        preBuild  = readHook id,
+       buildHook = defaultBuildHook,
        preClean  = readHook id,
        preCopy   = readHook snd,
+       copyHook  = install, -- has correct 'copy' behavior with params
        preInst   = readHook snd,
+       instHook  = defaultInstallHook,
+       sDistHook = sdist,
+       pfeHook   = pfe,
+       cleanHook = clean,
+       haddockHook = haddock,
        preReg    = readHook thd3,
+       regHook   = defaultRegHook,
+       unregHook = unregister,
        preUnreg  = readHook thd3
       }
     where defaultPostConf :: Args -> ConfigFlags -> LocalBuildInfo -> IO ExitCode
@@ -539,8 +624,22 @@ defaultUserHooks
                       when (verbose flags > 0) $
                           putStrLn $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo infoFile
-
           thd3 (_,_,z) = z
+
+defaultInstallHook pkg_descr localbuildinfo verbose uInst = do
+  install pkg_descr localbuildinfo (Nothing, verbose)
+  when (hasLibs pkg_descr)
+           (register pkg_descr localbuildinfo (uInst, False, verbose))
+
+defaultBuildHook pkg_descr localbuildinfo flags pps = do
+  build pkg_descr localbuildinfo flags pps
+  when (hasLibs pkg_descr) $
+      writeInstalledConfig pkg_descr localbuildinfo
+
+defaultRegHook pkg_descr localbuildinfo flags =
+    if hasLibs pkg_descr
+    then register pkg_descr localbuildinfo flags
+    else die "Package contains no library to register"
 
 -- ------------------------------------------------------------
 -- * Testing
