@@ -227,8 +227,8 @@ getInstalledPackages :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
 getInstalledPackages comp user verbose = do
    when (verbose > 0) $ message "Reading installed packages..."
    withTempFile "." "" $ \tmp -> do
-      let user_flag = if user then " --user" else " --global"
-          cmd_line  = compilerPkgTool comp ++ user_flag ++ " list >" ++ tmp
+      let user_flag = if user then "--user" else "--global"
+          cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" " ++ user_flag ++ " list >" ++ tmp
       when (verbose > 0) $
         putStrLn cmd_line
       res <- system cmd_line
@@ -335,7 +335,7 @@ compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
 configCompilerVersion GHC compilerP verbose =
   withTempFile "." "" $ \tmp -> do
-    let cmd_line = compilerP ++ " --version >" ++ tmp
+    let cmd_line = "\"" ++ compilerP ++ "\" --version >" ++ tmp
     when (verbose > 0) $
       putStrLn cmd_line
     maybeExit $ system cmd_line
