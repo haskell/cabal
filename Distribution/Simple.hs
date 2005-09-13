@@ -155,7 +155,7 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to get different behavior during copy.
      copyHook :: PackageDescription
               -> LocalBuildInfo
-              -> (Maybe FilePath,Int) -- ^install-prefix, verbose
+              -> (Maybe FilePath,Int) -- install-prefix, verbose
               -> IO (),
       -- |Hook to run after copy command
      postCopy :: Args -> CopyFlags -> LocalBuildInfo -> IO ExitCode,
@@ -176,11 +176,11 @@ data UserHooks = UserHooks
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> Int -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during sdist.
-     sDistHook :: FilePath -- ^build prefix (temp dir)
-               -> FilePath -- ^TargetPrefix
-               -> Int      -- ^verbose
-               -> Bool     -- ^snapshot
-               -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
+     sDistHook :: FilePath -- build prefix (temp dir)
+               -> FilePath -- TargetPrefix
+               -> Int      -- verbose
+               -> Bool     -- snapshot
+               -> [PPSuffixHandler]  --  extra preprocessors (includes suffixes)
                -> PackageDescription
                -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
