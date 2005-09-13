@@ -9,10 +9,14 @@ screwy, post to libraries@haskell.org for help.
 -= Quirky things about the build system =-
 
 * If you don't already have Cabal installed: "make install" as root,
-then try "ghci -package Cabal" to
-  test it.  If you get an error about multiple versions of Cabal, read
-  the section below "Working with older versions of Cabal" You were
-  supposed to read this first.
+  then try "ghci -package Cabal" to test it.  If you get an error
+  about multiple versions of Cabal, read the section below "Working
+  with older versions of Cabal" You were supposed to read this first.
+
+* The cabal should build just like any other Cabal-ized package.  If
+  you're using windows or have another means of building cabal
+  packages, you might want to ignore the GNUmakefile
+  altogether.
 
 * GNUmakefile is the one you're probably interested in.  If you see
   Makefile, it is probably from the fptools build tree, and it won't
@@ -45,8 +49,8 @@ run ghci.  For instance:
 
   $ ghci -package Cabal
     ...
-    ghc-6.4: Error; multiple packages match Cabal: Cabal-1.0, Cabal-1.0.1
-  $ ghci -package Cabal-1.0.1
+    ghc-6.4: Error; multiple packages match Cabal: Cabal-1.0, Cabal-1.1.3
+  $ ghci -package Cabal-1.1.3
     ...
     (OK)
 
