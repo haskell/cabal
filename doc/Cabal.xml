@@ -1460,7 +1460,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <title>setup sdist</title>
       <para>Create a system- and compiler-independent source distribution
         in a file
-        <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tgz</filename>
+        <filename><replaceable>package</replaceable>-<replaceable>version</replaceable>.tar.gz</filename>
         in the <filename>dist</filename> subdirectory, for distribution
         to package builders.  When unpacked, the commands listed in this
         section will be available.</para>
