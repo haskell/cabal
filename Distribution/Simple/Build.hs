@@ -137,6 +137,7 @@ buildGHC pkg_descr lbi verbose = do
   pkgConfReadable <- GHC.canReadLocalPackageConfig
   -- Build lib
   withLib pkg_descr () $ \lib -> do
+      when (verbose > 3) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
           libTargetDir = pref
       createDirectoryIfMissing True libTargetDir
@@ -164,7 +165,8 @@ buildGHC pkg_descr lbi verbose = do
            ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
 
       -- build any C sources
-      unless (null (cSources libBi)) $
+      unless (null (cSources libBi)) $ do
+         when (verbose > 3) (putStrLn "Building C Sources...")
          -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
          sequence_ [do let ghc_vers = compilerVersion (compiler lbi)
 			   odir | versionBranch ghc_vers >= [6,4,1] = pref
@@ -180,6 +182,7 @@ buildGHC pkg_descr lbi verbose = do
                                    | c <- cSources libBi]
 
       -- link:
+      when (verbose > 3) (putStrLn "cabal-linking...")
       let hObjs = [ (dotToSep x) `joinFileExt` objExtension
                   | x <- libModules pkg_descr ]
           cObjs = [ path `joinFileName` file `joinFileExt` objExtension
@@ -225,6 +228,8 @@ buildGHC pkg_descr lbi verbose = do
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
+                 when (verbose > 3)
+                      (putStrLn $ "Building executable: " ++ exeName' ++ "...")
 		 let targetDir = pref `joinFileName` exeName'
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True targetDir
@@ -235,7 +240,8 @@ buildGHC pkg_descr lbi verbose = do
                                   exeDir (otherModules exeBi) ["hi-boot"] False
 
                  -- build executables
-                 unless (null (cSources exeBi)) $
+                 unless (null (cSources exeBi)) $ do
+                  when (verbose > 3) (putStrLn "Building C Sources.")
                   sequence_ [do let cSrcODir |versionBranch (compilerVersion (compiler lbi))
                                                     >= [6,4,1] = exeDir
                                              | otherwise 
