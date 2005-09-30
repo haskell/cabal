@@ -43,6 +43,7 @@ module Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
     where
 
 import Distribution.Package (PackageIdentifier)
+import Distribution.Program (ProgramLocation, Program)
 import Distribution.Compiler (Compiler)
 
 -- |Data cached after configuration step.
@@ -61,7 +62,7 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
-        withHaddock   :: Maybe FilePath, -- ^Might be the location of the Haddock executable.
+        withHaddock   :: Maybe Program, -- ^Might be the location of the Haddock executable.
         withHappy     :: Maybe FilePath, -- ^Might be the location of the Happy executable.
         withAlex      :: Maybe FilePath, -- ^Might be the location of the Alex executable.
         withHsc2hs    :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
@@ -71,6 +72,5 @@ data LocalBuildInfo = LocalBuildInfo {
         withProfLib   :: Bool,
         withProfExe   :: Bool,
 	withGHCiLib   :: Bool
-  }
-  deriving (Show, Read, Eq)
+  } deriving (Read, Show)
 

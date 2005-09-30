@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
--- Copyright   :  Isaac Jones 2003-2004
+-- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -67,6 +67,7 @@ module Distribution.Simple (
 import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
+import Distribution.Program(lookupProgram, Program(..))
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -401,7 +402,7 @@ distPref = "dist"
 haddock :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
 haddock pkg_descr lbi verbose pps =
     withLib pkg_descr () $ \lib -> do
-        mHaddock <- findProgram "haddock" (withHaddock lbi)
+        let mHaddock = withHaddock lbi
         when (isNothing mHaddock) (die "haddock command not found")
         let bi = libBuildInfo lib
         let targetDir = joinPaths distPref (joinPaths "doc" "html")
@@ -418,7 +419,7 @@ haddock pkg_descr lbi verbose pps =
         setupMessage "Running Haddock for" pkg_descr
         let outFiles = map (joinFileName tmpDir)
                        (map ((flip changeFileExt) "hs") inFiles)
-        code <- rawSystemVerbose verbose (fromJust mHaddock)
+        code <- rawSystemVerbose verbose (programBinName $ fromJust mHaddock)
                 (["-h",
                   "-o", targetDir,
                   "-t", showPkg,
