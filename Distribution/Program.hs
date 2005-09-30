@@ -5,8 +5,8 @@ module Distribution.Program( Program(..)
                            , programOptsFlag
                            , programOptsField
                            , defaultProgramConfiguration
-                           , lookupProgram) where
-{-
+                           , userSpecifyPath
+                           , lookupProgram
                            , ghcProgram
                            , ghcPkgProgram
                            , nhcProgram
@@ -20,9 +20,9 @@ module Distribution.Program( Program(..)
                            , ldProgram
                            , cppProgram
                            , pfesetupProgram
--}
+                           ) where
 
-import Data.List(find)
+import Data.FiniteMap
 import Distribution.Compat.Directory(findExecutable)
 
 -- |Represents a program which cabal may call.
@@ -33,7 +33,7 @@ data Program
               ,programBinName :: String
                 -- |Default command-line args for this program
               ,programDefaultArgs :: [String]
-                -- |Location of the program.  eg. /usr/bin/ghc-6.4
+                -- |Location of the program.  eg. \/usr\/bin\/ghc-6.4
               ,programLocation :: ProgramLocation
               } deriving (Read, Show)
 
@@ -43,10 +43,12 @@ data ProgramLocation = EmptyLocation
                      | UserSpecified FilePath
                      | FoundOnSystem FilePath
       deriving (Read, Show)
-type ProgramConfiguration = [Program]
+
+type ProgramConfiguration = FiniteMap String Program
 
 defaultProgramConfiguration :: ProgramConfiguration
-defaultProgramConfiguration = [ ghcProgram
+defaultProgramConfiguration = progListToFM 
+                              [ ghcProgram
                               , ghcPkgProgram
                               , nhcProgram
                               , hugsProgram
@@ -61,17 +63,17 @@ defaultProgramConfiguration = [ ghcProgram
                               , pfesetupProgram
                               ]
 
--- |The flag for giving a path to this program.  eg --with-alex=/usr/bin/alex
+-- |The flag for giving a path to this program.  eg --with-alex=\/usr\/bin\/alex
 withProgramFlag :: Program -> String
 withProgramFlag Program{programName=n} = "with-" ++ n
 
 -- |The flag for giving args for this program.
---  eg --haddock-options=-s http://foo
+--  eg --haddock-options=-s http:\/\/foo
 programOptsFlag :: Program -> String
 programOptsFlag Program{programName=n} = n ++ "-options"
 
 -- |The foo.cabal field for  giving args for this program.
---  eg haddock-options: -s http://foo
+--  eg haddock-options: -s http:\/\/foo
 programOptsField :: Program -> String
 programOptsField = programOptsFlag
 
@@ -132,21 +134,28 @@ pfesetupProgram = simpleProgram "pfesetup"
 
 lookupProgram :: String -- simple name of program
               -> ProgramConfiguration
-              -> ProgramLocation  -- find location on system in PATH, if EmptyLocation
               -> IO (Maybe Program) -- the full program
-lookupProgram name conf inLoc =
+lookupProgram name conf = 
   case lookupProgram' name conf of
     Nothing   -> return Nothing
     Just p@Program{ programLocation= configLoc
                   , programBinName = binName}
-        -> do newLoc <- case (inLoc, configLoc) of
-                         (EmptyLocation, EmptyLocation)
+        -> do newLoc <- case configLoc of
+                         EmptyLocation
                              -> do maybeLoc <- findExecutable binName
                                    return $ maybe EmptyLocation FoundOnSystem maybeLoc
-                         (EmptyLocation, a) -> return a
-                         (a, _)             -> return a
+                         a   -> return a
               return $ Just p{programLocation=newLoc}
 
+-- |User-specify this path.  If it's not a known program, add it.
+userSpecifyPath :: String -- ^Program name
+                -> FilePath -- ^user-specified path to filename
+                -> ProgramConfiguration
+                -> ProgramConfiguration
+userSpecifyPath name path conf
+    = case lookupFM conf name of
+       Just p  -> addToFM conf name p{programLocation=UserSpecified path}
+       Nothing -> addToFM conf name (Program name name [] (UserSpecified path))
 
 -- |Populate the "programLocation" field in this configuration.
 {-lookupAllPrograms :: ProgramConfiguration
@@ -160,8 +169,15 @@ lookupAllPrograms conf = mapM
 
 -- Export?
 lookupProgram' :: String -> ProgramConfiguration -> Maybe Program
-lookupProgram' name = find (\(Program {programName=n}) -> n == name)
+lookupProgram' = flip lookupFM
+
+progListToFM :: [Program] -> ProgramConfiguration
+progListToFM progs = foldl
+                     (\ conf'
+                      p@(Program {programName=n})
+                          -> addToFM conf' n p)
+                     emptyFM
+                     progs
 
 simpleProgram :: String -> Program
 simpleProgram s = Program s s [] EmptyLocation
-
