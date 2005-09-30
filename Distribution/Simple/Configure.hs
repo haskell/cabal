@@ -85,6 +85,7 @@ import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
+import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -141,7 +142,7 @@ configure pkg_descr cfg
         unless (null exts) $ warn $ -- Just warn, FIXME: Should this be an error?
             show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
-        haddock   <- findProgram "haddock"   (configHaddock cfg)
+        haddock   <- lookupProgram "haddock" (configPrograms cfg) (configHaddock cfg)
         happy     <- findProgram "happy"     (configHappy cfg)
         alex      <- findProgram "alex"      (configAlex cfg)
         hsc2hs    <- findProgram "hsc2hs"    (configHsc2hs cfg)
@@ -154,7 +155,7 @@ configure pkg_descr cfg
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
-        reportProgram "haddock"   haddock
+        reportProgram' "haddock"  haddock
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs
@@ -202,6 +203,18 @@ findProgram _ p = return p
 reportProgram :: String -> Maybe FilePath -> IO ()
 reportProgram name Nothing = message ("No " ++ name ++ " found")
 reportProgram name (Just p) = message ("Using " ++ name ++ ": " ++ p)
+
+reportProgram' :: String -> Maybe Program -> IO ()
+reportProgram' _ (Just Program{ programName=name
+                              , programLocation=EmptyLocation})
+                  = message ("No " ++ name ++ " found")
+reportProgram' _ (Just Program{ programName=name
+                              , programLocation=FoundOnSystem p})
+                  = message ("Using " ++ name ++ " found on system at: " ++ p)
+reportProgram' _ (Just Program{ programName=name
+                              , programLocation=UserSpecified p})
+                  = message ("Using " ++ name ++ " given by user at: " ++ p)
+reportProgram' name Nothing = message ("No " ++ name ++ " found")
 
 
 -- | Test for a package dependency and record the version we have installed.
