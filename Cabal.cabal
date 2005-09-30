@@ -24,6 +24,7 @@ Exposed-Modules:
         Distribution.InstalledPackageInfo,
         Distribution.License,
         Distribution.Make,
+        Distribution.Program,
         Distribution.Package,
         Distribution.PackageDescription,
         Distribution.ParseUtils,
