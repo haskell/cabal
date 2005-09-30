@@ -64,6 +64,8 @@ import HUnit (Test(..))
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
+import Distribution.Program(ProgramLocation(..), ProgramConfiguration,
+                            defaultProgramConfiguration)
 import Data.List(find)
 import Distribution.GetOpt
 import Distribution.Compat.FilePath (platformPath)
@@ -90,14 +92,14 @@ data Action = ConfigCmd ConfigFlags       -- config
 --             | BDist -- 1.0
 --            | CleanCmd                 -- clean
 --            | NoCmd -- error case?
-    deriving (Show, Eq)
 
 -- | Flags to @configure@ command
 data ConfigFlags = ConfigFlags {
+        configPrograms :: ProgramConfiguration, -- ^All programs that cabal may run
         configHcFlavor :: Maybe CompilerFlavor,
         configHcPath   :: Maybe FilePath, -- ^given compiler location
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
-        configHaddock  :: Maybe FilePath, -- ^Haddock path
+        configHaddock  :: ProgramLocation, -- ^Haddock path
         configHappy    :: Maybe FilePath, -- ^Happy path
         configAlex     :: Maybe FilePath, -- ^Alex path
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
@@ -111,14 +113,14 @@ data ConfigFlags = ConfigFlags {
 	configUser     :: Bool,		  -- ^--user flag?
 	configGHCiLib  :: Bool            -- ^Enable compiling library for GHCi
     }
-    deriving (Show, Eq)
 
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = ConfigFlags {
+        configPrograms = defaultProgramConfiguration,
         configHcFlavor = Nothing,
         configHcPath   = Nothing,
         configHcPkg    = Nothing,
-        configHaddock  = Nothing,
+        configHaddock  = EmptyLocation,
         configHappy    = Nothing,
         configAlex     = Nothing,
         configHsc2hs   = Nothing,
@@ -296,9 +298,9 @@ parseConfigureArgs = parseArgs configureCmd updateCfg
   where updateCfg t GhcFlag              = t { configHcFlavor = Just GHC }
         updateCfg t NhcFlag              = t { configHcFlavor = Just NHC }
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
+        updateCfg t (WithHaddock path)   = t { configHaddock  = UserSpecified path }
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
-        updateCfg t (WithHaddock path)   = t { configHaddock  = Just path }
         updateCfg t (WithHappy path)     = t { configHappy    = Just path }
         updateCfg t (WithAlex path)      = t { configAlex     = Just path }
         updateCfg t (WithHsc2hs path)    = t { configHsc2hs   = Just path }
