@@ -64,9 +64,12 @@ import HUnit (Test(..))
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
-import Distribution.Program(ProgramLocation(..), ProgramConfiguration, Program(..),
-                            defaultProgramConfiguration, userSpecifyPath, haddockProgram)
+import Distribution.Program(ProgramLocation(..), ProgramConfiguration(..),
+                            Program(..),
+                            defaultProgramConfiguration, userSpecifyPath,
+                            userSpecifyArgs, haddockProgram)
 import Data.List(find)
+import Data.FiniteMap(keysFM)
 import Distribution.GetOpt
 import Distribution.Compat.FilePath (platformPath)
 import System.Exit
@@ -144,6 +147,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
 	  | WithGHCiLib | WithoutGHCiLib
+          | ProgramArgs String String -- program name, arguments
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -282,9 +286,15 @@ configureCmd = Cmd {
                "allow dependencies to be satisfied from the user package database",
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) dependencies must be satisfied from the global package database"
-           ],
+           ]
+         ++ (programArgsOptions defaultProgramConfiguration), -- FIX: shouldn't use default.
         cmdAction      = ConfigCmd emptyConfigFlags
         }
+
+programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
+programArgsOptions (ProgramConfiguration conf) = map f (keysFM conf)
+    where f name = Option "" [name ++ "-args"] (reqPathArg (ProgramArgs name))
+                   ("give the args to " ++ name)
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . platformPath) "PATH"
@@ -309,6 +319,9 @@ parseConfigureArgs = parseArgs configureCmd updateCfg
         updateCfg t (WithC2hs path)      = t { configC2hs     = Just path }
         updateCfg t (WithCpphs path)     = t { configCpphs    = Just path }
         updateCfg t (WithGreencard path) = t { configGreencard= Just path }
+        updateCfg t (ProgramArgs name path) = t { configPrograms = (userSpecifyArgs
+                                                                 name
+                                                                 path (configPrograms t))}
         updateCfg t WithProfLib          = t { configProfLib  = True }
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
