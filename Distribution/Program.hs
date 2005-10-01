@@ -1,11 +1,13 @@
 module Distribution.Program( Program(..)
                            , ProgramLocation(..)
-                           , ProgramConfiguration
+                           , ProgramConfiguration(..)
                            , withProgramFlag
                            , programOptsFlag
                            , programOptsField
                            , defaultProgramConfiguration
+                           , updateProgram
                            , userSpecifyPath
+                           , userSpecifyArgs
                            , lookupProgram
                            , ghcProgram
                            , ghcPkgProgram
@@ -32,7 +34,7 @@ data Program
                 -- |The name of this program's binary, eg ghc-6.4
               ,programBinName :: String
                 -- |Default command-line args for this program
-              ,programDefaultArgs :: [String]
+              ,programArgs :: [String]
                 -- |Location of the program.  eg. \/usr\/bin\/ghc-6.4
               ,programLocation :: ProgramLocation
               } deriving (Read, Show)
@@ -44,7 +46,13 @@ data ProgramLocation = EmptyLocation
                      | FoundOnSystem FilePath
       deriving (Read, Show)
 
-type ProgramConfiguration = FiniteMap String Program
+data ProgramConfiguration = ProgramConfiguration (FiniteMap String Program)
+
+instance Show ProgramConfiguration where
+  show (ProgramConfiguration s) = show $ fmToList s
+
+instance Read ProgramConfiguration where
+  readsPrec _ s = [(ProgramConfiguration $ listToFM $ read s, "")]
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
@@ -152,31 +160,41 @@ userSpecifyPath :: String -- ^Program name
                 -> FilePath -- ^user-specified path to filename
                 -> ProgramConfiguration
                 -> ProgramConfiguration
-userSpecifyPath name path conf
+userSpecifyPath name path conf'@(ProgramConfiguration conf)
     = case lookupFM conf name of
-       Just p  -> addToFM conf name p{programLocation=UserSpecified path}
-       Nothing -> addToFM conf name (Program name name [] (UserSpecified path))
+       Just p  -> updateProgram (Just p{programLocation=UserSpecified path}) conf'
+       Nothing -> updateProgram (Just $ Program name name [] (UserSpecified path))
+                                conf'
 
--- |Populate the "programLocation" field in this configuration.
-{-lookupAllPrograms :: ProgramConfiguration
-                  -> CommandLine?
-                  -> IO ProgramConfiguration
-lookupAllPrograms conf = mapM 
--}
+-- |User-specify this path.  If it's not a known program, add it.
+userSpecifyArgs :: String -- ^Program name
+                -> String -- ^user-specified args
+                -> ProgramConfiguration
+                -> ProgramConfiguration
+userSpecifyArgs name args conf'@(ProgramConfiguration conf)
+    = case lookupFM conf name of
+       Just p  -> updateProgram (Just p{programArgs=[args]}) conf'
+       Nothing -> updateProgram (Just $ Program name name [args] EmptyLocation) conf'
+
+updateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
+updateProgram (Just p@Program{programName=n}) (ProgramConfiguration conf)
+    = ProgramConfiguration $ addToFM conf n p
+updateProgram Nothing conf = conf
+
 -- ------------------------------------------------------------
 -- * Internal helpers
 -- ------------------------------------------------------------
 
 -- Export?
 lookupProgram' :: String -> ProgramConfiguration -> Maybe Program
-lookupProgram' = flip lookupFM
+lookupProgram' s (ProgramConfiguration conf) = lookupFM conf s
 
 progListToFM :: [Program] -> ProgramConfiguration
 progListToFM progs = foldl
-                     (\ conf'
+                     (\ (ProgramConfiguration conf')
                       p@(Program {programName=n})
-                          -> addToFM conf' n p)
-                     emptyFM
+                          -> ProgramConfiguration (addToFM conf' n p))
+                     (ProgramConfiguration emptyFM)
                      progs
 
 simpleProgram :: String -> Program

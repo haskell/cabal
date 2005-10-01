@@ -86,7 +86,7 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
-                            haddockProgram)
+                            updateProgram, haddockProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -164,6 +164,7 @@ configure pkg_descr cfg
         reportProgram "c2hs"      c2hs
         reportProgram "cpphs"     cpphs
         reportProgram "greencard" greencard
+        let newConfig = updateProgram haddock (configPrograms cfg)
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
             ipkgs <-  getInstalledPackagesAux comp cfg
@@ -172,6 +173,7 @@ configure pkg_descr cfg
 	return LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
                               packageDeps=dep_pkgs,
+                              withPrograms=newConfig,
                               withHaddock=haddock,
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
