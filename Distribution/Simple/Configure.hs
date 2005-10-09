@@ -86,7 +86,7 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
-                            updateProgram, haddockProgram)
+                            updateProgram, haddockProgram, pfesetupProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -144,7 +144,10 @@ configure pkg_descr cfg
             show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
         let haddockName = programName haddockProgram
+        -- FIX: just do a map over all of them :)
         haddock   <- lookupProgram haddockName (configPrograms cfg)
+        pfe   <- lookupProgram (programName pfesetupProgram) (configPrograms cfg)
+
         happy     <- findProgram "happy"     (configHappy cfg)
         alex      <- findProgram "alex"      (configAlex cfg)
         hsc2hs    <- findProgram "hsc2hs"    (configHsc2hs cfg)
@@ -158,6 +161,7 @@ configure pkg_descr cfg
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
         reportProgram' haddockName haddock
+        reportProgram' (programName pfesetupProgram) pfe
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs

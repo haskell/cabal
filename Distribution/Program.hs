@@ -67,7 +67,8 @@ instance Read ProgramConfiguration where
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
-                              [ haddockProgram ]
+                              [ haddockProgram
+                              , pfesetupProgram]
 -- haddock is currently the only one that really works.
 {-                              [ ghcProgram
                               , ghcPkgProgram
