@@ -404,23 +404,13 @@ distPref = "dist"
 haddock :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
 haddock pkg_descr lbi verbose pps =
     withLib pkg_descr () $ \lib -> do
-
-        -- get all of the configure information about Haddock.  FIX:
-        -- This complexity will go away when we get rid of withHaddock
         confHaddock <- do let programConf = withPrograms lbi
                           let haddockName = programName $ haddockProgram
                           mHaddock <- lookupProgram haddockName programConf
-                          case withHaddock lbi of
-                           Nothing ->
-                              case mHaddock of
-                               Nothing -> (die "haddock command not found")
-                               Just h  -> return h
-                             -- uug; get the location from withHaddock
-                           Just withH  ->
-                              case mHaddock of
-                               Nothing  -> return withH
-                               Just confH -> return confH{programLocation
-                                                       =(programLocation withH)}
+                          case mHaddock of
+                            Nothing -> (die "haddock command not found")
+                            Just h  -> return h
+
         let bi = libBuildInfo lib
         let targetDir = joinPaths distPref (joinPaths "doc" "html")
         let tmpDir = joinPaths (buildDir lbi) "tmp"

@@ -174,7 +174,6 @@ configure pkg_descr cfg
 			      buildDir="dist" `joinFileName` "build",
                               packageDeps=dep_pkgs,
                               withPrograms=newConfig,
-                              withHaddock=haddock,
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
                               withCpphs=cpphs,

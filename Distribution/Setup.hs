@@ -141,13 +141,14 @@ emptyConfigFlags = ConfigFlags {
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithCompiler FilePath | WithHcPkg FilePath | Prefix FilePath
-          | WithHaddock FilePath | WithHappy FilePath | WithAlex FilePath
+          | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
           | WithGreencard FilePath
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
 	  | WithGHCiLib | WithoutGHCiLib
-          | ProgramArgs String String -- program name, arguments
+          | ProgramArgs String String   -- program name, arguments
+          | WithProgram String FilePath -- program name, location
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -256,8 +257,6 @@ configureCmd = Cmd {
                "give the path to the package tool",
            Option "" ["prefix"] (reqDirArg Prefix)
                "bake this prefix in preparation of installation",
-           Option "" ["with-haddock"] (reqPathArg WithHaddock)
-               "give the path to haddock",
            Option "" ["with-happy"] (reqPathArg WithHappy)
                "give the path to happy",
            Option "" ["with-alex"] (reqPathArg WithAlex)
@@ -287,7 +286,15 @@ configureCmd = Cmd {
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) dependencies must be satisfied from the global package database"
            ]
-         ++ (programArgsOptions defaultProgramConfiguration), -- FIX: shouldn't use default.
+{- 
+   FIX: Instead of using ++ here, we might add extra arguments.  That
+   way, we can condense the help out put to something like
+   --with-{haddock,happy,alex,etc}
+
+   FIX: shouldn't use default. Look in hooks?.
+-}
+         ++ (withProgramOptions defaultProgramConfiguration)
+         ++ (programArgsOptions defaultProgramConfiguration),
         cmdAction      = ConfigCmd emptyConfigFlags
         }
 
@@ -295,6 +302,11 @@ programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
 programArgsOptions (ProgramConfiguration conf) = map f (keysFM conf)
     where f name = Option "" [name ++ "-args"] (reqPathArg (ProgramArgs name))
                    ("give the args to " ++ name)
+
+withProgramOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
+withProgramOptions (ProgramConfiguration conf) = map f (keysFM conf)
+    where f name = Option "" ["with-" ++ name] (reqPathArg (WithProgram name))
+                   ("give the path to " ++ name)
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . platformPath) "PATH"
@@ -308,9 +320,6 @@ parseConfigureArgs = parseArgs configureCmd updateCfg
   where updateCfg t GhcFlag              = t { configHcFlavor = Just GHC }
         updateCfg t NhcFlag              = t { configHcFlavor = Just NHC }
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
-        updateCfg t (WithHaddock path)   = t { configPrograms = (userSpecifyPath
-                                                                 (programName haddockProgram)
-                                                                 path (configPrograms t))}
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
         updateCfg t (WithHappy path)     = t { configHappy    = Just path }
@@ -319,7 +328,10 @@ parseConfigureArgs = parseArgs configureCmd updateCfg
         updateCfg t (WithC2hs path)      = t { configC2hs     = Just path }
         updateCfg t (WithCpphs path)     = t { configCpphs    = Just path }
         updateCfg t (WithGreencard path) = t { configGreencard= Just path }
-        updateCfg t (ProgramArgs name path) = t { configPrograms = (userSpecifyArgs
+        updateCfg t (ProgramArgs name args) = t { configPrograms = (userSpecifyArgs
+                                                                 name
+                                                                 args (configPrograms t))}
+        updateCfg t (WithProgram name path) = t { configPrograms = (userSpecifyPath
                                                                  name
                                                                  path (configPrograms t))}
         updateCfg t WithProfLib          = t { configProfLib  = True }
