@@ -52,7 +52,7 @@ instance Show ProgramConfiguration where
   show (ProgramConfiguration s) = show $ fmToList s
 
 instance Read ProgramConfiguration where
-  readsPrec _ s = [(ProgramConfiguration $ listToFM $ read s, "")]
+  readsPrec p s = [(ProgramConfiguration $ listToFM $ s', r) | (s', r) <- readsPrec p s ]
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
@@ -173,8 +173,8 @@ userSpecifyArgs :: String -- ^Program name
                 -> ProgramConfiguration
 userSpecifyArgs name args conf'@(ProgramConfiguration conf)
     = case lookupFM conf name of
-       Just p  -> updateProgram (Just p{programArgs=[args]}) conf'
-       Nothing -> updateProgram (Just $ Program name name [args] EmptyLocation) conf'
+       Just p  -> updateProgram (Just p{programArgs=(words args)}) conf'
+       Nothing -> updateProgram (Just $ Program name name (words args) EmptyLocation) conf'
 
 updateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
 updateProgram (Just p@Program{programName=n}) (ProgramConfiguration conf)

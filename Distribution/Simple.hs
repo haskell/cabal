@@ -67,7 +67,7 @@ module Distribution.Simple (
 import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Program(lookupProgram, Program(..))
+import Distribution.Program(lookupProgram, Program(..), haddockProgram)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -402,8 +402,23 @@ distPref = "dist"
 haddock :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
 haddock pkg_descr lbi verbose pps =
     withLib pkg_descr () $ \lib -> do
-        let mHaddock = withHaddock lbi
-        when (isNothing mHaddock) (die "haddock command not found")
+
+        -- get all of the configure information about Haddock.  FIX:
+        -- This complexity will go away when we get rid of withHaddock
+        confHaddock <- do let programConf = withPrograms lbi
+                          let haddockName = programName $ haddockProgram
+                          mHaddock <- lookupProgram haddockName programConf
+                          case withHaddock lbi of
+                           Nothing ->
+                              case mHaddock of
+                               Nothing -> (die "haddock command not found")
+                               Just h  -> return h
+                             -- uug; get the location from withHaddock
+                           Just withH  ->
+                              case mHaddock of
+                               Nothing  -> return withH
+                               Just confH -> return confH{programLocation
+                                                       =(programLocation withH)}
         let bi = libBuildInfo lib
         let targetDir = joinPaths distPref (joinPaths "doc" "html")
         let tmpDir = joinPaths (buildDir lbi) "tmp"
@@ -419,11 +434,11 @@ haddock pkg_descr lbi verbose pps =
         setupMessage "Running Haddock for" pkg_descr
         let outFiles = map (joinFileName tmpDir)
                        (map ((flip changeFileExt) "hs") inFiles)
-        code <- rawSystemVerbose verbose (programBinName $ fromJust mHaddock)
+        code <- rawSystemVerbose verbose (programBinName confHaddock)
                 (["-h",
                   "-o", targetDir,
                   "-t", showPkg,
-                  "-p", prologName]
+                  "-p", prologName] ++ (programArgs confHaddock)
                 ++ (if verbose > 4 then ["-v"] else [])
                 ++ outFiles
                 )
