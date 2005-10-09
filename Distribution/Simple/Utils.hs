@@ -95,7 +95,7 @@ import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt,
 	pathSeparator)
 import System.Directory (getDirectoryContents, getCurrentDirectory,
-                        doesFileExist, removeFile)
+                         doesFileExist, removeFile, getPermissions, executable)
 
 import Distribution.Compat.Directory (copyFile,findExecutable,createDirectoryIfMissing)
 
@@ -129,16 +129,19 @@ rawSystemPath verbose prog args = do
   r <- findExecutable prog
   case r of
     Nothing -> die ("Cannot find: " ++ prog)
-    Just path -> do
-      when (verbose > 0) $
-        putStrLn (path ++ concatMap (' ':) args)
-      rawSystem path args
+    Just path -> rawSystemVerbose verbose path args
 
-rawSystemVerbose :: Int -> String -> [String] -> IO ExitCode
+rawSystemVerbose :: Int -> FilePath -> [String] -> IO ExitCode
 rawSystemVerbose verbose prog args = do
       when (verbose > 0) $
         putStrLn (prog ++ concatMap (' ':) args)
-      rawSystem prog args
+      e <- doesFileExist prog
+      if e
+         then do perms <- getPermissions prog
+                 if (executable perms)
+                    then rawSystem prog args
+                    else die ("Error: file is not executable: " ++ show prog)
+         else die ("Error: file does not exist: " ++ show prog)
 
 maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
