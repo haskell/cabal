@@ -67,7 +67,8 @@ module Distribution.Simple (
 import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Program(lookupProgram, Program(..), haddockProgram)
+import Distribution.Program(lookupProgram, Program(..),
+                            haddockProgram, rawSystemProgram)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -80,8 +81,9 @@ import Distribution.Simple.Register	( register, unregister,
                                           regScriptLocation, unregScriptLocation
                                         )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, findProgram,
-				     configure, writePersistBuildConfig, localBuildInfoFile)
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
+                                     findProgram, configure, writePersistBuildConfig,
+                                     localBuildInfoFile)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
@@ -434,7 +436,7 @@ haddock pkg_descr lbi verbose pps =
         setupMessage "Running Haddock for" pkg_descr
         let outFiles = map (joinFileName tmpDir)
                        (map ((flip changeFileExt) "hs") inFiles)
-        code <- rawSystemVerbose verbose (programBinName confHaddock)
+        code <- rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", targetDir,
                   "-t", showPkg,

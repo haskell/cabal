@@ -9,6 +9,8 @@ module Distribution.Program( Program(..)
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
+                           , rawSystemProgram
+                             -- Programs
                            , ghcProgram
                            , ghcPkgProgram
                            , nhcProgram
@@ -25,7 +27,10 @@ module Distribution.Program( Program(..)
                            ) where
 
 import Data.FiniteMap
+import Control.Monad(when)
+import System.Exit (ExitCode)
 import Distribution.Compat.Directory(findExecutable)
+import Distribution.Simple.Utils (die, rawSystemVerbose)
 
 -- |Represents a program which cabal may call.
 data Program
@@ -48,15 +53,23 @@ data ProgramLocation = EmptyLocation
 
 data ProgramConfiguration = ProgramConfiguration (FiniteMap String Program)
 
+-- Read & Show instances are based on listToFM
+
 instance Show ProgramConfiguration where
   show (ProgramConfiguration s) = show $ fmToList s
 
 instance Read ProgramConfiguration where
-  readsPrec p s = [(ProgramConfiguration $ listToFM $ s', r) | (s', r) <- readsPrec p s ]
+  readsPrec p s = [(ProgramConfiguration $ listToFM $ s', r)
+                       | (s', r) <- readsPrec p s ]
+
+-- |The default list of programs and their arguments.  These programs
+-- are typically used internally to Cabal.
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
-                              [ ghcProgram
+                              [ haddockProgram ]
+-- haddock is currently the only one that really works.
+{-                              [ ghcProgram
                               , ghcPkgProgram
                               , nhcProgram
                               , hugsProgram
@@ -69,7 +82,7 @@ defaultProgramConfiguration = progListToFM
                               , ldProgram
                               , cppProgram
                               , pfesetupProgram
-                              ]
+                              ]-}
 
 -- |The flag for giving a path to this program.  eg --with-alex=\/usr\/bin\/alex
 withProgramFlag :: Program -> String
@@ -132,13 +145,12 @@ pfesetupProgram = simpleProgram "pfesetup"
 -- * helpers
 -- ------------------------------------------------------------
 
--- |Looks up a program in the given configuration.  If the user
--- provides a location, then we use that location in the returned
--- program.  If no location is given then we check in the
--- configuration for a location.  If there's none in the
--- configuration, then we use IO to look on the system.  Do we want a
--- way to specify NOT to find it on the system (populate
--- programLocation).
+-- |Looks up a program in the given configuration.  If there's no
+-- location information in the configuration, then we use IO to look
+-- on the system in PATH for the program.  If the program is not in
+-- the configuration at all, we return Nothing.  FIX: should we build
+-- a simpleProgram in that case? Do we want a way to specify NOT to
+-- find it on the system (populate programLocation).
 
 lookupProgram :: String -- simple name of program
               -> ProgramConfiguration
@@ -155,8 +167,10 @@ lookupProgram name conf =
                          a   -> return a
               return $ Just p{programLocation=newLoc}
 
--- |User-specify this path.  If it's not a known program, add it.
-userSpecifyPath :: String -- ^Program name
+-- |User-specify this path.  Basically override any path information
+-- for this program in the configuration. If it's not a known
+-- program, add it.
+userSpecifyPath :: String   -- ^Program name
                 -> FilePath -- ^user-specified path to filename
                 -> ProgramConfiguration
                 -> ProgramConfiguration
@@ -166,7 +180,9 @@ userSpecifyPath name path conf'@(ProgramConfiguration conf)
        Nothing -> updateProgram (Just $ Program name name [] (UserSpecified path))
                                 conf'
 
--- |User-specify this path.  If it's not a known program, add it.
+-- |User-specify the arguments for this program.  Basically override
+-- any args information for this program in the configuration. If it's
+-- not a known program, add it.
 userSpecifyArgs :: String -- ^Program name
                 -> String -- ^user-specified args
                 -> ProgramConfiguration
@@ -176,10 +192,31 @@ userSpecifyArgs name args conf'@(ProgramConfiguration conf)
        Just p  -> updateProgram (Just p{programArgs=(words args)}) conf'
        Nothing -> updateProgram (Just $ Program name name (words args) EmptyLocation) conf'
 
+-- |Update this program's entry in the configuration.  No changes if
+-- you pass in Nothing.
 updateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
 updateProgram (Just p@Program{programName=n}) (ProgramConfiguration conf)
     = ProgramConfiguration $ addToFM conf n p
 updateProgram Nothing conf = conf
+
+-- |Runs the given program.
+rawSystemProgram :: Int      -- ^Verbosity
+                 -> Program  -- ^The program to run
+                 -> [String] -- ^Any /extra/ arguments to add
+                 -> IO ExitCode
+rawSystemProgram verbose (Program { programLocation=(UserSpecified p)
+                                  , programArgs=args
+                                  })
+
+                 extraArgs = rawSystemVerbose verbose p (extraArgs ++ args)
+rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
+                                  , programArgs=args
+                                  })
+
+                 extraArgs = rawSystemVerbose verbose p (extraArgs ++ args)
+rawSystemProgram _ (Program { programLocation=EmptyLocation
+                            , programName=n})_ 
+    = die ("Error: Could not find location for program: " ++ n)
 
 -- ------------------------------------------------------------
 -- * Internal helpers
