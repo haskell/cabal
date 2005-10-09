@@ -63,7 +63,6 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
         withPrograms  :: ProgramConfiguration, -- location and args for all programs
-        withHaddock   :: Maybe Program, -- ^Might be the location of the Haddock executable.
         withHappy     :: Maybe FilePath, -- ^Might be the location of the Happy executable.
         withAlex      :: Maybe FilePath, -- ^Might be the location of the Alex executable.
         withHsc2hs    :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
