@@ -1,3 +1,10 @@
+* Program
+
+** Got basic haddock stuff working, --with-haddock and --haddock-args.
+   Next some other programs, then non-preprocessor, then the
+   preprocessors, finally the compilers.  Work w/ backward
+   compatibility here.
+
 ------------------------------------------------------------
 -= 1.2 =-
 
