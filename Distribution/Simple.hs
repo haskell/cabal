@@ -68,7 +68,8 @@ import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.Program(lookupProgram, Program(..),
-                            haddockProgram, rawSystemProgram)
+                            haddockProgram, rawSystemProgram,
+                            pfesetupProgram)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -459,15 +460,19 @@ pfe pkg_descr _lbi verbose pps = do
         die "no libraries found in this project"
     withLib pkg_descr () $ \lib -> do
         lbi <- getPersistBuildConfig
-        mPfe <- findProgram "pfesetup" Nothing
-        when (isNothing mPfe) (die "pfe command not found")
-        putStrLn $ "using : " ++ fromJust mPfe
+        confPfe <- do let programConf = withPrograms lbi
+                      let progName = programName $ pfesetupProgram
+                      mProg <- lookupProgram progName programConf
+                      case mProg of
+                        Nothing -> (die (progName ++ " command not found"))
+                        Just h  -> return h
+
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
         preprocessSources pkg_descr lbi verbose pps
         inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
                                 | m <- mods] >>= return . concat
-        rawSystemVerbose verbose (fromJust mPfe)
+        rawSystemProgram verbose confPfe
                 ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
                 ++ inFiles)
         return ()
