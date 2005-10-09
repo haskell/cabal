@@ -128,7 +128,7 @@ rawSystemPath :: Int -> String -> [String] -> IO ExitCode
 rawSystemPath verbose prog args = do
   r <- findExecutable prog
   case r of
-    Nothing -> die ("Cannot find: " ++ prog)
+    Nothing   -> die ("Cannot find: " ++ prog)
     Just path -> rawSystemVerbose verbose path args
 
 rawSystemVerbose :: Int -> FilePath -> [String] -> IO ExitCode
