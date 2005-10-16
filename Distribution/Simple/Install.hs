@@ -63,6 +63,9 @@ import Distribution.PackageDescription (
 	setupMessage, hasLibs, withLib, libModules, withExe,
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
+import Distribution.Program(ProgramConfiguration, Program(..), ProgramLocation(..),
+                            rawSystemProgram, ranlibProgram,
+                            lookupProgram, arProgram)
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir)
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
@@ -100,7 +103,7 @@ install pkg_descr lbi (copydest, verbose) = do
   let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
+     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withPrograms lbi) (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
                 installExeGhc verbose binPref buildPref pkg_descr
      Hugs -> do
        let progPref = mkProgDir pkg_descr lbi copydest
@@ -123,13 +126,15 @@ installExeGhc verbose pref buildPref pkg_descr
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLibGHC :: Int      -- ^verbose
+              -> ProgramConfiguration
               -> Bool     -- ^has profiling library
 	      -> Bool     -- ^has GHCi libs
               -> FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLibGHC verbose hasProf hasGHCi pref buildPref pd@PackageDescription{library=Just l,
-                                                   package=p}
+installLibGHC verbose programConf hasProf hasGHCi pref buildPref
+              pd@PackageDescription{library=Just l,
+                                    package=p}
     = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True
          ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True
          let libTargetLoc = mkLibName pref (showPackageId p)
@@ -142,21 +147,29 @@ installLibGHC verbose hasProf hasGHCi pref buildPref pd@PackageDescription{libra
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
          -- don't worry too much about it.
-         mRanlibLoc <- findExecutable "ranlib"
-         case mRanlibLoc of
-          Just ranLibLoc -> do rawSystemVerbose verbose ranLibLoc [libTargetLoc]
-                               ifProf $ rawSystemVerbose verbose ranLibLoc [profLibTargetLoc]
-                               return ()
-          Nothing -> do mArLoc <- findExecutable "ar"
-                        case mArLoc of
-                         Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
-                         Just arLoc -> do rawSystemVerbose verbose "ar" ["-s", libTargetLoc]
-                                          ifProf $ rawSystemVerbose verbose "ar" ["-s", profLibTargetLoc]
-                                          return ()
+         let progName = programName $ ranlibProgram
+         mProg <- lookupProgram progName programConf
+         case foundProg mProg of
+           Just rl  -> do rawSystemProgram verbose rl [libTargetLoc]
+                          ifProf $ rawSystemProgram verbose rl [profLibTargetLoc]
+
+           Nothing -> do let progName = programName $ arProgram
+                         mProg <- lookupProgram progName programConf
+                         case mProg of
+                          Just ar  -> do rawSystemProgram verbose ar ["-s", libTargetLoc]
+                                         ifProf $ rawSystemProgram verbose ar ["-s", profLibTargetLoc]
+                          Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
+         return ()
     where ifProf action = when hasProf (action >> return ())
 	  ifGHCi action = when hasGHCi (action >> return ())
-installLibGHC _ _ _ _ _ PackageDescription{library=Nothing}
+installLibGHC _ _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
+
+-- Also checks whether the program was actually found.
+foundProg :: Maybe Program -> Maybe Program
+foundProg Nothing = Nothing
+foundProg (Just Program{programLocation=EmptyLocation}) = Nothing
+foundProg x = x
 
 -- Install for Hugs
 -- For install, copy-prefix = prefix, but for copy they're different.
