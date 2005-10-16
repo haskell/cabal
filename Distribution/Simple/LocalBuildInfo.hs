@@ -54,8 +54,20 @@ module Distribution.Simple.LocalBuildInfo (
 	substDir,
   ) where
 
+
 import Distribution.Package (PackageIdentifier)
+import Distribution.Program (ProgramLocation, Program, ProgramConfiguration)
 import Distribution.Compiler (Compiler)
+import Distribution.PackageDescription (PackageDescription(..), hasLibs)
+import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
+import Distribution.Setup (CopyDest(..))
+import Distribution.Compat.FilePath
+import Data.Maybe (fromMaybe)
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+import Foreign
+import Foreign.C
+#endif
 
 -- |Data cached after configuration step.
 data LocalBuildInfo = LocalBuildInfo {
