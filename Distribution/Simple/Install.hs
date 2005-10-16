@@ -144,8 +144,8 @@ installLibGHC verbose hasProf hasGHCi pref buildPref pd@PackageDescription{libra
          -- don't worry too much about it.
          mRanlibLoc <- findExecutable "ranlib"
          case mRanlibLoc of
-          Just ranLibLoc -> do rawSystemVerbose verbose "ranlib" [libTargetLoc]
-                               ifProf $ rawSystemVerbose verbose "ranlib" [profLibTargetLoc]
+          Just ranLibLoc -> do rawSystemVerbose verbose ranLibLoc [libTargetLoc]
+                               ifProf $ rawSystemVerbose verbose ranLibLoc [profLibTargetLoc]
                                return ()
           Nothing -> do mArLoc <- findExecutable "ar"
                         case mArLoc of
