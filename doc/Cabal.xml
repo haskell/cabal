@@ -5,7 +5,13 @@
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
     <!ENTITY Extension '<ulink url="../libraries/Cabal/Language.Haskell.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
-    <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/">Haddock</ulink>'>
+    <!ENTITY Alex '<ulink url="http://www.haskell.org/alex/"><command>alex</command></ulink>'>
+    <!ENTITY Autoconf '<ulink url="http://www.gnu.org/software/autoconf/"><command>autoconf</command></ulink>'>
+    <!ENTITY C2hs '<ulink url="http://www.cse.unsw.edu.au/~chak/haskell/c2hs/"><command>c2hs</command></ulink>'>
+    <!ENTITY Cpphs '<ulink url="http://www.haskell.org/cpphs/"><command>cpphs</command></ulink>'>
+    <!ENTITY Greencard '<ulink url="http://www.haskell.org/greencard/"><command>haddock</command></ulink>'>
+    <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/"><command>haddock</command></ulink>'>
+    <!ENTITY Happy '<ulink url="http://www.haskell.org/happy/"><command>happy</command></ulink>'>
   ]>
 
 <article>
@@ -14,9 +20,10 @@
 
   <abstract>
     <para>The <firstterm>Cabal</firstterm> aims to simplify the
-      distribution of Haskell software.  It does this by specifying a
-      number of interfaces between package authors, builders and users,
-      as well as providing a library implementing these interfaces.</para>
+      distribution of <ulink url="http://www.haskell.org/">Haskell</ulink>
+      software.  It does this by specifying a number of interfaces between
+      package authors, builders and users, as well as providing a library
+      implementing these interfaces.</para>
   </abstract>
 
   <sect1 id="packages">
@@ -297,14 +304,14 @@ Other-Modules:   A, C, Utils</programlisting>
           <quote><literal>.lhs</literal></quote>, or to inputs for
           various Haskell preprocessors.
           The simple build infrastructure understands the extensions
-          <quote><literal>.gc</literal></quote> (GreenCard),
-          <quote><literal>.chs</literal></quote> (<command>c2hs</command>),
+          <quote><literal>.gc</literal></quote> (&Greencard;),
+          <quote><literal>.chs</literal></quote> (&C2hs;),
           <quote><literal>.hsc</literal></quote> (<command>hsc2hs</command>),
           <quote><literal>.y</literal></quote> and
-          <quote><literal>.ly</literal></quote> (<command>happy</command>),
-          <quote><literal>.x</literal></quote> (<command>alex</command>)
+          <quote><literal>.ly</literal></quote> (&Happy;),
+          <quote><literal>.x</literal></quote> (&Alex;)
           and
-          <quote><literal>.cpphs</literal></quote> (<command>cpphs</command>).
+          <quote><literal>.cpphs</literal></quote> (&Cpphs;).
           When building, Cabal will automatically run the appropriate
           preprocessor and compile the Haskell module it produces.</para>
       </note>
@@ -502,6 +509,21 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
+              <literal>data-files:</literal>
+              <replaceable>filename list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of files to be installed for run-time use by
+                the package.  This is useful for packages that use a
+                large amount of static data, such as tables of values
+                or code templates.  For details on how to find these
+                files at run-time, see
+                <xref linkend="paths-module"/>.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
               <literal>extra-source-files:</literal>
               <replaceable>filename list</replaceable>
             </term>
@@ -655,7 +677,11 @@ Other-Modules:   A, C, Utils</programlisting>
               <para>Extensions used only by one module may be specified
                 by placing a <literal>LANGUAGE</literal> pragma in the
                 source file affected, e.g.:</para>
-                <programlisting>{-# LANGUAGE CPP, MultiParamTypeClasses #-}</programlisting>
+              <programlisting>{-# LANGUAGE CPP, MultiParamTypeClasses #-}</programlisting>
+	      <note>
+		<para>GHC doesn't support the <literal>LANGUAGE</literal>
+		  pragma yet.</para>
+	      </note>
             </listitem>
           </varlistentry>
 
@@ -824,6 +850,24 @@ Other-Modules:   A, C, Utils</programlisting>
       </sect3>
     </sect2>
 
+    <sect2 id="paths-module">
+      <title>Accessing data files from package code</title>
+      <para>The placement on the target system of files listed in the
+	<literal>data-files</literal> field varies between systems, and in
+	some cases one can even move packages around after installation
+	(see <xref linkend="prefix-independence"/>).  To enable packages
+	to find these files in a portable way, Cabal generates a module
+	called <literal>Paths_</literal><replaceable>pkgname</replaceable>
+	(with any hyphens in <replaceable>pkgname</replaceable> replaced
+	by underscores) during building, so that it may be imported by
+	modules of the package.  This module defines a function
+	<programlisting>getDataFileName :: FilePath -> IO FilePath</programlisting>
+	If the argument is a filename listed in the
+	<literal>data-files</literal> field, the result is the name
+	of the corresponding file on the system on which the program
+	is running.</para>
+    </sect2>
+
     <sect2 id="system-dependent">
       <title>System-dependent parameters</title>
 
@@ -843,7 +887,7 @@ main = defaultMainWithHooks defaultUserHooks</programlisting>
           <para>If the package root directory contains a file called
             <filename>configure</filename>, the configure step will
             run that.  This <filename>configure</filename> program may
-            be a script produced by the <command>autoconf</command>
+            be a script produced by the &Autoconf;
             system, or may be hand-written.  This program typically
             discovers information about the system and records it for
             later steps, e.g. by generating system-dependent header files
@@ -892,7 +936,7 @@ executable: <replaceable>name</replaceable>
       <example>
         <title>Using autoconf</title>
 
-        <para>(This example is for people familiar with the autoconf
+        <para>(This example is for people familiar with the &Autoconf;
           tools.)</para>
 
         <para>In the X11 package, the file <filename>configure.ac</filename>
@@ -996,28 +1040,42 @@ main = defaultMain</programlisting>
 
           <itemizedlist>
             <listitem>
-              <para>The <literal>--with-hc</literal>,
-                <literal>--with-hc-pkg</literal> and
-                <literal>--prefix</literal> options to the
+              <para>The <option>--with-hc</option>,
+                <option>--with-hc-pkg</option>,
+                <option>--prefix</option>, <option>--bindir</option>,
+                <option>--libdir</option>, <option>--datadir</option>
+                and <option>--libexecdir</option> options to the
                 <literal>configure</literal> command are passed on to
                 the <filename>configure</filename> script.</para>
             </listitem>
 
             <listitem>
-              <para>the <literal>--copy-prefix</literal> option to the
+              <para>the <literal>--destdir</literal> option to the
                 <literal>copy</literal> command becomes a setting of a
-                <literal>prefix</literal> variable on the invocation of
-                <literal>make install</literal>.</para>
+                <literal>destdir</literal> variable on the invocation of
+                <literal>make copy</literal>.  The supplied
+                <literal>Makefile</literal> should provide a
+                <literal>copy</literal> target, which will probably
+                look like this:
+<programlisting>
+copy :
+        $(MAKE) install prefix=$(destdir)/$(prefix) \
+                        bindir=$(destdir)/$(bindir) \
+                        libdir=$(destdir)/$(libdir) \
+                        datadir=$(destdir)/$(datadir) \
+                        libexecdir=$(destdir)/$(libexecdir)</programlisting>
+</para>
+
             </listitem>
           </itemizedlist>
         </listitem>
 
         <listitem>
           <para>You can write your own setup script conforming to the
-            interface of <xref linkend="builders"/>, possibly using the
-            Cabal library for part of the work.  One option is to copy the
-            source of Distribution.Simple, and alter it for your needs.
-            Good luck.</para>
+            interface of <xref linkend="builders"/>, possibly using
+            the Cabal library for part of the work.  One option is to
+            copy the source of <literal>Distribution.Simple</literal>,
+            and alter it for your needs.  Good luck.</para>
         </listitem>
       </itemizedlist>
     </sect2>
@@ -1035,8 +1093,8 @@ main = defaultMain</programlisting>
       <arg rep="repeat" choice="opt"><replaceable>option</replaceable></arg>
     </cmdsynopsis>
     <para>where <literal>runhaskell</literal> might be
-      <literal>runhugs</literal>, <literal>runghc</literal> or
-      <literal>runnhc</literal>.  The <replaceable>command</replaceable>
+      <command>runhugs</command>, <command>runghc</command> or
+      <command>runnhc</command>.  The <replaceable>command</replaceable>
       argument selects a particular step in the build/install process.
       You can also get a summary of the command syntax with</para>
     <cmdsynopsis>
@@ -1075,7 +1133,7 @@ runhaskell Setup.hs install --user</screen>
       <screen>
 runhaskell Setup.hs configure --ghc --prefix=/usr
 runhaskell Setup.hs build
-runhaskell Setup.hs copy --copy-prefix=/tmp/mypkg/usr
+runhaskell Setup.hs copy --destdir=/tmp/mypkg
 (cd /tmp/mypkg; tar cf - .) | gzip -9 >mypkg.tar.gz</screen>
 
       <para>If the package contains a library, you need two additional
@@ -1123,177 +1181,419 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
     <sect2 id="setup-configure">
       <title>setup configure</title>
-      <para>Prepare to build the package.
-        Typically, this step checks that the target platform is capable
-        of building the package, and discovers platform-specific features
-        that are needed during the build.  In addition to the general
-        options, this command recognizes the following</para>
+      <para>Prepare to build the package.  Typically, this step checks
+	that the target platform is capable of building the package,
+	and discovers platform-specific features that are needed during
+	the build.</para>
 
-      <variablelist>
-        <varlistentry>
-          <term><option>--prefix</option>=<replaceable>dir</replaceable></term>
-          <listitem>
-            <para>Specify the installation prefix
-              (default: <filename>/usr/local</filename> on Unix systems,
-              the Program Files folder on Windows, e.g.
-              <filename>C:\Program Files</filename> in an English
-              locale).</para>
-          </listitem>
-        </varlistentry>
+      <para>The user may also adjust the behaviour of later stages using
+	the options listed in the following subsections.  In the simple
+	build infrastructure, the values supplied via these options are
+	recorded in a private file read by later stages.</para>
 
-        <varlistentry>
-          <term><option>--ghc</option> or <option>-g</option></term>
-          <term><option>--nhc</option> or <option>-n</option></term>
-          <term><option>--hugs</option></term>
-          <listitem>
-            <para>Specify which Haskell implementation to use to build
-              the package.  At most one of these flags may be given.
-              If none is given, the implementation under which the setup
-              script was compiled or interpreted is used.</para>
-          </listitem>
-        </varlistentry>
+      <para>If a user-supplied <filename>configure</filename>
+	script is run (see <xref linkend="system-dependent"/>
+	or <xref linkend="complex-packages"/>), it is passed the
+	<option>--with-hc</option>, <option>--with-hc-pkg</option>,
+	<option>--prefix</option>, <option>--bindir</option>,
+	<option>--libdir</option>, <option>--datadir</option> and
+	<option>--libexecdir</option> options, plus any unrecognized
+	options.</para>
 
-        <varlistentry>
-          <term><option>--with-compiler</option>=<replaceable>path</replaceable>
-  	  or <option>-w</option><replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to a particular compiler.  If given,
-              this must match the implementation selected above.
-              The default is to search for the usual name of the
-              selected implementation.</para>
-          </listitem>
-        </varlistentry>
+      <sect3 id="setup-configure-programs">
+	<title>Programs used for building</title>
 
-        <varlistentry>
-          <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to the package tool, e.g.
-              <literal>ghc-pkg</literal>.</para>
-          </listitem>
-        </varlistentry>
+	<para>The following options govern the programs used to process
+	  the source files of a package:</para>
 
-        <varlistentry>
-          <term><option>--with-haddock</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to &Haddock;.</para>
-          </listitem>
-        </varlistentry>
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--ghc</option> or <option>-g</option></term>
+	    <term><option>--nhc</option> or <option>-n</option></term>
+	    <term><option>--hugs</option></term>
+	    <listitem>
+	      <para>Specify which Haskell implementation to use to build
+		the package.  At most one of these flags may be given.
+		If none is given, the implementation under which the setup
+		script was compiled or interpreted is used.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-happy</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>happy</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-compiler</option>=<replaceable>path</replaceable>
+	    or <option>-w</option><replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to a particular compiler.  If given,
+		this must match the implementation selected above.
+		The default is to search for the usual name of the
+		selected implementation.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-alex</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>alex</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to the package tool, e.g.
+		<command>ghc-pkg</command>.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-hsc2hs</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>hsc2hs</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-haddock</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &Haddock;.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-c2hs</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>c2hs</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-happy</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &Happy;.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-greencard</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>greencard</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-alex</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &Alex;.</para>
+	    </listitem>
+	  </varlistentry>
 
-        <varlistentry>
-          <term><option>--with-cpphs</option>=<replaceable>path</replaceable></term>
-          <listitem>
-            <para>Specify the path to <command>cpphs</command>.</para>
-          </listitem>
-        </varlistentry>
+	  <varlistentry>
+	    <term><option>--with-hsc2hs</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to <command>hsc2hs</command>.</para>
+	    </listitem>
+	  </varlistentry>
 
-	<varlistentry>
-	  <term><option>--user</option></term>
-	  <listitem>
-	    <para>Allow dependencies to be satisfied by the user package
-	      database, in addition to the global database.</para>
-	  </listitem>
-	</varlistentry>
+	  <varlistentry>
+	    <term><option>--with-c2hs</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &C2hs;.</para>
+	    </listitem>
+	  </varlistentry>
 
-	<varlistentry>
-	  <term><option>--global</option></term>
-	  <listitem>
-	    <para>(default) Dependencies must be satisfied by the global
-	      package database.</para>
-	  </listitem>
-	</varlistentry>
+	  <varlistentry>
+	    <term><option>--with-greencard</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &Greencard;.</para>
+	    </listitem>
+	  </varlistentry>
 
-	<varlistentry>
-	  <term><option>--enable-library-profiling</option> or
-            <option>-p</option></term>
-	  <listitem>
-	    <para>Request that an additional version of the library
-	      with profiling features enabled be built and installed
-	      (only for implementations that support profiling).</para>
-	  </listitem>
-	</varlistentry>
+	  <varlistentry>
+	    <term><option>--with-cpphs</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &Cpphs;.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
 
-	<varlistentry>
-	  <term><option>--disable-library-profiling</option></term>
-	  <listitem>
-	    <para>(default) Do not generate an additional profiling
-              version of the library.</para>
-	  </listitem>
-	</varlistentry>
+      </sect3>
 
-	<varlistentry>
-	  <term><option>--enable-executable-profiling</option></term>
-	  <listitem>
-	    <para>Any executables generated should have profiling enabled
-	      (only for implementations that support profiling).  For this
-	      to work, all libraries used by these executables must also
-	      have been built with profiling support.</para>
-	  </listitem>
-	</varlistentry>
+      <sect3 id="setup-configure-paths">
+	<title>Installation paths</title>
 
-	<varlistentry>
-	  <term><option>--disable-executable-profiling</option></term>
-	  <listitem>
-	    <para>(default) Do not enable profiling in generated
-              executables.</para>
-	  </listitem>
-	</varlistentry>
-      </variablelist>
+	<para>The following options govern the location of installed files
+	  from a package:</para>
 
-      <para>In the simple build infrastructure, an additional option
-        is recognized:</para>
-      <variablelist>
-        <varlistentry>
-          <term><option>--scratchdir</option>=<replaceable>dir</replaceable> or
-            <option>-b</option><replaceable>dir</replaceable></term>
-          <listitem>
-            <para>Specify the directory into which the package will be
-              built (default: <filename>dist/build</filename>).</para>
-          </listitem>
-        </varlistentry>
-      </variablelist>
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--prefix</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>The root of the installation, for example
+	      <filename>/usr/local</filename> on a Unix system, or
+	      <filename>C:\Program Files</filename> on a Windows system.
+	      The other installation paths are usually subdirectories of
+	      <replaceable>prefix</replaceable>, but they don't have
+	      to be.</para>
+	    </listitem>
+	  </varlistentry>
 
-      <para>In the simple build infrastructure, the values supplied via
-        these options are recorded in a private file for use by later
-        stages.</para>
+	  <varlistentry>
+	    <term><option>--bindir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Executables that the user might invoke are installed here.</para>
+	    </listitem>
+	  </varlistentry>
 
-      <para>If a user-supplied <filename>configure</filename> script is
-        run (see <xref linkend="system-dependent"/>), it is passed the
-        <option>--prefix</option> option and any unrecognized options.</para>
+	  <varlistentry>
+	    <term><option>--libdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Object-code libraries are installed here.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--libsubdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>A subdirectory of <replaceable>libdir</replaceable>
+	      in which libraries are actually installed.  For example,
+	      in the simple build system on Unix, the default
+	      <replaceable>libdir</replaceable> is
+	      <filename>/usr/local/lib</filename>, and
+	      <replaceable>libsubdir</replaceable> contains the package
+	      identifier and compiler,
+	      e.g. <literal>mypkg-0.2/ghc-6.4</literal>, so libraries
+	      would be installed in
+	      <filename>/usr/local/lib/mypkg-0.2/ghc-6.4</filename>.</para>
+
+	      <para>Not all build systems make use of
+	        <replaceable>libsubdir</replaceable>, in particular the
+	        &Make; system does not.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--datadir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Architecture-independent data files are installed
+	      here.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--datasubdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>A subdirectory of <replaceable>datadir</replaceable>
+		in which data files are actually installed.  This option
+		is similar to <literal>--libsubdir</literal> in that
+		not all build systems make use of it.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--libexecdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Executables that are not expected to be invoked
+	      directly by the user are installed here.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+
+	<sect4>
+	  <title>Paths in the simple build system</title>
+
+	  <para>For the simple build system, the following defaults
+	  apply:</para>
+
+	  <informaltable>
+	    <tgroup cols="3">
+	      <colspec align="left"/>
+	      <colspec align="left"/>
+	      <colspec align="left"/>
+
+	      <thead>
+		<row>
+		  <entry>Option</entry>
+		  <entry>Windows Default</entry>
+		  <entry>Unix Default</entry>
+		</row>
+	      </thead>
+	      <tbody>
+		<row>
+		  <entry><literal>--prefix</literal></entry>
+		  <entry><filename>C:\Program Files</filename></entry>
+		  <entry><filename>/usr/local</filename></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--bindir</literal></entry>
+		  <entry><literal>$prefix\$pkgid</literal></entry>
+		  <entry><literal>$prefix/bin</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--libdir</literal></entry>
+		  <entry><literal>$prefix\Haskell</literal></entry>
+		  <entry><literal>$prefix/lib</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--libsubdir</literal> (Hugs)</entry>
+		  <entry><literal>hugs\packages\$pkg</literal></entry>
+		  <entry><literal>hugs/packages/$pkg</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--libsubdir</literal> (others)</entry>
+		  <entry><literal>$pkgid\$compiler</literal></entry>
+		  <entry><literal>$pkgid/$compiler</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--datadir</literal> (executable)</entry>
+		  <entry><literal>$prefix</literal></entry>
+		  <entry><literal>$prefix/share</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--datadir</literal> (library)</entry>
+		  <entry><filename>C:\Program Files\Common Files</filename></entry>
+		  <entry><literal>$prefix/share</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--datasubdir</literal></entry>
+		  <entry><literal>$pkgid</literal></entry>
+		  <entry><literal>$pkgid</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--libexecdir</literal></entry>
+		  <entry><literal>$prefix\$pkgid</literal></entry>
+		  <entry><literal>$prefix/libexec</literal></entry>
+		</row>
+	      </tbody>
+	    </tgroup>
+	  </informaltable>
+
+	  <para>The following strings are substituted into directory
+	    names:</para>
+
+	  <variablelist>
+	    <varlistentry>
+	      <term><literal>$prefix</literal></term>
+	      <listitem>
+		<para>The value of <replaceable>prefix</replaceable></para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term><literal>$pkgid</literal></term>
+	      <listitem>
+		<para>The full package identifier, e.g. <literal>pkg-0.1</literal></para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term><literal>$compiler</literal></term>
+	      <listitem>
+		<para>The compiler and version, e.g. <literal>ghc-6.4.1</literal></para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term><literal>$pkg</literal></term>
+	      <listitem>
+		<para>The name of the package only</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term><literal>$version</literal></term>
+	      <listitem>
+		<para>The version of the package</para>
+	      </listitem>
+	    </varlistentry>
+	  </variablelist>
+	</sect4>
+
+	<sect4 id="prefix-independence">
+	  <title>Prefix-independence</title>
+
+	  <para>On Windows (and perhaps other OSs), it is possible
+	    to query the pathname of the running binary.  This means
+	    that we can construct an installable executable package
+	    that is independent of its absolute install location.
+	    The executable can find its auxiliary files by finding its
+	    own path and knowing the location of the other files relative
+	    to <replaceable>bindir</replaceable>.  Prefix-independence is
+	    particularly useful: it means the user can choose the install
+	    location (i.e. the value of <replaceable>prefix</replaceable>)
+	    at install-time, rather than having to bake the path into
+	    the binary when it is built.</para>
+
+	  <para>In order to achieve this, we require
+	    that for an executable on Windows, all
+	    of <replaceable>bindir</replaceable>,
+	    <replaceable>libdir</replaceable>,
+	    <replaceable>datadir</replaceable> and
+	    <replaceable>libexecdir</replaceable> begin with
+	    <literal>$prefix</literal>.  An error will be returned
+	    from <literal>setup configure</literal> if this is not
+	    the case.</para>
+
+	  <para>The application need do nothing special to achieve
+	    prefix-independence.  If it finds any files using
+	    <literal>getDataFileName</literal> and the other functions
+	    provided for the purpose (see <xref linkend="paths-module"/>),
+	    the files will be accessed relative to the location of the
+	    current executable.</para>
+
+	  <para>A library cannot (currently) be prefix-independent,
+	    because it will be linked into an executable whose
+	    filesystem location bears no relation to the library
+	    package.</para>
+	</sect4>
+      </sect3>
+
+      <sect3 id="setup-configure-misc">
+	<title>Miscellaneous options</title>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--user</option></term>
+	    <listitem>
+	      <para>Allow dependencies to be satisfied by the user package
+		database, in addition to the global database.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--global</option></term>
+	    <listitem>
+	      <para>(default) Dependencies must be satisfied by the global
+		package database.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-library-profiling</option> or
+	      <option>-p</option></term>
+	    <listitem>
+	      <para>Request that an additional version of the library
+		with profiling features enabled be built and installed
+		(only for implementations that support profiling).</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-library-profiling</option></term>
+	    <listitem>
+	      <para>(default) Do not generate an additional profiling
+		version of the library.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-executable-profiling</option></term>
+	    <listitem>
+	      <para>Any executables generated should have profiling enabled
+		(only for implementations that support profiling).  For this
+		to work, all libraries used by these executables must also
+		have been built with profiling support.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-executable-profiling</option></term>
+	    <listitem>
+	      <para>(default) Do not enable profiling in generated
+		executables.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+
+	<para>In the simple build infrastructure, an additional option
+	  is recognized:</para>
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--scratchdir</option>=<replaceable>dir</replaceable> or
+	      <option>-b</option><replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Specify the directory into which the package will be
+		built (default: <filename>dist/build</filename>).</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+
+      </sect3>
 
     </sect2>
 
@@ -1314,6 +1614,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <para>Copy the files into the install locations and (for library
         packages) register the package with the compiler, i.e. make the
         modules it contains available to programs.</para>
+
+      <para>The install locations are determined by options to
+        <literal>setup configure</literal>
+	(see <xref linkend="setup-configure-paths"/>).</para>
 
       <para>This command takes the following options:</para>
 
@@ -1345,12 +1649,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
       <variablelist>
         <varlistentry>
-          <term><option>--copy-prefix</option>=<replaceable>path</replaceable></term>
+          <term><option>--destdir</option>=<replaceable>path</replaceable></term>
           <listitem>
             <para>Specify the directory under which to place
-              installed files.  If this is not given, the
-              argument of the <option>--prefix</option> option to
-              <literal>configure</literal> is used.</para>
+              installed files.  If this is not given, then the root
+              directory is assumed.</para>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -1469,8 +1772,8 @@ runhaskell Setup.hs unregister --gen-script</screen>
         description file, the setup script, the sources of the modules
         named in the package description file, and files named in the
         <literal>license-file</literal>, <literal>main-is</literal>,
-        <literal>c-sources</literal> and <literal>extra-source-files</literal>
-        fields.</para>
+        <literal>c-sources</literal>, <literal>data-files</literal> and
+        <literal>extra-source-files</literal> fields.</para>
 
       <para>This command takes the following option:</para>
 
