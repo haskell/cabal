@@ -1,5 +1,3 @@
-{-# OPTIONS -fffi #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -64,9 +62,9 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
-import Distribution.Setup(ConfigFlags(..))
+import Distribution.Setup(ConfigFlags(..), CopyDest(..))
 import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
 			     compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
@@ -94,10 +92,6 @@ import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)
 import Data.Char (isDigit)
 import Prelude hiding (catch)
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-import Foreign
-import Foreign.C
-#endif
 
 
 #ifdef DEBUG
@@ -131,11 +125,41 @@ configure pkg_descr cfg
 	setupMessage "Configuring" pkg_descr
 	removeInstalledConfig
         let lib = library pkg_descr
-	-- prefix
-	defPrefix <- system_default_prefix
-        let pref = fromMaybe defPrefix (configPrefix cfg)
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
+
+	-- installation directories
+	defPrefix <- default_prefix
+	defDataDir <- default_datadir pkg_descr
+        let 
+		pref = fromMaybe defPrefix (configPrefix cfg)
+		my_bindir = fromMaybe default_bindir 
+				  (configBinDir cfg)
+		my_libdir = fromMaybe (default_libdir comp)
+				  (configLibDir cfg)
+		my_libsubdir = fromMaybe (default_libsubdir comp)
+				  (configLibSubDir cfg)
+		my_libexecdir = fromMaybe default_libexecdir
+				  (configLibExecDir cfg)
+		my_datadir = fromMaybe defDataDir
+				  (configDataDir cfg)
+		my_datasubdir = fromMaybe default_datasubdir
+				  (configDataSubDir cfg)
+
+	-- on Windows, our directories should all be relative to $prefix if we're
+	-- building an executable, so we can be prefix-independent
+#if mingw32_HOST_OS	
+	let checkPrefix (s,('$':'p':'r':'e':'f':'i':'x':_)) = return ()
+	    checkPrefix (s,_other) = 
+		die (s ++ " must begin with $prefix for an executable")
+	mapM_ checkPrefix [
+		("bindir",my_bindir),
+		("libdir",my_libdir),
+		("libexecdir",my_libexecdir),
+		("datadir",my_datadir)
+	    ]
+#endif
+
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
@@ -160,22 +184,27 @@ configure pkg_descr cfg
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
-        reportProgram' haddockName haddock
-        reportProgram' (programName pfesetupProgram) pfe
+        reportProgram "haddock"   haddock
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs
         reportProgram "c2hs"      c2hs
         reportProgram "cpphs"     cpphs
         reportProgram "greencard" greencard
-        let newConfig = updateProgram haddock (configPrograms cfg)
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
             ipkgs <-  getInstalledPackagesAux comp cfg
 	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
           else return $ map setDepByVersion (buildDepends pkg_descr)
-	return LocalBuildInfo{prefix=pref, compiler=comp,
+
+	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
+			      bindir=my_bindir,
+			      libdir=my_libdir,
+			      libsubdir=my_libsubdir,
+			      libexecdir=my_libexecdir,
+			      datadir=my_datadir,
+			      datasubdir=my_datasubdir,
                               packageDeps=dep_pkgs,
                               withPrograms=newConfig,
                               withHappy=happy, withAlex=alex,
@@ -186,6 +215,26 @@ configure pkg_descr cfg
                               withProfExe=configProfExe cfg,
 			      withGHCiLib=configGHCiLib cfg
                              }
+
+        -- FIXME: maybe this should only be printed when verbose?
+        message $ "Using install prefix: " ++ pref
+        message $ "Binaries installed in: " ++ mkBinDir pkg_descr lbi NoCopyDest
+        message $ "Libraries installed in: " ++ mkLibDir pkg_descr lbi NoCopyDest
+        message $ "Private binaries installed in: " ++ mkLibexecDir pkg_descr lbi NoCopyDest
+        message $ "Data files installed in: " ++ mkDataDir pkg_descr lbi NoCopyDest
+        message $ "Using compiler: " ++ p'
+        message $ "Compiler flavor: " ++ (show f')
+        message $ "Compiler version: " ++ showVersion ver
+        message $ "Using package tool: " ++ pkg
+        reportProgram "haddock"   haddock
+        reportProgram "happy"     happy
+        reportProgram "alex"      alex
+        reportProgram "hsc2hs"    hsc2hs
+        reportProgram "c2hs"      c2hs
+        reportProgram "cpphs"     cpphs
+        reportProgram "greencard" greencard
+
+	return lbi
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
@@ -265,33 +314,6 @@ getInstalledPackages comp user verbose = do
 	    [ps] -> return ps
 	    _   -> die "cannot parse package list"
 
-system_default_prefix :: IO String
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-# if __HUGS__
-system_default_prefix =
-  return "C:\\Program Files"
-# else
-system_default_prefix =
-  allocaBytes long_path_size $ \pPath -> do
-     r <- c_SHGetFolderPath nullPtr csidl_PROGRAM_FILES nullPtr 0 pPath
-     peekCString pPath
-  where
-    csidl_PROGRAM_FILES = 0x0026
-    long_path_size      = 1024
-
-foreign import stdcall unsafe "shlobj.h SHGetFolderPathA" 
-            c_SHGetFolderPath :: Ptr () 
-                              -> CInt 
-                              -> Ptr () 
-                              -> CInt 
-                              -> CString 
-                              -> IO CInt
-# endif
-#else
-system_default_prefix = 
-  return "/usr/local"
-#endif
-
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
@@ -305,7 +327,7 @@ configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath -> In
 configCompiler hcFlavor hcPath hcPkg verbose
   = do let flavor = case hcFlavor of
                       Just f  -> f
-                      Nothing -> defaultCompilerFlavor
+                      Nothing -> error "Unknown compiler"
        comp <- 
 	 case hcPath of
 	   Just path -> return path
@@ -322,18 +344,6 @@ configCompiler hcFlavor hcPath hcPkg verbose
 			compilerVersion=ver,
 			compilerPath=comp,
 			compilerPkgTool=pkgtool})
-
-defaultCompilerFlavor :: CompilerFlavor
-defaultCompilerFlavor =
-#if defined(__GLASGOW_HASKELL__)
-   GHC
-#elif defined(__NHC__)
-   NHC
-#elif defined(__HUGS__)
-   Hugs
-#else
-   error "Unknown compiler"
-#endif
 
 findCompiler :: Int -> CompilerFlavor -> IO FilePath
 findCompiler verbose flavor = do

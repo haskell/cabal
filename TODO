@@ -20,6 +20,8 @@ preprocessed. The following does not work:
 Executable: Foo
 Main-is: Main.hsc
 
+Remove 'util' dependency.  Do something for ghc 6.2.2.
+
 Cabal does not handle dependencies for HSC2HS correctly. For example,
 if Foo.hsc has
      #include "x.h"

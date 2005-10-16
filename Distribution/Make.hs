@@ -68,38 +68,39 @@ Basic assumptions
 Obviously we assume that there is a configure script, and that after the
 ConfigCmd has been run, there is a Makefile.
 
-ConfigCmd:     We assume the configure script accepts a --with-hc flag
+ConfigCmd:     We assume the configure script accepts:
+		--with-hc
+		--with-hc-pkg
+		--prefix
+		--bindir
+		--libdir
+		--libexecdir
+		--datadir
+
 BuildCmd:      We assume the default Makefile target will build everything
-InstallCmd:    We assume there is an install target and a variable $(prefix)
-               that can be overridden
-               (./Setup --install-prefix=foo  ->   make prefix=foo install)
+
+InstallCmd:    We assume there is an install target
                Note that we assume that this does *not* register the package!
+
+CopyCmd:       We assume there is a copy target, and a variable $(destdir)
+		The 'copy' target should probably just invoke make install recursively, eg.
+			copy :
+				$(MAKE) install prefix=$(destdir)/$(prefix) \
+						bindir=$(destdir)/$(bindir) \
+						...
+		The reason we can't invoke make install directly here is that we don't
+		know the value of $(prefix).
+
 SDistCmd:      We assume there is an dist target
+
 RegisterCmd:   We assume there is a register target and a variable $(user)
+
 UnregisterCmd: We assume there is an unregister target
+
 HaddockCmd:    We assume there is a "docs" or "doc" target
+
 ProgramaticaCmd: We assume there is a "programatica" target
 -}
-
-configureArgs :: ConfigFlags -> String
-configureArgs flags
-  = unwords (hc_flag ++ hc_pkg_flag ++ prefix_flag)
-  where
-	hc_flag = case (configHcFlavor flags, configHcPath flags) of
-			(_, Just hc_path)  -> ["--with-hc=" ++ hc_path]
-			(Just hc, Nothing) -> ["--with-hc=" ++ showHC hc]
-			(Nothing,Nothing)  -> []
-	hc_pkg_flag = case configHcPkg flags of
-			Just hc_pkg_path -> ["--with-hc-pkg=" ++ hc_pkg_path]
-			Nothing          -> []
-	prefix_flag = case configPrefix flags of
-			Just p  -> ["--prefix=" ++ p]
-			Nothing -> []
-
-  	showHC GHC = "ghc"
-        showHC NHC = "nhc98"
-        showHC Hugs = "hugs"
-        showHC c    = "unknown compiler: " ++ (show c)
 
 exec :: String -> IO ExitCode
 exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
@@ -115,18 +116,22 @@ defaultMainNoRead pkg_descr
          case action of
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs flags args []
-                no_extra_flags args
-                retVal <- exec $ "./configure " ++ configureArgs flags
+                retVal <- exec $ unwords $
+                  "./configure" : configureArgs flags ++ args
                 if (retVal == ExitSuccess)
                   then putStrLn "Configure Succeeded."
                   else putStrLn "Configure failed."
                 exitWith retVal
 
-            CopyCmd mprefix -> do
-                ((mprefix,_), _, args) <- parseCopyArgs (mprefix,0) args []
+            CopyCmd copydest0 -> do
+                ((copydest,_), _, args) <- parseCopyArgs (copydest0,0) args []
                 no_extra_flags args
-                maybeExit $ system $ "make install" ++
-                                     maybe "" (" prefix="++) mprefix
+		let cmd = case copydest of 
+				NoCopyDest      -> "install"
+				CopyTo path     -> "copy destdir=" ++ path
+				CopyPrefix path -> "install prefix=" ++ path
+					-- CopyPrefix is backwards compat, DEPRECATED
+                maybeExit $ system $ ("make " ++ cmd)
 
             InstallCmd uInst -> do
                 ((_,_), _, args) <- parseInstallArgs (uInst,0) args []

@@ -22,8 +22,8 @@ module Distribution.Simple.GHCPackageConfig (
 
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Install (mkLibDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),mkLibDir)
+import Distribution.Setup (CopyDest(..))
 
 #ifndef __NHC__
 import Control.Exception (try)
@@ -82,8 +82,8 @@ mkGHCPackageConfig pkg_descr lbi
   = defaultGHCPackageConfig {
 	name	        = pkg_name,
 	auto	        = False,
-	import_dirs     = [mkLibDir pkg_descr lbi Nothing],
-	library_dirs    = (mkLibDir pkg_descr lbi Nothing : 
+	import_dirs     = [mkLibDir pkg_descr lbi NoCopyDest],
+	library_dirs    = (mkLibDir pkg_descr lbi NoCopyDest: 
 			   maybe [] (extraLibDirs . libBuildInfo) (library pkg_descr)),
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
 	extra_libraries = maybe [] (extraLibs . libBuildInfo)  (library pkg_descr),
