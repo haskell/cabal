@@ -15,6 +15,8 @@ module Distribution.Program( Program(..)
                            , ghcPkgProgram
                            , nhcProgram
                            , hugsProgram
+                           , ranlibProgram
+                           , arProgram
                            , alexProgram
                            , hsc2hsProgram
                            , c2hsProgram
@@ -68,8 +70,9 @@ instance Read ProgramConfiguration where
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
                               [ haddockProgram
-                              , pfesetupProgram]
--- FIXME: Add ranlib!
+                              , pfesetupProgram
+                              , ranlibProgram
+                              , arProgram]
 -- haddock is currently the only one that really works.
 {-                              [ ghcProgram
                               , ghcPkgProgram
@@ -84,6 +87,7 @@ defaultProgramConfiguration = progListToFM
                               , ldProgram
                               , cppProgram
                               , pfesetupProgram
+                              , ranlib, ar
                               ]-}
 
 -- |The flag for giving a path to this program.  eg --with-alex=\/usr\/bin\/alex
@@ -118,6 +122,12 @@ hugsProgram = simpleProgram "hugs"
 
 alexProgram :: Program
 alexProgram = simpleProgram "alex"
+
+ranlibProgram :: Program
+ranlibProgram = simpleProgram "ranlib"
+
+arProgram :: Program
+arProgram = simpleProgram "ar"
 
 hsc2hsProgram :: Program
 hsc2hsProgram = simpleProgram "hsc2hs"
