@@ -134,6 +134,7 @@ data ConfigFlags = ConfigFlags {
 
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = ConfigFlags {
+        configPrograms = defaultProgramConfiguration,
         configHcFlavor = Nothing,
         configHcPath   = Nothing,
         configHcPkg    = Nothing,
@@ -204,6 +205,18 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
 	  | WithGHCiLib | WithoutGHCiLib
+
+	  | Prefix FilePath
+	  | BinDir FilePath
+	  | LibDir FilePath
+	  | LibSubDir FilePath
+	  | LibExecDir FilePath
+	  | DataDir FilePath
+	  | DataSubDir FilePath
+
+          | ProgramArgs String String   -- program name, arguments
+          | WithProgram String FilePath -- program name, location
+
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -313,8 +326,18 @@ configureCmd = Cmd {
                "give the path to the package tool",
            Option "" ["prefix"] (reqDirArg Prefix)
                "bake this prefix in preparation of installation",
-           Option "" ["with-haddock"] (reqPathArg WithHaddock)
-               "give the path to haddock",
+	   Option "" ["bindir"] (reqDirArg BinDir)
+		"installation directory for executables",
+	   Option "" ["libdir"] (reqDirArg LibDir)
+		"installation directory for libraries",
+	   Option "" ["libsubdir"] (reqDirArg LibSubDir)
+		"subdirectory of libdir in which libs are installed",
+	   Option "" ["libexecdir"] (reqDirArg LibExecDir)
+		"installation directory for program executables",
+	   Option "" ["datadir"] (reqDirArg DataDir)
+		"installation directory for read-only data",
+	   Option "" ["datasubdir"] (reqDirArg DataSubDir)
+		"subdirectory of datadir in which data files are installed",
            Option "" ["with-happy"] (reqPathArg WithHappy)
                "give the path to happy",
            Option "" ["with-alex"] (reqPathArg WithAlex)

@@ -178,19 +178,9 @@ configure pkg_descr cfg
         c2hs      <- findProgram "c2hs"      (configC2hs cfg)
         cpphs     <- findProgram "cpphs"     (configCpphs cfg)
         greencard <- findProgram "greencard" (configGreencard cfg)
-        -- FIXME: maybe this should only be printed when verbose?
-        message $ "Using install prefix: " ++ pref
-        message $ "Using compiler: " ++ p'
-        message $ "Compiler flavor: " ++ (show f')
-        message $ "Compiler version: " ++ showVersion ver
-        message $ "Using package tool: " ++ pkg
-        reportProgram "haddock"   haddock
-        reportProgram "happy"     happy
-        reportProgram "alex"      alex
-        reportProgram "hsc2hs"    hsc2hs
-        reportProgram "c2hs"      c2hs
-        reportProgram "cpphs"     cpphs
-        reportProgram "greencard" greencard
+
+        let newConfig = updateProgram haddock (configPrograms cfg)
+
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
             ipkgs <-  getInstalledPackagesAux comp cfg
@@ -226,7 +216,9 @@ configure pkg_descr cfg
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
-        reportProgram "haddock"   haddock
+
+        reportProgram' haddockName haddock
+        reportProgram' (programName pfesetupProgram) pfe
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs
