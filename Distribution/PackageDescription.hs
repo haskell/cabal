@@ -738,6 +738,7 @@ testPkgDescAnswer =
                     stability = "Free Text String",
                     extraTmpFiles=["file1", "file2"],
                     extraSrcFiles=["file1", "file2"],
+                    dataFiles=[],
 
                     library = Just $ Library {
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
