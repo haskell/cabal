@@ -135,7 +135,7 @@ data ConfigFlags = ConfigFlags {
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = ConfigFlags {
         configPrograms = defaultProgramConfiguration,
-        configHcFlavor = Nothing,
+        configHcFlavor = defaultCompilerFlavor,
         configHcPath   = Nothing,
         configHcPkg    = Nothing,
 --        configHaddock  = EmptyLocation,
