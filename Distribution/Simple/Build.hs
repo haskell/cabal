@@ -49,14 +49,17 @@ module Distribution.Simple.Build (
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..),
 				extensionsToGHCFlag, extensionsToNHCFlag)
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
-			     		setupMessage, withLib,
+			     		setupMessage, withLib, hasLibs,
                                         Executable(..), withExe,
                                         Library(..), libModules, hcOptions)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Setup (CopyDest(..))
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
 import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Version (Version(..))
-import Distribution.Simple.Configure (LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), 
+					   mkBinDir, mkLibDir, mkDataDir,
+					   mkLibexecDir)
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, mkProfLibName, mkGHCiLibName, dotToSep,
@@ -79,6 +82,7 @@ import System.Directory (removeFile)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName,
                                 splitFileExt, joinFileExt, objExtension,
+                                pathSeparator,
                                 searchPathSeparator, joinPaths,
                                 splitFileName, platformPath)
 import qualified Distribution.Simple.GHCPackageConfig
@@ -106,6 +110,11 @@ build pkg_descr lbi verbose suffixes = do
     die ("Package " ++ name ++ " can't be built on this system.")
 
   createDirectoryIfMissing True (buildDir lbi)
+
+  -- construct and write the Paths_<pkg>.hs file
+  createDirectoryIfMissing True (autogenModulesDir lbi)
+  buildPathsModule pkg_descr lbi
+
   preprocessSources pkg_descr lbi verbose suffixes
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
@@ -144,16 +153,11 @@ buildGHC pkg_descr lbi verbose = do
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False
-      let ghcArgs = ["-I" ++ dir | dir <- includeDirs libBi]
-              ++ ["-optc" ++ opt | opt <- ccOptions libBi]
-              ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
-              ++ ["-package-name", pkgName (package pkg_descr),
-                  "-odir",  libTargetDir,
-                  "-hidir", libTargetDir
-                 ]
-              ++ constructGHCCmdLine (compiler lbi) [] libBi (packageDeps lbi)
+      let ghcArgs = 
+                 (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+              ++ ["-package-name", pkgName (package pkg_descr) ]
+              ++ constructGHCCmdLine lbi libBi libTargetDir verbose
               ++ (libModules pkg_descr)
-              ++ (if verbose > 4 then ["-v"] else [])
           ghcArgsProf = ghcArgs
               ++ ["-prof",
                   "-hisuf", "p_hi",
@@ -257,21 +261,17 @@ buildGHC pkg_descr lbi verbose = do
 
                  let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                                    | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
-                 let binArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
-                         ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
-                         ++ (if pkgConfReadable then ["-package-conf", pkgConf] else [])
-                         ++ ["-odir",  exeDir,
-                             "-hidir", exeDir,
-                             "-o",     targetDir `joinFileName` exeName'
+                 let binArgs = 
+                            (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+                         ++ ["-I"++pref,
+                             "-o", targetDir `joinFileName` exeName'
                             ]
-                         ++ constructGHCCmdLine (compiler lbi) (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr))
-                                                exeBi (packageDeps lbi)
+                         ++ constructGHCCmdLine lbi exeBi exeDir verbose
                          ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [srcMainFile]
 			 ++ ldOptions exeBi
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
-			 ++ (if verbose > 4 then ["-v"] else [])
                          ++ if withProfExe lbi
                                then "-prof":ghcProfOptions exeBi
                                else []
@@ -280,23 +280,29 @@ buildGHC pkg_descr lbi verbose = do
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
 
-constructGHCCmdLine :: Compiler
-                    -> [FilePath]  -- If we're building an executable, we need the library's filepath
-                    -> BuildInfo
-                    -> [PackageIdentifier]
-                    -> [String]
-constructGHCCmdLine comp srcLocs bi deps = 
-    -- Unsupported extensions have already been checked by configure
-    let flags = snd $ extensionsToGHCFlag (extensions bi)
-     in (if compilerVersion comp > Version [6,4] []
+constructGHCCmdLine
+	:: LocalBuildInfo
+        -> BuildInfo
+	-> FilePath
+	-> Int				-- verbosity level
+        -> [String]
+constructGHCCmdLine lbi bi odir verbose = 
+        ["--make"]
+     ++ (if verbose > 4 then ["-v"] else [])
+	    -- Unsupported extensions have already been checked by configure
+     ++ snd (extensionsToGHCFlag (extensions bi))
+     ++ hcOptions GHC (options bi)
+     ++ (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
-     ++ ["--make"]
      ++ ["-i"]
-     ++ ["-i" ++ l | l <- nub (hsSourceDirs bi ++ srcLocs)]
+     ++ ["-i" ++ autogenModulesDir lbi]
+     ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+     ++ ["-I" ++ dir | dir <- includeDirs bi]
+     ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
-     ++ (flags ++ hcOptions GHC (options bi))
-     ++ (concat [ ["-package", showPackageId pkg] | pkg <- deps ])
+     ++ [ "-odir",  odir, "-hidir", odir ]
+     ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
 -- |Building a package for Hugs.
 buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
@@ -492,6 +498,168 @@ stripComments keepPragmas = stripCommentsLevel 0
 	copyPragma ('#':'-':'}':cs) = '#' : '-' : '}' : stripCommentsLevel 0 cs
 	copyPragma (c:cs) = c : copyPragma cs
 	copyPragma [] = []
+
+-- ------------------------------------------------------------
+-- * Building Paths_<pkg>.hs
+-- ------------------------------------------------------------
+
+-- The directory in which we put auto-generated modules
+autogenModulesDir :: LocalBuildInfo -> String
+autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
+
+buildPathsModule :: PackageDescription -> LocalBuildInfo -> IO ()
+buildPathsModule pkg_descr lbi =
+   let pragmas
+	| absolute = ""
+	| otherwise =
+	  "{-# OPTIONS_GHC -fffi #-}\n"++
+	  "{-# LANGUAGE FFI #-}\n"
+
+       foreign_imports
+	| absolute = ""
+	| otherwise =
+	  "import Foreign\n"++
+	  "import Foreign.C\n"++
+	  "import Data.Maybe\n"
+
+       header =
+	pragmas++
+	"module " ++ paths_modulename ++ " (\n"++
+	"\tversion,\n"++
+	"\tgetBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
+	"\tgetDataFileName\n"++
+	"\t) where\n"++
+	"\n"++
+	foreign_imports++
+	"import Data.Version"++
+	"\n"++
+	"\nversion = " ++ show (pkgVersion (package pkg_descr))++
+	"\n"
+
+       body
+	| absolute =
+	  "\nbindir     = " ++ show flat_bindir ++
+	  "\nlibdir     = " ++ show flat_libdir ++
+	  "\ndatadir    = " ++ show flat_datadir ++
+	  "\nlibexecdir = " ++ show flat_libexecdir ++
+	  "\n"++
+	  "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
+	  "getBinDir = return bindir\n"++
+	  "getLibDir = return libdir\n"++
+	  "getDataDir = return datadir\n"++
+	  "getLibexecDir = return libexecdir\n" ++
+	  "\n"++
+	  "getDataFileName :: FilePath -> IO FilePath\n"++
+	  "getDataFileName name = return (datadir ++ "++path_sep++" ++ name)\n"
+	| otherwise =
+	  "\nprefix        = " ++ show (prefix lbi) ++
+	  "\nbindirrel     = " ++ show (prefixRel flat_bindir) ++
+	  "\nlibdirrel     = " ++ show (prefixRel flat_libdir) ++
+	  "\ndatadirrel    = " ++ show (prefixRel flat_datadir) ++
+	  "\nlibexecdirrel = " ++ show (prefixRel flat_libexecdir) ++
+	  "\n"++
+	  "\ngetBinDir :: IO FilePath\n"++
+	  "getBinDir = do\n"++
+	  "  m <- getPrefix bindirrel\n"++
+	  "  return (fromMaybe prefix m `joinFileName` bindirrel)\n"++
+	  "getLibDir :: IO FilePath\n"++
+	  "getLibDir = do\n"++
+	  "  m <- getPrefix bindirrel\n"++
+	  "  return (fromMaybe prefix m `joinFileName` libdirrel)\n"++
+	  "getDataDir :: IO FilePath\n"++
+	  "getDataDir = do\n"++
+	  "  m <- getPrefix bindirrel\n"++
+	  "  return (fromMaybe prefix m `joinFileName` datadirrel)\n"++
+	  "\n"++
+	  "getDataFileName :: FilePath -> IO FilePath\n"++
+	  "getDataFileName name = do\n"++
+	  "  dir <- getDataDir\n"++
+	  "  return (dir `joinFileName` name)\n"++
+	  "\n"++
+	  get_prefix_stuff
+   in
+   writeFile (autogenModulesDir lbi `joinFileName` paths_filename) (header++body)
+ where
+	flat_bindir     = mkBinDir pkg_descr lbi NoCopyDest
+	flat_libdir     = mkLibDir pkg_descr lbi NoCopyDest
+	flat_datadir    = mkDataDir pkg_descr lbi NoCopyDest
+	flat_libexecdir = mkLibexecDir pkg_descr lbi NoCopyDest
+
+#if mingw32_HOST_OS
+	absolute = hasLibs pkg_descr
+#else
+	absolute = True
+#endif
+
+  	paths_modulename = "Paths_" ++ fix (pkgName (package pkg_descr))
+	paths_filename = paths_modulename ++ ".hs"
+
+	path_sep = show [pathSeparator]
+
+	fix = map fixchar 
+	  where fixchar '-' = '_'
+		fixchar c   = c
+
+	prefixRel ('$':'p':'r':'e':'f':'i':'x':s) = s
+	prefixRel _ = error "buildPathsModule"
+
+get_prefix_stuff =
+  "getPrefix :: FilePath -> IO (Maybe FilePath)\n"++
+  "getPrefix binDirRel = do \n"++
+  "  let len = (2048::Int) -- plenty, PATH_MAX is 512 under Win32.\n"++
+  "  buf <- mallocArray len\n"++
+  "  ret <- getModuleFileName nullPtr buf len\n"++
+  "  if ret == 0 \n"++
+  "     then do free buf; return Nothing\n"++
+  "     else do s <- peekCString buf\n"++
+  "          free buf\n"++
+  "          return (Just (prefixFromExePath s binDirRel))\n"++
+  "\n"++
+  "foreign import stdcall \"GetModuleFileNameA\" unsafe\n"++
+  "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"++
+  "\n"++
+  "prefixFromExePath :: FilePath -> FilePath -> FilePath\n"++
+  "prefixFromExePath exe_path binDirRel\n"++
+  "  = bindir `joinFileName` foldr joinFileName \".\" dotdots\n"++
+  "  where\n"++
+  "   (bindir,exe) = splitFileName exe_path\n"++
+  "   bincomps = breakFilePath binDirRel -- something like [\".\",\"bin\"]\n"++
+  "   dotdots = take (length bincomps) (repeat \"..\")\n"++
+  "\n"++
+  "joinFileName :: String -> String -> FilePath\n"++
+  "joinFileName \"\"  fname = fname\n"++
+  "joinFileName \".\" fname = fname\n"++
+  "joinFileName dir \"\"    = dir\n"++
+  "joinFileName dir fname\n"++
+  "  | isPathSeparator (last dir) = dir++fname\n"++
+  "  | otherwise                  = dir++pathSeparator:fname\n"++
+  "\n"++
+  "splitFileName p = (reverse (path2++drive), reverse fname)\n"++
+  "  where\n"++
+  "    (path,drive) = case p of\n"++
+  "       (c:':':p) -> (reverse p,[':',c])\n"++
+  "       _         -> (reverse p,\"\")\n"++
+  "    (fname,path1) = break isPathSeparator path\n"++
+  "    path2 = case path1 of\n"++
+  "      []                           -> \".\"\n"++
+  "      [_]                          -> path1   -- don't remove the trailing slash if \n"++
+  "                                              -- there is only one character\n"++
+  "      (c:path) | isPathSeparator c -> path\n"++
+  "      _                            -> path1\n"++
+  "\n"++
+  "breakFilePath :: FilePath -> [String]\n"++
+  "breakFilePath = worker []\n"++
+  "    where worker ac path\n"++
+  "              | less == path = less:ac\n"++
+  "              | otherwise = worker (current:ac) less\n"++
+  "              where (less,current) = splitFileName path\n"++
+  "\n"++
+  "pathSeparator :: Char\n"++
+  "pathSeparator = '\\'\n"++
+  "\n"++
+  "isPathSeparator :: Char -> Bool\n"++
+  "isPathSeparator ch =\n"++
+  "  ch == '/' || ch == '\\'\n"
 
 -- ------------------------------------------------------------
 -- * Testing
