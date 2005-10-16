@@ -69,6 +69,7 @@ defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
                               [ haddockProgram
                               , pfesetupProgram]
+-- FIXME: Add ranlib!
 -- haddock is currently the only one that really works.
 {-                              [ ghcProgram
                               , ghcPkgProgram

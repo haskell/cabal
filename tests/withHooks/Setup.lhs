@@ -6,6 +6,7 @@
 > import Distribution.PackageDescription (PackageDescription,
 >                                         readPackageDescription, readHookedBuildInfo)
 > import Distribution.Simple.Configure(LocalBuildInfo(..))
+> import Distribution.Setup(CopyFlags, CopyDest(..))
 > import Distribution.Compat.Directory (copyFile)
 > import Distribution.Compat.FilePath(joinPaths)
 > import Distribution.Simple.Utils (defaultHookedPackageDesc)
@@ -36,18 +37,18 @@
 >          writeFile outFile ("-- this file has been preprocessed as a test\n\n" ++ stuff)
 >          return ExitSuccess
 
-> testing :: Args -> Bool -> a -> IO ExitCode
-> testing [] _ _ = return ExitSuccess
-> testing a@(h:_) _ _ = do putStrLn $ "testing: " ++ (show a)
->                          if h == "--pass"
->                             then return ExitSuccess
->                             else return (ExitFailure 1)
+> testing :: Args -> Bool -> a -> b -> IO ExitCode
+> testing [] _ _ _ = return ExitSuccess
+> testing a@(h:_) _ _ _ = do putStrLn $ "testing: " ++ (show a)
+>                            if h == "--pass"
+>                               then return ExitSuccess
+>                               else return (ExitFailure 1)
 
 > myCopyHook :: PackageDescription
 >            -> LocalBuildInfo
->            -> (Maybe FilePath,Int) -- ^install-prefix, verbose
+>            -> CopyFlags -- ^install-prefix, verbose
 >            -> IO ()
-> myCopyHook a b c@((Just p), _) = do
+> myCopyHook a b c@((CopyPrefix p), _) = do
 >   createDirectoryIfMissing True p
 >   copyFile (foldl1 joinPaths ["dist", "build", "withHooks", "withHooks"])
 >                        (p `joinPaths` "withHooks")
@@ -60,8 +61,8 @@ Override "gc" to test the overriding mechanism.
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
 >         runTests=testing,
->         postConf=(\_ _ _-> return ExitSuccess),
+>         postConf=(\_ _ _ _ -> return ExitSuccess),
 >         hookedPreProcessors=  [("testSuffix", ppTestHandler), ("gc", ppTestHandler)],
->         postClean=(\_ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess),
+>         postClean=(\_ _ _ _ -> removeFile "Setup.buildinfo" >> return ExitSuccess),
 >         copyHook=myCopyHook
 >        }
