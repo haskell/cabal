@@ -9,6 +9,7 @@ module Distribution.Program( Program(..)
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
+                           , lookupPrograms
                            , rawSystemProgram
                              -- Programs
                            , ghcProgram
@@ -30,6 +31,7 @@ module Distribution.Program( Program(..)
 
 import Data.FiniteMap
 import Control.Monad(when)
+import Data.Maybe(catMaybes)
 import System.Exit (ExitCode)
 import Distribution.Compat.Directory(findExecutable)
 import Distribution.Simple.Utils (die, rawSystemVerbose)
@@ -178,6 +180,13 @@ lookupProgram name conf =
                                    return $ maybe EmptyLocation FoundOnSystem maybeLoc
                          a   -> return a
               return $ Just p{programLocation=newLoc}
+
+lookupPrograms :: ProgramConfiguration -> IO [(String, Maybe Program)]
+lookupPrograms conf@(ProgramConfiguration fm) = do
+  let l = eltsFM fm
+  mapM (\p -> do fp <- lookupProgram (programName p) conf
+                 return (programName p, fp)
+       ) l
 
 -- |User-specify this path.  Basically override any path information
 -- for this program in the configuration. If it's not a known

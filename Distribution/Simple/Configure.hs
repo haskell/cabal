@@ -84,8 +84,7 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
-                            updateProgram, haddockProgram, pfesetupProgram,
-                            ranlibProgram, arProgram)
+                            lookupPrograms, updateProgram, defaultProgramConfiguration)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -168,12 +167,8 @@ configure pkg_descr cfg
         unless (null exts) $ warn $ -- Just warn, FIXME: Should this be an error?
             show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
-        let haddockName = programName haddockProgram
-        -- FIX: just do a map over all of them :)
-        haddock   <- lookupProgram haddockName (configPrograms cfg)
-        pfe   <- lookupProgram (programName pfesetupProgram) (configPrograms cfg)
-        ranlib <- lookupProgram (programName ranlibProgram) (configPrograms cfg)
-        ar <- lookupProgram (programName arProgram) (configPrograms cfg)
+
+        foundPrograms <- lookupPrograms (configPrograms cfg)
 
         happy     <- findProgram "happy"     (configHappy cfg)
         alex      <- findProgram "alex"      (configAlex cfg)
@@ -182,7 +177,7 @@ configure pkg_descr cfg
         cpphs     <- findProgram "cpphs"     (configCpphs cfg)
         greencard <- findProgram "greencard" (configGreencard cfg)
 
-        let newConfig = updateProgram haddock (configPrograms cfg)
+        let newConfig = foldr (\(_, p) c -> updateProgram p c) (configPrograms cfg) foundPrograms
 
         -- FIXME: currently only GHC has hc-pkg
         dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
@@ -220,10 +215,8 @@ configure pkg_descr cfg
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
 
-        reportProgram' haddockName haddock
-        reportProgram' (programName pfesetupProgram) pfe
-        reportProgram' (programName ranlibProgram) ranlib
-        reportProgram' (programName arProgram) ar
+        mapM (\(s,p) -> reportProgram' s p) foundPrograms
+
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs
