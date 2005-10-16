@@ -7,11 +7,10 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Explanation: Information on how to USE an installed package,
--- consumed by HC-PKG (ghc-pkg, for instance).  THIS MODULE IS NOT YET
--- USED.  HC-PKG is not yet implemented, and ghc-pkg has its own file
--- format, so this module is very much subject to change once HC-PKG
--- is implemented.
+-- This is the information about an /installed/ package that
+-- is communicated to the @hc-pkg@ program in order to register
+-- a package.  @ghc-pkg@ now consumes this package format (as of verison
+-- 6.4).
 
 
 {- All rights reserved.

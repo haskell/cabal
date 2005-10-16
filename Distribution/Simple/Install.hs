@@ -42,8 +42,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
 	install,
-	mkBinDir,
-	mkLibDir,
 	hugsPackageDir,
 	hugsProgramsDirs,
 	hugsMainFilename,
@@ -65,12 +63,15 @@ import Distribution.PackageDescription (
 	setupMessage, hasLibs, withLib, libModules, withExe,
 	hcOptions)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
-import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo (
+        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir)
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
                                  mkProfLibName, mkGHCiLibName, die, rawSystemVerbose)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..), showCompilerId)
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Setup (CopyFlags, CopyDest(..))
 
 import Control.Monad(when)
+import Data.List(any)
 import Data.Maybe(fromMaybe)
 import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
                                      findExecutable)
@@ -86,18 +87,25 @@ import HUnit (Test)
 -- |FIX: nhc isn't implemented yet.
 install :: PackageDescription
         -> LocalBuildInfo
-        -> (Maybe FilePath,Int) -- ^install-prefix, verbose
+        -> CopyFlags
         -> IO ()
-install pkg_descr lbi (install_prefixM,verbose) = do
+install pkg_descr lbi (copydest, verbose) = do
+  when (not (null (dataFiles pkg_descr))) $ do
+    let dataPref = mkDataDir pkg_descr lbi copydest
+    createDirectoryIfMissing True dataPref
+    flip mapM_ (dataFiles pkg_descr) $ \ file ->
+      copyFileVerbose verbose file (dataPref `joinFileName` file)
   let buildPref = buildDir lbi
-  let libPref = mkLibDir pkg_descr lbi install_prefixM
-  let targetLibPref = mkLibDir pkg_descr lbi Nothing
-  let binPref = mkBinDir pkg_descr lbi install_prefixM
+  let libPref = mkLibDir pkg_descr lbi copydest
+  let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
                 installExeGhc verbose binPref buildPref pkg_descr
-     Hugs -> installHugs verbose libPref binPref targetLibPref buildPref pkg_descr
+     Hugs -> do
+       let progPref = mkProgDir pkg_descr lbi copydest
+       let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
+       installHugs verbose libPref progPref binPref targetProgPref buildPref pkg_descr
      _    -> die ("only installing with GHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
@@ -161,27 +169,24 @@ installLibGHC _ _ _ _ _ PackageDescription{library=Nothing}
 installHugs
     :: Int      -- ^verbose
     -> FilePath -- ^Library install location
+    -> FilePath -- ^Program install location
     -> FilePath -- ^Executable install location
-    -> FilePath -- ^Library location on target system
+    -> FilePath -- ^Program location on target system
     -> FilePath -- ^Build location
     -> PackageDescription
     -> IO ()
-installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
+installHugs verbose libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
     let pkg_name = pkgName (package pkg_descr)
     withLib pkg_descr () $ \ libInfo -> do
-        let pkgDir = libPref `joinFileName` "packages"
-                    `joinFileName` pkg_name
-        try $ removeDirectoryRecursive pkgDir
-        smartCopySources verbose [buildPref] pkgDir (libModules pkg_descr) hugsInstallSuffixes True
-    let progBuildDir = buildPref `joinFileName` "programs"
-    let progInstallDir = libPref `joinFileName` "programs"
-    let progTargetDir = targetLibPref `joinFileName` "programs"
-    when (not (null (executables pkg_descr))) $
-        createDirectoryIfMissing True binPref
+        try $ removeDirectoryRecursive libDir
+        smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True
+    let buildProgDir = buildPref `joinFileName` "programs"
+    when (any (buildable . buildInfo) (executables pkg_descr)) $
+        createDirectoryIfMissing True binDir
     withExe pkg_descr $ \ exe -> do
-        let buildDir = progBuildDir `joinFileName` exeName exe
-        let installDir = progInstallDir `joinFileName` exeName exe
-        let targetDir = progTargetDir `joinFileName` exeName exe
+        let buildDir = buildProgDir `joinFileName` exeName exe
+        let installDir = installProgDir `joinFileName` exeName exe
+        let targetDir = targetProgDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose [buildDir] installDir
             ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
@@ -189,12 +194,12 @@ installHugs verbose libPref binPref targetLibPref buildPref pkg_descr = do
         -- FIX (HUGS): use extensions, and options from file too?
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-        let exeFile = binPref `joinFileName` exeName exe `joinFileExt` "bat"
+        let exeFile = binDir `joinFileName` exeName exe `joinFileExt` "bat"
         let script = unlines [
                 "@echo off",
                 unwords ("runhugs" : hugsOptions ++ [targetName, "%*"])]
 #else
-        let exeFile = binPref `joinFileName` exeName exe
+        let exeFile = binDir `joinFileName` exeName exe
         let script = unlines [
                 "#! /bin/sh",
                 unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
@@ -209,7 +214,7 @@ hugsInstallSuffixes = ["hs", "lhs", dllExtension]
 -- |Hugs library directory for a package
 hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
 hugsPackageDir pkg_descr lbi =
-    mkLibDir pkg_descr lbi Nothing
+    mkLibDir pkg_descr lbi NoCopyDest
 	`joinFileName` "packages" `joinFileName` pkgName (package pkg_descr)
 
 -- |Hugs program directories for a package
@@ -217,7 +222,7 @@ hugsProgramsDirs :: PackageDescription -> LocalBuildInfo -> [FilePath]
 hugsProgramsDirs pkg_descr lbi =
     [exeDir `joinFileName` exeName exe |
          exe <- executables pkg_descr, buildable (buildInfo exe)]
-  where exeDir = mkLibDir pkg_descr lbi Nothing `joinFileName` "programs"
+  where exeDir = mkLibDir pkg_descr lbi NoCopyDest `joinFileName` "programs"
 
 -- |Filename used by Hugs for the main module of an executable.
 -- This is a simple filename, so that Hugs will look for any auxiliary
@@ -225,32 +230,6 @@ hugsProgramsDirs pkg_descr lbi =
 hugsMainFilename :: Executable -> FilePath
 hugsMainFilename exe = "Main" `joinFileExt` ext
   where (_, ext) = splitFileExt (modulePath exe)
-
--- -----------------------------------------------------------------------------
--- Installation policies
-
-mkLibDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
-mkLibDir pkg_descr lbi install_prefixM = 
-  case compilerFlavor hc of
-    Hugs -> libDir `joinFileName` "hugs"
-    _    -> libDir `joinFileName` showPackageId (package pkg_descr)
-                   `joinFileName` showCompilerId hc
-  where 
-	hc = compiler lbi
-	libDir = (fromMaybe (prefix lbi) install_prefixM)
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-                 `joinFileName` "Haskell"
-#else
-                 `joinFileName` "lib"
-#endif
-
-mkBinDir :: PackageDescription -> LocalBuildInfo -> Maybe FilePath -> FilePath
-mkBinDir pkg_descr lbi install_prefixM = 
-  (fromMaybe (prefix lbi) install_prefixM)
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-        `joinFileName` showPackageId (package pkg_descr)
-#endif
-        `joinFileName` "bin"
 
 -- ------------------------------------------------------------
 -- * Testing
