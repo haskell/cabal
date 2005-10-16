@@ -84,7 +84,8 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
-                            updateProgram, haddockProgram, pfesetupProgram)
+                            updateProgram, haddockProgram, pfesetupProgram,
+                            ranlibProgram, arProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -171,6 +172,8 @@ configure pkg_descr cfg
         -- FIX: just do a map over all of them :)
         haddock   <- lookupProgram haddockName (configPrograms cfg)
         pfe   <- lookupProgram (programName pfesetupProgram) (configPrograms cfg)
+        ranlib <- lookupProgram (programName ranlibProgram) (configPrograms cfg)
+        ar <- lookupProgram (programName arProgram) (configPrograms cfg)
 
         happy     <- findProgram "happy"     (configHappy cfg)
         alex      <- findProgram "alex"      (configAlex cfg)
@@ -219,6 +222,8 @@ configure pkg_descr cfg
 
         reportProgram' haddockName haddock
         reportProgram' (programName pfesetupProgram) pfe
+        reportProgram' (programName ranlibProgram) ranlib
+        reportProgram' (programName arProgram) ar
         reportProgram "happy"     happy
         reportProgram "alex"      alex
         reportProgram "hsc2hs"    hsc2hs
