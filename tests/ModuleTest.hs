@@ -185,7 +185,7 @@ tests currDir comp compConf = [
             doesFileExist ",tmp/bin/testB" >>=
               assertBool "testB not produced"
             assertCmd' compCmd "sdist" "setup sdist returned error code"
-            doesFileExist "dist/test-1.0.tgz" >>= 
+            doesFileExist "dist/test-1.0.tar.gz" >>= 
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False

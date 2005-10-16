@@ -9,5 +9,5 @@ exposed-modules: A
 
 Executable: mainForA
 Other-Modules: Main, A
-hs-source-dir: mains
+hs-source-dirs: mains, libs
 Main-is: Main.hs
