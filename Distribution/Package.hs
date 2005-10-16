@@ -54,7 +54,7 @@ data PackageIdentifier
 	pkgName    :: String,
 	pkgVersion :: Version
      }
-     deriving (Read, Show, Eq)
+     deriving (Read, Show, Eq, Ord)
 
 showPackageId :: PackageIdentifier -> String
 showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.

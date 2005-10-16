@@ -62,10 +62,9 @@ module Distribution.Simple.Register (
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Install (mkLibDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Setup (RegisterFlags)
+import Distribution.Setup (RegisterFlags, CopyDest(..))
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -237,8 +236,8 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
 	IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [mkLibDir pkg_descr lbi Nothing],
-        IPI.libraryDirs       = (mkLibDir pkg_descr lbi Nothing) : extraLibDirs bi,
+        IPI.importDirs        = [mkLibDir pkg_descr lbi NoCopyDest],
+        IPI.libraryDirs       = (mkLibDir pkg_descr lbi NoCopyDest) : extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = includeDirs bi,

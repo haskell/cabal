@@ -101,6 +101,7 @@ sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
     prepareDir verbose targetDir pps [] exeBi
     srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
     copyFileTo verbose targetDir srcMainFile
+  sequence_ [copyFileVerbose verbose df (targetDir `joinFileName` df) | df <- dataFiles pkg_descr]
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbose targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do

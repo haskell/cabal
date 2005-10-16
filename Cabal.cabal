@@ -1,6 +1,8 @@
 Name: Cabal
 Version: 1.1.4
 Copyright: 2003-2005, Isaac Jones
+-- We want "base, unix" on Unix and just "base" on Windows, but can't
+-- express that directly, so we fake it by depending on util.
 Build-Depends: base, util
 License: BSD3
 License-File: LICENSE

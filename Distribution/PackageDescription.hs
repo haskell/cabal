@@ -134,6 +134,7 @@ data PackageDescription
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
+        dataFiles      :: [FilePath],
         extraSrcFiles  :: [FilePath],
         extraTmpFiles  :: [FilePath]
     }
@@ -166,6 +167,7 @@ emptyPackageDescription
                       category     = "",
                       library      = Nothing,
                       executables  = [],
+                      dataFiles    = [],
                       extraSrcFiles = [],
                       extraTmpFiles = []
                      }
@@ -373,6 +375,8 @@ basicStanzaFields =
  , listField "tested-with"
                            showTestedWith         parseTestedWithQ
                            testedWith             (\val pkg -> pkg{testedWith=val})
+ , listField "data-files"  showFilePath           parseFilePathQ
+                           dataFiles              (\val pkg -> pkg{dataFiles=val})
  , listField "extra-source-files" showFilePath    parseFilePathQ
                            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
  , listField "extra-tmp-files" showFilePath       parseFilePathQ
