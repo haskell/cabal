@@ -1,9 +1,10 @@
 Name: Cabal
 Version: 1.1.4
 Copyright: 2003-2005, Isaac Jones
--- We want "base, unix" on Unix and just "base" on Windows, but can't
--- express that directly, so we fake it by depending on util.
-Build-Depends: base, util
+
+-- Util dependency removed.  This may break ghc 6.2 builds :( Will
+-- have to figure something out for ghc 6.2
+Build-Depends: base
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
