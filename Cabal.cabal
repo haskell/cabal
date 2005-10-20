@@ -1,7 +1,6 @@
 Name: Cabal
 Version: 1.1.4
 Copyright: 2003-2005, Isaac Jones
-
 -- Util dependency removed.  This may break ghc 6.2 builds :( Will
 -- have to figure something out for ghc 6.2
 Build-Depends: base
