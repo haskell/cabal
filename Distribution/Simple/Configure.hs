@@ -71,7 +71,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
-	BuildInfo(..), Executable(..), setupMessage)
+	BuildInfo(..), Executable(..), setupMessage, hasLibs)
 import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, withinRange,
@@ -155,9 +155,10 @@ configure pkg_descr cfg
 	mapM_ checkPrefix [
 		("bindir",my_bindir),
 		("libdir",my_libdir),
-		("libexecdir",my_libexecdir),
-		("datadir",my_datadir)
+		("libexecdir",my_libexecdir)
 	    ]
+	unless (hasLibs pkg_descr) $
+	  checkPrefix ("datadir",my_datadir)
 #endif
 
         -- check extensions
