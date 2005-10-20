@@ -94,8 +94,9 @@ import System.Posix.Internals (c_getpid)
 import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt,
 	pathSeparator)
-import System.Directory (getDirectoryContents, getCurrentDirectory,
-                         doesFileExist, removeFile, getPermissions, executable)
+import System.Directory (getDirectoryContents, getCurrentDirectory
+			, doesFileExist, removeFile, getPermissions
+			, Permissions(executable))
 
 import Distribution.Compat.Directory (copyFile,findExecutable,createDirectoryIfMissing)
 
