@@ -27,10 +27,10 @@ module Distribution.Compat.FilePath
          , searchPathSeparator
          , platformPath
 
-	 -- * Filename extensions
-	 , exeExtension
-	 , objExtension
-	 , dllExtension
+         -- * Filename extensions
+         , exeExtension
+         , objExtension
+         , dllExtension
          ) where
 
 #if __GLASGOW_HASKELL__
@@ -91,8 +91,8 @@ splitFileName p = (reverse path1, reverse fname1)
     path1 = case path of
       "" -> "."
       _  -> case dropWhile isPathSeparator path of
-	"" -> [pathSeparator]
-	p  -> p
+        "" -> [pathSeparator]
+        p  -> p
     fname1 = case fname of
       "" -> "."
       _  -> fname
@@ -111,8 +111,8 @@ splitFileName p = (reverse path1, reverse fname1)
 splitFileExt :: FilePath -> (String, String)
 splitFileExt p =
   case break (== '.') fname of
-	(suf@(_:_),_:pre) -> (reverse (pre++path), reverse suf)
-	_                 -> (p, [])
+        (suf@(_:_),_:pre) -> (reverse (pre++path), reverse suf)
+        _                 -> (p, [])
   where
     (fname,path) = break isPathSeparator (reverse p)
 
@@ -307,9 +307,9 @@ commonParent paths@(p:ps) =
 #if mingw32_HOST_OS || mingw32_TARGET_OS
     Nothing | all (not . isAbsolutePath) paths -> 
       let
-	 getDrive (d:':':_) ds 
-      	   | not (d `elem` ds) = d:ds
-    	 getDrive _         ds = ds
+         getDrive (d:':':_) ds 
+           | not (d `elem` ds) = d:ds
+         getDrive _         ds = ds
       in
       case foldr getDrive [] paths of
         []  -> Just "."
