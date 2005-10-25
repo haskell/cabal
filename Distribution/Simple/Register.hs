@@ -259,7 +259,6 @@ unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi (user_unreg, genScript, verbose) = do
   setupMessage "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
-  let theName = pkgName (package pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <-
@@ -273,8 +272,8 @@ unregister pkg_descr lbi (user_unreg, genScript, verbose) = do
 			  return ["--config-file=" ++ localConf]
 		else return []
         let removeCmd = if ghc_63_plus
-                        then ["unregister",theName]
-                        else ["--remove-package="++theName]
+                        then ["unregister",showPackageId (package pkg_descr)]
+                        else ["--remove-package="++(pkgName $ package pkg_descr)]
 	rawSystemEmit unregScriptLocation genScript verbose (compilerPkgTool (compiler lbi))
 	    (removeCmd++config_flags)
     Hugs -> do
