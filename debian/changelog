@@ -1,3 +1,18 @@
+haskell-cabal (1.1.3) unstable; urgency=low
+
+  * Release candidate for 1.2.
+  * WARNING: Interfaces not documented in the user's guide may
+    change in future releases.
+  * Move building of GHCi .o libs to the build phase rather than
+    register phase. (from Duncan Coutts)
+  * Use .tar.gz for source package extension
+  * Uses GHC instead of cpphs if the latter is not available
+  * Added experimental "command hooks" which completely override the
+    default behavior of a command.
+  * Some bugfixes
+  
+ -- Isaac Jones <ijones@debian.org>  Sat, 22 Oct 2005 11:38:59 -0700
+
 haskell-cabal (1.1.1) unstable; urgency=low
 
   * Release candidate for 1.2.
