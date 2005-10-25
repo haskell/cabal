@@ -4,7 +4,7 @@ copyright: filler for test suite
 maintainer: filler for test suite
 synopsis: filler for test suite
 License: AllRightsReserved
-Build-Depends: haskell-src
+Build-Depends: haskell-src, haskell98
 Other-Modules: HUnitText, HUnitLang, HUnitTestBase, Terminal, HUnitBase
 Exposed-Modules: HUnit
 HS-Source-Dir: src
