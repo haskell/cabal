@@ -8,6 +8,8 @@
 ------------------------------------------------------------
 -= 1.2 =-
 
+add version number to unregister script
+
 For the release notes: 
 Cabal 1.1.1 cannot read Cabal 1.0's .setup-config files. Users will
 need to re-run the configure command for all their projects after
