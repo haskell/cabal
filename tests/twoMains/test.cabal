@@ -2,7 +2,7 @@ Name: test
 Version: 1.0
 copyright: filler for test suite
 maintainer: filler for test suite
-build-depends: base
+build-depends: base, haskell98
 synopsis: filler for test suite
 
 Executable: testA
