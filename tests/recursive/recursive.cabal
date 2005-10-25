@@ -1,4 +1,5 @@
 name: recursive
+build-depends: base
 version: 1.0
 copyright: filler for test suite
 maintainer: Isaac Jones
