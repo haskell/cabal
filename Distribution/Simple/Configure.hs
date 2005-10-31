@@ -54,7 +54,7 @@ module Distribution.Simple.Configure (writePersistBuildConfig,
                                      )
     where
 
-#if __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
 #if __GLASGOW_HASKELL__ < 603
 #include "config.h"
 #else
@@ -145,21 +145,6 @@ configure pkg_descr cfg
 				  (configDataDir cfg)
 		my_datasubdir = fromMaybe default_datasubdir
 				  (configDataSubDir cfg)
-
-	-- on Windows, our directories should all be relative to $prefix if we're
-	-- building an executable, so we can be prefix-independent
-#if mingw32_HOST_OS	
-	let checkPrefix (s,('$':'p':'r':'e':'f':'i':'x':_)) = return ()
-	    checkPrefix (s,_other) = 
-		die (s ++ " must begin with $prefix for an executable")
-	mapM_ checkPrefix [
-		("bindir",my_bindir),
-		("libdir",my_libdir),
-		("libexecdir",my_libexecdir)
-	    ]
-	unless (hasLibs pkg_descr) $
-	  checkPrefix ("datadir",my_datadir)
-#endif
 
         -- check extensions
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
