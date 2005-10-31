@@ -58,8 +58,11 @@ import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
 import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Version (Version(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), 
-					   mkBinDir, mkLibDir, mkDataDir,
-					   mkLibexecDir)
+					   mkBinDir, mkBinDirRel,
+					   mkLibDir, mkLibDirRel,
+					   mkDataDir,mkDataDirRel,
+					   mkLibexecDir, mkLibexecDirRel)
+import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, mkProfLibName, mkGHCiLibName, dotToSep,
@@ -70,7 +73,7 @@ import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
 import Language.Haskell.Extension (Extension(..))
 
 import Data.Char(isSpace)
-import Data.Maybe(mapMaybe, maybeToList)
+import Data.Maybe(mapMaybe, maybeToList, fromJust)
 import Control.Monad (unless, when, filterM)
 #ifndef __NHC__
 import Control.Exception (try)
@@ -78,7 +81,7 @@ import Control.Exception (try)
 import IO (try)
 #endif
 import Data.List(nub, sort, isSuffixOf)
-import System.Directory (removeFile)
+import System.Directory (removeFile, getModificationTime, doesFileExist)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName,
                                 splitFileExt, joinFileExt, objExtension,
@@ -513,7 +516,7 @@ buildPathsModule pkg_descr lbi =
 	| absolute = ""
 	| otherwise =
 	  "{-# OPTIONS_GHC -fffi #-}\n"++
-	  "{-# LANGUAGE FFI #-}\n"
+	  "{-# LANGUAGE ForeignFunctionInterface #-}\n"
 
        foreign_imports
 	| absolute = ""
@@ -553,46 +556,52 @@ buildPathsModule pkg_descr lbi =
 	  "getDataFileName name = return (datadir ++ "++path_sep++" ++ name)\n"
 	| otherwise =
 	  "\nprefix        = " ++ show (prefix lbi) ++
-	  "\nbindirrel     = " ++ show (prefixRel flat_bindir) ++
-	  "\nlibdirrel     = " ++ show (prefixRel flat_libdir) ++
-	  "\ndatadirrel    = " ++ show (prefixRel flat_datadir) ++
-	  "\nlibexecdirrel = " ++ show (prefixRel flat_libexecdir) ++
+	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
 	  "\n"++
 	  "\ngetBinDir :: IO FilePath\n"++
-	  "getBinDir = do\n"++
-	  "  m <- getPrefix bindirrel\n"++
-	  "  return (fromMaybe prefix m `joinFileName` bindirrel)\n"++
+	  "getBinDir = getPrefixDirRel bindirrel\n\n"++
 	  "getLibDir :: IO FilePath\n"++
-	  "getLibDir = do\n"++
-	  "  m <- getPrefix bindirrel\n"++
-	  "  return (fromMaybe prefix m `joinFileName` libdirrel)\n"++
+	  "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
 	  "getDataDir :: IO FilePath\n"++
-	  "getDataDir = do\n"++
-	  "  m <- getPrefix bindirrel\n"++
-	  "  return (fromMaybe prefix m `joinFileName` datadirrel)\n"++
-	  "\n"++
+	  "getDataDir =  "++mkGetDir flat_datadir flat_datadirrel++"\n\n"++
+	  "getLibexecDir :: IO FilePath\n"++
+	  "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
 	  "getDataFileName name = do\n"++
 	  "  dir <- getDataDir\n"++
 	  "  return (dir `joinFileName` name)\n"++
 	  "\n"++
 	  get_prefix_stuff
-   in
-   writeFile (autogenModulesDir lbi `joinFileName` paths_filename) (header++body)
+   in do btime <- getModificationTime localBuildInfoFile
+   	 exists <- doesFileExist paths_filepath
+   	 ptime <- if exists
+   	            then getModificationTime paths_filepath
+   	            else return btime
+	 if btime >= ptime
+	   then writeFile paths_filepath (header++body)
+	   else return ()
  where
-	flat_bindir     = mkBinDir pkg_descr lbi NoCopyDest
-	flat_libdir     = mkLibDir pkg_descr lbi NoCopyDest
-	flat_datadir    = mkDataDir pkg_descr lbi NoCopyDest
-	flat_libexecdir = mkLibexecDir pkg_descr lbi NoCopyDest
+	flat_bindir        = mkBinDir pkg_descr lbi NoCopyDest
+	flat_bindirrel     = mkBinDirRel pkg_descr lbi NoCopyDest
+	flat_libdir        = mkLibDir pkg_descr lbi NoCopyDest
+	flat_libdirrel     = mkLibDirRel pkg_descr lbi NoCopyDest
+	flat_datadir       = mkDataDir pkg_descr lbi NoCopyDest
+	flat_datadirrel    = mkDataDirRel pkg_descr lbi NoCopyDest
+	flat_libexecdir    = mkLibexecDir pkg_descr lbi NoCopyDest
+	flat_libexecdirrel = mkLibexecDirRel pkg_descr lbi NoCopyDest
+	
+	mkGetDir dir (Just dirrel) = "getPrefixDirRel " ++ show dirrel
+	mkGetDir dir Nothing       = "return " ++ show dir
 
 #if mingw32_HOST_OS
-	absolute = hasLibs pkg_descr
+	absolute = hasLibs pkg_descr || flat_bindirrel == Nothing
 #else
 	absolute = True
 #endif
 
   	paths_modulename = "Paths_" ++ fix (pkgName (package pkg_descr))
 	paths_filename = paths_modulename ++ ".hs"
+	paths_filepath = autogenModulesDir lbi `joinFileName` paths_filename
 
 	path_sep = show [pathSeparator]
 
@@ -600,31 +609,29 @@ buildPathsModule pkg_descr lbi =
 	  where fixchar '-' = '_'
 		fixchar c   = c
 
-	prefixRel ('$':'p':'r':'e':'f':'i':'x':s) = s
-	prefixRel _ = error "buildPathsModule"
-
 get_prefix_stuff =
-  "getPrefix :: FilePath -> IO (Maybe FilePath)\n"++
-  "getPrefix binDirRel = do \n"++
+  "getPrefixDirRel :: FilePath -> IO FilePath\n"++
+  "getPrefixDirRel dirRel = do \n"++
   "  let len = (2048::Int) -- plenty, PATH_MAX is 512 under Win32.\n"++
   "  buf <- mallocArray len\n"++
   "  ret <- getModuleFileName nullPtr buf len\n"++
   "  if ret == 0 \n"++
-  "     then do free buf; return Nothing\n"++
-  "     else do s <- peekCString buf\n"++
-  "          free buf\n"++
-  "          return (Just (prefixFromExePath s binDirRel))\n"++
-  "\n"++
-  "foreign import stdcall \"GetModuleFileNameA\" unsafe\n"++
-  "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"++
-  "\n"++
-  "prefixFromExePath :: FilePath -> FilePath -> FilePath\n"++
-  "prefixFromExePath exe_path binDirRel\n"++
-  "  = bindir `joinFileName` foldr joinFileName \".\" dotdots\n"++
+  "     then do free buf;\n"++
+  "             return (prefix `joinFileName` dirRel)\n"++
+  "     else do exePath <- peekCString buf\n"++
+  "             free buf\n"++
+  "             let (bindir,_) = splitFileName exePath\n"++
+  "             return (prefixFromBinDir bindir bindirrel `joinFileName` dirRel)\n"++
   "  where\n"++
-  "   (bindir,exe) = splitFileName exe_path\n"++
-  "   bincomps = breakFilePath binDirRel -- something like [\".\",\"bin\"]\n"++
-  "   dotdots = take (length bincomps) (repeat \"..\")\n"++
+  "    prefixFromBinDir bindir path\n"++
+  "      | path' == \".\" = bindir'\n"++
+  "      | otherwise    = prefixFromBinDir bindir' path'\n"++
+  "      where\n"++
+  "        (bindir',_) = splitFileName bindir\n"++
+  "        (path',  _) = splitFileName path\n"++
+  "\n"++
+  "foreign import stdcall unsafe \"GetModuleFileNameA\"\n"++
+  "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"++
   "\n"++
   "joinFileName :: String -> String -> FilePath\n"++
   "joinFileName \"\"  fname = fname\n"++
@@ -647,19 +654,12 @@ get_prefix_stuff =
   "      (c:path) | isPathSeparator c -> path\n"++
   "      _                            -> path1\n"++
   "\n"++
-  "breakFilePath :: FilePath -> [String]\n"++
-  "breakFilePath = worker []\n"++
-  "    where worker ac path\n"++
-  "              | less == path = less:ac\n"++
-  "              | otherwise = worker (current:ac) less\n"++
-  "              where (less,current) = splitFileName path\n"++
-  "\n"++
   "pathSeparator :: Char\n"++
-  "pathSeparator = '\\'\n"++
+  "pathSeparator = '\\\\'\n"++
   "\n"++
   "isPathSeparator :: Char -> Bool\n"++
   "isPathSeparator ch =\n"++
-  "  ch == '/' || ch == '\\'\n"
+  "  ch == '/' || ch == '\\\\'\n"
 
 -- ------------------------------------------------------------
 -- * Testing
