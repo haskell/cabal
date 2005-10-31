@@ -1,4 +1,6 @@
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
 #include "ghcconfig.h"
+#endif
 
 name:		PACKAGE
 version:	VERSION

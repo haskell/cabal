@@ -88,7 +88,7 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath)
+                                  moduleToFilePath, findFile)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPath)
 #endif
@@ -403,40 +403,62 @@ distPref :: FilePath
 distPref = "dist"
 
 haddock :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
-haddock pkg_descr lbi verbose pps =
-    withLib pkg_descr () $ \lib -> do
-        confHaddock <- do let programConf = withPrograms lbi
-                          let haddockName = programName $ haddockProgram
-                          mHaddock <- lookupProgram haddockName programConf
-                          case mHaddock of
-                            Nothing -> (die "haddock command not found")
-                            Just h  -> return h
+haddock pkg_descr lbi verbose pps = do
+    confHaddock <- do let programConf = withPrograms lbi
+                      let haddockName = programName $ haddockProgram
+                      mHaddock <- lookupProgram haddockName programConf
+                      case mHaddock of
+                        Nothing -> (die "haddock command not found")
+                        Just h  -> return h
 
+    let targetDir = joinPaths distPref (joinPaths "doc" "html")
+    let tmpDir = joinPaths (buildDir lbi) "tmp"
+    createDirectoryIfMissing True tmpDir
+    createDirectoryIfMissing True targetDir
+    preprocessSources pkg_descr lbi verbose pps
+    
+    setupMessage "Running Haddock for" pkg_descr
+
+    withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
-        let targetDir = joinPaths distPref (joinPaths "doc" "html")
-        let tmpDir = joinPaths (buildDir lbi) "tmp"
-        createDirectoryIfMissing True tmpDir
-        createDirectoryIfMissing True targetDir
-        preprocessSources pkg_descr lbi verbose pps
         inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                               | m <- exposedModules lib] >>= return . concat
+                               | m <- exposedModules lib ++ otherModules bi] >>= return . concat
         mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
         let showPkg = showPackageId (package pkg_descr)
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName ((description pkg_descr) ++ "\n")
-        setupMessage "Running Haddock for" pkg_descr
         let outFiles = map (joinFileName tmpDir)
                        (map ((flip changeFileExt) "hs") inFiles)
-        code <- rawSystemProgram verbose confHaddock
+        rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", targetDir,
                   "-t", showPkg,
                   "-p", prologName] ++ (programArgs confHaddock)
                 ++ (if verbose > 4 then ["-v"] else [])
                 ++ outFiles
+                ++ map ((++) "--hide=") (otherModules bi)
                 )
-        removeDirectoryRecursive tmpDir
         removeFile prologName
+    withExe pkg_descr $ \exe -> do
+        let bi = buildInfo exe
+            exeTargetDir = targetDir `joinFileName` exeName exe
+        createDirectoryIfMissing True exeTargetDir
+        inFiles' <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
+                               | m <- otherModules bi] >>= return . concat
+        srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
+        let inFiles = srcMainPath : inFiles'
+        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
+        let outFiles = map (joinFileName tmpDir)
+                       (map ((flip changeFileExt) "hs") inFiles)
+        rawSystemProgram verbose confHaddock
+                (["-h",
+                  "-o", exeTargetDir,
+                  "-t", exeName exe] ++ (programArgs confHaddock)
+                ++ (if verbose > 4 then ["-v"] else [])
+                ++ outFiles
+                )
+
+    removeDirectoryRecursive tmpDir
   where
         mockPP inputArgs pkg_descr bi lbi pref verbose file
             = do let (filePref, fileName) = splitFileName file
