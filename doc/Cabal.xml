@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="US-ASCII"?>
 <!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
   "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
-    <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution.Simple.html">Distribution.Simple</ulink>'>
-    <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution.Make.html">Distribution.Make</ulink>'>
-    <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution.License.html#t:License"><literal>License</literal></ulink>'>
-    <!ENTITY Extension '<ulink url="../libraries/Cabal/Language.Haskell.Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
+    <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution-Simple.html">Distribution.Simple</ulink>'>
+    <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution-Make.html">Distribution.Make</ulink>'>
+    <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution-License.html#t:License"><literal>License</literal></ulink>'>
+    <!ENTITY Extension '<ulink url="../libraries/Cabal/Language-Haskell-Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
     <!ENTITY Alex '<ulink url="http://www.haskell.org/alex/"><command>alex</command></ulink>'>
     <!ENTITY Autoconf '<ulink url="http://www.gnu.org/software/autoconf/"><command>autoconf</command></ulink>'>
     <!ENTITY C2hs '<ulink url="http://www.cse.unsw.edu.au/~chak/haskell/c2hs/"><command>c2hs</command></ulink>'>
@@ -1505,9 +1505,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <replaceable>libdir</replaceable>,
 	    <replaceable>datadir</replaceable> and
 	    <replaceable>libexecdir</replaceable> begin with
-	    <literal>$prefix</literal>.  An error will be returned
-	    from <literal>setup configure</literal> if this is not
-	    the case.</para>
+	    <literal>$prefix</literal>. If this is not the case
+	    then the compiled executable will have baked in
+	    all absolute paths.</para>
 
 	  <para>The application need do nothing special to achieve
 	    prefix-independence.  If it finds any files using

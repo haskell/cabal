@@ -50,7 +50,7 @@ module Distribution.Simple.LocalBuildInfo (
 	default_libexecdir,
 	default_datadir,
 	default_datasubdir,
-	mkLibDir, mkBinDir, mkLibexecDir, mkDataDir, mkProgDir,
+	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkProgDir,
 	substDir,
   ) where
 
@@ -215,58 +215,59 @@ default_datadir pkg_descr
 
 default_datasubdir = "$pkgid"
 
-
 mkBinDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkBinDir pkg_descr lbi0 copydest = 
-  prepend copydest $
-  substDir pkg_descr lbi (bindir lbi)
- where
-  lbi = case copydest of 
-	 CopyPrefix d -> lbi0{prefix=d}
-         _otherwise   -> lbi0
+mkBinDir pkg_descr lbi copydest = 
+  absolutePath  pkg_descr lbi copydest (bindir lbi)
+
+mkBinDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
+mkBinDirRel pkg_descr lbi copydest = 
+  prefixRelPath pkg_descr lbi copydest (bindir lbi)
 
 mkLibDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkLibDir pkg_descr lbi0 copydest = 
-  prepend copydest $
-  substDir pkg_descr lbi (libdir lbi) `joinFileName`
-  substDir pkg_descr lbi (libsubdir lbi)
- where
-  lbi = case copydest of 
-	 CopyPrefix d -> lbi0{prefix=d}
-         _otherwise   -> lbi0
+mkLibDir pkg_descr lbi copydest = 
+  absolutePath  pkg_descr lbi copydest (libdir lbi `joinFileName` libsubdir lbi)
+
+mkLibDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
+mkLibDirRel pkg_descr lbi copydest = 
+  prefixRelPath pkg_descr lbi copydest (libdir lbi `joinFileName` libsubdir lbi)
 
 mkLibexecDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkLibexecDir pkg_descr lbi0 copydest = 
-  prepend copydest $
-  substDir pkg_descr lbi (libexecdir lbi)
- where
-  lbi = case copydest of 
-	 CopyPrefix d -> lbi0{prefix=d}
-         _otherwise   -> lbi0
+mkLibexecDir pkg_descr lbi copydest = 
+  absolutePath  pkg_descr lbi copydest (libexecdir lbi)
+
+mkLibexecDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
+mkLibexecDirRel pkg_descr lbi copydest = 
+  prefixRelPath pkg_descr lbi copydest (libexecdir lbi)
 
 mkDataDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkDataDir pkg_descr lbi0 copydest = 
-  prepend copydest $
-  substDir pkg_descr lbi (datadir lbi) `joinFileName`
-  substDir pkg_descr lbi (datasubdir lbi)
- where
-  lbi = case copydest of 
-	 CopyPrefix d -> lbi0{prefix=d}
-         _otherwise   -> lbi0
+mkDataDir pkg_descr lbi copydest = 
+  absolutePath  pkg_descr lbi copydest (datadir lbi `joinFileName` datasubdir lbi)
+
+mkDataDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
+mkDataDirRel pkg_descr lbi copydest = 
+  prefixRelPath pkg_descr lbi copydest (datadir lbi `joinFileName` datasubdir lbi)
 
 -- | Directory for program modules (Hugs only).
 mkProgDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkProgDir pkg_descr lbi0 copydest = 
-  prepend copydest $
-  substDir pkg_descr lbi (libdir lbi) `joinFileName`
+mkProgDir pkg_descr lbi copydest = 
+  absolutePath pkg_descr lbi copydest (libdir lbi) `joinFileName`
   "hugs" `joinFileName` "programs"
- where
-  lbi = case copydest of 
-	 CopyPrefix d -> lbi0{prefix=d}
-         _otherwise   -> lbi0
 
-prepend (CopyTo p) q = p `joinFileName` dropAbsolutePrefix q
-prepend _          q = q
+prefixRelPath pkg_descr lbi0 copydest ('$':'p':'r':'e':'f':'i':'x':s) = Just $
+  case s of
+    (c:s) | isPathSeparator c -> substDir pkg_descr lbi s
+    s                         -> substDir pkg_descr lbi s
+  where
+    lbi = case copydest of 
+            CopyPrefix d -> lbi0{prefix=d}
+            _otherwise   -> lbi0
+prefixRelPath pkg_descr lbi copydest s = Nothing
+
+absolutePath pkg_descr lbi copydest s =
+  case copydest of
+    NoCopyDest   -> substDir pkg_descr lbi s
+    CopyPrefix d -> substDir pkg_descr lbi{prefix=d} s
+    CopyTo     p -> p `joinFileName` (dropAbsolutePrefix (substDir pkg_descr lbi s))
 
 substDir :: PackageDescription -> LocalBuildInfo -> String -> String
 substDir pkg_descr lbi s = loop s

@@ -3,7 +3,7 @@ module Distribution.Compat.Directory (
         removeDirectoryRecursive, module System.Directory
   ) where
 
-#if __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
 #if __GLASGOW_HASKELL__ < 603
 #include "config.h"
 #else
