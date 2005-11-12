@@ -49,11 +49,15 @@
 >            -> CopyFlags -- ^install-prefix, verbose
 >            -> IO ()
 > myCopyHook a b c@((CopyPrefix p), _) = do
+>   let copySource = case compilerFlavor $ compiler b of
+>        GHC  -> foldl1 joinPaths ["dist", "build", "withHooks", "withHooks"]
+>        Hugs -> foldl1 joinPaths ["dist", "build", "Main.hs"] -- some random file
 >   createDirectoryIfMissing True p
->   copyFile (foldl1 joinPaths ["dist", "build", "withHooks", "withHooks"])
->                        (p `joinPaths` "withHooks")
+>   copyFile copySource (p `joinPaths` "withHooks")
+
 >   -- now call the default copy hook so the rest of the test case works nice ... so tricky ;)
 >   (copyHook defaultUserHooks) a b c
+> myCopyHook _ _ _ = error "Please use --copy-prefix."
 
 Override "gc" to test the overriding mechanism.
 
