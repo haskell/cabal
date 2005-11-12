@@ -192,10 +192,12 @@ configure pkg_descr cfg
 
         -- FIXME: maybe this should only be printed when verbose?
         message $ "Using install prefix: " ++ pref
-        message $ "Binaries installed in: " ++ mkBinDir pkg_descr lbi NoCopyDest
-        message $ "Libraries installed in: " ++ mkLibDir pkg_descr lbi NoCopyDest
-        message $ "Private binaries installed in: " ++ mkLibexecDir pkg_descr lbi NoCopyDest
-        message $ "Data files installed in: " ++ mkDataDir pkg_descr lbi NoCopyDest
+
+        messageDir pkg_descr lbi "Binaries" mkBinDir mkBinDirRel
+        messageDir pkg_descr lbi "Libraries" mkLibDir mkLibDirRel
+        messageDir pkg_descr lbi "Private binaries" mkLibexecDir mkLibexecDirRel
+        messageDir pkg_descr lbi "Data files" mkDataDir mkDataDirRel
+        
         message $ "Using compiler: " ++ p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
@@ -211,6 +213,19 @@ configure pkg_descr cfg
         reportProgram "greencard" greencard
 
 	return lbi
+
+messageDir pkg_descr lbi name mkDir mkDirRel = 
+  message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
+  where
+#if mingw32_HOST_OS
+    rel_note
+      | not (hasLibs pkg_descr) &&
+        mkDirRel pkg_descr lbi NoCopyDest == Nothing
+                  = "  (fixed location)"
+      | otherwise = ""
+#else
+    rel_note      = ""
+#endif
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
