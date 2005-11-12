@@ -282,14 +282,18 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
        --won't build anyway.  add to sanity checker?
       updateLibrary (Just bi) Nothing     = Just emptyLibrary{libBuildInfo=bi}
 
-      updateExecutables :: [(String, BuildInfo)] -> [Executable] -> [Executable]
+      updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
+                        -> [Executable]          -- ^list of executables to update
+                        -> [Executable]          -- ^list with exeNames updated
       updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
       
-      updateExecutable :: (String, BuildInfo) -> [Executable] -> [Executable]
+      updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
+                       -> [Executable]        -- ^list of executables to update
+                       -> [Executable]        -- ^libst with exeName updated
       updateExecutable _                 []         = []
       updateExecutable exe_bi'@(name,bi) (exe:exes)
         | exeName exe == name = exe{buildInfo = unionBuildInfo bi (buildInfo exe)} : exes
-        | otherwise           = updateExecutable exe_bi' exes
+        | otherwise           = exe : updateExecutable exe_bi' exes
 
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
