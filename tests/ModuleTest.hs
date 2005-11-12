@@ -283,7 +283,7 @@ tests currDir comp compConf = [
             assertCopy
             doesFileExist "dist/build/A.hi-boot" >>=
               assertBool "build did not move A.hi-boot file into place lib"
-            doesFileExist ",tmp/lib/recursive-1.0/ghc-6.4/libHSrecursive-1.0.a" >>= -- FIX: Comp
+            doesFileExist ",tmp/lib/recursive-1.0/ghc-6.4.1/libHSrecursive-1.0.a" >>= -- FIX: Comp
               assertBool "recursive build didn't create library"
             doesFileExist "dist/build/testExe/testExe-tmp/A.hi" >>=
               assertBool "build did not move A.hi-boot file into place exe"
@@ -323,7 +323,7 @@ tests currDir comp compConf = [
                                   >>= assertBool "library doesn't exist"
                                 doesFileExist (",tmp/bin/mainForA")
                                   >>= assertBool "installed bin doesn't exist"
-                                doesFileExist (",tmp/lib/test-1.0/ghc-6.4/libHStest-1.0.a")
+                                doesFileExist (",tmp/lib/test-1.0/ghc-6.4.1/libHStest-1.0.a")
                                   >>= assertBool "installed lib doesn't exist")
 -- wash2hs
        ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
@@ -363,7 +363,7 @@ tests currDir comp compConf = [
                        assertBool "C.testSuffix did not get compiled to C.o."
                      doesFileExist "dist/build/D.o" >>=
                        assertBool "D.gc did not get compiled to D.o this is an overriding test"
-                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-6.4/" `joinFileName` "libHSwithHooks-1.0.a")
+                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-6.4.1/" `joinFileName` "libHSwithHooks-1.0.a")
                        >>= assertBool "library doesn't exist")
 
             doesFileExist ",tmp/bin/withHooks" >>= 
@@ -406,7 +406,7 @@ tests currDir comp compConf = [
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
           libForA pref  -- checks to see if the lib exists, for tests/A
-              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.4/" in
+              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.4.1/" in
                  case compConf of
                   Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs"]
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
