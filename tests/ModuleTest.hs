@@ -97,20 +97,23 @@ runTestTT'  (TestLabel l t)
 runTestTT' t = runTestTT t
 
 
+anyExists :: [FilePath] -> IO Bool
+anyExists l = do l' <- mapM doesFileExist l
+                 return $ any (== True) l'
+
 checkTargetDir :: FilePath
                -> [String] -- ^suffixes
                -> IO ()
 checkTargetDir targetDir suffixes
     = do doesDirectoryExist targetDir >>=
            assertBool "target dir exists"
-         let files = [x++y |
-                      x <- ["A", "B/A"],
-                      y <- suffixes]
-         allFilesE <- sequence [doesFileExist (targetDir ++ t)
-                                | t <- files]
+         let mods = ["A", "B/A"]
+         allFilesE <- mapM anyExists [[(targetDir ++ t ++ y)
+                                           | y <- suffixes]
+                                            | t <- mods]
 
          sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
-                   | (e, f) <- zip allFilesE files]
+                   | (e, f) <- zip allFilesE mods]
          return ()
 
 -- |Run this command, and assert it returns a successful error code.
@@ -408,7 +411,7 @@ tests currDir comp compConf = [
           libForA pref  -- checks to see if the lib exists, for tests/A
               = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.4.1/" in
                  case compConf of
-                  Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs"]
+                  Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs", ".lhs"]
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
                              doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
