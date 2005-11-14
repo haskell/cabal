@@ -96,11 +96,6 @@ runTestTT'  (TestLabel l t)
     = putStrLn (label l) >> runTestTT t
 runTestTT' t = runTestTT t
 
-
-anyExists :: [FilePath] -> IO Bool
-anyExists l = do l' <- mapM doesFileExist l
-                 return $ any (== True) l'
-
 checkTargetDir :: FilePath
                -> [String] -- ^suffixes
                -> IO ()
@@ -115,6 +110,10 @@ checkTargetDir targetDir suffixes
          sequence [assertBool ("target file missing: " ++ targetDir ++ f) e
                    | (e, f) <- zip allFilesE mods]
          return ()
+
+  where anyExists :: [FilePath] -> IO Bool
+        anyExists l = do l' <- mapM doesFileExist l
+                         return $ any (== True) l'
 
 -- |Run this command, and assert it returns a successful error code.
 assertCmd :: String -- ^Command

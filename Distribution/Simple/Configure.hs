@@ -84,7 +84,7 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
-                            lookupPrograms, updateProgram, defaultProgramConfiguration)
+                            lookupPrograms, updateProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )

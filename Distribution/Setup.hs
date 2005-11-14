@@ -132,9 +132,9 @@ data ConfigFlags = ConfigFlags {
 	configGHCiLib  :: Bool            -- ^Enable compiling library for GHCi
     }
 
-emptyConfigFlags :: ConfigFlags
-emptyConfigFlags = ConfigFlags {
-        configPrograms = defaultProgramConfiguration,
+emptyConfigFlags :: ProgramConfiguration -> ConfigFlags
+emptyConfigFlags progConf = ConfigFlags {
+        configPrograms = progConf,
         configHcFlavor = defaultCompilerFlavor,
         configHcPath   = Nothing,
         configHcPkg    = Nothing,
@@ -262,25 +262,26 @@ data Cmd a = Cmd {
         cmdAction       :: Action
         }
 
-commandList :: [Cmd a]
-commandList = [configureCmd, buildCmd, cleanCmd, installCmd,
-               copyCmd, sdistCmd, testCmd, haddockCmd, programaticaCmd,
-               registerCmd, unregisterCmd]
+commandList :: ProgramConfiguration -> [Cmd a]
+commandList progConf = [(configureCmd progConf), buildCmd, cleanCmd, installCmd,
+                        copyCmd, sdistCmd, testCmd, haddockCmd, programaticaCmd,
+                        registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
 lookupCommand name = find ((==name) . cmdName)
 
-printGlobalHelp :: IO ()
-printGlobalHelp = do pname <- getProgName
+printGlobalHelp :: ProgramConfiguration -> IO ()
+printGlobalHelp progConf = 
+                  do pname <- getProgName
                      let syntax_line = "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n  or:  " ++ pname ++ " COMMAND [FLAGS]\n\nGlobal flags:"
                      putStrLn (usageInfo syntax_line globalOptions)
                      putStrLn "Commands:"
-                     let maxlen = maximum [ length (cmdName cmd) | cmd <- commandList ]
+                     let maxlen = maximum [ length (cmdName cmd) | cmd <- (commandList progConf) ]
                      sequence_ [ do putStr "  "
                                     putStr (align maxlen (cmdName cmd))
                                     putStr "    "
                                     putStrLn (cmdHelp cmd)
-                               | cmd <- commandList ]
+                               | cmd <- (commandList progConf) ]
                      putStrLn $ "\nFor more information about a command, try '" ++ pname ++ " COMMAND --help'."
   where align n str = str ++ replicate (n - length str) ' '
 
@@ -298,21 +299,21 @@ getCmdOpt cmd opts s = let (a,_,c,d) = getOpt' Permute (cmdOptions cmd ++ liftCu
 hasHelpFlag :: [Flag a] -> Bool
 hasHelpFlag flags = not . null $ [ () | HelpFlag <- flags ]
 
-parseGlobalArgs :: [String] -> IO (Action,[String])
-parseGlobalArgs args =
+parseGlobalArgs :: ProgramConfiguration -> [String] -> IO (Action,[String])
+parseGlobalArgs progConf args =
   case getOpt' RequireOrder globalOptions args of
     (flags, _, _, []) | hasHelpFlag flags -> do
-      printGlobalHelp
+      (printGlobalHelp progConf)
       exitWith ExitSuccess
     (_, cname:cargs, _, []) -> do
-      case lookupCommand cname commandList of
+      case lookupCommand cname (commandList progConf) of
         Just cmd -> return (cmdAction cmd,cargs)
         Nothing  -> die $ "Unrecognised command: " ++ cname ++ " (try --help)"
     (_, [], _, [])  -> die $ "No command given (try --help)"
     (_, _, _, errs) -> putErrors errs
 
-configureCmd :: Cmd a
-configureCmd = Cmd {
+configureCmd :: ProgramConfiguration -> Cmd a
+configureCmd progConf = Cmd {
         cmdName        = "configure",
         cmdHelp        = "Prepare to build the package.",
         cmdDescription = "",  -- This can be a multi-line description
@@ -374,9 +375,9 @@ configureCmd = Cmd {
 
    FIX: shouldn't use default. Look in hooks?.
 -}
-         ++ (withProgramOptions defaultProgramConfiguration)
-         ++ (programArgsOptions defaultProgramConfiguration),
-        cmdAction      = ConfigCmd emptyConfigFlags
+         ++ (withProgramOptions progConf)
+         ++ (programArgsOptions progConf),
+        cmdAction      = ConfigCmd (emptyConfigFlags progConf)
         }
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
@@ -395,9 +396,9 @@ reqPathArg constr = ReqArg (constr . platformPath) "PATH"
 reqDirArg :: (FilePath -> a) -> ArgDescr a
 reqDirArg constr = ReqArg (constr . platformPath) "DIR"
 
-parseConfigureArgs :: ConfigFlags -> [String] -> [OptDescr a] ->
+parseConfigureArgs :: ProgramConfiguration -> ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])
-parseConfigureArgs = parseArgs configureCmd updateCfg
+parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
   where updateCfg t GhcFlag              = t { configHcFlavor = Just GHC }
         updateCfg t NhcFlag              = t { configHcFlavor = Just NHC }
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
