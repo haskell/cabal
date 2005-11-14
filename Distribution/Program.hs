@@ -11,6 +11,8 @@ module Distribution.Program( Program(..)
                            , lookupProgram
                            , lookupPrograms
                            , rawSystemProgram
+                           , rawSystemProgramConf
+                           , simpleProgram
                              -- Programs
                            , ghcProgram
                            , ghcPkgProgram
@@ -238,6 +240,19 @@ rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
 rawSystemProgram _ (Program { programLocation=EmptyLocation
                             , programName=n})_ 
     = die ("Error: Could not find location for program: " ++ n)
+
+rawSystemProgramConf :: Int -- ^verbosity
+                     -> String -- ^The name of the program to run
+                     -> ProgramConfiguration -- ^look up the program here
+                     -> [String] -- ^Any /extra/ arguments to add
+                     -> IO ExitCode
+rawSystemProgramConf verbose progName programConf extraArgs 
+    = do prog <- do mProg <- lookupProgram progName programConf
+                    case mProg of
+                        Nothing -> (die (progName ++ " command not found"))
+                        Just h  -> return h
+         rawSystemProgram verbose prog extraArgs
+
 
 -- ------------------------------------------------------------
 -- * Internal helpers

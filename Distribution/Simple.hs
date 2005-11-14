@@ -67,9 +67,9 @@ module Distribution.Simple (
 import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Program(lookupProgram, Program(..),
-                            haddockProgram, rawSystemProgram,
-                            pfesetupProgram)
+import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..),
+                            haddockProgram, rawSystemProgram, defaultProgramConfiguration,
+                            pfesetupProgram, updateProgram,  rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -127,6 +127,8 @@ data UserHooks = UserHooks
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
      hookedPreProcessors :: [ PPSuffixHandler ],
         -- ^Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
+     hookedPrograms :: [Program],
+        -- ^These programs are detected at configure time.  Arguments for them are added to the configure command.
 
       -- |Hook to run before configure command
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
@@ -225,7 +227,7 @@ data UserHooks = UserHooks
 -- action specified on the command line.
 defaultMain :: IO ()
 defaultMain = do args <- getArgs
-                 (action, args) <- parseGlobalArgs args
+                 (action, args) <- parseGlobalArgs (allPrograms Nothing) args
                  pkg_descr_file <- defaultPackageDesc
                  pkg_descr <- readPackageDescription pkg_descr_file
                  defaultMainWorker pkg_descr action args Nothing
@@ -235,7 +237,7 @@ defaultMain = do args <- getArgs
 defaultMainWithHooks :: UserHooks -> IO ()
 defaultMainWithHooks hooks
     = do args <- getArgs
-         (action, args) <- parseGlobalArgs args
+         (action, args) <- parseGlobalArgs (allPrograms (Just hooks)) args
          maybeDesc <- readDesc hooks
          pkg_descr <- maybe (defaultPackageDesc >>= readPackageDescription)
                             return maybeDesc
@@ -247,9 +249,16 @@ defaultMainWithHooks hooks
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         (action, args) <- parseGlobalArgs args
+         (action, args) <- parseGlobalArgs (allPrograms Nothing) args
          defaultMainWorker pkg_descr action args Nothing
          return ()
+
+allPrograms :: Maybe UserHooks
+            -> ProgramConfiguration -- combine defaults w/ user programs
+allPrograms Nothing = defaultProgramConfiguration
+allPrograms (Just h) = foldl (\pConf p -> updateProgram (Just p) pConf)
+                        defaultProgramConfiguration
+                        (hookedPrograms h)
 
 -- |Helper function for /defaultMain/ and /defaultMainNoRead/
 defaultMainWorker :: PackageDescription
@@ -264,14 +273,13 @@ defaultMainWorker pkg_descr_in action args hooks
          case action of
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
-			parseConfigureArgs flags args [buildDirOpt]
+			parseConfigureArgs (allPrograms hooks) flags args [buildDirOpt]
                 pkg_descr <- hookOrInArgs preConf args flags
                 (warns, ers) <- sanityCheckPackage pkg_descr
                 errorOut warns ers
 
                 let c = maybe (confHook defaultUserHooks) confHook hooks
 		localbuildinfo <- c pkg_descr flags
-
 		writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf args flags pkg_descr localbuildinfo
 
@@ -433,6 +441,7 @@ haddock pkg_descr lbi verbose pps = do
         writeFile prologName ((description pkg_descr) ++ "\n")
         let outFiles = map (joinFileName tmpDir)
                        (map ((flip changeFileExt) "hs") allInputFiles)
+        -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", targetDir,
@@ -491,19 +500,12 @@ pfe pkg_descr _lbi verbose pps = do
         die "no libraries found in this project"
     withLib pkg_descr () $ \lib -> do
         lbi <- getPersistBuildConfig
-        confPfe <- do let programConf = withPrograms lbi
-                      let progName = programName $ pfesetupProgram
-                      mProg <- lookupProgram progName programConf
-                      case mProg of
-                        Nothing -> (die (progName ++ " command not found"))
-                        Just h  -> return h
-
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
         preprocessSources pkg_descr lbi verbose pps
         inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
                                 | m <- mods] >>= return . concat
-        rawSystemProgram verbose confPfe
+        rawSystemProgramConf verbose (programName pfesetupProgram) (withPrograms lbi)
                 ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
                 ++ inFiles)
         return ()
@@ -566,6 +568,7 @@ emptyUserHooks
        runTests  = res,
        readDesc  = return Nothing,
        hookedPreProcessors = [],
+       hookedPrograms      = [],
        preConf   = rn,
        confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
        postConf  = res,
