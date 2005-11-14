@@ -49,6 +49,7 @@ module Distribution.Make (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
+import Distribution.Program(defaultProgramConfiguration)
 import Distribution.PackageDescription
 import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
 
@@ -112,10 +113,10 @@ defaultMain = defaultPackageDesc >>= readPackageDescription >>= defaultMainNoRea
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         (action, args) <- parseGlobalArgs args
+         (action, args) <- parseGlobalArgs defaultProgramConfiguration args
          case action of
             ConfigCmd flags -> do
-                (flags, _, args) <- parseConfigureArgs flags args []
+                (flags, _, args) <- parseConfigureArgs defaultProgramConfiguration flags args []
                 retVal <- exec $ unwords $
                   "./configure" : configureArgs flags ++ args
                 if (retVal == ExitSuccess)

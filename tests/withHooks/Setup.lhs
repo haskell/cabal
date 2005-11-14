@@ -10,6 +10,7 @@
 > import Distribution.Compat.Directory (copyFile)
 > import Distribution.Compat.FilePath(joinPaths)
 > import Distribution.Simple.Utils (defaultHookedPackageDesc)
+> import Distribution.Program(simpleProgram, rawSystemProgramConf)
 > import System.Directory (removeFile, createDirectoryIfMissing)
 > import System.Exit(ExitCode(..))
 > import Control.Monad(when)
@@ -49,6 +50,8 @@
 >            -> CopyFlags -- ^install-prefix, verbose
 >            -> IO ()
 > myCopyHook a b c@((CopyPrefix p), _) = do
+>   -- call 'ls' from our hookedPrograms hook... pointless except as a demo
+>   rawSystemProgramConf 0 "ls" (withPrograms b) []
 >   let copySource = case compilerFlavor $ compiler b of
 >        GHC  -> foldl1 joinPaths ["dist", "build", "withHooks", "withHooks"]
 >        Hugs -> foldl1 joinPaths ["dist", "build", "Main.hs"] -- some random file
@@ -64,6 +67,7 @@ Override "gc" to test the overriding mechanism.
 > main :: IO ()
 > main = defaultMainWithHooks defaultUserHooks
 >        {preConf=myPreConf,
+>         hookedPrograms=[simpleProgram "ls"],
 >         runTests=testing,
 >         postConf=(\_ _ _ _ -> return ExitSuccess),
 >         hookedPreProcessors=  [("testSuffix", ppTestHandler), ("gc", ppTestHandler)],
