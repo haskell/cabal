@@ -45,6 +45,7 @@ module Distribution.Setup (--parseArgs,
                            Action(..),
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags, CopyDest(..), InstallFlags, RegisterFlags, SDistFlags,
+                           InstallUserFlag(..),
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,
@@ -85,7 +86,7 @@ data Action = ConfigCmd ConfigFlags       -- config
             | CopyCmd CopyDest            -- copy (--destdir flag)
             | HaddockCmd                  -- haddock
             | ProgramaticaCmd             -- pfesetup
-            | InstallCmd Bool -- install (install-prefix) (--user flag)
+            | InstallCmd InstallUserFlag -- install (install-prefix) (--user flag)
             | SDistCmd                    -- sdist
             | TestCmd                     -- test
             | RegisterCmd   Bool Bool     -- register (--user flag, --gen-script)
@@ -364,7 +365,7 @@ configureCmd progConf = Cmd {
 	   Option "" ["disable-library-for-ghci"] (NoArg WithoutGHCiLib)
                "do not compile libraries for GHCi",
            Option "" ["user"] (NoArg UserFlag)
-               "allow dependencies to be satisfied from the user package database",
+               "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) dependencies must be satisfied from the global package database"
            ]
@@ -494,9 +495,9 @@ installCmd = Cmd {
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
-               "(default) upon registration, register this package in the system-wide package database"
+               "(default; override with configure) upon registration, register this package in the system-wide package database"
            ],
-        cmdAction      = InstallCmd False
+        cmdAction      = InstallCmd InstallUserNone
         }
 
 copyCmd :: Cmd a
@@ -522,6 +523,10 @@ data CopyDest
   | CopyPrefix FilePath		-- DEPRECATED
   deriving (Eq, Show)
 
+data InstallUserFlag = InstallUserNone   -- ^no --user OR --global flag.
+                      | InstallUserUser   -- ^--user flag
+                      | InstallUserGlobal -- ^--global flag
+
 parseCopyArgs :: CopyFlags -> [String] -> [OptDescr a] ->
                     IO (CopyFlags, [a], [String])
 parseCopyArgs = parseArgs copyCmd updateCfg
@@ -532,15 +537,15 @@ parseCopyArgs = parseArgs copyCmd updateCfg
             _               -> error $ "Unexpected flag!"
 
 -- | Flags to @install@: (user package, verbose)
-type InstallFlags = (Bool,Int)
+type InstallFlags = (InstallUserFlag,Int)
 
 parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
                     IO (InstallFlags, [a], [String])
 parseInstallArgs = parseArgs installCmd updateCfg
   where updateCfg (uFlag,verbose) fl = case fl of
             InstPrefix _ -> error "--install-prefix is obsolete. Use copy command instead."
-            UserFlag     -> (True,  verbose)
-            GlobalFlag   -> (False, verbose)
+            UserFlag     -> (InstallUserUser,  verbose)
+            GlobalFlag   -> (InstallUserGlobal, verbose)
             Verbose n    -> (uFlag, n)
             _            -> error $ "Unexpected flag!"
 
