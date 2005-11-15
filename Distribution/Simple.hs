@@ -173,7 +173,7 @@ data UserHooks = UserHooks
      instHook :: PackageDescription
               -> LocalBuildInfo
               -> Int -- verbose
-              -> Bool -- user install?
+              -> InstallUserFlag -- user install?
               -> IO (),
       -- |Hook to run after install command.  postInst should be run
       -- on the target, not on the build machine.
@@ -659,7 +659,12 @@ defaultUserHooks
                       readHookedBuildInfo infoFile
           thd3 (_,_,z) = z
 
-defaultInstallHook pkg_descr localbuildinfo verbose uInst = do
+defaultInstallHook pkg_descr localbuildinfo verbose uInstFlag = do
+  let uInst = case uInstFlag of
+               InstallUserUser   -> True
+               InstallUserGlobal -> False --over-rides configure setting
+               -- no flag, check how it was configured:
+               InstallUserNone   -> userConf localbuildinfo
   install pkg_descr localbuildinfo (NoCopyDest, verbose)
   when (hasLibs pkg_descr)
            (register pkg_descr localbuildinfo (uInst, False, verbose))

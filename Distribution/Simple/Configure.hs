@@ -187,7 +187,8 @@ configure pkg_descr cfg
                               withGreencard=greencard,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
-			      withGHCiLib=configGHCiLib cfg
+			      withGHCiLib=configGHCiLib cfg,
+                              userConf=configUser cfg
                              }
 
         -- FIXME: maybe this should only be printed when verbose?
