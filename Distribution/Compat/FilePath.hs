@@ -108,6 +108,8 @@ splitFileName p = (reverse path1, reverse fname1)
 -- > splitFileExt "."       == (".",   "")
 -- > splitFileExt ".."      == ("..",  "")
 -- > splitFileExt "foo.bar."== ("foo.bar.", "")
+-- > splitFileExt "foo.tar.gz" == ("foo.tar","gz")
+
 splitFileExt :: FilePath -> (String, String)
 splitFileExt p =
   case break (== '.') fname of
