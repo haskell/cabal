@@ -431,16 +431,12 @@ haddock pkg_descr lbi verbose pps = do
         let bi = libBuildInfo lib
         inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
                                | m <- exposedModules lib ++ otherModules bi] >>= return . concat
-        extraFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                                 | m <- otherModules $ libBuildInfo lib] >>= return . concat
-        let allInputFiles = inFiles ++ extraFiles
-        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) allInputFiles
-        mapM_ (addHidePragma tmpDir verbose) extraFiles
+        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
         let showPkg = showPackageId (package pkg_descr)
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName ((description pkg_descr) ++ "\n")
         let outFiles = map (joinFileName tmpDir)
-                       (map ((flip changeFileExt) "hs") allInputFiles)
+                       (map ((flip changeFileExt) "hs") inFiles)
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
                 (["-h",
@@ -488,11 +484,6 @@ haddock pkg_descr lbi verbose pps = do
         needsCpp :: PackageDescription -> Bool
         needsCpp p | not (hasLibs p) = False
                    | otherwise = any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
-        addHidePragma tmpDir verbose file
-            = do let fn = joinFileName tmpDir $ changeFileExt file "hs"
-                 when (verbose > 0) $ putStrLn $ "Hiding " ++ file
-                 inp <- readFile fn
-                 last inp `seq` writeFile fn ("-- #hide\n"++inp)
 
 pfe :: PackageDescription -> LocalBuildInfo -> Int -> [PPSuffixHandler] -> IO ()
 pfe pkg_descr _lbi verbose pps = do
