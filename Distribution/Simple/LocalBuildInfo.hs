@@ -51,6 +51,7 @@ module Distribution.Simple.LocalBuildInfo (
 	default_datadir,
 	default_datasubdir,
 	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkProgDir,
+	absolutePath, prefixRelPath,
 	substDir,
   ) where
 
