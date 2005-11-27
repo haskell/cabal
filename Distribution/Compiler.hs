@@ -108,9 +108,8 @@ extensionsToGHCFlag l
     extensionToGHCFlag TemplateHaskell              = Right "-fth"
     extensionToGHCFlag ForeignFunctionInterface     = Right "-ffi"
     extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
-    extensionToGHCFlag AllowOverlappingInstances    = Right "-fallow-overlapping-instances"
-    extensionToGHCFlag AllowUndecidableInstances    = Right "-fallow-undecidable-instances"
-    extensionToGHCFlag AllowIncoherentInstances     = Right "-fallow-incoherent-instances"
+    extensionToGHCFlag UndecidableInstances         = Right "-fallow-undecidable-instances"
+    extensionToGHCFlag IncoherentInstances          = Right "-fallow-incoherent-instances"
     extensionToGHCFlag InlinePhase                  = Right "-finline-phase"
     extensionToGHCFlag ContextStack                 = Right "-fcontext-stack"
     extensionToGHCFlag Arrows                       = Right "-farrows"
@@ -123,6 +122,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
     extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
     extensionToGHCFlag FunctionalDependencies       = Right "-fglasgow-exts"
+    extensionToGHCFlag Rank2Types                   = Right "-fglasgow-exts"
     extensionToGHCFlag RankNTypes                   = Right "-fglasgow-exts"
     extensionToGHCFlag PolymorphicComponents        = Right "-fglasgow-exts"
     extensionToGHCFlag ExistentialQuantification    = Right "-fglasgow-exts"
@@ -135,7 +135,6 @@ extensionsToGHCFlag l
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
     extensionToGHCFlag e@HereDocuments              = Left e
-    extensionToGHCFlag e@UnsafeOverlappingInstances = Left e
     extensionToGHCFlag e@NamedFieldPuns             = Left e
 
 -- |NHC: Return the unsupported extensions, and the flags for the supported extensions
@@ -158,13 +157,14 @@ extensionsToHugsFlag l
     = splitEither $ nub $ map extensionToHugsFlag l
       where
       extensionToHugsFlag OverlappingInstances       = Right "+o"
-      extensionToHugsFlag UnsafeOverlappingInstances = Right "+O"
+      extensionToHugsFlag IncoherentInstances        = Right "+oO"
       extensionToHugsFlag HereDocuments              = Right "+H"
+      extensionToHugsFlag TypeSynonymInstances       = Right "-98"
       extensionToHugsFlag RecursiveDo                = Right "-98"
       extensionToHugsFlag ParallelListComp           = Right "-98"
       extensionToHugsFlag MultiParamTypeClasses      = Right "-98"
       extensionToHugsFlag FunctionalDependencies     = Right "-98"
-      extensionToHugsFlag RankNTypes                 = Right "-98"
+      extensionToHugsFlag Rank2Types                 = Right "-98"
       extensionToHugsFlag PolymorphicComponents      = Right "-98"
       extensionToHugsFlag ExistentialQuantification  = Right "-98"
       extensionToHugsFlag ScopedTypeVariables        = Right "-98"

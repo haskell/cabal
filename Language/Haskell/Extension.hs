@@ -52,11 +52,14 @@ module Language.Haskell.Extension (
 
 data Extension
   = OverlappingInstances
+  | UndecidableInstances
+  | IncoherentInstances
   | RecursiveDo
   | ParallelListComp
   | MultiParamTypeClasses
   | NoMonomorphismRestriction
   | FunctionalDependencies
+  | Rank2Types
   | RankNTypes
   | PolymorphicComponents
   | ExistentialQuantification
@@ -70,9 +73,6 @@ data Extension
   | TypeSynonymInstances
   | TemplateHaskell
   | ForeignFunctionInterface
-  | AllowOverlappingInstances
-  | AllowUndecidableInstances
-  | AllowIncoherentInstances
   | InlinePhase
   | ContextStack
   | Arrows
@@ -84,5 +84,4 @@ data Extension
   | ExtensibleRecords
   | RestrictedTypeSynonyms
   | HereDocuments
-  | UnsafeOverlappingInstances
   deriving (Show, Read, Eq)
