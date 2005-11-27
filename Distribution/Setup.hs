@@ -50,7 +50,7 @@ module Distribution.Setup (--parseArgs,
 #ifdef DEBUG
                            hunitTests,
 #endif
-                           parseGlobalArgs,
+                           parseGlobalArgs, defaultCompilerFlavor,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
                            parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
@@ -104,7 +104,6 @@ data ConfigFlags = ConfigFlags {
         configHcFlavor :: Maybe CompilerFlavor,
         configHcPath   :: Maybe FilePath, -- ^given compiler location
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
---        configHaddock  :: ProgramLocation, -- ^Haddock path
         configHappy    :: Maybe FilePath, -- ^Happy path
         configAlex     :: Maybe FilePath, -- ^Alex path
         configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
