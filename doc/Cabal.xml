@@ -1117,12 +1117,14 @@ runhaskell Setup.hs install</screen>
     <example>
       <title>Building and installing a user package</title>
       <screen>
-runhaskell Setup.hs configure --ghc --prefix=$HOME
+runhaskell Setup.hs configure --ghc --user --prefix=$HOME
 runhaskell Setup.hs build
-runhaskell Setup.hs install --user</screen>
-      <para>In this case, since the package will be registered in the
-        user's package database, we also install it under the user's
-        home directory.</para>
+runhaskell Setup.hs install</screen>
+      <para>The package may use packages from the user's package database
+        as well as the global one (<option>--user</option>), is installed
+        under the user's home directory (<option>--prefix</option>),
+        and is registered in the user's package database
+        (<option>--user</option>).</para>
     </example>
 
     <example>
@@ -1532,6 +1534,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <listitem>
 	      <para>Allow dependencies to be satisfied by the user package
 		database, in addition to the global database.</para>
+
+	      <para>This also implies a default of <option>--user</option>
+		for any subsequent <literal>install</literal> command,
+		as packages registered in the global database should not
+		depend on packages registered in a user's database.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1626,15 +1633,19 @@ runhaskell Setup.hs unregister --gen-script</screen>
           <term><option>--global</option></term>
           <listitem>
             <para>Register this package in the system-wide database.
-              (This is the default.)</para>
+	      (This is the default, unless the <option>--user</option>
+	      option was supplied to the <literal>configure</literal>
+	      command.)</para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
           <term><option>--user</option></term>
           <listitem>
-            <para>Register this package in the user's local package
-              database.</para>
+            <para>Register this package in the user's local package database.
+	      (This is the default if the <option>--user</option>
+	      option was supplied to the <literal>configure</literal>
+	      command.)</para>
           </listitem>
         </varlistentry>
       </variablelist>
