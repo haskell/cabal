@@ -236,7 +236,7 @@ rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
                                   , programArgs=args
                                   })
 
-                 extraArgs = rawSystemVerbose verbose p (extraArgs ++ args)
+                 extraArgs = rawSystemVerbose verbose p (args ++ extraArgs)
 rawSystemProgram _ (Program { programLocation=EmptyLocation
                             , programName=n})_ 
     = die ("Error: Could not find location for program: " ++ n)
