@@ -43,6 +43,9 @@ build-stamp: config
 install: build-stamp
 	./setup install $(USER_FLAG)
 
+cabal-install: install
+	cd cabal-install && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
+
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
 	mkdir -p dist/tmp
