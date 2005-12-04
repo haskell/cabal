@@ -1,0 +1,20 @@
+Name: cabal-install
+Version: 1.1.4
+Copyright: 2005, Isaac Jones
+Build-depends: Cabal, base
+License: BSD3
+License-File: ../LICENSE
+Author: Isaac Jones <ijones@syntaxpolice.org>
+Maintainer: Isaac Jones <ijones@syntaxpolice.org>
+Homepage: http://www.haskell.org/cabal/
+Category: Distribution
+Synopsis: A tool to install Haskell Cabal packages in one step.
+Description:
+        cabal-install uses Cabal's standard interface to configure,
+        build, and intsall packages in a single command:
+        'cabal-install Foo/Foo.cabal', for instance.  It accepts the
+        same flags as standard Cabal's configure and can be run
+        against directories, tarballs, or .cabal files.
+
+Executable: cabal-install
+Main-is: CabalInstall.hs
