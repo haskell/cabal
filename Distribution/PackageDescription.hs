@@ -94,7 +94,7 @@ import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
                             parsePackageName)
 import Distribution.Version(Version(..), VersionRange(..),
-                            showVersion, parseVersion)
+                            showVersion, parseVersion, showVersionRange, parseVersionRange)
 import Distribution.License(License(..))
 import Distribution.Version(Dependency(..))
 import Distribution.Compiler(CompilerFlavor(..))
@@ -131,6 +131,7 @@ data PackageDescription
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
         buildDepends   :: [Dependency],
+        cabalVersion   :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
@@ -154,6 +155,7 @@ emptyPackageDescription
     =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
                       license      = AllRightsReserved,
                       licenseFile  = "",
+                      cabalVersion = AnyVersion,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",
@@ -340,6 +342,9 @@ basicStanzaFields =
  , simpleField reqNameVersion
                            (text . showVersion)   parseVersion 
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+ , simpleField "cabal-version"
+                           (text . showVersionRange) parseVersionRange
+                           cabalVersion         (\v pkg -> pkg{cabalVersion=v})
  , simpleField "license"
                            (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
@@ -678,6 +683,7 @@ testPkgDesc = unlines [
         "License: LGPL",
         "License-File: foo",
         "Copyright: Free Text String",
+        "Cabal-version: >1.1.1",
         "-- Optional - may be in source?",
         "Author: Happy Haskell Hacker",
         "Homepage: http://www.haskell.org/foo",
@@ -733,6 +739,7 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
+                               cabalVersion=LaterVersion (Version [1,1,1] []),
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
@@ -828,7 +835,7 @@ comparePackageDescriptions :: PackageDescription
                            -> PackageDescription
                            -> [String]      -- ^Errors
 comparePackageDescriptions p1 p2
-    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": []
+    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp cabalVersion "cabal-version":[]
 
 
       where myCmp :: (Eq a, Show a) => (PackageDescription -> a)

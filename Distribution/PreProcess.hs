@@ -201,7 +201,7 @@ ppUnlit inFile outFile verbose = do
     writeFile outFile (unlit inFile contents)
     return ExitSuccess
 
-ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp :: PackageDescription -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
