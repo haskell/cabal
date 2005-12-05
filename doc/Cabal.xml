@@ -356,6 +356,20 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
+              <literal>cabal-version:</literal> <replaceable>&gt;, &lt;=, etc. & numbers</replaceable>
+            </term>
+            <listitem>
+              <para>The version of Cabal required for this package.
+              Use ONLY if this package requires a particular version
+              of Cabal, since unfortunitely, early versions of Cabal
+              do not recognize this field.  List the field early in
+              your .cabal file so that it will appear as a syntax
+              error before any others.</para>
+            </listitem>
+          </varlistentry>
+
+           <varlistentry>
+            <term>
               <literal>license:</literal> <replaceable>identifier</replaceable>
               (default: <literal>AllRightsReserved</literal>)
             </term>
