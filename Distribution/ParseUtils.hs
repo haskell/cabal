@@ -106,7 +106,7 @@ showError e =
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambigous parse in field '"++f++"'")
-locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed")
+locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed: ")
 locatedErrorMsg (FromString s n)    = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
