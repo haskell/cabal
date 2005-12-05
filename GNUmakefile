@@ -67,7 +67,7 @@ clean-doc:
 doc: haddock
 	docbook2html doc/Cabal.xml --output doc/users-guide
 
-clean: clean-cabal clean-hunit clean-test
+clean: clean-cabal clean-hunit clean-test clean-doc
 
 clean-cabal:
 	-rm -f Distribution/*.o Distribution/*.hi
