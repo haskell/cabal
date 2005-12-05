@@ -57,9 +57,9 @@ module Distribution.Simple (
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultUserHooks, emptyUserHooks,
-        defaultHookedPackageDesc,
+        defaultHookedPackageDesc
 #ifdef DEBUG        
-        simpleHunitTests
+        ,simpleHunitTests
 #endif
   ) where
 
@@ -115,7 +115,6 @@ import Distribution.Version hiding (hunitTests)
 #else
 import Distribution.Version
 #endif
-
 
 type Args = [String]
 
