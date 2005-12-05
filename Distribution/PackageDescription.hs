@@ -93,7 +93,7 @@ import System.Exit
 import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
                             parsePackageName)
-import Distribution.Version(Version(..), VersionRange(..),
+import Distribution.Version(Version(..), VersionRange(..), withinRange,
                             showVersion, parseVersion, showVersionRange, parseVersionRange)
 import Distribution.License(License(..))
 import Distribution.Version(Dependency(..))
@@ -107,6 +107,10 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
 import Distribution.ParseUtils  (runP)
 #endif
+
+-- |Fix. Figure out a way to get this from .cabal file
+cabalVersion :: Version
+cabalVersion = Version [1,1,4] []
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
@@ -131,7 +135,7 @@ data PackageDescription
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
         buildDepends   :: [Dependency],
-        cabalVersion   :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
+        descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
@@ -155,7 +159,7 @@ emptyPackageDescription
     =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
                       license      = AllRightsReserved,
                       licenseFile  = "",
-                      cabalVersion = AnyVersion,
+                      descCabalVersion = AnyVersion,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",
@@ -340,11 +344,11 @@ basicStanzaFields =
                            text                   parsePackageName
                            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField reqNameVersion
-                           (text . showVersion)   parseVersion 
+                           (text . showVersion)   parseVersion
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
-                           (text . showVersionRange) parseVersionRange
-                           cabalVersion         (\v pkg -> pkg{cabalVersion=v})
+                           (text . showVersionRange) parseCabalVersion
+                           descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
  , simpleField "license"
                            (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
@@ -625,10 +629,13 @@ sanityCheckPackage pkg_descr
                       "Package is copyright All Rights Reserved"
           noLicenseFile = checkSanity (null $ licenseFile pkg_descr)
                           "No license-file field."
+          goodCabal = let v = (descCabalVersion pkg_descr)
+                          in checkSanity (not $ cabalVersion  `withinRange` v)
+                                 ("This package requires Cabal verion: " ++ (showVersionRange v) ++ ".")
 
          in return $ (catMaybes [nothingToDo, noModules,
                                  allRights, noLicenseFile]
-                     ,catMaybes $ libSane:(checkMissingFields pkg_descr))
+                     ,catMaybes $ libSane:goodCabal:(checkMissingFields pkg_descr))
 
 -- |Output warnings and errors. Exit if any errors.
 errorOut :: [String]  -- ^Warnings
@@ -670,6 +677,11 @@ hasMods pkg_descr
     | isNothing (library pkg_descr) = null $ executables pkg_descr
     | otherwise = null (executables pkg_descr)
                    && null (exposedModules (fromJust (library pkg_descr)))
+
+parseCabalVersion = do v <- parseVersionRange
+                       if (cabalVersion `withinRange` v)
+                          then return v
+                          else error ("This package requires Cabal verion: " ++ (showVersionRange v) ++ ".")
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -739,7 +751,7 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
-                               cabalVersion=LaterVersion (Version [1,1,1] []),
+                               descCabalVersion=LaterVersion (Version [1,1,1] []),
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
@@ -835,7 +847,7 @@ comparePackageDescriptions :: PackageDescription
                            -> PackageDescription
                            -> [String]      -- ^Errors
 comparePackageDescriptions p1 p2
-    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp cabalVersion "cabal-version":[]
+    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp descCabalVersion "cabal-version":[]
 
 
       where myCmp :: (Eq a, Show a) => (PackageDescription -> a)
