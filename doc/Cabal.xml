@@ -356,7 +356,7 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>cabal-version:</literal> <replaceable>&gt;, &lt;=, etc. & numbers</replaceable>
+              <literal>cabal-version:</literal> <replaceable>&gt;, &lt;=, etc. &amp; numbers</replaceable>
             </term>
             <listitem>
               <para>The version of Cabal required for this package.
