@@ -118,8 +118,11 @@ import Distribution.Version
 
 type Args = [String]
 
--- | Hooks allow authors to add specific functionality before and after
--- a command is run, and also to specify additional preprocessors.
+-- | WARNING: The hooks interface is under rather constant flux as we
+-- try to understand users needs.  Setup files that depend on this
+-- interface may break in future releases.  Hooks allow authors to add
+-- specific functionality before and after a command is run, and also
+-- to specify additional preprocessors.
 data UserHooks = UserHooks
     {
      runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO ExitCode, -- ^Used for @.\/setup test@
