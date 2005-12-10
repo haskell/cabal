@@ -76,6 +76,8 @@ defaultProgramConfiguration = progListToFM
                               [ haddockProgram
                               , pfesetupProgram
                               , ranlibProgram
+                              , simpleProgram "runghc"
+                              , simpleProgram "runhugs"
                               , arProgram]
 -- haddock is currently the only one that really works.
 {-                              [ ghcProgram
