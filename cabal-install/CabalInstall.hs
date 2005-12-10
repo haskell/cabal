@@ -20,11 +20,11 @@ import Distribution.Program(defaultProgramConfiguration, simpleProgram, updatePr
                             Program(..), ProgramLocation(..))
 import Distribution.Compiler (CompilerFlavor(..))
 
--- |If this is an error, quit with that exit code
-quitFail :: ExitCode -> IO ()
-quitFail ExitSuccess = return ()
-quitFail e = exitWith e
+-- ------------------------------------------------------------
+-- * Guts
+-- ------------------------------------------------------------
 
+-- |perform runghc (or runhugs) Setup configure, (build, install). 
 doInstall dir conf confArgs = do
   currDir <- getCurrentDirectory
   setCurrentDirectory dir
@@ -39,8 +39,35 @@ doInstall dir conf confArgs = do
   p ["install"]            >>= quitFail
   setCurrentDirectory currDir
   return ()
-      where noCompErr = error "No compiler found during configure.  Please use --with-runghc= or --with-runhugs=."
+      where noCompErr
+                = error "No compiler found during configure.  Please use --with-runghc= or --with-runhugs=."
 
+-- |Call doInstall on the given argument, perhaps after unzipping it or whatever.
+unPackOrGo tarOrDir conf confArgs = do
+  let (packageIdentStr, ext) = splitFileExt tarOrDir
+  putStrLn $ "package: " ++ (show packageIdentStr)
+  case ext of
+    "tgz" -> do system $ "tar -zxvf " ++ tarOrDir
+                unPackOrGo packageIdentStr conf confArgs
+    "gz"  -> do system $ "gunzip " ++ tarOrDir
+                unPackOrGo packageIdentStr conf confArgs
+    "tar" -> do system $ "tar -xvf " ++ tarOrDir
+                unPackOrGo packageIdentStr conf confArgs
+    "cabal" -> let (dir, _, _) = splitFilePath tarOrDir
+                   in doInstall dir conf confArgs
+    _     -> doInstall tarOrDir conf confArgs
+
+
+-- ------------------------------------------------------------
+-- * Helpers
+-- ------------------------------------------------------------
+
+-- |If this is an error, quit with that exit code
+quitFail :: ExitCode -> IO ()
+quitFail ExitSuccess = return ()
+quitFail e = exitWith e
+
+-- Probably delete this.
 installerPrograms = defaultProgramConfiguration
 
 -- |Figure out how to use runghc or runhugs.
@@ -55,6 +82,8 @@ compilerCommand conf = do
     Nothing   -> return Nothing
     Just prog -> return $ Just prog{programArgs=args ++ (programArgs prog)}
 
+
+-- |Given the configure flags, get the compiler flavor.
 compilerFlav :: ConfigFlags -> CompilerFlavor
 compilerFlav conf = 
     case configHcFlavor conf of
@@ -65,19 +94,9 @@ compilerFlav conf =
                    Just Hugs -> Hugs
                    Nothing   -> error "please specify one of --ghc or --hugs"
 
-unPackOrGo tarOrDir conf confArgs = do
-  let (packageIdentStr, ext) = splitFileExt tarOrDir
-  putStrLn $ "package: " ++ (show packageIdentStr)
-  case ext of
-    "tgz" -> do system $ "tar -zxvf " ++ tarOrDir
-                unPackOrGo packageIdentStr conf confArgs
-    "gz"  -> do system $ "gunzip " ++ tarOrDir
-                unPackOrGo packageIdentStr conf confArgs
-    "tar" -> do system $ "tar -xvf " ++ tarOrDir
-                unPackOrGo packageIdentStr conf confArgs
-    "cabal" -> let (dir, _, _) = splitFilePath tarOrDir
-                   in doInstall dir conf confArgs
-    _     -> doInstall tarOrDir conf confArgs
+-- ------------------------------------------------------------
+-- * Main
+-- ------------------------------------------------------------
 
 main :: IO ()
 main = do
