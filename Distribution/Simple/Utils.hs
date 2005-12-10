@@ -237,12 +237,15 @@ smartCopySources :: Int      -- ^verbose
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
             -> Bool     -- ^Exit if no such modules
+            -> Bool     -- ^Preserve directory structure
             -> IO ()
-smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone
+smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
     = do createDirectoryIfMissing True targetDir
          allLocations <- mapM moduleToFPErr sources
          let copies = [(srcDir `joinFileName` name,
-                        targetDir `joinFileName` name) |
+                        if preserveDirs 
+                          then targetDir `joinFileName` srcDir `joinFileName` name
+                          else targetDir `joinFileName` name) |
                        (srcDir, name) <- concat allLocations]
 	 -- Create parent directories for everything:
 	 mapM_ (createDirectoryIfMissing True) $ nub $
