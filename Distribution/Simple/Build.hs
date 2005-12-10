@@ -155,7 +155,7 @@ buildGHC pkg_descr lbi verbose = do
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
-                       libTargetDir (libModules pkg_descr) ["hi-boot"] False
+                       libTargetDir (libModules pkg_descr) ["hi-boot"] False False
       let ghcArgs = 
                  (if pkgConfReadable then ["-package-conf", pkgConf] else [])
               ++ ["-package-name", pkgName (package pkg_descr) ]
@@ -244,7 +244,7 @@ buildGHC pkg_descr lbi verbose = do
                  -- put hi-boot files into place for mutually recursive modules
                  -- FIX: what about exeName.hi-boot?
                  smartCopySources verbose (hsSourceDirs exeBi)
-                                  exeDir (otherModules exeBi) ["hi-boot"] False
+                                  exeDir (otherModules exeBi) ["hi-boot"] False False
 
                  -- build executables
                  unless (null (cSources exeBi)) $ do
