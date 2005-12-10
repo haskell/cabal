@@ -78,7 +78,7 @@ import Data.List(any)
 import Data.Maybe(fromMaybe)
 import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
                                      findExecutable)
-import Distribution.Compat.FilePath(joinFileName, dllExtension, exeExtension,
+import Distribution.Compat.FilePath(splitFileName,joinFileName, dllExtension, exeExtension,
 				    splitFileExt, joinFileExt)
 import System.IO.Error(try)
 import System.Directory(Permissions(..), getPermissions, setPermissions)
@@ -96,7 +96,9 @@ install pkg_descr lbi (copydest, verbose) = do
   when (not (null (dataFiles pkg_descr))) $ do
     let dataPref = mkDataDir pkg_descr lbi copydest
     createDirectoryIfMissing True dataPref
-    flip mapM_ (dataFiles pkg_descr) $ \ file ->
+    flip mapM_ (dataFiles pkg_descr) $ \ file -> do
+      let (dir, _) = splitFileName file
+      createDirectoryIfMissing True (dataPref `joinFileName` dir)
       copyFileVerbose verbose file (dataPref `joinFileName` file)
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi copydest
@@ -135,8 +137,8 @@ installLibGHC :: Int      -- ^verbose
 installLibGHC verbose programConf hasProf hasGHCi pref buildPref
               pd@PackageDescription{library=Just l,
                                     package=p}
-    = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True
-         ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True
+    = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True False
+         ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True False
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
 	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
@@ -192,7 +194,7 @@ installHugs verbose libDir installProgDir binDir targetProgDir buildPref pkg_des
     let pkg_name = pkgName (package pkg_descr)
     withLib pkg_descr () $ \ libInfo -> do
         try $ removeDirectoryRecursive libDir
-        smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True
+        smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
     let buildProgDir = buildPref `joinFileName` "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissing True binDir
@@ -202,7 +204,7 @@ installHugs verbose libDir installProgDir binDir targetProgDir buildPref pkg_des
         let targetDir = targetProgDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose [buildDir] installDir
-            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True
+            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True False
         let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))

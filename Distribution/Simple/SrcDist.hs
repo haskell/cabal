@@ -64,7 +64,7 @@ import Data.List (isPrefixOf)
 import System.Cmd (system)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
-         getCurrentDirectory, createDirectoryIfMissing)
+         getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
 import Distribution.Compat.FilePath (joinFileName, splitFileName)
 
 #ifdef DEBUG
@@ -101,7 +101,10 @@ sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
     prepareDir verbose targetDir pps [] exeBi
     srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
     copyFileTo verbose targetDir srcMainFile
-  sequence_ [copyFileVerbose verbose df (targetDir `joinFileName` df) | df <- dataFiles pkg_descr]
+  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
+    let (dir, _) = splitFileName file
+    createDirectoryIfMissing True (targetDir `joinFileName` dir)
+    copyFileVerbose verbose file (targetDir `joinFileName` file)
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbose targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
@@ -129,7 +132,7 @@ sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
   system $ "(cd " ++ tmpDir
            ++ ";tar cf - " ++ (nameVersion pkg_descr) ++ ") | gzip -9 >"
            ++ tarBallFilePath
-  system $ "rm -rf " ++ tmpDir
+  removeDirectoryRecursive tmpDir
   putStrLn $ "Source tarball created: " ++ tarBallFilePath
 
   where
@@ -155,7 +158,7 @@ prepareDir :: Int       -- ^verbose
            -> IO ()
 prepareDir verbose inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
     = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbose srcDirs inPref (mods++mods') suff True
+         smartCopySources verbose srcDirs inPref (mods++mods') suff True True
          removePreprocessed (map (joinFileName inPref) srcDirs) mods suff
          mapM_ (copyFileTo verbose inPref) cfiles
 
