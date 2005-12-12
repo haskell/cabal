@@ -80,6 +80,7 @@ data Extension
   | NoImplicitPrelude
   | NamedFieldPuns
   | PatternGuards
+  | GeneralizedNewtypeDeriving
 
   | ExtensibleRecords
   | RestrictedTypeSynonyms

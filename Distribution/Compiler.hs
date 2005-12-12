@@ -131,6 +131,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
     extensionToGHCFlag EmptyDataDecls               = Right "-fglasgow-exts"
     extensionToGHCFlag PatternGuards                = Right "-fglasgow-exts"
+    extensionToGHCFlag GeneralizedNewtypeDeriving   = Right "-fglasgow-exts"
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
