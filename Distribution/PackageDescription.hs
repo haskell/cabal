@@ -74,6 +74,7 @@ module Distribution.PackageDescription (
         ParseResult(..),
         PError, showError,
         hcOptions,
+        autogenModuleName,
 #ifdef DEBUG
         hunitTests,
         test
@@ -324,6 +325,13 @@ unionBuildInfo b1 b2
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
 hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
+
+-- |The name of the auto-generated module associated with a package
+autogenModuleName :: PackageDescription -> String
+autogenModuleName pkg_descr =
+    "Paths_" ++ map fixchar (pkgName (package pkg_descr))
+  where fixchar '-' = '_'
+        fixchar c   = c
 
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing
