@@ -351,7 +351,7 @@ findCompiler verbose flavor = do
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
-compilerPkgToolName Hugs = "hugs" -- FIX (HUGS): hugs-pkg does not yet exist
+compilerPkgToolName Hugs = "hugs"
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
