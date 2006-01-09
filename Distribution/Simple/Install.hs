@@ -61,7 +61,7 @@ module Distribution.Simple.Install (
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Executable(..), Library (..),
 	setupMessage, hasLibs, withLib, libModules, withExe,
-	hcOptions)
+	hcOptions, autogenModuleName)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgName))
 import Distribution.Program(ProgramConfiguration, Program(..), ProgramLocation(..),
                             rawSystemProgram, ranlibProgram,
@@ -204,7 +204,7 @@ installHugs verbose libDir installProgDir binDir targetProgDir buildPref pkg_des
         let targetDir = targetProgDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbose [buildDir] installDir
-            ("Main" : otherModules (buildInfo exe)) hugsInstallSuffixes True False
+            ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes True False
         let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))

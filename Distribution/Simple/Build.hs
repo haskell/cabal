@@ -51,7 +51,8 @@ import Distribution.Compiler (Compiler(..), CompilerFlavor(..),
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 			     		setupMessage, withLib, hasLibs,
                                         Executable(..), withExe,
-                                        Library(..), libModules, hcOptions)
+                                        Library(..), libModules, hcOptions,
+                                        autogenModuleName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Setup (CopyDest(..))
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
@@ -321,6 +322,9 @@ buildHugs pkg_descr lbi verbose = do
 	    let exeDir = destDir `joinFileName` exeName exe
 	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
+  	    let paths_modulename = autogenModuleName pkg_descr ++ ".hs"
+	    copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
+		     (exeDir `joinFileName` paths_modulename)
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
 	    compileFiles bi [destMainFile]
 	
@@ -599,15 +603,11 @@ buildPathsModule pkg_descr lbi =
 	absolute = True
 #endif
 
-  	paths_modulename = "Paths_" ++ fix (pkgName (package pkg_descr))
+  	paths_modulename = autogenModuleName pkg_descr
 	paths_filename = paths_modulename ++ ".hs"
 	paths_filepath = autogenModulesDir lbi `joinFileName` paths_filename
 
 	path_sep = show [pathSeparator]
-
-	fix = map fixchar 
-	  where fixchar '-' = '_'
-		fixchar c   = c
 
 get_prefix_stuff =
   "getPrefixDirRel :: FilePath -> IO FilePath\n"++
