@@ -177,7 +177,6 @@ register pkg_descr lbi (userInst, genScript, verbose)
                            pkgTool allFlags
          else rawSystemExit verbose pkgTool allFlags
 
-      -- FIX (HUGS):
       Hugs -> do
 	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
 	copyFileVerbose verbose installedPkgConfigFile

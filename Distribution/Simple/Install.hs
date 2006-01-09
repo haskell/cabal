@@ -207,6 +207,7 @@ installHugs verbose libDir installProgDir binDir targetProgDir buildPref pkg_des
             ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes True False
         let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
+        -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
 #if mingw32_HOST_OS || mingw32_TARGET_OS
         let exeFile = binDir `joinFileName` exeName exe `joinFileExt` "bat"
