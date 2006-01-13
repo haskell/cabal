@@ -1,0 +1,46 @@
+# Hey Emacs, this is a -*- makefile -*- !
+
+THISPKG       = Cabal
+SEARCH        = -package base
+EXTRA_H_FLAGS = -K4M 
+EXTRA_HBC_FLAGS = -H80M -A4M
+
+SRCS          = \
+	Distribution/Extension.hs \
+	Distribution/GetOpt.hs \
+	Distribution/InstalledPackageInfo.hs \
+	Distribution/License.hs \
+	Distribution/Make.hs \
+	Distribution/Package.hs \
+	Distribution/PackageDescription.hs \
+	Distribution/ParseUtils.hs \
+	Distribution/PreProcess.hs \
+	Distribution/Setup.hs \
+	Distribution/Simple.hs \
+	Distribution/Version.hs \
+ \
+	Distribution/Compat/Directory.hs \
+	Distribution/Compat/Exception.hs \
+	Distribution/Compat/FilePath.hs \
+	Distribution/Compat/RawSystem.hs \
+	Distribution/Compat/ReadP.hs \
+ \
+	Distribution/PreProcess/Unlit.hs \
+ \
+	Distribution/Simple/Build.hs \
+	Distribution/Simple/Configure.hs \
+	Distribution/Simple/GHCPackageConfig.hs \
+	Distribution/Simple/Install.hs \
+	Distribution/Simple/LocalBuildInfo.hs \
+	Distribution/Simple/Register.hs \
+	Distribution/Simple/SrcDist.hs \
+	Distribution/Simple/Utils.hs \
+
+
+# Here are the main rules.
+include ../Makefile.common
+
+# Here are any extra dependencies.
+
+# C-files dependencies.
+
