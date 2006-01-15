@@ -326,7 +326,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postClean args verbose pkg_descr localbuildinfo
 
             CopyCmd mprefix -> do
-                (flags, _, args) <- parseCopyArgs (mprefix,0) args []
+                (flags, _, args) <- parseCopyArgs (CopyFlags mprefix 0) args []
                 pkg_descr <- hookOrInArgs preCopy args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -336,7 +336,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postCopy args flags pkg_descr localbuildinfo
 
             InstallCmd uInst -> do
-                (flags@(uInst, verbose), _, args) <- parseInstallArgs (uInst,0) args []
+                (flags@(InstallFlags uInst verbose), _, args) <- parseInstallArgs (InstallFlags uInst 0) args []
                 pkg_descr <- hookOrInArgs preInst args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -347,7 +347,7 @@ defaultMainWorker pkg_descr_in action args hooks
 
             SDistCmd -> do
                 let srcPref   = distPref `joinFileName` "src"
-                ((snapshot,verbose),_, args) <- parseSDistArgs args []
+                ((SDistFlags snapshot verbose),_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args verbose
                 localbuildinfo <- getPersistBuildConfig
 
@@ -366,7 +366,7 @@ defaultMainWorker pkg_descr_in action args hooks
                                return out
 
             RegisterCmd uInst genScript -> do
-                (flags, _, args) <- parseRegisterArgs (uInst, genScript, 0) args []
+                (flags, _, args) <- parseRegisterArgs (RegisterFlags uInst genScript 0) args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -376,7 +376,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postReg args flags pkg_descr localbuildinfo
 
             UnregisterCmd uInst genScript -> do
-                (flags,_, args) <- parseUnregisterArgs (uInst,genScript, 0) args []
+                (flags,_, args) <- parseUnregisterArgs (RegisterFlags uInst genScript 0) args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -619,18 +619,18 @@ defaultUserHooks
        preBuild  = readHook id,
        buildHook = defaultBuildHook,
        preClean  = readHook id,
-       preCopy   = readHook snd,
+       preCopy   = readHook copyVerbose,
        copyHook  = install, -- has correct 'copy' behavior with params
-       preInst   = readHook snd,
+       preInst   = readHook installVerbose,
        instHook  = defaultInstallHook,
        sDistHook = sdist,
        pfeHook   = pfe,
        cleanHook = clean,
        haddockHook = haddock,
-       preReg    = readHook thd3,
+       preReg    = readHook regVerbose,
        regHook   = defaultRegHook,
        unregHook = unregister,
-       preUnreg  = readHook thd3
+       preUnreg  = readHook regVerbose
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
           defaultPostConf args flags pkg_descr lbi
@@ -659,7 +659,6 @@ defaultUserHooks
                       when (verbose flags > 0) $
                           putStrLn $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo infoFile
-          thd3 (_,_,z) = z
 
 defaultInstallHook pkg_descr localbuildinfo verbose uInstFlag = do
   let uInst = case uInstFlag of
@@ -667,9 +666,9 @@ defaultInstallHook pkg_descr localbuildinfo verbose uInstFlag = do
                InstallUserGlobal -> False --over-rides configure setting
                -- no flag, check how it was configured:
                InstallUserNone   -> userConf localbuildinfo
-  install pkg_descr localbuildinfo (NoCopyDest, verbose)
+  install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbose)
   when (hasLibs pkg_descr)
-           (register pkg_descr localbuildinfo (uInst, False, verbose))
+           (register pkg_descr localbuildinfo (RegisterFlags uInst False verbose))
 
 defaultBuildHook pkg_descr localbuildinfo flags pps = do
   build pkg_descr localbuildinfo flags pps
