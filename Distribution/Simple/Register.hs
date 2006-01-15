@@ -64,7 +64,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Setup (RegisterFlags, CopyDest(..))
+import Distribution.Setup (RegisterFlags(..), CopyDest(..))
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -118,7 +118,7 @@ unregScriptLocation = "unregister.sh"
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi (userInst, genScript, verbose)
+register pkg_descr lbi (RegisterFlags userInst genScript verbose)
   | isNothing (library pkg_descr) = do
     setupMessage "No package to register" pkg_descr
     return ()
@@ -255,7 +255,7 @@ mkInstalledPackageInfo pkg_descr lbi
 -- Unregistration
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
-unregister pkg_descr lbi (user_unreg, genScript, verbose) = do
+unregister pkg_descr lbi (RegisterFlags user_unreg genScript verbose) = do
   setupMessage "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
   case compilerFlavor (compiler lbi) of

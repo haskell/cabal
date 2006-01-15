@@ -71,7 +71,7 @@ import Distribution.Simple.LocalBuildInfo (
 import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
                                  mkProfLibName, mkGHCiLibName, die, rawSystemVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Setup (CopyFlags, CopyDest(..))
+import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
 import Control.Monad(when)
 import Data.List(any)
@@ -92,7 +92,7 @@ install :: PackageDescription
         -> LocalBuildInfo
         -> CopyFlags
         -> IO ()
-install pkg_descr lbi (copydest, verbose) = do
+install pkg_descr lbi (CopyFlags copydest verbose) = do
   when (not (null (dataFiles pkg_descr))) $ do
     let dataPref = mkDataDir pkg_descr lbi copydest
     createDirectoryIfMissing True dataPref

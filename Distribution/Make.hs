@@ -125,7 +125,7 @@ defaultMainNoRead pkg_descr
                 exitWith retVal
 
             CopyCmd copydest0 -> do
-                ((copydest,_), _, args) <- parseCopyArgs (copydest0,0) args []
+                ((CopyFlags copydest _), _, args) <- parseCopyArgs (CopyFlags copydest0 0) args []
                 no_extra_flags args
 		let cmd = case copydest of 
 				NoCopyDest      -> "install"
@@ -135,7 +135,7 @@ defaultMainNoRead pkg_descr
                 maybeExit $ system $ ("make " ++ cmd)
 
             InstallCmd uInst -> do
-                ((_,_), _, args) <- parseInstallArgs (uInst,0) args []
+                ((InstallFlags _ _), _, args) <- parseInstallArgs (InstallFlags uInst 0) args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
                 retVal <- exec "make register"
@@ -165,10 +165,10 @@ defaultMainNoRead pkg_descr
             SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
 
             RegisterCmd uInst genScript -> basicCommand "Register" "make register"
-                                           (parseRegisterArgs (uInst,genScript, 0) args [])
+                                           (parseRegisterArgs (RegisterFlags uInst genScript 0) args [])
 
             UnregisterCmd uInst genScript -> basicCommand "Unregister" "make unregister"
-                                           (parseUnregisterArgs (uInst, genScript, 0) args [])
+                                           (parseUnregisterArgs (RegisterFlags uInst genScript 0) args [])
             ProgramaticaCmd -> basicCommand "Programatica" "make programatica"
                                         (parseProgramaticaArgs args [])
 
