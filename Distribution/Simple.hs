@@ -143,11 +143,7 @@ data UserHooks = UserHooks
      preBuild  :: Args -> BuildFlags -> IO HookedBuildInfo,
 
      -- |Over-ride this hook to get different behavior during build.
-     buildHook :: PackageDescription
-               -> LocalBuildInfo
-               -> BuildFlags                 -- verbose
-               -> [ PPSuffixHandler ]
-               -> IO (),
+     buildHook :: PackageDescription -> LocalBuildInfo -> BuildFlags -> [ PPSuffixHandler ] -> IO (),
       -- |Hook to run after build command.  Second arg indicates verbosity level.
      postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -161,10 +157,7 @@ data UserHooks = UserHooks
       -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during copy.
-     copyHook :: PackageDescription
-              -> LocalBuildInfo
-              -> CopyFlags -- install-prefix, verbose
-              -> IO (),
+     copyHook :: PackageDescription -> LocalBuildInfo -> CopyFlags -> IO (),
       -- |Hook to run after copy command
      postCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -172,10 +165,7 @@ data UserHooks = UserHooks
      preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
 
      -- |Over-ride this hook to get different behavior during install.
-     instHook :: PackageDescription
-              -> LocalBuildInfo
-              -> InstallFlags -- verbosity & user install
-              -> IO (),
+     instHook :: PackageDescription -> LocalBuildInfo -> InstallFlags -> IO (),
       -- |Hook to run after install command.  postInst should be run
       -- on the target, not on the build machine.
      postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
@@ -183,10 +173,7 @@ data UserHooks = UserHooks
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during sdist.
-     sDistHook :: PackageDescription
-               -> SDistFlags -- verbose and snapshot
-               -> [PPSuffixHandler]  --  extra preprocessors (includes suffixes)
-               -> IO (),
+     sDistHook :: PackageDescription -> LocalBuildInfo -> SDistFlags -> [PPSuffixHandler] -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
      postSDist :: Args -> SDistFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -360,8 +347,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 let sd = maybe (sDistHook defaultUserHooks) sDistHook hooks
-                sd pkg_descr flags pps
-
+                sd pkg_descr localbuildinfo flags pps
                 postHook postSDist args flags pkg_descr localbuildinfo
 
             TestCmd -> do
@@ -581,7 +567,7 @@ emptyUserHooks
        instHook  = ru3,
        postInst  = res,
        preSDist  = rn,
-       sDistHook = ru3,
+       sDistHook = ru4,
        postSDist = res,
        preReg    = rn,
        regHook   = ru3,
@@ -627,7 +613,7 @@ defaultUserHooks
        copyHook  = install, -- has correct 'copy' behavior with params
        preInst   = readHook installVerbose,
        instHook  = defaultInstallHook,
-       sDistHook = \p f pps -> sdist p f srcPref distPref pps,
+       sDistHook = \p _ f pps -> sdist p f srcPref distPref pps,
        pfeHook   = pfe,
        cleanHook = clean,
        haddockHook = haddock,
