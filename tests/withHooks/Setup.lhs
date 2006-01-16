@@ -47,9 +47,10 @@
 
 > myCopyHook :: PackageDescription
 >            -> LocalBuildInfo
+>            -> Maybe UserHooks
 >            -> CopyFlags -- ^install-prefix, verbose
 >            -> IO ()
-> myCopyHook a b c@(CopyFlags (CopyPrefix p) _) = do
+> myCopyHook a b c d@(CopyFlags (CopyPrefix p) _) = do
 >   -- call 'ls' from our hookedPrograms hook... pointless except as a demo
 >   rawSystemProgramConf 0 "ls" (withPrograms b) []
 >   let copySource = case compilerFlavor $ compiler b of
@@ -59,8 +60,8 @@
 >   copyFile copySource (p `joinPaths` "withHooks")
 
 >   -- now call the default copy hook so the rest of the test case works nice ... so tricky ;)
->   (copyHook defaultUserHooks) a b c
-> myCopyHook _ _ _ = error "Please use --copy-prefix."
+>   (copyHook defaultUserHooks) a b c d
+> myCopyHook _ _ _ _ = error "Please use --copy-prefix."
 
 Override "gc" to test the overriding mechanism.
 
