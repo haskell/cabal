@@ -65,6 +65,8 @@ module Distribution.Simple.Utils (
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
+        distPref,
+        srcPref,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -286,9 +288,19 @@ mkGHCiLibName :: FilePath -- ^file Prefix
               -> String
 mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
 
--- -----------------------------------------------------------------------------
+
+-- ------------------------------------------------------------
+-- * Some Paths
+-- ------------------------------------------------------------
+distPref :: FilePath
+distPref = "dist"
+
+srcPref :: FilePath
+srcPref = distPref `joinFileName` "src"
+
+-- ------------------------------------------------------------
 -- * temporary file names
--- -----------------------------------------------------------------------------
+-- ------------------------------------------------------------
 
 -- use a temporary filename that doesn't already exist.
 -- NB. *not* secure (we don't atomically lock the tmp file we get)
