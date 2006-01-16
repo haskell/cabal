@@ -88,7 +88,7 @@ import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath, findFile)
+                                  moduleToFilePath, findFile, distPref, srcPref)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPath)
 #endif
@@ -185,8 +185,6 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to get different behavior during sdist.
      sDistHook :: PackageDescription
                -> SDistFlags -- verbose and snapshot
-               -> FilePath -- build prefix (temp dir)
-               -> FilePath -- TargetPrefix
                -> [PPSuffixHandler]  --  extra preprocessors (includes suffixes)
                -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
@@ -253,12 +251,26 @@ defaultMainNoRead pkg_descr
          defaultMainWorker pkg_descr action args Nothing
          return ()
 
+-- |Combine the programs in the given hooks with the programs built
+-- into cabal.
 allPrograms :: Maybe UserHooks
             -> ProgramConfiguration -- combine defaults w/ user programs
 allPrograms Nothing = defaultProgramConfiguration
 allPrograms (Just h) = foldl (\pConf p -> updateProgram (Just p) pConf)
                         defaultProgramConfiguration
                         (hookedPrograms h)
+
+-- |Combine the preprocessors in the given hooks with the
+-- preprocessors built into cabal.
+allSuffixHandlers :: Maybe UserHooks
+                  -> [PPSuffixHandler]
+allSuffixHandlers hooks
+    = maybe knownSuffixHandlers
+      (\h -> overridesPP (hookedPreProcessors h) knownSuffixHandlers)
+      hooks
+    where
+      overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
+      overridesPP = unionBy (\x y -> fst x == fst y)
 
 -- |Helper function for /defaultMain/ and /defaultMainNoRead/
 defaultMainWorker :: PackageDescription
@@ -267,9 +279,7 @@ defaultMainWorker :: PackageDescription
                   -> Maybe UserHooks
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
-    = do let pps = maybe knownSuffixHandlers
-                         (\h -> overridesPP (hookedPreProcessors h) knownSuffixHandlers)
-                         hooks
+    = do let pps = allSuffixHandlers hooks
          case action of
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
@@ -350,7 +360,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 let sd = maybe (sDistHook defaultUserHooks) sDistHook hooks
-                sd pkg_descr flags srcPref distPref pps
+                sd pkg_descr flags pps
 
                 postHook postSDist args flags pkg_descr localbuildinfo
 
@@ -403,12 +413,7 @@ defaultMainWorker pkg_descr_in action args hooks
         isFailure (ExitFailure _) = True
         isFailure _               = False
 
-        overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
-        overridesPP = unionBy (\x y -> fst x == fst y)
 -- (filter (\x -> notElem x overriders) overridden) ++ overriders
-
-distPref :: FilePath
-distPref = "dist"
 
 haddock :: PackageDescription -> LocalBuildInfo -> HaddockFlags -> [PPSuffixHandler] -> IO ()
 haddock pkg_descr lbi (HaddockFlags verbose) pps = do
@@ -564,36 +569,37 @@ emptyUserHooks
        confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
        postConf  = res,
        preBuild  = rn,
-       buildHook = ru,
+       buildHook = ru4,
        postBuild = res,
        preClean  = rn,
-       cleanHook = ru,
+       cleanHook = ru4,
        postClean = res,
        preCopy   = rn,
-       copyHook  = (\_ _ _ -> return ()),
+       copyHook  = ru3,
        postCopy  = res,
        preInst   = rn,
-       instHook  = (\_ _ _ -> return ()),
+       instHook  = ru3,
        postInst  = res,
        preSDist  = rn,
-       sDistHook = (\_ _ _ _ _ -> return ()),
+       sDistHook = ru3,
        postSDist = res,
        preReg    = rn,
-       regHook   = (\_ _ _ -> return ()),
+       regHook   = ru3,
        postReg   = res,
        preUnreg  = rn,
-       unregHook = (\_ _ _ -> return ()),
+       unregHook = ru3,
        postUnreg = res,
        prePFE    = rn,
-       pfeHook   = ru,
+       pfeHook   = ru4,
        postPFE   = res,
        preHaddock  = rn,
-       haddockHook = ru,
+       haddockHook = ru4,
        postHaddock = res
       }
     where rn  _ _    = return emptyHookedBuildInfo
           res _ _ _ _  = return ExitSuccess
-          ru _ _ _ _ = return ()
+          ru4 _ _ _ _ = return ()
+          ru3 _ _ _ = return ()
 
 -- |Basic default 'UserHooks':
 --
@@ -621,7 +627,7 @@ defaultUserHooks
        copyHook  = install, -- has correct 'copy' behavior with params
        preInst   = readHook installVerbose,
        instHook  = defaultInstallHook,
-       sDistHook = sdist,
+       sDistHook = \p f pps -> sdist p f srcPref distPref pps,
        pfeHook   = pfe,
        cleanHook = clean,
        haddockHook = haddock,
