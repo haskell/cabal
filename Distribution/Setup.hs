@@ -45,6 +45,7 @@ module Distribution.Setup (--parseArgs,
                            Action(..),
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), InstallFlags(..),
+                           BuildFlags(..), CleanFlags(..), HaddockFlags(..), PFEFlags(..),
                            RegisterFlags(..), SDistFlags(..),
                            InstallUserFlag(..),
 			   --optionHelpString,
@@ -190,6 +191,13 @@ data SDistFlags = SDistFlags {sDistSnapshot::Bool
 data RegisterFlags = RegisterFlags {regUserPackage::Bool
                                    ,regGenScript::Bool
                                    ,regVerbose::Int}
+
+-- Following only have verbose flags, but for consistency and
+-- extensibility we make them into a type.
+data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
+data CleanFlags   = CleanFlags   {cleanVerbose   :: Int}
+data HaddockFlags = HaddockFlags {haddockVerbose :: Int}
+data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
 data Flag a = GhcFlag | NhcFlag | HugsFlag
@@ -482,8 +490,8 @@ buildCmd = Cmd {
         cmdAction      = BuildCmd
         }
 
-parseBuildArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseBuildArgs = parseNoArgs buildCmd
+parseBuildArgs :: [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
+parseBuildArgs = parseNoArgs buildCmd BuildFlags
 
 haddockCmd :: Cmd a
 haddockCmd = Cmd {
@@ -503,11 +511,11 @@ programaticaCmd = Cmd {
         cmdAction      = ProgramaticaCmd
         }
 
-parseProgramaticaArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseProgramaticaArgs  = parseNoArgs programaticaCmd
+parseProgramaticaArgs :: [String] -> [OptDescr a] -> IO (PFEFlags, [a], [String])
+parseProgramaticaArgs  = parseNoArgs programaticaCmd PFEFlags
 
-parseHaddockArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseHaddockArgs  = parseNoArgs haddockCmd
+parseHaddockArgs :: [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
+parseHaddockArgs  = parseNoArgs haddockCmd HaddockFlags
 
 cleanCmd :: Cmd a
 cleanCmd = Cmd {
@@ -518,8 +526,8 @@ cleanCmd = Cmd {
         cmdAction      = CleanCmd
         }
 
-parseCleanArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseCleanArgs = parseNoArgs cleanCmd
+parseCleanArgs :: [String] -> [OptDescr a] -> IO (CleanFlags, [a], [String])
+parseCleanArgs = parseNoArgs cleanCmd CleanFlags
 
 installCmd :: Cmd a
 installCmd = Cmd {
@@ -600,7 +608,7 @@ testCmd = Cmd {
         }
 
 parseTestArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseTestArgs = parseNoArgs testCmd
+parseTestArgs = parseNoArgs testCmd id
 
 registerCmd :: Cmd a
 registerCmd = Cmd {
@@ -652,10 +660,12 @@ parseUnregisterArgs = parseRegisterArgs
 -- |Helper function for commands with no arguments except for verbose
 -- and help.
 
-parseNoArgs :: (Cmd a) -> [String] -> [OptDescr a] -> IO (Int, [a], [String])
-parseNoArgs cmd = parseArgs cmd updateCfg 0
+parseNoArgs :: (Cmd a)
+            -> (Int -> b) -- Constructor to make this type.
+            -> [String] -> [OptDescr a]-> IO (b, [a], [String])
+parseNoArgs cmd c = parseArgs cmd updateCfg (c 0)
   where
-    updateCfg _ (Verbose n) = n
+    updateCfg _ (Verbose n) = c n
     updateCfg _ _           = error "Unexpected flag!"
 
 -- |Helper function for commands with more options.

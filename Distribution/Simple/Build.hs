@@ -54,7 +54,7 @@ import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
                                         Library(..), libModules, hcOptions,
                                         autogenModuleName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Setup (CopyDest(..))
+import Distribution.Setup (CopyDest(..), BuildFlags(..))
 import Distribution.PreProcess (preprocessSources, PPSuffixHandler, ppCpp)
 import Distribution.PreProcess.Unlit (unlit)
 import Distribution.Version (Version(..))
@@ -101,10 +101,10 @@ import HUnit (Test)
 
 build :: PackageDescription
          -> LocalBuildInfo
-         -> Int                 -- verbose
+         -> BuildFlags
          -> [ PPSuffixHandler ]
          -> IO ()
-build pkg_descr lbi verbose suffixes = do
+build pkg_descr lbi (BuildFlags verbose) suffixes = do
   -- check that there's something to build
   let buildInfos =
           map libBuildInfo (maybeToList (library pkg_descr)) ++

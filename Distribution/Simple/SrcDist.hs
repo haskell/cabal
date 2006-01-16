@@ -56,6 +56,7 @@ import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch))
 import Distribution.Simple.Utils
         (smartCopySources, die, findPackageDesc, findFile, copyFileVerbose)
+import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 
 import Control.Monad(when)
@@ -73,14 +74,13 @@ import HUnit (Test)
 
 -- |Create a source distribution. FIX: Calls tar directly (won't work
 -- on windows).
-sdist :: FilePath -- ^build prefix (temp dir)
+sdist :: PackageDescription
+      -> SDistFlags -- verbose & snapshot
+      -> FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
-      -> Int      -- ^verbose
-      -> Bool     -- ^snapshot
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
-      -> PackageDescription
       -> IO ()
-sdist tmpDir targetPref verbose snapshot pps pkg_descr_orig = do
+sdist pkg_descr_orig (SDistFlags snapshot verbose) tmpDir targetPref pps = do
   time <- getClockTime
   ct <- toCalendarTime time
   let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
