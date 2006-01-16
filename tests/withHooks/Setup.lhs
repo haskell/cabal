@@ -6,7 +6,7 @@
 > import Distribution.PackageDescription (PackageDescription,
 >                                         readPackageDescription, readHookedBuildInfo)
 > import Distribution.Simple.Configure(LocalBuildInfo(..))
-> import Distribution.Setup(CopyFlags, CopyDest(..))
+> import Distribution.Setup(CopyFlags(..), CopyDest(..))
 > import Distribution.Compat.Directory (copyFile)
 > import Distribution.Compat.FilePath(joinPaths)
 > import Distribution.Simple.Utils (defaultHookedPackageDesc)
@@ -49,7 +49,7 @@
 >            -> LocalBuildInfo
 >            -> CopyFlags -- ^install-prefix, verbose
 >            -> IO ()
-> myCopyHook a b c@((CopyPrefix p), _) = do
+> myCopyHook a b c@(CopyFlags (CopyPrefix p) _) = do
 >   -- call 'ls' from our hookedPrograms hook... pointless except as a demo
 >   rawSystemProgramConf 0 "ls" (withPrograms b) []
 >   let copySource = case compilerFlavor $ compiler b of
