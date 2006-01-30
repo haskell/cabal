@@ -51,7 +51,7 @@ data Program
               } deriving (Read, Show)
 
 -- |Similar to Maybe, but tells us whether it's specifed by user or
--- not.
+-- not.  This includes not just the path, but the program as well.
 data ProgramLocation = EmptyLocation
                      | UserSpecified FilePath
                      | FoundOnSystem FilePath

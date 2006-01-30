@@ -19,7 +19,8 @@ import Distribution.Program(defaultProgramConfiguration, simpleProgram, updatePr
                             lookupProgram, rawSystemProgram,
                             Program(..), ProgramLocation(..))
 import Distribution.Simple (defaultMainArgs)
-import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Simple.Configure(configCompilerAux)
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 
 -- ------------------------------------------------------------
 -- * Guts
@@ -45,9 +46,8 @@ doInstall dir conf confArgs = do
                              Nothing -> noCompErr
                              Just (Program _ _ _ EmptyLocation) -> noCompErr
                              Just c  -> c
-                putStrLn $ "Using Compiler: " ++ (show comp)
                 return $ \args -> (rawSystemProgram 3 comp args) >>= quitFail
-        else do putStrLn "no Setup file found. Using defaultMain."
+        else do putStrLn $ "no Setup file found in " ++ dir ++ ". Using defaultMain."
                 return defaultMainArgs
   p ("configure":confArgs)
   p ["build"]
@@ -58,7 +58,9 @@ doInstall dir conf confArgs = do
                 = error "No compiler found during configure.  Please use --with-runghc= or --with-runhugs=."
 
 -- |Call doInstall on the given argument, perhaps after unzipping it or whatever.
-unPackOrGo tarOrDir conf confArgs = do
+unPackOrGo tarOrDirIn conf confArgs = do
+  currDir <- getCurrentDirectory
+  let tarOrDir = currDir `joinPaths` tarOrDirIn
   let (packageIdentStr, ext) = splitFileExt tarOrDir
   putStrLn $ "package: " ++ (show packageIdentStr)
   case ext of
@@ -85,18 +87,25 @@ quitFail e = exitWith e
 -- Probably delete this.
 installerPrograms = defaultProgramConfiguration
 
--- |Figure out how to use runghc or runhugs.
+-- |Figure out how to use ghc or runhugs.
 compilerCommand :: ConfigFlags -> IO (Maybe Program)
-compilerCommand conf = do
-  let (progName, args)
-          = case compilerFlav conf of
-              GHC -> ("runghc",   ["Setup"])
-              Hugs -> ("runhugs", ["-98", "Setup"])
-  progM <- lookupProgram progName (configPrograms conf)
-  case progM of
-    Nothing   -> return Nothing
-    Just prog -> return $ Just prog{programArgs=args ++ (programArgs prog)}
-
+compilerCommand conf =
+  case compilerFlav conf of
+         Hugs -> do let (progName, args) = ("runhugs", ["-98", "Setup"])
+                    progM <- lookupProgram progName (configPrograms conf)
+                    case progM of
+                      Nothing   -> return Nothing
+                      Just prog -> return $ Just prog{programArgs=args ++ (programArgs prog)}
+         -- Yuck.  This would be much easier if the compilers used the Program interface.
+         GHC  -> do let (progName, args) = ("ghc",   ["--make", "-package",
+                                                      "Cabal", "Setup", "-o", "setup"])
+                    ghc1 <- configCompilerAux conf
+                    let ghc2 = Program "ghc" "ghc" [] (FoundOnSystem (compilerPath ghc1))
+                    putStrLn "compiling Setup."
+                    rawSystemProgram (configVerbose conf) ghc2 args
+                    dir <- getCurrentDirectory
+                    let path = dir `joinPaths` "setup"
+                    return $ Just $ Program "setup" "setup" [] (FoundOnSystem path)
 
 -- |Given the configure flags, get the compiler flavor.
 compilerFlav :: ConfigFlags -> CompilerFlavor
