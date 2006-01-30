@@ -7,36 +7,51 @@ module Main where
 
 import Control.Monad(when)
 import Data.List(partition)
-import System.Directory(getCurrentDirectory, setCurrentDirectory, getDirectoryContents)
+import System.Directory(getCurrentDirectory, setCurrentDirectory, getDirectoryContents, doesFileExist)
 import System.Cmd(system)
 import System.Environment(getArgs)
 import System.Exit(ExitCode(..), exitWith)
 
 -- from cabal:
-import Distribution.Compat.FilePath (splitFileExt, splitFilePath)
+import Distribution.Compat.FilePath (splitFileExt, splitFilePath, joinPaths)
 import Distribution.Setup(defaultCompilerFlavor, parseConfigureArgs, emptyConfigFlags, ConfigFlags(..))
 import Distribution.Program(defaultProgramConfiguration, simpleProgram, updateProgram,
                             lookupProgram, rawSystemProgram,
                             Program(..), ProgramLocation(..))
+import Distribution.Simple (defaultMainArgs)
 import Distribution.Compiler (CompilerFlavor(..))
 
 -- ------------------------------------------------------------
 -- * Guts
 -- ------------------------------------------------------------
 
+-- |Is there a Setup.hs or Setup.lhs in the given directory?
+hasSetup :: FilePath -- the directory to check for the Setup module
+         -> IO Bool
+hasSetup dir = do
+  e1 <- doesFileExist (dir `joinPaths` "Setup.lhs")
+  e2 <- doesFileExist (dir `joinPaths` "Setup.hs")
+  return $ e1 || e2
+
 -- |perform runghc (or runhugs) Setup configure, (build, install). 
 doInstall dir conf confArgs = do
   currDir <- getCurrentDirectory
   setCurrentDirectory dir
-  compM <- compilerCommand conf
-  let comp = case compM of 
-               Nothing -> noCompErr
-               Just (Program _ _ _ EmptyLocation) -> noCompErr
-               Just c  -> c
-  let p = rawSystemProgram 3 comp
-  p ("configure":confArgs) >>= quitFail
-  p ["build"]              >>= quitFail
-  p ["install"]            >>= quitFail
+  hasSetupMod <- hasSetup dir
+
+  p <- if hasSetupMod
+        then do compM <- compilerCommand conf
+                let comp = case compM of 
+                             Nothing -> noCompErr
+                             Just (Program _ _ _ EmptyLocation) -> noCompErr
+                             Just c  -> c
+                putStrLn $ "Using Compiler: " ++ (show comp)
+                return $ \args -> (rawSystemProgram 3 comp args) >>= quitFail
+        else do putStrLn "no Setup file found. Using defaultMain."
+                return defaultMainArgs
+  p ("configure":confArgs)
+  p ["build"]
+  p ["install"]
   setCurrentDirectory currDir
   return ()
       where noCompErr
@@ -100,7 +115,6 @@ compilerFlav conf =
 
 main :: IO ()
 main = do
-  putStrLn $ "default compiler: " ++ (show defaultCompilerFlavor)
   args <- getArgs
   let (toInstall, configArgs) = partition (\x -> head x /= '-') args
   (conf, _, _) <- parseConfigureArgs
