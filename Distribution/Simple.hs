@@ -53,7 +53,7 @@ module Distribution.Simple (
 	module Distribution.Compiler,
 	module Language.Haskell.Extension,
         -- * Simple interface
-	defaultMain, defaultMainNoRead,
+	defaultMain, defaultMainNoRead, defaultMainArgs,
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultUserHooks, emptyUserHooks,
@@ -211,7 +211,10 @@ data UserHooks = UserHooks
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
 defaultMain :: IO ()
-defaultMain = do args <- getArgs
+defaultMain = getArgs >>=defaultMainArgs
+
+defaultMainArgs :: [String] -> IO ()
+defaultMainArgs args = do
                  (action, args) <- parseGlobalArgs (allPrograms Nothing) args
                  pkg_descr_file <- defaultPackageDesc
                  pkg_descr <- readPackageDescription pkg_descr_file

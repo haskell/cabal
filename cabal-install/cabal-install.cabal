@@ -1,7 +1,7 @@
 Name: cabal-install
 Version: 1.1.4
 Copyright: 2005, Isaac Jones
-Build-depends: Cabal, base
+Build-depends: Cabal >= 1.1.4, base
 License: BSD3
 License-File: ../LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
