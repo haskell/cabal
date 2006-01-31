@@ -94,6 +94,7 @@ data InstalledPackageInfo
         libraryDirs       :: [FilePath],
         hsLibraries       :: [String],
         extraLibraries    :: [String],
+	extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [PackageIdentifier],
@@ -127,6 +128,7 @@ emptyInstalledPackageInfo
         libraryDirs       = [],
         hsLibraries       = [],
         extraLibraries    = [],
+        extraGHCiLibraries= [],
         includeDirs       = [],
         includes	  = [],
         depends           = [],
@@ -247,6 +249,9 @@ installedStanzaFields = [
  , listField   "extra-libraries"
 	showToken          parseTokenQ
 	extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
+ , listField   "extra-ghci-libraries"
+	showToken          parseTokenQ
+	extraGHCiLibraries (\xs pkg -> pkg{extraGHCiLibraries=xs})
  , listField   "include-dirs"
 	showFilePath       parseFilePathQ
 	includeDirs        (\xs pkg -> pkg{includeDirs=xs})
