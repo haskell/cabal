@@ -566,6 +566,8 @@ parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResu
 parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
           | name == f = set lineNo val binfo
           | otherwise = parseBInfoField fields binfo (lineNo, f, val)
+-- ignore "x-" extension fields without a warning
+parseBInfoField [] binfo (lineNo, 'x':'-':f, _) = return binfo
 parseBInfoField [] binfo (lineNo, f, _) = do
           warning $ "Unknown field '" ++ f ++ "'"
           return binfo
