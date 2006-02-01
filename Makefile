@@ -13,7 +13,7 @@ ALL_DIRS = \
 EXCLUDED_SRCS = DefaultSetup.lhs
 
 PACKAGE		= Cabal
-VERSION		= 1.0
+VERSION		= 1.1.4
 
 PACKAGE_DEPS	= base
 
