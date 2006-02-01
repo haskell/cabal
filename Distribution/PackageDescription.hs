@@ -840,10 +840,10 @@ hunitTests = [
              TestLabel "Package description pretty" $ TestCase $ 
                 case parseDescription testPkgDesc of
                  ParseFailed _ -> assertBool "can't parse description" False
-                 ParseOk d -> case parseDescription $ showPackageDescription d of
+                 ParseOk _ d -> case parseDescription $ showPackageDescription d of
                                 ParseFailed _ ->
                                     assertBool "can't parse description after pretty print!" False
-                                ParseOk d' -> 
+                                ParseOk _ d' -> 
                                     assertBool ("parse . show . parse not identity."
                                                 ++"   Incorrect fields:"
                                                 ++ (show $ comparePackageDescriptions d d'))
@@ -877,7 +877,7 @@ assertParseOk :: (Eq val) => String -> val -> ParseResult val -> Assertion
 assertParseOk mes expected actual
     =  assertBool mes
            (case actual of
-             ParseOk v -> v == expected
+             ParseOk _ v -> v == expected
              _         -> False)
 
 test :: IO Counts
