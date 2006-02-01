@@ -478,8 +478,9 @@ readAndParseFile parser fpath = do
     ParseFailed e -> do
         let (lineNo, message) = locatedErrorMsg e
         dieWithLocation fpath lineNo message
-    ParseOk x -> return x
-  where
+    ParseOk ws x -> do
+        mapM_ warn ws
+        return x
 
 -- |Parse the given package file.
 readPackageDescription :: FilePath -> IO PackageDescription
@@ -565,8 +566,9 @@ parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResu
 parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
           | name == f = set lineNo val binfo
           | otherwise = parseBInfoField fields binfo (lineNo, f, val)
-parseBInfoField [] _ (lineNo, f, _) =
-          syntaxError lineNo $ "Unknown field '" ++ f ++ "'"
+parseBInfoField [] binfo (lineNo, f, _) = do
+          warning $ "Unknown field '" ++ f ++ "'"
+          return binfo
 
 -- --------------------------------------------
 -- ** Pretty printing

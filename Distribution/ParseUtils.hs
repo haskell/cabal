@@ -44,8 +44,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- #hide
 module Distribution.ParseUtils (
-        LineNo, PError(..), locatedErrorMsg, showError, syntaxError, runP,
-	ParseResult(..),
+        LineNo, PError(..), locatedErrorMsg, showError, syntaxError, warning,
+	runP, ParseResult(..),
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
@@ -63,7 +63,6 @@ import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Compat.FilePath (platformPath)
-import Debug.Trace
 import Control.Monad (liftM)
 import Data.Char
 import Language.Haskell.Extension (Extension)
@@ -77,21 +76,25 @@ data PError = AmbigousParse String LineNo
             | FromString String (Maybe LineNo)
         deriving Show
 
-data ParseResult a = ParseFailed PError | ParseOk a
+type PWarning = String
+
+data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
 
 instance Monad ParseResult where
-	return x = ParseOk x
+	return x = ParseOk [] x
 	ParseFailed err >>= _ = ParseFailed err
-	ParseOk x >>= f = f x
+	ParseOk ws x >>= f = case f x of
+	                       ParseFailed err -> ParseFailed err
+			       ParseOk ws' x' -> ParseOk (ws'++ws) x'
 	fail s = ParseFailed (FromString s Nothing)
 
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
 runP lineNo field p s =
   case [ x | (x,"") <- results ] of
-    [a] -> ParseOk a
+    [a] -> ParseOk [] a
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
-             [a] -> ParseOk a
+             [a] -> ParseOk [] a
              []  -> ParseFailed (NoParse field lineNo)
              _   -> ParseFailed (AmbigousParse field lineNo)
     _   -> ParseFailed (AmbigousParse field lineNo)
@@ -111,6 +114,9 @@ locatedErrorMsg (FromString s n)    = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
 syntaxError n s = ParseFailed $ FromString s (Just n)
+
+warning :: String -> ParseResult ()
+warning s = ParseOk [s] ()
 
 data StanzaField a 
   = StanzaField 
@@ -195,11 +201,14 @@ mkStanza ((n,xs):ys) =
   case break (==':') xs of
     (fld', ':':val) -> do
        let fld'' = map toLower fld'
-           fld | fld'' == "hs-source-dir"
-                           = trace "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs." "hs-source-dirs"
-               | fld'' == "other-files"
-                           = trace "The field \"other-files\" is deprecated, please use extra-source-files." "extra-source-files"
-               | otherwise = fld''
+       fld <- case () of
+                _ | fld'' == "hs-source-dir"
+                           -> do warning "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs."
+                                 return "hs-source-dirs"
+                  | fld'' == "other-files"
+                           -> do warning "The field \"other-files\" is deprecated, please use extra-source-files."
+                                 return "extra-source-files"
+                  | otherwise -> return fld''
        ss <- mkStanza ys
        checkDuplField fld ss
        return ((n, fld, dropWhile isSpace val):ss)
