@@ -9,6 +9,8 @@ Other-Modules: B.A
 Exposed-Modules: A
 C-Sources: hello.c, c_src/hello.c
 Extensions: ForeignFunctionInterface
+x-darcs-repo: http://darcs.haskell.org/tmp
+unknown-field: Filler.
 
 Executable: testA
 Other-Modules: A
