@@ -197,6 +197,7 @@ default_libdir hc = "$prefix" `joinFileName`
 default_libsubdir hc =
   case compilerFlavor hc of
 	Hugs -> "hugs" `joinFileName` "packages" `joinFileName` "$pkg"
+        JHC  -> "$compiler"
 	_    -> "$pkgid" `joinFileName` "$compiler"
 
 default_libexecdir = "$prefix" `joinFileName`

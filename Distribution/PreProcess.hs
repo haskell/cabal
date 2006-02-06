@@ -248,6 +248,8 @@ cppOptions bi lbi
 hcDefines :: Compiler -> [String]
 hcDefines Compiler { compilerFlavor=GHC, compilerVersion=version }
   = ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
+hcDefines Compiler { compilerFlavor=JHC, compilerVersion=version }
+  = ["-D__JHC__=" ++ versionInt version]
 hcDefines Compiler { compilerFlavor=NHC, compilerVersion=version }
   = ["-D__NHC__=" ++ versionInt version]
 hcDefines Compiler { compilerFlavor=Hugs }

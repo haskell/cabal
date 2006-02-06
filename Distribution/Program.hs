@@ -17,6 +17,7 @@ module Distribution.Program( Program(..)
                            , ghcProgram
                            , ghcPkgProgram
                            , nhcProgram
+                           , jhcProgram
                            , hugsProgram
                            , ranlibProgram
                            , arProgram
@@ -122,6 +123,9 @@ ghcPkgProgram = simpleProgram "ghc-pkg"
 
 nhcProgram :: Program
 nhcProgram = simpleProgram "nhc"
+
+jhcProgram :: Program
+jhcProgram = simpleProgram "jhc"
 
 hugsProgram :: Program
 hugsProgram = simpleProgram "hugs"

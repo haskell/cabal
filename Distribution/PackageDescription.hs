@@ -461,6 +461,8 @@ binfoFields =
                            options            (\path  binfo -> binfo{options=path})
  , optsField   "nhc-options"  NHC
                            options            (\path  binfo -> binfo{options=path})
+ , optsField   "jhc-options"  JHC
+                           options            (\path  binfo -> binfo{options=path})
  ]
 
 
@@ -737,6 +739,7 @@ testPkgDesc = unlines [
         "GHC-Options: -fTH -fglasgow-exts",
         "Hugs-Options: +TH",
         "Nhc-Options: ",
+        "Jhc-Options: ",
         "",
         "-- Next is an executable",
         "Executable: somescript",
@@ -746,7 +749,8 @@ testPkgDesc = unlines [
         "Extensions: OverlappingInstances",
         "GHC-Options: ",
         "Hugs-Options: ",
-        "Nhc-Options: "
+        "Nhc-Options: ",
+        "Jhc-Options: "
         ]
 
 testPkgDescAnswer :: PackageDescription
@@ -794,7 +798,7 @@ testPkgDescAnswer =
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
                            -- Note reversed order:
                            ghcProfOptions = [],
-                           options = [(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
+                           options = [(JHC,[]),(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
                     },
                     executables = [Executable "somescript" 
                        "SomeFile.hs" (
@@ -802,7 +806,7 @@ testPkgDescAnswer =
                         otherModules=["Foo1","Util","Main"],
                         hsSourceDirs = ["scripts"],
                         extensions = [OverlappingInstances],
-                        options = [(NHC,[]),(Hugs,[]),(GHC,[])]
+                        options = [(JHC,[]),(NHC,[]),(Hugs,[]),(GHC,[])]
                       })]
 }
 

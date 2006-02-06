@@ -496,6 +496,7 @@ clean pkg_descr lbi hooks (CleanFlags verbose) = do
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
     case compilerFlavor (compiler lbi) of
       GHC -> cleanGHCExtras
+      JHC -> cleanJHCExtras
       _   -> return ()
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
   where
@@ -515,6 +516,10 @@ clean pkg_descr lbi hooks (CleanFlags verbose) = do
                 s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
                                  | x <- mods ]
                 mapM_ removeFile (concat s)
+        -- JHC FIXME remove exe-sources
+        cleanJHCExtras = do
+            try $ removeFile (buildDir lbi `joinFileName` "jhc-pkg.conf")
+            removePreprocessedPackage pkg_descr currentDir ["ho"]
         removeFileOrDirectory :: FilePath -> IO ()
         removeFileOrDirectory fname = do
             isDir <- doesDirectoryExist fname
