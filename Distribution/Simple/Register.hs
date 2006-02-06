@@ -181,6 +181,7 @@ register pkg_descr lbi (RegisterFlags userInst genScript verbose)
 	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
 	copyFileVerbose verbose installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
+      JHC -> when (verbose > 0) $ putStrLn "registering for JHC (nothing to do)"
       _   -> die ("only registering with GHC is implemented")
 
 userPkgConfErr :: String -> IO a

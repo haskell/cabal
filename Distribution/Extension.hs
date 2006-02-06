@@ -42,9 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Extension
 {-# DEPRECATED "Use modules Language.Haskell.Extension and Distribution.Compiler instead" #-}
        (Extension(..), Opt,
-	extensionsToNHCFlag, extensionsToGHCFlag, extensionsToHugsFlag,
+	extensionsToNHCFlag, extensionsToGHCFlag,
+        extensionsToJHCFlag, extensionsToHugsFlag
   ) where
 
 import Distribution.Compiler (Opt, extensionsToNHCFlag, extensionsToGHCFlag,
-                              extensionsToHugsFlag)
+                              extensionsToJHCFlag, extensionsToHugsFlag)
 import Language.Haskell.Extension (Extension(..))

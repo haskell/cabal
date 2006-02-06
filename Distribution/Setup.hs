@@ -200,7 +200,7 @@ data HaddockFlags = HaddockFlags {haddockVerbose :: Int}
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
-data Flag a = GhcFlag | NhcFlag | HugsFlag
+data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithCompiler FilePath | WithHcPkg FilePath
           | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
@@ -247,6 +247,8 @@ defaultCompilerFlavor =
    Just GHC
 #elif defined(__NHC__)
    Just NHC
+#elif defined(__JHC__)
+   Just JHC
 #elif defined(__HUGS__)
    Just Hugs
 #else
@@ -275,6 +277,7 @@ configureArgs flags
 
         showHC GHC = "ghc"
         showHC NHC = "nhc98"
+        showHC JHC = "jhc"
         showHC Hugs = "hugs"
         showHC c    = "unknown compiler: " ++ (show c)
 
@@ -366,6 +369,7 @@ configureCmd progConf = Cmd {
         cmdOptions     = [cmd_help, cmd_verbose,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
+           Option "" ["jhc"]  (NoArg JhcFlag) "compile with JHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (reqPathArg WithCompiler)
                "give the path to a particular compiler",
@@ -447,6 +451,7 @@ parseConfigureArgs :: ProgramConfiguration -> ConfigFlags -> [String] -> [OptDes
 parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
   where updateCfg t GhcFlag              = t { configHcFlavor = Just GHC }
         updateCfg t NhcFlag              = t { configHcFlavor = Just NHC }
+        updateCfg t JhcFlag              = t { configHcFlavor = Just JHC }
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }

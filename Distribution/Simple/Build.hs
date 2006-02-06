@@ -47,7 +47,7 @@ module Distribution.Simple.Build (
   ) where
 
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..),
-				extensionsToGHCFlag, extensionsToNHCFlag)
+				extensionsToGHCFlag, extensionsToJHCFlag, extensionsToNHCFlag)
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..),
 			     		setupMessage, withLib, hasLibs,
                                         Executable(..), withExe,
@@ -81,12 +81,12 @@ import Control.Exception (try)
 #else
 import IO (try)
 #endif
-import Data.List(nub, sort, isSuffixOf)
+import Data.List(nub, sort, isSuffixOf, intersperse)
 import System.Directory (removeFile, getModificationTime, doesFileExist)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName,
                                 splitFileExt, joinFileExt, objExtension,
-                                pathSeparator,
+                                pathSeparator, baseName,
                                 searchPathSeparator, joinPaths,
                                 splitFileName, platformPath)
 import qualified Distribution.Simple.GHCPackageConfig
@@ -123,8 +123,9 @@ build pkg_descr lbi (BuildFlags verbose) suffixes = do
   setupMessage "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC -> buildGHC pkg_descr lbi verbose
+   JHC -> buildJHC pkg_descr lbi verbose
    Hugs -> buildHugs pkg_descr lbi verbose
-   _   -> die ("Only building with GHC and preprocessing for hugs are implemented.")
+   _   -> die ("Building is not supported with this compiler.")
 
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
@@ -308,6 +309,47 @@ constructGHCCmdLine lbi bi odir verbose =
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
+-- | Building a package for JHC.
+-- Currently C source files are not supported.
+buildJHC :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
+buildJHC pkg_descr lbi verbose = do
+  let jhcPath = compilerPath (compiler lbi)
+  withLib pkg_descr () $ \lib -> do
+      when (verbose > 3) (putStrLn "Building library...")
+      let libBi = libBuildInfo lib
+      let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbose
+      rawSystemExit verbose jhcPath (["-c"] ++ args ++ libModules pkg_descr)
+      let pkgid = showPackageId (package pkg_descr)
+          pfile = buildDir lbi `joinFileName` "jhc-pkg.conf"
+          hlfile= buildDir lbi `joinFileName` (pkgid ++ ".hl")
+      writeFile pfile $ jhcPkgConf pkg_descr
+      rawSystemExit verbose jhcPath ["--build-hl="++hlfile,pfile]
+  withExe pkg_descr $ \exe -> do
+      when (verbose > 3) (putStrLn ("Building executable "++exeName exe))
+      let exeBi = buildInfo exe
+      let out   = buildDir lbi `joinFileName` exeName exe
+      let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbose
+      rawSystemExit verbose jhcPath (["-o",out] ++ args ++ [modulePath exe])
+
+constructJHCCmdLine lbi bi odir verbose =
+        (if verbose > 4 then ["-v"] else [])
+     ++ snd (extensionsToJHCFlag (extensions bi))
+     ++ hcOptions JHC (options bi)
+     ++ ["--noauto","-i-"]
+     ++ ["-i", autogenModulesDir lbi]
+     ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
+     ++ ["-optc" ++ opt | opt <- ccOptions bi]
+     ++ (concat [ ["-p", showPackageId pkg] | pkg <- packageDeps lbi ])
+
+jhcPkgConf pd =
+  let sline name sel = name ++ ": "++sel pd
+      Just lib = library pd
+      comma f l = concat $ intersperse "," $ map f l
+  in unlines [sline "name" (showPackageId . package)
+             ,"exposed-modules: " ++ (comma id (exposedModules lib))
+             ,"hidden-modules: " ++ (comma id (otherModules $ libBuildInfo lib))
+             ]
+                         
 -- |Building a package for Hugs.
 buildHugs :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 buildHugs pkg_descr lbi verbose = do

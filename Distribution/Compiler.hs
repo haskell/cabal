@@ -46,7 +46,8 @@ module Distribution.Compiler (
         -- * Support for language extensions
         Opt,
         extensionsToFlags,
-        extensionsToNHCFlag, extensionsToGHCFlag, extensionsToHugsFlag,
+        extensionsToGHCFlag, extensionsToHugsFlag,
+        extensionsToNHCFlag, extensionsToJHCFlag,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -83,6 +84,7 @@ compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
 compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
 compilerBinaryName Hugs = "ffihugs"
+compilerBinaryName JHC  = "jhc"
 compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 -- ------------------------------------------------------------
@@ -95,6 +97,7 @@ extensionsToFlags :: CompilerFlavor -> [ Extension ] -> ([Extension], [Opt])
 extensionsToFlags GHC exts = extensionsToGHCFlag exts
 extensionsToFlags Hugs exts = extensionsToHugsFlag exts
 extensionsToFlags NHC exts = extensionsToNHCFlag exts
+extensionsToFlags JHC exts = extensionsToJHCFlag exts
 extensionsToFlags _ exts = (exts, [])
 
 -- |GHC: Return the unsupported extensions, and the flags for the supported extensions
@@ -151,6 +154,17 @@ extensionsToNHCFlag l
       extensionToNHCFlag NamedFieldPuns            = Right "-puns"
       extensionToNHCFlag CPP                       = Right "-cpp"
       extensionToNHCFlag e                         = Left e
+
+-- |JHC: Return the unsupported extensions, and the flags for the supported extensions
+extensionsToJHCFlag :: [ Extension ] -> ([Extension], [Opt])
+extensionsToJHCFlag l = (es, filter (not . null) rs)
+      where
+      (es,rs) = splitEither $ nub $ map extensionToJHCFlag l
+      extensionToJHCFlag TypeSynonymInstances       = Right ""
+      extensionToJHCFlag ForeignFunctionInterface   = Right ""
+      extensionToJHCFlag NoImplicitPrelude          = Right "--noprelude"
+      extensionToJHCFlag CPP                        = Right "-f cpp"
+      extensionToJHCFlag e                          = Left e
 
 -- |Hugs: Return the unsupported extensions, and the flags for the supported extensions
 extensionsToHugsFlag :: [ Extension ] -> ([Extension], [Opt])

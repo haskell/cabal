@@ -166,10 +166,15 @@ configure pkg_descr cfg
         let newConfig = foldr (\(_, p) c -> updateProgram p c) (configPrograms cfg) foundPrograms
 
         -- FIXME: currently only GHC has hc-pkg
-        dep_pkgs <- if f' == GHC && ver >= Version [6,3] [] then do
-            ipkgs <-  getInstalledPackagesAux comp cfg
-	    mapM (configDependency ipkgs) (buildDepends pkg_descr)
-          else return $ map setDepByVersion (buildDepends pkg_descr)
+        dep_pkgs <- case f' of
+                      GHC | ver >= Version [6,3] [] -> do
+                        ipkgs <-  getInstalledPackagesAux comp cfg
+	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+                      JHC                           -> do
+                        ipkgs <-  getInstalledPackagesJHC comp cfg
+	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+                      _                             -> do
+                        return $ map setDepByVersion (buildDepends pkg_descr)
 
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
@@ -281,30 +286,44 @@ configDependency ps (Dependency pkgname vrange) = do
 			 ": using " ++ showPackageId pkg)
 		return pkg
 
+getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
+getInstalledPackagesJHC comp cfg = do
+   let verbose = configVerbose cfg
+   when (verbose > 0) $ message "Reading installed packages..."
+   let cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" --list-libraries"
+   str <- systemCaptureStdout verbose cmd_line
+   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
+     [ps] -> return ps
+     _    -> die "cannot parse package list"
+
 getInstalledPackagesAux :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesAux comp cfg = getInstalledPackages comp (configUser cfg) (configVerbose cfg)
 
 getInstalledPackages :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
 getInstalledPackages comp user verbose = do
    when (verbose > 0) $ message "Reading installed packages..."
+   let user_flag = if user then "--user" else "--global"
+       cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" " ++ user_flag ++ " list"
+   str <- systemCaptureStdout verbose cmd_line
+   let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
+       str1 = unlines (filter keep_line (lines str))
+       str2 = filter (`notElem` ",()") str1
+       --
+   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
+     [ps] -> return ps
+     _    -> die "cannot parse package list"
+
+systemCaptureStdout :: Int -> String -> IO String
+systemCaptureStdout verbose cmd = do
    withTempFile "." "" $ \tmp -> do
-      let user_flag = if user then "--user" else "--global"
-          cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" " ++ user_flag ++ " list >" ++ tmp
-      when (verbose > 0) $
-        putStrLn cmd_line
+      let cmd_line  = cmd ++ " >" ++ tmp
+      when (verbose > 0) $ putStrLn cmd_line
       res <- system cmd_line
       case res of
-        ExitFailure _ -> die ("cannot get package list")
-        ExitSuccess -> do
-	  str <- readFile tmp
-	  let 
-	      keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
-	      str1 = unlines (filter keep_line (lines str))
-	      str2 = filter (`notElem` ",()") str1
-	  --
-	  case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
-	    [ps] -> return ps
-	    _   -> die "cannot parse package list"
+        ExitFailure _ -> die ("executing external program failed: "++cmd_line)
+        ExitSuccess   -> do str <- readFile tmp
+                            let ev [] = ' '; ev xs = last xs
+                            ev str `seq` return str
 
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
@@ -352,21 +371,33 @@ compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
 compilerPkgToolName Hugs = "hugs"
+compilerPkgToolName JHC  = "jhc"
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
-configCompilerVersion GHC compilerP verbose =
+configCompilerVersion GHC compilerP verbose = do
+  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --version")
+  case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
+    [v] -> return v
+    _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
+configCompilerVersion JHC compilerP verbose = do
+  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --version")
+  case words str of
+    (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of
+                   [v] -> return v
+                   _   -> fail ("parsing version: "++ver++" failed.")
+    _        -> fail ("reading version string: "++show str++" failed.")
+configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
+
+systemGetStdout :: Int -> String -> IO String
+systemGetStdout verbose cmd = do
   withTempFile "." "" $ \tmp -> do
-    let cmd_line = "\"" ++ compilerP ++ "\" --version >" ++ tmp
-    when (verbose > 0) $
-      putStrLn cmd_line
+    let cmd_line = cmd ++ " >" ++ tmp
+    when (verbose > 0) $ putStrLn cmd_line
     maybeExit $ system cmd_line
     str <- readFile tmp
-    case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
-	[v] -> return v
-	_   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "
-			++ str)
-configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
+    let eval [] = ' '; eval xs = last xs
+    eval str `seq` return str
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
