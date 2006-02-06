@@ -4,6 +4,8 @@ module Distribution.Compat.FilePath
          , splitFileName
          , splitFileExt
          , splitFilePath
+         , baseName
+         , dirName
          , joinFileName
          , joinFileExt
          , joinPaths         
@@ -131,6 +133,12 @@ splitFilePath path = case break (== '.') (reverse basename) of
     (ext_r, _:name_r) -> (dir, reverse name_r, reverse ext_r)
   where
     (dir, basename) = splitFileName path
+
+baseName :: FilePath -> FilePath
+baseName = snd . splitFileName
+dirName :: FilePath -> FilePath
+dirName  = fst . splitFileName
+
 
 -- | The 'joinFileName' function is the opposite of 'splitFileName'. 
 -- It joins directory and file names to form a complete file path.

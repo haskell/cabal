@@ -10,7 +10,7 @@
 -- This is the information about an /installed/ package that
 -- is communicated to the @hc-pkg@ program in order to register
 -- a package.  @ghc-pkg@ now consumes this package format (as of verison
--- 6.4).
+-- 6.4). This is specific to GHC at the moment.
 
 
 {- All rights reserved.
