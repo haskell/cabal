@@ -81,7 +81,7 @@ mkGHCPackageConfig :: PackageDescription -> LocalBuildInfo -> GHCPackageConfig
 mkGHCPackageConfig pkg_descr lbi
   = defaultGHCPackageConfig {
 	name	        = pkg_name,
-	auto	        = False,
+	auto	        = True,
 	import_dirs     = [mkLibDir pkg_descr lbi NoCopyDest],
 	library_dirs    = (mkLibDir pkg_descr lbi NoCopyDest: 
 			   maybe [] (extraLibDirs . libBuildInfo) (library pkg_descr)),
