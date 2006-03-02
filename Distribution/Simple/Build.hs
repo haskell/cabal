@@ -67,9 +67,8 @@ import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.Install (hugsMainFilename)
 import Distribution.Simple.Utils (rawSystemExit, die, rawSystemPathExit,
                                   mkLibName, mkProfLibName, mkGHCiLibName, dotToSep,
-				  moduleToFilePath,
-                                  smartCopySources,
-                                  findFile
+				  moduleToFilePath, smartCopySources, findFile,
+				  warn
                                  )
 import Language.Haskell.Extension (Extension(..))
 
@@ -82,7 +81,8 @@ import Control.Exception (try)
 import IO (try)
 #endif
 import Data.List(nub, sort, isSuffixOf, intersperse)
-import System.Directory (removeFile, getModificationTime, doesFileExist)
+import System.Directory (removeFile, getModificationTime, doesFileExist,
+			 getDirectoryContents)
 import Distribution.Compat.Directory (copyFile,createDirectoryIfMissing)
 import Distribution.Compat.FilePath (splitFilePath, joinFileName,
                                 splitFileExt, joinFileExt, objExtension,
@@ -147,20 +147,31 @@ buildGHC pkg_descr lbi verbose = do
   let ghcPath = compilerPath (compiler lbi)
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
-  pkgConf <- GHC.localPackageConfig
-  pkgConfReadable <- GHC.canReadLocalPackageConfig
+
+  -- GHC versions prior to 6.4 didn't have the user package database,
+  -- so we fake it.  TODO: This can go away in due course.
+  pkg_conf <- if versionBranch (compilerVersion (compiler lbi)) >= [6,4]
+		then return []
+		else do  pkgConf <- GHC.localPackageConfig
+			 pkgConfReadable <- GHC.canReadLocalPackageConfig
+			 if pkgConfReadable 
+				then return ["-package-conf", pkgConf]
+				else return []
+	       
   -- Build lib
   withLib pkg_descr () $ \lib -> do
       when (verbose > 3) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
           libTargetDir = pref
+
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False False
       let ghcArgs = 
-                 (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+                 pkg_conf
               ++ ["-package-name", pkgName (package pkg_descr) ]
+	      ++ (if splitObjs lbi then ["-split-objs"] else [])
               ++ constructGHCCmdLine lbi libBi libTargetDir verbose
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -192,9 +203,7 @@ buildGHC pkg_descr lbi verbose = do
 
       -- link:
       when (verbose > 3) (putStrLn "cabal-linking...")
-      let hObjs = [ (dotToSep x) `joinFileExt` objExtension
-                  | x <- libModules pkg_descr ]
-          cObjs = [ path `joinFileName` file `joinFileExt` objExtension
+      let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
           libName  = mkLibName pref (showPackageId (package pkg_descr))
           hProfObjs = [ (dotToSep x) `joinFileExt` "p_"++objExtension
@@ -207,22 +216,32 @@ buildGHC pkg_descr lbi verbose = do
       stubProfObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["p_" ++ objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
 
+      hObjs     <- getHaskellObjects pkg_descr libBi lbi
+			pref objExtension
+      hProfObjs <- 
+	if (withProfLib lbi)
+		then getHaskellObjects pkg_descr libBi lbi
+			pref ("p_" ++ objExtension)
+		else return []
+
       unless (null hObjs && null cObjs && null stubObjs) $ do
         try (removeFile libName) -- first remove library if it exists
         try (removeFile profLibName) -- first remove library if it exists
 	try (removeFile ghciLibName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
-                ++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
+		++ hObjs
+                ++ map (pref `joinFileName`) cObjs
                 ++ stubObjs
             arProfArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [profLibName]
-                ++ [pref `joinFileName` x | x <- hProfObjs ++ cObjs]
+		++ hProfObjs
                 ++ stubProfObjs
 	    ldArgs = ["-r"]
                 ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
 	        ++ ["-o", ghciLibName]
-		++ [pref `joinFileName` x | x <- hObjs ++ cObjs]
+		++ hObjs
+                ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
         rawSystemPathExit verbose "ar" arArgs
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
@@ -267,7 +286,7 @@ buildGHC pkg_descr lbi verbose = do
                  let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                                    | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
                  let binArgs = 
-                            (if pkgConfReadable then ["-package-conf", pkgConf] else [])
+                            pkg_conf
                          ++ ["-I"++pref,
                              "-o", targetDir `joinFileName` exeName'
                             ]
@@ -281,6 +300,23 @@ buildGHC pkg_descr lbi verbose = do
                                then "-prof":ghcProfOptions exeBi
                                else []
                  rawSystemExit verbose ghcPath binArgs
+
+
+-- when using -split-objs, we need to search for object files in the
+-- Module_split directory for each module.
+getHaskellObjects pkg_descr libBi lbi pref obj_ext
+  | splitObjs lbi = do
+	let dirs = [ pref `joinFileName` (dotToSep x ++ "_split") 
+		   | x <- libModules pkg_descr ]
+	objss <- mapM getDirectoryContents dirs
+	let objs = [ dir `joinFileName` obj
+		   | (objs,dir) <- zip objss dirs, obj <- objs,
+		     obj_ext `isSuffixOf` obj ]
+	return objs
+  | otherwise  = 
+	return [ pref `joinFileName` (dotToSep x) `joinFileExt` obj_ext
+               | x <- libModules pkg_descr ]
+
 
 dirOf :: FilePath -> FilePath
 dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
