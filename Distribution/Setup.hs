@@ -135,7 +135,8 @@ data ConfigFlags = ConfigFlags {
 
         configVerbose  :: Int,            -- ^verbosity level
 	configUser     :: Bool,		  -- ^--user flag?
-	configGHCiLib  :: Bool            -- ^Enable compiling library for GHCi
+	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
+	configSplitObjs :: Bool		  -- ^Enable -split-objs with GHC
     }
 
 emptyConfigFlags :: ProgramConfiguration -> ConfigFlags
@@ -162,7 +163,8 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDataSubDir = Nothing,
         configVerbose  = 0,
 	configUser     = False,
-	configGHCiLib  = True
+	configGHCiLib  = True,
+	configSplitObjs = False -- takes longer, so turn off by default
     }
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbose)
@@ -208,6 +210,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
 	  | WithGHCiLib | WithoutGHCiLib
+	  | WithSplitObjs | WithoutSplitObjs
 
 	  | Prefix FilePath
 	  | BinDir FilePath
@@ -413,6 +416,10 @@ configureCmd progConf = Cmd {
                "compile library for use with GHCi",
 	   Option "" ["disable-library-for-ghci"] (NoArg WithoutGHCiLib)
                "do not compile libraries for GHCi",
+	   Option "" ["enable-split-objs"] (NoArg WithSplitObjs)
+	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
+	   Option "" ["disable-split-objs"] (NoArg WithoutSplitObjs)
+	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -483,6 +490,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configUser     = True }
         updateCfg t GlobalFlag           = t { configUser     = False }
+	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
+	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
         updateCfg t (Lift _)             = t
         updateCfg t _                    = error $ "Unexpected flag!"
 
