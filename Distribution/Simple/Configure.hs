@@ -176,6 +176,12 @@ configure pkg_descr cfg
                       _                             -> do
                         return $ map setDepByVersion (buildDepends pkg_descr)
 
+	split_objs <- case f' of
+			    GHC | ver >= Version [6,5] [] -> return True
+	    		    _ -> do warn ("this compiler does not support " ++
+					    "--enable-split-objs; ignoring")
+				    return False
+
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
 			      bindir=my_bindir,
@@ -193,6 +199,7 @@ configure pkg_descr cfg
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
 			      withGHCiLib=configGHCiLib cfg,
+			      splitObjs=split_objs,
                               userConf=configUser cfg
                              }
 

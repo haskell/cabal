@@ -108,7 +108,8 @@ data LocalBuildInfo = LocalBuildInfo {
         withGreencard :: Maybe FilePath, -- ^Might be the location of the GreenCard executable.
         withProfLib   :: Bool,
         withProfExe   :: Bool,
-	withGHCiLib   :: Bool
+	withGHCiLib   :: Bool,
+	splitObjs     :: Bool	-- ^Use -split-objs with GHC, if available
   } deriving (Read, Show)
 
 -- -----------------------------------------------------------------------------
