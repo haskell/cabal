@@ -50,7 +50,12 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-import Prelude -- necessary to get dependencies right
+#if __GLASGOW_HASKELL__ >= 604
+
+import System.Console.GetOpt
+
+#else
+-- to end of file:
 
 import Data.List ( isPrefixOf )
 
@@ -315,3 +320,5 @@ compiler:
 >      where header = "Usage: ic [OPTION...] files..."
 
 -}
+
+#endif
