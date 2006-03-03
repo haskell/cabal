@@ -355,7 +355,7 @@ basicStanzaFields =
                            (text . showVersion)   parseVersion
                            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
-                           (text . showVersionRange) parseCabalVersion
+                           (text . showVersionRange) parseVersionRange
                            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
  , simpleField "license"
                            (text . show)          parseLicenseQ
@@ -691,11 +691,6 @@ hasMods pkg_descr
     | isNothing (library pkg_descr) = null $ executables pkg_descr
     | otherwise = null (executables pkg_descr)
                    && null (exposedModules (fromJust (library pkg_descr)))
-
-parseCabalVersion = do v <- parseVersionRange
-                       if (cabalVersion `withinRange` v)
-                          then return v
-                          else error ("This package requires Cabal verion: " ++ (showVersionRange v) ++ ".")
 
 -- ------------------------------------------------------------
 -- * Testing
