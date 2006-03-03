@@ -1,0 +1,18 @@
+Name: cabal-setup
+Version: 1.1.4
+Copyright: 2005, Simon Marlow
+Build-depends: Cabal >= 1.1.4, base
+License: BSD3
+License-File: ../LICENSE
+Author: Simon Marlow <simonmar@microsoft.com>
+Maintainer: http://hackage.haskell.org/trac/hackage/
+Homepage: http://www.haskell.org/cabal/
+Category: Distribution
+Synopsis: The user interface for building and installing Cabal packages
+Description:
+	cabal-setup is the user interface to Cabal.  It provides the
+ 	basic commands for configuring, building, and installing
+	Cabal packages.
+
+Executable: cabal-setup
+Main-is: CabalSetup.hs
