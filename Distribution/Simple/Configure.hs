@@ -372,7 +372,7 @@ findCompiler verbose flavor = do
    Nothing   -> die ("Cannot find compiler for " ++ prog)
    Just path -> do when (verbose > 0) $ message ("found " ++ prog ++ " at "++ path)
 		   return path
-   -- ToDo: check that compiler works? check compiler version?
+   -- ToDo: check that compiler works?
 
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
