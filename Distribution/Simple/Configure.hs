@@ -177,7 +177,10 @@ configure pkg_descr cfg
                       _                             -> do
                         return $ map setDepByVersion (buildDepends pkg_descr)
 
-	split_objs <- case f' of
+	split_objs <- 
+	   if not (configSplitObjs cfg)
+		then return False
+		else case f' of
 			    GHC | ver >= Version [6,5] [] -> return True
 	    		    _ -> do warn ("this compiler does not support " ++
 					    "--enable-split-objs; ignoring")
