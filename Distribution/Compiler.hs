@@ -109,7 +109,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag OverlappingInstances         = Right "-fallow-overlapping-instances"
     extensionToGHCFlag TypeSynonymInstances         = Right "-fglasgow-exts"
     extensionToGHCFlag TemplateHaskell              = Right "-fth"
-    extensionToGHCFlag ForeignFunctionInterface     = Right "-ffi"
+    extensionToGHCFlag ForeignFunctionInterface     = Right "-fffi"
     extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
     extensionToGHCFlag UndecidableInstances         = Right "-fallow-undecidable-instances"
     extensionToGHCFlag IncoherentInstances          = Right "-fallow-incoherent-instances"
