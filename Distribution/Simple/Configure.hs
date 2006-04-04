@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
+                                      maybeGetPersistBuildConfig,
                                       LocalBuildInfo(..),
  			  	      configure,
                                       localBuildInfoFile,
@@ -99,15 +100,25 @@ import Prelude hiding (catch)
 import HUnit
 #endif
 
-getPersistBuildConfig :: IO LocalBuildInfo
-getPersistBuildConfig = do
+tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
+tryGetPersistBuildConfig = do
   e <- doesFileExist localBuildInfoFile
   let dieMsg = "error reading " ++ localBuildInfoFile ++ "; run \"setup configure\" command?\n"
-  when (not e) (die dieMsg)
+  if (not e) then return $ Left dieMsg else do 
   str <- readFile localBuildInfoFile
   case reads str of
-    [(bi,_)] -> return bi
-    _        -> die dieMsg
+    [(bi,_)] -> return $ Right bi
+    _        -> return $ Left  dieMsg
+
+getPersistBuildConfig :: IO LocalBuildInfo
+getPersistBuildConfig = do
+  lbi <- tryGetPersistBuildConfig
+  either die return lbi
+
+maybeGetPersistBuildConfig :: IO (Maybe LocalBuildInfo)
+maybeGetPersistBuildConfig = do
+  lbi <- tryGetPersistBuildConfig
+  return $ either (const Nothing) Just lbi
 
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
