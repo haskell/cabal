@@ -82,7 +82,7 @@ import Distribution.Simple.Register	( register, unregister,
                                           regScriptLocation, unregScriptLocation
                                         )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig,
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, maybeGetPersistBuildConfig,
                                      findProgram, configure, writePersistBuildConfig,
                                      localBuildInfoFile)
 import Distribution.Simple.Install(install)
@@ -101,7 +101,7 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isNothing, fromJust )
+import Data.Maybe       ( isNothing, isJust, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 
@@ -150,9 +150,9 @@ data UserHooks = UserHooks
       -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during clean.
-     cleanHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO (),
+     cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO (),
       -- |Hook to run after clean command.  Second arg indicates verbosity level.
-     postClean :: Args -> CleanFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
@@ -173,9 +173,9 @@ data UserHooks = UserHooks
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during sdist.
-     sDistHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> SDistFlags -> IO (),
+     sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> SDistFlags -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
-     postSDist :: Args -> SDistFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before register command
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
@@ -310,11 +310,10 @@ defaultMainWorker pkg_descr_in action args hooks
             CleanCmd -> do
                 (verbose,_, args) <- parseCleanArgs args []
                 pkg_descr <- hookOrInArgs preClean args verbose
-		localbuildinfo <- getPersistBuildConfig
+		maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
-                cmdHook cleanHook pkg_descr localbuildinfo verbose
-
-                postHook postClean args verbose pkg_descr localbuildinfo
+                cmdHook cleanHook pkg_descr maybeLocalbuildinfo verbose
+                postHook postClean args verbose pkg_descr maybeLocalbuildinfo
 
             CopyCmd mprefix -> do
                 (flags, _, args) <- parseCopyArgs (CopyFlags mprefix 0) args []
@@ -336,10 +335,10 @@ defaultMainWorker pkg_descr_in action args hooks
                 let srcPref   = distPref `joinFileName` "src"
                 (flags,_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args flags
-                localbuildinfo <- getPersistBuildConfig
+                maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
-                cmdHook sDistHook pkg_descr localbuildinfo flags
-                postHook postSDist args flags pkg_descr localbuildinfo
+                cmdHook sDistHook pkg_descr maybeLocalbuildinfo flags
+                postHook postSDist args flags pkg_descr maybeLocalbuildinfo
 
             TestCmd -> do
                 (verbose,_, args) <- parseTestArgs args []
@@ -482,25 +481,27 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
                 ++ inFiles)
         return ()
 
-clean :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO ()
-clean pkg_descr lbi hooks (CleanFlags verbose) = do
+clean :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO ()
+clean pkg_descr maybeLbi hooks (CleanFlags verbose) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
-    let buildPref = buildDir lbi
-    try $ removeDirectoryRecursive buildPref
     try $ removeDirectoryRecursive (joinPaths distPref "doc")
     try $ removeFile installedPkgConfigFile
     try $ removeFile localBuildInfoFile
     try $ removeFile regScriptLocation
     try $ removeFile unregScriptLocation
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
-    case compilerFlavor (compiler lbi) of
-      GHC -> cleanGHCExtras
-      JHC -> cleanJHCExtras
-      _   -> return ()
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
+
+    when (isJust maybeLbi) $ do
+        let lbi = fromJust maybeLbi
+        try $ removeDirectoryRecursive (buildDir lbi)
+        case compilerFlavor (compiler lbi) of
+          GHC -> cleanGHCExtras lbi
+          JHC -> cleanJHCExtras lbi
+          _   -> return ()
   where
-        cleanGHCExtras = do
+        cleanGHCExtras lbi = do
             -- remove source stubs for library
             withLib pkg_descr () $ \ Library{libBuildInfo=bi} ->
                 removeGHCModuleStubs bi (libModules pkg_descr)
@@ -517,7 +518,7 @@ clean pkg_descr lbi hooks (CleanFlags verbose) = do
                                  | x <- mods ]
                 mapM_ removeFile (concat s)
         -- JHC FIXME remove exe-sources
-        cleanJHCExtras = do
+        cleanJHCExtras lbi = do
             try $ removeFile (buildDir lbi `joinFileName` "jhc-pkg.conf")
             removePreprocessedPackage pkg_descr currentDir ["ho"]
         removeFileOrDirectory :: FilePath -> IO ()
