@@ -415,14 +415,16 @@ hunitTests
        do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
-                   (Just "Distribution\\Simple\\Build.hs") mp1
-          assertEqual "not existing not nothing failed" Nothing mp2,
+                   ["Distribution\\Simple\\Build.hs"] mp1
+          assertEqual "not existing not nothing failed" [] mp2,
 
         "moduleToPossiblePaths 1" ~: "failed" ~:
              ["Foo\\Bar\\Bang.hs","Foo\\Bar\\Bang.lhs"]
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
+        TestCase (do files <- filesWithExtensions "." "cabal"
+                     assertEqual "filesWithExtensions" "Cabal.cabal" (head files))
 #else
        do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
