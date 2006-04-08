@@ -275,6 +275,19 @@ tests currDir comp compConf = [
             assertCmd "./,tmp/bin/testA isA" "A is not A"
             assertCmd "./,tmp/bin/testB isB" "B is not B"
             -- no register, since there's no library
+-- buildinfo
+         ,TestLabel ("buildinfo with multiple executables " ++ compIdent) $ TestCase $
+         do setCurrentDirectory $ (testdir `joinFileName` "buildInfo")
+            testPrelude
+            assertConfigure ",tmp"
+            assertCmd' compCmd "haddock" "setup haddock returned error code."
+            assertBuild
+            assertCopy
+            doesFileExist ",tmp/bin/exe1" >>= 
+              assertBool "install did not create the executable: exe1"
+            doesFileExist ",tmp/bin/exe2" >>= 
+              assertBool "install did not create the executable: exe2"
+            -- no register, since there's no library
 -- mutually recursive modules
          ,TestLabel ("package recursive: building " ++ compIdent) $ TestCase $
            when (comp == GHC) (do
