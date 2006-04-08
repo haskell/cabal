@@ -1,0 +1,19 @@
+Name: buildinfo2
+Version: 0.0
+License: GPL
+License-file: COPYING
+Build-Depends: base
+Author: Evgeny Chukreev
+Copyright: Evgeny Chukreev (C) 2005
+Maintainer: Evgeny Chukreev <public@toril.ru>
+Synopsis: Buildinfo testcase
+Description:
+ Buildinfo testcase
+
+Executable: exe1
+Main-is: exe1.hs
+HS-source-dirs: src
+
+Executable: exe2
+Main-is: exe2.hs
+HS-source-dirs: src
