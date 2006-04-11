@@ -9,7 +9,7 @@
     <!ENTITY Autoconf '<ulink url="http://www.gnu.org/software/autoconf/"><command>autoconf</command></ulink>'>
     <!ENTITY C2hs '<ulink url="http://www.cse.unsw.edu.au/~chak/haskell/c2hs/"><command>c2hs</command></ulink>'>
     <!ENTITY Cpphs '<ulink url="http://www.haskell.org/cpphs/"><command>cpphs</command></ulink>'>
-    <!ENTITY Greencard '<ulink url="http://www.haskell.org/greencard/"><command>haddock</command></ulink>'>
+    <!ENTITY Greencard '<ulink url="http://www.haskell.org/greencard/"><command>greencard</command></ulink>'>
     <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/"><command>haddock</command></ulink>'>
     <!ENTITY Happy '<ulink url="http://www.haskell.org/happy/"><command>happy</command></ulink>'>
   ]>
