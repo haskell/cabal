@@ -12,7 +12,6 @@ exposed-modules:
 	Distribution.Compat.ReadP,
 	Distribution.Compiler,
 	Distribution.Extension,
-	Distribution.GetOpt,
 	Distribution.InstalledPackageInfo,
 	Distribution.License,
 	Distribution.Make,
@@ -36,6 +35,7 @@ exposed-modules:
 	Language.Haskell.Extension
 
 hidden-modules:
+	Distribution.GetOpt,
 	Distribution.Compat.Exception,
 	Distribution.Compat.RawSystem,
 	Distribution.Compat.FilePath,
