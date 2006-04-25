@@ -43,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Configure (writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
-                                      LocalBuildInfo(..),
  			  	      configure,
                                       localBuildInfoFile,
                                       findProgram,
