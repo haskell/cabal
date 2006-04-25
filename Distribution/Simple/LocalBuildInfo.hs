@@ -56,15 +56,12 @@ module Distribution.Simple.LocalBuildInfo (
   ) where
 
 
-import Distribution.Package (PackageIdentifier)
-import Distribution.Program (ProgramLocation, Program, ProgramConfiguration)
-import Distribution.Compiler (Compiler)
-import Distribution.PackageDescription (PackageDescription(..), hasLibs)
+import Distribution.Program (ProgramConfiguration)
+import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
 import Distribution.Setup (CopyDest(..))
 import Distribution.Compat.FilePath
-import Data.Maybe (fromMaybe)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign
 import Foreign.C
@@ -181,6 +178,7 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
                               -> IO CInt
 #endif
 
+default_bindir :: FilePath
 default_bindir = "$prefix" `joinFileName`
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 	"$pkgid"
@@ -188,6 +186,7 @@ default_bindir = "$prefix" `joinFileName`
 	"bin"
 #endif
 
+default_libdir :: Compiler -> FilePath
 default_libdir hc = "$prefix" `joinFileName`
 #if mingw32_HOST_OS || mingw32_TARGET_OS
                  "Haskell"
@@ -195,12 +194,14 @@ default_libdir hc = "$prefix" `joinFileName`
                  "lib"
 #endif
 
+default_libsubdir :: Compiler -> FilePath
 default_libsubdir hc =
   case compilerFlavor hc of
 	Hugs -> "hugs" `joinFileName` "packages" `joinFileName` "$pkg"
         JHC  -> "$compiler"
 	_    -> "$pkgid" `joinFileName` "$compiler"
 
+default_libexecdir :: FilePath
 default_libexecdir = "$prefix" `joinFileName`
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 	"$pkgid"
@@ -217,6 +218,7 @@ default_datadir pkg_descr
 	= return  ("$prefix" `joinFileName` "share")
 #endif
 
+default_datasubdir :: FilePath
 default_datasubdir = "$pkgid"
 
 mkBinDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
@@ -257,6 +259,8 @@ mkProgDir pkg_descr lbi copydest =
   absolutePath pkg_descr lbi copydest (libdir lbi) `joinFileName`
   "hugs" `joinFileName` "programs"
 
+prefixRelPath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
+  -> Maybe FilePath
 prefixRelPath pkg_descr lbi0 copydest ('$':'p':'r':'e':'f':'i':'x':s) = Just $
   case s of
     (c:s) | isPathSeparator c -> substDir pkg_descr lbi s
@@ -267,6 +271,8 @@ prefixRelPath pkg_descr lbi0 copydest ('$':'p':'r':'e':'f':'i':'x':s) = Just $
             _otherwise   -> lbi0
 prefixRelPath pkg_descr lbi copydest s = Nothing
 
+absolutePath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
+	-> FilePath
 absolutePath pkg_descr lbi copydest s =
   case copydest of
     NoCopyDest   -> substDir pkg_descr lbi s
