@@ -64,7 +64,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Setup (RegisterFlags(..), CopyDest(..))
+import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -84,7 +84,7 @@ import Distribution.Compat.Directory
        )
 import Distribution.Compat.FilePath (joinFileName)
 
-import System.Directory(doesFileExist, removeFile)
+import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
 
 import Control.Monad (when, unless)
@@ -111,28 +111,27 @@ unregScriptLocation = "unregister.sh"
 -- -----------------------------------------------------------------------------
 -- Registration
 
--- |Be sure to call writeInstalledConfig first.  If the --user flag
--- was passed, and ~\/.ghc-packages is writable, or can be created,
--- then we use that file, perhaps creating it.
-
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi (RegisterFlags userInst genScript verbose)
+register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
     setupMessage "No package to register" pkg_descr
     return ()
   | otherwise = do
+    let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
+        genScript = regGenScript regFlags
+        verbose = regVerbose regFlags
+        user = regUser regFlags `userOverride` userConf lbi
+	inplace = regInPlace regFlags
     setupMessage (if genScript
                      then ("Writing registration script: " ++ regScriptLocation)
                      else "Registering")
                  pkg_descr
     case compilerFlavor (compiler lbi) of
       GHC -> do 
-     	let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
-
 	config_flags <-
-	   if userInst
+	   if user
 		then if ghc_63_plus
 			then return ["--user"]
 			else do 
@@ -144,40 +143,46 @@ register pkg_descr lbi (RegisterFlags userInst genScript verbose)
 			  return ["--config-file=" ++ localConf]
 		else return []
 
-        instConfExists <- doesFileExist installedPkgConfigFile
+	let instConf = if inplace then inplacePkgConfigFile 
+				  else installedPkgConfigFile
+
+        instConfExists <- doesFileExist instConf
         when (not instConfExists && not genScript) $ do
           when (verbose > 0) $
-            putStrLn ("create "++installedPkgConfigFile)
-          writeInstalledConfig pkg_descr lbi
+            putStrLn ("create " ++ instConf)
+          writeInstalledConfig pkg_descr lbi inplace
 
-	let register_flags 
+	let register_flags
 		| ghc_63_plus = "update":
 #if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 		                 if genScript
                                     then []
                                     else 
 #endif
-                                      [installedPkgConfigFile]
+                                      [instConf]
 		| otherwise   = "--update-package":
 #if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 				 if genScript
                                     then []
                                     else
 #endif
-                                      ["--input-file="++installedPkgConfigFile]
+                                      ["--input-file="++instConf]
         
 	let allFlags = register_flags
                        ++ config_flags
                        ++ if ghc_63_plus && genScript then ["-"] else []
-        let pkgTool = compilerPkgTool (compiler lbi)
+        let pkgTool = case regWithHcPkg regFlags of
+			 Just f  -> f
+			 Nothing -> compilerPkgTool (compiler lbi)
 
         if genScript
-         then rawSystemPipe regScriptLocation verbose
-                           (showInstalledConfig pkg_descr lbi)
+         then do cfg <- showInstalledConfig pkg_descr lbi inplace
+	         rawSystemPipe regScriptLocation verbose cfg
                            pkgTool allFlags
          else rawSystemExit verbose pkgTool allFlags
 
       Hugs -> do
+	when inplace $ die "--inplace is not supported with Hugs"
 	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
 	copyFileVerbose verbose installedPkgConfigFile
 	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
@@ -189,26 +194,43 @@ userPkgConfErr local_conf =
   die ("--user flag passed, but cannot write to local package config: "
     	++ local_conf )
 
--- |Register doesn't drop the register info file, it must be done in a separate step.
-writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> IO ()
-writeInstalledConfig pkg_descr lbi = do
-  let pkg_config = showInstalledConfig pkg_descr lbi
-  writeFile installedPkgConfigFile (pkg_config ++ "\n")
+-- -----------------------------------------------------------------------------
+-- The installed package config
+
+-- |Register doesn't drop the register info file, it must be done in a
+-- separate step.
+writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool -> IO ()
+writeInstalledConfig pkg_descr lbi inplace = do
+  pkg_config <- showInstalledConfig pkg_descr lbi inplace
+  writeFile (if inplace then inplacePkgConfigFile else installedPkgConfigFile)
+	    (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
-showInstalledConfig :: PackageDescription -> LocalBuildInfo -> String
-showInstalledConfig pkg_descr lbi
-    = let hc = compiler lbi
-      in case compilerFlavor hc of
-          GHC | compilerVersion hc < Version [6,3] [] ->
-	          showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi)
- 	  _ -> showInstalledPackageInfo (mkInstalledPackageInfo pkg_descr lbi)
+showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
+  -> IO String
+showInstalledConfig pkg_descr lbi inplace
+  | (case compilerFlavor hc of GHC -> True; _ -> False) &&
+    compilerVersion hc < Version [6,3] [] 
+    = if inplace then
+	  error "--inplace not supported for GHC < 6.3"
+      else
+	  return (showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi))
+  | otherwise 
+    = do cfg <- mkInstalledPackageInfo pkg_descr lbi inplace
+         return (showInstalledPackageInfo cfg)
+  where
+  	hc = compiler lbi
 
 removeInstalledConfig :: IO ()
-removeInstalledConfig = try (removeFile installedPkgConfigFile) >> return ()
+removeInstalledConfig = do
+  try (removeFile installedPkgConfigFile) >> return ()
+  try (removeFile inplacePkgConfigFile) >> return ()
 
 installedPkgConfigFile :: String
 installedPkgConfigFile = ".installed-pkg-config"
+
+inplacePkgConfigFile :: String
+inplacePkgConfigFile = ".inplace-pkg-config"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
@@ -216,13 +238,17 @@ installedPkgConfigFile = ".installed-pkg-config"
 mkInstalledPackageInfo
 	:: PackageDescription
 	-> LocalBuildInfo
-	-> InstalledPackageInfo
-mkInstalledPackageInfo pkg_descr lbi
-  = let 
+	-> Bool
+	-> IO InstalledPackageInfo
+mkInstalledPackageInfo pkg_descr lbi inplace = do 
+  pwd <- getCurrentDirectory
+  let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
-    in
-    emptyInstalledPackageInfo{
+	build_dir = pwd `joinFileName` buildDir lbi
+  --
+  return
+       emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
         IPI.license           = license pkg_descr,
         IPI.copyright         = copyright pkg_descr,
@@ -236,8 +262,11 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
 	IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [mkLibDir pkg_descr lbi NoCopyDest],
-        IPI.libraryDirs       = (mkLibDir pkg_descr lbi NoCopyDest) : extraLibDirs bi,
+        IPI.importDirs        = [if inplace then build_dir else
+				 mkLibDir pkg_descr lbi NoCopyDest],
+        IPI.libraryDirs       = (if inplace then build_dir else 
+				 mkLibDir pkg_descr lbi NoCopyDest) 
+				: extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = includeDirs bi,
@@ -250,19 +279,22 @@ mkInstalledPackageInfo pkg_descr lbi
         IPI.frameworks        = frameworks bi,
 	IPI.haddockInterfaces = [],
 	IPI.haddockHTMLs      = []
-  }
+        }
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
-unregister pkg_descr lbi (RegisterFlags user_unreg genScript verbose) = do
+unregister pkg_descr lbi regFlags = do
   setupMessage "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
+      genScript = regGenScript regFlags
+      verbose = regVerbose regFlags
+      user = regUser regFlags `userOverride` userConf lbi
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <-
-	   if user_unreg
+	   if user
 		then if ghc_63_plus
 			then return ["--user"]
 			else do
@@ -274,7 +306,10 @@ unregister pkg_descr lbi (RegisterFlags user_unreg genScript verbose) = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",showPackageId (package pkg_descr)]
                         else ["--remove-package="++(pkgName $ package pkg_descr)]
-	rawSystemEmit unregScriptLocation genScript verbose (compilerPkgTool (compiler lbi))
+        let pkgTool = case regWithHcPkg regFlags of
+			 Just f  -> f
+			 Nothing -> compilerPkgTool (compiler lbi)
+	rawSystemEmit unregScriptLocation genScript verbose pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
         try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)

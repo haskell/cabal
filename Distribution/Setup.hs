@@ -44,10 +44,12 @@ module Distribution.Setup (--parseArgs,
                            module Distribution.Compiler,
                            Action(..),
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
-                           CopyFlags(..), CopyDest(..), InstallFlags(..),
+                           CopyFlags(..), CopyDest(..), 
+			   InstallFlags(..), emptyInstallFlags,
                            BuildFlags(..), CleanFlags(..), HaddockFlags(..), PFEFlags(..),
-                           RegisterFlags(..), SDistFlags(..),
-                           InstallUserFlag(..),
+                           RegisterFlags(..), emptyRegisterFlags,
+			   SDistFlags(..),
+                           MaybeUserFlag(..), userOverride,
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,
@@ -68,10 +70,8 @@ import HUnit (Test(..))
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
-import Distribution.Program(ProgramLocation(..), ProgramConfiguration(..),
-                            Program(..),
-                            defaultProgramConfiguration, userSpecifyPath,
-                            userSpecifyArgs, haddockProgram)
+import Distribution.Program(ProgramConfiguration(..),
+                            userSpecifyPath, userSpecifyArgs)
 import Data.List(find)
 import Data.FiniteMap(keysFM)
 import Distribution.GetOpt
@@ -82,18 +82,18 @@ import System.Environment
 -- type CommandLineOpts = (Action,
 --                         [String]) -- The un-parsed remainder
 
-data Action = ConfigCmd ConfigFlags       -- config
-            | BuildCmd                    -- build
-            | CleanCmd                    -- clean
-            | CopyCmd CopyDest            -- copy (--destdir flag)
-            | HaddockCmd                  -- haddock
-            | ProgramaticaCmd             -- pfesetup
-            | InstallCmd InstallUserFlag -- install (install-prefix) (--user flag)
-            | SDistCmd                    -- sdist
-            | TestCmd                     -- test
-            | RegisterCmd   Bool Bool     -- register (--user flag, --gen-script)
-            | UnregisterCmd Bool Bool     -- unregister (--user flag, --gen-script)
-	    | HelpCmd			  -- help
+data Action = ConfigCmd ConfigFlags   -- config
+            | BuildCmd                -- build
+            | CleanCmd                -- clean
+            | CopyCmd CopyDest        -- copy (--destdir flag)
+            | HaddockCmd              -- haddock
+            | ProgramaticaCmd         -- pfesetup
+            | InstallCmd              -- install (install-prefix)
+            | SDistCmd                -- sdist
+            | TestCmd                 -- test
+            | RegisterCmd    	      -- register
+            | UnregisterCmd           -- unregister
+	    | HelpCmd		      -- help
 --            | NoCmd -- error case, help case.
 --             | TestCmd 1.0?
 --             | BDist -- 1.0
@@ -177,22 +177,43 @@ data CopyDest
   | CopyPrefix FilePath		-- DEPRECATED
   deriving (Eq, Show)
 
-data InstallUserFlag = InstallUserNone   -- ^no --user OR --global flag.
-                      | InstallUserUser   -- ^--user flag
-                      | InstallUserGlobal -- ^--global flag
+data MaybeUserFlag  = MaybeUserNone   -- ^no --user OR --global flag.
+                    | MaybeUserUser   -- ^--user flag
+                    | MaybeUserGlobal -- ^--global flag
+
+-- |A 'MaybeUserFlag' overrides the default --user setting
+userOverride :: MaybeUserFlag -> Bool -> Bool
+MaybeUserUser   `userOverride` _ = True
+MaybeUserGlobal `userOverride` _ = False
+_               `userOverride` r = r
 
 -- | Flags to @install@: (user package, verbose)
-data InstallFlags = InstallFlags {installUserFlags::InstallUserFlag
+data InstallFlags = InstallFlags {installUserFlags::MaybeUserFlag
                                  ,installVerbose :: Int}
+
+emptyInstallFlags :: InstallFlags
+emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
+				  installVerbose=0 }
 
 -- | Flags to @sdist@: (snapshot, verbose)
 data SDistFlags = SDistFlags {sDistSnapshot::Bool
                              ,sDistVerbose:: Int}
 
--- | Flags to @register@ and @unregister@: (user package, gen-script, verbose)
-data RegisterFlags = RegisterFlags {regUserPackage::Bool
+-- | Flags to @register@ and @unregister@: (user package, gen-script, 
+-- in-place, verbose)
+data RegisterFlags = RegisterFlags {regUser::MaybeUserFlag
                                    ,regGenScript::Bool
+				   ,regInPlace::Bool
+				   ,regWithHcPkg::Maybe FilePath
                                    ,regVerbose::Int}
+
+
+emptyRegisterFlags :: RegisterFlags
+emptyRegisterFlags = RegisterFlags { regUser=MaybeUserNone,
+				     regGenScript=False,
+				     regInPlace=False,
+				     regWithHcPkg=Nothing,
+				     regVerbose=0 }
 
 -- Following only have verbose flags, but for consistency and
 -- extensibility we make them into a type.
@@ -227,6 +248,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | UserFlag | GlobalFlag
           -- for register & unregister
           | GenScriptFlag
+	  | InPlaceFlag
           -- For copy:
           | InstPrefix FilePath
 	  | DestDir FilePath
@@ -292,6 +314,10 @@ cmd_verbose :: OptDescr (Flag a)
 cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   where
     verboseFlag mb_s = Verbose (maybe 3 read mb_s)
+
+cmd_with_hc_pkg :: OptDescr (Flag a)
+cmd_with_hc_pkg = Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
+               "give the path to the package tool"
 
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
@@ -376,8 +402,7 @@ configureCmd progConf = Cmd {
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (reqPathArg WithCompiler)
                "give the path to a particular compiler",
-           Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
-               "give the path to the package tool",
+	   cmd_with_hc_pkg,
            Option "" ["prefix"] (reqDirArg Prefix)
                "bake this prefix in preparation of installation",
 	   Option "" ["bindir"] (reqDirArg BinDir)
@@ -556,7 +581,7 @@ installCmd = Cmd {
            Option "" ["global"] (NoArg GlobalFlag)
                "(default; override with configure) upon registration, register this package in the system-wide package database"
            ],
-        cmdAction      = InstallCmd InstallUserNone
+        cmdAction      = InstallCmd
         }
 
 copyCmd :: Cmd a
@@ -588,8 +613,8 @@ parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
 parseInstallArgs = parseArgs installCmd updateCfg
   where updateCfg (InstallFlags uFlag verbose) fl = case fl of
             InstPrefix _ -> error "--install-prefix is obsolete. Use copy command instead."
-            UserFlag     -> (InstallFlags InstallUserUser  verbose)
-            GlobalFlag   -> (InstallFlags InstallUserGlobal verbose)
+            UserFlag     -> (InstallFlags MaybeUserUser  verbose)
+            GlobalFlag   -> (InstallFlags MaybeUserGlobal verbose)
             Verbose n    -> (InstallFlags uFlag n)
             _            -> error $ "Unexpected flag!"
 
@@ -634,20 +659,25 @@ registerCmd = Cmd {
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) upon registration, register this package in the system-wide package database",
+           Option "" ["inplace"] (NoArg InPlaceFlag)
+               "register the package in the build location, so it can be used without being installed",
            Option "" ["gen-script"] (NoArg GenScriptFlag)
-               "Instead of performing the register command, generate a script to register later"
+               "Instead of performing the register command, generate a script to register later",
+	   cmd_with_hc_pkg
            ],
-        cmdAction      = RegisterCmd False False
+        cmdAction      = RegisterCmd
         }
 
 parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                      IO (RegisterFlags, [a], [String])
 parseRegisterArgs = parseArgs registerCmd updateCfg
-  where updateCfg (RegisterFlags uFlag genScriptFlag verbose) fl = case fl of
-            UserFlag        -> (RegisterFlags True genScriptFlag verbose)
-            GlobalFlag      -> (RegisterFlags False genScriptFlag verbose)
-            Verbose n       -> (RegisterFlags uFlag genScriptFlag n)
-            GenScriptFlag   -> (RegisterFlags uFlag True verbose)
+  where updateCfg reg fl = case fl of
+            UserFlag        -> reg { regUser=MaybeUserUser }
+            GlobalFlag      -> reg { regUser=MaybeUserGlobal }
+            Verbose n       -> reg { regVerbose=n }
+            GenScriptFlag   -> reg { regGenScript=True }
+	    InPlaceFlag     -> reg { regInPlace=True }
+	    WithHcPkg f	    -> reg { regWithHcPkg=Just f }
             _               -> error $ "Unexpected flag!"
 
 unregisterCmd :: Cmd a
@@ -664,7 +694,7 @@ unregisterCmd = Cmd {
                "Instead of performing the unregister command, generate a script to unregister later"
 
            ],
-        cmdAction      = UnregisterCmd False False
+        cmdAction      = UnregisterCmd
         }
 
 parseUnregisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
