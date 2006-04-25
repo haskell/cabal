@@ -74,7 +74,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (rawSystemExit, copyFileVerbose, die)
-import Distribution.Simple.Install (hugsPackageDir)
+import Distribution.Simple.Hugs (hugsPackageDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)

@@ -53,6 +53,7 @@ module Distribution.Simple.LocalBuildInfo (
 	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
+	distPref, srcPref, autogenModulesDir,
   ) where
 
 
@@ -108,6 +109,20 @@ data LocalBuildInfo = LocalBuildInfo {
 	withGHCiLib   :: Bool,
 	splitObjs     :: Bool	-- ^Use -split-objs with GHC, if available
   } deriving (Read, Show)
+
+-- ------------------------------------------------------------
+-- * Some Paths
+-- ------------------------------------------------------------
+
+distPref :: FilePath
+distPref = "dist"
+
+srcPref :: FilePath
+srcPref = distPref `joinFileName` "src"
+
+-- |The directory in which we put auto-generated modules
+autogenModulesDir :: LocalBuildInfo -> String
+autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
 
 -- -----------------------------------------------------------------------------
 -- Default directories

@@ -72,7 +72,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
-	BuildInfo(..), Executable(..), setupMessage, hasLibs)
+	BuildInfo(..), Executable(..), setupMessage )
 import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, withinRange,
@@ -84,7 +84,7 @@ import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
-import Distribution.Program(Program(..), ProgramLocation(..), lookupProgram,
+import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupPrograms, updateProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
@@ -241,6 +241,10 @@ configure pkg_descr cfg
 
 	return lbi
 
+messageDir :: PackageDescription -> LocalBuildInfo -> String
+	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)
+	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath)
+	-> IO ()
 messageDir pkg_descr lbi name mkDir mkDirRel = 
   message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
   where

@@ -56,8 +56,8 @@ module Distribution.Simple.Utils (
         moduleToFilePath,
         mkLibName,
         mkProfLibName,
-	mkGHCiLibName,
         currentDir,
+	dirOf,
         dotToSep,
 	withTempFile,
 	findFile,
@@ -65,8 +65,6 @@ module Distribution.Simple.Utils (
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
-        distPref,
-        srcPref,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -95,7 +93,7 @@ import System.Posix.Internals (c_getpid)
 
 import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt,
-	pathSeparator)
+	pathSeparator,splitFilePath)
 import System.Directory (getDirectoryContents, getCurrentDirectory
 			, doesFileExist, removeFile, getPermissions
 			, Permissions(executable))
@@ -273,6 +271,9 @@ copyFileVerbose verbose src dest = do
 currentDir :: FilePath
 currentDir = "."
 
+dirOf :: FilePath -> FilePath
+dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
+
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
@@ -282,21 +283,6 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
-
-mkGHCiLibName :: FilePath -- ^file Prefix
-              -> String   -- ^library name.
-              -> String
-mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
-
-
--- ------------------------------------------------------------
--- * Some Paths
--- ------------------------------------------------------------
-distPref :: FilePath
-distPref = "dist"
-
-srcPref :: FilePath
-srcPref = distPref `joinFileName` "src"
 
 -- ------------------------------------------------------------
 -- * temporary file names
