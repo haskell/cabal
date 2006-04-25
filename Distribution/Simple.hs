@@ -82,13 +82,14 @@ import Distribution.Simple.Register	( register, unregister,
                                           regScriptLocation, unregScriptLocation
                                         )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, maybeGetPersistBuildConfig,
-                                     findProgram, configure, writePersistBuildConfig,
+import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
+                                     configure, writePersistBuildConfig,
                                      localBuildInfoFile)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref, srcPref)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath, findFile, distPref, srcPref)
+                                  moduleToFilePath, findFile)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPath)
 #endif
@@ -101,7 +102,7 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isNothing, isJust, fromJust )
+import Data.Maybe       ( isJust, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 
@@ -269,8 +270,7 @@ defaultMainWorker :: PackageDescription
                   -> Maybe UserHooks
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
-    = do let pps = allSuffixHandlers hooks
-         case action of
+    = do case action of
             ConfigCmd flags -> do
                 (flags, optFns, args) <-
 			parseConfigureArgs (allPrograms hooks) flags args [buildDirOpt]
@@ -323,8 +323,8 @@ defaultMainWorker pkg_descr_in action args hooks
                 cmdHook copyHook pkg_descr localbuildinfo flags
                 postHook postCopy args flags pkg_descr localbuildinfo
 
-            InstallCmd uInst -> do
-                (flags@(InstallFlags uInst verbose), _, args) <- parseInstallArgs (InstallFlags uInst 0) args []
+            InstallCmd -> do
+                (flags, _, args) <- parseInstallArgs emptyInstallFlags args []
                 pkg_descr <- hookOrInArgs preInst args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -332,7 +332,6 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postInst args flags pkg_descr localbuildinfo
 
             SDistCmd -> do
-                let srcPref   = distPref `joinFileName` "src"
                 (flags,_, args) <- parseSDistArgs args []
                 pkg_descr <- hookOrInArgs preSDist args flags
                 maybeLocalbuildinfo <- maybeGetPersistBuildConfig
@@ -349,16 +348,16 @@ defaultMainWorker pkg_descr_in action args hooks
                                when (isFailure out) (exitWith out)
                                return out
 
-            RegisterCmd uInst genScript -> do
-                (flags, _, args) <- parseRegisterArgs (RegisterFlags uInst genScript 0) args []
+            RegisterCmd  -> do
+                (flags, _, args) <- parseRegisterArgs emptyRegisterFlags args []
                 pkg_descr <- hookOrInArgs preReg args flags
 		localbuildinfo <- getPersistBuildConfig
 
                 cmdHook regHook pkg_descr localbuildinfo flags 
                 postHook postReg args flags pkg_descr localbuildinfo
 
-            UnregisterCmd uInst genScript -> do
-                (flags,_, args) <- parseUnregisterArgs (RegisterFlags uInst genScript 0) args []
+            UnregisterCmd -> do
+                (flags,_, args) <- parseUnregisterArgs emptyRegisterFlags args []
                 pkg_descr <- hookOrInArgs preUnreg args flags
 		localbuildinfo <- getPersistBuildConfig
 
@@ -646,21 +645,22 @@ defaultUserHooks
                           putStrLn $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo infoFile
 
+defaultInstallHook :: PackageDescription -> LocalBuildInfo
+	-> Maybe UserHooks ->InstallFlags -> IO ()
 defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbose) = do
-  let uInst = case uInstFlag of
-               InstallUserUser   -> True
-               InstallUserGlobal -> False --over-rides configure setting
-               -- no flag, check how it was configured:
-               InstallUserNone   -> userConf localbuildinfo
   install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbose)
-  when (hasLibs pkg_descr)
-           (register pkg_descr localbuildinfo (RegisterFlags uInst False verbose))
+  when (hasLibs pkg_descr) $
+      register pkg_descr localbuildinfo emptyRegisterFlags{ regUser=uInstFlag }
 
+defaultBuildHook :: PackageDescription -> LocalBuildInfo
+	-> Maybe UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
-      writeInstalledConfig pkg_descr localbuildinfo
+      writeInstalledConfig pkg_descr localbuildinfo False
 
+defaultRegHook :: PackageDescription -> LocalBuildInfo
+	-> Maybe UserHooks -> RegisterFlags -> IO ()
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
