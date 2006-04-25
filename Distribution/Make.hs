@@ -134,8 +134,8 @@ defaultMainNoRead pkg_descr
 					-- CopyPrefix is backwards compat, DEPRECATED
                 maybeExit $ system $ ("make " ++ cmd)
 
-            InstallCmd uInst -> do
-                ((InstallFlags _ _), _, args) <- parseInstallArgs (InstallFlags uInst 0) args []
+            InstallCmd -> do
+                ((InstallFlags _ _), _, args) <- parseInstallArgs emptyInstallFlags args []
                 no_extra_flags args
                 maybeExit $ system $ "make install"
                 retVal <- exec "make register"
@@ -164,11 +164,11 @@ defaultMainNoRead pkg_descr
 
             SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
 
-            RegisterCmd uInst genScript -> basicCommand "Register" "make register"
-                                           (parseRegisterArgs (RegisterFlags uInst genScript 0) args [])
+            RegisterCmd  -> basicCommand "Register" "make register"
+                                           (parseRegisterArgs emptyRegisterFlags args [])
 
-            UnregisterCmd uInst genScript -> basicCommand "Unregister" "make unregister"
-                                           (parseUnregisterArgs (RegisterFlags uInst genScript 0) args [])
+            UnregisterCmd -> basicCommand "Unregister" "make unregister"
+                                           (parseUnregisterArgs emptyRegisterFlags args [])
             ProgramaticaCmd -> basicCommand "Programatica" "make programatica"
                                         (parseProgramaticaArgs args [])
 
