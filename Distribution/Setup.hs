@@ -383,9 +383,9 @@ parseGlobalArgs progConf args =
     (flags, _, _, []) | hasHelpFlag flags -> do
       (printGlobalHelp progConf)
       exitWith ExitSuccess
-    (_, cname:cargs, _, []) -> do
+    (_, cname:cargs, extra_args, []) -> do
       case lookupCommand cname (commandList progConf) of
-        Just cmd -> return (cmdAction cmd,cargs)
+        Just cmd -> return (cmdAction cmd, extra_args ++ cargs)
         Nothing  -> die $ "Unrecognised command: " ++ cname ++ " (try --help)"
     (_, [], _, [])  -> die $ "No command given (try --help)"
     (_, _, _, errs) -> putErrors errs
