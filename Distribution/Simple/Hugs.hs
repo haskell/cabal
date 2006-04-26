@@ -160,7 +160,8 @@ build pkg_descr lbi verbose = do
         compileFFI bi file = do
             (_, opts, file_incs) <- getOptionsFromSource file
             let ghcOpts = hcOptions GHC opts
-            let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
+            let pkg_incs = ["\"" ++ inc ++ "\"" 
+			   | inc <- includes bi ++ installIncludes bi]
             let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
             let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
             let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs

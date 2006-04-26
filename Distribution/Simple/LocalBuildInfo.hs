@@ -53,7 +53,7 @@ module Distribution.Simple.LocalBuildInfo (
 	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
-	distPref, srcPref, autogenModulesDir,
+	distPref, srcPref, autogenModulesDir, mkIncludeDir
   ) where
 
 
@@ -123,6 +123,10 @@ srcPref = distPref `joinFileName` "src"
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
 autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
+
+-- |The place where install-includes are installed, relative to libdir
+mkIncludeDir :: FilePath -> FilePath
+mkIncludeDir = (`joinFileName` "include")
 
 -- -----------------------------------------------------------------------------
 -- Default directories
