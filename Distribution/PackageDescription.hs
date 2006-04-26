@@ -208,6 +208,7 @@ data BuildInfo = BuildInfo {
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
+	installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
         ghcProfOptions       :: [String]
     }
@@ -227,6 +228,7 @@ emptyBuildInfo = BuildInfo {
                       extraLibDirs      = [],
                       includeDirs       = [],
                       includes          = [],
+                      installIncludes   = [],
                       options           = [],
                       ghcProfOptions       = []
                      }
@@ -316,6 +318,7 @@ unionBuildInfo b1 b2
          extraLibDirs      = combine extraLibDirs,
          includeDirs       = combine includeDirs,
          includes          = combine includes,
+         installIncludes   = combine installIncludes,
          options           = combine options
         }
       where 
@@ -443,6 +446,9 @@ binfoFields =
  , listField   "includes"
                            showFilePath       parseFilePathQ
                            includes           (\paths binfo -> binfo{includes=paths})
+ , listField   "install-includes"
+                           showFilePath       parseFilePathQ
+                           includes           (\paths binfo -> binfo{installIncludes=paths})
  , listField   "include-dirs"
                            showFilePath       parseFilePathQ
                            includeDirs        (\paths binfo -> binfo{includeDirs=paths})
@@ -731,6 +737,7 @@ testPkgDesc = unlines [
         "Extra-Lib-Dirs: \"/usr/local/libs\"",
         "Include-Dirs: your/slightest, look/will",
         "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
+        "Install-Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
         "GHC-Options: -fTH -fglasgow-exts",
         "Hugs-Options: +TH",
         "Nhc-Options: ",
@@ -791,6 +798,7 @@ testPkgDescAnswer =
                            extraLibDirs = ["/usr/local/libs"],
                            includeDirs = ["your/slightest", "look/will"],
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
+                           installIncludes = ["/easily/unclose", "/me", "funky, path\\name"],
                            -- Note reversed order:
                            ghcProfOptions = [],
                            options = [(JHC,[]),(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}

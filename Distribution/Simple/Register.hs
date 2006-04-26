@@ -62,7 +62,8 @@ module Distribution.Simple.Register (
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir,
+					   mkIncludeDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
@@ -82,13 +83,15 @@ import Distribution.Compat.Directory
        (createDirectoryIfMissing,removeDirectoryRecursive,
         setPermissions, getPermissions, Permissions(executable)
        )
-import Distribution.Compat.FilePath (joinFileName)
+import Distribution.Compat.FilePath (joinFileName, splitFileName,
+				     isAbsolutePath)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
 
 import Control.Monad (when, unless)
 import Data.Maybe (isNothing, fromJust)
+import Data.List (partition)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -246,6 +249,9 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
 	build_dir = pwd `joinFileName` buildDir lbi
+	libdir = mkLibDir pkg_descr lbi NoCopyDest
+	incdir = mkIncludeDir libdir
+	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
   --
   return
        emptyInstalledPackageInfo{
@@ -262,15 +268,17 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
 	IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [if inplace then build_dir else
-				 mkLibDir pkg_descr lbi NoCopyDest],
-        IPI.libraryDirs       = (if inplace then build_dir else 
-				 mkLibDir pkg_descr lbi NoCopyDest) 
+        IPI.importDirs        = [if inplace then build_dir else libdir],
+        IPI.libraryDirs       = (if inplace then build_dir else libdir)
 				: extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
-        IPI.includeDirs       = includeDirs bi,
-        IPI.includes	      = includes bi,
+        IPI.includeDirs       = absinc 
+				 ++ if inplace 
+					then map (pwd `joinFileName`) relinc
+					else [incdir],
+        IPI.includes	      = includes bi ++ map (snd.splitFileName)
+						   (installIncludes bi),
         IPI.depends           = packageDeps lbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
         IPI.ccOptions         = ccOptions bi,

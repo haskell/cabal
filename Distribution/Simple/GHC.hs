@@ -49,7 +49,8 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir )
+				( LocalBuildInfo(..), autogenModulesDir,
+				  mkLibDir, mkIncludeDir )
 import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit, die,
 				  dirOf, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
@@ -64,7 +65,8 @@ import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 import Distribution.Version	( Version(..) )
 import Distribution.Compat.FilePath
 				( joinFileName, exeExtension, joinFileExt,
-				  splitFilePath, objExtension, joinPaths )
+				  splitFilePath, objExtension, joinPaths,
+				  isAbsolutePath )
 import Distribution.Compat.Directory 
 				( createDirectoryIfMissing )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
@@ -73,7 +75,8 @@ import qualified Distribution.Simple.GHCPackageConfig as GHC
 
 import Control.Monad		( unless, when )
 import Data.List		( isSuffixOf, nub )
-import System.Directory		( removeFile, getDirectoryContents )
+import System.Directory		( removeFile, getDirectoryContents,
+				  doesFileExist )
 #ifndef __NHC__
 import Control.Exception (try)
 #else
@@ -282,7 +285,7 @@ constructGHCCmdLine lbi bi odir verbose =
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
-     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
+     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ++ installIncludes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
@@ -326,6 +329,8 @@ installLib verbose programConf hasProf hasGHCi pref buildPref
          ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
 	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 
+	 installIncludeFiles verbose pd pref
+
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
          -- don't worry too much about it.
@@ -346,6 +351,25 @@ installLib verbose programConf hasProf hasGHCi pref buildPref
 	  ifGHCi action = when hasGHCi (action >> return ())
 installLib _ _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
+
+-- | Install the files listed in install-includes
+installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
+installIncludeFiles verbose pkg_descr@PackageDescription{library=Just l} libdir
+ = do
+   createDirectoryIfMissing True incdir
+   incs <- mapM (findInc relincdirs) (installIncludes lbi)
+   sequence_ [ copyFileVerbose verbose path (incdir `joinFileName` f)
+	     | (f,path) <- incs ]
+  where
+   relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)
+   lbi = libBuildInfo l
+   incdir = mkIncludeDir libdir
+
+   findInc [] f = die ("can't find include file " ++ f)
+   findInc (d:ds) f = do
+     let path = (d `joinFileName` f)
+     b <- doesFileExist path
+     if b then return (f,path) else findInc ds f
 
 -- Also checks whether the program was actually found.
 foundProg :: Maybe Program -> Maybe Program
