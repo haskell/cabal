@@ -1,0 +1,77 @@
+Please note:
+The example code in this directory may not always work with the
+current version of the the HaXml libraries.  What little time I have
+for maintenance goes into the main HaXml facilites, not into testing
+these small demonstration exercises.  Sorry.
+
+
+Parse/Pretty-Print example  (Canonicalise.hs)
+--------------------------
+To demonstrate parsing and pretty-printing, I wrote a simple in-out
+application:
+    $ hmake Canonicalise -I../lib
+Test it on some XML documents:
+    $ ./Canonicalise album.xml
+You will notice that it changes some parts of the document, for instance in
+    $ ./Canonicalise subjdb.xml
+all parameter entities are replaced with their expansion.
+
+
+Xml2Haskell example  (album.dtd, AlbumDTD.hs, album.xml)
+-------------------
+In this example, I did the following:
+
+Convert the XML DTD for an album into a Haskell module:
+    $ DtdToHaskell album.dtd AlbumDtd.hs
+
+Edit the generated file (just to change the module name to match!)
+    $ vi AlbumDtd.hs
+
+Wrote the test application (App.hs) using AlbumDTD.hs, and compiled it:
+    $ hmake App -I../lib
+
+Running the test displays some progress messages, and outputs the original
+document again, only with the album title changed.
+    $ ./App album.xml new.xml
+
+And that's it.
+
+
+Haskell2Xml example  (Types.hs, DTypes.hs, Example.hs, subjdb.xml)
+-------------------
+The file Types.hs defines some data types for a mini-database.
+Derive the Haskell2Xml apparatus using DrIFT:
+    $ DrIFT Types.hs >DTypes.hs
+
+The example program in Example.hs just writes some Haskell data to
+an XML file.
+    $ hmake Example -I../lib
+    $ ./Example
+    $ less subjdb.xml
+
+I hope that's reasonably clear.
+
+
+Bigger DtdToHaskell example
+---------------------------
+In directory SMIL, do
+    $ DtdToHaskell SMIL20.dtd DTD_SMIL20.hs
+and have a look at the resulting Haskell file.  This is a large
+multi-part DTD for the Synchronised Multimedia Integration Language,
+defined by the W3C.  As of 2000-11-16, our XML parser has been extended
+to deal with the external subset as fully as possible.
+
+DTDpp
+-----
+This little program is just a pretty-printer for an XML DTD - it
+inlines any included files and expands all PE references.  Its main
+use is to check that the HaXml parser can read a complicated DTD
+without errors.
+
+DebugLex
+--------
+Another little debugging program to help find errors in HaXml -
+this time in the lexer.  It prints a stream of lexed tokens (and
+their source positions) to stdout, so you can examine whether
+some complicated piece of syntax has confused the lexer.
+

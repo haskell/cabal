@@ -1,0 +1,2156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Combinators</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Combinators</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > The content filter type.</A
+		  ></DT
+		><DT
+		><A HREF = "#2"
+		  > Simple filters.</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#3"
+		      > Selection filters.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#4"
+		      > Predicate filters.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#5"
+		      > Search filters.</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#6"
+		  > Filter combinators</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#7"
+		      > Basic combinators.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#8"
+		      > Recursive search.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#9"
+		      > Interior editing.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#10"
+		      > Constructive filters.</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#11"
+		  > C-like conditionals.</A
+		  ></DT
+		><DT
+		><A HREF = "#12"
+		  > Filters with labelled results.</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#13"
+		      > Using and combining labelled filters.</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#14"
+		      > Some label-generating filters.</A
+		      ></DT
+		    ></DL
+		  ></DD
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  > This module defines the notion of filters and filter combinators
+   for processing XML documents.</P
+	  ><P
+	  >   These XML transformation combinators are described in the paper
+   ``Haskell and XML: Generic Combinators or Type-Based Translation?''
+   Malcolm Wallace and Colin Runciman, Proceedings ICFP'99.</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#CFilter"
+		>CFilter</A
+		> = <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#keep"
+		>keep</A
+		> :: a -&gt; [a]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#none"
+		>none</A
+		> :: a -&gt; [a]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#children"
+		>children</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#position"
+		>position</A
+		> :: Int -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#elm"
+		>elm</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#txt"
+		>txt</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#tag"
+		>tag</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#attr"
+		>attr</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#attrval"
+		>attrval</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Attribute"
+		>Attribute</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#tagWith"
+		>tagWith</A
+		> :: (String -&gt; Bool) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#find"
+		>find</A
+		> :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#iffind"
+		>iffind</A
+		> :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ifTxt"
+		>ifTxt</A
+		> :: (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#o"
+		>o</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#union"
+		>union</A
+		> :: (a -&gt; [b]) -&gt; (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#cat"
+		>cat</A
+		> :: [a -&gt; [b]] -&gt; a -&gt; [b]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#andThen"
+		>andThen</A
+		> :: (a -&gt; c) -&gt; (c -&gt; a -&gt; b) -&gt; a -&gt; b</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#|>|"
+		>(|&gt;|)</A
+		> :: (a -&gt; [b]) -&gt; (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#with"
+		>with</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#without"
+		>without</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#/>"
+		>(/&gt;)</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#</"
+		>(&lt;/)</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#et"
+		>et</A
+		> :: (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#path"
+		>path</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#deep"
+		>deep</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#deepest"
+		>deepest</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#multi"
+		>multi</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#when"
+		>when</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#guards"
+		>guards</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#chip"
+		>chip</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#foldXml"
+		>foldXml</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#mkElem"
+		>mkElem</A
+		> :: String -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#mkElemAttr"
+		>mkElemAttr</A
+		> :: String -&gt; [(String, <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>)] -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#literal"
+		>literal</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#cdata"
+		>cdata</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#replaceTag"
+		>replaceTag</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#replaceAttrs"
+		>replaceAttrs</A
+		> :: [(String, String)] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ThenElse"
+		>ThenElse</A
+		> a = <A HREF = "#:>"
+		>(:&gt;)</A
+		> a a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#?>"
+		>(?&gt;)</A
+		> :: (a -&gt; [b]) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#ThenElse"
+		>ThenElse</A
+		> (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#LabelFilter"
+		>LabelFilter</A
+		> a = <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; [(a, <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		>)]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oo"
+		>oo</A
+		> :: (a -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> a -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#x"
+		>x</A
+		> :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> a) -&gt; (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> b) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> (a, b)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#numbered"
+		>numbered</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#interspersed"
+		>interspersed</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#tagged"
+		>tagged</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#attributed"
+		>attributed</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#textlabelled"
+		>textlabelled</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> (Maybe String)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#extracted"
+		>extracted</A
+		> :: (<A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; a) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+		>LabelFilter</A
+		> a</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > The content filter type.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "CFilter"
+	  ></A
+	  ><B
+	  >CFilter</B
+	  > = <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> All document transformations are <EM
+	  >content filters</EM
+	  >.
+   A filter takes a single XML <TT
+	  ><A HREF = "Text.XML.HaXml.Types.html#Content"
+	    >Content</A
+	    ></TT
+	  > value and returns a sequence
+   of <TT
+	  ><A HREF = "Text.XML.HaXml.Types.html#Content"
+	    >Content</A
+	    ></TT
+	  > values, possibly empty.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "2"
+	  > Simple filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "3"
+	  > Selection filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> In the algebra of combinators, <TT
+	  >none</TT
+	  > is the zero, and <TT
+	  >keep</TT
+	  > the identity.
+ (They have a more general type than just CFilter.)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "keep"
+	  ></A
+	  ><B
+	  >keep</B
+	  > :: a -&gt; [a]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "none"
+	  ></A
+	  ><B
+	  >none</B
+	  > :: a -&gt; [a]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "children"
+	  ></A
+	  ><B
+	  >children</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Throw away current node, keep just the (unprocessed) children.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "position"
+	  ></A
+	  ><B
+	  >position</B
+	  > :: Int -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Select the <TT
+	  >n</TT
+	  >'th positional result of a filter.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "4"
+	  > Predicate filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> These filters either keep or throw away some content based on
+ a simple test.  For instance, <TT
+	  >elm</TT
+	  > keeps only a tagged element,
+ <TT
+	  >txt</TT
+	  > keeps only non-element text, <TT
+	  >tag</TT
+	  > keeps only an element
+ with the named tag, <TT
+	  >attr</TT
+	  > keeps only an element with the named
+ attribute, <TT
+	  >attrval</TT
+	  > keeps only an element with the given
+ attribute value, <TT
+	  >tagWith</TT
+	  > keeps only an element whose tag name
+ satisfies the given predicate.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "elm"
+	  ></A
+	  ><B
+	  >elm</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "txt"
+	  ></A
+	  ><B
+	  >txt</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "tag"
+	  ></A
+	  ><B
+	  >tag</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "attr"
+	  ></A
+	  ><B
+	  >attr</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "attrval"
+	  ></A
+	  ><B
+	  >attrval</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Attribute"
+	  >Attribute</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "tagWith"
+	  ></A
+	  ><B
+	  >tagWith</B
+	  > :: (String -&gt; Bool) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "5"
+	  > Search filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "find"
+	  ></A
+	  ><B
+	  >find</B
+	  > :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> For a mandatory attribute field, <TT
+	  >find key cont</TT
+	  > looks up the value of
+   the attribute name <TT
+	  >key</TT
+	  >, and applies the continuation <TT
+	  >cont</TT
+	  > to
+   the value.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "iffind"
+	  ></A
+	  ><B
+	  >iffind</B
+	  > :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> When an attribute field may be absent, use <TT
+	  >iffind key yes no</TT
+	  > to lookup
+   its value.  If the attribute is absent, it acts as the <TT
+	  >no</TT
+	  > filter,
+   otherwise it applies the <TT
+	  >yes</TT
+	  > filter.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ifTxt"
+	  ></A
+	  ><B
+	  >ifTxt</B
+	  > :: (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> <TT
+	  >ifTxt yes no</TT
+	  > processes any textual content with the <TT
+	  >yes</TT
+	  > filter,
+   but otherwise is the same as the <TT
+	  >no</TT
+	  > filter.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "6"
+	  > Filter combinators</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "7"
+	  > Basic combinators.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "o"
+	  ></A
+	  ><B
+	  >o</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Sequential (<EM
+	  >Irish</EM
+	  >,<EM
+	  >backwards</EM
+	  >) composition</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "union"
+	  ></A
+	  ><B
+	  >union</B
+	  > :: (a -&gt; [b]) -&gt; (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Binary parallel composition.  Each filter uses a copy of the input,
+ rather than one filter using the result of the other.
+   (Has a more general type than just CFilter.)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "cat"
+	  ></A
+	  ><B
+	  >cat</B
+	  > :: [a -&gt; [b]] -&gt; a -&gt; [b]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Glue a list of filters together.  (A list version of union;
+   also has a more general type than just CFilter.)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "andThen"
+	  ></A
+	  ><B
+	  >andThen</B
+	  > :: (a -&gt; c) -&gt; (c -&gt; a -&gt; b) -&gt; a -&gt; b</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> A special form of filter composition where the second filter
+   works over the same data as the first, but also uses the
+   first's result.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "|>|"
+	  ></A
+	  ><B
+	  >(|&gt;|)</B
+	  > :: (a -&gt; [b]) -&gt; (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Directional choice:
+   in <TT
+	  >f |&gt;| g</TT
+	  > give g-productions only if no f-productions</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "with"
+	  ></A
+	  ><B
+	  >with</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pruning: in <TT
+	  >f <TT
+	    ><A HREF = "Text.XML.HaXml.Combinators.html#with"
+	      >with</A
+	      ></TT
+	    > g</TT
+	  >,
+   keep only those f-productions which have at least one g-production</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "without"
+	  ></A
+	  ><B
+	  >without</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pruning: in <TT
+	  >f <TT
+	    ><A HREF = "Text.XML.HaXml.Combinators.html#without"
+	      >without</A
+	      ></TT
+	    > g</TT
+	  >,
+   keep only those f-productions which have no g-productions</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "/>"
+	  ></A
+	  ><B
+	  >(/&gt;)</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pronounced <EM
+	  >slash</EM
+	  >, <TT
+	  >f /&gt; g</TT
+	  > means g inside f</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "</"
+	  ></A
+	  ><B
+	  >(&lt;/)</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pronounced <EM
+	  >outside</EM
+	  >, <TT
+	  >f &lt;/ g</TT
+	  > means f containing g</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "et"
+	  ></A
+	  ><B
+	  >et</B
+	  > :: (String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Join an element-matching filter with a text-only filter</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "path"
+	  ></A
+	  ><B
+	  >path</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Express a list of filters like an XPath query, e.g.
+   <TT
+	  >path [children, tag &quot;name1&quot;, attr &quot;attr1&quot;, children, tag &quot;name2&quot;]</TT
+	  >
+   is like the XPath query <TT
+	  >/name1[@attr1]/name2</TT
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "8"
+	  > Recursive search.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Recursive search has three variants: <TT
+	  >deep</TT
+	  > does a breadth-first
+ search of the tree, <TT
+	  >deepest</TT
+	  > does a depth-first search, <TT
+	  >multi</TT
+	  > returns
+ content at all tree-levels, even those strictly contained within results
+ that have already been returned.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "deep"
+	  ></A
+	  ><B
+	  >deep</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "deepest"
+	  ></A
+	  ><B
+	  >deepest</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "multi"
+	  ></A
+	  ><B
+	  >multi</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "9"
+	  > Interior editing.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "when"
+	  ></A
+	  ><B
+	  >when</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Interior editing:
+   <TT
+	  >f <TT
+	    ><A HREF = "Text.XML.HaXml.Combinators.html#when"
+	      >when</A
+	      ></TT
+	    > g</TT
+	  > applies <TT
+	  >f</TT
+	  > only when the predicate <TT
+	  >g</TT
+	  > succeeds,
+   otherwise the content is unchanged.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "guards"
+	  ></A
+	  ><B
+	  >guards</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Interior editing:
+   <TT
+	  >g <TT
+	    ><A HREF = "Text.XML.HaXml.Combinators.html#guards"
+	      >guards</A
+	      ></TT
+	    > f</TT
+	  > applies <TT
+	  >f</TT
+	  > only when the predicate <TT
+	  >g</TT
+	  > succeeds,
+   otherwise the content is discarded.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "chip"
+	  ></A
+	  ><B
+	  >chip</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Process CHildren In Place.  The filter is applied to any children
+   of an element content, and the element rebuilt around the results.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "foldXml"
+	  ></A
+	  ><B
+	  >foldXml</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Recursive application of filters: a fold-like operator.  Defined
+   as <TT
+	  >f <TT
+	    ><A HREF = "Text.XML.HaXml.Combinators.html#o"
+	      >o</A
+	      ></TT
+	    > chip (foldXml f)</TT
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "10"
+	  > Constructive filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "mkElem"
+	  ></A
+	  ><B
+	  >mkElem</B
+	  > :: String -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Build an element with the given tag name - its content is the results
+   of the given list of filters.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "mkElemAttr"
+	  ></A
+	  ><B
+	  >mkElemAttr</B
+	  > :: String -&gt; [(String, <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >)] -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Build an element with the given name, attributes, and content.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "literal"
+	  ></A
+	  ><B
+	  >literal</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Build some textual content.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "cdata"
+	  ></A
+	  ><B
+	  >cdata</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Build some CDATA content.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "replaceTag"
+	  ></A
+	  ><B
+	  >replaceTag</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Rename an element tag.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "replaceAttrs"
+	  ></A
+	  ><B
+	  >replaceAttrs</B
+	  > :: [(String, String)] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Replace the attributes of an element.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "11"
+	  > C-like conditionals.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  > These definitions provide C-like conditionals, lifted to the filter level.</P
+	  ><P
+	  > The <TT
+	    >(cond ? yes : no)</TT
+	    > style in C becomes <TT
+	    >(cond ?&gt; yes :&gt; no)</TT
+	    > in Haskell.</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ThenElse"
+	  ></A
+	  ><B
+	  >ThenElse</B
+	  > a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > Conjoin the two branches of a conditional.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = ":>"
+		      ></A
+		      ><B
+		      >(:&gt;)</B
+		      > a a</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "?>"
+	  ></A
+	  ><B
+	  >(?&gt;)</B
+	  > :: (a -&gt; [b]) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#ThenElse"
+	  >ThenElse</A
+	  > (a -&gt; [b]) -&gt; a -&gt; [b]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Select between the two branches of a joined conditional.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "12"
+	  > Filters with labelled results.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "LabelFilter"
+	  ></A
+	  ><B
+	  >LabelFilter</B
+	  > a = <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; [(a, <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  >)]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> A LabelFilter is like a CFilter except that it pairs up a polymorphic
+   value (label) with each of its results.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "13"
+	  > Using and combining labelled filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oo"
+	  ></A
+	  ><B
+	  >oo</B
+	  > :: (a -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > a -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Compose a label-processing filter with a label-generating filter.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "x"
+	  ></A
+	  ><B
+	  >x</B
+	  > :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > a) -&gt; (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > b) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > (a, b)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Combine labels.  Think of this as a pair-wise zip on labels.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "14"
+	  > Some label-generating filters.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "numbered"
+	  ></A
+	  ><B
+	  >numbered</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Number the results from 1 upwards.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "interspersed"
+	  ></A
+	  ><B
+	  >interspersed</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> In <TT
+	  >interspersed a f b</TT
+	  >, label each result of <TT
+	  >f</TT
+	  > with the string <TT
+	  >a</TT
+	  >,
+   except for the last one which is labelled with the string <TT
+	  >b</TT
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "tagged"
+	  ></A
+	  ><B
+	  >tagged</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Label each element in the result with its tag name.  Non-element
+   results get an empty string label.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "attributed"
+	  ></A
+	  ><B
+	  >attributed</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Label each element in the result with the value of the named attribute.
+   Elements without the attribute, and non-element results, get an
+   empty string label.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "textlabelled"
+	  ></A
+	  ><B
+	  >textlabelled</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > (Maybe String)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Label each textual part of the result with its text.  Element
+   results get an empty string label.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "extracted"
+	  ></A
+	  ><B
+	  >extracted</B
+	  > :: (<A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; a) -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#LabelFilter"
+	  >LabelFilter</A
+	  > a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Label each content with some information extracted from itself.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

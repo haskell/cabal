@@ -1,0 +1,76 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html> <head> <title> HaXml: Haskell and XML </title> </head>
+
+<body bgcolor='#ffffff'>
+
+<center>
+<h2>Haskell2Xml</h2>
+</center>
+<hr>
+
+<p>
+<b>Text.XML.HaXml.Haskell2Xml</b> is a library for translating Haskell
+data from any program into a valid XML document (and back again), by
+generating a DTD and the appropriate functions to write and write the
+XML format.  In principle, it gives an alternative to the standard Read
+and Show classes, and allows you to use other standard XML-processing
+tools on your Haskell datafiles.
+
+<p>
+<b>Usage.</b>
+It works rather like the existing <em>Read</em> and <em>Show</em>
+classes: you must create an instance of the <em>Haskell2Xml</em>
+class for every datatype you wish to use for I/O.  However, because
+this class is not a standard one, no Haskell compilers support
+the <tt>deriving</tt> clause for it yet.  Fear not!  There is a
+pre-processor tool called
+<a href="http://repetae.net/~john/computer/haskell/DrIFT/"><b>DrIFT</b></a>
+which derives class instances automatically.  We have extended
+DrIFT's ruleset to include the <em>Haskell2Xml</em> class.
+The only remaining thing is to ensure that you import the
+<b>Text.XML.HaXml.Haskell2Xml</b> module everywhere you use it.
+
+<p>
+(Please note that DrIFT is sometimes a bit fragile when parsing Haskell
+sources - it occasionally fails to recognise the <em>derive</em>
+command.  We have found a workaround: isolate just the <tt>data</tt>
+type declarations that are of interest, and run DrIFT on them
+separately.)
+
+<p>
+To read and write Haskell data values as XML files, you
+have a choice of function pairs:  <tt>toXML/fromXML</tt>
+convert between typed Haskell values and the generic internal
+XML representation; <tt>showXml/readXml</tt> convert to/from
+Strings; <tt>fWriteXml/fReadXml</tt> convert to/from named files;
+<tt>hPutXml/hGetXml</tt> convert to/from file Handles.
+
+<pre>
+    toXml     :: Haskell2Xml a =&gt; a        -&gt; Document
+    fromXml   :: Haskell2Xml a =&gt; Document -&gt; a
+
+    readXml   :: Haskell2Xml a =&gt; String   -&gt; Maybe a
+    showXml   :: Haskell2Xml a =&gt; a        -&gt; String
+
+    fReadXml  :: Haskell2Xml a =&gt; FilePath -&gt; IO a
+    fWriteXml :: Haskell2Xml a =&gt; FilePath -&gt; a -&gt; IO ()
+
+    hGetXml   :: Haskell2Xml a =&gt; Handle   -&gt; IO a
+    hPutXml   :: Haskell2Xml a =&gt; Handle   -&gt; a -&gt; IO ()
+</pre>
+
+<p>
+(These signatures are extremely similar to those in
+<a href="Xml2Haskell.html">Xml2Haskell</a> - the only difference is
+the class context, indicating how the types have been derived.)
+
+<p>
+Do not forget to resolve the overloading in one of the usual ways
+(e.g. by implicit context at point of use, by explicit type signatures
+on values, use value as an argument to a function with an explicit
+signature, use <tt>`asTypeOf`</tt>, etc.)
+
+<hr>
+
+</body>
+</html>

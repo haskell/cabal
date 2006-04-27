@@ -1,0 +1,27 @@
+Source: haskell-http
+Priority: optional
+Section: net
+Maintainer: Ganesh Sittampalam <ganesh-debs@earth.li>
+Build-Depends: debhelper (>= 4.0.0), haskell-devscripts (>=0.5.2), ghc6 (>=6.2.2), ghc6 (<6.2.3), libghc6-cabal-dev (>=0.2-3)
+Standards-Version: 3.6.1
+
+Package: libghc6-http-dev
+Section: devel
+Architecture: any
+Depends: ${haskell:Depends}
+Description: GHC 6 libraries for the Haskell HTTP client library
+ HTTP is a set of Haskell client libraries for HTTP/1.0 and HTTP/1.1.
+ .
+ This package contains the libraries compiled for GHC 6.
+
+# Package: libnhc98-http-dev
+# Section: devel
+# Architecture: any
+# Description: <insert up to 60 chars description>
+#  <insert long description, indented with spaces>
+# 
+# Package: libhugs-http-dev
+# Section: devel
+# Architecture: any
+# Description: <insert up to 60 chars description>
+#  <insert long description, indented with spaces>

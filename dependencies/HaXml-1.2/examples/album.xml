@@ -1,0 +1,40 @@
+<?xml version='1.0'?>
+<!DOCTYPE album SYSTEM "album.dtd">
+<album
+  ><title>Time Out</title
+  ><artist>Dave Brubeck Quartet</artist
+  ><recording date="June-August 1959" place="NYC"
+  /><coverart style='abstract'
+    ><location thumbnail='pix/small/timeout.jpg'
+              fullsize='pix/covers/timeout.jpg'
+  /></coverart
+
+  ><catalogno label='Columbia' number='CL 1397' format='mono'
+  /><catalogno label='Columbia' number='CS 8192' format='stereo'
+  /><catalogno label='Columbia' number='CPK 1181' format='LP' country='Korea'
+  /><catalogno label='Sony/CBS' number='Legacy CK 40585' format='CD'
+
+  /><personnel
+    ><player name='Dave Brubeck' instrument='piano'
+    /><player name='Paul Desmond' instrument='alto sax'
+    /><player name='Eugene Wright' instrument='bass'
+    /><player name='Joe Morello' instrument='drums'
+  /></personnel
+
+  ><track title='Blue Rondo &agrave; la Turk' credit='Brubeck' timing='6m42s'
+  /><track title='Strange Meadow Lark' credit='Brubeck'  timing='7m20s'
+  /><track title='Take Five' credit='Desmond'  timing='5m24s'
+  /><track title='Three To Get Ready' credit='Brubeck'  timing='5m21s'
+  /><track title="Kathy's Waltz" credit='Brubeck'  timing='4m48s'
+  /><track title="'Everybody's Jumpin'" credit='Brubeck'  timing='4m22s'
+  /><track title='Pick Up Sticks' credit='Brubeck'  timing='4m16s'
+
+  /><notes
+    >Possibly the DBQ's most famous album, this contains
+    <trackref link='#3'>Take Five</trackref>, the most famous jazz track
+    of that period.  These experiments in different time signatures are
+    what Dave Brubeck is most remembered for.  Recorded Jun-Aug 1959 in
+    NYC.  See also the sequel,
+       <albumref link='cbs-timefurthout'>Time Further Out</albumref>.
+  </notes
+></album>

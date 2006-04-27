@@ -1,0 +1,14 @@
+Name: HTTP
+Version: 2005.5.5
+License: BSD4
+License-file: LICENSE
+Copyright: Warrick Gray, 2002, Bjorn Bringert 2003-2005
+Author: Warrick Gray <warrick.gray@hotmail.com>
+Maintainer: Bjorn Bringert <bjorn@bringert.net>
+Homepage: http://www.haskell.org/http/
+Description: A library for client-side HTTP
+Build-depends: network, parsec, Crypto, base
+Exposed-modules: 
+		 Network.HTTP, 
+		 Network.Browser
+-- GHC-options: -O2

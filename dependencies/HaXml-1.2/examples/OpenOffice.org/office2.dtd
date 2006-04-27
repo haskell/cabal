@@ -1,0 +1,4010 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	$Id: office2.dtd,v 1.1 2003/05/13 13:07:51 malcolm Exp $
+
+   The Contents of this file are made available subject to the terms of
+   either of the following licenses
+
+          - GNU Lesser General Public License Version 2.1
+          - Sun Industry Standards Source License Version 1.1
+
+   Sun Microsystems Inc., October, 2000
+
+   GNU Lesser General Public License Version 2.1
+   =============================================
+   Copyright 2000 by Sun Microsystems, Inc.
+   901 San Antonio Road, Palo Alto, CA 94303, USA
+
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License version 2.1, as published by the Free Software Foundation.
+
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+   MA  02111-1307  USA
+
+
+   Sun Industry Standards Source License Version 1.1
+   =================================================
+   The contents of this file are subject to the Sun Industry Standards
+   Source License Version 1.1 (the "License"); You may not use this file
+   except in compliance with the License. You may obtain a copy of the
+   License at http://www.openoffice.org/license.html.
+
+   Software provided under this License is provided on an "AS IS" basis,
+   WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING,
+   WITHOUT LIMITATION, WARRANTIES THAT THE SOFTWARE IS FREE OF DEFECTS,
+   MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE, OR NON-INFRINGING.
+   See the License for the specific provisions governing your rights and
+   obligations concerning the Software.
+
+   The Initial Developer of the Original Code is: Sun Microsystems, Inc.
+
+   Copyright: 2000 by Sun Microsystems, Inc.
+
+   All Rights Reserved.
+
+   Contributor(s): _______________________________________
+
+-->
+
+<!-- string -->
+<!ENTITY % string				"CDATA">
+<!ENTITY % cString				"#PCDATA">
+
+<!-- boolean (values are "true" and "false" -->
+<!ENTITY % boolean				"CDATA">
+
+<!-- integer ( ..., -2, -1, 0, 1, 2, ...) -->
+<!ENTITY % integer				"CDATA">
+
+<!-- non negative integer ( 0, 1, 2, ...) -->
+<!ENTITY % nonNegativeInteger	"CDATA">
+
+<!-- positive integer ( 1, 2, ...) -->
+<!ENTITY % positiveInteger		"CDATA">
+<!ENTITY % cPositiveInteger		"#PCDATA">
+
+<!ENTITY % positiveNumberOrDefault "CDATA">
+
+<!-- time duration as specified by ISO8601, section 5.5.3.2 -->
+<!ENTITY % timeDuration			"CDATA">
+<!ENTITY % cTimeDuration		"#PCDATA">
+
+<!-- time instance as specified by ISO8601, section 5.4 -->
+<!ENTITY % timeInstance			"CDATA">
+<!ENTITY % cTimeInstance		"#PCDATA">
+
+<!-- date instance as specified by ISO8601, section 5.2.1.1, extended format-->
+<!ENTITY % date					"CDATA">
+<!ENTITY % cDate				"#PCDATA">
+
+<!-- date duration, like timDuration but truncated to full dates -->
+<!ENTITY % dateDuration			"CDATA">
+<!ENTITY % cDateDuration		"#PCDATA">
+
+<!-- URI reference -->
+<!ENTITY % uriReference			"CDATA">
+
+<!-- language code as specified by RFC1766 -->
+<!ENTITY % language				"CDATA">
+<!ENTITY % cLanguage			"#PCDATA">
+
+<!-- float -->
+<!ENTITY % float "CDATA">
+
+<!-- Some other common used data types -->
+
+<!-- a single UNICODE character -->
+<!ENTITY % character			"CDATA">
+
+<!-- a style name -->
+<!ENTITY % styleName			"CDATA">
+
+<!-- a target frame mame -->
+<!ENTITY % targetFrameName			"CDATA">
+
+<!-- a language without a country as specified by ISO639 -->
+<!ENTITY % languageOnly			"CDATA">
+
+<!-- a country as specified by ISO3166 -->
+<!ENTITY % country				"CDATA">
+
+<!-- a color value having the format #rrggbb -->
+<!ENTITY % color				"CDATA">
+<!-- a color value having the format #rrggbb or "transparent" -->
+<!ENTITY % transparentOrColor			"CDATA">
+
+<!-- a percentage -->
+<!ENTITY % percentage 			"CDATA">
+
+<!-- a length (i.e. 1cm or .6inch) -->
+<!ENTITY % length				"CDATA">
+<!ENTITY % positiveLength		"CDATA">
+<!ENTITY % nonNegativeLength	"CDATA">
+<!ENTITY % lengthOrNoLimit "CDATA">
+
+<!-- a length or a percentage -->
+<!ENTITY % lengthOrPercentage	"CDATA">
+<!ENTITY % positiveLengthOrPercentage	"CDATA">
+
+<!-- a pixel length (i.e. 2px) -->
+<!ENTITY % nonNegativePixelLength	"CDATA">
+
+<!-- a float or a percentage -->
+<!ENTITY % floatOrPercentage	"CDATA">
+
+<!-- a text encoding -->
+<!ENTITY % textEncoding	"CDATA">
+
+<!-- cell address and cell range address -->
+<!ENTITY % cell-address "CDATA">
+<!ENTITY % cell-range-address "CDATA">
+<!ENTITY % cell-range-address-list "CDATA">
+
+<!-- value types -->
+<!ENTITY % valueType "(float|time|date|percentage|currency|boolean|string)">
+
+<!-- an svg coordinate in different distance formats -->
+<!ENTITY % coordinate "CDATA">
+
+<!ENTITY % coordinateOrPercentage	"CDATA">
+
+<!ENTITY % shape "draw:rect|draw:line|draw:polyline|draw:polygon|draw:path|
+				   draw:circle|draw:ellipse|draw:g|draw:page-thumbnail|
+				   draw:text-box|draw:image|draw:object|draw:object-ole|
+				   draw:applet|draw:floating-frame|draw:plugin|
+				   draw:measure|draw:caption|draw:connector|chart:chart|
+				   dr3d:scene|draw:control" >
+<!ENTITY % shapes "(%shape;)" >
+
+<!ENTITY % anchorType "(page|frame|paragraph|char|as-char)">
+
+<!ENTITY % control-id "form:id CDATA #REQUIRED">
+
+<!ENTITY nFO "http://www.w3.org/1999/XSL/Format">
+<!ENTITY nXLink "http://www.w3.org/1999/xlink">
+<!ENTITY nSVG "http://www.w3.org/2000/svg">
+<!ENTITY nMath "http://www.w3.org/1998/Math/MathML">
+
+<!-- StarOffice namespace names and prefixes -->
+
+<!ENTITY nOpenOffice "http://openoffice.org/2000">
+<!ENTITY nOpenOffice2001 "http://openoffice.org/2001">
+
+<!ENTITY nOffice "&nOpenOffice;/office">
+<!ENTITY nStyle "&nOpenOffice;/style">
+<!ENTITY nText "&nOpenOffice;/text">
+<!ENTITY nTable "&nOpenOffice;/table">
+<!ENTITY nMeta "&nOpenOffice;/meta">
+<!ENTITY nScript "&nOpenOffice;/script">
+<!ENTITY nDraw "&nOpenOffice;/drawing">
+<!ENTITY nChart "&nOpenOffice;/chart">
+<!ENTITY nNumber "&nOpenOffice;/datastyle">
+<!ENTITY nDr3D "&nOpenOffice;/dr3d">
+<!ENTITY nForm "&nOpenOffice;/form">
+<!ENTITY nConfig "&nOpenOffice2001;/config">
+
+<!-- dublin core namespace name and prefic -->
+<!ENTITY nDC "http://purl.org/dc/elements/1.1/">
+
+<!-- text marks for tracking changes; usually used inside of paragraphs -->
+<!ENTITY % change-marks "text:change | text:change-start | text:change-end">
+
+<!-- (optional) text declarations; used before the first paragraph -->
+<!ENTITY % text-decls "text:variable-decls?, text:sequence-decls?,
+					   text:user-field-decls?, text:dde-connection-decls?, 
+					   text:alphabetical-index-auto-mark-file?" >
+
+<!-- define the types of text which may occur inside of sections -->
+<!ENTITY % sectionText "(text:h|text:p|text:ordered-list|
+						text:unordered-list|table:table|text:section|
+						text:table-of-content|text:illustration-index|
+						text:table-index|text:object-index|text:user-index|
+						text:alphabetical-index|text:bibliography|
+						text:index-title|%change-marks;)*">
+
+<!ENTITY % headerText "(%text-decls;, (text:h|text:p|text:ordered-list|
+						text:unordered-list|table:table|text:section|
+						text:table-of-content|text:illustration-index|
+						text:table-index|text:object-index|text:user-index|
+						text:alphabetical-index|text:bibliography|
+						text:index-title|%change-marks;)* )">
+
+
+<!ELEMENT office:document ( office:meta?,
+							office:settings?,
+							office:script?,
+							office:font-decls?,
+							office:styles?,
+							office:automatic-styles?,
+							office:master-styles?,
+							office:body ) >
+
+<!ATTLIST office:document xmlns:office	CDATA #FIXED "&nOffice;">
+<!ATTLIST office:document xmlns:meta	CDATA #FIXED "&nMeta;">
+<!ATTLIST office:document xmlns:script	CDATA #FIXED "&nScript;">
+<!ATTLIST office:document xmlns:style	CDATA #FIXED "&nStyle;">
+<!ATTLIST office:document xmlns:text	CDATA #FIXED "&nText;">
+<!ATTLIST office:document xmlns:table	CDATA #FIXED "&nTable;">
+<!ATTLIST office:document xmlns:draw	CDATA #FIXED "&nDraw;">
+<!ATTLIST office:document xmlns:chart	CDATA #FIXED "&nChart;">
+<!ATTLIST office:document xmlns:number	CDATA #FIXED "&nNumber;">
+<!ATTLIST office:document xmlns:fo		CDATA #FIXED "&nFO;">
+<!ATTLIST office:document xmlns:xlink	CDATA #FIXED "&nXLink;">
+<!ATTLIST office:document xmlns:svg		CDATA #FIXED "&nSVG;">
+<!ATTLIST office:document xmlns:dc		CDATA #FIXED "&nDC;">
+<!ATTLIST office:document xmlns:dr3d	CDATA #FIXED "&nDr3D;">
+<!ATTLIST office:document xmlns:math	CDATA #FIXED "&nMath;">
+<!ATTLIST office:document xmlns:form	CDATA #FIXED "&nForm;">
+
+<!ATTLIST office:document office:class
+						  (text|text-global|
+						   drawing|presentation|
+						   spreadsheet|chart) #REQUIRED>
+
+<!ATTLIST office:document office:version	%string; #IMPLIED>
+
+<!-- document-styles -->
+<!ELEMENT office:document-styles (
+							office:font-decls?,
+							office:styles?,
+							office:automatic-styles?,
+							office:master-styles? ) >
+
+<!ATTLIST office:document-styles xmlns:office	CDATA #FIXED "&nOffice;">
+<!ATTLIST office:document-styles xmlns:meta	CDATA #FIXED "&nMeta;">
+<!ATTLIST office:document-styles xmlns:script	CDATA #FIXED "&nScript;">
+<!ATTLIST office:document-styles xmlns:style	CDATA #FIXED "&nStyle;">
+<!ATTLIST office:document-styles xmlns:text	CDATA #FIXED "&nText;">
+<!ATTLIST office:document-styles xmlns:table	CDATA #FIXED "&nTable;">
+<!ATTLIST office:document-styles xmlns:draw	CDATA #FIXED "&nDraw;">
+<!ATTLIST office:document-styles xmlns:chart	CDATA #FIXED "&nChart;">
+<!ATTLIST office:document-styles xmlns:number	CDATA #FIXED "&nNumber;">
+<!ATTLIST office:document-styles xmlns:fo		CDATA #FIXED "&nFO;">
+<!ATTLIST office:document-styles xmlns:xlink	CDATA #FIXED "&nXLink;">
+<!ATTLIST office:document-styles xmlns:svg		CDATA #FIXED "&nSVG;">
+<!ATTLIST office:document-styles xmlns:dc		CDATA #FIXED "&nDC;">
+<!ATTLIST office:document-styles xmlns:dr3d		CDATA #FIXED "&nDr3D;">
+<!ATTLIST office:document-styles xmlns:math		CDATA #FIXED "&nMath;">
+<!ATTLIST office:document-styles xmlns:form		CDATA #FIXED "&nForm;">
+
+<!ATTLIST office:document-styles office:version	%string; #IMPLIED>
+
+<!-- document-content -->
+
+<!ELEMENT office:document-content (
+							office:script?,
+							office:font-decls?,
+							office:automatic-styles?,
+							office:body ) >
+
+<!ATTLIST office:document-content xmlns:office	CDATA #FIXED "&nOffice;">
+<!ATTLIST office:document-content xmlns:meta	CDATA #FIXED "&nMeta;">
+<!ATTLIST office:document-content xmlns:script	CDATA #FIXED "&nScript;">
+<!ATTLIST office:document-content xmlns:style	CDATA #FIXED "&nStyle;">
+<!ATTLIST office:document-content xmlns:text	CDATA #FIXED "&nText;">
+<!ATTLIST office:document-content xmlns:table	CDATA #FIXED "&nTable;">
+<!ATTLIST office:document-content xmlns:draw	CDATA #FIXED "&nDraw;">
+<!ATTLIST office:document-content xmlns:chart	CDATA #FIXED "&nChart;">
+<!ATTLIST office:document-content xmlns:number	CDATA #FIXED "&nNumber;">
+<!ATTLIST office:document-content xmlns:fo		CDATA #FIXED "&nFO;">
+<!ATTLIST office:document-content xmlns:xlink	CDATA #FIXED "&nXLink;">
+<!ATTLIST office:document-content xmlns:svg		CDATA #FIXED "&nSVG;">
+<!ATTLIST office:document-content xmlns:dc		CDATA #FIXED "&nDC;">
+<!ATTLIST office:document-content xmlns:dr3d	CDATA #FIXED "&nDr3D;">
+<!ATTLIST office:document-content xmlns:math	CDATA #FIXED "&nMath;">
+<!ATTLIST office:document-content xmlns:form	CDATA #FIXED "&nForm;">
+
+<!ATTLIST office:document-content office:class
+						  (text|text-global|
+						   drawing|presentation|
+						   spreadsheet|chart) #REQUIRED>
+
+<!ATTLIST office:document-content office:version	%string; #IMPLIED>
+
+<!-- document-content -->
+
+<!ELEMENT office:document-meta ( office:meta? ) >
+
+<!ATTLIST office:document-meta xmlns:office	CDATA #FIXED "&nOffice;">
+<!ATTLIST office:document-meta xmlns:meta	CDATA #FIXED "&nMeta;">
+<!ATTLIST office:document-meta xmlns:script	CDATA #FIXED "&nScript;">
+<!ATTLIST office:document-meta xmlns:style	CDATA #FIXED "&nStyle;">
+<!ATTLIST office:document-meta xmlns:text	CDATA #FIXED "&nText;">
+<!ATTLIST office:document-meta xmlns:table	CDATA #FIXED "&nTable;">
+<!ATTLIST office:document-meta xmlns:draw	CDATA #FIXED "&nDraw;">
+<!ATTLIST office:document-meta xmlns:chart	CDATA #FIXED "&nChart;">
+<!ATTLIST office:document-meta xmlns:number	CDATA #FIXED "&nNumber;">
+<!ATTLIST office:document-meta xmlns:fo		CDATA #FIXED "&nFO;">
+<!ATTLIST office:document-meta xmlns:xlink	CDATA #FIXED "&nXLink;">
+<!ATTLIST office:document-meta xmlns:svg		CDATA #FIXED "&nSVG;">
+<!ATTLIST office:document-meta xmlns:dc		CDATA #FIXED "&nDC;">
+<!ATTLIST office:document-meta xmlns:dr3d	CDATA #FIXED "&nDr3D;">
+<!ATTLIST office:document-meta xmlns:math	CDATA #FIXED "&nMath;">
+<!ATTLIST office:document-meta xmlns:form	CDATA #FIXED "&nForm;">
+
+<!ATTLIST office:document-meta office:version	%string; #IMPLIED>
+
+<!ELEMENT office:document-settings (office:settings) >
+<!ATTLIST office:document-settings xmlns:office	CDATA #FIXED "&nOffice;">
+<!ATTLIST office:document-settings xmlns:xlink	CDATA #FIXED "&nXLink;">
+<!ATTLIST office:document-settings xmlns:config	CDATA #FIXED "&nConfig;">
+
+<!ATTLIST office:document-settings office:version	%string; #IMPLIED>
+
+<!ENTITY % meta "(meta:generator?,
+				  dc:title?,
+				  dc:description?,
+				  dc:subject?,
+				  meta:initial-creator?,
+				  meta:creation-date?,
+				  dc:creator?,
+				  dc:date?,
+				  meta:printed-by?,
+				  meta:print-date?,
+				  meta:keywords?,
+				  dc:language?,
+				  meta:editing-cycles?,
+				  meta:editing-duration?,
+				  meta:hyperlink-behaviour?,
+				  meta:auto-reload?,
+				  meta:template?,
+				  meta:user-defined*,
+				  meta:document-statistic?)">
+<!ELEMENT office:meta %meta;>
+
+<!ENTITY % script	"(script:library-embedded |
+					  script:library-linked)*,office:events?">
+<!ELEMENT office:script (%script;)>
+
+<!ELEMENT office:font-decls (style:font-decl)*>
+
+<!ENTITY % styles "(style:default-style|style:style|text:list-style|
+		number:number-style|number:currency-style|number:percentage-style|
+		number:date-style|number:time-style|number:boolean-style|
+		number:text-style|
+		draw:gradient|draw:hatch|draw:fill-image|draw:marker|draw:stroke-dash|
+		style:presentation-page-layout|draw:transparency)">
+
+<!-- Validity constraint: The elements
+		text:outline-style,
+		text:footnotes-configuration,
+		text:endnotes-configuration,
+		text:bibliography-configuration and
+		text:linenumbering-configuration
+	may appear only once!
+	Unfortunatetly, this constraint cannot be easily specified in the DTD.
+-->
+<!ELEMENT office:styles (%styles;|text:outline-style|
+		text:footnotes-configuration|text:endnotes-configuration|
+		text:bibliography-configuration|text:linenumbering-configuration)*>
+
+<!ELEMENT office:automatic-styles (%styles;|style:page-master)*>
+
+<!ELEMENT office:master-styles (draw:layer-set?,style:handout-master?,style:master-page*) >
+
+
+<!ENTITY % body "(office:forms?,(text:tracked-changes|table:tracked-changes)?,%text-decls;,table:calculation-settings?,table:content-validations?,table:label-ranges?,
+		(text:h|text:p|text:ordered-list|
+		text:unordered-list|table:table|draw:page|
+		draw:a|%shape;|text:section|text:table-of-content|
+		text:illustration-index|text:table-index|text:object-index|
+		text:user-index|text:alphabetical-index|text:bibliography|
+		%change-marks;)*,
+		table:named-expressions?,
+		table:database-ranges?,table:data-pilot-tables?,
+		table:consolidation?,
+		table:dde-links?,
+		presentation:settings?)">
+<!ELEMENT office:body %body;>
+<!ATTLIST office:body table:structure-protected %boolean; "false"
+			table:protection-key CDATA #IMPLIED>
+
+<!ELEMENT office:events (script:event|presentation:event)*>
+
+<!-- DDE source: for text sections and tables -->
+<!ELEMENT office:dde-source EMPTY>
+<!ATTLIST office:dde-source office:dde-application CDATA #IMPLIED>
+<!ATTLIST office:dde-source office:dde-topic CDATA #IMPLIED>
+<!ATTLIST office:dde-source office:dde-item CDATA #IMPLIED>
+<!ATTLIST office:dde-source office:automatic-update %boolean; "false">
+<!ATTLIST office:dde-source office:name CDATA #IMPLIED>
+<!ATTLIST office:dde-source table:conversion-mode (into-default-style-data-style|into-english-number|let-text) "into-default-style-data-style" >
+
+<!-- annotations -->
+<!-- limitation: in the current implementation, only plain text inside of
+     paragraphs is supported -->
+<!ELEMENT office:annotation (text:p)*>
+<!ATTLIST office:annotation office:author %string; #IMPLIED>
+<!ATTLIST office:annotation office:create-date %date; #IMPLIED>
+<!ATTLIST office:annotation office:create-date-string %string; #IMPLIED>
+<!ATTLIST office:annotation office:display %boolean; "false">
+
+<!ELEMENT office:change-info (text:p)*>
+<!ATTLIST office:change-info office:chg-author %string; #REQUIRED>
+<!ATTLIST office:change-info office:chg-date-time %timeInstance; #REQUIRED>
+
+<!ELEMENT office:binary-data (#PCDATA)>
+
+<!ELEMENT style:font-decl EMPTY>
+<!ATTLIST style:font-decl style:name %string; #REQUIRED>
+<!ATTLIST style:font-decl fo:font-family %string; #REQUIRED>
+<!ATTLIST style:font-decl style:font-style-name %string; #IMPLIED>
+<!ENTITY % fontFamilyGeneric "(roman|swiss|modern|decorative|script|system)">
+<!ATTLIST style:font-decl style:font-family-generic %fontFamilyGeneric;
+						   #IMPLIED>
+<!ENTITY % fontPitch "(fixed|variable)">
+<!ATTLIST style:font-decl style:font-pitch %fontPitch; #IMPLIED>
+<!ATTLIST style:font-decl style:font-charset %textEncoding; #IMPLIED>
+
+<!ELEMENT style:style ( style:properties?,office:events?,style:map*)>
+
+<!ATTLIST style:style style:name %styleName; #REQUIRED>
+
+<!ENTITY % styleFamily "(paragraph|text|section|
+						 table|table-column|table-row|table-cell|table-page|chart|graphics|default|drawing-page|presentation|control|ruby)">
+<!ATTLIST style:style style:family %styleFamily; #REQUIRED>
+
+<!ATTLIST style:style style:parent-style-name %styleName; #IMPLIED>
+<!ATTLIST style:style style:master-page-name %styleName; #IMPLIED>
+<!ATTLIST style:style style:next-style-name %styleName; #IMPLIED>
+<!ATTLIST style:style style:list-style-name %styleName; #IMPLIED>
+<!ATTLIST style:style style:data-style-name %styleName; #IMPLIED>
+
+<!ATTLIST style:style style:auto-update %boolean; "false">
+
+<!ATTLIST style:style style:class %string; #IMPLIED>
+
+<!ELEMENT style:default-style (style:properties?)>
+<!ATTLIST style:default-style style:family %styleFamily; #REQUIRED>
+
+<!ELEMENT style:map EMPTY>
+
+<!ATTLIST style:map style:condition %string; #REQUIRED>
+<!ATTLIST style:map style:apply-style-name %styleName; #REQUIRED>
+<!ATTLIST style:map style:base-cell-address %cell-address; #IMPLIED>
+
+<!ELEMENT style:properties ANY>
+
+<!-- number format properties -->
+<!ATTLIST style:properties style:num-prefix %string; #IMPLIED>
+<!ATTLIST style:properties style:num-suffix %string; #IMPLIED>
+<!ATTLIST style:properties style:num-format %string; #IMPLIED>
+<!ATTLIST style:properties style:num-letter-sync %boolean; #IMPLIED>
+
+<!-- frame properties -->
+<!ATTLIST style:properties fo:width %positiveLength; #IMPLIED>
+<!ATTLIST style:properties fo:height %positiveLength; #IMPLIED>
+<!ATTLIST style:properties style:vertical-pos (top|middle|bottom|from-top|below) #IMPLIED>
+<!ATTLIST style:properties style:vertical-rel (page|page-content|
+											   frame|frame-content|
+											   paragraph|paragraph-content|char|
+											   line|baseline|text) #IMPLIED>
+<!ATTLIST style:properties style:horizontal-pos (left|center|right|from-left|inside|outside|from-inside) #IMPLIED>
+<!ATTLIST style:properties style:horizontal-rel (page|page-content|
+								 page-start-margin|page-end-margin|
+								 frame|frame-content|
+								 frame-start-margin|frame-end-margin|
+								 paragraph|paragraph-content|
+								 paragraph-start-margin|paragraph-end-margin|
+								 char) #IMPLIED>
+<!ATTLIST style:properties svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:min-height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:min-width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:max-height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:max-width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties text:anchor-type %anchorType; #IMPLIED>
+<!ATTLIST style:properties text:anchor-page-number %positiveInteger; #IMPLIED>
+<!ATTLIST style:properties svg:x %coordinate; #IMPLIED>
+<!ATTLIST style:properties svg:y %coordinate; #IMPLIED>
+<!ATTLIST style:properties style:print-content %boolean; #IMPLIED>
+<!ATTLIST style:properties style:protect %boolean; #IMPLIED>
+<!ATTLIST style:properties style:wrap (none|left|right|parallel|dynamic|run-through) #IMPLIED>
+<!ENTITY % noLimitOrPositiveInteger "CDATA">
+<!ATTLIST style:properties style:number-wrapped-paragraphs %noLimitOrPositiveInteger; #IMPLIED>
+<!ATTLIST style:properties style:wrap-contour %boolean; #IMPLIED>
+<!ATTLIST style:properties style:wrap-contour-mode (full|outside) #IMPLIED>
+<!ATTLIST style:properties style:run-through (foreground|background) #IMPLIED>
+<!ATTLIST style:properties style:editable %boolean; #IMPLIED>
+<!ATTLIST style:properties style:mirror CDATA #IMPLIED>
+<!ATTLIST style:properties fo:clip CDATA #IMPLIED>
+<!ATTLIST style:properties text:animation (none|scroll|alternate|slide) #IMPLIED>
+<!ATTLIST style:properties text:animation-direction (left|right|up|down) #IMPLIED>
+<!ATTLIST style:properties text:animation-start-inside %boolean; #IMPLIED>
+<!ATTLIST style:properties text:animation-stop-inside %boolean; #IMPLIED>
+<!ATTLIST style:properties text:animation-repeat %integer; #IMPLIED>
+<!ATTLIST style:properties text:animation-delay %timeDuration; #IMPLIED>
+<!ATTLIST style:properties text:animation-steps %length; #IMPLIED>
+
+<!-- text properties -->
+<!ATTLIST style:properties fo:font-variant (normal|small-caps) #IMPLIED>
+<!ATTLIST style:properties fo:text-transform (none|lowercase|
+											  uppercase|capitalize) #IMPLIED>
+<!ATTLIST style:properties fo:color %color; #IMPLIED>
+<!ATTLIST style:properties style:use-window-font-color %boolean; #IMPLIED>
+<!ATTLIST style:properties style:text-outline %boolean; #IMPLIED>
+<!ATTLIST style:properties style:text-crossing-out
+						   (none|single-line|double-line|thick-line|slash|X)
+						   #IMPLIED>
+<!ATTLIST style:properties style:text-position CDATA #IMPLIED>
+<!ATTLIST style:properties style:text-align (left|right|start|center|end|justify|justified) #IMPLIED>
+
+<!ATTLIST style:properties style:font-name %string; #IMPLIED>
+<!ATTLIST style:properties fo:font-family %string; #IMPLIED>
+<!ATTLIST style:properties style:font-family-generic %fontFamilyGeneric;
+						   #IMPLIED>
+<!ATTLIST style:properties style:font-style-name %string; #IMPLIED>
+<!ATTLIST style:properties style:font-pitch %fontPitch; #IMPLIED>
+<!ATTLIST style:properties style:font-charset %textEncoding; #IMPLIED>
+<!ATTLIST style:properties style:font-name-asian %string; #IMPLIED>
+<!ATTLIST style:properties style:font-family-asian %string; #IMPLIED>
+<!ATTLIST style:properties style:font-family-generic-asian %fontFamilyGeneric;
+						   #IMPLIED>
+<!ATTLIST style:properties style:font-style-name-asian %string; #IMPLIED>
+<!ATTLIST style:properties style:font-pitch-asian %fontPitch; #IMPLIED>
+<!ATTLIST style:properties style:font-charset-asian %textEncoding; #IMPLIED>
+<!ATTLIST style:properties style:font-name-complex %string; #IMPLIED>
+<!ATTLIST style:properties style:font-family-complex %string; #IMPLIED>
+<!ATTLIST style:properties style:font-family-generic-complex %fontFamilyGeneric;
+						   #IMPLIED>
+<!ATTLIST style:properties style:font-style-name-complex %string; #IMPLIED>
+<!ATTLIST style:properties style:font-pitch-complex %fontPitch; #IMPLIED>
+<!ATTLIST style:properties style:font-charset-complex %textEncoding; #IMPLIED>
+
+<!ATTLIST style:properties fo:font-size %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties style:font-size-rel %length; #IMPLIED>
+<!ATTLIST style:properties style:font-size-asian %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties style:font-size-rel-asian %length; #IMPLIED>
+<!ATTLIST style:properties style:font-size-complex %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties style:font-size-rel-complex %length; #IMPLIED>
+<!ENTITY % normalOrLength "CDATA">
+<!ATTLIST style:properties fo:letter-spacing %normalOrLength; #IMPLIED>
+<!ATTLIST style:properties fo:language %languageOnly; #IMPLIED>
+<!ATTLIST style:properties style:language-asian %languageOnly; #IMPLIED>
+<!ATTLIST style:properties style:language-complex %languageOnly; #IMPLIED>
+<!ATTLIST style:properties fo:country %country; #IMPLIED>
+<!ATTLIST style:properties style:country-asian %country; #IMPLIED>
+<!ATTLIST style:properties style:country-complex %country; #IMPLIED>
+<!ENTITY % fontStyle "(normal|italic|oblique)">
+<!ATTLIST style:properties fo:font-style %fontStyle; #IMPLIED>
+<!ATTLIST style:properties style:font-style-asian %fontStyle; #IMPLIED>
+<!ATTLIST style:properties style:font-style-complex %fontStyle; #IMPLIED>
+<!ENTITY % fontRelief "(none|embossed|engraved)">
+<!ATTLIST style:properties style:font-relief %fontRelief; #IMPLIED>
+<!ATTLIST style:properties fo:text-shadow CDATA #IMPLIED>
+<!ATTLIST style:properties style:text-underline
+						   (none|single|double|dotted|dash|long-dash|dot-dash|
+							dot-dot-dash|wave|bold|bold-dotted|bold-dash|
+							bold-long-dash|bold-dot-dash|bold-dot-dot-dash|
+							bold-wave|double-wave|small-wave) #IMPLIED>
+<!ATTLIST style:properties style:text-autospace (none | ideograph-alpha) #IMPLIED>
+<!ATTLIST style:properties style:punctuation-wrap (simple | hanging) #IMPLIED>
+<!ATTLIST style:properties style:line-break (normal | strict) #IMPLIED>
+<!ENTITY % fontColorOrColor "CDATA">
+<!ATTLIST style:properties style:text-underline-color %fontColorOrColor;
+						   #IMPLIED>
+<!ATTLIST style:properties fo:font-weight CDATA #IMPLIED>
+<!ATTLIST style:properties style:font-weight-asian CDATA #IMPLIED>
+<!ATTLIST style:properties style:font-weight-complex CDATA #IMPLIED>
+<!ATTLIST style:properties fo:score-spaces %boolean; #IMPLIED>
+<!ATTLIST style:properties style:letter-kerning %boolean; #IMPLIED>
+<!ATTLIST style:properties style:text-blinking %boolean; #IMPLIED>
+<!ATTLIST style:properties style:text-background-color %transparentOrColor;
+						   #IMPLIED>
+
+<!ATTLIST style:properties style:text-combine (none|letters|lines) #IMPLIED>
+<!ATTLIST style:properties style:text-combine-start-char %character; #IMPLIED>
+<!ATTLIST style:properties style:text-combine-end-char %character; #IMPLIED>
+<!ATTLIST style:properties style:text-emphasize CDATA #IMPLIED>
+<!ATTLIST style:properties style:text-scale %percentage; #IMPLIED>
+<!ATTLIST style:properties style:text-rotation-angle %integer; #IMPLIED>
+<!ATTLIST style:properties style:text-rotation-scale (fixed|line-height) #IMPLIED>
+
+<!-- paragraph properties -->
+<!ENTITY % nonNegativeLengthOrPercentageOrNormal "CDATA">
+<!ATTLIST style:properties fo:line-height
+						   %nonNegativeLengthOrPercentageOrNormal; #IMPLIED>
+<!ATTLIST style:properties style:line-height-at-least %nonNegativeLength;
+						   #IMPLIED>
+<!ATTLIST style:properties style:line-spacing %length; #IMPLIED>
+<!ATTLIST style:properties fo:text-align (start|end|center|justify) #IMPLIED>
+<!ATTLIST style:properties fo:text-align-last (start|center|justify) #IMPLIED>
+<!ATTLIST style:properties style:text-align-source (fix|value-type) #IMPLIED>
+<!ATTLIST style:properties style:justify-single-word %boolean; #IMPLIED>
+<!ATTLIST style:properties style:break-inside (auto|avoid) #IMPLIED>
+<!ATTLIST style:properties fo:widows %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties fo:orphans %nonNegativeInteger; #IMPLIED>
+
+<!ATTLIST style:properties fo:hyphenate %boolean; #IMPLIED>
+<!ATTLIST style:properties fo:hyphenate-keep (none|page) #IMPLIED>
+<!ATTLIST style:properties fo:hyphenation-remain-char-count %positiveInteger;
+						   #IMPLIED>
+<!ATTLIST style:properties fo:hyphenation-push-char-count %positiveInteger;
+						   #IMPLIED>
+<!ATTLIST style:properties fo:hyphenation-ladder-count
+						   %noLimitOrPositiveInteger;  #IMPLIED>
+<!ATTLIST style:properties style:page-number %positiveInteger; #IMPLIED>
+
+<!ELEMENT style:tab-stops (style:tab-stop)*>
+<!ELEMENT style:tab-stop EMPTY>
+<!ATTLIST style:tab-stop style:position %nonNegativeLength; #REQUIRED>
+<!ATTLIST style:tab-stop style:type (left|center|right|char|default) "left">
+<!ATTLIST style:tab-stop style:char %character; #IMPLIED>
+<!ATTLIST style:tab-stop style:leader-char %character; " ">
+
+<!ELEMENT style:drop-cap EMPTY>
+<!ENTITY % wordOrPositiveInteger "CDATA">
+<!ATTLIST style:drop-cap style:length %wordOrPositiveInteger; "1">
+<!ATTLIST style:drop-cap style:lines %positiveInteger; "1">
+<!ATTLIST style:drop-cap style:distance %length; "0cm">
+<!ATTLIST style:drop-cap style:style-name %styleName; #IMPLIED>
+
+<!ATTLIST style:properties style:register-true %boolean; #IMPLIED>
+<!ATTLIST style:properties style:register-truth-ref-style-name %styleName; #IMPLIED>
+<!ATTLIST style:properties fo:margin-left %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:margin-right %positiveLengthOrPercentage;
+						   #IMPLIED>
+<!ATTLIST style:properties fo:text-indent %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties style:auto-text-indent %boolean; #IMPLIED>
+<!ATTLIST style:properties fo:margin-top %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:margin-bottom %positiveLengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties fo:break-before (auto|column|page) #IMPLIED>
+<!ATTLIST style:properties fo:break-after (auto|column|page) #IMPLIED>
+<!ATTLIST style:properties fo:background-color %transparentOrColor; #IMPLIED>
+<!ATTLIST style:properties style:background-transparency %percentage; #IMPLIED>
+<!ATTLIST style:properties style:dynamic-spacing %boolean; #IMPLIED>
+
+<!ELEMENT style:background-image (office:binary-data?)>
+<!ATTLIST style:background-image xlink:type (simple) #IMPLIED>
+<!ATTLIST style:background-image xlink:href %uriReference; #IMPLIED>
+<!ATTLIST style:background-image xlink:show (embed) #IMPLIED>
+<!ATTLIST style:background-image xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST style:background-image style:repeat (no-repeat|repeat|stretch)
+								 "repeat">
+<!ATTLIST style:background-image style:position CDATA "center">
+<!ATTLIST style:background-image style:filter-name %string; #IMPLIED>
+<!ATTLIST style:background-image draw:transparency %percentage; #IMPLIED>
+
+<!ELEMENT style:symbol-image (office:binary-data?)>
+<!ATTLIST style:symbol-image xlink:type (simple) #IMPLIED>
+<!ATTLIST style:symbol-image xlink:href %uriReference; #IMPLIED>
+<!ATTLIST style:symbol-image xlink:show (embed) #IMPLIED>
+<!ATTLIST style:symbol-image xlink:actuate (onLoad) #IMPLIED>
+
+<!ATTLIST style:properties fo:border CDATA #IMPLIED>
+<!ATTLIST style:properties fo:border-top CDATA #IMPLIED>
+<!ATTLIST style:properties fo:border-bottom CDATA #IMPLIED>
+<!ATTLIST style:properties fo:border-left CDATA #IMPLIED>
+<!ATTLIST style:properties fo:border-right CDATA #IMPLIED>
+<!ATTLIST style:properties style:border-line-width CDATA #IMPLIED>
+<!ATTLIST style:properties style:border-line-width-top CDATA #IMPLIED>
+<!ATTLIST style:properties style:border-line-width-bottom CDATA #IMPLIED>
+<!ATTLIST style:properties style:border-line-width-left CDATA #IMPLIED>
+<!ATTLIST style:properties style:border-line-width-right CDATA #IMPLIED>
+<!ATTLIST style:properties fo:padding %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties fo:padding-top %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties fo:padding-bottom %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties fo:padding-left %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties fo:padding-right %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties style:shadow CDATA #IMPLIED>
+<!ATTLIST style:properties fo:keep-with-next %boolean; #IMPLIED>
+
+<!ATTLIST style:properties text:number-lines %boolean; "false">
+<!ATTLIST style:properties text:line-number %nonNegativeInteger; #IMPLIED>
+
+<!ATTLIST style:properties style:decimal-places %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties style:tab-stop-distance %nonNegativeLength; #IMPLIED>
+
+<!-- section properties -->
+<!ATTLIST style:properties text:dont-balance-text-columns %boolean; #IMPLIED>
+
+<!-- ruby properties -->
+<!ATTLIST style:properties style:ruby-align (left|center|right|distribute-letter|distribute-space) #IMPLIED>
+<!ATTLIST style:properties style:ruby-position (above|below) #IMPLIED>
+
+
+<!-- table properties -->
+<!ATTLIST style:properties style:width %positiveLength; #IMPLIED>
+<!ATTLIST style:properties style:rel-width %percentage; #IMPLIED>
+<!ATTLIST style:properties style:may-break-between-rows %boolean; #IMPLIED>
+<!ATTLIST style:properties table:page-style-name %styleName; #IMPLIED>
+<!ATTLIST style:properties table:display %boolean; #IMPLIED>
+
+<!-- table column properties -->
+<!ATTLIST style:properties style:column-width %positiveLength; #IMPLIED>
+<!ENTITY % relWidth "CDATA">
+<!ATTLIST style:properties style:rel-column-width %relWidth; #IMPLIED>
+<!ATTLIST style:properties style:use-optimal-column-width %boolean; #IMPLIED>
+
+<!-- table row properties -->
+<!ATTLIST style:properties style:row-height %positiveLength; #IMPLIED>
+<!ATTLIST style:properties style:min-row-height %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties style:use-optimal-row-height %boolean; #IMPLIED>
+
+<!-- table cell properties -->
+<!ATTLIST style:properties
+	table:align (left | center | right | margins) #IMPLIED
+	table:border-model (collapsing | separating) #IMPLIED
+	fo:vertical-align (top | middle | bottom | automatic) #IMPLIED
+	fo:direction (ltr | ttb) #IMPLIED
+	style:glyph-orientation-vertical (auto | 0) #IMPLIED
+	style:rotation-angle %nonNegativeInteger; #IMPLIED
+	style:rotation-align (none | bottom | top | center) #IMPLIED
+	style:cell-protect CDATA #IMPLIED
+	fo:wrap-option (no-wrap | wrap) #IMPLIED
+>
+<!ELEMENT style:columns (style:column-sep?,style:column*)>
+<!ATTLIST style:columns fo:column-count %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:columns fo:column-gap %positiveLength; #IMPLIED>
+
+<!ELEMENT style:column EMPTY>
+<!ATTLIST style:column style:rel-width CDATA #IMPLIED>
+<!ATTLIST style:column fo:margin-left %positiveLength; #IMPLIED>
+<!ATTLIST style:column fo:margin-right %positiveLength; #IMPLIED>
+
+<!ELEMENT style:column-sep EMPTY>
+<!ATTLIST style:column-sep style:style (none|solid|dotted|dashed|dot-dashed)
+																	"solid">
+<!ATTLIST style:column-sep style:width %length; #REQUIRED>
+<!ATTLIST style:column-sep style:height %percentage; "100%">
+<!ATTLIST style:column-sep style:vertical-align (top|middle|bottom) "top">
+<!ATTLIST style:column-sep style:color %color; "#000000">
+
+<!-- page master properties -->
+<!ELEMENT style:page-master (style:properties?, style:header-style?, style:footer-style?)>
+<!ATTLIST style:page-master style:name %styleName; #REQUIRED>
+<!ATTLIST style:page-master style:page-usage (all|left|right|mirrored) "all">
+
+<!ELEMENT style:header-style (style:properties?)>
+<!ELEMENT style:footer-style (style:properties?)>
+
+<!ATTLIST style:properties fo:page-width %length; #IMPLIED>
+<!ATTLIST style:properties fo:page-height %length; #IMPLIED>
+<!ATTLIST style:properties style:paper-tray-name %string; #IMPLIED>
+<!ATTLIST style:properties style:print-orientation (portrait|landscape) #IMPLIED>
+<!ATTLIST style:properties style:print CDATA #IMPLIED>
+<!ATTLIST style:properties style:print-page-order (ttb|ltr) #IMPLIED>
+<!ATTLIST style:properties style:first-page-number %positiveInteger; #IMPLIED>
+<!ATTLIST style:properties style:scale-to %percentage; #IMPLIED>
+<!ATTLIST style:properties style:scale-to-pages %positiveInteger; #IMPLIED>
+<!ATTLIST style:properties style:table-centering (horizontal | vertical | both | none) #IMPLIED>
+
+<!ATTLIST style:properties style:footnote-max-height %lengthOrNoLimit; #IMPLIED>
+<!ATTLIST style:properties style:vertical-align (top|bottom|middle|basline|auto) #IMPLIED>
+<!ATTLIST style:properties style:writing-mode (lr-tb|rl-tb|tb-rl|tb-lr|lr|rl|tb|page) "lr-tb">
+<!ATTLIST style:properties style:layout-grid-mode (none|line|both) #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-base-height %length; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-ruby-height %length; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-lines %positiveInteger; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-color %color; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-ruby-below %boolean; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-print %boolean; #IMPLIED>
+<!ATTLIST style:properties style:layout-grid-display %boolean; #IMPLIED>
+<!ATTLIST style:properties style:snap-to-layout-grid %boolean; #IMPLIED>
+
+<!ELEMENT style:footnote-sep EMPTY>
+<!ATTLIST style:footnote-sep style:width %length; #IMPLIED>
+<!ATTLIST style:footnote-sep style:rel-width %percentage; #IMPLIED>
+<!ATTLIST style:footnote-sep style:color %color; #IMPLIED>
+<!ATTLIST style:footnote-sep style:adjustment (left|center|right) "left">
+<!ATTLIST style:footnote-sep style:distance-before-sep %length; #IMPLIED>
+<!ATTLIST style:footnote-sep style:distance-after-sep %length; #IMPLIED>
+
+<!-- master page -->
+<!ELEMENT style:master-page ( (style:header, style:header-left?)?, (style:footer, style:footer-left?)?,
+								office:forms?,style:style*, (%shapes;)*, presentation:notes? )>
+<!ATTLIST style:master-page style:name %styleName; #REQUIRED>
+<!ATTLIST style:master-page style:page-master-name %styleName; #REQUIRED>
+<!ATTLIST style:master-page style:next-style-name %styleName; #IMPLIED>
+<!ATTLIST style:master-page draw:style-name %styleName; #IMPLIED>
+
+<!-- handout master -->
+<!ELEMENT style:handout-master (%shapes;)*>
+<!ATTLIST style:handout-master presentation:presentation-page-layout-name %styleName; #IMPLIED>
+<!ATTLIST style:handout-master style:page-master-name %styleName; #IMPLIED>
+
+
+<!ENTITY % hd-ft-content "( %headerText; | (style:region-left?, style:region-center?, style:region-right?) )">
+<!ELEMENT style:header %hd-ft-content;>
+<!ATTLIST style:header style:display %boolean; "true">
+<!ELEMENT style:footer %hd-ft-content;>
+<!ATTLIST style:footer style:display %boolean; "true">
+<!ELEMENT style:header-left %hd-ft-content;>
+<!ATTLIST style:header-left style:display %boolean; "true">
+<!ELEMENT style:footer-left %hd-ft-content;>
+<!ATTLIST style:footer-left style:display %boolean; "true">
+
+<!ENTITY % region-content "(text:p*)">
+<!ELEMENT style:region-left %region-content;>
+<!ELEMENT style:region-center %region-content;>
+<!ELEMENT style:region-right %region-content;>
+
+<!ELEMENT meta:generator (%cString;)>
+
+<!ELEMENT dc:title (%cString;)>
+
+<!ELEMENT dc:description (%cString;)>
+
+<!ELEMENT dc:subject (%cString;)>
+
+<!ELEMENT meta:keywords (meta:keyword)*>
+<!ELEMENT meta:keyword (%cString;)>
+
+<!ELEMENT meta:initial-creator (%cString;)>
+
+<!ELEMENT dc:creator (%cString;)>
+
+<!ELEMENT meta:printed-by (%cString;)>
+
+<!ELEMENT meta:creation-date (%cTimeInstance;)>
+
+<!ELEMENT dc:date (%cTimeInstance;)>
+
+<!ELEMENT meta:print-date (%cTimeInstance;)>
+
+<!ELEMENT meta:template EMPTY>
+<!ATTLIST meta:template xlink:type (simple) #FIXED "simple">
+<!ATTLIST meta:template xlink:actuate (onRequest) "onRequest">
+<!ATTLIST meta:template xlink:href %uriReference; #REQUIRED>
+<!ATTLIST meta:template xlink:title %string; #IMPLIED>
+<!ATTLIST meta:template meta:date %timeInstance; #IMPLIED>
+
+<!ELEMENT meta:auto-reload EMPTY>
+<!ATTLIST meta:auto-reload xlink:type (simple) #IMPLIED>
+<!ATTLIST meta:auto-reload xlink:show (replace) #IMPLIED>
+<!ATTLIST meta:auto-reload xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST meta:auto-reload xlink:href %uriReference; #IMPLIED>
+<!ATTLIST meta:auto-reload meta:delay %timeDuration; "P0S">
+
+<!ELEMENT meta:hyperlink-behaviour EMPTY>
+<!ATTLIST meta:hyperlink-behaviour office:target-frame-name %targetFrameName; #IMPLIED>
+<!ATTLIST meta:hyperlink-behaviour xlink:show (new|replace) #IMPLIED>
+
+<!ELEMENT dc:language (%cLanguage;)>
+
+<!ELEMENT meta:editing-cycles (%cPositiveInteger;)>
+
+<!ELEMENT meta:editing-duration (%cTimeDuration;)>
+
+<!ELEMENT meta:user-defined (%cString;)>
+<!ATTLIST meta:user-defined meta:name %string; #REQUIRED>
+
+<!ELEMENT meta:document-statistic EMPTY>
+<!ATTLIST meta:document-statistic meta:page-count %positiveInteger; #IMPLIED
+	meta:table-count %nonNegativeInteger; #IMPLIED
+	meta:draw-count %nonNegativeInteger; #IMPLIED
+	meta:image-count %nonNegativeInteger; #IMPLIED
+	meta:ole-object-count %nonNegativeInteger; #IMPLIED
+	meta:paragraph-count %nonNegativeInteger; #IMPLIED
+	meta:word-count %nonNegativeInteger; #IMPLIED
+	meta:character-count %nonNegativeInteger; #IMPLIED
+	meta:row-count %nonNegativeInteger; #IMPLIED
+	meta:cell-count %nonNegativeInteger; #IMPLIED
+	meta:object-count %positiveInteger; #IMPLIED>
+
+<!ELEMENT script:library-embedded (script:module*)>
+<!ATTLIST script:library-embedded script:name %string; #REQUIRED>
+<!ATTLIST script:library-embedded script:password %string; #IMPLIED>
+
+<!ELEMENT script:library-linked EMPTY>
+<!ATTLIST script:library-linked script:name %string; #REQUIRED>
+<!ATTLIST script:library-linked xlink:href %string; #REQUIRED>
+<!ATTLIST script:library-linked xlink:type (simple) #FIXED "simple">
+
+<!ELEMENT script:module (#PCDATA)>
+<!ATTLIST script:module script:name %string; #REQUIRED>
+<!ATTLIST script:module script:language %string; #IMPLIED>
+
+
+<!ENTITY % script-language "script:language %string; #REQUIRED">
+<!ENTITY % event-name "script:event-name %string; #REQUIRED">
+<!ENTITY % location "script:location (document|application) #REQUIRED">
+<!ENTITY % macro-name "script:macro-name %string; #REQUIRED">
+
+<!ELEMENT script:event (#PCDATA)>
+<!ATTLIST script:event %script-language;
+                       %event-name;
+                       %location;
+					   %macro-name;>
+
+<!ENTITY % points "CDATA" >
+<!ENTITY % pathData "CDATA" >
+<!ENTITY % gradient-style "(linear|axial|radial|ellipsoid|square|rectangular)" >
+<!ENTITY % draw-position "svg:x %coordinate; #IMPLIED svg:y %coordinate; #IMPLIED">
+<!ENTITY % draw-end-position "table:end-cell-address %cell-address; #IMPLIED table:end-x %coordinate; #IMPLIED table:end-y %coordinate; #IMPLIED">
+<!ENTITY % draw-size "svg:width %coordinate; #IMPLIED svg:height %coordinate; #IMPLIED">
+<!ENTITY % draw-transform "draw:transform CDATA #IMPLIED">
+<!ENTITY % draw-viewbox "svg:viewBox CDATA #REQUIRED">
+<!ENTITY % draw-style-name "draw:style-name %styleName; #IMPLIED presentation:style-name %styleName; #IMPLIED draw:text-style-name %styleName; #IMPLIED">
+<!ENTITY % draw-shape-id "CDATA #IMPLIED" >
+<!ENTITY % draw-text "(text:p|text:unordered-list|text:ordered-list)*">
+<!ENTITY % zindex "draw:z-index %nonNegativeInteger; #IMPLIED">
+<!ENTITY % distance "CDATA">
+<!ENTITY % rectanglePoint "(top-left|top|top-right|left|center|right|bottom-left|bottom|bottom-right)">
+<!ENTITY % vector3D "CDATA">
+<!ENTITY % text-anchor "text:anchor-type %anchorType; #IMPLIED text:anchor-page-number %positiveInteger; #IMPLIED">
+<!ENTITY % layerName "CDATA">
+<!ENTITY % table-background "table:table-background (true | false) #IMPLIED">
+
+<!-- commont presentation shape attributes -->
+<!ENTITY % presentation-style-name "presentation:style-name %styleName; #IMPLIED">
+<!ENTITY % presentation-classes "(title|outline|subtitle|text|graphic|object|chart|table|orgchart|page|notes)" >
+<!-- ENTITY % presentation-class "presentation:class %presentation-classes; #IMPLIED" -->
+<!ENTITY % presentation-class "presentation:class %presentation-classes; #IMPLIED presentation:placeholder (true|false) #IMPLIED presentation:user-transformed (true|false) #IMPLIED">
+<!ENTITY % presentationEffects "(none|fade|move|stripes|open|close|dissolve|wavyline|random|lines|laser|appear|hide|move-short|checkerboard|rotate|stretch)" >
+<!ENTITY % presentationEffectDirections "(none|from-left|from-top|from-right|from-bottom|from-center|from-upper-left|from-upper-right|from-lower-left|from-lower-right|to-left|to-top|to-right|to-bottom|to-upper-left|to-upper-right|to-lower-right|to-lower-left|path|spiral-inward-left|spiral-inward-right|spiral-outward-left|spiral-outward-right|vertical|horizontal|to-center|clockwise|counter-clockwise)" >
+<!ENTITY % presentationSpeeds "(slow|medium|fast)" >
+
+<!-- Drawing shapes -->
+<!ELEMENT draw:rect ( office:events?, %draw-text; )>
+<!ATTLIST draw:rect %draw-position; >
+<!ATTLIST draw:rect %draw-end-position; >
+<!ATTLIST draw:rect %table-background; >
+<!ATTLIST draw:rect %draw-size; >
+<!ATTLIST draw:rect %draw-style-name; >
+<!ATTLIST draw:rect %draw-transform; >
+<!ATTLIST draw:rect draw:corner-radius %nonNegativeLength; #IMPLIED>
+<!ATTLIST draw:rect %zindex;>
+<!ATTLIST draw:rect draw:id %draw-shape-id;>
+<!ATTLIST draw:rect %text-anchor;>
+<!ATTLIST draw:rect draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:line ( office:events?, %draw-text; )>
+<!ATTLIST draw:line svg:x1 %length; #IMPLIED>
+<!ATTLIST draw:line svg:y1 %length; #IMPLIED>
+<!ATTLIST draw:line svg:x2 %length; #REQUIRED>
+<!ATTLIST draw:line svg:y2 %length; #REQUIRED>
+<!ATTLIST draw:line svg:y %coordinate; #IMPLIED>
+<!ATTLIST draw:line %draw-style-name; >
+<!ATTLIST draw:line %draw-transform; >
+<!ATTLIST draw:line %zindex;>
+<!ATTLIST draw:line %draw-end-position; >
+<!ATTLIST draw:line %table-background; >
+<!ATTLIST draw:line draw:id %draw-shape-id;>
+<!ATTLIST draw:line %text-anchor;>
+<!ATTLIST draw:line draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:polyline ( office:events?, %draw-text; )>
+<!ATTLIST draw:polyline %draw-position; >
+<!ATTLIST draw:polyline %draw-size; >
+<!ATTLIST draw:polyline %draw-viewbox; >
+<!ATTLIST draw:polyline draw:points %points; #REQUIRED>
+<!ATTLIST draw:polyline %draw-style-name; >
+<!ATTLIST draw:polyline %draw-transform; >
+<!ATTLIST draw:polyline %zindex;>
+<!ATTLIST draw:polyline %draw-end-position; >
+<!ATTLIST draw:polyline %table-background; >
+<!ATTLIST draw:polyline draw:id %draw-shape-id;>
+<!ATTLIST draw:polyline %text-anchor;>
+<!ATTLIST draw:polyline draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:polygon ( office:events?, %draw-text; )>
+<!ATTLIST draw:polygon %draw-position; >
+<!ATTLIST draw:polygon %draw-end-position; >
+<!ATTLIST draw:polygon %table-background; >
+<!ATTLIST draw:polygon %draw-size; >
+<!ATTLIST draw:polygon %draw-viewbox; >
+<!ATTLIST draw:polygon draw:points %points; #REQUIRED >
+<!ATTLIST draw:polygon %draw-style-name; >
+<!ATTLIST draw:polygon %draw-transform; >
+<!ATTLIST draw:polygon %zindex;>
+<!ATTLIST draw:polygon draw:id %draw-shape-id;>
+<!ATTLIST draw:polygon %text-anchor;>
+<!ATTLIST draw:polygon draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:path ( office:events?, %draw-text; )>
+<!ATTLIST draw:path %draw-position;>
+<!ATTLIST draw:path %draw-end-position; >
+<!ATTLIST draw:path %table-background; >
+<!ATTLIST draw:path %draw-size; >
+<!ATTLIST draw:path %draw-viewbox; >
+<!ATTLIST draw:path svg:d %pathData; #REQUIRED >
+<!ATTLIST draw:path %draw-style-name; >
+<!ATTLIST draw:path %draw-transform; >
+<!ATTLIST draw:path %zindex;>
+<!ATTLIST draw:path draw:id %draw-shape-id;>
+<!ATTLIST draw:path %text-anchor;>
+<!ATTLIST draw:path draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:circle ( office:events?, %draw-text; )>
+<!ATTLIST draw:circle %draw-position; >
+<!ATTLIST draw:circle %draw-size; >
+<!ATTLIST draw:circle %draw-style-name; >
+<!ATTLIST draw:circle %draw-transform; >
+<!ATTLIST draw:circle %zindex;>
+<!ATTLIST draw:circle %draw-end-position; >
+<!ATTLIST draw:circle %table-background; >
+<!ATTLIST draw:circle draw:id %draw-shape-id;>
+<!ATTLIST draw:circle draw:kind (full|section|cut|arc) "full">
+<!ATTLIST draw:circle draw:start-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST draw:circle draw:end-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST draw:circle %text-anchor;>
+<!ATTLIST draw:circle draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:ellipse ( office:events?, %draw-text; )>
+<!ATTLIST draw:ellipse %draw-position; >
+<!ATTLIST draw:ellipse %draw-size; >
+<!ATTLIST draw:ellipse %draw-style-name; >
+<!ATTLIST draw:ellipse %draw-transform; >
+<!ATTLIST draw:ellipse %zindex;>
+<!ATTLIST draw:ellipse %draw-end-position; >
+<!ATTLIST draw:ellipse %table-background; >
+<!ATTLIST draw:ellipse draw:id %draw-shape-id;>
+<!ATTLIST draw:ellipse draw:kind (full|section|cut|arc) "full">
+<!ATTLIST draw:ellipse draw:start-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST draw:ellipse draw:end-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST draw:ellipse  %text-anchor;>
+<!ATTLIST draw:ellipse draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:connector ( office:events?, %draw-text;)>
+<!ATTLIST draw:connector draw:type (standard|lines|line|curve) "standard">
+<!ATTLIST draw:connector draw:line-skew CDATA #IMPLIED>
+<!ATTLIST draw:connector %draw-style-name;>
+<!ATTLIST draw:connector svg:x1 %coordinate; #REQUIRED>
+<!ATTLIST draw:connector svg:y1 %coordinate; #REQUIRED>
+<!ATTLIST draw:connector svg:x2 %coordinate; #REQUIRED>
+<!ATTLIST draw:connector svg:y2 %coordinate; #REQUIRED>
+<!ATTLIST draw:connector draw:start-shape %draw-shape-id;>
+<!ATTLIST draw:connector draw:start-glue-point %integer; #IMPLIED>
+<!ATTLIST draw:connector draw:end-shape %draw-shape-id;>
+<!ATTLIST draw:connector draw:end-glue-point %integer; #IMPLIED>
+<!ATTLIST draw:connector %zindex;>
+<!ATTLIST draw:connector %draw-end-position; >
+<!ATTLIST draw:connector %table-background; >
+<!ATTLIST draw:connector draw:id %draw-shape-id;>
+<!ATTLIST draw:connector %text-anchor;>
+<!ATTLIST draw:connector draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:control EMPTY>
+<!ATTLIST draw:control %draw-style-name;>
+<!ATTLIST draw:control %draw-position; >
+<!ATTLIST draw:control %draw-size; >
+<!ATTLIST draw:control %control-id; >
+<!ATTLIST draw:control %zindex;>
+<!ATTLIST draw:control %draw-end-position; >
+<!ATTLIST draw:control %table-background; >
+<!ATTLIST draw:control draw:id %draw-shape-id;>
+<!ATTLIST draw:control %text-anchor;>
+<!ATTLIST draw:control draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:g ( office:events?, (%shapes;)* ) >
+<!ATTLIST draw:g svg:y %coordinate; #IMPLIED>
+<!ATTLIST draw:g %draw-transform; >
+<!ATTLIST draw:g draw:name %string; #IMPLIED>
+<!ATTLIST draw:g %draw-style-name; >
+<!ATTLIST draw:g %zindex;>
+<!ATTLIST draw:g %draw-end-position; >
+<!ATTLIST draw:g %table-background; >
+<!ATTLIST draw:g draw:id %draw-shape-id;>
+<!ATTLIST draw:g %text-anchor;>
+<!ATTLIST draw:g draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:page-thumbnail EMPTY>
+<!ATTLIST draw:page-thumbnail draw:page-number %positiveInteger; #IMPLIED>
+<!ATTLIST draw:page-thumbnail %draw-position; >
+<!ATTLIST draw:page-thumbnail %draw-size; >
+<!ATTLIST draw:page-thumbnail %draw-style-name; >
+<!ATTLIST draw:page-thumbnail %presentation-class; >
+<!ATTLIST draw:page-thumbnail %zindex;>
+<!ATTLIST draw:page-thumbnail %draw-end-position; >
+<!ATTLIST draw:page-thumbnail %table-background; >
+<!ATTLIST draw:page-thumbnail draw:id %draw-shape-id;>
+<!ATTLIST draw:page-thumbnail %text-anchor;>
+<!ATTLIST draw:page-thumbnail draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT draw:caption ( office:events?, %draw-text;)>
+<!ATTLIST draw:caption %draw-position; >
+<!ATTLIST draw:caption %draw-end-position; >
+<!ATTLIST draw:caption %table-background; >
+<!ATTLIST draw:caption %draw-size; >
+<!ATTLIST draw:caption %draw-style-name; >
+<!ATTLIST draw:caption %draw-transform; >
+<!ATTLIST draw:caption draw:caption-point-x %coordinate; #IMPLIED>
+<!ATTLIST draw:caption draw:caption-point-y %coordinate; #IMPLIED>
+<!ATTLIST draw:caption %zindex;>
+<!ATTLIST draw:caption draw:id %draw-shape-id;>
+<!ATTLIST draw:caption  %text-anchor;>
+<!ATTLIST draw:caption draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:caption draw:corner-radius %nonNegativeLength; #IMPLIED>
+
+<!ELEMENT draw:measure ( office:events?, %draw-text;)>
+<!ATTLIST draw:measure svg:x1 %coordinate; #REQUIRED>
+<!ATTLIST draw:measure svg:y1 %coordinate; #REQUIRED>
+<!ATTLIST draw:measure svg:x2 %coordinate; #REQUIRED>
+<!ATTLIST draw:measure svg:y2 %coordinate; #REQUIRED>
+<!ATTLIST draw:measure %draw-end-position; >
+<!ATTLIST draw:measure %table-background; >
+<!ATTLIST draw:measure %draw-style-name; >
+<!ATTLIST draw:measure %draw-transform; >
+<!ATTLIST draw:measure %zindex;>
+<!ATTLIST draw:measure draw:id %draw-shape-id;>
+<!ATTLIST draw:measure %text-anchor;>
+<!ATTLIST draw:measure draw:layer %layerName; #IMPLIED>
+
+<!-- graphic style elements -->
+<!ELEMENT draw:gradient EMPTY >
+<!ATTLIST draw:gradient draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:gradient draw:style %gradient-style; #REQUIRED>
+<!ATTLIST draw:gradient draw:cx %coordinate; #IMPLIED>
+<!ATTLIST draw:gradient draw:cy %coordinate; #IMPLIED>
+<!ATTLIST draw:gradient draw:start-color %color; #IMPLIED>
+<!ATTLIST draw:gradient draw:end-color %color; #IMPLIED>
+<!ATTLIST draw:gradient draw:start-intensity %percentage; #IMPLIED>
+<!ATTLIST draw:gradient draw:end-intensity %percentage; #IMPLIED>
+<!ATTLIST draw:gradient draw:angle %integer; #IMPLIED>
+<!ATTLIST draw:gradient draw:border %percentage; #IMPLIED>
+
+<!ELEMENT draw:hatch EMPTY >
+<!ATTLIST draw:hatch draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:hatch draw:style (single|double|triple) #REQUIRED >
+<!ATTLIST draw:hatch draw:color %color; #IMPLIED>
+<!ATTLIST draw:hatch draw:distance %length; #IMPLIED>
+<!ATTLIST draw:hatch draw:rotation %integer; #IMPLIED>
+
+
+<!ELEMENT draw:fill-image EMPTY >
+<!ATTLIST draw:fill-image draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:fill-image xlink:href %uriReference; #REQUIRED>
+<!ATTLIST draw:fill-image xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:fill-image xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:fill-image xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:fill-image svg:width %length; #IMPLIED>
+<!ATTLIST draw:fill-image svg:height %length; #IMPLIED>
+
+<!ELEMENT draw:transparency EMPTY>
+<!ATTLIST draw:transparency draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:transparency draw:style %gradient-style; #REQUIRED>
+<!ATTLIST draw:transparency draw:cx %coordinate; #IMPLIED>
+<!ATTLIST draw:transparency draw:cy %coordinate; #IMPLIED>
+<!ATTLIST draw:transparency draw:start %percentage; #IMPLIED>
+<!ATTLIST draw:transparency draw:end %percentage; #IMPLIED>
+<!ATTLIST draw:transparency draw:angle %integer; #IMPLIED>
+<!ATTLIST draw:transparency draw:border %percentage; #IMPLIED>
+
+<!ELEMENT draw:marker EMPTY>
+<!ATTLIST draw:marker draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:marker %draw-viewbox; >
+<!ATTLIST draw:marker svg:d %pathData; #REQUIRED>
+
+<!ELEMENT draw:stroke-dash EMPTY>
+<!ATTLIST draw:stroke-dash draw:name %styleName; #REQUIRED>
+<!ATTLIST draw:stroke-dash draw:style (rect|round) #IMPLIED>
+<!ATTLIST draw:stroke-dash draw:dots1 %integer; #IMPLIED>
+<!ATTLIST draw:stroke-dash draw:dots1-length %length; #IMPLIED>
+<!ATTLIST draw:stroke-dash draw:dots2 %integer; #IMPLIED>
+<!ATTLIST draw:stroke-dash draw:dots2-length %length; #IMPLIED>
+<!ATTLIST draw:stroke-dash draw:distance %length; #IMPLIED>
+
+<!-- stroke attributes -->
+<!ATTLIST style:properties draw:stroke (none|dash|solid) #IMPLIED>
+<!ATTLIST style:properties draw:stroke-dash CDATA #IMPLIED>
+<!ATTLIST style:properties svg:stroke-width %length; #IMPLIED>
+<!ATTLIST style:properties svg:stroke-color %color; #IMPLIED>
+<!ATTLIST style:properties draw:marker-start %styleName; #IMPLIED>
+<!ATTLIST style:properties draw:marker-end %styleName; #IMPLIED>
+<!ATTLIST style:properties draw:marker-start-width %length; #IMPLIED>
+<!ATTLIST style:properties draw:marker-end-width %length; #IMPLIED>
+<!ATTLIST style:properties draw:marker-start-center %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:marker-end-center %boolean; #IMPLIED>
+<!ATTLIST style:properties svg:stroke-opacity %floatOrPercentage; #IMPLIED>
+<!ATTLIST style:properties svg:stroke-linejoin (miter|round|bevel|middle|none|inherit) #IMPLIED>
+
+<!-- text attributes -->
+<!ATTLIST style:properties draw:auto-grow-width %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:auto-grow-height %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fit-to-size %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fit-to-contour %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:textarea-horizontal-align ( left | center | right | justify ) #IMPLIED>
+<!ATTLIST style:properties draw:textarea-vertical-align ( top | middle | bottom | justify ) #IMPLIED>
+<!ATTLIST style:properties draw:writing-mode (lr-tb|tb-rl) "lr-tb">
+
+<!-- fill attributes -->
+<!ATTLIST style:properties draw:fill (none|solid|bitmap|gradient|hatch) #IMPLIED>
+<!ATTLIST style:properties draw:fill-color %color; #IMPLIED>
+<!ATTLIST style:properties draw:fill-gradient-name %styleName; #IMPLIED>
+<!ATTLIST style:properties draw:gradient-step-count CDATA #IMPLIED>
+<!ATTLIST style:properties draw:fill-hatch-name %styleName; #IMPLIED>
+<!ATTLIST style:properties draw:fill-hatch-solid %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-name %styleName; #IMPLIED>
+<!ATTLIST style:properties style:repeat (no-repeat|repeat|stretch) #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-ref-point-x %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-ref-point-y %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:fill-image-ref-point %rectanglePoint; #IMPLIED>
+<!ATTLIST style:properties draw:tile-repeat-offset CDATA #IMPLIED>
+<!ATTLIST style:properties draw:transparency %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:transparency-name %styleName; #IMPLIED>
+
+<!-- graphic attributes -->
+<!ATTLIST style:properties draw:color-mode (greyscale|mono|watermark|standard) #IMPLIED>
+<!ATTLIST style:properties draw:luminance %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:contrast %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:gamma %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:red %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:green %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:blue %percentage; #IMPLIED>
+<!ATTLIST style:properties draw:color-inversion %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:mirror %boolean; #IMPLIED>
+
+<!-- shadow attributes -->
+<!ATTLIST style:properties draw:shadow (visible|hidden) #IMPLIED>
+<!ATTLIST style:properties draw:shadow-offset-x %length; #IMPLIED>
+<!ATTLIST style:properties draw:shadow-offset-y %length; #IMPLIED>
+<!ATTLIST style:properties draw:shadow-color %color; #IMPLIED>
+<!ATTLIST style:properties draw:shadow-transparency CDATA #IMPLIED>
+
+<!-- connector attributes -->
+<!ATTLIST style:properties draw:start-line-spacing-horizontal %distance; #IMPLIED>
+<!ATTLIST style:properties draw:start-line-spacing-vertical %distance; #IMPLIED>
+<!ATTLIST style:properties draw:end-line-spacing-horizontal %distance; #IMPLIED>
+<!ATTLIST style:properties draw:end-line-spacing-vertical %distance; #IMPLIED>
+
+<!-- measure attributes -->
+<!ATTLIST style:properties draw:line-distance %distance; #IMPLIED>
+<!ATTLIST style:properties draw:guide-overhang %distance; #IMPLIED>
+<!ATTLIST style:properties draw:guide-distance %distance; #IMPLIED>
+<!ATTLIST style:properties draw:start-guide %distance; #IMPLIED>
+<!ATTLIST style:properties draw:end-guide %distance; #IMPLIED>
+<!ATTLIST style:properties draw:measure-align (automatic|left-outside|inside|right-outside) #IMPLIED>
+<!ATTLIST style:properties draw:measure-vertical-align (automatic|above|below|center) #IMPLIED>
+<!ATTLIST style:properties draw:unit (automatic|mm|cm|m|km|pt|pc|inch|ft|mi) #IMPLIED>
+<!ATTLIST style:properties draw:show-unit %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:placing (below|above) #IMPLIED>
+<!ATTLIST style:properties draw:parallel %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:decimal-places %nonNegativeLength; #IMPLIED>
+
+<!-- frame attributes -->
+<!ATTLIST style:properties draw:frame-display-scrollbar %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:frame-display-border %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:frame-margin-horizontal %nonNegativePixelLength; #IMPLIED>
+<!ATTLIST style:properties draw:frame-margin-vertical %nonNegativePixelLength; #IMPLIED>
+<!ATTLIST style:properties draw:size-protect %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:move-protect %boolean; #IMPLIED>
+
+<!-- ole object attributes -->
+<!ATTLIST style:properties draw:visible-area-left %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties draw:visible-area-top %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties draw:visible-area-width %positiveLength; #IMPLIED>
+<!ATTLIST style:properties draw:visible-area-height %positiveLength; #IMPLIED>
+
+<!-- fontwork attributes -->
+<!ATTLIST style:properties draw:fontwork-style (rotate|upright|slant-x|slant-y|none) #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-adjust (left|right|autosize|center) #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-distance %distance; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-start %distance; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-mirror %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-outline %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-shadow (normal|slant|none) #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-shadow-color %color; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-shadow-offset-x %distance; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-shadow-offset-y %distance; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-form (none|top-circle|bottom-circle|left-circle|right-circle|top-arc|bottom-arc|left-arc|right-arc|button1|button2|button3|button4) #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-hide-form %boolean; #IMPLIED>
+<!ATTLIST style:properties draw:fontwork-shadow-transparence %percentage; #IMPLIED>
+
+<!-- caption attributes -->
+<!ATTLIST style:properties draw:caption-type (straight-line|angled-line|angled-connector-line) #IMPLIED>
+<!ATTLIST style:properties draw:caption-angle-type (fixed|free) #IMPLIED>
+<!ATTLIST style:properties draw:caption-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties draw:caption-gap %distance; #IMPLIED>
+<!ATTLIST style:properties draw:caption-escape-direction (horizontal|vertical|auto) #IMPLIED>
+<!ATTLIST style:properties draw:caption-escape %lengthOrPercentage; #IMPLIED>
+<!ATTLIST style:properties draw:caption-line-length %distance; #IMPLIED>
+<!ATTLIST style:properties draw:caption-fit-line-length %boolean; #IMPLIED>
+
+<!-- Animations -->
+<!ELEMENT presentation:sound EMPTY>
+<!ATTLIST presentation:sound xlink:href %uriReference; #REQUIRED>
+<!ATTLIST presentation:sound xlink:type (simple) #FIXED "simple">
+<!ATTLIST presentation:sound xlink:show (new|replace) #IMPLIED>
+<!ATTLIST presentation:sound xlink:actuate (onRequest) "onRequest">
+<!ATTLIST presentation:sound presentation:play-full %boolean; #IMPLIED>
+
+<!ELEMENT presentation:show-shape (presentation:sound)?>
+<!ATTLIST presentation:show-shape draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:show-shape presentation:effect %presentationEffects; "none">
+<!ATTLIST presentation:show-shape presentation:direction %presentationEffectDirections; "none">
+<!ATTLIST presentation:show-shape presentation:speed %presentationSpeeds; "medium">
+<!ATTLIST presentation:show-shape presentation:start-scale %percentage; "100%">
+<!ATTLIST presentation:show-shape presentation:path-id CDATA #IMPLIED >
+
+<!ELEMENT presentation:show-text (presentation:sound)?>
+<!ATTLIST presentation:show-text draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:show-text presentation:effect %presentationEffects; "none">
+<!ATTLIST presentation:show-text presentation:direction %presentationEffectDirections; "none">
+<!ATTLIST presentation:show-text presentation:speed %presentationSpeeds; "medium">
+<!ATTLIST presentation:show-text presentation:start-scale %percentage; "100%">
+<!ATTLIST presentation:show-text presentation:path-id CDATA #IMPLIED >
+
+<!ELEMENT presentation:hide-shape (presentation:sound)?>
+<!ATTLIST presentation:hide-shape draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:hide-shape presentation:effect %presentationEffects; "none">
+<!ATTLIST presentation:hide-shape presentation:direction %presentationEffectDirections; "none">
+<!ATTLIST presentation:hide-shape presentation:speed %presentationSpeeds; "medium">
+<!ATTLIST presentation:hide-shape presentation:start-scale %percentage; "100%">
+<!ATTLIST presentation:hide-shape presentation:path-id CDATA #IMPLIED >
+
+<!ELEMENT presentation:hide-text (presentation:sound)?>
+<!ATTLIST presentation:hide-text draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:hide-text presentation:effect %presentationEffects; "none">
+<!ATTLIST presentation:hide-text presentation:direction %presentationEffectDirections; "none">
+<!ATTLIST presentation:hide-text presentation:speed %presentationSpeeds; "medium">
+<!ATTLIST presentation:hide-text presentation:start-scale %percentage; "100%">
+<!ATTLIST presentation:hide-text presentation:path-id CDATA #IMPLIED >
+
+<!ELEMENT presentation:dim (presentation:sound)?>
+<!ATTLIST presentation:dim draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:dim draw:color %color; #REQUIRED>
+
+<!ELEMENT presentation:play EMPTY>
+<!ATTLIST presentation:play draw:shape-id CDATA #REQUIRED>
+<!ATTLIST presentation:play presentation:speed %presentationSpeeds; "medium">
+
+<!ELEMENT presentation:animations (presentation:show-shape|presentation:show-text|presentation:hide-shape|presentation:hide-text|presentation:dim|presentation:play)*>
+
+<!ELEMENT presentation:show EMPTY>
+<!ATTLIST presentation:show presentation:name %styleName; #REQUIRED>
+<!ATTLIST presentation:show presentation:pages CDATA #REQUIRED>
+
+<!ELEMENT presentation:settings (presentation:show)*>
+<!ATTLIST presentation:settings presentation:start-page %styleName; #IMPLIED>
+<!ATTLIST presentation:settings presentation:show %styleName; #IMPLIED>
+<!ATTLIST presentation:settings presentation:full-screen %boolean; "true">
+<!ATTLIST presentation:settings presentation:endless %boolean; "false">
+<!ATTLIST presentation:settings presentation:pause %timeDuration; #IMPLIED>
+<!ATTLIST presentation:settings presentation:show-logo %boolean; "false">
+<!ATTLIST presentation:settings presentation:force-manual %boolean; "false">
+<!ATTLIST presentation:settings presentation:mouse-visible %boolean; "true">
+<!ATTLIST presentation:settings presentation:mouse-as-pen %boolean; "false">
+<!ATTLIST presentation:settings presentation:start-with-navigator %boolean; "false">
+<!ATTLIST presentation:settings presentation:animations (enabled|disabled) "enabled">
+<!ATTLIST presentation:settings presentation:stay-on-top %boolean; "false">
+<!ATTLIST presentation:settings presentation:transition-on-click (enabled|disabled) "enabled">
+
+<!-- Drawing page -->
+<!ELEMENT draw:page (office:forms?,(%shapes;)*,presentation:animations?,presentation:notes?)>
+<!ATTLIST draw:page draw:name %string; #IMPLIED>
+<!ATTLIST draw:page draw:style-name %styleName; #IMPLIED>
+<!ATTLIST draw:page draw:master-page-name %styleName; #REQUIRED>
+<!ATTLIST draw:page presentation:presentation-page-layout-name %styleName; #IMPLIED>
+<!ATTLIST draw:page draw:id %nonNegativeInteger; #IMPLIED>
+<!ATTLIST draw:page xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:page xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:page xlink:show (replace) #IMPLIED>
+<!ATTLIST draw:page xlink:actuate (onRequest) #IMPLIED>
+
+<!-- Presentation notes -->
+<!ELEMENT presentation:notes (%shapes;)*>
+<!ATTLIST presentation:notes style:page-master-name %styleName; #IMPLIED>
+
+<!-- presentation page layouts -->
+<!ELEMENT style:presentation-page-layout (presentation:placeholder)* >
+<!ATTLIST style:presentation-page-layout style:name %styleName; #REQUIRED>
+<!ELEMENT presentation:placeholder EMPTY >
+<!ATTLIST presentation:placeholder presentation:object (title|outline|subtitle|text|graphic|object|chart|orgchart|page|notes|handout) #REQUIRED>
+<!ATTLIST presentation:placeholder svg:x %coordinateOrPercentage; #REQUIRED>
+<!ATTLIST presentation:placeholder svg:y %coordinateOrPercentage; #REQUIRED>
+<!ATTLIST presentation:placeholder svg:width %lengthOrPercentage; #REQUIRED>
+<!ATTLIST presentation:placeholder svg:height %lengthOrPercentage; #REQUIRED>
+
+<!-- presentation page attributes -->
+<!ATTLIST style:properties presentation:transition-type (manual|automatic|semi-automatic) #IMPLIED >
+<!ATTLIST style:properties presentation:transition-style (none|fade-from-left|fade-from-top|fade-from-right|fade-from-bottom|fade-to-center|fade-from-center|move-from-left|move-from-top|move-from-right|move-from-bottom|roll-from-top|roll-from-left|roll-from-right|roll-from-bottom|vertical-stripes|horizontal-stripes|clockwise|counterclockwise|fade-from-upperleft|fade-from-upperright|fade-from-lowerleft|fade-from-lowerright|close-vertical|close-horizontal|open-vertical|open-horizontal|spiralin-left|spiralin-right|spiralout-left|spiralout-right|dissolve|wavyline-from-left|wavyline-from-top|wavyline-from-right|wavyline-from-bottom|random|stretch-from-left|stretch-from-top|stretch-from-right|stretch-from-bottom|vertical-lines|horizontal-lines) #IMPLIED >
+<!ATTLIST style:properties presentation:transition-speed %presentationSpeeds; #IMPLIED >
+<!ATTLIST style:properties presentation:duration %timeDuration; #IMPLIED>
+<!ATTLIST style:properties presentation:visibility (visible|hidden) #IMPLIED>
+<!ATTLIST style:properties draw:background-size (full|border) #IMPLIED>
+<!ATTLIST style:properties presentation:background-objects-visible %boolean; #IMPLIED>
+<!ATTLIST style:properties presentation:background-visible %boolean; #IMPLIED>
+
+
+<!-- text boxes -->
+<!ELEMENT draw:text-box (office:events?,draw:image-map?,
+		%sectionText;)>
+<!ATTLIST draw:text-box %draw-style-name;>
+<!ATTLIST draw:text-box %draw-transform; >
+<!ATTLIST draw:text-box draw:name %string; #IMPLIED>
+<!ATTLIST draw:text-box draw:chain-next-name %string; #IMPLIED>
+
+<!ATTLIST draw:text-box %text-anchor;>
+<!ATTLIST draw:text-box %draw-position;>
+<!ATTLIST draw:text-box %draw-end-position; >
+<!ATTLIST draw:text-box %table-background; >
+<!ATTLIST draw:text-box svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:text-box svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:text-box style:rel-width %percentage; #IMPLIED>
+<!ATTLIST draw:text-box style:rel-height %percentage; #IMPLIED>
+<!ATTLIST draw:text-box fo:min-height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:text-box %zindex;>
+<!ATTLIST draw:text-box %presentation-class; >
+<!ATTLIST draw:text-box draw:id %draw-shape-id;>
+<!ATTLIST draw:text-box draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:text-box draw:corner-radius %nonNegativeLength; #IMPLIED>
+
+<!-- image -->
+<!ELEMENT draw:image (office:binary-data?,office:events?,draw:image-map?,svg:desc?,(draw:contour-polygon|draw:contour-path)?)>
+<!ATTLIST draw:image %draw-transform; >
+<!ATTLIST draw:image %draw-style-name;>
+<!ATTLIST draw:image draw:name %string; #IMPLIED>
+<!ATTLIST draw:image xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:image xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:image xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:image xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:image draw:filter-name %string; #IMPLIED>
+<!ATTLIST draw:image %text-anchor;>
+<!ATTLIST draw:image %draw-position;>
+<!ATTLIST draw:image %draw-end-position; >
+<!ATTLIST draw:image %table-background; >
+<!ATTLIST draw:image svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:image svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:image %presentation-class; >
+<!ATTLIST draw:image %zindex;>
+<!ATTLIST draw:image draw:id %draw-shape-id;>
+<!ATTLIST draw:image draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:image style:rel-width %percentage; #IMPLIED>
+<!ATTLIST draw:image style:rel-height %percentage; #IMPLIED>
+
+<!-- objects -->
+<!ELEMENT draw:thumbnail EMPTY>
+<!ATTLIST draw:thumbnail xlink:href %uriReference; #REQUIRED>
+<!ATTLIST draw:thumbnail xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:thumbnail xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:thumbnail xlink:actuate (onLoad) #IMPLIED>
+
+<!ELEMENT math:math ANY> <!-- dummy (we have no MathML DTD currently)-->
+<!ELEMENT draw:object (draw:thumbnail?,(office:document|math:math)?,office:events?, draw:image-map?, svg:desc?,(draw:contour-polygon|draw:contour-path)?)>
+<!ATTLIST draw:object %draw-style-name;>
+<!ATTLIST draw:object draw:name %string; #IMPLIED>
+<!ATTLIST draw:object xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:object xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:object xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:object xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:object %text-anchor;>
+<!ATTLIST draw:object %draw-position;>
+<!ATTLIST draw:object %draw-end-position; >
+<!ATTLIST draw:object %table-background; >
+<!ATTLIST draw:object svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:object svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:object %presentation-class; >
+<!ATTLIST draw:object %zindex;>
+<!ATTLIST draw:object draw:id %draw-shape-id;>
+<!ATTLIST draw:object draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:object draw:notify-on-update-of-ranges %string; #IMPLIED>
+<!ATTLIST draw:object style:rel-width %percentage; #IMPLIED>
+<!ATTLIST draw:object style:rel-height %percentage; #IMPLIED>
+
+<!ELEMENT draw:object-ole (office:binary-data?|office:events?|draw:image-map?|svg:desc?|draw:contour-polygon?|draw:contour-path?|draw:thumbnail?)>
+<!ATTLIST draw:object-ole draw:class-id CDATA #IMPLIED>
+<!ATTLIST draw:object-ole %draw-style-name;>
+<!ATTLIST draw:object-ole draw:name %string; #IMPLIED>
+<!ATTLIST draw:object-ole xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:object-ole xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:object-ole xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:object-ole xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:object-ole %text-anchor;>
+<!ATTLIST draw:object-ole %draw-position;>
+<!ATTLIST draw:object-ole %draw-end-position; >
+<!ATTLIST draw:object-ole %table-background; >
+<!ATTLIST draw:object-ole svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:object-ole svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:object-ole %presentation-class; >
+<!ATTLIST draw:object-ole %zindex;>
+<!ATTLIST draw:object-ole draw:id %draw-shape-id;>
+<!ATTLIST draw:object-ole draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:object-ole style:rel-width %percentage; #IMPLIED>
+<!ATTLIST draw:object-ole style:rel-height %percentage; #IMPLIED>
+
+<!ELEMENT svg:desc (#PCDATA)>
+
+<!ELEMENT draw:contour-polygon EMPTY>
+<!ATTLIST draw:contour-polygon svg:width %coordinate; #REQUIRED>
+<!ATTLIST draw:contour-polygon svg:height %coordinate; #REQUIRED>
+<!ATTLIST draw:contour-polygon %draw-viewbox;>
+<!ATTLIST draw:contour-polygon draw:points %points; #REQUIRED>
+<!ATTLIST draw:contour-polygon draw:recreate-on-edit %boolean; #IMPLIED>
+
+<!ELEMENT draw:contour-path EMPTY>
+<!ATTLIST draw:contour-path svg:width %coordinate; #REQUIRED>
+<!ATTLIST draw:contour-path svg:height %coordinate; #REQUIRED>
+<!ATTLIST draw:contour-path %draw-viewbox;>
+<!ATTLIST draw:contour-path svg:d %pathData; #REQUIRED>
+<!ATTLIST draw:contour-path draw:recreate-on-edit %boolean; #IMPLIED>
+
+<!-- hyperlink -->
+<!ELEMENT draw:a (draw:image|draw:text-box)>
+<!ATTLIST draw:a xlink:href %uriReference; #REQUIRED>
+<!ATTLIST draw:a xlink:type (simple) #FIXED "simple">
+<!ATTLIST draw:a xlink:show (new|replace) #IMPLIED>
+<!ATTLIST draw:a xlink:actuate (onRequest) "onRequest">
+<!ATTLIST draw:a office:name %string; #IMPLIED>
+<!ATTLIST draw:a office:target-frame-name %string; #IMPLIED>
+<!ATTLIST draw:a office:server-map %boolean; "false">
+
+<!-- 3d properties -->
+<!ATTLIST style:properties dr3d:horizontal-segments %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties dr3d:vertical-segments %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties dr3d:edge-rounding %percentage; #IMPLIED>
+<!ATTLIST style:properties dr3d:edge-rounding-mode (correct|attractive) #IMPLIED>
+<!ATTLIST style:properties dr3d:back-scale %percentage; #IMPLIED>
+<!ATTLIST style:properties dr3d:end-angle %nonNegativeInteger; #IMPLIED>
+<!ATTLIST style:properties dr3d:depth %length; #IMPLIED>
+<!ATTLIST style:properties dr3d:backface-culling (enabled|disabled) #IMPLIED>
+<!ATTLIST style:properties dr3d:lighting-mode (standard|double-sided) #IMPLIED>
+<!ATTLIST style:properties dr3d:normals-kind (object|flat|sphere) #IMPLIED>
+<!ATTLIST style:properties dr3d:normals-direction (normal|inverse) #IMPLIED>
+<!ATTLIST style:properties dr3d:texture-generation-mode-x (object|parallel|sphere) #IMPLIED>
+<!ATTLIST style:properties dr3d:texture-generation-mode-y (object|parallel|sphere) #IMPLIED>
+<!ATTLIST style:properties dr3d:texture-kind (luminance|intesity|color) #IMPLIED>
+<!ATTLIST style:properties dr3d:texture-filter (enabled|disabled) #IMPLIED>
+<!ATTLIST style:properties dr3d:texture-mode (replace|modulate|blend) #IMPLIED>
+<!ATTLIST style:properties dr3d:ambient-color %color; #IMPLIED>
+<!ATTLIST style:properties dr3d:emissive-color %color; #IMPLIED>
+<!ATTLIST style:properties dr3d:specular-color %color; #IMPLIED>
+<!ATTLIST style:properties dr3d:diffuse-color %color; #IMPLIED>
+<!ATTLIST style:properties dr3d:shininess %percentage; #IMPLIED>
+<!ATTLIST style:properties dr3d:shadow (visible|hidden) #IMPLIED>
+
+<!ELEMENT dr3d:light EMPTY>
+<!ATTLIST dr3d:light dr3d:diffuse-color %color; #IMPLIED>
+<!ATTLIST dr3d:light dr3d:direction %vector3D; #REQUIRED>
+<!ATTLIST dr3d:light dr3d:enabled %boolean; #IMPLIED>
+<!ATTLIST dr3d:light dr3d:specular %boolean; #IMPLIED>
+
+<!ENTITY % shapes3d "(dr3d:scene|dr3d:extrude|dr3d:sphere|dr3d:rotate|dr3d:cube)">
+
+<!ELEMENT dr3d:cube EMPTY>
+<!ATTLIST dr3d:cube dr3d:transform CDATA #IMPLIED>
+<!ATTLIST dr3d:cube dr3d:min-edge %vector3D; #IMPLIED>
+<!ATTLIST dr3d:cube dr3d:max-edge %vector3D; #IMPLIED>
+<!ATTLIST dr3d:cube %zindex;>
+<!ATTLIST dr3d:cube draw:id %draw-shape-id;>
+<!ATTLIST dr3d:cube %draw-end-position; >
+<!ATTLIST dr3d:cube %table-background; >
+<!ATTLIST dr3d:cube %draw-style-name; >
+<!ATTLIST dr3d:cube draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT dr3d:sphere EMPTY>
+<!ATTLIST dr3d:sphere dr3d:transform CDATA #IMPLIED>
+<!ATTLIST dr3d:sphere dr3d:center %vector3D; #IMPLIED>
+<!ATTLIST dr3d:sphere dr3d:size %vector3D; #IMPLIED>
+<!ATTLIST dr3d:sphere %zindex;>
+<!ATTLIST dr3d:sphere draw:id %draw-shape-id;>
+<!ATTLIST dr3d:sphere %draw-end-position; >
+<!ATTLIST dr3d:sphere %table-background; >
+<!ATTLIST dr3d:sphere %draw-style-name; >
+<!ATTLIST dr3d:sphere draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT dr3d:extrude EMPTY>
+<!ATTLIST dr3d:extrude dr3d:transform CDATA #IMPLIED>
+<!ATTLIST dr3d:extrude %draw-viewbox;>
+<!ATTLIST dr3d:extrude svg:d %pathData; #REQUIRED >
+<!ATTLIST dr3d:extrude %zindex;>
+<!ATTLIST dr3d:extrude draw:id %draw-shape-id;>
+<!ATTLIST dr3d:extrude %draw-end-position; >
+<!ATTLIST dr3d:extrude %table-background; >
+<!ATTLIST dr3d:extrude %draw-style-name; >
+<!ATTLIST dr3d:extrude draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT dr3d:rotate EMPTY>
+<!ATTLIST dr3d:rotate dr3d:transform CDATA #IMPLIED>
+<!ATTLIST dr3d:rotate %draw-viewbox;>
+<!ATTLIST dr3d:rotate svg:d %pathData; #REQUIRED >
+<!ATTLIST dr3d:rotate %zindex;>
+<!ATTLIST dr3d:rotate draw:id %draw-shape-id;>
+<!ATTLIST dr3d:rotate %draw-end-position; >
+<!ATTLIST dr3d:rotate %table-background; >
+<!ATTLIST dr3d:rotate %draw-style-name; >
+<!ATTLIST dr3d:rotate draw:layer %layerName; #IMPLIED>
+
+<!ELEMENT dr3d:scene (dr3d:light*,(%shapes3d;)*)>
+<!ATTLIST dr3d:scene %draw-style-name; >
+<!ATTLIST dr3d:scene svg:x %coordinate; #IMPLIED>
+<!ATTLIST dr3d:scene svg:y %coordinate; #IMPLIED>
+<!ATTLIST dr3d:scene svg:width %length; #IMPLIED>
+<!ATTLIST dr3d:scene svg:height %length; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:vrp %vector3D; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:vpn %vector3D; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:vup %vector3D; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:projection (parallel|perspective) #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:transform CDATA #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:distance %length; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:focal-length %length; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:shadow-slant %nonNegativeInteger; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:shade-mode (flat|phong|gouraud|draft) #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:ambient-color %color; #IMPLIED>
+<!ATTLIST dr3d:scene dr3d:lighting-mode %boolean; #IMPLIED>
+<!ATTLIST dr3d:scene %zindex;>
+<!ATTLIST dr3d:scene draw:id %draw-shape-id;>
+<!ATTLIST dr3d:scene %draw-end-position; >
+<!ATTLIST dr3d:scene %table-background; >
+
+<!-- layer -->
+
+<!ELEMENT draw:layer-set (draw:layer*)>
+
+<!ELEMENT draw:layer EMPTY>
+<!ATTLIST draw:layer draw:name %layerName; #REQUIRED>
+
+<!-- events -->
+<!ELEMENT presentation:event (presentation:sound)?>
+<!ATTLIST presentation:event %event-name;>
+<!ATTLIST presentation:event presentation:action (none|previous-page|next-page|first-page|last-page|hide|stop|execute|show|verb|fade-out|sound) #REQUIRED>
+<!ATTLIST presentation:event presentation:effect %presentationEffects; "none">
+<!ATTLIST presentation:event presentation:direction %presentationEffectDirections; "none">
+<!ATTLIST presentation:event presentation:speed %presentationSpeeds; "medium">
+<!ATTLIST presentation:event presentation:start-scale %percentage; "100%">
+<!ATTLIST presentation:event xlink:href %uriReference; #IMPLIED>
+<!ATTLIST presentation:event xlink:type (simple) #IMPLIED>
+<!ATTLIST presentation:event xlink:show (embed) #IMPLIED>
+<!ATTLIST presentation:event xlink:actuate (onRequest) #IMPLIED>
+<!ATTLIST presentation:event presentation:verb %nonNegativeInteger; #IMPLIED>
+
+<!-- applets -->
+<!ELEMENT draw:applet (draw:thumbnail?, draw:param*, svg:desc?)>
+<!ATTLIST draw:applet xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:applet xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:applet xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:applet xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:applet draw:code CDATA #REQUIRED>
+<!ATTLIST draw:applet draw:object CDATA #IMPLIED>
+<!ATTLIST draw:applet draw:archive CDATA #IMPLIED>
+<!ATTLIST draw:applet draw:may-script %boolean; "false">
+<!ATTLIST draw:applet draw:name CDATA #IMPLIED>
+<!ATTLIST draw:applet %draw-style-name;>
+<!ATTLIST draw:applet svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:applet svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:applet %zindex;>
+<!ATTLIST draw:applet draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:applet %draw-position;>
+<!ATTLIST draw:applet %draw-end-position; >
+
+<!-- plugins -->
+<!ELEMENT draw:plugin (draw:thumbnail?, draw:param*, svg:desc?)>
+<!ATTLIST draw:plugin xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:plugin xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:plugin xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:plugin xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:plugin draw:mime-type CDATA #IMPLIED>
+<!ATTLIST draw:plugin draw:name CDATA #IMPLIED>
+<!ATTLIST draw:plugin %draw-style-name;>
+<!ATTLIST draw:plugin svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:plugin svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:plugin %zindex;>
+<!ATTLIST draw:plugin draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:plugin %draw-position;>
+<!ATTLIST draw:plugin %draw-end-position; >
+
+<!-- Paramaters -->
+<!ELEMENT draw:param EMPTY>
+<!ATTLIST draw:param draw:name CDATA #IMPLIED>
+<!ATTLIST draw:param draw:value CDATA #IMPLIED>
+
+<!-- Floating Frames -->
+<!ELEMENT draw:floating-frame (draw:thumbnail?, svg:desc?)>
+<!ATTLIST draw:floating-frame xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:floating-frame xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:floating-frame xlink:show (embed) #IMPLIED>
+<!ATTLIST draw:floating-frame xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST draw:floating-frame draw:name CDATA #IMPLIED>
+<!ATTLIST draw:floating-frame draw:frame-name CDATA #IMPLIED>
+<!ATTLIST draw:floating-frame %draw-style-name;>
+<!ATTLIST draw:floating-frame svg:width %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:floating-frame svg:height %lengthOrPercentage; #IMPLIED>
+<!ATTLIST draw:floating-frame %zindex;>
+<!ATTLIST draw:floating-frame draw:layer %layerName; #IMPLIED>
+<!ATTLIST draw:floating-frame %draw-position;>
+<!ATTLIST draw:floating-frame %draw-end-position; >
+
+<!-- Image Maps -->
+<!ELEMENT draw:image-map
+	(draw:area-rectangle|draw:area-circle|draw:area-polygon)*>
+
+<!ELEMENT draw:area-rectangle (svg:desc?,office:events?)>
+<!ATTLIST draw:area-rectangle xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:area-rectangle xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:area-rectangle office:target-frame-name CDATA #IMPLIED>
+<!ATTLIST draw:area-rectangle xlink:show (new|replace) #IMPLIED>
+<!ATTLIST draw:area-rectangle office:name CDATA #IMPLIED>
+<!ATTLIST draw:area-rectangle draw:nohref (nohref) #IMPLIED>
+<!ATTLIST draw:area-rectangle svg:x %coordinate; #REQUIRED>
+<!ATTLIST draw:area-rectangle svg:y %coordinate; #REQUIRED>
+<!ATTLIST draw:area-rectangle svg:width %coordinate; #REQUIRED>
+<!ATTLIST draw:area-rectangle svg:height %coordinate; #REQUIRED>
+
+<!ELEMENT draw:area-circle (svg:desc?,office:events?)>
+<!ATTLIST draw:area-circle xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:area-circle xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:area-circle office:target-frame-name CDATA #IMPLIED>
+<!ATTLIST draw:area-circle xlink:show (new|replace) #IMPLIED>
+<!ATTLIST draw:area-circle office:name CDATA #IMPLIED>
+<!ATTLIST draw:area-circle draw:nohref (nohref) #IMPLIED>
+<!ATTLIST draw:area-circle svg:cx %coordinate; #REQUIRED>
+<!ATTLIST draw:area-circle svg:cy %coordinate; #REQUIRED>
+<!ATTLIST draw:area-circle svg:r %coordinate; #REQUIRED>
+
+<!ELEMENT draw:area-polygon (svg:desc?,office:events?)>
+<!ATTLIST draw:area-polygon xlink:href %uriReference; #IMPLIED>
+<!ATTLIST draw:area-polygon xlink:type (simple) #IMPLIED>
+<!ATTLIST draw:area-polygon office:target-frame-name CDATA #IMPLIED>
+<!ATTLIST draw:area-polygon xlink:show (new|replace) #IMPLIED>
+<!ATTLIST draw:area-polygon office:name CDATA #IMPLIED>
+<!ATTLIST draw:area-polygon draw:nohref (nohref) #IMPLIED>
+<!ATTLIST draw:area-polygon svg:x %coordinate; #REQUIRED>
+<!ATTLIST draw:area-polygon svg:y %coordinate; #REQUIRED>
+<!ATTLIST draw:area-polygon svg:width %coordinate; #REQUIRED>
+<!ATTLIST draw:area-polygon svg:height %coordinate; #REQUIRED>
+<!ATTLIST draw:area-polygon svg:points %points; #REQUIRED>
+<!ATTLIST draw:area-polygon svg:viewBox CDATA #REQUIRED>
+
+<!ENTITY % fields "text:date |
+				   text:time |
+				   text:page-number |
+				   text:page-continuation |
+				   text:sender-firstname |
+				   text:sender-lastname |
+				   text:sender-initials | 
+				   text:sender-title |
+				   text:sender-position |
+				   text:sender-email | 
+				   text:sender-phone-private |
+				   text:sender-fax | 
+				   text:sender-company |
+				   text:sender-phone-work |
+				   text:sender-street |
+				   text:sender-city |
+				   text:sender-postal-code |
+				   text:sender-country |
+				   text:sender-state-or-province |
+				   text:author-name |
+				   text:author-initials |
+				   text:placeholder |
+				   text:variable-set | 
+				   text:variable-get | 
+				   text:variable-input | 
+				   text:user-field-get | 
+				   text:user-field-input | 
+				   text:sequence | 
+				   text:expression | 
+				   text:text-input |
+				   text:database-display |
+				   text:database-next |
+				   text:database-row-select |
+				   text:database-row-number |
+				   text:database-name |
+				   text:initial-creator |
+				   text:creation-date |
+				   text:creation-time |
+				   text:description |
+				   text:user-defined |
+				   text:print-time |
+				   text:print-date |
+				   text:printed-by |
+				   text:title |
+				   text:subject |
+				   text:keywords |
+				   text:editing-cycles |
+				   text:editing-duration |
+				   text:modification-time |
+				   text:modification-date |
+				   text:creator |
+				   text:conditional-text |
+				   text:hidden-text |
+				   text:hidden-paragraph |
+				   text:chapter |
+				   text:file-name |
+				   text:template-name |
+				   text:page-variable-set |
+				   text:page-variable-get |
+				   text:execute-macro |
+				   text:dde-connection |
+				   text:reference-ref |
+				   text:sequence-ref |
+				   text:bookmark-ref |
+				   text:footnote-ref |
+				   text:endnote-ref |
+				   text:sheet-name |
+				   text:bibliography-mark |
+				   text:page-count |
+				   text:paragraph-count |
+				   text:word-count |
+				   text:character-count |
+				   text:table-count |
+				   text:image-count |
+				   text:object-count |
+				   office:annotation |
+				   text:script |
+				   text:measure" >
+
+<!ENTITY % inline-text-elements "
+				 text:span|text:tab-stop|text:s|text:line-break|
+				 text:footnote|text:endnote|text:a|
+				 text:bookmark|text:bookmark-start|text:bookmark-end|
+				 text:reference-mark|text:reference-mark-start|
+				 text:reference-mark-end|%fields;|%shape;|
+				 text:toc-mark-start | text:toc-mark-end | 
+				 text:toc-mark | text:user-index-mark-start |
+				 text:user-index-mark-end | text:user-index-mark |
+				 text:alphabetical-index-mark-start |
+				 text:alphabetical-index-mark-end |
+				 text:alphabetical-index-mark |
+				 %change-marks; | draw:a | text:ruby">
+
+<!ENTITY % inline-text "( #PCDATA | %inline-text-elements; )*">
+
+<!ELEMENT text:p %inline-text;>
+<!ELEMENT text:h %inline-text;>
+
+<!ATTLIST text:p text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:p text:cond-style-name %styleName; #IMPLIED>
+
+<!ATTLIST text:h text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:h text:cond-style-name %styleName; #IMPLIED>
+<!ATTLIST text:h text:level %positiveInteger; "1">
+
+<!ELEMENT text:span %inline-text;>
+<!ATTLIST text:span text:style-name %styleName; #REQUIRED>
+
+<!ELEMENT text:a (#PCDATA | office:events | %inline-text-elements;)*>
+<!ATTLIST text:a xlink:href %uriReference; #REQUIRED>
+<!ATTLIST text:a xlink:type (simple) #FIXED "simple">
+<!ATTLIST text:a xlink:actuate (onRequest) "onRequest">
+<!ATTLIST text:a xlink:show (new|replace) "replace">
+<!ATTLIST text:a office:name %string; #IMPLIED>
+<!ATTLIST text:a office:target-frame-name %string; #IMPLIED>
+<!ATTLIST text:a text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:a text:visited-style-name %styleName; #IMPLIED>
+
+
+<!ELEMENT text:s EMPTY>
+<!ATTLIST text:s text:c %positiveInteger; "1">
+
+<!ELEMENT text:tab-stop EMPTY>
+
+<!ELEMENT text:line-break EMPTY>
+
+
+<!ENTITY % list-items "((text:list-header,text:list-item*)|text:list-item+)">
+<!ELEMENT text:ordered-list %list-items;>
+<!ELEMENT text:unordered-list %list-items;>
+
+
+<!ATTLIST text:ordered-list text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:unordered-list text:style-name %styleName; #IMPLIED>
+
+<!ATTLIST text:ordered-list text:continue-numbering %boolean; "false">
+
+<!ELEMENT text:list-header (text:p|text:h)+>
+<!ELEMENT text:list-item (text:p|text:h|text:ordered-list|text:unordered-list)+>
+
+<!ATTLIST text:list-item text:restart-numbering %boolean; "false">
+<!ATTLIST text:list-item text:start-value %positiveInteger; #IMPLIED>
+
+<!ELEMENT text:list-style (text:list-level-style-number|
+     					   text:list-level-style-bullet|
+     					   text:list-level-style-image)+>
+
+<!ATTLIST text:list-style style:name %styleName; #IMPLIED>
+
+<!ATTLIST text:list-style text:consecutive-numbering %boolean; "false">
+
+
+<!ELEMENT text:list-level-style-number (style:properties?)>
+
+<!ATTLIST text:list-level-style-number text:level %positiveInteger;
+									     		 #REQUIRED>
+<!ATTLIST text:list-level-style-number text:style-name %styleName; #IMPLIED>
+
+<!ATTLIST text:list-level-style-number style:num-format %string; #REQUIRED>
+<!ATTLIST text:list-level-style-number style:num-prefix %string; #IMPLIED>
+<!ATTLIST text:list-level-style-number style:num-suffix %string; #IMPLIED>
+<!ATTLIST text:list-level-style-number style:num-letter-sync %boolean;
+									     					"false">
+<!ATTLIST text:list-level-style-number text:display-levels %positiveInteger;
+									     				  "1">
+<!ATTLIST text:list-level-style-number text:start-value %positiveInteger;
+														   "1">
+<!ELEMENT text:list-level-style-bullet (style:properties?)>
+
+<!ATTLIST text:list-level-style-bullet text:level %positiveInteger; #REQUIRED>
+<!ATTLIST text:list-level-style-bullet text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:list-level-style-bullet text:bullet-char %character; #REQUIRED>
+<!ATTLIST text:list-level-style-bullet style:num-prefix %string; #IMPLIED>
+<!ATTLIST text:list-level-style-bullet style:num-suffix %string; #IMPLIED>
+
+<!ELEMENT text:list-level-style-image (style:properties?,office:binary-data?)>
+
+<!ATTLIST text:list-level-style-image text:level %positiveInteger; #REQUIRED>
+<!ATTLIST text:list-level-style-image xlink:type (simple) #IMPLIED>
+<!ATTLIST text:list-level-style-image xlink:href %uriReference; #IMPLIED>
+<!ATTLIST text:list-level-style-image xlink:actuate (onLoad) #IMPLIED>
+<!ATTLIST text:list-level-style-image xlink:show (embed) #IMPLIED>
+
+
+<!-- list properties -->
+<!ATTLIST style:properties text:space-before %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties text:min-label-width %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties text:min-label-distance %nonNegativeLength; #IMPLIED>
+<!ATTLIST style:properties text:enable-numbering %boolean; #IMPLIED>
+<!ATTLIST style:properties style:list-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:outline-style (text:outline-level-style)+>
+
+<!ELEMENT text:outline-level-style (style:properties?)>
+
+<!ATTLIST text:outline-level-style text:level %positiveInteger;
+													 #REQUIRED>
+<!ATTLIST text:outline-level-style text:style-name %styleName; #IMPLIED>
+
+<!ATTLIST text:outline-level-style style:num-format %string; #REQUIRED>
+<!ATTLIST text:outline-level-style style:num-prefix %string; #IMPLIED>
+<!ATTLIST text:outline-level-style style:num-suffix %string; #IMPLIED>
+<!ATTLIST text:outline-level-style style:num-letter-sync %boolean;
+																"false">
+<!ATTLIST text:outline-level-style text:display-levels %positiveInteger;
+															  "1">
+<!ATTLIST text:outline-level-style text:start-value %positiveInteger;
+														   "1">
+
+<!ENTITY % field-declarations "text:variable-decls?, 
+							   text:user-field-decls?, 
+							   text:sequence-decls?">
+
+<!ENTITY % variableName "CDATA">
+
+<!ENTITY % formula "CDATA">
+
+<!ENTITY % valueAttr "text:value-type %valueType; #IMPLIED
+							 text:currency CDATA #IMPLIED" >
+
+<!ENTITY % valueAndTypeAttr "%valueAttr;
+		 					 text:value %float; #IMPLIED
+							 text:date-value %date; #IMPLIED
+							 text:time-value %timeInstance; #IMPLIED
+							 text:boolean-value %boolean; #IMPLIED
+							 text:string-value %string; #IMPLIED" >
+
+<!ENTITY % numFormat 'style:num-format CDATA #IMPLIED 
+					   style:num-letter-sync %boolean; "false"'>
+
+
+<!ELEMENT text:date (#PCDATA)>
+<!ATTLIST text:date text:date-value %timeInstance; #IMPLIED>
+<!ATTLIST text:date text:date-adjust %dateDuration; #IMPLIED>
+<!ATTLIST text:date text:fixed %boolean; "false">
+<!ATTLIST text:date style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:time (#PCDATA)>
+<!ATTLIST text:time text:time-value %timeInstance; #IMPLIED>
+<!ATTLIST text:time text:time-adjust %timeDuration; #IMPLIED>
+<!ATTLIST text:time text:fixed %boolean; "false">
+<!ATTLIST text:time style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:page-number (#PCDATA)>
+<!ATTLIST text:page-number text:page-adjust %positiveInteger; #IMPLIED>
+<!ATTLIST text:page-number text:select-page (previous|current|next) "current">
+<!ATTLIST text:page-number %numFormat;>
+
+<!ELEMENT text:page-continuation (#PCDATA)>
+<!ATTLIST text:page-continuation text:select-page (previous|next) #REQUIRED>
+<!ATTLIST text:page-continuation text:string-value %string; #IMPLIED>
+
+<!ELEMENT text:sender-firstname (#PCDATA)>
+<!ATTLIST text:sender-firstname text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-lastname (#PCDATA)>
+<!ATTLIST text:sender-lastname text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-initials (#PCDATA)>
+<!ATTLIST text:sender-initials text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-title (#PCDATA)>
+<!ATTLIST text:sender-title text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-position (#PCDATA)>
+<!ATTLIST text:sender-position text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-email (#PCDATA)>
+<!ATTLIST text:sender-email text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-phone-private (#PCDATA)>
+<!ATTLIST text:sender-phone-private text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-fax (#PCDATA)>
+<!ATTLIST text:sender-fax text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-company (#PCDATA)>
+<!ATTLIST text:sender-company text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-phone-work (#PCDATA)>
+<!ATTLIST text:sender-phone-work text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-street (#PCDATA)>
+<!ATTLIST text:sender-street text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-city (#PCDATA)>
+<!ATTLIST text:sender-city text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-postal-code (#PCDATA)>
+<!ATTLIST text:sender-postal-code text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-country (#PCDATA)>
+<!ATTLIST text:sender-country text:fixed %boolean; "true">
+
+<!ELEMENT text:sender-state-or-province (#PCDATA)>
+<!ATTLIST text:sender-state-or-province text:fixed %boolean; "true">
+
+<!ELEMENT text:author-name (#PCDATA)>
+<!ATTLIST text:author-name text:fixed %boolean; "true">
+
+<!ELEMENT text:author-initials (#PCDATA)>
+<!ATTLIST text:author-initials text:fixed %boolean; "true">
+
+<!ELEMENT text:placeholder (#PCDATA)>
+<!ATTLIST text:placeholder text:placeholder-type (text|table|text-box|image|object) #REQUIRED>
+<!ATTLIST text:placeholder text:description %string; #IMPLIED>
+
+<!ELEMENT text:variable-decls (text:variable-decl)*>
+
+<!ELEMENT text:variable-decl EMPTY>
+<!ATTLIST text:variable-decl text:name %variableName; #REQUIRED>
+<!ATTLIST text:variable-decl %valueAndTypeAttr;>
+
+<!ELEMENT text:variable-set (#PCDATA)>
+<!ATTLIST text:variable-set text:name %variableName; #REQUIRED>
+<!ATTLIST text:variable-set text:formula %formula; #IMPLIED>
+<!ATTLIST text:variable-set %valueAndTypeAttr;>
+<!ATTLIST text:variable-set text:display (value|none) "value">
+<!ATTLIST text:variable-set style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:variable-get (#PCDATA)>
+<!ATTLIST text:variable-get text:name %variableName; #REQUIRED>
+<!ATTLIST text:variable-get text:display (value|formula) "value">
+<!ATTLIST text:variable-get style:data-style-name %styleName; #IMPLIED>
+<!ATTLIST text:variable-get %valueAttr;>
+
+<!ELEMENT text:variable-input (#PCDATA)>
+<!ATTLIST text:variable-input text:name %variableName; #REQUIRED>
+<!ATTLIST text:variable-input text:description %string; #IMPLIED>
+<!ATTLIST text:variable-input %valueAndTypeAttr;>
+<!ATTLIST text:variable-input text:display (value|none) "value">
+<!ATTLIST text:variable-input style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:user-field-decls (text:user-field-decl)*>
+
+<!ELEMENT text:user-field-decl EMPTY>
+<!ATTLIST text:user-field-decl text:name %variableName; #REQUIRED>
+<!ATTLIST text:user-field-decl text:formula %formula; #IMPLIED>
+<!ATTLIST text:user-field-decl %valueAndTypeAttr;>
+
+<!ELEMENT text:user-field-get (#PCDATA)>
+<!ATTLIST text:user-field-get text:name %variableName; #REQUIRED>
+<!ATTLIST text:user-field-get text:display (value|formula|none) "value">
+<!ATTLIST text:user-field-get style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:user-field-input (#PCDATA)>
+<!ATTLIST text:user-field-input text:name %variableName; #REQUIRED>
+<!ATTLIST text:user-field-input text:description %string; #IMPLIED>
+<!ATTLIST text:user-field-input style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:sequence-decls (text:sequence-decl)*>
+
+<!ELEMENT text:sequence-decl EMPTY>
+<!ATTLIST text:sequence-decl text:name %variableName; #REQUIRED>
+<!ATTLIST text:sequence-decl text:display-outline-level %positiveInteger; "0">
+<!ATTLIST text:sequence-decl text:separation-character %character; ".">
+
+<!ELEMENT text:sequence (#PCDATA)>
+<!ATTLIST text:sequence text:name %variableName; #REQUIRED>
+<!ATTLIST text:sequence text:formula %formula; #IMPLIED>
+<!ATTLIST text:sequence %numFormat;>
+<!ATTLIST text:sequence text:ref-name ID #IMPLIED>
+
+<!ELEMENT text:expression (#PCDATA)>
+<!ATTLIST text:expression text:formula %formula; #IMPLIED>
+<!ATTLIST text:expression text:display (value|formula ) "value">
+<!ATTLIST text:expression %valueAndTypeAttr;>
+<!ATTLIST text:expression style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:text-input (#PCDATA)>
+<!ATTLIST text:text-input text:description %string; #IMPLIED>
+
+<!ENTITY % database-table "text:database-name CDATA #REQUIRED 
+						   text:table-name CDATA #REQUIRED
+						   text:table-type (table|query|command) #IMPLIED">
+
+<!ELEMENT text:database-display (#PCDATA)>
+<!ATTLIST text:database-display %database-table;>
+<!ATTLIST text:database-display text:column-name %string; #REQUIRED>
+<!ATTLIST text:database-display style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:database-next (#PCDATA)>
+<!ATTLIST text:database-next %database-table;>
+<!ATTLIST text:database-next text:condition %formula; #IMPLIED>
+
+<!ELEMENT text:database-row-select (#PCDATA)>
+<!ATTLIST text:database-row-select %database-table;>
+<!ATTLIST text:database-row-select text:condition %formula; #IMPLIED>
+<!ATTLIST text:database-row-select text:row-number %integer; #REQUIRED>
+
+<!ELEMENT text:database-row-number (#PCDATA)>
+<!ATTLIST text:database-row-number %database-table;>
+<!ATTLIST text:database-row-number %numFormat;>
+<!ATTLIST text:database-row-number text:value %integer; #IMPLIED>
+
+<!ELEMENT text:database-name (#PCDATA)>
+<!ATTLIST text:database-name %database-table;>
+
+<!ELEMENT text:initial-creator (#PCDATA)>
+<!ATTLIST text:initial-creator text:fixed %boolean; "false">
+
+<!ELEMENT text:creation-date (#PCDATA)>
+<!ATTLIST text:creation-date text:fixed %boolean; "false">
+<!ATTLIST text:creation-date text:date-value %date; #IMPLIED>
+<!ATTLIST text:creation-date style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:creation-time (#PCDATA)>
+<!ATTLIST text:creation-time text:fixed %boolean; "false">
+<!ATTLIST text:creation-time text:time-value %timeInstance; #IMPLIED>
+<!ATTLIST text:creation-time style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:description (#PCDATA)>
+<!ATTLIST text:description text:fixed %boolean; "false">
+
+<!ELEMENT text:user-defined (#PCDATA)>
+<!ATTLIST text:user-defined text:fixed %boolean; "false">
+<!ATTLIST text:user-defined text:name %string; #REQUIRED>
+
+<!ELEMENT text:print-time (#PCDATA)>
+<!ATTLIST text:print-time text:fixed %boolean; "false">
+<!ATTLIST text:print-time text:time-value %timeInstance; #IMPLIED>
+<!ATTLIST text:print-time style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:print-date (#PCDATA)>
+<!ATTLIST text:print-date text:fixed %boolean; "false">
+<!ATTLIST text:print-date text:date-value %date; #IMPLIED>
+<!ATTLIST text:print-date style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:printed-by (#PCDATA)>
+<!ATTLIST text:printed-by text:fixed %boolean; "false">
+
+<!ELEMENT text:title (#PCDATA)>
+<!ATTLIST text:title text:fixed %boolean; "false">
+
+<!ELEMENT text:subject (#PCDATA)>
+<!ATTLIST text:subject text:fixed %boolean; "false">
+
+<!ELEMENT text:keywords (#PCDATA)>
+<!ATTLIST text:keywords text:fixed %boolean; "false">
+
+<!ELEMENT text:editing-cycles (#PCDATA)>
+<!ATTLIST text:editing-cycles text:fixed %boolean; "false">
+
+<!ELEMENT text:editing-duration (#PCDATA)>
+<!ATTLIST text:editing-duration text:fixed %boolean; "false">
+<!ATTLIST text:editing-duration text:duration %timeDuration; #IMPLIED>
+<!ATTLIST text:editing-duration style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:modification-time (#PCDATA)>
+<!ATTLIST text:modification-time text:fixed %boolean; "false">
+<!ATTLIST text:modification-time text:time-value %timeInstance; #IMPLIED>
+<!ATTLIST text:modification-time style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:modification-date (#PCDATA)>
+<!ATTLIST text:modification-date text:fixed %boolean; "false">
+<!ATTLIST text:modification-date text:date-value %date; #IMPLIED>
+<!ATTLIST text:modification-date style:data-style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:creator (#PCDATA)>
+<!ATTLIST text:creator text:fixed %boolean; "false">
+
+<!ELEMENT text:conditional-text (#PCDATA)>
+<!ATTLIST text:conditional-text text:condition %formula; #REQUIRED>
+<!ATTLIST text:conditional-text text:string-value-if-false %string; #REQUIRED>
+<!ATTLIST text:conditional-text text:string-value-if-true %string; #REQUIRED>
+<!ATTLIST text:conditional-text text:current-value %boolean; "false">
+
+<!ELEMENT text:hidden-text (#PCDATA)>
+<!ATTLIST text:hidden-text text:condition %formula; #REQUIRED>
+<!ATTLIST text:hidden-text text:string-value %string; #REQUIRED>
+<!ATTLIST text:hidden-text text:is-hidden %boolean; "false">
+
+<!ELEMENT text:hidden-paragraph EMPTY>
+<!ATTLIST text:hidden-paragraph text:condition %formula; #REQUIRED>
+<!ATTLIST text:hidden-paragraph text:is-hidden %boolean; "false">
+
+<!ELEMENT text:chapter (#PCDATA)>
+<!ATTLIST text:chapter text:display (name|number|number-and-name|
+									 plain-number-and-name|plain-number) 
+									 "number-and-name">
+<!ATTLIST text:chapter text:outline-level %integer; "1">
+
+<!ELEMENT text:file-name (#PCDATA)>
+<!ATTLIST text:file-name text:display (full|path|name|name-and-extension) 	
+									  "full">
+<!ATTLIST text:file-name text:fixed %boolean; "false">
+
+<!ELEMENT text:template-name (#PCDATA)>
+<!ATTLIST text:template-name text:display (full|path|name|name-and-extension|
+										  area|title) "full">
+
+<!ELEMENT text:page-variable-set EMPTY>
+<!ATTLIST text:page-variable-set text:active %boolean; "true">
+<!ATTLIST text:page-variable-set text:page-adjust %integer; "0">
+
+<!ELEMENT text:page-variable-get (#PCDATA)>
+<!ATTLIST text:page-variable-get %numFormat;>
+
+<!ELEMENT text:execute-macro (#PCDATA|office:events)* >
+<!ATTLIST text:execute-macro text:description %string; #IMPLIED>
+
+
+<!ELEMENT text:dde-connection-decls (text:dde-connection-decl)*>
+
+<!ELEMENT text:dde-connection-decl EMPTY>
+<!ATTLIST text:dde-connection-decl text:name %string; #REQUIRED>
+<!ATTLIST text:dde-connection-decl office:dde-application %string; #REQUIRED>
+<!ATTLIST text:dde-connection-decl office:dde-topic %string; #REQUIRED>
+<!ATTLIST text:dde-connection-decl office:dde-item %string; #REQUIRED>
+<!ATTLIST text:dde-connection-decl office:automatic-update %boolean; "false">
+
+<!ELEMENT text:dde-connection (#PCDATA)>
+<!ATTLIST text:dde-connection text:connection-name %string; #REQUIRED>
+
+<!ELEMENT text:reference-ref (#PCDATA)>
+<!ATTLIST text:reference-ref text:ref-name %string; #REQUIRED>
+<!ATTLIST text:reference-ref text:reference-format (page|chapter|text|direction) #IMPLIED>
+
+<!ELEMENT text:sequence-ref (#PCDATA)>
+<!ATTLIST text:sequence-ref text:ref-name %string; #REQUIRED>
+<!ATTLIST text:sequence-ref text:reference-format (page|chapter|text|direction|category-and-value|caption|value) #IMPLIED>
+
+<!ELEMENT text:bookmark-ref (#PCDATA)>
+<!ATTLIST text:bookmark-ref text:ref-name %string; #REQUIRED>
+<!ATTLIST text:bookmark-ref text:reference-format (page|chapter|text|direction) #IMPLIED>
+
+<!ELEMENT text:footnote-ref (#PCDATA)>
+<!ATTLIST text:footnote-ref text:ref-name %string; #REQUIRED>
+<!ATTLIST text:footnote-ref text:reference-format (page|chapter|text|direction) #IMPLIED>
+
+<!ELEMENT text:endnote-ref (#PCDATA)>
+<!ATTLIST text:endnote-ref text:ref-name %string; #REQUIRED>
+<!ATTLIST text:endnote-ref text:reference-format (page|chapter|text|direction) #IMPLIED>
+
+<!ELEMENT text:sheet-name (#PCDATA)>
+
+<!ELEMENT text:page-count (#PCDATA)>
+<!ATTLIST text:page-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:page-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:paragraph-count (#PCDATA)>
+<!ATTLIST text:paragraph-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:paragraph-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:word-count (#PCDATA)>
+<!ATTLIST text:word-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:word-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:character-count (#PCDATA)>
+<!ATTLIST text:character-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:character-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:table-count (#PCDATA)>
+<!ATTLIST text:table-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:table-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:image-count (#PCDATA)>
+<!ATTLIST text:image-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:image-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:object-count (#PCDATA)>
+<!ATTLIST text:object-count style:num-format %string; #IMPLIED>
+<!ATTLIST text:object-count style:num-letter-sync %boolean; "false">
+
+<!ELEMENT text:bibliography-mark (#PCDATA)>
+<!ATTLIST text:bibliography-mark text:bibliography-type 
+	( article | book | booklet | conference | custom1 | custom2 | custom3 | 
+	  custom4 | custom5 | email | inbook | incollection | inproceedings | 
+	  journal | manual | mastersthesis | misc | phdthesis | proceedings | 
+	  techreport | unpublished | www ) #REQUIRED >
+<!ATTLIST text:bibliography-mark text:identifier CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:address CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:annote CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:author CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:booktitle CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:chapter CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:edition CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:editor CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:howpublished CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:institution CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:journal CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:month CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:note CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:number CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:organizations CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:pages CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:publisher CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:school CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:series CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:title CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:report-type CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:volume CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:year CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:url CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:custom1 CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:custom2 CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:custom3 CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:custom4 CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:custom5 CDATA #IMPLIED>
+<!ATTLIST text:bibliography-mark text:isbn CDATA #IMPLIED>
+
+
+<!ELEMENT text:bookmark EMPTY>
+<!ATTLIST text:bookmark text:name CDATA #REQUIRED>
+
+<!ELEMENT text:bookmark-start EMPTY>
+<!ATTLIST text:bookmark-start text:name CDATA #REQUIRED>
+
+<!ELEMENT text:bookmark-end EMPTY>
+<!ATTLIST text:bookmark-end text:name CDATA #REQUIRED>
+
+<!ELEMENT text:reference-mark EMPTY>
+<!ATTLIST text:reference-mark text:name CDATA #REQUIRED>
+
+<!ELEMENT text:reference-mark-start EMPTY>
+<!ATTLIST text:reference-mark-start text:name CDATA #REQUIRED>
+
+<!ELEMENT text:reference-mark-end EMPTY>
+<!ATTLIST text:reference-mark-end text:name CDATA #REQUIRED>
+
+<!ELEMENT text:footnotes-configuration (text:footnote-continuation-notice-forward?,text:footnote-continuation-notice-backward?)>
+<!ATTLIST text:footnotes-configuration style:num-prefix %string; #IMPLIED>
+<!ATTLIST text:footnotes-configuration style:num-suffix %string; #IMPLIED>
+<!ATTLIST text:footnotes-configuration style:num-format %string; #IMPLIED>
+<!ATTLIST text:footnotes-configuration style:num-letter-sync %string; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:citation-body-style-name %styleName; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:citation-style-name %styleName; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:default-style-name  %styleName; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:master-page-name %styleName; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:start-value %integer; #IMPLIED>
+<!ATTLIST text:footnotes-configuration text:footnotes-position (document|page) "page">
+<!ATTLIST text:footnotes-configuration text:start-numbering-at (document|chapter|page) "document">
+
+<!ELEMENT text:footnote-continuation-notice-forward (#PCDATA)> 
+<!ELEMENT text:footnote-continuation-notice-backward (#PCDATA)>
+
+<!ELEMENT text:endnotes-configuration EMPTY>
+<!ATTLIST text:endnotes-configuration style:num-prefix %string; #IMPLIED>
+<!ATTLIST text:endnotes-configuration style:num-suffix %string; #IMPLIED>
+<!ATTLIST text:endnotes-configuration style:num-format %string; #IMPLIED>
+<!ATTLIST text:endnotes-configuration style:num-letter-sync %string; #IMPLIED>
+<!ATTLIST text:endnotes-configuration text:start-value %integer; #IMPLIED>
+<!ATTLIST text:endnotes-configuration text:citation-style-name %styleName; #IMPLIED>
+<!ATTLIST text:endnotes-configuration text:citation-body-style-name %styleName; #IMPLIED>
+<!ATTLIST text:endnotes-configuration text:default-style-name %styleName; #IMPLIED>
+<!ATTLIST text:endnotes-configuration text:master-page-name %styleName; #IMPLIED>
+
+<!-- Validity constraint: text:footnote and text:endnote elements may not 
+	contain other text:footnote or text:endnote elements, even though the DTD
+	allows this (via the %text; in the foot-/endnote-body).
+	Unfortunatetly, this constraint cannot be easily specified in the DTD.
+-->
+<!ELEMENT text:footnote (text:footnote-citation, text:footnote-body)>
+<!ATTLIST text:footnote text:id ID #IMPLIED>
+
+<!ELEMENT text:footnote-citation (#PCDATA)>
+<!ATTLIST text:footnote-citation text:label %string; #IMPLIED>
+
+<!ELEMENT text:footnote-body (text:h|text:p|
+							  text:ordered-list|text:unordered-list)*>
+
+<!ELEMENT text:endnote (text:endnote-citation, text:endnote-body)>
+<!ATTLIST text:endnote text:id ID #IMPLIED>
+
+<!ELEMENT text:endnote-citation (#PCDATA)>
+<!ATTLIST text:endnote-citation text:label %string; #IMPLIED>
+
+<!ELEMENT text:endnote-body (text:h|text:p|
+							 text:ordered-list|text:unordered-list)*>
+
+<!ENTITY % sectionAttr "text:name CDATA #REQUIRED
+                        text:style-name %styleName; #IMPLIED
+                        text:protected %boolean; 'false' ">
+
+
+<!ELEMENT text:section ((text:section-source|office:dde-source)?,
+						%sectionText;) >
+
+<!ATTLIST text:section %sectionAttr;>
+<!ATTLIST text:section text:display (true|none|condition) "true">
+<!ATTLIST text:section text:condition %formula; #IMPLIED>
+<!ATTLIST text:section text:protection-key CDATA #IMPLIED>
+<!ATTLIST text:section text:is-hidden %boolean; #IMPLIED>
+
+<!ELEMENT text:section-source EMPTY>
+<!ATTLIST text:section-source xlink:href %string; #IMPLIED>
+<!ATTLIST text:section-source xlink:type (simple) #FIXED "simple">
+<!ATTLIST text:section-source xlink:show (embed) #FIXED "embed">
+<!ATTLIST text:section-source text:section-name %string; #IMPLIED>
+<!ATTLIST text:section-source text:filter-name %string; #IMPLIED>
+
+<!ELEMENT text:table-of-content (text:table-of-content-source, 
+								 text:index-body)   >
+<!ATTLIST text:table-of-content %sectionAttr;>
+
+<!ELEMENT text:table-of-content-source (text:index-title-template? , 
+										text:table-of-content-entry-template*,
+										text:index-source-styles* ) >
+<!ATTLIST text:table-of-content-source text:outline-level %integer; #IMPLIED>
+<!ATTLIST text:table-of-content-source text:use-index-marks %boolean; "true">
+<!ATTLIST text:table-of-content-source text:use-index-source-styles 
+															%boolean; "false">
+<!ATTLIST text:table-of-content-source text:index-scope (document|chapter) 
+														"document">
+<!ATTLIST text:table-of-content-source text:relative-tab-stop-position 
+															%boolean; "true">
+<!ATTLIST text:table-of-content-source fo:language %string; #IMPLIED>
+<!ATTLIST text:table-of-content-source fo:country %string; #IMPLIED>
+<!ATTLIST text:table-of-content-source text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:table-of-content-entry-template (text:index-entry-chapter-number |
+												text:index-entry-page-number |
+												text:index-entry-text |
+												text:index-entry-span |
+												text:index-entry-tab-stop |
+												text:index-entry-link-start |
+												text:index-entry-link-end)* >
+<!ATTLIST text:table-of-content-entry-template text:outline-level 
+						%integer; #REQUIRED>
+<!ATTLIST text:table-of-content-entry-template text:style-name 
+						%styleName; #REQUIRED>
+
+<!ELEMENT text:illustration-index 
+			(text:illustration-index-source, text:index-body)>
+<!ATTLIST text:illustration-index %sectionAttr;>
+
+<!ELEMENT text:illustration-index-source (text:index-title-template?,
+									text:illustration-index-entry-template?) >
+<!ATTLIST text:illustration-index-source text:index-scope 
+									(document|chapter) "document">
+<!ATTLIST text:illustration-index-source text:relative-tab-stop-position 
+									%boolean; "true">
+<!ATTLIST text:illustration-index-source text:use-caption %boolean; "true">
+<!ATTLIST text:illustration-index-source text:caption-sequence-name 
+									%string; #IMPLIED>
+<!ATTLIST text:illustration-index-source text:caption-sequence-format 
+									(text|category-and-value|caption) "text">
+<!ATTLIST text:illustration-index-source fo:language %string; #IMPLIED>
+<!ATTLIST text:illustration-index-source fo:country %string; #IMPLIED>
+<!ATTLIST text:illustration-index-source text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:illustration-index-entry-template 
+								( text:index-entry-page-number |
+								  text:index-entry-text |
+								  text:index-entry-span |
+								  text:index-entry-tab-stop )* >
+<!ATTLIST text:illustration-index-entry-template text:style-name 
+									%styleName; #REQUIRED>
+
+<!ELEMENT text:table-index (text:table-index-source, text:index-body)>
+<!ATTLIST text:table-index %sectionAttr;>
+
+<!ELEMENT text:table-index-source (text:index-title-template?, 
+									text:table-index-entry-template?) >
+<!ATTLIST text:table-index-source text:index-scope 
+									(document|chapter) "document">
+<!ATTLIST text:table-index-source text:relative-tab-stop-position 
+									%boolean; "true">
+<!ATTLIST text:table-index-source text:use-caption %boolean; "true">
+<!ATTLIST text:table-index-source text:caption-sequence-name 
+									%string; #IMPLIED>
+<!ATTLIST text:table-index-source text:caption-sequence-format 
+									(text|category-and-value|caption) "text">
+<!ATTLIST text:table-index-source fo:language %string; #IMPLIED>
+<!ATTLIST text:table-index-source fo:country %string; #IMPLIED>
+<!ATTLIST text:table-index-source text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:table-index-entry-template ( text:index-entry-page-number |
+											text:index-entry-text |
+											text:index-entry-span |
+											text:index-entry-tab-stop )* >
+<!ATTLIST text:table-index-entry-template text:style-name 
+											%styleName; #REQUIRED>
+
+<!ELEMENT text:object-index ( text:object-index-source, text:index-body ) >
+<!ATTLIST text:object-index %sectionAttr;>
+
+<!ELEMENT text:object-index-source ( text:index-title-template?,
+									 text:object-index-entry-template? ) >
+<!ATTLIST text:object-index-source text:index-scope 
+									(document|chapter) "document">
+<!ATTLIST text:object-index-source text:relative-tab-stop-position 
+									%boolean; "true">
+<!ATTLIST text:object-index-source text:use-spreadsheet-objects 
+									%boolean; "false">
+<!ATTLIST text:object-index-source text:use-draw-objects %boolean; "false">
+<!ATTLIST text:object-index-source text:use-chart-objects %boolean; "false">
+<!ATTLIST text:object-index-source text:use-other-objects %boolean; "false">
+<!ATTLIST text:object-index-source text:use-math-objects %boolean; "false">
+<!ATTLIST text:object-index-source fo:language %string; #IMPLIED>
+<!ATTLIST text:object-index-source fo:country %string; #IMPLIED>
+<!ATTLIST text:object-index-source text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:object-index-entry-template ( text:index-entry-page-number |
+											 text:index-entry-text |
+											 text:index-entry-span |
+											 text:index-entry-tab-stop )* >
+<!ATTLIST text:object-index-entry-template text:style-name 
+											%styleName; #REQUIRED >
+
+<!ELEMENT text:user-index (text:user-index-source, text:index-body) >
+<!ATTLIST text:user-index %sectionAttr;>
+
+<!ELEMENT text:user-index-source ( text:index-title-template?,
+								   text:user-index-entry-template*,
+								   text:index-source-styles* ) >
+<!ATTLIST text:user-index-source text:index-scope 
+									(document|chapter) "document">
+<!ATTLIST text:user-index-source text:relative-tab-stop-position
+									%boolean; "true">
+<!ATTLIST text:user-index-source text:use-index-marks %boolean; "false">
+<!ATTLIST text:user-index-source text:use-graphics %boolean; "false">
+<!ATTLIST text:user-index-source text:use-tables %boolean; "false">
+<!ATTLIST text:user-index-source text:use-floating-frames %boolean; "false">
+<!ATTLIST text:user-index-source text:use-objects %boolean; "false">
+<!ATTLIST text:user-index-source text:use-index-source-styles 
+													%boolean; "false">
+<!ATTLIST text:user-index-source text:copy-outline-levels %boolean; "false">
+<!ATTLIST text:user-index-source fo:language %string; #IMPLIED>
+<!ATTLIST text:user-index-source fo:country %string; #IMPLIED>
+<!ATTLIST text:user-index-source text:sort-algorithm %string; #IMPLIED>
+<!ATTLIST text:user-index-source text:index-name %string; #IMPLIED>
+
+<!ELEMENT text:user-index-entry-template ( text:index-entry-chapter |
+										   text:index-entry-page-number |
+										   text:index-entry-text |
+										   text:index-entry-span |
+										   text:index-entry-tab-stop )* >
+<!ATTLIST text:user-index-entry-template text:outline-level %integer; #REQUIRED>
+<!ATTLIST text:user-index-entry-template text:style-name %styleName; #REQUIRED>
+
+<!ELEMENT text:alphabetical-index (text:alphabetical-index-source, 
+									text:index-body)>
+<!ATTLIST text:alphabetical-index %sectionAttr;>
+
+<!ELEMENT text:alphabetical-index-source ( text:index-title-template?, 
+							text:alphabetical-index-entry-template* ) >
+<!ATTLIST text:alphabetical-index-source text:index-scope 
+												(document|chapter) "document">
+<!ATTLIST text:alphabetical-index-source text:relative-tab-stop-position
+												%boolean; "true">
+<!ATTLIST text:alphabetical-index-source text:ignore-case %boolean; "false">
+<!ATTLIST text:alphabetical-index-source text:main-entry-style-name 
+												%styleName; #IMPLIED>
+<!ATTLIST text:alphabetical-index-source text:alphabetical-separators 
+												%boolean; "false">
+<!ATTLIST text:alphabetical-index-source text:combine-entries
+												%boolean; "true">
+<!ATTLIST text:alphabetical-index-source text:combine-entries-with-dash
+												%boolean; "false">
+<!ATTLIST text:alphabetical-index-source text:combine-entries-with-pp
+												%boolean; "true">
+<!ATTLIST text:alphabetical-index-source text:use-keys-as-entries 
+												%boolean; "false">
+<!ATTLIST text:alphabetical-index-source text:capitalize-entries
+												%boolean; "false">
+<!ATTLIST text:alphabetical-index-source text:comma-separated
+												%boolean; "false">
+<!ATTLIST text:alphabetical-index-source fo:language %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-source fo:country %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-source text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:alphabetical-index-entry-template ( text:index-entry-chapter |
+												text:index-entry-page-number |
+												text:index-entry-text |
+												text:index-entry-span |
+												text:index-entry-tab-stop )* >
+<!ATTLIST text:alphabetical-index-entry-template text:outline-level 
+												(1|2|3|separator) #REQUIRED>
+<!ATTLIST text:alphabetical-index-entry-template text:style-name 
+												%styleName; #REQUIRED>
+
+<!ELEMENT text:alphabetical-index-auto-mark-file EMPTY>
+<!ATTLIST text:alphabetical-index-auto-mark-file xlink:href CDATA #IMPLIED>
+<!ATTLIST text:alphabetical-index-auto-mark-file xlink:type (simple) #FIXED "simple">
+
+<!ELEMENT text:bibliography (text:bibliography-source, text:index-body) >
+<!ATTLIST text:bibliography %sectionAttr;>
+
+<!ELEMENT text:bibliography-source ( text:index-title-template?,
+									 text:bibliography-entry-template* ) >
+
+<!ELEMENT text:bibliography-entry-template ( text:index-entry-span |
+											 text:index-entry-tab-stop |
+											 text:index-entry-bibliography )* >
+<!ATTLIST text:bibliography-entry-template text:bibliography-type 
+				( article | book | booklet | conference | custom1 | custom2 | 
+				  custom3 | custom4 | custom5 | email | inbook | incollection |
+				  inproceedings | journal | manual | mastersthesis | misc | 
+				  phdthesis | proceedings | techreport | unpublished | www ) 
+				#REQUIRED >
+<!ATTLIST text:bibliography-entry-template text:style-name 
+													%styleName; #REQUIRED>
+
+<!ELEMENT text:index-body %sectionText; >
+
+<!-- 
+Validity constraint: text:index-title elements may appear only in
+indices, and there may be only one text:index-title element.  
+-->
+<!ELEMENT text:index-title %sectionText; >
+<!ATTLIST text:index-title text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:index-title text:name %string; #IMPLIED>
+
+<!ELEMENT text:index-title-template (#PCDATA)>
+<!ATTLIST text:index-title-template text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-chapter-number EMPTY>
+<!ATTLIST text:index-entry-chapter-number text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-chapter EMPTY>
+<!ATTLIST text:index-entry-chapter text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:index-entry-chapter text:display (name|number|number-and-name) 
+															"number-and-name" >
+
+<!ELEMENT text:index-entry-text EMPTY>
+<!ATTLIST text:index-entry-text text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-page-number EMPTY>
+<!ATTLIST text:index-entry-page-number text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-span (#PCDATA)>
+<!ATTLIST text:index-entry-span text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-bibliography EMPTY>
+<!ATTLIST text:index-entry-bibliography text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:index-entry-bibliography text:bibliography-data-field
+							( address | annote | author | bibliography-type |
+							  booktitle | chapter | custom1 | custom2 | 
+							  custom3 | custom4 | custom5 | edition | editor |
+							  howpublished | identifier | institution | isbn |
+							  journal | month | note | number | organizations |
+							  pages | publisher | report-type | school | 
+							  series | title | url | volume | year ) #REQUIRED>
+
+
+<!ELEMENT text:index-entry-tab-stop EMPTY>
+<!ATTLIST text:index-entry-tab-stop text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:index-entry-tab-stop style:leader-char %character; " ">
+<!ATTLIST text:index-entry-tab-stop style:type (left|right) "left">
+<!ATTLIST text:index-entry-tab-stop style:position %length; #IMPLIED>
+
+<!ELEMENT text:index-entry-link-start EMPTY>
+<!ATTLIST text:index-entry-link-start text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-entry-link-end EMPTY>
+<!ATTLIST text:index-entry-link-end text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:index-source-styles (text:index-source-style)*>
+<!ATTLIST text:index-source-styles text:outline-level %integer; #REQUIRED>
+
+<!ELEMENT text:index-source-style EMPTY>
+<!ATTLIST text:index-source-style text:style-name %styleName; #REQUIRED>
+
+<!ELEMENT text:toc-mark-start EMPTY>
+<!ATTLIST text:toc-mark-start text:id %string; #REQUIRED>
+<!ATTLIST text:toc-mark-start text:outline-level %integer; #IMPLIED>
+
+<!ELEMENT text:toc-mark-end EMPTY>
+<!ATTLIST text:toc-mark-end text:id %string; #REQUIRED>
+
+<!ELEMENT text:toc-mark EMPTY>
+<!ATTLIST text:toc-mark text:string-value %string; #REQUIRED>
+<!ATTLIST text:toc-mark text:outline-level %integer; #IMPLIED>
+
+<!ELEMENT text:user-index-mark-start EMPTY>
+<!ATTLIST text:user-index-mark-start text:id %string; #REQUIRED>
+<!ATTLIST text:user-index-mark-start text:outline-level %integer; #IMPLIED>
+<!ATTLIST text:user-index-mark-start text:index-name %string; #IMPLIED>
+
+<!ELEMENT text:user-index-mark-end EMPTY>
+<!ATTLIST text:user-index-mark-end text:id %string; #REQUIRED>
+
+<!ELEMENT text:user-index-mark EMPTY>
+<!ATTLIST text:user-index-mark text:string-value %string; #REQUIRED>
+<!ATTLIST text:user-index-mark text:outline-level %integer; #IMPLIED>
+<!ATTLIST text:user-index-mark text:index-name %string; #IMPLIED>
+
+<!ELEMENT text:alphabetical-index-mark-start EMPTY>
+<!ATTLIST text:alphabetical-index-mark-start text:id %string; #REQUIRED>
+<!ATTLIST text:alphabetical-index-mark-start text:key1 %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-mark-start text:key2 %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-mark-start text:main-etry %boolean; "false">
+
+<!ELEMENT text:alphabetical-index-mark-end EMPTY>
+<!ATTLIST text:alphabetical-index-mark-end text:id %string; #REQUIRED>
+
+<!ELEMENT text:alphabetical-index-mark EMPTY>
+<!ATTLIST text:alphabetical-index-mark text:string-value %string; #REQUIRED>
+<!ATTLIST text:alphabetical-index-mark text:key1 %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-mark text:key2 %string; #IMPLIED>
+<!ATTLIST text:alphabetical-index-mark text:main-etry %boolean; "false">
+
+<!ELEMENT text:bibliography-configuration (text:sort-key)*>
+<!ATTLIST text:bibliography-configuration text:prefix %string; #IMPLIED>
+<!ATTLIST text:bibliography-configuration text:suffix %string; #IMPLIED>
+<!ATTLIST text:bibliography-configuration text:sort-by-position %boolean; "true">
+<!ATTLIST text:bibliography-configuration text:numbered-entries %boolean; "false">
+<!ATTLIST text:bibliography-configuration fo:language %string; #IMPLIED>
+<!ATTLIST text:bibliography-configuration fo:country %string; #IMPLIED>
+<!ATTLIST text:bibliography-configuration text:sort-algorithm %string; #IMPLIED>
+
+<!ELEMENT text:sort-key EMPTY>
+<!ATTLIST text:sort-key text:key ( address | annote | author | 
+	bibliography-type | booktitle | chapter | custom1 | custom2 | 
+	custom3 | custom4 | custom5 | edition | editor | howpublished | 
+	identifier | institution | isbn | journal | month | note | number | 
+	organizations | pages | publisher | report-type | school | series | 
+	title | url | volume | year ) #REQUIRED>
+<!ATTLIST text:sort-key text:sort-ascending %boolean; "true">
+
+<!ELEMENT text:linenumbering-configuration (text:linenumbering-separator?)>
+<!ATTLIST text:linenumbering-configuration text:style-name %styleName; #IMPLIED>
+<!ATTLIST text:linenumbering-configuration text:number-lines %boolean; "true">
+<!ATTLIST text:linenumbering-configuration text:count-empty-lines %boolean; "true">
+<!ATTLIST text:linenumbering-configuration text:count-in-floating-frames %boolean; "false">
+<!ATTLIST text:linenumbering-configuration text:restart-numbering %boolean; "false">
+<!ATTLIST text:linenumbering-configuration text:offset %nonNegativeLength; #IMPLIED>
+<!ATTLIST text:linenumbering-configuration style:num-format (1|a|A|i|I) "1">
+<!ATTLIST text:linenumbering-configuration style:num-letter-sync %boolean; "false">
+<!ATTLIST text:linenumbering-configuration text:number-position (left|rigth|inner|outer) "left">
+<!ATTLIST text:linenumbering-configuration text:increment %nonNegativeInteger; #IMPLIED>
+
+<!ELEMENT text:linenumbering-separator (#PCDATA)>
+<!ATTLIST text:linenumbering-separator text:increment %nonNegativeInteger; #IMPLIED>
+
+<!ELEMENT text:script (#PCDATA)>
+<!ATTLIST text:script script:language CDATA #REQUIRED>
+<!ATTLIST text:script xlink:href CDATA #IMPLIED>
+<!ATTLIST text:script xlink:type (simple) #FIXED "simple">
+
+<!ELEMENT text:measure (#PCDATA)>
+<!ATTLIST text:measure text:kind (value|unit|gap) #REQUIRED>
+
+<!ELEMENT text:ruby (text:ruby-base, text:ruby-text)>
+<!ATTLIST text:ruby text:style-name %styleName; #IMPLIED>
+
+<!ELEMENT text:ruby-base %inline-text;>
+
+<!ELEMENT text:ruby-text (#PCDATA)>
+<!ATTLIST text:ruby-text text:style-name %styleName; #IMPLIED>
+
+<!-- elements for change tracking -->
+
+<!ELEMENT text:change EMPTY>
+<!ATTLIST text:change text:change-id CDATA #REQUIRED>
+
+<!ELEMENT text:change-start EMPTY>
+<!ATTLIST text:change-start text:change-id CDATA #REQUIRED>
+
+<!ELEMENT text:change-end EMPTY>
+<!ATTLIST text:change-end text:change-id CDATA #REQUIRED>
+
+<!ELEMENT text:tracked-changes (text:changed-region)*>
+<!ATTLIST text:tracked-changes text:track-changes %boolean; "true">
+<!ATTLIST text:tracked-changes text:protection-key CDATA #IMPLIED>
+
+<!ELEMENT text:changed-region (text:insertion | 
+							   (text:deletion, text:insertion?) | 
+                               text:format-change) >
+<!ATTLIST text:changed-region text:id ID #REQUIRED>
+<!ATTLIST text:changed-region text:merge-last-paragraph %boolean; "true">
+
+<!ELEMENT text:insertion (office:change-info, %sectionText;)>
+<!ELEMENT text:deletion (office:change-info, %sectionText;)>
+<!ELEMENT text:format-change (office:change-info)>
+
+
+
+<!ELEMENT table:calculation-settings (table:null-date?, table:iteration?)>
+<!ATTLIST table:calculation-settings
+	table:case-sensitive %boolean; "true"
+	table:precision-as-shown %boolean; "false"
+	table:search-criteria-must-apply-to-whole-cell %boolean; "true"
+	table:automatic-find-labels %boolean; "true"
+	table:use-regular-expressions %boolean; "true"
+	table:null-year %positiveInteger; "1930"
+>
+<!ELEMENT table:null-date EMPTY>
+<!ATTLIST table:null-date
+	table:value-type %valueType; #FIXED "date"
+	table:date-value %date; "1899-12-30"
+>
+<!ELEMENT table:iteration EMPTY>
+<!ATTLIST table:iteration
+	table:status (enable | disable) "disable"
+	table:steps %positiveInteger; "100"
+	table:maximum-difference %float; "0.001"
+>
+
+<!ELEMENT table:tracked-changes (table:cell-content-change | table:insertion | table:deletion | table:movement | table:rejection)*>
+<!ATTLIST table:tracked-changes table:track-changes %boolean; "true"
+				table:protected %boolean; "false"
+				table:protection-key CDATA #IMPLIED
+>
+
+<!ELEMENT table:dependences (table:dependence)+>
+<!ELEMENT table:dependence EMPTY>
+<!ATTLIST table:dependence
+	table:id CDATA #REQUIRED
+>
+<!ELEMENT table:deletions (table:cell-content-deletion | table:change-deletion)+>
+<!ELEMENT table:cell-content-deletion (table:cell-address?, table:change-track-table-cell?)>
+<!ATTLIST table:cell-content-deletion
+	table:id CDATA #IMPLIED
+>
+<!ELEMENT table:change-deletion EMPTY>
+<!ATTLIST table:change-deletion
+	table:id CDATA #IMPLIED
+>
+<!ELEMENT table:insertion (office:change-info, table:dependences?, table:deletions?)>
+<!ATTLIST table:insertion
+	table:id CDATA #REQUIRED
+	table:acceptance-state (accepted | rejected | pending) "pending"
+	table:rejecting-change-id %positiveInteger; #IMPLIED
+	table:type (row | column | table) #REQUIRED
+	table:position %integer; #REQUIRED
+	table:count %positiveInteger; "1"
+	table:table %integer; #IMPLIED
+>
+<!ELEMENT table:deletion (office:change-info, table:dependences?, table:deletions?, table:cut-offs?)>
+<!ATTLIST table:deletion
+	table:id CDATA #REQUIRED
+	table:acceptance-state (accepted | rejected | pending) "pending"
+	table:rejecting-change-id %positiveInteger; #IMPLIED
+	table:type (row | column | table) #REQUIRED
+	table:position %integer; #REQUIRED
+	table:count %positiveInteger; "1"
+	table:table %integer; #IMPLIED
+	table:multi-deletion-spanned %integer; #IMPLIED
+>
+<!ELEMENT table:cut-offs (table:movement-cut-off+ | (table:insertion-cut-off, table:movement-cut-off*))>
+<!ELEMENT table:insertion-cut-off EMPTY>
+<!ATTLIST table:insertion-cut-off
+	table:id CDATA #REQUIRED
+	table:position %integer; #REQUIRED
+>
+<!ELEMENT table:movement-cut-off EMPTY>
+<!ATTLIST table:movement-cut-off
+	table:id CDATA #REQUIRED
+	table:start-position %integer; #IMPLIED
+	table:end-position %integer; #IMPLIED
+	table:position %integer; #IMPLIED
+>
+<!ELEMENT table:movement (table:source-range-address, table:target-range-address, office:change-info, table:dependences?, table:deletions?)>
+<!ATTLIST table:movement
+	table:id CDATA #REQUIRED
+	table:acceptance-state (accepted | rejected | pending) "pending"
+	table:rejecting-change-id %positiveInteger; #IMPLIED
+>
+<!ELEMENT table:target-range-address EMPTY>
+<!ATTLIST table:target-range-address
+	table:column %integer; #IMPLIED
+	table:row %integer; #IMPLIED
+	table:table %integer; #IMPLIED
+	table:start-column %integer; #IMPLIED
+	table:start-row %integer; #IMPLIED
+	table:start-table %integer; #IMPLIED
+	table:end-column %integer; #IMPLIED
+	table:end-row %integer; #IMPLIED
+	table:end-table %integer; #IMPLIED
+>
+<!ELEMENT table:source-range-address EMPTY>
+<!ATTLIST table:source-range-address
+	table:column %integer; #IMPLIED
+	table:row %integer; #IMPLIED
+	table:table %integer; #IMPLIED
+	table:start-column %integer; #IMPLIED
+	table:start-row %integer; #IMPLIED
+	table:start-table %integer; #IMPLIED
+	table:end-column %integer; #IMPLIED
+	table:end-row %integer; #IMPLIED
+	table:end-table %integer; #IMPLIED
+>
+<!ELEMENT table:change-track-table-cell (text:p*)>
+<!ATTLIST table:change-track-table-cell
+	table:cell-address %cell-address; #IMPLIED
+	table:matrix-covered (true | false) "false"
+	table:formula %string; #IMPLIED
+	table:number-matrix-rows-spanned %positiveInteger; #IMPLIED
+	table:number-matrix-columns-spanned %positiveInteger; #IMPLIED
+	table:value-type %valueType; "string"
+	table:value %float; #IMPLIED
+	table:date-value %date; #IMPLIED
+	table:time-value %timeInstance; #IMPLIED
+	table:string-value %string; #IMPLIED
+>
+<!ELEMENT table:cell-content-change (table:cell-address, office:change-info, table:dependences?, table:deletions?, table:previous)>
+<!ATTLIST table:cell-content-change
+	table:id CDATA #REQUIRED
+	table:acceptance-state (accepted | rejected | pending) "pending"
+	table:rejecting-change-id %positiveInteger; #IMPLIED
+>
+<!ELEMENT table:cell-address EMPTY>
+<!ATTLIST table:cell-address
+	table:column %integer; #IMPLIED
+	table:row %integer; #IMPLIED
+	table:table %integer; #IMPLIED
+>
+<!ELEMENT table:previous (table:change-track-table-cell)>
+<!ATTLIST table:previous
+	table:id CDATA #IMPLIED
+>
+<!ELEMENT table:rejection (office:change-info, table:dependences?, table:deletions?)>
+<!ATTLIST table:rejection
+	table:id CDATA #REQUIRED
+	table:acceptance-state (accepted | rejected | pending) "pending"
+	table:rejecting-change-id %positiveInteger; #IMPLIED
+>
+
+<!ENTITY % table-columns "table:table-columns | ( table:table-column | table:table-column-group )+">
+<!ENTITY % table-header-columns "table:table-header-columns">
+<!ENTITY % table-rows "table:table-rows | ( table:table-row | table:table-row-group )+">
+<!ENTITY % table-header-rows "table:table-header-rows">
+<!ENTITY % table-column-groups "((%table-columns;),(%table-header-columns;,(%table-columns;)?)?) | (%table-header-columns;,(%table-columns;)?)">
+<!ENTITY % table-row-groups "((%table-rows;),(%table-header-rows;,(%table-rows;)?)?) | (%table-header-rows;,(%table-rows;)?)">
+<!ELEMENT table:table (table:table-source?, table:scenario?, office:forms?, table:shapes?, (%table-column-groups;), (%table-row-groups;))>
+<!ATTLIST table:table
+	table:name %string; #IMPLIED
+	table:style-name %styleName; #IMPLIED
+	table:protected %boolean; "false"
+	table:protection-key CDATA #IMPLIED
+	table:print-ranges %cell-range-address-list; #IMPLIED
+>
+<!ELEMENT table:table-source EMPTY>
+<!ATTLIST table:table-source
+	table:mode (copy-all | copy-results-only) "copy-all"
+	xlink:type (simple) #FIXED "simple"
+	xlink:actuate (onRequest) "onRequest"
+	xlink:href %uriReference; #REQUIRED
+	table:filter-name CDATA #IMPLIED
+	table:table-name CDATA #IMPLIED
+	table:filter-options CDATA #IMPLIED
+	table:refresh-delay %timeDuration; #IMPLIED
+>
+<!ELEMENT table:scenario EMPTY>
+<!ATTLIST table:scenario
+	table:display-border %boolean; "true"
+	table:border-color %color; #IMPLIED
+	table:copy-back %boolean; "true"
+	table:copy-styles %boolean; "true"
+	table:copy-formulas %boolean; "true"
+	table:is-active %boolean; #REQUIRED
+	table:scenario-ranges %cell-range-address-list; #REQUIRED
+	table:comment CDATA #IMPLIED
+>
+<!ELEMENT table:shapes %shapes;>
+<!ELEMENT table:table-column-group (table:table-header-columns | table:table-column | table:table-column-group)+>
+<!ATTLIST table:table-column-group
+	table:display %boolean; "true"
+>
+<!ELEMENT table:table-header-columns (table:table-column | table:table-column-group)+>
+<!ELEMENT table:table-columns (table:table-column | table:table-column-group)+>
+<!ELEMENT table:table-column EMPTY>
+<!ATTLIST table:table-column
+	table:number-columns-repeated %positiveInteger; "1"
+	table:style-name %styleName; #IMPLIED
+	table:visibility (visible | collapse | filter) "visible"
+	table:default-cell-style-name %styleName; #IMPLIED
+>
+<!ELEMENT table:table-row-group (table:table-header-rows | table:table-row | table:table-row-group)+>
+<!ATTLIST table:table-row-group
+	table:display %boolean; "true"
+>
+<!ELEMENT table:table-header-rows (table:table-row | table:table-row-group)+>
+<!ELEMENT table:table-rows (table:table-row | table:table-row-group)+>
+<!ENTITY % table-cells "(table:table-cell|table:covered-table-cell)+">
+<!ELEMENT table:table-row %table-cells;>
+<!ATTLIST table:table-row
+	table:number-rows-repeated %positiveInteger; "1"
+	table:style-name %styleName; #IMPLIED
+	table:visibility (visible | collapse | filter) "visible"
+	table:default-cell-style-name %styleName; #IMPLIED
+>
+
+<!ENTITY % text-wo-table "(text:h|text:p|text:ordered-list|text:unordered-list|%shapes;)*">
+<!ENTITY % cell-content "(table:cell-range-source?,office:annotation?,table:detective?,(table:sub-table|%text-wo-table;))">
+<!ELEMENT table:table-cell %cell-content;>
+<!ELEMENT table:covered-table-cell %cell-content;>
+<!ATTLIST table:table-cell
+	table:number-columns-repeated %positiveInteger; "1"
+	table:number-rows-spanned %positiveInteger; "1"
+	table:number-columns-spanned %positiveInteger; "1"
+	table:style-name %styleName; #IMPLIED
+	table:validation-name CDATA #IMPLIED
+	table:formula %string; #IMPLIED
+	table:number-matrix-rows-spanned %positiveInteger; #IMPLIED
+	table:number-matrix-columns-spanned %positiveInteger; #IMPLIED
+	table:value-type %valueType; "string"
+	table:value %float; #IMPLIED
+	table:date-value %date; #IMPLIED
+	table:time-value %timeInstance; #IMPLIED
+	table:boolean-value %boolean; #IMPLIED
+	table:string-value %string; #IMPLIED
+	table:currency %string; #IMPLIED
+>
+<!ATTLIST table:covered-table-cell
+	table:number-columns-repeated %positiveInteger; "1"
+	table:style-name %styleName; #IMPLIED
+	table:validation-name CDATA #IMPLIED
+	table:formula %string; #IMPLIED
+	table:number-matrix-rows-spanned %positiveInteger; #IMPLIED
+	table:number-matrix-columns-spanned %positiveInteger; #IMPLIED
+	table:value-type %valueType; "string"
+	table:value %float; #IMPLIED
+	table:date-value %date; #IMPLIED
+	table:time-value %timeInstance; #IMPLIED
+	table:boolean-value %boolean; #IMPLIED
+	table:string-value %string; #IMPLIED
+	table:currency %string; #IMPLIED
+>
+<!-- cell protection in writer: cell attribute; calc uses format -->
+<!ATTLIST table:table-cell table:protected %boolean; "false">
+
+<!ELEMENT table:cell-range-source EMPTY>
+<!ATTLIST table:cell-range-source
+	table:name %string; #REQUIRED
+	xlink:type (simple) #FIXED "simple"
+	xlink:actuate (onRequest) #FIXED "onRequest"
+	xlink:href %uriReference; #REQUIRED
+	table:filter-name %string; #REQUIRED
+	table:filter-options %string; #IMPLIED
+	table:last-column-spanned %positiveInteger; #REQUIRED
+	table:last-row-spanned %positiveInteger; #REQUIRED
+	table:refresh-delay %timeDuration; #IMPLIED
+>
+
+<!ELEMENT table:detective (table:highlighted-range*, table:operation*)>
+<!ELEMENT table:highlighted-range EMPTY>
+<!ATTLIST table:highlighted-range
+	table:cell-range-address %cell-range-address; #IMPLIED
+	table:direction (from-another-table | to-another-table | from-same-table | to-same-table) #IMPLIED
+	table:contains-error %boolean; #IMPLIED
+	table:marked-invalid %boolean; #IMPLIED
+>
+<!ELEMENT table:operation EMPTY>
+<!ATTLIST table:operation
+	table:name (trace-dependents | remove-dependents | trace-precedents | remove-precedents | trace-errors) #REQUIRED
+	table:index %nonNegativeInteger; #REQUIRED
+>
+
+<!ELEMENT table:content-validations (table:content-validation)+>
+<!ELEMENT table:content-validation (table:help-message?, (table:error-message | (table:error-macro, office:events?))?)>
+<!ATTLIST table:content-validation
+	table:name CDATA #REQUIRED
+	table:condition CDATA #IMPLIED
+	table:base-cell-address %cell-address; #IMPLIED
+	table:allow-empty-cell %boolean; #IMPLIED
+>
+<!ELEMENT table:help-message (text:p*)>
+<!ATTLIST table:help-message
+	table:title CDATA #IMPLIED
+	table:display %boolean; #IMPLIED
+>
+<!ELEMENT table:error-message (text:p*)>
+<!ATTLIST table:error-message
+	table:title CDATA #IMPLIED
+	table:message-type (stop | warning | information) #IMPLIED
+	table:display %boolean; #IMPLIED
+>
+<!ELEMENT table:error-macro EMPTY>
+<!ATTLIST table:error-macro
+	table:name CDATA #IMPLIED
+	table:execute %boolean; #IMPLIED
+>
+
+<!ELEMENT table:sub-table ((%table-column-groups;) , (%table-row-groups;))>
+
+<!ELEMENT table:label-ranges (table:label-range)*>
+<!ELEMENT table:label-range EMPTY>
+<!ATTLIST table:label-range
+	table:label-cell-range-address %cell-range-address; #REQUIRED
+	table:data-cell-range-address %cell-range-address; #REQUIRED
+	table:orientation (column | row) #REQUIRED
+>
+
+<!ELEMENT table:named-expressions (table:named-range | table:named-expression)*>
+<!ELEMENT table:named-range EMPTY>
+<!ATTLIST table:named-range
+	table:name CDATA #REQUIRED
+	table:cell-range-address %cell-range-address; #REQUIRED
+	table:base-cell-address %cell-address; #IMPLIED
+	table:range-usable-as CDATA "none"
+>
+<!ELEMENT table:named-expression EMPTY>
+<!ATTLIST table:named-expression
+	table:name CDATA #REQUIRED
+	table:expression CDATA #REQUIRED
+	table:base-cell-address %cell-address; #IMPLIED
+>
+
+<!ELEMENT table:filter (table:filter-condition | table:filter-and | table:filter-or)>
+<!ATTLIST table:filter
+	table:target-range-address %cell-range-address; #IMPLIED
+	table:condition-source-range-address %cell-range-address; #IMPLIED
+	table:condition-source (self | cell-range) "self"
+	table:display-duplicates %boolean; "true"
+>
+<!ELEMENT table:filter-and (table:filter-or | table:filter-condition)+>
+<!ELEMENT table:filter-or (table:filter-and | table:filter-condition)+>
+<!ELEMENT table:filter-condition EMPTY>
+<!ATTLIST table:filter-condition
+	table:field-number %nonNegativeInteger; #REQUIRED
+	table:case-sensitive %boolean; "false"
+	table:data-type (text | number) "text"
+	table:value CDATA #REQUIRED
+	table:operator CDATA #REQUIRED
+>
+
+<!ELEMENT table:database-ranges (table:database-range)*>
+<!ELEMENT table:database-range ((table:database-source-sql | table:database-source-table | table:database-source-query)?, table:filter?, table:sort?, table:subtotal-rules?)>
+<!ATTLIST table:database-range
+	table:name CDATA #IMPLIED
+	table:is-selection %boolean; "false"
+	table:on-update-keep-styles %boolean; "false"
+	table:on-update-keep-size %boolean; "true"
+	table:has-persistant-data %boolean; "true"
+	table:orientation (row | column) "row"
+	table:contains-header %boolean; "true"
+	table:display-filter-buttons %boolean; "false"
+	table:target-range-address %cell-range-address; #REQUIRED
+	table:refresh-delay %timeDuration; #IMPLIED
+>
+<!ELEMENT table:database-source-sql EMPTY>
+<!ATTLIST table:database-source-sql
+	table:database-name CDATA #REQUIRED
+	table:sql-statement CDATA #REQUIRED
+	table:parse-sql-statements %boolean; "false"
+>
+<!ELEMENT table:database-source-table EMPTY>
+<!ATTLIST table:database-source-table
+	table:database-name CDATA #REQUIRED
+	table:table-name CDATA #REQUIRED
+>
+<!ELEMENT table:database-source-query EMPTY>
+<!ATTLIST table:database-source-query
+	table:database-name CDATA #REQUIRED
+	table:query-name CDATA #REQUIRED
+>
+
+<!ELEMENT table:sort (table:sort-by)+>
+<!ATTLIST table:sort
+	table:bind-styles-to-content %boolean; "true"
+	table:target-range-address %cell-range-address; #IMPLIED
+	table:case-sensitive %boolean; "false"
+	table:language CDATA #IMPLIED
+	table:country CDATA #IMPLIED
+	table:algorithm CDATA #IMPLIED
+>
+<!ELEMENT table:sort-by EMPTY>
+<!ATTLIST table:sort-by
+	table:field-number %nonNegativeInteger; #REQUIRED
+	table:data-type CDATA "automatic"
+	table:order (ascending | descending) "ascending"
+>
+
+<!ELEMENT table:subtotal-rules (table:sort-groups? | table:subtotal-rule*)?>
+<!ATTLIST table:subtotal-rules
+	table:bind-styles-to-content %boolean; "true"
+	table:case-sensitive %boolean; "false"
+	table:page-breaks-on-group-change %boolean; "false"
+>
+<!ELEMENT table:sort-groups EMPTY>
+<!ATTLIST table:sort-groups
+	table:data-type CDATA "automatic"
+	table:order (ascending | descending) "ascending"
+>
+<!ELEMENT table:subtotal-rule (table:subtotal-field)*>
+<!ATTLIST table:subtotal-rule
+	table:group-by-field-number %nonNegativeInteger; #REQUIRED
+>
+<!ELEMENT table:subtotal-field EMPTY>
+<!ATTLIST table:subtotal-field
+	table:field-number %nonNegativeInteger; #REQUIRED
+	table:function CDATA #REQUIRED
+>
+
+<!ELEMENT table:data-pilot-tables (table:data-pilot-table)*>
+<!ELEMENT table:data-pilot-table ((table:database-source-sql | table:database-source-table | table:database-source-query | table:source-service | table:source-cell-range)?, table:data-pilot-field+)>
+<!ATTLIST table:data-pilot-table
+	table:name CDATA #REQUIRED
+	table:application-data CDATA #IMPLIED
+	table:grand-total (none | row | column | both) "both"
+	table:ignore-empty-rows %boolean; "false"
+	table:identify-categories %boolean; "false"
+	table:target-range-address %cell-range-address; #REQUIRED
+	table:buttons %cell-range-address-list; #REQUIRED
+>
+<!ELEMENT table:source-service EMPTY>
+<!ATTLIST table:source-service
+	table:name CDATA #REQUIRED
+	table:source-name CDATA #REQUIRED
+	table:object-name CDATA #REQUIRED
+	table:username CDATA #IMPLIED
+	table:password CDATA #IMPLIED
+>
+<!ELEMENT table:source-cell-range (table:filter)?>
+<!ATTLIST table:source-cell-range
+	table:cell-range-address %cell-range-address; #REQUIRED
+>
+<!ELEMENT table:data-pilot-field (table:data-pilot-level)?>
+<!ATTLIST table:data-pilot-field
+	table:source-field-name CDATA #REQUIRED
+	table:is-data-layout-field %boolean; "false"
+	table:function CDATA #REQUIRED
+	table:orientation (row | column | data | page | hidden) #REQUIRED
+	table:used-hierarchy %positiveInteger; "1"
+>
+<!ELEMENT table:data-pilot-level (table:data-pilot-subtotals?, table:data-pilot-members?)>
+<!ATTLIST table:data-pilot-level
+	table:display-empty %boolean; #IMPLIED
+>
+<!ELEMENT table:data-pilot-subtotals (table:data-pilot-subtotal)*>
+<!ELEMENT table:data-pilot-subtotal EMPTY>
+<!ATTLIST table:data-pilot-subtotal
+	table:function CDATA #REQUIRED
+>
+<!ELEMENT table:data-pilot-members (table:data-pilot-member)*>
+<!ELEMENT table:data-pilot-member EMPTY>
+<!ATTLIST table:data-pilot-member
+	table:name CDATA #REQUIRED
+	table:display %boolean; #IMPLIED
+	table:display-details %boolean; #IMPLIED
+>
+
+<!ELEMENT table:consolidation EMPTY>
+<!ATTLIST table:consolidation
+	table:function CDATA #REQUIRED
+	table:source-cell-range-addresses %cell-range-address-list; #REQUIRED
+	table:target-cell-address %cell-address; #REQUIRED
+	table:use-label (none | column | row | both) "none"
+	table:link-to-source-data %boolean; "false"
+>
+
+<!ELEMENT table:dde-links (table:dde-link)+>
+<!ELEMENT table:dde-link (office:dde-source, table:table)>
+
+
+<!ENTITY % chart-class "(line|area|circle|ring|scatter|radar|bar|stock|add-in)">
+<!ENTITY % chart-solid-type "(cuboid|cylinder|cone|pyramid)">
+
+<!-- Chart element -->
+<!ELEMENT chart:chart ( chart:title?, chart:subtitle?, chart:legend?,
+					    chart:plot-area,
+						table:table? )>
+<!ATTLIST chart:chart
+		  chart:class %chart-class; #REQUIRED
+		  chart:add-in-name %string; #IMPLIED
+		  chart:table-number-list %string; #IMPLIED
+		  draw:name %string; #IMPLIED
+		  %draw-position;
+		  %draw-size;
+		  %draw-style-name;
+		  chart:column-mapping %string; #IMPLIED
+		  chart:row-mapping %string; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED>
+
+<!ATTLIST chart:chart %presentation-class; >
+<!ATTLIST chart:chart %zindex;>
+<!ATTLIST chart:chart %draw-end-position; >
+<!ATTLIST chart:chart draw:id %draw-shape-id; >
+<!ATTLIST chart:chart draw:layer %layerName; #IMPLIED>
+
+<!ATTLIST style:properties
+		  chart:scale-text %boolean; "true"
+		  chart:stock-updown-bars %boolean; "false"
+		  chart:stock-with-volume %boolean; "false"
+		  chart:three-dimensional %boolean; "false"
+		  chart:deep %boolean; "false"
+		  chart:lines %boolean; "false"
+		  chart:percentage %boolean; "false"
+		  chart:solid-type %chart-solid-type; "cuboid"
+		  chart:splines %nonNegativeInteger; "0"
+		  chart:stacked %boolean; "false"
+		  chart:symbol %integer; "-1"
+		  chart:vertical %boolean; "false"
+		  chart:lines-used %nonNegativeInteger; "0"
+		  chart:connect-bars %boolean; "false"
+		  chart:spline-order %nonNegativeInteger; "2"
+		  chart:spline-resolution %nonNegativeInteger; "20"
+          chart:pie-offset %nonNegativeInteger; "0">
+
+<!-- Main/Sub Title -->
+<!-- the cell-address attribute is currently not supported for titles -->
+<!ELEMENT chart:title (text:p)?>
+<!ATTLIST chart:title
+		  table:cell-range %cell-address; #IMPLIED
+		  svg:x %coordinate; #IMPLIED
+		  svg:y %coordinate; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ELEMENT chart:subtitle (text:p)?>
+<!ATTLIST chart:subtitle
+		  table:cell-range %cell-address; #IMPLIED
+		  svg:x %coordinate; #IMPLIED
+		  svg:y %coordinate; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!-- you must specify either a legend-position or both, x and y coordinates -->
+<!ELEMENT chart:legend EMPTY>
+<!ATTLIST chart:legend
+		  chart:legend-position (top|left|bottom|right) "right"
+		  svg:x %coordinate; #IMPLIED
+		  svg:y %coordinate; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!-- Plot-Area specification -->
+
+<!ELEMENT chart:plot-area (dr3d:light*,
+						   chart:axis*,
+						   chart:categories?,
+						   chart:series*,
+						   chart:stock-gain-marker?,
+						   chart:stock-loss-marker?,
+						   chart:stock-range-line?,
+						   chart:wall?,
+						   chart:floor?) >
+
+<!ATTLIST chart:plot-area
+		  svg:x %coordinate; #IMPLIED
+		  svg:y %coordinate; #IMPLIED
+		  svg:width %length; #IMPLIED
+		  svg:height %length; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED
+		  table:cell-range-address %cell-range-address; #IMPLIED
+		  chart:table-number-list %string; #IMPLIED
+		  chart:data-source-has-labels (none|row|column|both) "none" >
+
+<!-- 3d scene attributes on plot-area -->
+<!ATTLIST chart:plot-area
+		  dr3d:vrp %vector3D; #IMPLIED
+		  dr3d:vpn %vector3D; #IMPLIED
+		  dr3d:vup %vector3D; #IMPLIED
+		  dr3d:projection (parallel|perspective) #IMPLIED
+		  dr3d:transform CDATA #IMPLIED
+		  dr3d:distance %length; #IMPLIED
+		  dr3d:focal-length %length; #IMPLIED
+		  dr3d:shadow-slant %nonNegativeInteger; #IMPLIED
+		  dr3d:shade-mode (flat|phong|gouraud|draft) #IMPLIED
+		  dr3d:ambient-color %color; #IMPLIED
+		  dr3d:lighting-mode %boolean; #IMPLIED >
+
+<!ATTLIST style:properties
+		  chart:series-source (columns|rows) "columns" >
+
+<!ELEMENT chart:wall EMPTY>
+<!ATTLIST chart:wall
+		  svg:width %length; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ELEMENT chart:floor EMPTY>
+<!ATTLIST chart:floor
+		  svg:width %length; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!-- Stock chart elements -->
+
+<!ELEMENT chart:stock-gain-marker EMPTY>
+<!ATTLIST chart:stock-gain-marker
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ELEMENT chart:stock-loss-marker EMPTY>
+<!ATTLIST chart:stock-loss-marker
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ELEMENT chart:stock-range-line EMPTY>
+<!ATTLIST chart:stock-range-line
+		  chart:style-name %styleName; #IMPLIED >
+
+<!-- Axis -->
+
+<!ELEMENT chart:axis (chart:title?, chart:grid*)>
+<!ATTLIST chart:axis
+		  chart:class (category|value|series|domain) #REQUIRED
+		  chart:name %string; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ATTLIST style:properties
+		  chart:tick-marks-major-inner %boolean; "false"
+		  chart:tick-marks-major-outer %boolean; "true"
+		  chart:tick-marks-minor-inner %boolean; "false"
+		  chart:tick-marks-minor-outer %boolean; "false"
+		  chart:logarithmic %boolean; "false"
+		  chart:maximum %float; #IMPLIED
+		  chart:minimum %float; #IMPLIED
+		  chart:origin %float; #IMPLIED
+		  chart:interval-major %float; #IMPLIED
+		  chart:interval-minor %float; #IMPLIED
+		  chart:gap-width %integer; #IMPLIED
+		  chart:overlap %integer; #IMPLIED
+		  text:line-break %boolean; "true"
+		  chart:display-label %boolean; "true"
+		  chart:label-arrangement (side-by-side|stagger-even|stagger-odd) "side-by-side"
+		  chart:text-overlap %boolean; "false"
+		  chart:visible %boolean; "true" 
+		  chart:link-data-style-to-source %boolean; "true" >
+
+<!ELEMENT chart:grid EMPTY>
+<!ATTLIST chart:grid
+		  chart:class (major|minor) "major"
+		  chart:style-name %styleName; #IMPLIED >
+
+
+<!ELEMENT chart:categories EMPTY>
+<!ATTLIST chart:categories
+		  table:cell-range-address %cell-range-address; #IMPLIED >
+
+<!--
+	each series element must have an cell-range-address element that points
+	to the underlying table data.
+	Impl. Note: Internally all href elements are merged to one table range
+	that represents the data for the whole chart
+-->
+<!ELEMENT chart:series ( chart:domain*,
+                         chart:mean-value?,
+						 chart:regression-curve?,
+						 chart:error-indicator?,
+						 chart:data-point* )>
+<!ATTLIST chart:series
+		  chart:values-cell-range-address %cell-range-address; #IMPLIED
+		  chart:label-cell-address %cell-address; #IMPLIED
+		  chart:class %chart-class; #IMPLIED
+		  chart:attached-axis %string; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!ELEMENT chart:domain EMPTY>
+<!ATTLIST chart:domain
+		  table:cell-range-address %cell-range-address; #IMPLIED >
+
+<!ELEMENT chart:data-point EMPTY>
+<!ATTLIST chart:data-point
+		  chart:repeated %nonNegativeInteger; #IMPLIED
+		  chart:style-name %styleName; #IMPLIED >
+
+<!-- statistical properties -->
+
+<!ELEMENT chart:mean-value EMPTY>
+<!ELEMENT chart:regression-curve EMPTY >
+<!ELEMENT chart:error-indicator EMPTY >
+<!ATTLIST chart:mean-value chart:style-name %styleName; #IMPLIED >
+<!ATTLIST chart:regression-curve chart:style-name %styleName; #IMPLIED >
+<!ATTLIST chart:error-indicator chart:style-name %styleName; #IMPLIED >
+
+<!ATTLIST style:properties
+		  chart:mean-value %boolean; #IMPLIED
+		  chart:error-category (none|variance|standard-deviation|percentage|error-margin|constant) "none"
+		  chart:error-percentage %float; #IMPLIED
+		  chart:error-margin %float; #IMPLIED
+		  chart:error-lower-limit %float; #IMPLIED
+		  chart:error-upper-limit %float; #IMPLIED
+		  chart:error-upper-indicator %boolean; #IMPLIED
+		  chart:error-lower-indicator %boolean; #IMPLIED
+		  chart:regression-type (none|linear|logarithmic|exponential|power) "none" >
+
+<!-- data label properties -->
+
+<!ATTLIST style:properties
+		  chart:data-label-number (none|value|percentage) "none"
+		  chart:data-label-text %boolean; "false"
+		  chart:data-label-symbol %boolean; "false" >
+
+<!-- general text properties -->
+
+<!ATTLIST style:properties 
+		  text:rotation-angle %integer; "0" >
+
+<!-- symbol properties -->
+
+<!ATTLIST style:properties
+		  chart:symbol-width %nonNegativeLength; #IMPLIED
+		  chart:symbol-height %nonNegativeLength; #IMPLIED
+		  chart:symbol-image-name %string; #IMPLIED >
+
+<!-- data styles -->
+<!ENTITY % any-number "( number:number | number:scientific-number | number:fraction )">
+<!ENTITY % number-style-content "( (number:text,(%any-number;,number:text?)?) | (%any-number;,number:text?) )">
+<!ELEMENT number:number-style ( style:properties?, %number-style-content;, style:map* )>
+<!ELEMENT number:number ( number:embedded-text* )>
+<!ELEMENT number:scientific-number EMPTY>
+<!ELEMENT number:fraction EMPTY>
+
+<!ELEMENT number:embedded-text (#PCDATA)>
+<!ATTLIST number:embedded-text number:position %integer; #REQUIRED>
+
+<!ENTITY % currency-symbol-and-text "number:currency-symbol,number:text?">
+<!ENTITY % number-and-text "number:number,number:text?">
+<!ENTITY % currency-symbol-and-number "((%number-and-text;),(%currency-symbol-and-text;)?) | ((%currency-symbol-and-text;),(%number-and-text;)?)">
+<!ENTITY % currency-style-content "number:text?, (%currency-symbol-and-number;)?">
+
+<!ELEMENT number:currency-style ( style:properties?, (%currency-style-content;), style:map* )>
+<!ELEMENT number:currency-symbol (#PCDATA)>
+<!ATTLIST number:currency-symbol number:language CDATA #IMPLIED>
+<!ATTLIST number:currency-symbol number:country CDATA #IMPLIED>
+
+<!ENTITY % percentage-style-content "( (number:text,(%number-and-text;)?) | (%number-and-text;) )">
+<!ELEMENT number:percentage-style ( style:properties?, %percentage-style-content;, style:map* )>
+
+<!ENTITY % any-date "( number:day | number:month | number:year | number:era | number:day-of-week | number:week-of-year | number:quarter| number:hours | number:am-pm | number:minutes | number:seconds )">
+<!ENTITY % date-style-content "( (number:text,(%any-date;,number:text?)+) | (%any-date;,number:text?)+ )">
+<!ELEMENT number:date-style ( style:properties?, %date-style-content;, style:map* )>
+<!ELEMENT number:day EMPTY>
+<!ATTLIST number:day number:style (short|long) "short">
+<!ATTLIST number:day number:calendar CDATA #IMPLIED>
+<!ELEMENT number:month EMPTY>
+<!ATTLIST number:month number:textual %boolean; "false">
+<!ATTLIST number:month number:style (short|long) "short">
+<!ATTLIST number:month number:calendar CDATA #IMPLIED>
+<!ELEMENT number:year EMPTY>
+<!ATTLIST number:year number:style (short|long) "short">
+<!ATTLIST number:year number:calendar CDATA #IMPLIED>
+<!ELEMENT number:era EMPTY>
+<!ATTLIST number:era number:style (short|long) "short">
+<!ATTLIST number:era number:calendar CDATA #IMPLIED>
+<!ELEMENT number:day-of-week EMPTY>
+<!ATTLIST number:day-of-week number:style (short|long) "short">
+<!ATTLIST number:day-of-week number:calendar CDATA #IMPLIED>
+<!ELEMENT number:week-of-year EMPTY>
+<!ATTLIST number:week-of-year number:calendar CDATA #IMPLIED>
+<!ELEMENT number:quarter EMPTY>
+<!ATTLIST number:quarter number:style (short|long) "short">
+<!ATTLIST number:quarter number:calendar CDATA #IMPLIED>
+
+<!ENTITY % any-time "( number:hours | number:am-pm | number:minutes | number:seconds )">
+<!ENTITY % time-style-content "( (number:text,(%any-time;,number:text?)+) | (%any-time;,number:text?)+)">
+<!ELEMENT number:time-style ( style:properties?, %time-style-content;, style:map* )>
+<!ELEMENT number:hours EMPTY>
+<!ATTLIST number:hours number:style (short|long) "short">
+<!ELEMENT number:minutes EMPTY>
+<!ATTLIST number:minutes number:style (short|long) "short">
+<!ELEMENT number:seconds EMPTY>
+<!ATTLIST number:seconds number:style (short|long) "short">
+<!ATTLIST number:seconds number:decimal-places %integer; "0">
+<!ELEMENT number:am-pm EMPTY>
+
+<!ENTITY % boolean-style-content "( (number:text,(number:boolean,number:text?)?) | (number:boolean,number:text?) )">
+<!ELEMENT number:boolean-style ( style:properties?,%boolean-style-content;, style:map* )>
+<!ELEMENT number:boolean EMPTY>
+
+<!ENTITY % text-style-content "( (number:text,(number:text-content,number:text?)?) | (number:text-content,number:text?) )">
+<!ELEMENT number:text-style ( style:properties?,%text-style-content;, style:map* )>
+<!ELEMENT number:text (#PCDATA)>
+<!ELEMENT number:text-content EMPTY>
+
+<!ATTLIST number:number-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:currency-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:percentage-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:date-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:time-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:boolean-style style:name %styleName; #REQUIRED>
+<!ATTLIST number:text-style style:name %styleName; #REQUIRED>
+
+<!ATTLIST number:number-style style:family CDATA #REQUIRED>
+<!ATTLIST number:currency-style style:family CDATA #REQUIRED>
+<!ATTLIST number:percentage-style style:family CDATA #REQUIRED>
+<!ATTLIST number:date-style style:family CDATA #REQUIRED>
+<!ATTLIST number:time-style style:family CDATA #REQUIRED>
+<!ATTLIST number:boolean-style style:family CDATA #REQUIRED>
+<!ATTLIST number:text-style style:family CDATA #REQUIRED>
+
+<!ATTLIST number:number-style number:language CDATA #IMPLIED>
+<!ATTLIST number:currency-style number:language CDATA #IMPLIED>
+<!ATTLIST number:percentage-style number:language CDATA #IMPLIED>
+<!ATTLIST number:date-style number:language CDATA #IMPLIED>
+<!ATTLIST number:time-style number:language CDATA #IMPLIED>
+<!ATTLIST number:boolean-style number:language CDATA #IMPLIED>
+<!ATTLIST number:text-style number:language CDATA #IMPLIED>
+
+<!ATTLIST number:number-style number:country CDATA #IMPLIED>
+<!ATTLIST number:currency-style number:country CDATA #IMPLIED>
+<!ATTLIST number:percentage-style number:country CDATA #IMPLIED>
+<!ATTLIST number:date-style number:country CDATA #IMPLIED>
+<!ATTLIST number:time-style number:country CDATA #IMPLIED>
+<!ATTLIST number:boolean-style number:country CDATA #IMPLIED>
+<!ATTLIST number:text-style number:country CDATA #IMPLIED>
+
+<!ATTLIST number:number-style number:title CDATA #IMPLIED>
+<!ATTLIST number:currency-style number:title CDATA #IMPLIED>
+<!ATTLIST number:percentage-style number:title CDATA #IMPLIED>
+<!ATTLIST number:date-style number:title CDATA #IMPLIED>
+<!ATTLIST number:time-style number:title CDATA #IMPLIED>
+<!ATTLIST number:boolean-style number:title CDATA #IMPLIED>
+<!ATTLIST number:text-style number:title CDATA #IMPLIED>
+
+<!ATTLIST number:number-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:currency-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:percentage-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:date-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:time-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:boolean-style style:volatile %boolean; #IMPLIED>
+<!ATTLIST number:text-style style:volatile %boolean; #IMPLIED>
+
+<!ATTLIST number:number-style number:transliteration-format CDATA "1">
+<!ATTLIST number:currency-style number:transliteration-format CDATA "1">
+<!ATTLIST number:percentage-style number:transliteration-format CDATA "1">
+<!ATTLIST number:date-style number:transliteration-format CDATA "1">
+<!ATTLIST number:time-style number:transliteration-format CDATA "1">
+<!ATTLIST number:boolean-style number:transliteration-format CDATA "1">
+<!ATTLIST number:text-style number:transliteration-format CDATA "1">
+
+<!ATTLIST number:number-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:currency-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:percentage-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:date-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:time-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:boolean-style number:transliteration-language CDATA #IMPLIED>
+<!ATTLIST number:text-style number:transliteration-language CDATA #IMPLIED>
+
+<!ATTLIST number:number-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:currency-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:percentage-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:date-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:time-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:boolean-style number:transliteration-country CDATA #IMPLIED>
+<!ATTLIST number:text-style number:transliteration-country CDATA #IMPLIED>
+
+<!ATTLIST number:number-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:currency-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:percentage-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:date-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:time-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:boolean-style number:transliteration-style (short|medium|long) "short">
+<!ATTLIST number:text-style number:transliteration-style (short|medium|long) "short">
+
+<!ATTLIST number:currency-style number:automatic-order %boolean; "false">
+<!ATTLIST number:date-style number:automatic-order %boolean; "false">
+
+<!ATTLIST number:date-style number:format-source (fixed|language) "fixed">
+<!ATTLIST number:time-style number:format-source (fixed|language) "fixed">
+
+<!ATTLIST number:time-style number:truncate-on-overflow %boolean; "true">
+
+<!ATTLIST number:number number:decimal-places %integer; #IMPLIED>
+<!ATTLIST number:scientific-number number:decimal-places %integer; #IMPLIED>
+
+<!ATTLIST number:number number:min-integer-digits %integer; #IMPLIED>
+<!ATTLIST number:scientific-number number:min-integer-digits %integer; #IMPLIED>
+<!ATTLIST number:fraction number:min-integer-digits %integer; #IMPLIED>
+
+<!ATTLIST number:number number:grouping %boolean; "false">
+<!ATTLIST number:scientific-number number:grouping %boolean; "false">
+<!ATTLIST number:fraction number:grouping %boolean; "false">
+
+<!ATTLIST number:number number:decimal-replacement CDATA #IMPLIED>
+
+<!ATTLIST number:number number:display-factor %float; "1">
+
+<!ATTLIST number:scientific-number number:min-exponent-digits %integer; #IMPLIED>
+
+<!ATTLIST number:fraction number:min-numerator-digits %integer; #IMPLIED>
+
+<!ATTLIST number:fraction number:min-denominator-digits %integer; #IMPLIED>
+
+
+<!ENTITY % controls	"form:text|form:textarea|form:fixed-text|form:file|
+					 form:password|form:formatted-text|form:button|form:image|
+					 form:checkbox|form:radio|form:listbox|form:combobox|form:frame|
+					 form:hidden|form:image-frame|form:grid|form:generic-control">
+
+<!ENTITY % name "form:name CDATA #IMPLIED">
+<!ENTITY % service-name "form:service-name CDATA #IMPLIED">
+
+<!ENTITY % navigation "(none|current|parent)">
+<!ENTITY % cycles "(records|current|page)">
+<!ENTITY % url "CDATA">
+
+
+<!ENTITY % types "(submit|reset|push|url)">
+<!ENTITY % button-type "form:button-type %types; 'push'">
+<!ENTITY % current-selected "form:current-selected %boolean; 'false'">
+<!ENTITY % current-value "form:current-value CDATA #IMPLIED">
+<!ENTITY % value "form:value CDATA #IMPLIED">
+<!ENTITY % disabled "form:disabled %boolean; 'false'">
+<!ENTITY % dropdown "form:dropdown %boolean; 'false'">
+<!ENTITY % for "form:for CDATA #IMPLIED">
+<!ENTITY % image-data "form:image-data %url; #IMPLIED">
+<!ENTITY % label "form:label CDATA #IMPLIED">
+<!ENTITY % max-length "form:max-length CDATA #IMPLIED">
+<!ENTITY % printable "form:printable %boolean; 'true'">
+<!ENTITY % readonly "form:readonly %boolean; 'false'">
+<!ENTITY % size "form:size CDATA #IMPLIED">
+<!ENTITY % selected "form:selected %boolean; 'false'">
+<!ENTITY % size "form:size CDATA #IMPLIED">
+<!ENTITY % tab-index "form:tab-index CDATA #IMPLIED">
+<!ENTITY % target-frame "office:target-frame CDATA '_blank'">
+<!ENTITY % target-location "xlink:href %url; #IMPLIED">
+<!ENTITY % tab-stop "form:tab-stop %boolean; 'true'">
+<!ENTITY % title "form:title CDATA #IMPLIED">
+<!ENTITY % default-value "form:default-value CDATA #IMPLIED">
+<!ENTITY % bound-column "form:bound-column CDATA #IMPLIED">
+<!ENTITY % convert-empty "form:convert-empty-to-null  %boolean; 'false'">
+<!ENTITY % data-field "form:data-field CDATA #IMPLIED">
+<!ENTITY % list-source "form:list-source CDATA #IMPLIED">
+<!ENTITY % list-source-types "(table|query|sql|sql-pass-through|value-list|table-fields)">
+<!ENTITY % list-source-type "form:list-source-type %list-source-types; #IMPLIED">
+<!ENTITY % column-style-name "form:column-style-name %styleName; #IMPLIED">
+
+
+<!ELEMENT form:control (%controls;)+>
+<!ATTLIST form:control %name;
+                       %service-name;
+                       %control-id;>
+
+<!ELEMENT form:form (form:properties?, office:events?, (form:control|form:form)*)>
+<!ATTLIST form:form %name; %service-name;>
+<!ATTLIST form:form xlink:href %url; #IMPLIED>
+<!ATTLIST form:form form:enctype CDATA "application/x-www-form-urlencoded">
+<!ATTLIST form:form form:method CDATA "get">
+<!ATTLIST form:form office:target-frame CDATA "_blank">
+<!ATTLIST form:form form:allow-deletes %boolean; "true">
+<!ATTLIST form:form form:allow-inserts %boolean; "true">
+<!ATTLIST form:form form:allow-updates %boolean; "true">
+<!ATTLIST form:form form:apply-filter %boolean; "false">
+<!ATTLIST form:form form:command CDATA #IMPLIED>
+<!ATTLIST form:form form:command-type (table|query|command) "command">
+<!ATTLIST form:form form:datasource CDATA #IMPLIED>
+<!ATTLIST form:form form:detail-fields CDATA #IMPLIED>
+<!ATTLIST form:form form:escape-processing %boolean; "true">
+<!ATTLIST form:form form:filter CDATA #IMPLIED>
+<!ATTLIST form:form form:ignore-result %boolean; "false">
+<!ATTLIST form:form form:master-fields CDATA #IMPLIED>
+<!ATTLIST form:form form:navigation-mode %navigation; #IMPLIED>
+<!ATTLIST form:form form:order CDATA #IMPLIED>
+<!ATTLIST form:form form:tab-cycle %cycles; #IMPLIED>
+
+<!ELEMENT office:forms (form:form*)>
+<!ATTLIST office:forms form:automatic-focus %boolean; "false">
+<!ATTLIST office:forms form:apply-design-mode %boolean; "true">
+
+<!ELEMENT form:text (form:properties?, office:events?)>
+<!ATTLIST form:text %current-value;
+                    %disabled;
+                    %max-length;
+                    %printable;
+                    %readonly;
+                    %tab-index;
+                    %tab-stop;
+                    %title;
+                    %value;
+                    %convert-empty;
+                    %data-field;>
+
+<!ELEMENT form:textarea (form:properties?, office:events?)>
+<!ATTLIST form:textarea %current-value;
+                        %disabled;
+                        %max-length;
+                        %printable;
+                        %readonly;
+                        %tab-index;
+                        %tab-stop;
+                        %title;
+                        %value;
+                        %convert-empty;
+                        %data-field;>
+
+<!ELEMENT form:password (form:properties?, office:events?)>
+<!ATTLIST form:password %disabled;
+                        %max-length;
+                        %printable;
+                        %tab-index;
+                        %tab-stop;
+                        %title;
+                        %value;
+						%convert-empty;>
+
+<!ATTLIST form:password form:echo-char CDATA "*">
+
+<!ELEMENT form:file (form:properties?, office:events?)>
+<!ATTLIST form:file %current-value;
+                    %disabled;
+                    %max-length;
+                    %printable;
+                    %readonly;
+                    %tab-index;
+                    %tab-stop;
+                    %title;
+                    %value;>
+
+<!ELEMENT form:formatted-text (form:properties?, office:events?)>
+<!ATTLIST form:formatted-text %current-value;
+                              %disabled;
+                              %max-length;
+                              %printable;
+                              %readonly;
+                              %tab-index;
+                              %tab-stop;
+                              %title;
+                              %value;
+                              %convert-empty;
+                              %data-field;>
+<!ATTLIST form:formatted-text form:max-value CDATA #IMPLIED>
+<!ATTLIST form:formatted-text form:min-value CDATA #IMPLIED>
+<!ATTLIST form:formatted-text form:validation %boolean; "false">
+
+<!ELEMENT form:fixed-text (form:properties?, office:events?)>
+<!ATTLIST form:fixed-text %for;
+                          %disabled;
+                          %label;
+                          %printable;
+                          %title;>
+<!ATTLIST form:fixed-text form:multi-line %boolean; "false">
+
+<!ELEMENT form:combobox (form:properties?, office:events?, form:item*)>
+<!ATTLIST form:combobox %current-value;
+                        %disabled;
+                        %dropdown;
+                        %max-length;
+                        %printable;
+                        %readonly;
+                        %size;
+                        %tab-index;
+                        %tab-stop;
+                        %title;
+                        %value;
+                        %convert-empty;
+                        %data-field;
+                        %list-source;
+                        %list-source-type;>
+<!ATTLIST form:combobox form:auto-complete %boolean; #IMPLIED>
+
+<!ELEMENT form:item (#PCDATA)>
+<!ATTLIST form:item %label;>
+
+<!ELEMENT form:listbox (form:properties?, office:events?, form:option*)>
+<!ATTLIST form:listbox %disabled;
+                       %dropdown;
+                       %printable;
+                       %size;
+                       %tab-index;
+                       %tab-stop;
+                       %title;
+                       %bound-column;
+                       %data-field;
+                       %list-source;
+                       %list-source-type;>
+<!ATTLIST form:listbox form:multiple %boolean; "false">
+
+<!ELEMENT form:option (#PCDATA)>
+<!ATTLIST form:option %current-selected;
+                      %selected;
+                      %label;
+                      %value;>
+
+<!ELEMENT form:button (form:properties?, office:events?)>
+<!ATTLIST form:button %button-type;
+                      %disabled;
+                      %label;
+                      %image-data;
+                      %printable;
+                      %tab-index;
+                      %tab-stop;
+                      %target-frame;
+                      %target-location;
+                      %title;
+                      %value;>
+<!ATTLIST form:button form:default-button %boolean; "false">
+
+<!ELEMENT form:image (form:properties?, office:events?)>
+<!ATTLIST form:image %button-type;
+                     %disabled;
+                     %image-data;
+                     %printable;
+                     %tab-index;
+                     %tab-stop;
+                     %target-frame;
+                     %target-location;
+                     %title;
+                     %value;>
+
+<!ELEMENT form:checkbox (form:properties?, office:events?)>
+<!ATTLIST form:checkbox %disabled;
+                        %label;
+                        %printable;
+                        %tab-index;
+                        %tab-stop;
+                        %title;
+                        %value;
+                        %data-field;>
+<!ENTITY % states "(unchecked|checked|unknown)">
+<!ATTLIST form:checkbox form:current-state %states; #IMPLIED>
+<!ATTLIST form:checkbox form:is-tristate %boolean; "false">
+<!ATTLIST form:checkbox form:state %states; "unchecked">
+
+<!ELEMENT form:radio (form:properties?, office:events?)>
+<!ATTLIST form:radio %current-selected;
+                     %disabled;
+                     %label;
+                     %printable;
+                     %selected;
+                     %tab-index;
+                     %tab-stop;
+                     %title;
+                     %value;
+                     %data-field;>
+
+<!ELEMENT form:frame (form:properties?, office:events?)>
+<!ATTLIST form:frame %disabled;
+                     %for;
+                     %label;
+                     %printable;
+                     %title;>
+
+<!ELEMENT form:image-frame (form:properties?, office:events?)>
+<!ATTLIST form:image-frame %disabled;
+                           %image-data;
+                           %printable;
+                           %readonly;
+                           %title;
+                           %data-field;>
+
+<!ELEMENT form:hidden (form:properties?, office:events?)>
+<!ATTLIST form:hidden %name;
+                      %service-name;
+                      %value;>
+
+<!ELEMENT form:grid (form:properties?, office:events?, form:column*)>
+<!ATTLIST form:grid %disabled;
+                    %printable;
+                    %tab-index;
+                    %tab-stop;
+                    %title;>
+
+<!ENTITY % column-type "form:text| form:textarea| form:formatted-text|form:checkbox| form:listbox| form:combobox">
+<!ELEMENT form:column (%column-type;)+>
+<!ATTLIST form:column %name;
+                      %service-name;
+                      %label;
+					  %column-style-name;>
+
+<!ELEMENT form:generic-control (form:properties?, office:events?)>
+
+
+<!ELEMENT form:properties (form:property+)>
+<!ELEMENT form:property (form:property-value*)>
+<!ATTLIST form:property form:property-is-list %boolean; #IMPLIED>
+<!ATTLIST form:property form:property-name CDATA #REQUIRED>
+<!ATTLIST form:property form:property-type (boolean|short|int|long|double|string)  #REQUIRED>
+<!ELEMENT form:property-value (#PCDATA)>
+<!ATTLIST form:property-value form:property-is-void %boolean; #IMPLIED>
+
+
+<!ELEMENT office:settings (config:config-item-set+)>
+
+<!ENTITY % items	"(config:config-item |
+			config:config-item-set |
+			config:config-item-map-named |
+			config:config-item-map-indexed)+">
+
+<!ELEMENT config:config-item-set %items;>
+<!ATTLIST config:config-item-set config:name CDATA #REQUIRED>
+
+<!ELEMENT config:config-item (#PCDATA)>
+<!ATTLIST config:config-item config:name CDATA #REQUIRED
+			config:type (boolean | short | int | long | double | string | datetime | base64Binary) #REQUIRED>
+
+<!ELEMENT config:config-item-map-named (config:config-item-map-entry)+>
+<!ATTLIST config:config-item-map-named config:name CDATA #REQUIRED>
+
+<!ELEMENT config:config-item-map-indexed (config:config-item-map-entry)+>
+<!ATTLIST config:config-item-map-indexed config:name CDATA #REQUIRED>
+
+<!ELEMENT config:config-item-map-entry %items;>
+<!ATTLIST config:config-item-map-entry config:name CDATA #IMPLIED>
+

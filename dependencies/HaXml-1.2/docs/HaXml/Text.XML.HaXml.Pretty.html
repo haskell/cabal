@@ -1,0 +1,388 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Pretty</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Pretty</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > Pretty-print a whole document</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#2"
+		      > Just one content</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#3"
+		      > Just one tagged element</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#4"
+		  > Pretty-print just a DTD</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#5"
+		      > The prolog</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#6"
+		      > A content particle description</A
+		      ></DT
+		    ></DL
+		  ></DD
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> This is a pretty-printer for turning the internal representation
+   of generic structured XML documents into the Doc type (which can
+   later be rendered using Text.ParserCombinators.HughesPJ.render).
+   Essentially there is one pp function for each type in
+   Text.Xml.HaXml.Types, so you can pretty-print as much or as little
+   of the document as you wish.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#document"
+		>document</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Document"
+		>Document</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#content"
+		>content</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#element"
+		>element</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Element"
+		>Element</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#doctypedecl"
+		>doctypedecl</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+		>DocTypeDecl</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#prolog"
+		>prolog</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#Prolog"
+		>Prolog</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#cp"
+		>cp</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#CP"
+		>CP</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > Pretty-print a whole document</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "document"
+	  ></A
+	  ><B
+	  >document</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Document"
+	  >Document</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "2"
+	  > Just one content</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "content"
+	  ></A
+	  ><B
+	  >content</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "3"
+	  > Just one tagged element</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "element"
+	  ></A
+	  ><B
+	  >element</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Element"
+	  >Element</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "4"
+	  > Pretty-print just a DTD</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "doctypedecl"
+	  ></A
+	  ><B
+	  >doctypedecl</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+	  >DocTypeDecl</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "5"
+	  > The prolog</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "prolog"
+	  ></A
+	  ><B
+	  >prolog</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#Prolog"
+	  >Prolog</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "6"
+	  > A content particle description</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "cp"
+	  ></A
+	  ><B
+	  >cp</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#CP"
+	  >CP</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

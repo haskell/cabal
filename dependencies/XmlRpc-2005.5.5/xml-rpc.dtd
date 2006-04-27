@@ -1,0 +1,146 @@
+<!--
+     XML-RPC DTD
+     Richard Moore 1999, rich@kde.org 
+     DTD Version: 0.1 
+     Draft:  $Date: 2003/12/06 17:01:25 $ 
+    
+     This DTD is based on the XML-RPC specification document which can
+     be found at <http://www.xmlrpc.com/spec>.  There is no version number
+     in the document, but the version used stated it was last updated on
+     1/21/99 by DW.
+  
+     The root element in an XML-RPC document must be either a methodCall or
+     a methodResponse element.
+
+     Typical usage:
+
+     <!DOCTYPE methodCall SYSTEM "xml-rpc.dtd">
+     <?xml version="1.0"?>
+     <methodCall>
+       <methodName>examples.getStateName</methodName>
+       ...
+     </methodCall>
+
+     Typical usage, enabling version 2 extensions:
+
+     <!DOCTYPE methodCall SYSTEM "xml-rpc.dtd" [
+       <!ENTITY % XMLRPC.version2 "INCLUDE">
+     ]>
+     <?xml version="1.0"?>
+     <methodCall>
+       <methodName>examples.getStateName</methodName>
+       <params><param><value><nil/></value></param></params>
+     </methodCall>
+
+  -->    
+<!--
+     1999-10-28  Fred Yankowski  <fred@ontosys.com>
+	Make params optional in methodCall.
+	Allow zero members in struct.
+        Remove #PCDATA from value content model.
+        Add version 2 extension:  nil element.
+  -->
+
+
+<!-- ******************* Version 2 extensions **************** -->
+
+<!ENTITY % XMLRPC.version2 'IGNORE'>
+
+<![ %XMLRPC.version2; [
+<!ELEMENT nil
+	  EMPTY
+  >
+<!ENTITY % v2values "| nil" >
+]]>
+
+<!ENTITY % v2values "">
+
+<!-- ********************* Scalar types ********************** -->
+
+<!-- [+-]?[0-9]+ -->
+<!ELEMENT i4
+          (#PCDATA)>
+
+<!-- [+-]?[0-9]+ -->
+<!ELEMENT int
+          (#PCDATA)>
+
+<!-- 0|1 -->
+<!ELEMENT boolean
+          (#PCDATA)>
+
+<!-- Arbitrary binary content -->
+<!ELEMENT string
+          (#PCDATA)>
+
+<!-- [+-][0-9]+.[0-9]+ -->
+<!ELEMENT double
+          (#PCDATA)>
+
+<!-- Date and time in iso8601 format
+     ([0-9][0-9][0-9][0-9])          Year
+     ([0-9][0-9])                    Month
+     ([0-9][0-9])                    Day of month
+     ('T')
+     ([0-9][0-9]:)                   Hour
+     ([0-9][0-9]:)                   Minute
+     ([0-9][0-9])                    Seconds
+
+     eg. 19980717T14:08:55
+-->
+<!ELEMENT dateTime.iso8601
+          (#PCDATA)>
+
+<!-- A valid base64 encoded binary string -->
+<!ELEMENT base64
+          (#PCDATA)>
+
+<!-- ******************* Aggregate types ******************* -->
+
+<!ELEMENT data
+          (value*)>
+
+<!ELEMENT array
+          (data)>
+
+<!ELEMENT name
+          (#PCDATA)>
+
+<!ELEMENT member
+          (name, value)>
+
+<!ELEMENT struct
+          (member*)>
+
+<!-- ******************* Parameter handling ******************* -->
+
+<!ELEMENT value
+          ( i4 | int | boolean | string | dateTime.iso8601
+            | double | base64 | struct | array
+            %v2values;
+          )
+  >
+
+<!ELEMENT param
+          (value)>
+<!ELEMENT params
+          (param*)>
+
+<!-- ******************* Request information ******************* -->
+
+<!ELEMENT methodName
+          (#PCDATA)>
+
+<!ELEMENT methodCall
+          (methodName, params?)>
+
+<!-- ******************* Response information ******************* -->
+
+<!-- Note that the value MUST be a fault structure as specified by the
+     XML-RPC standard. -->
+<!ELEMENT fault
+          (value)>
+
+<!ELEMENT methodResponse
+          (params|fault)>
+

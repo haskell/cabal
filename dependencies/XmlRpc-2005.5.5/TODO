@@ -1,0 +1,26 @@
+Things that could or should be done:
+
+- Support heterogeneous arrays and structs in the high-level
+  interface.
+
+- Support nil
+
+- Use withSocketsDo for Windows compatibility.
+
+- Support variable number of arguments.
+
+- Support method overloading.
+
+- Write a stand-alone server.
+
+Known bugs:
+
+- Years should be 0-padded, but System.Time.formatCalendarTime has
+  no option for it.
+
+- Network.XmlRpc.readDateTime requires the year to be exactly four digits,
+  what about years < 1000 or > 9999?.
+
+- Non-ascii characters and spaces are not preserved properly in string values.
+
+

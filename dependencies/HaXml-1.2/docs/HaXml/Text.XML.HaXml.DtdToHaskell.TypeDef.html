@@ -1,0 +1,1011 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.DtdToHaskell.TypeDef</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.DtdToHaskell.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.DtdToHaskell.TypeDef</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > Internal representation of types</A
+		  ></DT
+		><DT
+		><A HREF = "#2"
+		  > Pretty-print a TypeDef</A
+		  ></DT
+		><DT
+		><A HREF = "#3"
+		  > Name mangling</A
+		  ></DT
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Defines an internal representation of Haskell data/newtype definitions
+   that correspond to the XML DTD types, and provides pretty-printers to
+   convert these types into the <TT
+	  ><A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	    >Doc</A
+	    ></TT
+	  > type of <A HREF = "Text.PrettyPrint.HughesPJ.html"
+	  >Text.PrettyPrint.HughesPJ</A
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#TypeDef"
+		      >TypeDef</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#DataDef"
+			    >DataDef</A
+			    > Bool <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+			    >Name</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#AttrFields"
+			    >AttrFields</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Constructors"
+			    >Constructors</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#EnumDef"
+			    >EnumDef</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+			    >Name</A
+			    > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+			    >Name</A
+			    >]</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Constructors"
+		>Constructors</A
+		> = [(<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		>, [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		>StructType</A
+		>])]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#AttrFields"
+		>AttrFields</A
+		> = [(<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		>, <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		>StructType</A
+		>)]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#StructType"
+		      >StructType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#Maybe"
+			    >Maybe</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Defaultable"
+			    >Defaultable</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    > String</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#List"
+			    >List</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#List1"
+			    >List1</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Tuple"
+			    >Tuple</A
+			    > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    >]</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#OneOf"
+			    >OneOf</A
+			    > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+			    >StructType</A
+			    >]</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Any"
+			    >Any</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#String"
+			    >String</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Defined"
+			    >Defined</A
+			    > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+			    >Name</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ppTypeDef"
+		>ppTypeDef</A
+		> :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#TypeDef"
+		>TypeDef</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ppHName"
+		>ppHName</A
+		> :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ppXName"
+		>ppXName</A
+		> :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ppAName"
+		>ppAName</A
+		> :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		> -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Name"
+		>Name</A
+		>  = <A HREF = "#Name"
+		>Name</A
+		> {<TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "recfield"
+		    ><A HREF = "#xName"
+		      >xName</A
+		      > :: String</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "recfield"
+		    ><A HREF = "#hName"
+		      >hName</A
+		      > :: String</TD
+		    ></TR
+		  ></TABLE
+		>}</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#name"
+		>name</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#name_"
+		>name_</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#name_a"
+		>name_a</A
+		> :: String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#name_ac"
+		>name_ac</A
+		> :: String -&gt; String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#name_f"
+		>name_f</A
+		> :: String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#mangle"
+		>mangle</A
+		> :: String -&gt; String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#manglef"
+		>manglef</A
+		> :: String -&gt; String</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > Internal representation of types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "TypeDef"
+	  ></A
+	  ><B
+	  >TypeDef</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DataDef"
+		      ></A
+		      ><B
+		      >DataDef</B
+		      > Bool <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#AttrFields"
+		      >AttrFields</A
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Constructors"
+		      >Constructors</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > Bool for main/aux.</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EnumDef"
+		      ></A
+		      ><B
+		      >EnumDef</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		      >Name</A
+		      > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		      >Name</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Constructors"
+	  ></A
+	  ><B
+	  >Constructors</B
+	  > = [(<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  >, [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+	  >StructType</A
+	  >])]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "AttrFields"
+	  ></A
+	  ><B
+	  >AttrFields</B
+	  > = [(<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  >, <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+	  >StructType</A
+	  >)]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "StructType"
+	  ></A
+	  ><B
+	  >StructType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Maybe"
+		      ></A
+		      ><B
+		      >Maybe</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Defaultable"
+		      ></A
+		      ><B
+		      >Defaultable</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    > String holds default value.</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "List"
+		      ></A
+		      ><B
+		      >List</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "List1"
+		      ></A
+		      ><B
+		      >List1</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > Non-empty lists.</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Tuple"
+		      ></A
+		      ><B
+		      >Tuple</B
+		      > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "OneOf"
+		      ></A
+		      ><B
+		      >OneOf</B
+		      > [<A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Any"
+		      ></A
+		      ><B
+		      >Any</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > XML's contentspec allows ANY</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "String"
+		      ></A
+		      ><B
+		      >String</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Defined"
+		      ></A
+		      ><B
+		      >Defined</B
+		      > <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+		      >Name</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#StructType"
+		      >StructType</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "2"
+	  > Pretty-print a TypeDef</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ppTypeDef"
+	  ></A
+	  ><B
+	  >ppTypeDef</B
+	  > :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#TypeDef"
+	  >TypeDef</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ppHName"
+	  ></A
+	  ><B
+	  >ppHName</B
+	  > :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pretty print Haskell name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ppXName"
+	  ></A
+	  ><B
+	  >ppXName</B
+	  > :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pretty print XML name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ppAName"
+	  ></A
+	  ><B
+	  >ppAName</B
+	  > :: <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Pretty print Haskell attributes name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "3"
+	  > Name mangling</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Name"
+	  ></A
+	  ><B
+	  >Name</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > Need to keep both the XML and Haskell versions of a name.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "5" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Name"
+		      ></A
+		      ><B
+		      >Name</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body" COLSPAN = "2"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "xName"
+			    ></A
+			    ><B
+			    >xName</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  > original XML name</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  ><A NAME = "hName"
+			    ></A
+			    ><B
+			    >hName</B
+			    > :: String</TD
+			  ><TD CLASS = "rdoc"
+			  > mangled Haskell name</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "name"
+	  ></A
+	  ><B
+	  >name</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Make a name valid in both XML and Haskell.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "name_"
+	  ></A
+	  ><B
+	  >name_</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Append an underscore to the Haskell version of the name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "name_a"
+	  ></A
+	  ><B
+	  >name_a</B
+	  > :: String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Prefix an attribute enumeration type name with its containing element
+   name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "name_ac"
+	  ></A
+	  ><B
+	  >name_ac</B
+	  > :: String -&gt; String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Prefix an attribute enumeration constructor with its element-tag name,
+   and its enumeration type name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "name_f"
+	  ></A
+	  ><B
+	  >name_f</B
+	  > :: String -&gt; String -&gt; <A HREF = "Text.XML.HaXml.DtdToHaskell.TypeDef.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Prefix a field name with its enclosing element name.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "mangle"
+	  ></A
+	  ><B
+	  >mangle</B
+	  > :: String -&gt; String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Convert an XML name to a Haskell conid.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "manglef"
+	  ></A
+	  ><B
+	  >manglef</B
+	  > :: String -&gt; String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Convert an XML name to a Haskell varid.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

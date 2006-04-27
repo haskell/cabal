@@ -1,0 +1,2215 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD><TITLE>Haskell and XML: Generic Combinators or Type-Based Translation?</TITLE></HEAD>
+<BODY BGCOLOR=white TEXT=black>
+<!--HTMLHEAD-->
+<!--ENDHTML-->
+<!--CUT DEF section 1 -->
+
+<H1 ALIGN=center>Haskell and XML: Generic Combinators or Type-Based Translation?</H1>
+<H3 ALIGN=center>Malcolm Wallace and Colin Runciman<BR>
+<BR>
+
+</H3><BR><BR><BR><BR>
+<BR>
+<BLOCKQUOTE><B>Abstract: </B>We present two complementary approaches to writing XML
+document-processing applications in a functional language.<BR>
+<BR>
+In the first approach, the generic tree structure of XML documents is
+used as the basis for the design of a library of combinators for generic
+processing: selection, generation, and transformation of XML trees.<BR>
+<BR>
+The second approach is to use a type-translation framework for
+treating XML document type definitions (DTDs) as declarations of algebraic
+data types, and a derivation of the corresponding functions for reading
+and writing documents as typed values in Haskell.<BR>
+<BR>
+Published in the Proceedings of the International Conference
+on Functional Programming, Paris, Sept 1999. ACM Copyright.</BLOCKQUOTE>
+<!--TOC section Introduction-->
+
+<H2>1&nbsp;&nbsp;Introduction</H2><!--TOC subsection Document markup languages-->
+
+<H3>1.1&nbsp;&nbsp;Document markup languages</H3>
+XML (Extensible Markup Language) [<CITE><A HREF="#xml"><CITE>1</CITE></A></CITE>] is a recent simplification
+of the older SGML (Standardised Generalised Markup Language) standard
+that is widely used in the publishing industry. It is a markup
+language, meaning that it adds structural information around the text
+of a document. It is extensible, meaning that the vocabulary of the
+markup is not fixed -- each document can contain or reference a
+meta-document, called a DTD (Document Type Definition), which describes
+the particular markup capabilities used.<BR>
+<BR>
+The use of XML is not however restricted to the traditional idea of a
+document. Many organisations are proposing to use XML as an interchange
+format for pure data produced by applications like graph-plotters,
+spreadsheets, and relational databases.<BR>
+<BR>
+HTML (Hyper-Text Markup Language) is one well-known example of an
+instance of SGML -- every HTML document is an SGML document conforming
+to a particular DTD. Where XML improves over SGML is in removing
+shorthand forms that require an application to have knowledge of a
+document's DTD. For instance, in HTML some markup (such as a numbered
+list) requires an end marker; other forms (such as paragraphs) have
+implicit end markers understood when the next similar form starts; and
+yet other markup (such as in-line images) is self-contained and needs
+no end marker. An HTML application needs to be aware of the specific
+kind of markup in order to do the right thing.<BR>
+<BR>
+<!--TOC subsection XML document structure-->
+
+<H3>1.2&nbsp;&nbsp;XML document structure</H3>XML is more regular. All markup has an explicit end marker
+without exception: every document is <EM>well-formed</EM>; its nesting
+structure is syntactically clear. One important consequence is that
+an XML application does not need to know the meaning or interpretation
+of all markup expressions -- parts of the document can be selected,
+re-arranged, transformed, by structure alone rather than by meaning.<BR>
+<BR>
+An XML document is essentially a tree structure.
+There are two basic `types' of content in a document: tagged elements,
+and plain text. A tagged element consists of a start tag and an end
+tag, which may enclose any sequence of other content (elements or text
+fragments). Tagged elements can be nested to any depth, and the
+document is well-formed if it consists of a single top-level element
+containing other properly nested elements.
+Start tags have the syntax <CODE>&lt;tag&gt;</CODE>, and end tags <CODE>&lt;/tag&gt;</CODE>,
+where <TT>tag</TT> is an arbitrary name. There is special syntax for an
+empty element: <CODE>&lt;tag/&gt;</CODE> is exactly equivalent to
+<CODE>&lt;tag&gt;&lt;/tag&gt;</CODE>.
+The start and end tags for each element contain a tag name, which
+identifies semantic information about the structure, indicating how the
+enclosed content should be interpreted. The start tag may also contain
+attributes, which are simple name/value bindings, providing further
+information about the element.
+Figure <A HREF="#exampledoc">1</A> shows an example XML document, illustrating
+all these components.<BR>
+<BR>
+<BLOCKQUOTE><HR><PRE>
+&lt;?xml version='1.0'?&gt;
+&lt;!DOCTYPE album SYSTEM "album.dtd"&gt;
+&lt;album&gt;
+  &lt;title&gt;Time Out&lt;/title&gt;
+  &lt;artist&gt;Dave Brubeck Quartet&lt;/artist&gt;
+  &lt;coverart style='abstract'&gt;
+    &lt;location thumbnail='pix/small/timeout.jpg'
+              fullsize='pix/covers/timeout.jpg'/&gt;
+  &lt;/coverart&gt;
+
+  &lt;catalogno label='Columbia' number='CL 1397'
+             format='LP'/&gt;
+  &lt;catalogno label='Columbia' number='CS 8192'
+             format='LP'/&gt;
+  &lt;catalogno label='Columbia' number='CPK 1181'
+             format='LP' country='Korea'/&gt;
+  &lt;catalogno label='Sony/CBS' number='Legacy CK 40585'
+             format='CD'/&gt;
+
+  &lt;personnel&gt;
+    &lt;player name='Dave Brubeck' instrument='piano'/&gt;
+    &lt;player name='Paul Desmond' instrument='alto sax'/&gt;
+    &lt;player name='Eugene Wright' instrument='bass'/&gt;
+    &lt;player name='Joe Morello' instrument='drums'/&gt;
+  &lt;/personnel&gt;
+
+  &lt;tracks&gt;
+    &lt;track title='Blue Rondo &amp;agrave; la Turk'
+           credit='Brubeck' timing='6m42s'/&gt;
+    &lt;track title='Strange Meadow Lark'
+           credit='Brubeck'  timing='7m20s' /&gt;
+    &lt;track title='Take Five'
+           credit='Desmond'  timing='5m24s' /&gt;
+    &lt;track title='Three To Get Ready'
+           credit='Brubeck'  timing='5m21s' /&gt;
+    &lt;track title="Kathy's Waltz"
+           credit='Brubeck'  timing='4m48s' /&gt;
+    &lt;track title="Everybody's Jumpin'"
+           credit='Brubeck'  timing='4m22s' /&gt;
+    &lt;track title='Pick Up Sticks'
+           credit='Brubeck'  timing='4m16s' /&gt;
+  &lt;/tracks&gt;
+
+  &lt;notes author="unknown"&gt;
+    Possibly the DBQ's most famous album,
+    this contains
+    &lt;trackref link='#3'&gt;Take Five&lt;/trackref&gt;,
+    the most famous jazz track of that period.
+    These experiments in different time
+    signatures are what Dave Brubeck is most
+    remembered for.  Recorded Jun-Aug 1959
+    in NYC.  See also the sequel,
+      &lt;albumref link='cbs-timefurthout'&gt;
+        Time Further Out&lt;/albumref&gt;.
+  &lt;/notes&gt;
+&lt;/album&gt;
+</PRE>
+<DIV ALIGN=center>Figure 1: An example XML document.
+<A NAME="exampledoc"></A></DIV>
+<HR></BLOCKQUOTE><!--TOC subsection Representing XML in Haskell-->
+
+<H3>1.3&nbsp;&nbsp;Representing XML in Haskell</H3>This paper is about processing XML using the functional
+language Haskell.<A NAME="text1"></A><A HREF="#note1"><SUP><FONT SIZE=2>1</FONT></SUP></A>
+
+Modern functional languages are well-equipped to deal
+with tree-structured data, so one expects the
+language to be a good fit for the application.
+Even so, a key issue is just how to represent documents, and in
+particular how to reconcile the DTD datatype definitions
+included in XML documents with the data types that can be
+defined in Haskell. 
+We have investigated two complementary approaches:
+<UL>
+<LI>(1)
+Define an internal data structure that represents contents
+of <EM>any</EM> XML document, independent of all DTDs.
+
+<LI>(2)
+Given the DTD for some XML documents of interest, systematically
+<EM>derive</EM> definitions for internal Haskell data types to represent them.
+These definitions are closely based on the specific DTD.
+</UL>Advantages of (1) include <EM>genericity</EM> and <EM>function-level scripting</EM>.
+Generic applications handle a wide class of XML documents, not just
+those sharing a specific DTD.
+One example of a completely generic application is searching documents
+to extract contents matching some pattern.
+Our <EM>Xtract</EM><A NAME="text2"></A><A HREF="#note2"><SUP><FONT SIZE=2>2</FONT></SUP></A>
+ is
+an interpreter for a regular XML query language.<BR>
+<BR>
+The term `generic' also applies to applications that make <EM>some</EM>
+assumptions about a document's structure but need not know the full
+DTD,<A NAME="text3"></A><A HREF="#note3"><SUP><FONT SIZE=2>3</FONT></SUP></A>
+
+for example, a small script to add a ``total'' column to the end of every
+table (recognised by a particular markup tag) without altering any of
+the surrounding structure.<BR>
+<BR>
+By <EM>function-level scripting</EM> we mean that the programmer does not have
+to be concerned with details of programming over data structures.
+All details of data structure manipulation can be hidden in a library of
+high-level combinators. In effect, combinatory expressions serve as
+an extensible domain-specific language.<BR>
+<BR>
+Advantages of (2) include <EM>stronger typing</EM> and <EM>fuller control</EM>.
+A well-formed XML document is further said to be <EM>valid</EM> if it
+conforms to a stated DTD. By establishing a correspondence between
+DTDs and Haskell types, the concept of validity can be extended to
+include applications that process documents.
+Not only is there a static guarantee that applications cannot fail
+in respect of
+document structure if the input XML conforms to the stated DTD;
+any XML output produced via a DTD-derived type is guaranteed to be valid.
+With direct access to the DTD-specific data structure, the programmer has
+fuller control over how computation is done.
+They can use a full repertoire of programming techniques with the safeguard
+that type-checked Haskell will automatically produce XML that is valid
+in respect of a specified DTD.<BR>
+<BR>
+Both approaches rely on a toolkit of more basic components for processing
+XML documents in Haskell: for instance, a parser and pretty-printer.
+These supporting components are implemented using existing combinator
+libraries [<CITE><A HREF="#Hughes95"><CITE>7</CITE></A>, </CITE><CITE><A HREF="#HuttonMeijer98"><CITE>8</CITE></A></CITE>].<BR>
+<BR>
+<!--TOC subsection Sections following-->
+
+<H3>1.4&nbsp;&nbsp;Sections following</H3>§<A HREF="#combinators">2</A> develops the approach using a generic representation
+and a combinator library, including an illustrative application.
+§<A HREF="#translation">3</A> develops the alternative based on translation between
+DTDs and Haskell data types.
+§<A HREF="#evaluation">4</A> discusses some pros and cons of the two approaches
+based on our experience implementing and using both.
+§<A HREF="#related">5</A> discusses related work; §<A HREF="#furtherwork">6</A> offers some
+conclusions and suggestions for further work.
+
+
+<!--TOC section Generic combinators-->
+
+<H2>2&nbsp;&nbsp;Generic combinators</H2>
+<A NAME="combinators"></A>In this section, we begin with a generic representation for the contents
+of XML documents, excluding any DTD. We introduce <EM>content filters</EM>
+as a suitable basic type for functions processing this representation,
+and combinators for putting such filters together.
+A complete table of basic
+filters is given in Figure <A HREF="#basicdefs">2</A>, and of combinators and
+their definitions in Figure <A HREF="#combinatordefs">3</A>. An example program
+is shown in Figure <A HREF="#examplescript">4</A>.
+One expected property of a fitting set of combinators is that they
+satisfy algebraic laws; a table of laws satisfied by our combinators
+is given in Figure <A HREF="#tablelaws">6</A>.<BR>
+<BR>
+<!--TOC subsection Documents and transformations-->
+
+<H3>2.1&nbsp;&nbsp;Documents and transformations</H3>
+
+<H5>Data modelling</H5>
+<PRE>
+    data Element = Elem Name [Attribute] [Content]
+    data Content = CElem Element
+                 | CText String
+</PRE>Because functional languages are good at processing tree-structured data,
+there is a natural fit between the XML document domain and Haskell tree
+datatypes. In simplified form, the main datatypes which model an XML
+document are <TT>Element</TT> and <TT>Content</TT>, whose definitions are
+mutually recursive, together forming a multi-branch tree structure.<BR>
+<BR>
+
+<H5>The filter type</H5>
+<PRE>
+    type CFilter = Content -&gt; [Content]
+</PRE>Our basic type for all document processing functions is the <EM>content
+filter</EM>, which takes a fragment of the content of an XML document
+(whether that be some text, or a complete tagged element), and
+returns some sequence of content. The result list might be empty, it
+might contain a single item, or it could contain a large collection of
+items.<BR>
+<BR>
+Some filters are used to select parts of the input document, and others
+are used to construct parts of the output document. They all share the
+same basic type, because when building a new document, the intention is
+to re-use or extract information from parts of the old document. Where
+the result of a filter is either empty or a singleton, the filter can
+sometimes be thought of as a <EM>predicate</EM>, deciding whether or not to
+keep its input.<BR>
+<BR>
+
+<H5>Program wrapper</H5>
+<PRE>
+    processXmlWith :: CFilter -&gt; IO ()
+</PRE>We assume a top-level wrapper function, which gets command-line
+arguments, parses an XML file into the <TT>Content</TT> type, applies a
+filter, and pretty-prints the output document. The given filter is
+applied to the top-level enclosing element of the document.<BR>
+<BR>
+
+<H5>Basic filters</H5>
+A complete list of predefined filters is shown in Figure <A HREF="#basicdefs">2</A>.
+The simplest possible filters: <TT>none</TT> takes
+any content and returns nothing; <TT>keep</TT> takes any content and
+returns just that item. Algebraically, these are the zero and unit filters.<BR>
+<BR>
+<BLOCKQUOTE><HR>
+<TABLE CELLSPACING=0 CELLPADDING=0>
+<TR><TD><B>Predicates</B></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>none,   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero/failure </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>keep,   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>identity/success </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>elm,    </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>tagged element? </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>txt     </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>plain text? </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>tag,    </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>named element? </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>attr    </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>element has attribute? </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>attrval </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>element has attribute/value? </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: (String,String) -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD><B>Selection</B></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>children </CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>children of element </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>showAttr,</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>value of attribute </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(?)      </CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>synonym for showAttr </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD><B>Construction</B></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>literal,</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>build plain text </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(!)     </CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>synonym for literal </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>mkElem  </CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>build element </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; [CFilter] -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>mkElemAttrs</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>build element with attributes </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; [(String,CFilter)]</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>       -&gt; [CFilter] -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>replaceTag</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>replace element's tag </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: String -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>replaceAttrs</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>replace element's attributes </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: [(String,CFilter)] -&gt; CFilter</CODE></TD>
+</TR></TABLE>
+
+
+<BR>
+<DIV ALIGN=center>Figure 2: Basic content filters.
+<A NAME="basicdefs"></A></DIV>
+<HR></BLOCKQUOTE><UL>
+<LI>
+<EM>Predicate and selection filters</EM>. The filter <TT>elm</TT> is a
+predicate, returning just this item if it is an element, or nothing
+otherwise.<A NAME="text4"></A><A HREF="#note4"><SUP><FONT SIZE=2>4</FONT></SUP></A>
+
+Conversely, <TT>txt</TT> returns this item only if is plain
+text,<A NAME="text5"></A><A HREF="#note5"><SUP><FONT SIZE=2>5</FONT></SUP></A>
+
+and nothing otherwise. The filter
+<TT>children</TT> returns the immediate children of an element if it has
+any, or nothing if this content-item is not an element. The filter
+<TT>tag t</TT> returns this item only if it is an element whose tag name
+is the string <TT>t</TT>. The filter <TT>attr a</TT> returns this item only
+if it is an element containing the attribute name <TT>a</TT>. The filter
+<TT>attrval (a,v)</TT> returns this item only if is an element containing
+the attribute <TT>a</TT> with the value <TT>v</TT>.<BR>
+<BR>
+
+<LI>
+<EM>Construction filters</EM>. The function <TT>literal s</TT>
+makes a text content containing just the string <TT>s</TT>. The function
+<TT>mkElem t fs</TT> builds a content element with the tag <TT>t</TT>; the
+argument <TT>fs</TT> is a list of filters, each of which is applied
+to the current item, and all their results are collected to become
+the children of the new element. The function <TT>mkElemAttrs t avs fs</TT>
+is just like <TT>mkElem</TT> except that its extra parameter <TT>avs</TT>
+is a list of attribute values<A NAME="text6"></A><A HREF="#note6"><SUP><FONT SIZE=2>6</FONT></SUP></A>
+ to be attached to the tag.</UL>A useful filter which involves both selection and construction is <TT>showAttr a</TT>, which extracts the value of the attribute <TT>a</TT> from the
+current element and returns just that string as a piece of content.<BR>
+<BR>
+When constructing a new document (e.g. the script in Figure
+<A HREF="#examplescript">4</A> which generates HTML), the <TT>mkElem</TT> function
+occurs repeatedly. We define and use a small library of functions such
+as <TT>htable</TT>, <TT>hrow</TT>, and <TT>hcol</TT> which are just synonyms for
+particular applications of <TT>mkElem</TT> and <TT>mkElemAttrs</TT> to
+different tagnames, reducing verbosity and making the syntax rather more
+readable.<BR>
+<BR>
+Also for convenience, we define the new operators <TT>?</TT> and <TT>!</TT> as
+synonyms for <TT>showAttr</TT> and <TT>literal</TT> respectively: they are
+used in a bracketed postfix notation,<A NAME="text7"></A><A HREF="#note7"><SUP><FONT SIZE=2>7</FONT></SUP></A>
+
+a style some programmers prefer.<BR>
+<BR>
+<!--TOC subsection Combinators-->
+
+<H3>2.2&nbsp;&nbsp;Combinators</H3>
+The combinators used as intermediate code in compilers
+can render programs `totally unfit for human consumption' [<CITE><A HREF="#Turner79"><CITE>11</CITE></A></CITE>]!
+However, the idea of a combinator library for a specific class of applications
+is to achieve a form of expression that is natural for the problem.
+A combinator library should be like a language extension
+tailored to the problem domain [<CITE><A HREF="#Fairbairn87"><CITE>4</CITE></A></CITE>]. 
+In this
+sense, functional languages are extensible, just as XML itself is
+extensible.
+The combinators are higher-order operators serving as `glue'[<CITE><A HREF="#Hughes89"><CITE>6</CITE></A></CITE>]
+to assemble functions into more powerful combinations.
+We aim to keep the types of component functions as uniform as possible
+so that any function can be composed with any other.
+Within the lexical limits of the host language, choice of notation
+should follow application conventions:
+in Haskell we can, where appropriate, define new infix operator symbols
+for combinators.<BR>
+<BR>
+So, having defined some basic filters already, in what ways can these usefully
+be combined into more interesting and complex filters?
+(See Figure <A HREF="#combinatordefs">3</A>.)<BR>
+<BR>
+
+<BLOCKQUOTE><HR>
+
+<TABLE CELLSPACING=0 CELLPADDING=0>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>o,      </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>Irish composition </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(|||),  </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>append results </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>with,   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>guard </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>without,</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>negative guard </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(/&gt;),   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>interior search </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(&lt;/),   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>exterior search </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(|&gt;|)   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>directed choice </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: CFilter -&gt; CFilter -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f `o` g        = concat . map f . g </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f ||| g        = \c-&gt; f c ++ g c </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f `with` g     = filter (not.null.g) . f </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f `without` g  = filter (null.g) . f </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f /&gt; g         = g `o` children `o` f </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f &lt;/ g         = f `with` (g `o` children) </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f |&gt;| g        = f ?&gt; f :&gt; g </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>cat    </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>concatenate results </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: [CFilter] -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>cat fs    = \c-&gt; concat. map (\f-&gt;f c) fs </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>et     </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>disjoint union </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: (String-&gt;CFilter) -&gt; CFilter -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>f `et` g  = (f `oo` tagged elm)</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>            |&gt;| (g `o` txt) </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>(?&gt;)   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>if-then-else choice </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: CFilter -&gt; ThenElse CFilter -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>data ThenElse a = a :&gt; a </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>p ?&gt; f :&gt; g = \c-&gt; if (not.null.p) c</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>                   then f c else g c</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>chip,   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>``in-place'' application to children </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>deep,   </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>recursive search (topmost) </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>deepest,</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>recursive search (deepest) </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>multi,  </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>recursive search (all) </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>foldXml </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>recursive application </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD><CODE>:: CFilter -&gt; CFilter</CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>deep f    = f |&gt;| (deep f `o` children) </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>deepest f = (deepest f `o` children) |&gt;| f </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>multi f   = f ||| (multi f `o` children) </CODE></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><CODE>foldXml f = f `o` (chip (foldXml f)) </CODE></TD>
+</TR></TABLE>
+
+
+<BR>
+<DIV ALIGN=center>Figure 3: Filter combinators and their definitions.
+<A NAME="combinatordefs"></A></DIV>
+<HR></BLOCKQUOTE>The most important and useful filter combinator is <CODE>`o`</CODE>.
+We call this operator Irish composition, for reasons which should be
+obvious. It plugs two filters together: the left filter is applied to
+the results of the right filter. So, for instance, the expression
+<PRE>
+    text `o` children `o` tag "title"
+</PRE>means ``only the plain-text children of the current element, provided the
+current element has the <TT>title</TT> tag name''.<BR>
+<BR>
+Some other combinators are as follows.
+<TT>f ||| g</TT> is an append operator: it joins the results of <TT>f</TT> and
+<TT>g</TT> sequentially.
+<TT>cat fs</TT> is the list generalisation of <TT>|||</TT>; it concatenates
+the results of each of the filters from the <TT>fs</TT> list.
+<TT>f `with` g</TT> acts as a guard on the results of <TT>f</TT>, pruning to
+include only those which are productive under <TT>g</TT>.
+The dual, <TT>f `without` g</TT>, excludes those results of <TT>f</TT> which
+are productive under <TT>g</TT>.
+The expression <TT>p ?&gt; f :&gt; g</TT> is a functional choice operator; if
+the (predicate) filter <TT>p</TT> is productive, then the filter <TT>f</TT>
+is applied, otherwise <TT>g</TT> is applied.
+From this is derived a directed choice operator: <TT>f |&gt;| g</TT> gives
+either the results of <TT>f</TT>, or those of <TT>g</TT> only if <TT>f</TT> is
+unproductive.<BR>
+<BR>
+
+<H5>Generalised Path Selectors</H5>
+Selection of subtrees by <EM>path patterns</EM> is familiar to users of
+the Unix file-system, where such patterns are used to access directory
+structure, using a <TT>/</TT> notation to indicate the `containing'
+relation. Similar patterns are used in XSLT, an XML transformation
+language [<CITE><A HREF="#xslt"><CITE>3</CITE></A></CITE>]. In this connection, we define two path selection
+combinators <TT>/&gt;</TT> and <TT>&lt;/</TT>. Both combinators choose subtrees
+to return based on whether the results of the left filter contain the
+results of the right filter as children: <TT>/&gt;</TT> is an `interior'
+selector, returning the inner structure; <TT>&lt;/</TT> is an `exterior'
+selector, returning the outer structure.<BR>
+<BR>
+
+<H5>An editing combinator</H5>
+Aside from predicates, selectors, choice, and constructive filters,
+there is one very useful combinator which stands in its own category --
+an editing combinator. <TT>chip f</TT> processes the children of an
+element in-place: the filter <TT>f</TT> is applied to its
+children; the results are rebuilt as the new children of that
+same element.<BR>
+<BR>
+
+<H5>Recursion</H5>
+It is often useful to express recursive transformations on XML
+documents: transformations which can be applied at many different
+levels of the document tree.<BR>
+<BR>
+One family of such expressions is useful primarily in selecting a
+subtree from an arbitrarily deep location, although they can of course
+be used for editing and filtering as well as selection. The recursive
+combinator <CODE>deep f</CODE> <EM>potentially</EM> pushes the action of filter
+<TT>f</TT> deep inside the document sub-tree. It first tries the given
+filter on the current item: if it is productive then it stops here, but
+if no results are returned, then it moves to the children and tries
+again recursively. When used with a predicate, this strategy searches
+for the topmost matching elements in the tree. There are variations:
+<CODE>deepest</CODE> searches for the bottommost matching elements; <TT>multi</TT> returns all matches, even those which are sub-trees of other
+matches. However, as already noted, the action of these combinators is
+not restricted to predicates or selectors.<BR>
+<BR>
+Another powerful recursion combinator is <TT>foldXml</TT>: the expression
+<TT>foldXml f</TT> applies the filter <TT>f</TT> to every level of the tree,
+from the leaves upwards to the root (at least conceptually -- of course
+lazy evaluation makes this more efficient).<BR>
+<BR>
+<!--TOC subsection Example-->
+
+<H3>2.3&nbsp;&nbsp;Example</H3>
+The use of these filters and combinators is illustrated in an example
+script in Figure <A HREF="#examplescript">4</A>. This program transforms an
+<TT>&lt;album&gt;</TT> element into an HTML document that provides a formatted
+summary. The HTML output, rendered by the Netscape browser, is
+illustrated in Figure <A HREF="#netscape">5</A>. Such a task might be fairly
+common in e-commerce applications.<BR>
+<BR>
+We now describe some of the salient features of the example.<BR>
+<BR>
+<PRE>
+    (albumf `o` deep (tag "album"))
+</PRE>The script first searches recursively for the topmost element tagged
+<TT>&lt;album&gt;</TT>, before applying the filter <TT>albumf</TT> to it. Thus, it works
+equally well with any XML source document that contains an <TT>&lt;album&gt;</TT>
+element anywhere within it, and (correctly) produces no output for
+documents which do not contain album data.<BR>
+<BR>
+The output document's <TT>&lt;HEAD&gt;</TT> section contains the artist name and
+album title separated by a colon. We note that the expression,
+<PRE>
+    txt `o` children `o` tag "artist"
+        `o` children `o` tag "album"
+</PRE>which grabs the textual content of the <TT>&lt;artist&gt;</TT> element within the
+<TT>&lt;album&gt;</TT> element, is somewhat unwieldy. Moreover its trailing test
+for the <TT>&lt;album&gt;</TT> tag is redundant, since the calling filter has
+already performed that match. The expression can be simplified by
+using path selectors to:
+<PRE>
+    keep /&gt; tag "artist" /&gt; txt
+</PRE>and this style is used elsewhere in the example. (The
+algebraic laws in Section <A HREF="#laws">2.5</A> guarantee that this rewriting
+is safe.)<BR>
+<BR>
+Such expressions make some assumptions about the structure of the data
+within the <TT>&lt;album&gt;</TT> element. In this instance, the assumption is
+that an <TT>&lt;artist&gt;</TT> element is an immediate child,
+and that <EM>its</EM> immediate children include text. If such
+assumptions prove incorrect for a particular document, the filter
+is simply unproductive; no error is flagged.<BR>
+<BR>
+With a suitable definition, <TT>hbody = mkElemAttr "BODY"</TT>
+the expression
+<PRE>
+    hbody  [("bgcolor",("white"!))]   [...]
+</PRE>can be understood to set the background colour attribute of
+the <TT>&lt;BODY&gt;</TT> tag to the literal value <TT>white</TT>. Notice how the
+attribute value is itself described by a filter. In this case, the
+filter is not very exciting, but the later definition of
+<TT>mkLink</TT> illustrates the generation of an HTML reference
+by looking up the value of a supplied <TT>link</TT> attribute (using the
+<TT>?</TT> filter).<BR>
+<BR>
+When the script is used on the particular document from Figure
+<A HREF="#exampledoc">1</A>, the output is a re-ordering of the internal
+components of the input: in the <TT>&lt;BODY&gt;</TT> part of the output, the
+<TT>&lt;notes&gt;</TT> section is selected and transformed by <TT>notesf</TT> before
+the <TT>&lt;catalogno&gt;</TT> elements are processed by the <TT>summaryf</TT> filter.
+Although in the absence of a DTD it is impossible to be sure of any
+input ordering, the script here ensures that the output ordering is
+consistent.<BR>
+<BR>
+The definition of the <TT>notesf</TT> filter is interesting because it
+makes fewer assumptions about the content of a <TT>&lt;notes&gt;</TT> structure, and
+in addition it preserves the input ordering.
+The chained if-then-else choice within the recursive <TT>foldXml</TT>
+combinator causes all internal structure of the <TT>&lt;notes&gt;</TT> element to be
+retained except for the replacement of <TT>&lt;trackref&gt;</TT>s by emphasised
+text, and <TT>&lt;albumref&gt;</TT>s by HTML links.<BR>
+<BR>
+One of the most striking features of the example as a whole is how
+selection and testing of old content and construction of new content are
+uniform, and can be combined almost interchangeably.<BR>
+<BR>
+We will return to the treatment of <TT>&lt;catalogno&gt;</TT> elements in Section
+<A HREF="#labelling">2.4</A> after introducing some extra <EM>labelling</EM> combinators.<BR>
+<BR>
+<BLOCKQUOTE><HR>
+<PRE>
+module Main where
+import Xml
+main =
+  processXmlWith (albumf `o` deep (tag "album"))
+albumf =
+  html
+    [ hhead
+      [ htitle
+        [ txt `o` children `o` tag "artist"
+              `o` children `o` tag "album"
+        , literal ": "
+        , keep /&gt; tag "title" /&gt; txt
+        ]
+      ]
+    , hbody [("bgcolor",("white"!))]
+      [ hcenter
+          [ h1 [ keep /&gt; tag "title" /&gt; txt ] ]
+      , h2 [ ("Notes"!) ]
+      , hpara [ notesf `o` (keep /&gt; tag "notes") ]
+      , summaryf
+      ]
+    ]
+notesf =
+  foldXml (txt            ?&gt; keep            :&gt;
+           tag "trackref" ?&gt; replaceTag "EM" :&gt;
+           tag "albumref" ?&gt; mkLink          :&gt;
+           children)
+summaryf =
+  htable [("BORDER",("1"!))]
+    [ hrow [ hcol [ ("Album title"!) ]
+           , hcol [ keep /&gt; tag "title" /&gt; txt ]
+           ]
+    , hrow [ hcol [ ("Artist"!) ]
+           , hcol [ keep /&gt; tag "artist" /&gt; txt ]
+           ]
+    , hrow [ hcol [ ("Recording date"!) ]
+           , hcol [ keep /&gt;
+                       tag "recordingdate" /&gt; txt ]
+           ]
+    , hrow [ hcola [ ("VALIGN",("top"!)) ]
+                   [ ("Catalog numbers"!) ]
+           , hcol
+             [ hlist
+               [ catno `oo`
+                  numbered (deep (tag "catalogno"))
+               ]
+             ]
+           ]
+    ]
+catno n =
+  mkElem "LI"
+    [ ((show n++". ")!),  ("label"?),  ("number"?)
+    , (" ("!),  ("format"?),  (")"!) ]
+mkLink =
+  mkElemAttr "A" [ ("HREF",("link"?)) ]
+    [ children ]
+</PRE>
+
+<DIV ALIGN=center>Figure 4: An example document-processing script using the generic filter
+ combinators.
+<A NAME="examplescript"></A></DIV>
+<HR></BLOCKQUOTE><BLOCKQUOTE><HR>
+
+<img src="brubeck.gif" alt="picture of browser">
+
+
+<BR>
+<BR>
+<DIV ALIGN=center>Figure 5: The HTML results of the example script, rendered by a browser.
+<A NAME="netscape"></A></DIV>
+<HR></BLOCKQUOTE><!--TOC subsection Labellings-->
+
+<H3>2.4&nbsp;&nbsp;Labellings</H3>
+<A NAME="labelling"></A>
+One feature that is occasionally useful is the ability to attach labels
+to items in a sequence, for instance, to number a list of items, or to
+treat the first/last item of a list differently from the other items.
+For this purpose, the library provides special labelling combinators.
+We choose to introduce a new type:
+<PRE>
+  type LabelFilter a = Content -&gt; [ (a,Content) ]
+</PRE>A <TT>LabelFilter</TT> is like a <TT>CFilter</TT> except it attaches a label
+to each of its results. We might have chosen to fold label
+values inside the <TT>Content</TT> type, to yield a uniform <TT>CFilter</TT>
+type, but keeping the labels separate allows them to be of
+completely polymorphic type: a label could even be another filter
+for example. <BR>
+<BR>
+There are several common labelling functions:
+<PRE>
+  numbered     :: CFilter -&gt; LabelFilter Int
+  interspersed :: a -&gt; CFilter -&gt; a
+                                 -&gt; LabelFilter a
+  tagged       :: CFilter -&gt; LabelFilter String
+  attributed   :: CFilter -&gt;
+                    LabelFilter [(String,String)]
+</PRE>These labelling functions lift a <TT>CFilter</TT> to the <TT>LabelFilter</TT> type:
+<TT>numbered f</TT> transforms the ordinary filter <TT>f</TT>
+into a new filter that attaches integers (from 1 upwards)
+to the results of <TT>f</TT>;
+<TT>interspersed a f z</TT> attaches the label <TT>a</TT> to all of the
+results of <TT>f</TT> except the last, which gets the label <TT>z</TT>;
+<TT>tagged f</TT> labels every tagged element with its tag name (and
+non-elements with the empty string); <TT>attributed f</TT>
+labels every tagged element with its attribute/value pairs (and
+non-elements with the empty list).<BR>
+<BR>
+<PRE>
+  `oo` :: (a-&gt;CFilter) -&gt; LabelFilter a -&gt; CFilter
+</PRE>The combinator <TT>`oo`</TT> is a new form of composition which drops a
+<TT>LabelFilter</TT> back to the <TT>CFilter</TT> type by application of
+another filter that consumes the label.<BR>
+<BR>
+The use of this form of labelling is illustrated by the treatment of
+<TT>&lt;catalogno&gt;</TT>s in the example of Figure <A HREF="#examplescript">4</A>:
+<PRE>
+  catno `oo` numbered (deep (tag "catalogno"))
+</PRE>First, the desired elements are extracted from their topmost positions
+in the tree, then they are given numeric labels, and finally the
+<TT>catno</TT> filter incorporates the label into some generated text.
+Another example can be seen in the definition of the <TT>`et`</TT>
+combinator in Figure <A HREF="#combinatordefs">3</A>.
+(<TT>`et`</TT> combines a filter <TT>f</TT> on elements with a filter <TT>g</TT>
+on text. <TT>f</TT> pattern-matches against tagnames --
+the tagnames are extracted by the labelling function <TT>tagged</TT>.)<BR>
+<BR>
+Furthermore, it is possible to combine labellings. The <TT>`x`</TT>
+combinator glues two labelling functions together, pairing the
+labels they produce.
+<PRE>
+  `x` :: (CFilter-&gt;LabelFilter a)
+           -&gt; (CFilter-&gt;LabelFilter b)
+           -&gt; (CFilter-&gt;LabelFilter (a,b))
+</PRE><!--TOC subsection Algebraic laws of combinators-->
+
+<H3>2.5&nbsp;&nbsp;Algebraic laws of combinators</H3>
+<A NAME="laws"></A>
+We briefly show how combinators are defined in such a way that
+various algebraic laws hold. The complete set of laws is given in
+Figure <A HREF="#tablelaws">6</A>.<BR>
+<BR>
+<BLOCKQUOTE><HR>
+
+<TABLE CELLSPACING=0 CELLPADDING=0>
+<TR><TD>&nbsp;</TD>
+<TD><B>Irish composition</B></TD>
+</TR>
+<TR><TD><CODE>f `o` (g `o` h)  =  (f `o` g) `o` h</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>associativity </EM></TD>
+</TR>
+<TR><TD><CODE>none `o` f       =  f `o` none  =  none</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero </EM></TD>
+</TR>
+<TR><TD><CODE>keep `o` f       =  f `o` keep  =  f</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>identity </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><B>Guards </B></TD>
+</TR>
+<TR><TD><CODE>f `with` keep  =  f</CODE> 			</TD>
+<TD>&nbsp;</TD>
+<TD><EM>identity </EM></TD>
+</TR>
+<TR><TD><CODE>f `with` none  =  none `with` f = none</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero </EM></TD>
+</TR>
+<TR><TD><CODE>(f `with` g) `with` g  =  f `with` g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>idempotence </EM></TD>
+</TR>
+<TR><TD><CODE>(f `with` g) `with` h</CODE></TD>
+</TR>
+<TR><TD><CODE>            =  (f `with` h) `with` g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f `o` g) `with` h</CODE></TD>
+</TR>
+<TR><TD><CODE>            =  (f `with` h) `o` g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>f `without` keep  =  none `without` f</CODE></TD>
+</TR>
+<TR><TD><CODE>                  =  none</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero </EM></TD>
+</TR>
+<TR><TD><CODE>f `without` none  =  keep</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>identity </EM></TD>
+</TR>
+<TR><TD><CODE>(f `without` g) `without` g</CODE></TD>
+</TR>
+<TR><TD><CODE>        =  f `without` g</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>idempotence </EM></TD>
+</TR>
+<TR><TD><CODE>(f `without` g) `without` h</CODE></TD>
+</TR>
+<TR><TD><CODE>        =  (f `without` h) `without` g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f `o` g) `without` h</CODE></TD>
+</TR>
+<TR><TD><CODE>        =  (f `without` h) `o` g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><B>Path selectors </B></TD>
+</TR>
+<TR><TD><CODE>f /&gt; (g /&gt; h)  =  (f /&gt; g) /&gt; h</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>associativity </EM></TD>
+</TR>
+<TR><TD><CODE>none /&gt; f      =  f /&gt; none  =  none</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero </EM></TD>
+</TR>
+<TR><TD><CODE>keep /&gt; f      =  f `o` children</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>f /&gt; keep      =  children `o` f</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>keep /&gt; keep   =  children</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>none &lt;/ f      =  f &lt;/ none  =  none</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>zero </EM></TD>
+</TR>
+<TR><TD><CODE>f &lt;/ keep      =  f `with` children</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>(f &lt;/ g) &lt;/ g  =  f &lt;/ g</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>idempotence </EM></TD>
+</TR>
+<TR><TD><CODE>(f &lt;/ g) /&gt; g  =  f /&gt; g</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>idempotence </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>(f /&gt; g) &lt;/ h      =  f /&gt; (g &lt;/ h)</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f &lt;/ g) &lt;/ h      =  (f &lt;/ h) &lt;/ g </CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>f `o` (g /&gt; h)     =  g /&gt; (f `o` h)</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f /&gt; g) `o` h     =  (f `o` h) /&gt; g</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f /&gt; g) `with` h  =  f /&gt; (g `with` h)</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD><CODE>(f &lt;/ g) `with` h  =  (f `with` h) &lt;/ g</CODE></TD>
+<TD>&nbsp;</TD>
+<TD><EM>promotion </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><B>Directed choice </B></TD>
+</TR>
+<TR><TD><CODE>(f |&gt;| g) |&gt;| h  =  f |&gt;| (g |&gt;| h)</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>associativity </EM></TD>
+</TR>
+<TR><TD><CODE>keep |&gt;| f       =  keep</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>none |&gt;| f       =  f |&gt;| none  =  f</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>identity </EM></TD>
+</TR>
+<TR><TD><CODE>f    |&gt;| f       =  f</CODE>			</TD>
+<TD>&nbsp;</TD>
+<TD><EM>idempotence </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><B>Recursion </B></TD>
+</TR>
+<TR><TD><CODE>deep keep      =  keep</CODE>			</TD>
+<TD>&nbsp;</TD>
+<TD><EM>simplification </EM></TD>
+</TR>
+<TR><TD><CODE>deep none      =  none</CODE>			</TD>
+<TD>&nbsp;</TD>
+<TD><EM>simplification </EM></TD>
+</TR>
+<TR><TD><CODE>deep children  =  children</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>simplification </EM></TD>
+</TR>
+<TR><TD><CODE>deep (deep f)  =  deep f</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD><EM>depth law </EM></TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+</TR>
+<TR><TD>&nbsp;</TD>
+<TD><B>Misc </B></TD>
+</TR>
+<TR><TD><CODE>elm |&gt;| txt = txt |&gt;| elm = keep</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>completeness </EM></TD>
+</TR>
+<TR><TD><CODE>elm `o` txt = txt `o` elm = none</CODE>	</TD>
+<TD>&nbsp;</TD>
+<TD><EM>excl. middle </EM></TD>
+</TR>
+<TR><TD><CODE>children `o` elm  =  children</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD><CODE>children `o` txt  =  none</CODE>		</TD>
+<TD>&nbsp;</TD>
+<TD>
+</TD>
+</TR></TABLE>
+
+
+<BR>
+<DIV ALIGN=center>Figure 6: Algebraic laws of combinators.
+<A NAME="tablelaws"></A></DIV>
+<HR></BLOCKQUOTE>Giving all content filters the same type maximises the usefulness of
+combinators for plugging together functions of this type. However, it
+is still helpful to identify subclasses of content filters that offer
+extra guarantees. Two examples of such classes are:
+<OL>
+<LI>
+A <EM>predicate</EM> <TT>p</TT> has the property that <TT>p c</TT>
+always gives as result either <TT>[c]</TT> or <TT>[]</TT>.
+
+<LI>
+A <EM>selector</EM> <TT>s</TT> has the property that <TT>s c</TT>
+always gives as result a sequence of contents taken from
+<TT>c</TT>.
+Resulting items do not overlap, and
+the result sequence respects the order in which the contents
+were found in <TT>c</TT>.
+</OL>
+So a predicate is a selector, but a selector is not necessarily
+a predicate.<BR>
+<BR>
+The <TT>`o`</TT> form of filter composition
+could be defined using a Haskell <EM>list comprehension</EM>
+<PRE>
+    (f `o` g) c = [c'' | c' &lt;- g c, c'' &lt;- f c']
+</PRE>However, we prefer the equivalent higher-order definition
+<CODE> f `o` g = concat . map f . g </CODE>
+because it is more convenient in algebraic
+calculation.<A NAME="text8"></A><A HREF="#note8"><SUP><FONT SIZE=2>8</FONT></SUP></A>
+
+Composition is associative, with <TT>none</TT> as zero, and <TT>keep</TT> as
+identity.<BR>
+<BR>
+The <TT>`with`</TT> form of guarded composition is <EM>not</EM> associative,
+but we do have some laws, particularly idempotence. We also have a
+promotion law about combined uses of <TT>`with`</TT> and <TT>`o`</TT>.
+The dual operator, <TT>`without`</TT> has parallel laws.<BR>
+<BR>
+The <TT>/&gt;</TT> path selector is associative but <TT>&lt;/</TT> is not, and there
+are some idempotence laws for both. Most important however, are the
+various promotion laws for changing the order of application of <TT>/&gt;</TT>,
+<TT>&lt;/</TT>, and <TT>with</TT>.<BR>
+<BR>
+The directed choice operator <TT>|&gt;|</TT> viewed by itself appears to be
+algebraically sensible, but it does not seem to have useful algebraic
+properties in connection with other combinators because of its bias
+towards the left operand. The simpler result-appending combinator <TT>|||</TT> could be an alternative to the directed choice operator, and would
+probably lead to more laws, but it has less `application bite'. A
+potentially serious problem is that the <TT>|||</TT>-combination of two
+selectors is not necessarily a selector.<BR>
+<BR>
+The recursion operator <TT>deep</TT> has some minor laws, one of which,
+the depth law, is more profound. We have not yet fully investigated
+the properties of <TT>deepest</TT>, <TT>multi</TT>, and <TT>foldXml</TT>.<BR>
+<BR>
+
+<BR>
+<BR>
+<!--TOC section Translation of DTDs to Types-->
+
+<H2>3&nbsp;&nbsp;Translation of DTDs to Types</H2>
+<A NAME="translation"></A><!--TOC subsection DTDs-->
+
+<H3>3.1&nbsp;&nbsp;DTDs</H3>
+So far we have considered document-processing by generic tree
+transformations, where markup is matched textually at runtime, and
+no account is taken of any deeper meaning of tags.<BR>
+<BR>
+However, when the DTD for a document is available, the meaning it
+defines for markup tags can be used to powerful effect. The most basic
+use is to confirm semantic <EM>validity</EM>: a stronger notion than mere
+syntactic well-formedness. A DTD defines a grammar for document
+content: it specifies a vocabulary of markup tags, and the allowed
+content and attributes for each tag. Document validation is therefore a
+straightforward check that the document's structure conforms to the
+vocabulary and grammar given in the DTD.<BR>
+<BR>
+XML document validators are readily available. However, we go further
+and define the idea of <EM>valid document processing</EM>. A valid
+processing script is one which produces a valid document as output,
+given a valid document as input. We achieve this by demonstrating a
+correspondence
+between the DTD of a document and the
+definition of a set of algebraic types in Haskell, and the consequent
+correspondence between the document's content and a structured Haskell
+value. Hence, by writing document processing scripts to manipulate the
+typed Haskell value, the script validation problem is just an instance
+of normal Haskell type inference.<A NAME="text9"></A><A HREF="#note9"><SUP><FONT SIZE=2>9</FONT></SUP></A>
+<BR>
+<BR>
+<BLOCKQUOTE><HR>
+<PRE>
+&lt;?xml version='1.0'?&gt;
+&lt;!DOCTYPE album SYSTEM "album.dtd" [
+&lt;!ELEMENT album (title, artist, recordingdate?,
+                 coverart, (catalogno)+,
+                 personnel, tracks, notes) &gt;
+&lt;!ELEMENT title #PCDATA&gt;
+&lt;!ELEMENT artist #PCDATA&gt;
+&lt;!ELEMENT recordingdate EMPTY&gt;
+    &lt;!ATTLIST recordingdate date CDATA #IMPLIED
+                            place CDATA #IMPLIED&gt;
+&lt;!ELEMENT coverart (location)? &gt;
+    &lt;!ATTLIST coverart style CDATA #REQUIRED&gt;
+&lt;!ELEMENT location EMPTY &gt;
+    &lt;!ATTLIST location thumbnail CDATA #IMPLIED
+                       fullsize CDATA #IMPLIED&gt;
+&lt;!ELEMENT catalogno EMPTY &gt;
+    &lt;!ATTLIST
+          catalogno
+              label CDATA #REQUIRED
+              number CDATA #REQUIRED
+              format (CD | LP | MiniDisc) #IMPLIED
+              releasedate CDATA #IMPLIED
+              country CDATA #IMPLIED&gt;
+&lt;!ELEMENT personnel (player)+ &gt;
+&lt;!ELEMENT player EMPTY &gt;
+    &lt;!ATTLIST player name CDATA #REQUIRED
+                      instrument CDATA #REQUIRED&gt;
+&lt;!ELEMENT tracks (track)* &gt;
+&lt;!ELEMENT track EMPTY&gt;
+    &lt;!ATTLIST track title CDATA #REQUIRED
+                    credit CDATA #IMPLIED
+                    timing CDATA #IMPLIED&gt;
+&lt;!ELEMENT notes (#PCDATA | albumref | trackref)* &gt;
+    &lt;!ATTLIST notes author CDATA #IMPLIED&gt;
+&lt;!ELEMENT albumref #PCDATA&gt;
+    &lt;!ATTLIST albumref link CDATA #REQUIRED&gt;
+&lt;!ELEMENT trackref #PCDATA&gt;
+    &lt;!ATTLIST trackref link CDATA #IMPLIED&gt;
+]&gt;
+</PRE>
+
+<DIV ALIGN=center>Figure 7: An example DTD.
+<A NAME="exampledtd"></A></DIV>
+<HR></BLOCKQUOTE><BLOCKQUOTE><HR>
+<PRE>
+module AlbumDTD where
+
+data Album = 
+    Album Title Artist (Maybe Recordingdate)
+          Coverart [Catalogno] Personnel
+          Tracks Notes
+newtype Title = Title String
+newtype Artist = Artist String
+newtype Recordingdate =
+                Recordingdate Recordingdate_Attrs
+data Recordingdate_Attrs = Recordingdate_Attrs {
+    date :: Maybe String,
+    place :: Maybe String }
+newtype Coverart = Coverart (String, Maybe Location)
+newtype Location = Location Location_Attrs
+data Location_Attrs = Location_Attrs {
+    thumbnail :: Maybe String,
+    fullsize  :: Maybe String }
+newtype Catalogno = Catalogno Catalogno_Attrs
+data Catalogno_Attrs = Catalogno_Attrs {
+    label :: String,
+    number :: String,
+    format :: Maybe Format,
+    releasedate :: Maybe String,
+    country :: Maybe String }
+data Format = CD | LP | MiniDisc
+newtype Personnel = Personnel [Player]
+newtype Player = Player Player_Attrs
+data Player_Attrs = Player_Attrs {
+    name :: String,
+    instrument :: String }
+newtype Tracks = Tracks [Track]
+newtype Track = Track Track_Attrs
+data Track_Attrs = Track_Attrs {
+    title :: String,
+    credit :: Maybe String,
+    timing :: Maybe String }
+newtype Notes = Notes (Maybe String, [Notes_])
+data Notes_ = 
+    Notes_Str String
+  | Notes_Albumref Albumref
+  | Notes_Trackref Trackref
+newtype Albumref = Albumref (String,String)
+newtype Trackref = Trackref (Maybe String,String)
+</PRE>
+
+<DIV ALIGN=center>Figure 8: The example DTD translated to Haskell types.
+<A NAME="haskelldtd"></A></DIV>
+<HR></BLOCKQUOTE><!--TOC subsection DTD translations.-->
+
+<H3>3.2&nbsp;&nbsp;DTD translations.</H3>An example DTD for the document shown earlier is given in
+Figure <A HREF="#exampledtd">7</A>. The immediate features to note are:
+(1) For every element, there is a specification of allowed inner elements
+ (<CODE>ELEMENT</CODE> declaration), and possibly also a specification of allowed
+ attribute values (<CODE>ATTLIST</CODE> declaration).
+(2) For inner content, the grammar allows sequence (commas), choice
+ (vertical bar), optionality (question mark), and repetition (star or plus).
+(3) Where the inner content declaration allows free text (<CODE>#PCDATA</CODE>),
+ choice between text and other elements is permitted, but sequencing of
+ those elements is not permitted.
+(4) In attribute lists, some values are mandatory (<CODE>#REQUIRED</CODE>) and
+ some are optional (<CODE>#IMPLIED</CODE>); attribute values can either be
+ unconstrained strings (<CODE>CDATA</CODE>) or a member of some pre-defined
+ set of string values.<BR>
+<BR>
+There seem to be some obvious correspondences between this very
+restricted form of type language and the richer type language of
+Haskell. Each element declaration is roughly speaking a new datatype
+declaration. Sequence is like product types (i.e. single-constructor
+values). Choice is like sum types (i.e. multi-constructor values).
+Optionality is just a <TT>Maybe</TT> type. Repetition is lists.<BR>
+<BR>
+Attribute lists also have a translation: because they are unordered and
+accessed by name, Haskell named-fields look like a good
+representation. Optionality can again be expressed as <TT>Maybe</TT>
+types. Attribute values that are constrained to a particular value-set
+can be modelled by defining a new enumeration type encompassing the
+permitted strings.<BR>
+<BR>
+<!--TOC subsection Implementation-->
+
+<H3>3.3&nbsp;&nbsp;Implementation</H3>
+These rules are formalised in the appendix (Figure <A HREF="#DTDrules">9</A>).
+An implementation of these rules (with some additional rules to
+eliminate redundancy) translated the DTD in Figure <A HREF="#exampledtd">7</A>
+into the Haskell type declarations shown in Figure <A HREF="#haskelldtd">8</A>.<BR>
+<BR>
+Also needed, along with the type declarations, are functions which read
+and write values of these types to and from actual XML documents.
+These are generated automatically from the type declarations alone.
+Using an appropriate set of pre-defined type classes, we derive a new
+instance for each generated type using a tool like DrIFT [<CITE><A HREF="#DRiFT"><CITE>16</CITE></A></CITE>].<BR>
+<BR>
+<!--TOC subsection Discussion-->
+
+<H3>3.4&nbsp;&nbsp;Discussion</H3>
+Although this type-based translation looks straightforward, it turns
+out that there are several tricky issues.<BR>
+<BR>
+First, the type translation may only use datatypes and newtypes, never
+type synonyms. This is a result of needing to write values out as XML
+-- a type synonym in Haskell is indistinguishable from the type it
+abbreviates, but the generated types must be distinct in order to be
+able to re-introduce enclosing start and end tags with the correct
+markup.<BR>
+<BR>
+A separate type is introduced for each collection of attributes.
+Hence, an element is represented by a pairing of the attributes
+and the content. Where a tagged element directly contains an optional
+type or a sequence of types which are themselves sum-types, it is
+necessary to interpose a separate Haskell type, e.g. <CODE>Notes</CODE>
+contains a <CODE>[Notes_]</CODE> where the auxiliary type <CODE>Notes_</CODE> has
+three alternatives.<BR>
+<BR>
+Naming is a big issue. Case matters in XML, so a <TT>&lt;tag&gt;</TT> differs
+from a <TT>&lt;TAG&gt;</TT> and attribute <TT>attr</TT> differs from <TT>Attr</TT>.
+In Haskell however, types must begin with upper-case, and field-names
+must begin with lower-case. Where auxiliary types are necessary,
+we have chosen to append an underscore character to the name. All
+of these factors impose restrictions on the use of this
+translation, due to the potential name conflicts.<BR>
+<BR>
+Furthermore, there is a mismatch between Haskell's named fields and the
+attribute naming/scoping rules in XML. In XML, different elements may
+have attributes of the same name and type, whereas Haskell's named
+fields are restricted to use within a single type. A system of typed
+extensible records [<CITE><A HREF="#Gaster98"><CITE>5</CITE></A></CITE>] would be a much better fit.<BR>
+<BR>
+Despite these problems in expressing DTDs within the Haskell
+typesystem, the latter is very much more powerful than DTDs -- for
+instance, DTDs have no notion of polymorphism. Indeed, there are
+frequent occasions when DTD writers resort to textual
+macros<A NAME="text10"></A><A HREF="#note10"><SUP><FONT SIZE=2>10</FONT></SUP></A>
+ to indicate more
+detailed structuring than DTDs permit (including polymorphism and
+qualified typing), even though such implicit structuring cannot be
+validated by XML tools. It is significant to note the XML community's
+recognition of these limitations of DTDs -- recent proposals for <EM>schemas</EM><A NAME="text11"></A><A HREF="#note11"><SUP><FONT SIZE=2>11</FONT></SUP></A>
+
+address the question of richer
+typing in a more disciplined manner.<BR>
+<BR>
+One area in which the type system of Haskell in particular (as opposed
+to other functional languages) is exploited is type classes. This
+systematic overloading mechanism is very useful for codifying the I/O
+conversions.<BR>
+<BR>
+
+<!--TOC section Pros and cons of the two schemes-->
+
+<H2>4&nbsp;&nbsp;Pros and cons of the two schemes</H2>
+<A NAME="evaluation"></A><!--TOC subsection Combinators-->
+
+<H3>4.1&nbsp;&nbsp;Combinators</H3>
+
+Compared with the mainstream solution for XML processing,
+namely new domain-specific languages for expressing and scripting
+transformations, the combinator approach has several advantages:<BR>
+<BR>
+
+<H5>Ease of extension and variation</H5>
+ Scripting languages sometimes lack useful facilities, or provide
+ them in convoluted ways. Extending the language is difficult. A
+ combinator library, however, can be enlarged comparatively
+ straightforwardly -- the definitions are accessible, and most are
+ short and simple.<BR>
+<BR>
+
+<H5>Computational power</H5>
+ Scripting languages tend to offer either a
+ very limited expression language, or a hook into a programming
+ system at a completely different level of abstraction. But if XML
+ scripts are programs in a language such as Haskell, the full power
+ of the native language is immediately available.<BR>
+<BR>
+
+<H5>Abstraction, generality and reuse</H5>
+ Almost any pattern occurring in a combinator program can be isolated
+ and defined as a separate re-usable idea [<CITE><A HREF="#Hughes89"><CITE>6</CITE></A></CITE>]. This also
+ applies at the application level, where common ideas from similar
+ applications might easily be defined in a higher-level library.
+ This form of re-use makes program development much quicker and less
+ error-prone.<BR>
+<BR>
+
+<H5>Laws for reasoning about scripts</H5>
+ The semantics of a scripting language are often defined by
+ illustration. So it is hard to reason with confidence about the
+ meanings of scripts. Is <I>A</I> just a stylistic variation of <I>B</I> or
+ are there inputs for which the two could give different results?
+ But when the semantics of scripts can be defined in terms of the
+ equations for the combinators, properties such as associativity and
+ distribution can often be demonstrated simply.<BR>
+<BR>
+
+<H5>Implementation for free</H5>
+ Does a scripting language have an interactive interpreter? A
+ compiler? A type-checker? A profiler? All these things are
+ immediately available to XML scripts directly expressed as Haskell
+ programs.<BR>
+<BR>
+
+Of course, there are disadvantages too.<BR>
+<BR>
+
+<H5>Distance from target language</H5>
+ XSLT [<CITE><A HREF="#xslt"><CITE>3</CITE></A></CITE>] has the property that a script is an expression in
+ the target language: it uses exactly the XML syntax for
+ building new content. Combinator-based scripts must
+ use a different syntax due to the underlying language.
+ The linguistic gap might cause confusion and increase learning costs.<BR>
+<BR>
+
+<H5>Living in an unfamiliar world</H5>
+ Combinator programs <EM>look like</EM> scripts in a small
+ domain-specific language. Writers may be beguiled by this apparent
+ simplicity, make a small error, and drop into an unknown corner of
+ Haskell. Error messages may be incomprehensible, or worse,
+ the script might work but do something utterly strange.<BR>
+<BR>
+<!--TOC subsection Type-based translation-->
+
+<H3>4.2&nbsp;&nbsp;Type-based translation</H3>
+Some of the advantages of the fully-typed representation of XML
+documents have already been mentioned.<BR>
+<BR>
+
+<H5>Validity</H5>
+ The ability for the system to spot errors automatically, not just
+ in the data, but in the program, and also to prevent the generation
+ of incorrect document markup.<BR>
+<BR>
+
+<H5>Direct programming style</H5>
+ Functional languages encourage the use of pattern-matching (binding
+ values to variables) on the left-hand-side of equations. However,
+ using higher-order combinators, data structures tend not to be
+ mentioned in equations at all. The DTD translation approach is
+ much more in keeping with the pattern-binding style, which
+ sometimes leads to shorter programs! Whereas with combinators, it
+ is sometimes necessary to re-traverse the same selection path with
+ slight variations, the pattern-binding gives direct access for
+ free.<BR>
+<BR>
+<BR>
+
+Disadvantages are:<BR>
+<BR>
+
+<H5>High startup cost</H5>
+ Before scripting document transformations, it is necessary to
+ acquire, check, and process the DTD. Although the generation of
+ Haskell types is automated, few people are familiar enough with
+ DTDs to be able to start using them immediately. They require
+ careful study and understanding before correct scripts can be written
+ and the initial investment of effort pays off.<BR>
+<BR>
+
+<H5>Incomplete type model</H5>
+ The grammar of DTDs is small and restrictive compared to the
+ sophisticated type systems available in functional languages.
+ Better means of type-specification in XML are still under
+ development. In the meantime, there is little scope for using
+ the full power of features like polymorphism.<BR>
+<BR>
+
+<!--TOC section Related Work-->
+
+<H2>5&nbsp;&nbsp;Related Work</H2>
+<A NAME="related"></A>
+<H5>XML Processing</H5>
+There are infant processing languages surrounding XML. Of most
+interest here are:<BR>
+<BR>
+<UL>
+<LI>XSLT [<CITE><A HREF="#xslt"><CITE>3</CITE></A></CITE>]
+ (eXtensible Style Language for Transformation) is a W3C-proposed
+ declarative language for expressing a limited form of transformations
+ on XML documents, originally intended for rendering to a layout-based
+ format, e.g. HTML, PostScript, etc., but now widely used for
+ XML-&gt;XML transformations.
+
+<LI>DSSSL [<CITE><A HREF="#dsssl"><CITE>12</CITE></A></CITE>]
+ (Document Style Semantics and Specification Language) is a mature ISO
+ standard with no complete implementations. It is similar in essence
+ to XSLT, but deals with full SGML input, and is based on Scheme.
+</UL>Not many functional language researchers are visibly engaged in
+XML-related work, but
+two other toolkits for XML-processing are Christian Lindig's XML
+parser in
+O'Caml<A NAME="text12"></A><A HREF="#note12"><SUP><FONT SIZE=2>12</FONT></SUP></A>
+
+and Andreas Neumann's validating XML parser in
+SML<A NAME="text13"></A><A HREF="#note13"><SUP><FONT SIZE=2>13</FONT></SUP></A>
+.
+To our knowledge, neither of these provides transformation capabilities
+in either a combinator style or a type-translation style. Philip
+Wadler has written a short formal semantics of XSL selection patterns
+[<CITE><A HREF="#WadlerXSL"><CITE>15</CITE></A></CITE>].<BR>
+<BR>
+
+<H5>Application-based combinators</H5>
+Parsing is the most extensively studied application for combinator
+libraries. Since the original treatment by Burge [<CITE><A HREF="#Burge75"><CITE>2</CITE></A></CITE>], there
+have been many variations on the theme. Swierstra and Duponcheel's
+method incorporating on-the-fly grammar analysis and error-correction
+is a notable recent example [<CITE><A HREF="#SwierstraDuponcheel96"><CITE>10</CITE></A></CITE>]. We hope it
+may be possible to incorporate DTD-analysis in our combinators in a
+similar style.<BR>
+<BR>
+Although many other libraries of application combinators have been
+devised, the general design principles for such libraries are scarcely
+referred to in the literature. Hughes' exposition of a design for
+pretty-printing combinators [<CITE><A HREF="#Hughes95"><CITE>7</CITE></A></CITE>] is a unique resource in
+this respect, and we have yet to exploit it fully.<BR>
+<BR>
+
+<H5>Tree-processing operators</H5>An earlier version of this paper prompted more than one
+pointer to the work of Eelco Visser and colleagues [<CITE><A HREF="#Visser98"><CITE>13</CITE></A></CITE>].
+Their motivating application is specification of strategies for program
+optimisation, treated as rewriting over expression trees.
+The result of applying a strategy is either a single term or failure:
+non-determinism is achieved by backtracking but only the first success
+is computed, whereas we deal in `lists of successes' [<CITE><A HREF="#Wadler85"><CITE>14</CITE></A></CITE>].
+Their operators for combining strategies include composition,
+directed choice, and an explicit µ operator for recursion.
+They have several operators for specifying transformation of
+child subterms: some are not so relevant to XML where
+subtree position and arity are less often fixed than in program
+syntax; however, one of the most frequently
+applied operators is close to our <CODE>foldXml</CODE>.
+Most significantly, Visser et. al. achieve great expressive
+power by decomposing the match/re-build stages of rewriting,
+and introducing <EM>explicit environments</EM> by which these stages
+communicate. This makes it possible to
+deal with subtleties such as variable bindings
+in the program terms under transformation.
+Although the structure of XML is simpler than the structure of
+a programming language, our library could benefit from the addition
+of support for binding variables when matching subtrees.<BR>
+<BR>
+Programming functions explicitly over the XML data-structure,
+without the abstraction of combinators, Haskell pattern matching
+provides bindings for subtrees. But only at a fixed (small) depth
+from the root, beneath an explicitly stated pattern of constructors.
+Mohnen [<CITE><A HREF="#Mohnen96"><CITE>9</CITE></A></CITE>] defines an extension of the pattern language
+for deep matching: variables in a pattern can be bound to subterms
+at arbitrary depth inside the original term. 
+The result of the match includes a <EM>context function</EM> representing
+the original subject term with `holes' at the sites of matching;
+subterms for these holes are supplied by arguments to the function.
+So contexts are the complements of environments.
+Mohnen shows how his matching extension simplifies various
+tree-processing tasks, and also how it can be translated into
+standard Haskell.
+This work could provide one component of a hybrid solution,
+with DTD-specific representation <EM>and</EM> generic forms of
+traversal and matching.<BR>
+<BR>
+Visser et. al. [<CITE><A HREF="#Visser98"><CITE>13</CITE></A></CITE>] also discuss several other approaches
+to the tree transformation problem.<BR>
+<BR>
+
+<!--TOC section Conclusions and Future Work-->
+
+<H2>6&nbsp;&nbsp;Conclusions and Future Work</H2>
+<A NAME="furtherwork"></A>In our experience, Haskell is a very suitable language for
+XML processing.
+For generic applications, a small set of combinators
+designed with algebraic properties in mind can be powerful enough and
+flexible enough to describe a full range of selection, testing, and
+construction operations in a uniform framework.
+For applications where the DTD is fixed, a tool deriving corresponding
+types and associated I/O routines turns XML processing into Haskell
+programming over typed data structures, and the Haskell typechecker
+validates scripts.<BR>
+<BR>
+However, there is plenty of scope for further work, in several directions:<BR>
+<BR>
+
+<H5>Generality of combinators</H5>Though we have had generality as a design aim for our present combinator
+library there is scope for generalising it further.<BR>
+<BR>
+<UL>
+<LI>
+<EM>Wider functionality.</EM>
+Most content filters in our current library
+are either pure selectors (with results that are sequences
+of sub-trees from the full document tree) or pure constructors
+(creating document content from values of other types).
+The design could usefully be extended to include a more general class
+of <EM>deletion</EM> operations in which sub-trees can be
+thinned and pruned in various ways.
+More general still are combinators for <EM>editing and transforming</EM>,
+where some of the ideas in Visser's work could usefully be
+transferred.
+
+<LI>
+<EM>Multiple inputs and outputs.</EM>
+An interesting extension of single-document scripting is the handling
+of multiple documents. Producing more than one output document
+is no great problem.
+But it is far more challenging to design appropriate combinators
+for dealing with several inputs.
+
+<LI>
+<EM>More general types.</EM>
+The labelling scheme has proved useful for some applications,
+but the need for a separate <TT>LabelFilter</TT> type is a blemish.
+We hope to generalise the <TT>CFilter</TT> type to incorporate <TT>LabelFilter</TT>
+as a special case.
+By making the <TT>CFilter</TT> type parametric it might even be possible
+to incorporate the type-translation of DTDs within the combinator framework.
+</UL>
+<H5>Efficiency of combinators</H5>The current combinator library is quite usable, but here
+are some possible routes to greater efficiency.
+<UL>
+<LI>
+<EM>Algebraic normalisation</EM>
+So far we have merely established that laws hold, and occasionally
+appealed to them when writing scripts. 
+The implementation simply defines the combinators by their
+specifying equations.
+Instead, laws could be exploited at the implementation level.
+Following Hughes [<CITE><A HREF="#Hughes95"><CITE>7</CITE></A></CITE>], we have in mind an implementation
+that automatically reduces all combinations to a <EM>normal form</EM>,
+that is the least expensive equivalent computationally. 
+
+<LI>
+<EM>Space-efficient formulation</EM>
+Some lazy functional programs that process trees in pre-order
+left-to-right fashion can be formulated to run in log(N) space.
+The part of the tree that is held in memory corresponds to 
+a path from the root to some node that is currently the focus
+of computation: to the left are `garbage' subtrees already processed,
+to the right are subtrees not yet evaluated.
+However, our current combinators have not been formulated
+to guarantee this sort of space behaviour, even in favourable cases.
+This problem might be tackled by the normalisation approach.
+
+<LI>
+<EM>DTD-aware combinators</EM>
+The current combinator library just ignores DTDs. Combinators that
+maintain DTD information might, for example, achieve far more
+efficient search in some cases by pruning branches bound to fail.
+They could also be used to produce
+first-class XML documents as the results of queries, not just
+raw extracts of unknown type.
+As we have already noted,
+DTDs could perhaps be attached as labels in the sense of §<A HREF="#labelling">2.4</A>:
+either as explicit values or implicitly in type information.
+</UL>
+
+<H5>Relations between DTDs</H5>As we have seen, in the DTD-directed approach with known fixed DTDs for 
+input and output, validation translates to static type-checking;
+whereas generic combinators could in principle acquire
+and compute DTDs dynamically.
+These represent extremes with disadvantages of inflexibility
+on the one hand and some insecurity on the other.
+There are many other ways of handling 
+relations between DTDs.
+For example:<BR>
+<BR>
+<UL>
+<LI>
+<EM>Polymorphic and higher-order scripts.</EM> 
+The generic approach would gain security if one could
+<EM>infer</EM> a DTD-&gt;DTD function.
+By analogy with functional programs
+it is then natural to assign scripts polymorphic
+and higher-order DTDs, making explicit their
+degree of genericity.<BR>
+<BR>
+
+<LI>
+<EM>Inclusion between DTDs.</EM>
+This has been implicitly assumed already, but has practical
+importance in its own right. As stock DTDs are
+refined, XML documents will inhabit a hierarchy of
+specialisation. Given several similar DTDs,
+one would like to derive a DTD for a virtual common root
+(intersection) or common descendent (union).
+This goes well beyond the abilities of current type-inference
+systems, but would make a useful addition to our functional
+toolkit for XML processing.
+</UL>
+<!--TOC section Acknowledgements-->
+
+<H2>Acknowledgements</H2>
+Canon Research Centre (Europe) Ltd. suggested this line of work and
+funded it. Philip Wadler, Christian Lindig, and Joe English gave very
+helpful comments on an earlier draft of this paper and software.
+Several anonymous referees also gave useful advice.<BR>
+<BR>
+<!--TOC section References-->
+
+<H2>References</H2><DL COMPACT>
+<DT><FONT COLOR=purple>[1]<A NAME="xml"></A></FONT><DD>
+Tim Bray, Jean Paoli, and C.M. Sperberg-Macqueen.
+ Extensible Markup Language (XML) 1.0 (W3C
+ Recommendation).
+ <CODE>http://www.w3.org/TR/REC-xml</CODE>, WWW Consortium,
+ February 1998.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[2]<A NAME="Burge75"></A></FONT><DD>
+W&nbsp;H Burge.
+ <EM>Recursive Programming Techniques</EM>.
+ Addison-Wesley, 1975.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[3]<A NAME="xslt"></A></FONT><DD>
+James&nbsp;Clark (ed).
+ XSL Transformations (Working Draft).
+ <CODE>http://www.w3.org/TR/WD-xslt</CODE>, WWW Consortium,
+ April 1999.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[4]<A NAME="Fairbairn87"></A></FONT><DD>
+Jon Fairbairn.
+ Making form follow function: An exercise in functional programming
+ style.
+ <EM>Software -- Practice and Experience</EM>, 17(6):379--386, June 1987.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[5]<A NAME="Gaster98"></A></FONT><DD>
+Benedict&nbsp;R Gaster.
+ <EM>Records, Variants, and Qualified Types</EM>.
+ Dept of Computer Science, University of Nottingham,
+ <EM>PhD Thesis</EM>, 1998.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[6]<A NAME="Hughes89"></A></FONT><DD>
+John Hughes.
+ Why functional programming matters.
+ <EM>Computer Journal</EM>, 32(2), April 1989.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[7]<A NAME="Hughes95"></A></FONT><DD>
+John Hughes.
+ The design of a pretty-printing library.
+ In <EM>1st </EM><EM>I</EM><EM>ntl. </EM><EM>S</EM><EM>chool on </EM><EM>A</EM><EM>dvanced </EM><EM>F</EM><EM>unctional
+ </EM><EM>P</EM><EM>rogramming</EM>, pages 53--96. Springer LNCS Vol. 925, 1995.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[8]<A NAME="HuttonMeijer98"></A></FONT><DD>
+Graham Hutton and Erik Meijer.
+ Monadic parsing in Haskell.
+ <EM>Journal of Functional Programming</EM>, 8(4), July 1998.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[9]<A NAME="Mohnen96"></A></FONT><DD>
+Markus Mohnen.
+ Context patterns in Haskell.
+ In <EM>W</EM><EM>orkshop on </EM><EM>I</EM><EM>mplementation of </EM><EM>F</EM><EM>unctional </EM><EM>L</EM><EM>anguages</EM>,
+ pages 41--57. Springer LNCS Vol 1268, September 1996.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[10]<A NAME="SwierstraDuponcheel96"></A></FONT><DD>
+Doaitse Swierstra and Luc Duponcheel.
+ Deterministic error-correcting combinator parsers.
+ In <EM>2nd </EM><EM>I</EM><EM>ntl. </EM><EM>S</EM><EM>chool on </EM><EM>A</EM><EM>dvanced </EM><EM>F</EM><EM>unctional
+ </EM><EM>P</EM><EM>rogramming</EM>, pages 184--207. Springer LNCS Vol 1129, August 1996.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[11]<A NAME="Turner79"></A></FONT><DD>
+David&nbsp;A Turner.
+ A new implementation technique for applicative languages.
+ <EM>Software -- Practice and Experience</EM>, 9(1):31--50, January 1979.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[12]<A NAME="dsssl"></A></FONT><DD>
+Unknown.
+ Document Style Semantics and Specification Language
+ (DSSSL) (Final Draft).
+ <CODE>http://occam.sjf.novell.com/dsssl/dsssl96/</CODE>,
+ Novell Publications, 1996.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[13]<A NAME="Visser98"></A></FONT><DD>
+Eelco Visser, Zine el&nbsp;Abidine&nbsp;Benaissa, and Andrew Tolmach.
+ Building program optimisers with rewrite strategies.
+ In <EM>I</EM><EM>nternational </EM><EM>C</EM><EM>onference on </EM><EM>F</EM><EM>unctional </EM><EM>P</EM><EM>rogramming</EM>,
+ pages 13--26. ACM Press, September 1998.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[14]<A NAME="Wadler85"></A></FONT><DD>
+Philip Wadler.
+ How to replace failure by a list of successes.
+ In <EM>F</EM><EM>unctional </EM><EM>P</EM><EM>rogramming </EM><EM>L</EM><EM>anguages and </EM><EM>C</EM><EM>omputer
+ </EM><EM>A</EM><EM>rchitecture</EM>, pages 113--128. Springer LNCS Vol 201, September 1985.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[15]<A NAME="WadlerXSL"></A></FONT><DD>
+Philip Wadler.
+ A formal model of pattern matching in XSL.
+ Technical Report <CODE>http://www.cs.bell-labs.com/~wadler/xsl/</CODE>,
+ Bell Labs, January 1999.<BR>
+<BR>
+
+<DT><FONT COLOR=purple>[16]<A NAME="DRiFT"></A></FONT><DD>
+Noel Winstanley.
+ Reflections on instance derivation.
+ In <EM>1997 </EM><EM>G</EM><EM>lasgow </EM><EM>F</EM><EM>unctional </EM><EM>P</EM><EM>rogramming </EM><EM>W</EM><EM>orkshop</EM>. BCS
+ Workshops in Computer Science, September 1997.</DL>
+
+
+<BLOCKQUOTE><HR><!--TOC section Appendix: DTD translation rules-->
+
+<H2>Appendix: DTD translation rules</H2>
+
+
+<TABLE CELLSPACING=2 CELLPADDING=0>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>Type declarations</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>T</I></FONT>[[<TT>&lt;ELEMENT n </TT><TT><EM>spec</EM></TT><TT>&gt;</TT>]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>newtype </TT><TT><EM>m</EM></TT><TT> =</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>    </CODE><TT><EM>m</EM></TT><TT> (</TT><TT><EM>m</EM></TT><TT>_Attrs, </TT><TT><EM>m</EM></TT><TT>_)</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><TT>newtype </TT><TT><EM>m</EM></TT><TT>_ = </TT><TT><FONT COLOR=red><I>D</I></FONT></TT><TT>[[</TT><TT><EM>spec</EM></TT><TT>]]</TT><TT> </TT><TT><EM>m</EM></TT><TT> </TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=right NOWRAP>where <TT><EM>m</EM></TT><TT> </TT><TT>=</TT><TT> </TT><TT><FONT COLOR=red><I>M</I></FONT></TT><TT>[[</TT><TT>n</TT><TT>]]</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>T</I></FONT>[[<TT>&lt;ATTLIST n</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><CODE>     </CODE><TT><I><I>decl</I><SUB><FONT SIZE=2>0</FONT></SUB></I></TT><TT> ... </TT><TT><I><I>decl</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></I></TT><TT><TT>&gt;</TT></TT>]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>data </TT><TT><EM>m</EM></TT><TT>_Attrs = </TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>  </CODE><TT><EM>m</EM></TT><TT>_Attrs {</TT><TT><FONT COLOR=red><I>F</I></FONT></TT><TT>[[</TT><TT><I><I>decl</I><SUB><FONT SIZE=2>0</FONT></SUB></I></TT><TT>]]</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>          ,</CODE> ...</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>          ,</CODE><TT><FONT COLOR=red><I>F</I></FONT></TT><TT>[[ </TT><TT><I><I>decl</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></I></TT><TT>]]</TT><TT> }</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=right NOWRAP>where <TT><EM>m</EM></TT><TT> </TT><TT>=</TT><TT> </TT><TT><FONT COLOR=red><I>M</I></FONT></TT><TT>[[</TT><TT>n</TT><TT>]]</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>A</I></FONT>[[<I><I>decl</I><SUB><FONT SIZE=2>0</FONT></SUB></I>]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP>...</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>A</I></FONT>[[ <I><I>decl</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></I>]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+</TR>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>RHS of type declarations</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ ( <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB>, <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB>, ..., <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ) ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ... <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>  </CODE> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ]]
+   <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ]]
+  ...   <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ ( <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> | <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> | ... | <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ) ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP>   <FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ]] <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>|</CODE> <FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ]] <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>|</CODE> ...</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>|</CODE> <FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]] <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ (<I>x</I>)? ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>Maybe</TT> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ (<I>x</I>)+ ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>List1</TT> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ (<I>x</I>)* ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><CODE>[</CODE> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]] <CODE>]</CODE></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>[[ <I>x</I> ]] <I>m</I></TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+</TR>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>Inner type expressions</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ ( <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB>, <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB>, ..., <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ) ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>(</TT>  <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ]]
+ <TT>,</TT>  <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>  </CODE>
+ <TT>,</TT> ... <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]
+ <TT>)</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ ( <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> | <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> | ... | <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ) ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>(OneOf</TT><TT><SUB><FONT SIZE=2><I>n</I></FONT></SUB></TT>
+  <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> ]]
+  <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>         </CODE>
+  ...
+  <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]] <TT>)</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ (<I>x</I>)? ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>(Maybe</TT> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]] <TT>)</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ (<I>x</I>)+ ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>(List1</TT> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]] <TT>)</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ (<I>x</I>)* ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><CODE>[</CODE> <FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]] <CODE>]</CODE></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>D</I></FONT>'[[ <I>x</I> ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>C</I></FONT>[[ <I>x</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+</TR>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>Name mangling</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>C</I></FONT>[[ <I>m</I> <I>x</I><SUB><FONT SIZE=2>0</FONT></SUB> <I>x</I><SUB><FONT SIZE=2>1</FONT></SUB> ... <I>x</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP>... <EM>unique constructor name</EM></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>        </CODE><EM>based on </EM><EM><TT>m</TT></EM></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>[[ <I>n</I> ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP>... <EM>ensure initial upper-case</EM></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>'[[ <I>n</I> ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP>... <EM>ensure initial lower-case</EM></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+</TR>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>Named fields</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP COLSPAN=3><FONT COLOR=red><I>F</I></FONT>[[ <TT>n CDATA #REQUIRED</TT> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>'[[ <I>n</I> ]]  <TT>:: String</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP COLSPAN=3><FONT COLOR=red><I>F</I></FONT>[[ <TT>n CDATA #IMPLIED</TT> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>'[[ <I>n</I> ]]  <TT>:: Maybe String</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP COLSPAN=3><FONT COLOR=red><I>F</I></FONT>[[ <TT>n (</TT><TT><I>s</I><SUB><FONT SIZE=2>0</FONT></SUB>|<I>s</I><SUB><FONT SIZE=2>1</FONT></SUB>|...|<I>s</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></TT><TT>) #REQUIRED</TT> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>'[[ <I>n</I> ]]  <TT>::</TT> <FONT COLOR=red><I>M</I></FONT>[[ <I>n</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP COLSPAN=3><FONT COLOR=red><I>F</I></FONT>[[ <TT>n (</TT><TT><I>s</I><SUB><FONT SIZE=2>0</FONT></SUB>|<I>s</I><SUB><FONT SIZE=2>1</FONT></SUB>|...|<I>s</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></TT><TT>) #IMPLIED</TT> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><FONT COLOR=red><I>M</I></FONT>'[[ <I>n</I> ]]  <TT>:: Maybe </TT> <FONT COLOR=red><I>M</I></FONT>[[ <I>n</I> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+</TR>
+<TR><TD  ALIGN=center NOWRAP COLSPAN=3><B>Constrained attributes</B></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP><FONT COLOR=red><I>A</I></FONT>[[ <TT>n CDATA ...</TT> ]]</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP>0</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP COLSPAN=3><FONT COLOR=red><I>A</I></FONT>[[ <TT>n (</TT><TT><I>s</I><SUB><FONT SIZE=2>0</FONT></SUB>|<I>s</I><SUB><FONT SIZE=2>1</FONT></SUB>|...|<I>s</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB></TT><TT>) ...</TT> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>=</TD>
+<TD  ALIGN=left NOWRAP><TT>data </TT> <FONT COLOR=red><I>M</I></FONT>[[ <I>n</I> ]]  <TT>=</TT></TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>    </CODE>
+ <FONT COLOR=red><I>M</I></FONT>[[ <I>s</I><SUB><FONT SIZE=2>0</FONT></SUB> ]] <TT>|</TT>
+ <FONT COLOR=red><I>M</I></FONT>[[ <I>s</I><SUB><FONT SIZE=2>1</FONT></SUB> ]]</TD>
+</TR>
+<TR><TD  ALIGN=left NOWRAP>&nbsp;</TD>
+<TD  ALIGN=center NOWRAP>&nbsp;</TD>
+<TD  ALIGN=left NOWRAP><CODE>    </CODE> <TT>|</TT> ... <TT>|</TT>
+ <FONT COLOR=red><I>M</I></FONT>[[ <I>s</I><SUB><FONT SIZE=2><I>k</I></FONT></SUB> ]]</TD>
+</TR></TABLE>
+
+
+<BR>
+<DIV ALIGN=center>Figure 9: DTD translation rules.
+<A NAME="DTDrules"></A></DIV>
+<HR></BLOCKQUOTE><!--BEGIN NOTES document-->
+<HR ALIGN=left WIDTH="50%">
+<DL>
+<DT><A NAME="note1"></A><A HREF="#text1"><FONT SIZE=5>1</FONT></A>
+<DD>The XML toolkit from this paper is available
+on the WWW at <TT>http://www.cs.york.ac.uk/fp/HaXml/</TT>
+
+<DT><A NAME="note2"></A><A HREF="#text2"><FONT SIZE=5>2</FONT></A>
+<DD><EM>Xtract: a `grep'-like tool
+for XML documents.</EM> 
+<TT>http://www.cs.york.ac.uk/fp/Xtract/</TT>
+
+<DT><A NAME="note3"></A><A HREF="#text3"><FONT SIZE=5>3</FONT></A>
+<DD>In light of the ``XML Namespaces'' recommendation,
+in effect a mechanism for permitting multiple DTDs, such
+facilities could be particularly useful. See
+<TT>http://www.w3.org/TR/REC-xml-names</TT>
+
+<DT><A NAME="note4"></A><A HREF="#text4"><FONT SIZE=5>4</FONT></A>
+<DD>The shortened name <TT>elm</TT> was chosen to avoid a
+clash with the Standard Prelude function <TT>elem</TT>.
+
+<DT><A NAME="note5"></A><A HREF="#text5"><FONT SIZE=5>5</FONT></A>
+<DD>For those familiar with the detail of XML, entity
+references within the document are treated as plain text.
+
+<DT><A NAME="note6"></A><A HREF="#text6"><FONT SIZE=5>6</FONT></A>
+<DD>Actually, a list of
+attribute/filter pairs. Each filter is applied to the current element
+and the resultant content is flattened to a string value which is
+assigned to the named attribute.
+
+<DT><A NAME="note7"></A><A HREF="#text7"><FONT SIZE=5>7</FONT></A>
+<DD>Actually a left-section
+of the infix operator. Because filters are higher-order, their use is
+eta-reduced and the rightmost argument disappears from view.
+
+<DT><A NAME="note8"></A><A HREF="#text8"><FONT SIZE=5>8</FONT></A>
+<DD>Irish composition is in fact just the flipped-argument
+version of the Kleisi composition operator in the list monad.
+
+<DT><A NAME="note9"></A><A HREF="#text9"><FONT SIZE=5>9</FONT></A>
+<DD>Well, nearly!
+Validity also encompasses some other minor checks, for
+instance that IDREF attributes must be globally unique.
+
+<DT><A NAME="note10"></A><A HREF="#text10"><FONT SIZE=5>10</FONT></A>
+<DD>That is, parameter entity references.
+
+<DT><A NAME="note11"></A><A HREF="#text11"><FONT SIZE=5>11</FONT></A>
+<DD><TT>http://www.w3.org/TR/xmlschema-1</TT> for structures,
+
+and <TT>http://www.w3.org/TR/xmlschema-2</TT> for datatypes.
+
+<DT><A NAME="note12"></A><A HREF="#text12"><FONT SIZE=5>12</FONT></A>
+<DD><TT>http://www.cs.tu-bs.de/softech/people/lindig/tony.html</TT>
+
+<DT><A NAME="note13"></A><A HREF="#text13"><FONT SIZE=5>13</FONT></A>
+<DD><TT>http://www.informatik.uni-trier.de/&nbsp;neumann/Fxp/</TT>
+</DL><!--END NOTES--><!--HTMLFOOT-->
+<!--ENDHTML-->
+
+<!--FOOTER-->
+<HR>
+
+<BLOCKQUOTE><EM>This document was translated from L<sup>A</sup>T<sub>E</sub>X by </EM><A HREF="http://para.inria.fr/~maranget/hevea/index.html"><EM>H</EM><EM><FONT SIZE=2><sup>E</sup></FONT></EM><EM>V</EM><EM><FONT SIZE=2><sup>E</sup></FONT></EM><EM>A</EM></A><EM>.
+</EM></BLOCKQUOTE></BODY>
+</HTML>
+

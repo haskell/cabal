@@ -1,0 +1,451 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+    <HEAD>
+	<TITLE>Xtract: a query language for XML documents</TITLE>
+    </HEAD>
+    <BODY>
+	<CENTER>
+	    <H1><EM>Xtract</EM>: a query language for XML documents</H1>
+	</CENTER>
+	<CENTER>
+	    <EM>Malcolm Wallace, </EM>
+	    <EM>Colin Runciman</EM>
+	    <BR />
+	    University of York
+	</CENTER>
+	<CENTER><B>December 1998,<BR />
+                updated June, August 1999, February 2000</B></CENTER>
+	<H2>Introduction</H2>
+	<P> <EM>Xtract</EM>
+	    is a query language based originally on XQL, which was a
+	    W3C proposal that eventually mutated into XPath and XQuery.
+	    The syntax of Xtract is very similar to XPath, although
+	    not completely conformant.
+	</P>
+	<P> The idea of 
+	    <EM>Xtract</EM>
+	    is that it can be used as a kind of XML-grep at the 
+	    command-line, but it could also be used within a scripting 
+	    language (such as the Haskell XML combinator library) as a 
+	    shorthand for a complicated selection filter. 
+	</P>
+	<P> All queries return a sequence of XML document fragments
+            (either whole tagged elements or text contained inside an 
+	    element): for our purposes, we also treat attribute 
+	    values as document fragments. 
+	</P>
+	<P>This document describes the expression language for queries. 
+    </P>
+	<H2>Queries</H2>
+	<P> Just as in XPath, a query looks rather like a Unix file path, 
+	    where the ``directories'' are tags of parent nodes, and the 
+	    <TT>/</TT>
+	    separator indicates a parent/child relationship. Hence, 
+	    <PRE>    matches/match/player </PRE>
+	    selects the 
+	    <TT>player</TT>
+	    elements inside 
+	    <TT>match</TT>
+	    elements inside a 
+	    <TT>matches</TT>
+	    element. The star 
+	    <TT>*</TT>
+	    can be used as a wildcard meaning any tagged element, thus: 
+	    <PRE>    matches/*/player </PRE>
+	    means the 
+	    <TT>player</TT>
+	    elements inside 
+	    <EM>any</EM>
+	    element within a 
+	    <TT>matches</TT>
+	    element. The star can also be used as a suffix or prefix to 
+	    match a range of tags: 
+	    [
+	    Note that this is 
+	    <EM>not</EM>
+	    a full regular expression language: we just provide for the 
+	    common cases of wildcards.
+	    ]
+	    <PRE>    html/h* </PRE>
+	    means all the headings (
+	    <TT>&lt;H1&gt;</TT>
+	    to 
+	    <TT>&lt;H6&gt;</TT>
+	    ) within an HTML document (and HR too!). A double slash
+            indicates a recursive search for an element tag, so 
+	    <PRE>    matches//player </PRE>
+	    means all 
+	    <TT>player</TT>
+	    elements found at any depth within a 
+	    <TT>matches</TT>
+	    element. The plain text enclosed within a tagged element is 
+	    expressed with a dash symbol: 
+	    <PRE>    matches/location/- </PRE>
+	    means the plain text of the location, without any surrounding 
+	    <TT>&lt;location&gt;</TT>
+	    tags. Likewise, 
+	    <PRE>    *//- </PRE>
+	    simply means to flatten the text of the document at all 
+	    levels, removing all tagged element structure. The union of 
+	    two queries is expressed with the 
+	    <TT>+</TT>
+	    operator and parentheses if required: 
+	    <PRE>    matches/match/(player + spectators) </PRE>
+	    gives both the players and spectators at a match.
+            Finally, 
+	    <PRE>    matches//player/@goals </PRE>
+            returns the value of the attribute `goals' on the selected
+            player elements, if the attribute appears.
+	<H2>Predicates</H2>
+	There is a notion of a predicate on an element. The square 
+	bracket notation is used: 
+	<PRE>    matches/match[player] </PRE>
+	means all 
+	<TT>match</TT>
+	elements which contain at least one 
+	<TT>player</TT>
+	element. It is the match elements that are returned, not 
+	the players they contain. One can also ask for the presence 
+	of a particular attribute: 
+	<PRE>    *//player[@goals] </PRE>
+	means those players (found anywhere within the tree) who 
+	scored any goals. You can compare attribute values using 
+	any of the operators 
+	<TT>=</TT>
+	, 
+	<TT>!=</TT>
+	, 
+	<TT>&lt;</TT>
+	, 
+	<TT>&lt;=</TT>
+	, 
+	<TT>&gt;</TT>
+	, 
+	<TT>&gt;=</TT>
+	all of which use 
+	<EM>lexicographical</EM>
+	ordering. In this example: 
+	<PRE>    */match[player/@surname!=referee/@surname] </PRE>
+	we only want those matches in which the referee does not 
+	have the same surname as any of the players. A comparison 
+	may be either against another attribute value, or against a 
+	literal string; however a literal string may only appear to 
+	the 
+	<EM>right</EM>
+	of the operator symbol. For instance, 
+	<PRE>    */match[player/@name='colin'] </PRE>
+	asks for only those matches in which the player named 
+	``colin'' participated. If lexicographical comparison is 
+	inappropriate, numeric comparisons are also possible: these 
+	comparison operators are surrounded by dots: 
+	<TT>.=.</TT>
+	, 
+	<TT>.!=.</TT>
+	, 
+	<TT>.&lt;.</TT>
+	, 
+	<TT>.&lt;=.</TT>
+	, 
+	<TT>.&gt;.</TT>
+	, 
+	<TT>.&gt;=.</TT>
+	Again, either two attribute values are compared, or one 
+	attribute value is compared with a literal integer. For 
+	instance 
+	<PRE>    */match[@ourgoals .&gt;. @theirgoals] </PRE>
+	asks for the matches we won, while 
+	<PRE>    */match[@ourgoals .&lt;=. 3] </PRE>
+	asks for the matches in which we scored three or fewer 
+	goals. (Note that the literal integer is not surrounded by 
+	quote marks.) 
+        <P>
+          In addition to comparing attribute values, you can also
+          compare the textual content of elements.  For instance,
+	  <PRE>    */match[player/- = 'Colin'] </PRE>
+          asks for the matches in which ``Colin'' participated,
+          where the name is recorded between the player tags, rather
+          than as an attribute.  All the same conditions and operations
+          apply as for attribute value comparisons.  Note however that
+          you can only compare texts, not whole structures.
+
+	<H2>Combining predicates</H2>
+	Predicates can be combined using the common Boolean operations 
+	<TT>&amp;</TT>
+	<TT>|</TT>
+	and 
+	<TT>~</TT>
+	, with parentheses for disambiguation if they are required: 
+	<PRE>
+	        
+	    */match/[@ourgoals .=. @theirgoals | (player/@name='colin' 
+	    &amp; ~(@opposition='city'))] 
+	</PRE>
+	means the matches which either ended in a draw, or in which 
+	``colin'' played but the opposition was not ``city''. 
+	<H2>Positional selection</H2>
+	The final feature of 
+	<EM>Xtract</EM>
+	is that the square bracket notation is overloaded to allow 
+	the selection of elements by position: 
+	<PRE>    */match[3] </PRE>
+	means the fourth match in the sequence (numbering starts at 
+	zero). You can have a series of indexes, separated by 
+	commas, and ranges are indicated with a dash. The dollar 
+	symbol means the last in the sequence. For example: 
+	<PRE>    */match[0,2-$,1] </PRE>
+	reorders the matches to place the second one last. 
+	<H2>Complex queries</H2>
+	The full expression language is highly recursive, 
+	permitting you to build arbitrarily complex queries. For 
+	instance: 
+	<PRE>    */match[player/@name='colin'][5-$]/referee[@age.&gt;=.34] 
+    </PRE>
+	means: from the sixth onwards, of those matches in which 
+	``colin'' was a player, select those referees who are older 
+	than 34. 
+	<H2>Grammar</H2>
+	<P>We give a full grammar for <EM>Xtract</EM>. </P>
+	<TABLE>
+	    <TR>
+		<TD><EM>textquery</EM></TD>
+		<TD>= </TD>
+		<TD><EM>query</EM></TD>
+		<TD>elements</TD>
+	    </TR>
+	    <TR><TD /><TD>| </TD><TD><TT>-</TT></TD><TD>plain text</TD></TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>query</EM></TD>
+		<TD>= </TD>
+		<TD><EM>string</EM></TD>
+		<TD>tagged element</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>string</EM><TT>*</TT></TD>
+		<TD>prefix of tag</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>*</TT><EM>string</EM></TD>
+		<TD>suffix of tag</TD>
+	    </TR>
+	    <TR><TD /><TD>| </TD><TD><TT>*</TT></TD><TD>any element</TD></TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>( </TT><EM>textquery </EM><TT>)</TT></TD>
+		<TD>grouping</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>/</TT><EM>textquery</EM></TD>
+		<TD>direct descendant</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>//</TT><EM>textquery</EM></TD>
+		<TD>deep descendant</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>/@</TT><EM>string</EM></TD>
+		<TD>value of attribute</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query </EM><TT>+ </TT><EM>textquery</EM></TD>
+		<TD>union</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>[</TT><EM>predicate</EM><TT>] </TT></TD>
+		<TD>predicates</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>[</TT><EM>positions</EM><TT>] </TT></TD>
+		<TD>indexing</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>qa</EM></TD>
+		<TD>= </TD>
+		<TD><EM>textquery</EM></TD>
+		<TD>has tagged element</TD>
+	    </TR>
+	    <TR>
+		<TD /><TD>| </TD><TD><EM>attribute</EM></TD><TD>has attribute</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>predicate</EM></TD>
+		<TD>= </TD>
+		<TD><EM>qa</EM></TD>
+		<TD>has tagged element or attribute</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>qa </EM><EM>op </EM><EM>qa</EM></TD>
+		<TD>lexical comparison of attribute values or element texts</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD>
+		    <EM>qa </EM><EM>op </EM><TT>'</TT><EM>string</EM><TT>'</TT>
+		</TD>
+		<TD>lexical comparison of attribute value or element text</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD>
+		    <EM>qa </EM><EM>op </EM><TT>"</TT><EM>string</EM><TT>"</TT>
+		</TD>
+		<TD>lexical comparison of attribute value or element text </TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>qa </EM><EM>nop </EM><EM>qa</EM></TD>
+		<TD>numeric comparison of attribute values or element texts</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>qa </EM><EM>nop </EM><EM>integer</EM></TD>
+		<TD>numeric comparison of attribute value or element text</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>( </TT><EM>predicate </EM><TT>)</TT></TD>
+		<TD>grouping</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>predicate </EM><TT>&amp; </TT><EM>predicate</EM></TD>
+		<TD>logical and</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>predicate </EM><TT>| </TT><EM>predicate</EM></TD>
+		<TD>logical or</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>~ </TT><EM>predicate</EM></TD>
+		<TD>logical not</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>attribute</EM></TD>
+		<TD>= </TD>
+		<TD><TT>@</TT><EM>string</EM></TD>
+		<TD>attribute of this element</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>query</EM><TT>/@</TT><EM>string</EM></TD>
+		<TD>attribute of descendant</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>positions</EM></TD>
+		<TD>= </TD>
+		<TD><EM>position </EM>{ <TT>, </TT><EM>positions</EM>} </TD>
+		<TD>comma-separated sequence</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><EM>position </EM><TT>- </TT><EM>position</EM></TD>
+		<TD>range</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>position</EM></TD>
+		<TD>= </TD>
+		<TD><EM>integer</EM></TD>
+		<TD>positions start at zero</TD>
+	    </TR>
+	    <TR><TD /><TD>| </TD><TD><TT>$</TT></TD><TD>last element</TD></TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>op</EM></TD>
+		<TD>= </TD>
+		<TD><TT>=</TT></TD>
+		<TD>lexical equality</TD>
+	    </TR>
+	    <TR>
+		<TD /><TD>| </TD><TD><TT>!=</TT></TD><TD>lexical inequality</TD>
+	    </TR>
+	    <TR>
+		<TD /><TD>| </TD><TD><TT>&lt;</TT></TD><TD>lexically less than</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>&lt;=</TT></TD>
+		<TD>lexically less than or equal</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>&gt;</TT></TD>
+		<TD>lexically greater than</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>&gt;=</TT></TD>
+		<TD>lexically greater than or equal</TD>
+	    </TR>
+	    <TR></TR>
+	    <TR>
+		<TD><EM>nop</EM></TD>
+		<TD>= </TD>
+		<TD><TT>.=.</TT></TD>
+		<TD>numeric equality</TD>
+	    </TR>
+	    <TR>
+		<TD /><TD>| </TD><TD><TT>.!=.</TT></TD><TD>numeric inequality</TD>
+	    </TR>
+	    <TR>
+		<TD /><TD>| </TD><TD><TT>.&lt;.</TT></TD><TD>numeric less than</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>.&lt;=.</TT></TD>
+		<TD>numeric less than or equal</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>.&gt;.</TT></TD>
+		<TD>numeric greater than</TD>
+	    </TR>
+	    <TR>
+		<TD />
+		<TD>| </TD>
+		<TD><TT>.&gt;=.</TT></TD>
+		<TD>numeric greater than or equal</TD>
+	    </TR>
+	</TABLE>
+    </BODY>
+</HTML>

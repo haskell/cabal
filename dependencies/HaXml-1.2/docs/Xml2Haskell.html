@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>
+  HaXml: Haskell and XML
+</title>
+</head>
+
+<body bgcolor='#ffffff'>
+
+<center>
+<h2>DtdToHaskell tool</h2>
+</center>
+<hr>
+
+<p>
+<b>DtdToHaskell</b> is a tool (and <b>Text.XML.HaXml.Xml2Haskell</b>
+provides the class framework) for translating any valid XML DTD
+into equivalent Haskell types.  This allows you to generate, edit,
+and transform documents as normal typed values in programs, and to
+read and write them as human-readable XML documents.
+
+<p>
+Usage: <tt>DtdToHaskell [dtdfile [outfile]]</tt><br>
+(Missing file arguments or dashes (<tt>-</tt>) indicate stdin
+ or stdout respectively.)
+
+<p>
+The program reads and parses a DTD from <tt>dtdfile</tt> (which may be
+either just a DTD, or a full XML document containing an internal DTD).
+It generates into <tt>outfile</tt> a Haskell module containing a
+collection of type definitions plus some class instance declarations
+for I/O.
+
+<p>
+In order to use the resulting module, you need to import it, and also
+to <tt>import Text.XML.HaXml.Xml2Haskell</tt>.  To read and write
+XML files as values of the declared types, use some of the following
+convenience functions:
+<pre>
+    readXml   :: XmlContent a =&gt; String -&gt; Maybe a
+    showXml   :: XmlContent a =&gt; a -&gt; String
+
+    hGetXml   :: XmlContent a =&gt; Handle -&gt; IO a
+    hPutXml   :: XmlContent a =&gt; Handle -&gt; a -&gt; IO ()
+
+    fReadXml  :: XmlContent a =&gt; FilePath -&gt; IO a
+    fWriteXml :: XmlContent a =&gt; FilePath -&gt; a -&gt; IO ()
+</pre>
+not forgetting to resolve the overloading in one of the usual
+ways (e.g. by implicit context at point of use, by explicit type
+signatures on values, use value as an argument to a function with
+an explicit signature, use <tt>`asTypeOf`</tt>, etc.)  (Also, note
+the similarity between these signatures and those provided by the
+<a href="Haskell2Xml.html">Haskell2Xml</a> library.)
+
+<p>
+You will need to study the automatically-generated type declarations to
+write your own transformation scripts - most things are pretty obvious
+parallels to the DTD structure.
+
+<p>
+<b>Limitations</b><br>
+The generated Haskell contains references to types like <tt>OneOf3</tt>
+where there is a choice between <em>n</em> (in this case 3) different
+tags.  Currently, the module <b>Text.XML.HaXml.OneOfN</b> defines
+these types up to <em>n</em>=20.  If your DTD requires larger choices,
+then use the tool <b>MkOneOf</b> to generate the extra size or range
+of sizes you need.
+<p>
+We mangle tag names and attribute names to ensure that they have the
+correct lexical form in Haskell, but this means that (for instance) we
+can't distinguish <tt>Myname</tt> and <tt>myname</tt>, which are
+different names in XML but translate to overlapping types in Haskell
+(and hence probably won't compile).
+<p>
+Attribute names translate into named fields: but because Haskell doesn't
+allow different types to have the same named field, this means your XML
+document which uses the same name for similar attributes on different
+tags would crash and burn.  We have fixed this by incorporating the
+tagname into the named field in addition to the attribute name, e.g.
+<tt>tagAttr</tt> instead of just <tt>attr</tt>.  Uglier, but more
+portable.
+<p>
+XML namespaces.  Currently, we just mangle the namespace identifier into
+any tag name which uses it.  Probably the right way to do it is to
+regard the namespace as a separate imported module, and hence translate
+the namespace prefix into a module qualifier.  Does this sound about
+right?  (It isn't implemented yet.)
+<p>
+External subset.  Since HaXml release 1.00, we support the
+XML DTD external subset.  This means we can read and parse a whole
+bunch of files as part of the same DTD, and we respect INCLUDE and
+IGNORE conditional sections.
+<p>
+There are some fringe parts of the DTD we are not entirely sure
+about - Tokenised Types and Notation Types.  In particular, there
+is no validity checking of these external references.  If you find
+a problem, mail us: <tt>Malcolm.Wallace@cs.york.ac.uk</tt>
+
+<hr>
+
+</body>
+</html>

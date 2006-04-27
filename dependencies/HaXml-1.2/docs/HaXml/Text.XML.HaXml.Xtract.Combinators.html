@@ -1,0 +1,796 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Xtract.Combinators</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.Xtract.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Xtract.Combinators</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  > This is a new set of XML combinators for Xtract, not standard,
+   but based on the standard set in <A HREF = "Text.Xml.Haxml.Combinators.html"
+	    >Text.Xml.Haxml.Combinators</A
+	    >.
+   The main difference is that the Content Filter type becomes a
+   Double Filter.  A Double Filter always takes the whole document
+   as an extra argument, so you can start to traverse it again from
+   any inner location within the document tree.</P
+	  ><P
+	  >   The new combinators definitions are derived from the old ones.
+   New names are derived from the old by surrounding with the letter <TT
+	    >o</TT
+	    >,
+   or by doubling the operator symbols.</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#DFilter"
+		>DFilter</A
+		> = <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		> -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#local"
+		>local</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#global"
+		>global</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oloco"
+		>oloco</A
+		> :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oglobo"
+		>oglobo</A
+		> :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ooo"
+		>ooo</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#||>||"
+		>(||&gt;||)</A
+		> :: (a -&gt; b -&gt; [c]) -&gt; (a -&gt; b -&gt; [c]) -&gt; a -&gt; b -&gt; [c]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#owitho"
+		>owitho</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#owithouto"
+		>owithouto</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#okeepo"
+		>okeepo</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ononeo"
+		>ononeo</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ochildreno"
+		>ochildreno</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oelmo"
+		>oelmo</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#otxto"
+		>otxto</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#applypred"
+		>applypred</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oiffindo"
+		>oiffindo</A
+		> :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#oifTxto"
+		>oifTxto</A
+		> :: (String -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		>) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#ocato"
+		>ocato</A
+		> :: [a -&gt; b -&gt; [c]] -&gt; a -&gt; b -&gt; [c]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#//>>"
+		>(//&gt;&gt;)</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#<<//"
+		>(&lt;&lt;//)</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#odeepo"
+		>odeepo</A
+		> :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+		>DFilter</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Documentation</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "DFilter"
+	  ></A
+	  ><B
+	  >DFilter</B
+	  > = <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  > -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> double content filter - takes document root + local subtree.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "local"
+	  ></A
+	  ><B
+	  >local</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lift an ordinary content filter to a double filter.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "global"
+	  ></A
+	  ><B
+	  >global</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oloco"
+	  ></A
+	  ><B
+	  >oloco</B
+	  > :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lift a CFilter combinator to a DFilter combinator</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oglobo"
+	  ></A
+	  ><B
+	  >oglobo</B
+	  > :: (<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ooo"
+	  ></A
+	  ><B
+	  >ooo</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lifted composition over double filters.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "||>||"
+	  ></A
+	  ><B
+	  >(||&gt;||)</B
+	  > :: (a -&gt; b -&gt; [c]) -&gt; (a -&gt; b -&gt; [c]) -&gt; a -&gt; b -&gt; [c]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lifted choice.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "owitho"
+	  ></A
+	  ><B
+	  >owitho</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lifted predicates.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "owithouto"
+	  ></A
+	  ><B
+	  >owithouto</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "okeepo"
+	  ></A
+	  ><B
+	  >okeepo</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> lifted unit and zero.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ononeo"
+	  ></A
+	  ><B
+	  >ononeo</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ochildreno"
+	  ></A
+	  ><B
+	  >ochildreno</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oelmo"
+	  ></A
+	  ><B
+	  >oelmo</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "otxto"
+	  ></A
+	  ><B
+	  >otxto</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "applypred"
+	  ></A
+	  ><B
+	  >applypred</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oiffindo"
+	  ></A
+	  ><B
+	  >oiffindo</B
+	  > :: String -&gt; (String -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "oifTxto"
+	  ></A
+	  ><B
+	  >oifTxto</B
+	  > :: (String -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  >) -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "ocato"
+	  ></A
+	  ><B
+	  >ocato</B
+	  > :: [a -&gt; b -&gt; [c]] -&gt; a -&gt; b -&gt; [c]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "//>>"
+	  ></A
+	  ><B
+	  >(//&gt;&gt;)</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "<<//"
+	  ></A
+	  ><B
+	  >(&lt;&lt;//)</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "odeepo"
+	  ></A
+	  ><B
+	  >odeepo</B
+	  > :: <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Xtract.Combinators.html#DFilter"
+	  >DFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>
