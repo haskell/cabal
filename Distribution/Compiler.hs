@@ -163,7 +163,7 @@ extensionsToJHCFlag l = (es, filter (not . null) rs)
       extensionToJHCFlag TypeSynonymInstances       = Right ""
       extensionToJHCFlag ForeignFunctionInterface   = Right ""
       extensionToJHCFlag NoImplicitPrelude          = Right "--noprelude"
-      extensionToJHCFlag CPP                        = Right "-f cpp"
+      extensionToJHCFlag CPP                        = Right "-fcpp"
       extensionToJHCFlag e                          = Left e
 
 -- |Hugs: Return the unsupported extensions, and the flags for the supported extensions
