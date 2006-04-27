@@ -81,7 +81,7 @@ build pkg_descr lbi verbose = do
           pfile = buildDir lbi `joinFileName` "jhc-pkg.conf"
           hlfile= buildDir lbi `joinFileName` (pkgid ++ ".hl")
       writeFile pfile $ jhcPkgConf pkg_descr
-      rawSystemExit verbose jhcPath ["--build-hl="++hlfile,pfile]
+      rawSystemExit verbose jhcPath ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
       when (verbose > 3) (putStrLn ("Building executable "++exeName exe))
       let exeBi = buildInfo exe
