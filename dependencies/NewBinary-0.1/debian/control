@@ -1,0 +1,26 @@
+Source: newbinary
+Priority: optional
+Maintainer: Jeremy Shaw <jeremy.shaw@linspireinc.com>
+Build-Depends: debhelper (>= 4.0.0)
+Standards-Version: 3.6.0
+
+Package: libghc6-newbinary-dev
+Section: devel
+Architecture: any
+#Depends: newbinary (= ${Source-Version})
+Depends: ${haskell:Depends}
+Description: Binary IO Module for ghc
+ Provides fast bitwise and bytewise IO for files and memory. Designed
+ to emulate the Binary module for nhc.
+
+# Package: libnhc98-newbinary-dev
+# Section: devel
+# Architecture: any
+# Description: <insert up to 60 chars description>
+# <insert long description, indented with spaces>
+#
+# Package: libhugs-newbinary-dev
+# Section: devel
+# Architecture: any
+# Description: <insert up to 60 chars description>
+# <insert long description, indented with spaces>

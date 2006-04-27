@@ -281,7 +281,6 @@ constructGHCCmdLine lbi bi odir verbose =
      ++ (if verbose > 4 then ["-v"] else [])
 	    -- Unsupported extensions have already been checked by configure
      ++ snd (extensionsToGHCFlag (extensions bi))
-     ++ hcOptions GHC (options bi)
      ++ (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
@@ -293,7 +292,7 @@ constructGHCCmdLine lbi bi odir verbose =
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ++ installIncludes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
-
+     ++ hcOptions GHC (options bi)
 
 mkGHCiLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.

@@ -1,0 +1,6 @@
+Name: NewBinary
+Version: 0.1
+License: AllRightsReserved
+ghc-options: -fglasgow-exts -cpp -package lang
+Build-Depends: lang, base
+Exposed-modules: NewBinary.FastMutInt, NewBinary.Binary

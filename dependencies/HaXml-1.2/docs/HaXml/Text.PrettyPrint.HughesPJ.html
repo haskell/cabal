@@ -1,0 +1,845 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.PrettyPrint.HughesPJ</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.PrettyPrint.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.PrettyPrint.HughesPJ</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Doc"
+	  ></A
+	  ><B
+	  >Doc</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		      >Doc</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Mode"
+	  ></A
+	  ><B
+	  >Mode</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PageMode"
+		      ></A
+		      ><B
+		      >PageMode</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ZigZagMode"
+		      ></A
+		      ><B
+		      >ZigZagMode</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "LeftMode"
+		      ></A
+		      ><B
+		      >LeftMode</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "OneLineMode"
+		      ></A
+		      ><B
+		      >OneLineMode</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "TextDetails"
+	  ></A
+	  ><B
+	  >TextDetails</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Chr"
+		      ></A
+		      ><B
+		      >Chr</B
+		      > Char</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Str"
+		      ></A
+		      ><B
+		      >Str</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PStr"
+		      ></A
+		      ><B
+		      >PStr</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "empty"
+	  ></A
+	  ><B
+	  >empty</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "nest"
+	  ></A
+	  ><B
+	  >nest</B
+	  > :: Int -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "text"
+	  ></A
+	  ><B
+	  >text</B
+	  > :: String -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "char"
+	  ></A
+	  ><B
+	  >char</B
+	  > :: Char -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "int"
+	  ></A
+	  ><B
+	  >int</B
+	  > :: Int -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "integer"
+	  ></A
+	  ><B
+	  >integer</B
+	  > :: Integer -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "float"
+	  ></A
+	  ><B
+	  >float</B
+	  > :: Float -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "double"
+	  ></A
+	  ><B
+	  >double</B
+	  > :: Double -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "rational"
+	  ></A
+	  ><B
+	  >rational</B
+	  > :: <A HREF = "Ratio.html#Rational"
+	  >Rational</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "parens"
+	  ></A
+	  ><B
+	  >parens</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "brackets"
+	  ></A
+	  ><B
+	  >brackets</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "braces"
+	  ></A
+	  ><B
+	  >braces</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "quotes"
+	  ></A
+	  ><B
+	  >quotes</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "doubleQuotes"
+	  ></A
+	  ><B
+	  >doubleQuotes</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "semi"
+	  ></A
+	  ><B
+	  >semi</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "comma"
+	  ></A
+	  ><B
+	  >comma</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "colon"
+	  ></A
+	  ><B
+	  >colon</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "space"
+	  ></A
+	  ><B
+	  >space</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "equals"
+	  ></A
+	  ><B
+	  >equals</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "lparen"
+	  ></A
+	  ><B
+	  >lparen</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "rparen"
+	  ></A
+	  ><B
+	  >rparen</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "lbrack"
+	  ></A
+	  ><B
+	  >lbrack</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "rbrack"
+	  ></A
+	  ><B
+	  >rbrack</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "lbrace"
+	  ></A
+	  ><B
+	  >lbrace</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "rbrace"
+	  ></A
+	  ><B
+	  >rbrace</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "<>"
+	  ></A
+	  ><B
+	  >(&lt;&gt;)</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "<+>"
+	  ></A
+	  ><B
+	  >(&lt;+&gt;)</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hcat"
+	  ></A
+	  ><B
+	  >hcat</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hsep"
+	  ></A
+	  ><B
+	  >hsep</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "$$"
+	  ></A
+	  ><B
+	  >($$)</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "vcat"
+	  ></A
+	  ><B
+	  >vcat</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "sep"
+	  ></A
+	  ><B
+	  >sep</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "cat"
+	  ></A
+	  ><B
+	  >cat</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fsep"
+	  ></A
+	  ><B
+	  >fsep</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fcat"
+	  ></A
+	  ><B
+	  >fcat</B
+	  > :: [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hang"
+	  ></A
+	  ><B
+	  >hang</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; Int -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "punctuate"
+	  ></A
+	  ><B
+	  >punctuate</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >] -&gt; [<A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "render"
+	  ></A
+	  ><B
+	  >render</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fullRender"
+	  ></A
+	  ><B
+	  >fullRender</B
+	  > :: <A HREF = "Text.PrettyPrint.HughesPJ.html#Mode"
+	  >Mode</A
+	  > -&gt; Int -&gt; Float -&gt; (<A HREF = "Text.PrettyPrint.HughesPJ.html#TextDetails"
+	  >TextDetails</A
+	  > -&gt; a -&gt; a) -&gt; a -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  > -&gt; a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

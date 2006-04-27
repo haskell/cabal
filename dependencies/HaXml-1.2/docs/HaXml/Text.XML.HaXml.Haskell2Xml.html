@@ -1,0 +1,1096 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Haskell2Xml</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Haskell2Xml</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > Re-export the entire set of XML type definitions</A
+		  ></DT
+		><DT
+		><A HREF = "#2"
+		  > The class Haskell2Xml</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#3"
+		      > Conversion functions</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#4"
+		      > IO conversion functions</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#5"
+		  > Auxiliary types</A
+		  ></DT
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  > The class <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	      >Haskell2Xml</A
+	      ></TT
+	    > is a replacement for Read and Show: it provides
+   textual conversions (to and from an XML representation) for your
+   Haskell data values.  Use the tool
+   DrIFT to derive this class for your own datatypes, then
+   include this module where you want to use the facilities.</P
+	  ><P
+	  >   The methods <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#toContents"
+	      >toContents</A
+	      ></TT
+	    > and <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#fromContents"
+	      >fromContents</A
+	      ></TT
+	    > convert a value to and from
+   a generic internal representation of an XML document <EM
+	    >without</EM
+	    > a DTD.
+   The functions <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#toXml"
+	      >toXml</A
+	      ></TT
+	    > and <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#fromXml"
+	      >fromXml</A
+	      ></TT
+	    > convert a value to and from a generic
+   internal representation of an XML document <EM
+	    >including</EM
+	    > a DTD.
+   The functions <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#readXml"
+	      >readXml</A
+	      ></TT
+	    > and <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#showXml"
+	      >showXml</A
+	      ></TT
+	    > convert to and from Strings.
+   The functions <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#fReadXml"
+	      >fReadXml</A
+	      ></TT
+	    > and <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#fWriteXml"
+	      >fWriteXml</A
+	      ></TT
+	    > do the conversion to and from
+   the given filenames.
+   The functions <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#hGetXml"
+	      >hGetXml</A
+	      ></TT
+	    > and <TT
+	    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#hPutXml"
+	      >hPutXml</A
+	      ></TT
+	    > do the conversion to and from
+   the given file handles.
+   (See the type signatures.)</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      >module <A HREF = "Text.XML.HaXml.Types.html"
+		>Text.XML.HaXml.Types</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>class</SPAN
+		> <A HREF = "#Haskell2Xml"
+		>Haskell2Xml</A
+		> a  <SPAN CLASS = "keyword"
+		>where</SPAN
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "#xFromChar"
+		      >xFromChar</A
+		      > :: Char -&gt; a</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "#xToChar"
+		      >xToChar</A
+		      > :: a -&gt; Char</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "#fromContents"
+		      >fromContents</A
+		      > :: [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >] -&gt; (a, [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >])</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "#toContents"
+		      >toContents</A
+		      > :: a -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >]</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "#toHType"
+		      >toHType</A
+		      > :: a -&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#toXml"
+		>toXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; a -&gt; <A HREF = "Text.XML.HaXml.Types.html#Document"
+		>Document</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#toDTD"
+		>toDTD</A
+		> :: <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		>HType</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+		>DocTypeDecl</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#fromXml"
+		>fromXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; <A HREF = "Text.XML.HaXml.Types.html#Document"
+		>Document</A
+		> -&gt; a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#readXml"
+		>readXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; String -&gt; Maybe a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#showXml"
+		>showXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; a -&gt; String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#fReadXml"
+		>fReadXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; FilePath -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#fWriteXml"
+		>fWriteXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; FilePath -&gt; a -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hGetXml"
+		>hGetXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; Handle -&gt; IO a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hPutXml"
+		>hPutXml</A
+		> :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		>Haskell2Xml</A
+		> a) =&gt; Handle -&gt; a -&gt; IO ()</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#HType"
+		      >HType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#Maybe"
+			    >Maybe</A
+			    > <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+			    >HType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#List"
+			    >List</A
+			    > <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+			    >HType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Tuple"
+			    >Tuple</A
+			    > [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+			    >HType</A
+			    >]</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Prim"
+			    >Prim</A
+			    > String String</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#String"
+			    >String</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Defined"
+			    >Defined</A
+			    > String [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+			    >HType</A
+			    >] [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Constr"
+			    >Constr</A
+			    >]</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Constr"
+		>Constr</A
+		>  = <A HREF = "#Constr"
+		>Constr</A
+		> String [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		>HType</A
+		>] [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		>HType</A
+		>]</TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > Re-export the entire set of XML type definitions</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	>module <A HREF = "Text.XML.HaXml.Types.html"
+	  >Text.XML.HaXml.Types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "2"
+	  > The class Haskell2Xml</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >class</SPAN
+	  > <A NAME = "Haskell2Xml"
+	  ></A
+	  ><B
+	  >Haskell2Xml</B
+	  > a  <SPAN CLASS = "keyword"
+	  >where</SPAN
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > A class to convert any Haskell value to and from an XML representation.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Methods</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "xFromChar"
+		      ></A
+		      ><B
+		      >xFromChar</B
+		      > :: Char -&gt; a</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "s8"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "xToChar"
+		      ></A
+		      ><B
+		      >xToChar</B
+		      > :: a -&gt; Char</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "s8"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "fromContents"
+		      ></A
+		      ><B
+		      >fromContents</B
+		      > :: [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >] -&gt; (a, [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >])</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "doc"
+		    > This function is a dummy for most types: it is used <EM
+		      >only</EM
+		      > in
+   the Char instance for coercing lists of Char into String.</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "s8"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "toContents"
+		      ></A
+		      ><B
+		      >toContents</B
+		      > :: a -&gt; [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >]</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "doc"
+		    > Parse a Haskell value from a generic XML representation, returning
+   the value and the remainder of the XML.</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "s8"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "toHType"
+		      ></A
+		      ><B
+		      >toHType</B
+		      > :: a -&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "doc"
+		    > Convert the Haskell value to a generic XML value.</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Bool</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Int</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Integer</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Float</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Double</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > Char</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >(<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > a) =&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > [a]</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >(<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > a, <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > b) =&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > (a, b)</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >(<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > a) =&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > (Maybe a)</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    >(<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > a, <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > b) =&gt; <A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > (Either a b)</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+		      >Haskell2Xml</A
+		      > ()</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "3"
+	  > Conversion functions</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "toXml"
+	  ></A
+	  ><B
+	  >toXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; a -&gt; <A HREF = "Text.XML.HaXml.Types.html#Document"
+	  >Document</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Convert any Haskell value to an XML document, including both DTD and
+   content.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "toDTD"
+	  ></A
+	  ><B
+	  >toDTD</B
+	  > :: <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+	  >HType</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+	  >DocTypeDecl</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> <TT
+	  ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#toDTD"
+	    >toDTD</A
+	    ></TT
+	  > converts a concrete representation of the Haskell type of
+   a value (obtained by the method <TT
+	  ><A HREF = "Text.XML.HaXml.Haskell2Xml.html#toHType"
+	    >toHType</A
+	    ></TT
+	  >) into a real DocTypeDecl.
+   It ensures that PERefs are defined before they are used, and that no
+   element or attribute-list is declared more than once.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fromXml"
+	  ></A
+	  ><B
+	  >fromXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; <A HREF = "Text.XML.HaXml.Types.html#Document"
+	  >Document</A
+	  > -&gt; a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Read a Haskell value from an XML document, ignoring the DTD and
+   using the Haskell result type to determine how to parse it.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "readXml"
+	  ></A
+	  ><B
+	  >readXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; String -&gt; Maybe a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Convert an XML document encoded as a String, into a Haskell value.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "showXml"
+	  ></A
+	  ><B
+	  >showXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; a -&gt; String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Convert a Haskell value to an XML document, encoded as a String.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "4"
+	  > IO conversion functions</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fReadXml"
+	  ></A
+	  ><B
+	  >fReadXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; FilePath -&gt; IO a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Read a Haskell value from an XML document stored in a file.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "fWriteXml"
+	  ></A
+	  ><B
+	  >fWriteXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; FilePath -&gt; a -&gt; IO ()</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Write a Haskell value to the given file as an XML document.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hGetXml"
+	  ></A
+	  ><B
+	  >hGetXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; Handle -&gt; IO a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Read a Haskell value from an XML document transmitted through the
+   given Handle.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hPutXml"
+	  ></A
+	  ><B
+	  >hPutXml</B
+	  > :: (<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Haskell2Xml"
+	  >Haskell2Xml</A
+	  > a) =&gt; Handle -&gt; a -&gt; IO ()</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> Write a Haskell value to the given Handle as an XML document.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "5"
+	  > Auxiliary types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "HType"
+	  ></A
+	  ><B
+	  >HType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > A concrete representation of any Haskell type.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Maybe"
+		      ></A
+		      ><B
+		      >Maybe</B
+		      > <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "List"
+		      ></A
+		      ><B
+		      >List</B
+		      > <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Tuple"
+		      ></A
+		      ><B
+		      >Tuple</B
+		      > [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Prim"
+		      ></A
+		      ><B
+		      >Prim</B
+		      > String String</TD
+		    ><TD CLASS = "rdoc"
+		    > separate Haskell name and Xml name</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "String"
+		      ></A
+		      ><B
+		      >String</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Defined"
+		      ></A
+		      ><B
+		      >Defined</B
+		      > String [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      >] [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#Constr"
+		      >Constr</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    > A user-defined type has a name, a sequence of type variables,
+   and a set of constructors.</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Constr"
+	  ></A
+	  ><B
+	  >Constr</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > A concrete representation of any user-defined Haskell constructor.
+   The constructor has a name, and a sequence of component types.  The
+   first sequence of types represents the minimum set of free type
+   variables occurring in the (second) list of real component types.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Constr"
+		      ></A
+		      ><B
+		      >Constr</B
+		      > String [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      >] [<A HREF = "Text.XML.HaXml.Haskell2Xml.html#HType"
+		      >HType</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

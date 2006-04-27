@@ -1,0 +1,16 @@
+Name: cabal-get
+Version: 0.3.0
+License: BSD4
+License-File: ../LICENSE
+Author: Lemmih <lemmih@gmail.com>
+Maintainer: Lemmih <lemmih@gmail.com>
+Copyright: 2005 Lemmih <lemmih@gmail.com>
+Stability: Experimental
+Category: Distribution
+Build-depends: base, Cabal, hackage-client, mtl, network, FilePath
+Synopsis: Automatic installer for Cabal packages.
+Description:
+  apt-get like tool.
+
+Executable: cabal-get
+Main-is: CabalGet.hs
