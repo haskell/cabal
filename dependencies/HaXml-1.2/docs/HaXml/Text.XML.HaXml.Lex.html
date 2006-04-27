@@ -1,0 +1,1215 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Lex</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Lex</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > Entry points to the lexer</A
+		  ></DT
+		><DT
+		><A HREF = "#2"
+		  > Token and position types</A
+		  ></DT
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  > You don't normally need to use this Lex module directly - it is
+   called automatically by the parser.  (This interface is only exposed
+   for debugging purposes.)</P
+	  ><P
+	  > This is a hand-written lexer for tokenising the text of an XML
+ document so that it is ready for parsing.  It attaches position
+ information in (line,column) format to every token.  The main
+ entry point is <TT
+	    ><A HREF = "Text.XML.HaXml.Lex.html#xmlLex"
+	      >xmlLex</A
+	      ></TT
+	    >.  A secondary entry point, <TT
+	    ><A HREF = "Text.XML.HaXml.Lex.html#xmlReLex"
+	      >xmlReLex</A
+	      ></TT
+	    >, is
+ provided for when the parser needs to stuff a string back onto
+ the front of the text and re-tokenise it (typically when expanding
+ macros).</P
+	  ><P
+	  > As one would expect, the lexer is essentially a small finite
+ state machine.</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#xmlLex"
+		>xmlLex</A
+		> :: String -&gt; String -&gt; [<A HREF = "Text.XML.HaXml.Lex.html#Token"
+		>Token</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#xmlReLex"
+		>xmlReLex</A
+		> :: <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		>Posn</A
+		> -&gt; String -&gt; [<A HREF = "Text.XML.HaXml.Lex.html#Token"
+		>Token</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#posInNewCxt"
+		>posInNewCxt</A
+		> :: String -&gt; Maybe <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		>Posn</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		>Posn</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Token"
+		>Token</A
+		> = Either String (<A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		>Posn</A
+		>, <A HREF = "Text.XML.HaXml.Lex.html#TokenT"
+		>TokenT</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Posn"
+		>Posn</A
+		>  = <A HREF = "#Pn"
+		>Pn</A
+		> String !Int !Int (Maybe <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		>Posn</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#TokenT"
+		      >TokenT</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#TokCommentOpen"
+			    >TokCommentOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokCommentClose"
+			    >TokCommentClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokPIOpen"
+			    >TokPIOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokPIClose"
+			    >TokPIClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSectionOpen"
+			    >TokSectionOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSectionClose"
+			    >TokSectionClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSection"
+			    >TokSection</A
+			    > <A HREF = "Text.XML.HaXml.Lex.html#Section"
+			    >Section</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSpecialOpen"
+			    >TokSpecialOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSpecial"
+			    >TokSpecial</A
+			    > <A HREF = "Text.XML.HaXml.Lex.html#Special"
+			    >Special</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokEndOpen"
+			    >TokEndOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokEndClose"
+			    >TokEndClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokAnyOpen"
+			    >TokAnyOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokAnyClose"
+			    >TokAnyClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSqOpen"
+			    >TokSqOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSqClose"
+			    >TokSqClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokEqual"
+			    >TokEqual</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokQuery"
+			    >TokQuery</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokStar"
+			    >TokStar</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokPlus"
+			    >TokPlus</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokAmp"
+			    >TokAmp</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokSemi"
+			    >TokSemi</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokHash"
+			    >TokHash</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokBraOpen"
+			    >TokBraOpen</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokBraClose"
+			    >TokBraClose</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokPipe"
+			    >TokPipe</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokPercent"
+			    >TokPercent</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokComma"
+			    >TokComma</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokQuote"
+			    >TokQuote</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokName"
+			    >TokName</A
+			    > String</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokFreeText"
+			    >TokFreeText</A
+			    > String</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokNull"
+			    >TokNull</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Special"
+		      >Special</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#DOCTYPEx"
+			    >DOCTYPEx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ELEMENTx"
+			    >ELEMENTx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ATTLISTx"
+			    >ATTLISTx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ENTITYx"
+			    >ENTITYx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#NOTATIONx"
+			    >NOTATIONx</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Section"
+		      >Section</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#CDATAx"
+			    >CDATAx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#INCLUDEx"
+			    >INCLUDEx</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#IGNOREx"
+			    >IGNOREx</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > Entry points to the lexer</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "xmlLex"
+	  ></A
+	  ><B
+	  >xmlLex</B
+	  > :: String -&gt; String -&gt; [<A HREF = "Text.XML.HaXml.Lex.html#Token"
+	  >Token</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> The first argument to <TT
+	  ><A HREF = "Text.XML.HaXml.Lex.html#xmlLex"
+	    >xmlLex</A
+	    ></TT
+	  > is the filename (used for source positions,
+   especially in error messages), and the second is the string content of
+   the XML file.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "xmlReLex"
+	  ></A
+	  ><B
+	  >xmlReLex</B
+	  > :: <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+	  >Posn</A
+	  > -&gt; String -&gt; [<A HREF = "Text.XML.HaXml.Lex.html#Token"
+	  >Token</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> <TT
+	  ><A HREF = "Text.XML.HaXml.Lex.html#xmlReLex"
+	    >xmlReLex</A
+	    ></TT
+	  > is used when the parser expands a macro (PE reference).
+    The expansion of the macro must be re-lexed as if for the first time.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "posInNewCxt"
+	  ></A
+	  ><B
+	  >posInNewCxt</B
+	  > :: String -&gt; Maybe <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+	  >Posn</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+	  >Posn</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> <TT
+	  >posInNewCxt name pos</TT
+	  > creates a new source position from an old one.
+   It is used when opening a new file (e.g. a DTD inclusion), to denote
+   the start of the file <TT
+	  >name</TT
+	  >, but retain the stacked information that
+   it was included from the old <TT
+	  >pos</TT
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "2"
+	  > Token and position types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Token"
+	  ></A
+	  ><B
+	  >Token</B
+	  > = Either String (<A HREF = "Text.XML.HaXml.Lex.html#Posn"
+	  >Posn</A
+	  >, <A HREF = "Text.XML.HaXml.Lex.html#TokenT"
+	  >TokenT</A
+	  >)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> All tokens are paired up with a source position.
+   Lexical errors are passed back through the <TT
+	  >Either</TT
+	  > type.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Posn"
+	  ></A
+	  ><B
+	  >Posn</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > Source positions contain a filename, line, column, and an
+   inclusion point, which is itself another source position,
+   recursively.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Pn"
+		      ></A
+		      ><B
+		      >Pn</B
+		      > String !Int !Int (Maybe <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		      >Posn</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.XML.HaXml.Lex.html#Posn"
+		      >Posn</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "TokenT"
+	  ></A
+	  ><B
+	  >TokenT</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > The basic token type.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokCommentOpen"
+		      ></A
+		      ><B
+		      >TokCommentOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;!--</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokCommentClose"
+		      ></A
+		      ><B
+		      >TokCommentClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   --&gt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokPIOpen"
+		      ></A
+		      ><B
+		      >TokPIOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;?</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokPIClose"
+		      ></A
+		      ><B
+		      >TokPIClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ?&gt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSectionOpen"
+		      ></A
+		      ><B
+		      >TokSectionOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;![</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSectionClose"
+		      ></A
+		      ><B
+		      >TokSectionClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ]]&gt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSection"
+		      ></A
+		      ><B
+		      >TokSection</B
+		      > <A HREF = "Text.XML.HaXml.Lex.html#Section"
+		      >Section</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   CDATA INCLUDE IGNORE etc</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSpecialOpen"
+		      ></A
+		      ><B
+		      >TokSpecialOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;!</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSpecial"
+		      ></A
+		      ><B
+		      >TokSpecial</B
+		      > <A HREF = "Text.XML.HaXml.Lex.html#Special"
+		      >Special</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   DOCTYPE ELEMENT ATTLIST etc</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokEndOpen"
+		      ></A
+		      ><B
+		      >TokEndOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;/</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokEndClose"
+		      ></A
+		      ><B
+		      >TokEndClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   /&gt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokAnyOpen"
+		      ></A
+		      ><B
+		      >TokAnyOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &lt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokAnyClose"
+		      ></A
+		      ><B
+		      >TokAnyClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &gt;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSqOpen"
+		      ></A
+		      ><B
+		      >TokSqOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   [</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSqClose"
+		      ></A
+		      ><B
+		      >TokSqClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ]</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokEqual"
+		      ></A
+		      ><B
+		      >TokEqual</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   =</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokQuery"
+		      ></A
+		      ><B
+		      >TokQuery</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ?</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokStar"
+		      ></A
+		      ><B
+		      >TokStar</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   *</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokPlus"
+		      ></A
+		      ><B
+		      >TokPlus</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   +</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokAmp"
+		      ></A
+		      ><B
+		      >TokAmp</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   &amp;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokSemi"
+		      ></A
+		      ><B
+		      >TokSemi</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokHash"
+		      ></A
+		      ><B
+		      >TokHash</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   #</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokBraOpen"
+		      ></A
+		      ><B
+		      >TokBraOpen</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   (</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokBraClose"
+		      ></A
+		      ><B
+		      >TokBraClose</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   )</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokPipe"
+		      ></A
+		      ><B
+		      >TokPipe</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   |</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokPercent"
+		      ></A
+		      ><B
+		      >TokPercent</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   %</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokComma"
+		      ></A
+		      ><B
+		      >TokComma</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   ,</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokQuote"
+		      ></A
+		      ><B
+		      >TokQuote</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   '' or &quot;&quot;</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokName"
+		      ></A
+		      ><B
+		      >TokName</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    >   begins with letter</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokFreeText"
+		      ></A
+		      ><B
+		      >TokFreeText</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    >   any character data</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokNull"
+		      ></A
+		      ><B
+		      >TokNull</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    >   fake token</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.XML.HaXml.Lex.html#TokenT"
+		      >TokenT</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Special"
+	  ></A
+	  ><B
+	  >Special</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DOCTYPEx"
+		      ></A
+		      ><B
+		      >DOCTYPEx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ELEMENTx"
+		      ></A
+		      ><B
+		      >ELEMENTx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ATTLISTx"
+		      ></A
+		      ><B
+		      >ATTLISTx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ENTITYx"
+		      ></A
+		      ><B
+		      >ENTITYx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NOTATIONx"
+		      ></A
+		      ><B
+		      >NOTATIONx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Section"
+	  ></A
+	  ><B
+	  >Section</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "CDATAx"
+		      ></A
+		      ><B
+		      >CDATAx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "INCLUDEx"
+		      ></A
+		      ><B
+		      >INCLUDEx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IGNOREx"
+		      ></A
+		      ><B
+		      >IGNOREx</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

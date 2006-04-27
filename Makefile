@@ -13,7 +13,7 @@ PREF=/usr/local
 USER_FLAG =
 GHCPKGFLAGS = 
 #HCBASE=/tmp/ghc/bin/
-HCBASE=/usr/bin/
+HCBASE=/usr/local/bin/
 HC=$(HCBASE)ghc
 HC_PKG=$(HCBASE)/ghc-pkg
 # Comment out this line if your system doesn't have System.Posix.
@@ -48,7 +48,8 @@ build-stamp: config
 
 install: build-stamp
 	./setup install $(USER_FLAG)
-	cd cabal-install && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
+	cd cabal-install && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
+	cd cabal-get     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs

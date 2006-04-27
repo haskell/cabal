@@ -1,0 +1,53 @@
+<!DOCTYPE Person-XML  [
+<!ELEMENT Version (int)>
+<!ENTITY %Version '(Version)'>
+<!ELEMENT ScoreHigh EMPTY>
+<!ELEMENT ScoreMedium EMPTY>
+<!ELEMENT ScoreLow EMPTY>
+<!ELEMENT ScoreNone EMPTY>
+<!ENTITY %Score '(ScoreNone|ScoreLow|ScoreMedium|ScoreHigh)'>
+<!ELEMENT Skill (%Score;)>
+<!ENTITY %Skill '(Skill)'>
+<!ELEMENT Interest (%Score;)>
+<!ENTITY %Interest '(Interest)'>
+<!ATTLIST int value CDATA #REQUIRED>
+<!ELEMENT int EMPTY>
+<!ELEMENT SubjectID (int)>
+<!ENTITY %SubjectID '(SubjectID)'>
+<!ELEMENT Rating (%SubjectID;,%Interest;,%Skill;)>
+<!ENTITY %Rating '(Rating)'>
+<!ELEMENT list-Rating %Rating;*>
+<!ELEMENT Email (string)>
+<!ENTITY %Email '(Email)'>
+<!ELEMENT string (#PCDATA)>
+<!ELEMENT Name (string)>
+<!ENTITY %Name '(Name)'>
+<!ELEMENT Person (%Name;,%Email;,list-Rating,%Version;)>
+<!ENTITY %Person '(Person)'>
+<!ELEMENT Person-XML %Person;>
+]>
+<Person-XML
+  ><Person
+    ><Name
+      ><string
+	>Rob Noble</string></Name
+    ><Email
+      ><string
+	>rjn</string></Email
+    ><list-Rating
+      ><Rating
+	><SubjectID
+	  ><int value="1"/></SubjectID
+	><Interest
+	  ><ScoreNone/></Interest
+	><Skill
+	  ><ScoreLow/></Skill></Rating
+      ><Rating
+	><SubjectID
+	  ><int value="2"/></SubjectID
+	><Interest
+	  ><ScoreMedium/></Interest
+	><Skill
+	  ><ScoreHigh/></Skill></Rating></list-Rating
+    ><Version
+      ><int value="1"/></Version></Person></Person-XML>

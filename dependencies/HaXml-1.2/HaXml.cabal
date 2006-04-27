@@ -1,0 +1,19 @@
+Name: HaXml
+Version: 1.2
+License: LGPL
+Author: Malcolm Wallace (malcolm.wallace@cs.york.ac.uk)
+Copyright: Malcolm Wallace (malcolm.wallace@cs.york.ac.uk)
+Maintainer: Malcolm Wallace (malcolm.wallace@cs.york.ac.uk)
+Synopsis: XML toolkit.
+Category: Xml
+build-depends: base, haskell98, network
+HS-Source-Dir: src
+Extensions: CPP
+Exposed-Modules: Text.XML.HaXml.Html.Parse, Text.XML.HaXml.Html.Pretty, Text.XML.HaXml.Html.Generate,
+                 Text.XML.HaXml.Parse, Text.XML.HaXml.Combinators, Text.XML.HaXml.Pretty, Text.XML.HaXml.Lex,
+                 Text.XML.HaXml.Xtract.Parse, Text.XML.HaXml.Xtract.Combinators, Text.XML.HaXml.Xtract.Lex,
+                 Text.XML.HaXml.DtdToHaskell.TypeDef, Text.XML.HaXml.DtdToHaskell.Convert, Text.XML.HaXml.DtdToHaskell.Instance,
+                 Text.XML.HaXml.OneOfN, Text.XML.HaXml.Wrappers, Text.XML.HaXml.Xml2Haskell, Text.XML.HaXml.Validate,
+                 Text.XML.HaXml.Haskell2Xml, Text.XML.HaXml.Verbatim, Text.XML.HaXml.Escape, Text.XML.HaXml.Types,
+                 Text.XML.HaXml, Text.ParserCombinators.HuttonMeijerWallace
+GHC-Options: -O2

@@ -1,0 +1,4742 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Types</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Types</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > A simple symbol table mapping strings (references) to values.</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#2"
+		      > Symbol table operations</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#3"
+		  > XML Types</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#4"
+		      > The top-level document container</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#5"
+		      > The main document content</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#6"
+		      > Administrative parts of the document</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#7"
+		      > The DTD</A
+		      ></DT
+		    ><DD
+		    ><DL
+		      ><DT
+			><A HREF = "#8"
+			  > content model</A
+			  ></DT
+			><DT
+			><A HREF = "#9"
+			  > attribute model</A
+			  ></DT
+			><DT
+			><A HREF = "#10"
+			  > conditional sections</A
+			  ></DT
+			></DL
+		      ></DD
+		    ><DT
+		    ><A HREF = "#11"
+		      > References</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#12"
+		      > Entities</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#13"
+		      > Basic value types</A
+		      ></DT
+		    ></DL
+		  ></DD
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	><P
+	  >   This module defines an internal (generic) representation for XML
+   documents including their DTDs.</P
+	  ><P
+	  >   History:
+   The original module was derived by hand from the XML specification,
+   following the grammar precisely.  Then we simplified the types,
+   removing layers of indirection and redundancy, and generally making
+   things easier to work with.  Then we allowed PEReferences to be
+   ubiquitous, by removing them from the types and resolving all
+   PE references at parse-time.  Finally, we added a per-document
+   symbol table for GEReferences, and a whitespace-significance flag
+   for plaintext.
+</P
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#SymTab"
+		>SymTab</A
+		> a = [(String, a)]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#emptyST"
+		>emptyST</A
+		> :: <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		>SymTab</A
+		> a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#addST"
+		>addST</A
+		> :: String -&gt; a -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		>SymTab</A
+		> a -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		>SymTab</A
+		> a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#lookupST"
+		>lookupST</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		>SymTab</A
+		> a -&gt; Maybe a</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Document"
+		>Document</A
+		>  = <A HREF = "#Document"
+		>Document</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Prolog"
+		>Prolog</A
+		> (<A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		>SymTab</A
+		> <A HREF = "Text.XML.HaXml.Types.html#EntityDef"
+		>EntityDef</A
+		>) <A HREF = "Text.XML.HaXml.Types.html#Element"
+		>Element</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Element"
+		>Element</A
+		>  = <A HREF = "#Elem"
+		>Elem</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> [<A HREF = "Text.XML.HaXml.Types.html#Attribute"
+		>Attribute</A
+		>] [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ElemTag"
+		>ElemTag</A
+		>  = <A HREF = "#ElemTag"
+		>ElemTag</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> [<A HREF = "Text.XML.HaXml.Types.html#Attribute"
+		>Attribute</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Content"
+		      >Content</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#CElem"
+			    >CElem</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Element"
+			    >Element</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#CString"
+			    >CString</A
+			    > Bool <A HREF = "Text.XML.HaXml.Types.html#CharData"
+			    >CharData</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#CRef"
+			    >CRef</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Reference"
+			    >Reference</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#CMisc"
+			    >CMisc</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Misc"
+			    >Misc</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Attribute"
+		>Attribute</A
+		> = (<A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		>, <A HREF = "Text.XML.HaXml.Types.html#AttValue"
+		>AttValue</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#AttValue"
+		>AttValue</A
+		>  = <A HREF = "#AttValue"
+		>AttValue</A
+		> [Either String <A HREF = "Text.XML.HaXml.Types.html#Reference"
+		>Reference</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Prolog"
+		>Prolog</A
+		>  = <A HREF = "#Prolog"
+		>Prolog</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#XMLDecl"
+		>XMLDecl</A
+		>) (Maybe <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+		>DocTypeDecl</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#XMLDecl"
+		>XMLDecl</A
+		>  = <A HREF = "#XMLDecl"
+		>XMLDecl</A
+		> <A HREF = "Text.XML.HaXml.Types.html#VersionInfo"
+		>VersionInfo</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#EncodingDecl"
+		>EncodingDecl</A
+		>) (Maybe <A HREF = "Text.XML.HaXml.Types.html#SDDecl"
+		>SDDecl</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Misc"
+		      >Misc</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#Comment"
+			    >Comment</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Comment"
+			    >Comment</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#PI"
+			    >PI</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#ProcessingInstruction"
+			    >ProcessingInstruction</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#ProcessingInstruction"
+		>ProcessingInstruction</A
+		> = (<A HREF = "Text.XML.HaXml.Types.html#PITarget"
+		>PITarget</A
+		>, String)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#SDDecl"
+		>SDDecl</A
+		> = Bool</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#VersionInfo"
+		>VersionInfo</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Comment"
+		>Comment</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#PITarget"
+		>PITarget</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#DocTypeDecl"
+		>DocTypeDecl</A
+		>  = <A HREF = "#DTD"
+		>DTD</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		>ExternalID</A
+		>) [<A HREF = "Text.XML.HaXml.Types.html#MarkupDecl"
+		>MarkupDecl</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#MarkupDecl"
+		      >MarkupDecl</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#Element"
+			    >Element</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#ElementDecl"
+			    >ElementDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#AttList"
+			    >AttList</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#AttListDecl"
+			    >AttListDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Entity"
+			    >Entity</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#EntityDecl"
+			    >EntityDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Notation"
+			    >Notation</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#NotationDecl"
+			    >NotationDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#MarkupMisc"
+			    >MarkupMisc</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Misc"
+			    >Misc</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ExtSubset"
+		>ExtSubset</A
+		>  = <A HREF = "#ExtSubset"
+		>ExtSubset</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		>TextDecl</A
+		>) [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+		>ExtSubsetDecl</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#ExtSubsetDecl"
+		      >ExtSubsetDecl</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#ExtMarkupDecl"
+			    >ExtMarkupDecl</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#MarkupDecl"
+			    >MarkupDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ExtConditionalSect"
+			    >ExtConditionalSect</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#ConditionalSect"
+			    >ConditionalSect</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ElementDecl"
+		>ElementDecl</A
+		>  = <A HREF = "#ElementDecl"
+		>ElementDecl</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> <A HREF = "Text.XML.HaXml.Types.html#ContentSpec"
+		>ContentSpec</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#ContentSpec"
+		      >ContentSpec</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#EMPTY"
+			    >EMPTY</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ANY"
+			    >ANY</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Mixed"
+			    >Mixed</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Mixed"
+			    >Mixed</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ContentSpec"
+			    >ContentSpec</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#CP"
+			    >CP</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#CP"
+		      >CP</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#TagName"
+			    >TagName</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Name"
+			    >Name</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+			    >Modifier</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Choice"
+			    >Choice</A
+			    > [<A HREF = "Text.XML.HaXml.Types.html#CP"
+			    >CP</A
+			    >] <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+			    >Modifier</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Seq"
+			    >Seq</A
+			    > [<A HREF = "Text.XML.HaXml.Types.html#CP"
+			    >CP</A
+			    >] <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+			    >Modifier</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Modifier"
+		      >Modifier</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#None"
+			    >None</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Query"
+			    >Query</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Star"
+			    >Star</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Plus"
+			    >Plus</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Mixed"
+		      >Mixed</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#PCDATA"
+			    >PCDATA</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#PCDATAplus"
+			    >PCDATAplus</A
+			    > [<A HREF = "Text.XML.HaXml.Types.html#Name"
+			    >Name</A
+			    >]</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#AttListDecl"
+		>AttListDecl</A
+		>  = <A HREF = "#AttListDecl"
+		>AttListDecl</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> [<A HREF = "Text.XML.HaXml.Types.html#AttDef"
+		>AttDef</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#AttDef"
+		>AttDef</A
+		>  = <A HREF = "#AttDef"
+		>AttDef</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> <A HREF = "Text.XML.HaXml.Types.html#AttType"
+		>AttType</A
+		> <A HREF = "Text.XML.HaXml.Types.html#DefaultDecl"
+		>DefaultDecl</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#AttType"
+		      >AttType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#StringType"
+			    >StringType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#TokenizedType"
+			    >TokenizedType</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#TokenizedType"
+			    >TokenizedType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#EnumeratedType"
+			    >EnumeratedType</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#EnumeratedType"
+			    >EnumeratedType</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#TokenizedType"
+		      >TokenizedType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#ID"
+			    >ID</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#IDREF"
+			    >IDREF</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#IDREFS"
+			    >IDREFS</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ENTITY"
+			    >ENTITY</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#ENTITIES"
+			    >ENTITIES</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#NMTOKEN"
+			    >NMTOKEN</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#NMTOKENS"
+			    >NMTOKENS</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#EnumeratedType"
+		      >EnumeratedType</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#NotationType"
+			    >NotationType</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#NotationType"
+			    >NotationType</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#Enumeration"
+			    >Enumeration</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Enumeration"
+			    >Enumeration</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#NotationType"
+		>NotationType</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Enumeration"
+		>Enumeration</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#NmToken"
+		>NmToken</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#DefaultDecl"
+		      >DefaultDecl</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#REQUIRED"
+			    >REQUIRED</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#IMPLIED"
+			    >IMPLIED</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#DefaultTo"
+			    >DefaultTo</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#AttValue"
+			    >AttValue</A
+			    > (Maybe <A HREF = "Text.XML.HaXml.Types.html#FIXED"
+			    >FIXED</A
+			    >)</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#FIXED"
+		>FIXED</A
+		>  = <A HREF = "#FIXED"
+		>FIXED</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#ConditionalSect"
+		      >ConditionalSect</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#IncludeSect"
+			    >IncludeSect</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#IncludeSect"
+			    >IncludeSect</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#IgnoreSect"
+			    >IgnoreSect</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#IgnoreSect"
+			    >IgnoreSect</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#IncludeSect"
+		>IncludeSect</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+		>ExtSubsetDecl</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#IgnoreSect"
+		>IgnoreSect</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#IgnoreSectContents"
+		>IgnoreSectContents</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#Ignore"
+		>Ignore</A
+		>  = <A HREF = "#Ignore"
+		>Ignore</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#IgnoreSectContents"
+		>IgnoreSectContents</A
+		>  = <A HREF = "#IgnoreSectContents"
+		>IgnoreSectContents</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Ignore"
+		>Ignore</A
+		> [(<A HREF = "Text.XML.HaXml.Types.html#IgnoreSectContents"
+		>IgnoreSectContents</A
+		>, <A HREF = "Text.XML.HaXml.Types.html#Ignore"
+		>Ignore</A
+		>)]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#Reference"
+		      >Reference</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#RefEntity"
+			    >RefEntity</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#EntityRef"
+			    >EntityRef</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#RefChar"
+			    >RefChar</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#CharRef"
+			    >CharRef</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#EntityRef"
+		>EntityRef</A
+		> = <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#CharRef"
+		>CharRef</A
+		> = Int</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#PEReference"
+		>PEReference</A
+		> = <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#EntityDecl"
+		      >EntityDecl</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#EntityGEDecl"
+			    >EntityGEDecl</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#GEDecl"
+			    >GEDecl</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#EntityPEDecl"
+			    >EntityPEDecl</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#PEDecl"
+			    >PEDecl</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#GEDecl"
+		>GEDecl</A
+		>  = <A HREF = "#GEDecl"
+		>GEDecl</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> <A HREF = "Text.XML.HaXml.Types.html#EntityDef"
+		>EntityDef</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#PEDecl"
+		>PEDecl</A
+		>  = <A HREF = "#PEDecl"
+		>PEDecl</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> <A HREF = "Text.XML.HaXml.Types.html#PEDef"
+		>PEDef</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#EntityDef"
+		      >EntityDef</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#DefEntityValue"
+			    >DefEntityValue</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#EntityValue"
+			    >EntityValue</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#DefExternalID"
+			    >DefExternalID</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+			    >ExternalID</A
+			    > (Maybe <A HREF = "Text.XML.HaXml.Types.html#NDataDecl"
+			    >NDataDecl</A
+			    >)</TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#PEDef"
+		      >PEDef</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#PEDefEntityValue"
+			    >PEDefEntityValue</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#EntityValue"
+			    >EntityValue</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#PEDefExternalID"
+			    >PEDefExternalID</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+			    >ExternalID</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#ExternalID"
+		      >ExternalID</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#SYSTEM"
+			    >SYSTEM</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#SystemLiteral"
+			    >SystemLiteral</A
+			    ></TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#PUBLIC"
+			    >PUBLIC</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#PubidLiteral"
+			    >PubidLiteral</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#SystemLiteral"
+			    >SystemLiteral</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#NDataDecl"
+		>NDataDecl</A
+		>  = <A HREF = "#NDATA"
+		>NDATA</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#TextDecl"
+		>TextDecl</A
+		>  = <A HREF = "#TextDecl"
+		>TextDecl</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#VersionInfo"
+		>VersionInfo</A
+		>) <A HREF = "Text.XML.HaXml.Types.html#EncodingDecl"
+		>EncodingDecl</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ExtParsedEnt"
+		>ExtParsedEnt</A
+		>  = <A HREF = "#ExtParsedEnt"
+		>ExtParsedEnt</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		>TextDecl</A
+		>) <A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#ExtPE"
+		>ExtPE</A
+		>  = <A HREF = "#ExtPE"
+		>ExtPE</A
+		> (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		>TextDecl</A
+		>) [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+		>ExtSubsetDecl</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#NotationDecl"
+		>NotationDecl</A
+		>  = <A HREF = "#NOTATION"
+		>NOTATION</A
+		> <A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		> (Either <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		>ExternalID</A
+		> <A HREF = "Text.XML.HaXml.Types.html#PublicID"
+		>PublicID</A
+		>)</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#PublicID"
+		>PublicID</A
+		>  = <A HREF = "#PUBLICID"
+		>PUBLICID</A
+		> <A HREF = "Text.XML.HaXml.Types.html#PubidLiteral"
+		>PubidLiteral</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#EncodingDecl"
+		>EncodingDecl</A
+		>  = <A HREF = "#EncodingDecl"
+		>EncodingDecl</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#EntityValue"
+		>EntityValue</A
+		>  = <A HREF = "#EntityValue"
+		>EntityValue</A
+		> [<A HREF = "Text.XML.HaXml.Types.html#EV"
+		>EV</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><SPAN CLASS = "keyword"
+		      >data</SPAN
+		      > <A HREF = "#EV"
+		      >EV</A
+		      > </TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "body"
+		    ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+		      ><TR
+			><TD CLASS = "decl"
+			  >= <A HREF = "#EVString"
+			    >EVString</A
+			    > String</TD
+			  ></TR
+			><TR
+			><TD CLASS = "decl"
+			  >| <A HREF = "#EVRef"
+			    >EVRef</A
+			    > <A HREF = "Text.XML.HaXml.Types.html#Reference"
+			    >Reference</A
+			    ></TD
+			  ></TR
+			></TABLE
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#PubidLiteral"
+		>PubidLiteral</A
+		>  = <A HREF = "#PubidLiteral"
+		>PubidLiteral</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>data</SPAN
+		> <A HREF = "#SystemLiteral"
+		>SystemLiteral</A
+		>  = <A HREF = "#SystemLiteral"
+		>SystemLiteral</A
+		> String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Name"
+		>Name</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#Names"
+		>Names</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#Name"
+		>Name</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#NmToken"
+		>NmToken</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#NmTokens"
+		>NmTokens</A
+		> = [<A HREF = "Text.XML.HaXml.Types.html#NmToken"
+		>NmToken</A
+		>]</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#CharData"
+		>CharData</A
+		> = String</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><SPAN CLASS = "keyword"
+		>type</SPAN
+		> <A HREF = "#CDSect"
+		>CDSect</A
+		> = <A HREF = "Text.XML.HaXml.Types.html#CharData"
+		>CharData</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > A simple symbol table mapping strings (references) to values.</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "SymTab"
+	  ></A
+	  ><B
+	  >SymTab</B
+	  > a = [(String, a)]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "2"
+	  > Symbol table operations</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "emptyST"
+	  ></A
+	  ><B
+	  >emptyST</B
+	  > :: <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+	  >SymTab</A
+	  > a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "addST"
+	  ></A
+	  ><B
+	  >addST</B
+	  > :: String -&gt; a -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+	  >SymTab</A
+	  > a -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+	  >SymTab</A
+	  > a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "lookupST"
+	  ></A
+	  ><B
+	  >lookupST</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Types.html#SymTab"
+	  >SymTab</A
+	  > a -&gt; Maybe a</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "3"
+	  > XML Types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "4"
+	  > The top-level document container</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Document"
+	  ></A
+	  ><B
+	  >Document</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "ndoc"
+	      > The symbol table stored in a document holds all its general entity
+   reference definitions.</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Document"
+		      ></A
+		      ><B
+		      >Document</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Prolog"
+		      >Prolog</A
+		      > (<A HREF = "Text.XML.HaXml.Types.html#SymTab"
+		      >SymTab</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityDef"
+		      >EntityDef</A
+		      >) <A HREF = "Text.XML.HaXml.Types.html#Element"
+		      >Element</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "5"
+	  > The main document content</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Element"
+	  ></A
+	  ><B
+	  >Element</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Elem"
+		      ></A
+		      ><B
+		      >Elem</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > [<A HREF = "Text.XML.HaXml.Types.html#Attribute"
+		      >Attribute</A
+		      >] [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Verbatim.html#Verbatim"
+		      >Verbatim</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#Element"
+		      >Element</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ElemTag"
+	  ></A
+	  ><B
+	  >ElemTag</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ElemTag"
+		      ></A
+		      ><B
+		      >ElemTag</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > [<A HREF = "Text.XML.HaXml.Types.html#Attribute"
+		      >Attribute</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    > intermediate for parsing</TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Eq <A HREF = "Text.XML.HaXml.Types.html#ElemTag"
+		      >ElemTag</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Content"
+	  ></A
+	  ><B
+	  >Content</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "CElem"
+		      ></A
+		      ><B
+		      >CElem</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Element"
+		      >Element</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "CString"
+		      ></A
+		      ><B
+		      >CString</B
+		      > Bool <A HREF = "Text.XML.HaXml.Types.html#CharData"
+		      >CharData</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > bool is whether whitespace is significant</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "CRef"
+		      ></A
+		      ><B
+		      >CRef</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Reference"
+		      >Reference</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "CMisc"
+		      ></A
+		      ><B
+		      >CMisc</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Misc"
+		      >Misc</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Verbatim.html#Verbatim"
+		      >Verbatim</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Attribute"
+	  ></A
+	  ><B
+	  >Attribute</B
+	  > = (<A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  >, <A HREF = "Text.XML.HaXml.Types.html#AttValue"
+	  >AttValue</A
+	  >)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "AttValue"
+	  ></A
+	  ><B
+	  >AttValue</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "AttValue"
+		      ></A
+		      ><B
+		      >AttValue</B
+		      > [Either String <A HREF = "Text.XML.HaXml.Types.html#Reference"
+		      >Reference</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "6"
+	  > Administrative parts of the document</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Prolog"
+	  ></A
+	  ><B
+	  >Prolog</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Prolog"
+		      ></A
+		      ><B
+		      >Prolog</B
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#XMLDecl"
+		      >XMLDecl</A
+		      >) (Maybe <A HREF = "Text.XML.HaXml.Types.html#DocTypeDecl"
+		      >DocTypeDecl</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "XMLDecl"
+	  ></A
+	  ><B
+	  >XMLDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "XMLDecl"
+		      ></A
+		      ><B
+		      >XMLDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#VersionInfo"
+		      >VersionInfo</A
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#EncodingDecl"
+		      >EncodingDecl</A
+		      >) (Maybe <A HREF = "Text.XML.HaXml.Types.html#SDDecl"
+		      >SDDecl</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Misc"
+	  ></A
+	  ><B
+	  >Misc</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Comment"
+		      ></A
+		      ><B
+		      >Comment</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Comment"
+		      >Comment</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PI"
+		      ></A
+		      ><B
+		      >PI</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#ProcessingInstruction"
+		      >ProcessingInstruction</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "ProcessingInstruction"
+	  ></A
+	  ><B
+	  >ProcessingInstruction</B
+	  > = (<A HREF = "Text.XML.HaXml.Types.html#PITarget"
+	  >PITarget</A
+	  >, String)</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "SDDecl"
+	  ></A
+	  ><B
+	  >SDDecl</B
+	  > = Bool</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "VersionInfo"
+	  ></A
+	  ><B
+	  >VersionInfo</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Comment"
+	  ></A
+	  ><B
+	  >Comment</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "PITarget"
+	  ></A
+	  ><B
+	  >PITarget</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "7"
+	  > The DTD</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section3"
+	><A NAME = "8"
+	  > content model</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "DocTypeDecl"
+	  ></A
+	  ><B
+	  >DocTypeDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DTD"
+		      ></A
+		      ><B
+		      >DTD</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		      >ExternalID</A
+		      >) [<A HREF = "Text.XML.HaXml.Types.html#MarkupDecl"
+		      >MarkupDecl</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "MarkupDecl"
+	  ></A
+	  ><B
+	  >MarkupDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Element"
+		      ></A
+		      ><B
+		      >Element</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#ElementDecl"
+		      >ElementDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "AttList"
+		      ></A
+		      ><B
+		      >AttList</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#AttListDecl"
+		      >AttListDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Entity"
+		      ></A
+		      ><B
+		      >Entity</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityDecl"
+		      >EntityDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Notation"
+		      ></A
+		      ><B
+		      >Notation</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#NotationDecl"
+		      >NotationDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "MarkupMisc"
+		      ></A
+		      ><B
+		      >MarkupMisc</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Misc"
+		      >Misc</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ExtSubset"
+	  ></A
+	  ><B
+	  >ExtSubset</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ExtSubset"
+		      ></A
+		      ><B
+		      >ExtSubset</B
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		      >TextDecl</A
+		      >) [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+		      >ExtSubsetDecl</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ExtSubsetDecl"
+	  ></A
+	  ><B
+	  >ExtSubsetDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ExtMarkupDecl"
+		      ></A
+		      ><B
+		      >ExtMarkupDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#MarkupDecl"
+		      >MarkupDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ExtConditionalSect"
+		      ></A
+		      ><B
+		      >ExtConditionalSect</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#ConditionalSect"
+		      >ConditionalSect</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ElementDecl"
+	  ></A
+	  ><B
+	  >ElementDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ElementDecl"
+		      ></A
+		      ><B
+		      >ElementDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#ContentSpec"
+		      >ContentSpec</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ContentSpec"
+	  ></A
+	  ><B
+	  >ContentSpec</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EMPTY"
+		      ></A
+		      ><B
+		      >EMPTY</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ANY"
+		      ></A
+		      ><B
+		      >ANY</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Mixed"
+		      ></A
+		      ><B
+		      >Mixed</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Mixed"
+		      >Mixed</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ContentSpec"
+		      ></A
+		      ><B
+		      >ContentSpec</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#CP"
+		      >CP</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "CP"
+	  ></A
+	  ><B
+	  >CP</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TagName"
+		      ></A
+		      ><B
+		      >TagName</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+		      >Modifier</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Choice"
+		      ></A
+		      ><B
+		      >Choice</B
+		      > [<A HREF = "Text.XML.HaXml.Types.html#CP"
+		      >CP</A
+		      >] <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+		      >Modifier</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Seq"
+		      ></A
+		      ><B
+		      >Seq</B
+		      > [<A HREF = "Text.XML.HaXml.Types.html#CP"
+		      >CP</A
+		      >] <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+		      >Modifier</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.XML.HaXml.Types.html#CP"
+		      >CP</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Modifier"
+	  ></A
+	  ><B
+	  >Modifier</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "None"
+		      ></A
+		      ><B
+		      >None</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > Just One</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Query"
+		      ></A
+		      ><B
+		      >Query</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > Zero Or One</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Star"
+		      ></A
+		      ><B
+		      >Star</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > Zero Or More</TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Plus"
+		      ></A
+		      ><B
+		      >Plus</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    > One Or More </TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    >Show <A HREF = "Text.XML.HaXml.Types.html#Modifier"
+		      >Modifier</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Mixed"
+	  ></A
+	  ><B
+	  >Mixed</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PCDATA"
+		      ></A
+		      ><B
+		      >PCDATA</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PCDATAplus"
+		      ></A
+		      ><B
+		      >PCDATAplus</B
+		      > [<A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section3"
+	><A NAME = "9"
+	  > attribute model</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "AttListDecl"
+	  ></A
+	  ><B
+	  >AttListDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "AttListDecl"
+		      ></A
+		      ><B
+		      >AttListDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > [<A HREF = "Text.XML.HaXml.Types.html#AttDef"
+		      >AttDef</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "AttDef"
+	  ></A
+	  ><B
+	  >AttDef</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "AttDef"
+		      ></A
+		      ><B
+		      >AttDef</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#AttType"
+		      >AttType</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#DefaultDecl"
+		      >DefaultDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "AttType"
+	  ></A
+	  ><B
+	  >AttType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "StringType"
+		      ></A
+		      ><B
+		      >StringType</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TokenizedType"
+		      ></A
+		      ><B
+		      >TokenizedType</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#TokenizedType"
+		      >TokenizedType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EnumeratedType"
+		      ></A
+		      ><B
+		      >EnumeratedType</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#EnumeratedType"
+		      >EnumeratedType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "TokenizedType"
+	  ></A
+	  ><B
+	  >TokenizedType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ID"
+		      ></A
+		      ><B
+		      >ID</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IDREF"
+		      ></A
+		      ><B
+		      >IDREF</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IDREFS"
+		      ></A
+		      ><B
+		      >IDREFS</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ENTITY"
+		      ></A
+		      ><B
+		      >ENTITY</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ENTITIES"
+		      ></A
+		      ><B
+		      >ENTITIES</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NMTOKEN"
+		      ></A
+		      ><B
+		      >NMTOKEN</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NMTOKENS"
+		      ></A
+		      ><B
+		      >NMTOKENS</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EnumeratedType"
+	  ></A
+	  ><B
+	  >EnumeratedType</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NotationType"
+		      ></A
+		      ><B
+		      >NotationType</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#NotationType"
+		      >NotationType</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Enumeration"
+		      ></A
+		      ><B
+		      >Enumeration</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Enumeration"
+		      >Enumeration</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "NotationType"
+	  ></A
+	  ><B
+	  >NotationType</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Enumeration"
+	  ></A
+	  ><B
+	  >Enumeration</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#NmToken"
+	  >NmToken</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "DefaultDecl"
+	  ></A
+	  ><B
+	  >DefaultDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "REQUIRED"
+		      ></A
+		      ><B
+		      >REQUIRED</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IMPLIED"
+		      ></A
+		      ><B
+		      >IMPLIED</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DefaultTo"
+		      ></A
+		      ><B
+		      >DefaultTo</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#AttValue"
+		      >AttValue</A
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#FIXED"
+		      >FIXED</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "FIXED"
+	  ></A
+	  ><B
+	  >FIXED</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "FIXED"
+		      ></A
+		      ><B
+		      >FIXED</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section3"
+	><A NAME = "10"
+	  > conditional sections</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ConditionalSect"
+	  ></A
+	  ><B
+	  >ConditionalSect</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IncludeSect"
+		      ></A
+		      ><B
+		      >IncludeSect</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#IncludeSect"
+		      >IncludeSect</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IgnoreSect"
+		      ></A
+		      ><B
+		      >IgnoreSect</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#IgnoreSect"
+		      >IgnoreSect</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "IncludeSect"
+	  ></A
+	  ><B
+	  >IncludeSect</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+	  >ExtSubsetDecl</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "IgnoreSect"
+	  ></A
+	  ><B
+	  >IgnoreSect</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#IgnoreSectContents"
+	  >IgnoreSectContents</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Ignore"
+	  ></A
+	  ><B
+	  >Ignore</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "Ignore"
+		      ></A
+		      ><B
+		      >Ignore</B
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "IgnoreSectContents"
+	  ></A
+	  ><B
+	  >IgnoreSectContents</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "IgnoreSectContents"
+		      ></A
+		      ><B
+		      >IgnoreSectContents</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Ignore"
+		      >Ignore</A
+		      > [(<A HREF = "Text.XML.HaXml.Types.html#IgnoreSectContents"
+		      >IgnoreSectContents</A
+		      >, <A HREF = "Text.XML.HaXml.Types.html#Ignore"
+		      >Ignore</A
+		      >)]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "11"
+	  > References</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "Reference"
+	  ></A
+	  ><B
+	  >Reference</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "RefEntity"
+		      ></A
+		      ><B
+		      >RefEntity</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityRef"
+		      >EntityRef</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "RefChar"
+		      ></A
+		      ><B
+		      >RefChar</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#CharRef"
+		      >CharRef</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "section4"
+	      >Instances</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A HREF = "Text.XML.HaXml.Verbatim.html#Verbatim"
+		      >Verbatim</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#Reference"
+		      >Reference</A
+		      ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "EntityRef"
+	  ></A
+	  ><B
+	  >EntityRef</B
+	  > = <A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "CharRef"
+	  ></A
+	  ><B
+	  >CharRef</B
+	  > = Int</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "PEReference"
+	  ></A
+	  ><B
+	  >PEReference</B
+	  > = <A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "12"
+	  > Entities</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EntityDecl"
+	  ></A
+	  ><B
+	  >EntityDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EntityGEDecl"
+		      ></A
+		      ><B
+		      >EntityGEDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#GEDecl"
+		      >GEDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EntityPEDecl"
+		      ></A
+		      ><B
+		      >EntityPEDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#PEDecl"
+		      >PEDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "GEDecl"
+	  ></A
+	  ><B
+	  >GEDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "GEDecl"
+		      ></A
+		      ><B
+		      >GEDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityDef"
+		      >EntityDef</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "PEDecl"
+	  ></A
+	  ><B
+	  >PEDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PEDecl"
+		      ></A
+		      ><B
+		      >PEDecl</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#PEDef"
+		      >PEDef</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EntityDef"
+	  ></A
+	  ><B
+	  >EntityDef</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DefEntityValue"
+		      ></A
+		      ><B
+		      >DefEntityValue</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityValue"
+		      >EntityValue</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "DefExternalID"
+		      ></A
+		      ><B
+		      >DefExternalID</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		      >ExternalID</A
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#NDataDecl"
+		      >NDataDecl</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "PEDef"
+	  ></A
+	  ><B
+	  >PEDef</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PEDefEntityValue"
+		      ></A
+		      ><B
+		      >PEDefEntityValue</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#EntityValue"
+		      >EntityValue</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PEDefExternalID"
+		      ></A
+		      ><B
+		      >PEDefExternalID</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		      >ExternalID</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ExternalID"
+	  ></A
+	  ><B
+	  >ExternalID</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "SYSTEM"
+		      ></A
+		      ><B
+		      >SYSTEM</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#SystemLiteral"
+		      >SystemLiteral</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PUBLIC"
+		      ></A
+		      ><B
+		      >PUBLIC</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#PubidLiteral"
+		      >PubidLiteral</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#SystemLiteral"
+		      >SystemLiteral</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "NDataDecl"
+	  ></A
+	  ><B
+	  >NDataDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NDATA"
+		      ></A
+		      ><B
+		      >NDATA</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "TextDecl"
+	  ></A
+	  ><B
+	  >TextDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "TextDecl"
+		      ></A
+		      ><B
+		      >TextDecl</B
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#VersionInfo"
+		      >VersionInfo</A
+		      >) <A HREF = "Text.XML.HaXml.Types.html#EncodingDecl"
+		      >EncodingDecl</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ExtParsedEnt"
+	  ></A
+	  ><B
+	  >ExtParsedEnt</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ExtParsedEnt"
+		      ></A
+		      ><B
+		      >ExtParsedEnt</B
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		      >TextDecl</A
+		      >) <A HREF = "Text.XML.HaXml.Types.html#Content"
+		      >Content</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "ExtPE"
+	  ></A
+	  ><B
+	  >ExtPE</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "ExtPE"
+		      ></A
+		      ><B
+		      >ExtPE</B
+		      > (Maybe <A HREF = "Text.XML.HaXml.Types.html#TextDecl"
+		      >TextDecl</A
+		      >) [<A HREF = "Text.XML.HaXml.Types.html#ExtSubsetDecl"
+		      >ExtSubsetDecl</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "NotationDecl"
+	  ></A
+	  ><B
+	  >NotationDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "NOTATION"
+		      ></A
+		      ><B
+		      >NOTATION</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Name"
+		      >Name</A
+		      > (Either <A HREF = "Text.XML.HaXml.Types.html#ExternalID"
+		      >ExternalID</A
+		      > <A HREF = "Text.XML.HaXml.Types.html#PublicID"
+		      >PublicID</A
+		      >)</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "PublicID"
+	  ></A
+	  ><B
+	  >PublicID</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PUBLICID"
+		      ></A
+		      ><B
+		      >PUBLICID</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#PubidLiteral"
+		      >PubidLiteral</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EncodingDecl"
+	  ></A
+	  ><B
+	  >EncodingDecl</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EncodingDecl"
+		      ></A
+		      ><B
+		      >EncodingDecl</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EntityValue"
+	  ></A
+	  ><B
+	  >EntityValue</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EntityValue"
+		      ></A
+		      ><B
+		      >EntityValue</B
+		      > [<A HREF = "Text.XML.HaXml.Types.html#EV"
+		      >EV</A
+		      >]</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "EV"
+	  ></A
+	  ><B
+	  >EV</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EVString"
+		      ></A
+		      ><B
+		      >EVString</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "EVRef"
+		      ></A
+		      ><B
+		      >EVRef</B
+		      > <A HREF = "Text.XML.HaXml.Types.html#Reference"
+		      >Reference</A
+		      ></TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "PubidLiteral"
+	  ></A
+	  ><B
+	  >PubidLiteral</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "PubidLiteral"
+		      ></A
+		      ><B
+		      >PubidLiteral</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >data</SPAN
+	  > <A NAME = "SystemLiteral"
+	  ></A
+	  ><B
+	  >SystemLiteral</B
+	  > </TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "section4"
+	      >Constructors</TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "body"
+	      ><TABLE CLASS = "vanilla" CELLSPACING = "1" CELLPADDING = "0"
+		><TR
+		  ><TD CLASS = "decl"
+		    ><A NAME = "SystemLiteral"
+		      ></A
+		      ><B
+		      >SystemLiteral</B
+		      > String</TD
+		    ><TD CLASS = "rdoc"
+		    ></TD
+		    ></TR
+		  ></TABLE
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "13"
+	  > Basic value types</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Name"
+	  ></A
+	  ><B
+	  >Name</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "Names"
+	  ></A
+	  ><B
+	  >Names</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#Name"
+	  >Name</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "NmToken"
+	  ></A
+	  ><B
+	  >NmToken</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "NmTokens"
+	  ></A
+	  ><B
+	  >NmTokens</B
+	  > = [<A HREF = "Text.XML.HaXml.Types.html#NmToken"
+	  >NmToken</A
+	  >]</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "CharData"
+	  ></A
+	  ><B
+	  >CharData</B
+	  > = String</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><SPAN CLASS = "keyword"
+	  >type</SPAN
+	  > <A NAME = "CDSect"
+	  ></A
+	  ><B
+	  >CDSect</B
+	  > = <A HREF = "Text.XML.HaXml.Types.html#CharData"
+	  >CharData</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

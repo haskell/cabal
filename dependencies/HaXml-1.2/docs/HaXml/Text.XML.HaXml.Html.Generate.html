@@ -1,0 +1,1153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!--Rendered using the Haskell Html Library v0.2-->
+<HTML
+><HEAD
+  ><TITLE
+    >Text.XML.HaXml.Html.Generate</TITLE
+    ><LINK HREF = "haddock.css" REL = "stylesheet" TYPE = "text/css"
+    ></HEAD
+  ><BODY
+  ><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+    ><TR
+      ><TD CLASS = "topbar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><IMG SRC = "haskell_icon.gif" WIDTH = "16" HEIGHT = "16" ALT = " "
+		></TD
+	      ><TD CLASS = "title"
+	      >HaXml</TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "Text.XML.HaXml.Html.html"
+		>Parent</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "index.html"
+		>Contents</A
+		></TD
+	      ><TD CLASS = "topbut"
+	      ><A HREF = "doc-index.html"
+		>Index</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "modulebar"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD
+	      ><FONT SIZE = "6"
+		>Text.XML.HaXml.Html.Generate</FONT
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD
+	><TR
+	  ><TD CLASS = "section4"
+	    ><B
+	      >Contents</B
+	      ></TD
+	    ></TR
+	  ><TR
+	  ><TD
+	    ><DL
+	      ><DT
+		><A HREF = "#1"
+		  > HTML construction filters</A
+		  ></DT
+		><DD
+		><DL
+		  ><DT
+		    ><A HREF = "#2"
+		      > Containers</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#3"
+		      > Anchors</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#4"
+		      > Text style</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#5"
+		      > Tables</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#6"
+		      > Breaks, lines</A
+		      ></DT
+		    ><DT
+		    ><A HREF = "#7"
+		      > Attributes</A
+		      ></DT
+		    ></DL
+		  ></DD
+		><DT
+		><A HREF = "#8"
+		  > A simple HTML pretty-printer</A
+		  ></DT
+		></DL
+	      ></TD
+	    ></TR
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Description</TD
+	></TR
+      ><TR
+      ><TD CLASS = "doc"
+	> These are just some common abbreviations for generating HTML
+   content within the XML transformation framework defined
+   by <A HREF = "Text.Xml.HaXml.Combinators.html"
+	  >Text.Xml.HaXml.Combinators</A
+	  >.</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	>Synopsis</TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "body"
+	><TABLE CLASS = "vanilla" CELLSPACING = "0" CELLPADDING = "0"
+	  ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#html"
+		>html</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hhead"
+		>hhead</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#htitle"
+		>htitle</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hbody"
+		>hbody</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#h1"
+		>h1</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#h2"
+		>h2</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#h3"
+		>h3</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#h4"
+		>h4</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hpara"
+		>hpara</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hdiv"
+		>hdiv</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hspan"
+		>hspan</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#margin"
+		>margin</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#anchor"
+		>anchor</A
+		> :: [(String, <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>)] -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#makehref"
+		>makehref</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#anchorname"
+		>anchorname</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hpre"
+		>hpre</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hcentre"
+		>hcentre</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hem"
+		>hem</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#htt"
+		>htt</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hbold"
+		>hbold</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#parens"
+		>parens</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		> -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#bullet"
+		>bullet</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#htable"
+		>htable</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hrow"
+		>hrow</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hcol"
+		>hcol</A
+		> :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		>] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hbr"
+		>hbr</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#hhr"
+		>hhr</A
+		> :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#showattr"
+		>showattr</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#!"
+		>(!)</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#?"
+		>(?)</A
+		> :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+		>CFilter</A
+		></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "s8"
+	      ></TD
+	      ></TR
+	    ><TR
+	    ><TD CLASS = "decl"
+	      ><A HREF = "#htmlprint"
+		>htmlprint</A
+		> :: [<A HREF = "Text.XML.HaXml.Types.html#Content"
+		>Content</A
+		>] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+		>Doc</A
+		></TD
+	      ></TR
+	    ></TABLE
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "1"
+	  > HTML construction filters</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "2"
+	  > Containers</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "html"
+	  ></A
+	  ><B
+	  >html</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hhead"
+	  ></A
+	  ><B
+	  >hhead</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "htitle"
+	  ></A
+	  ><B
+	  >htitle</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hbody"
+	  ></A
+	  ><B
+	  >hbody</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "h1"
+	  ></A
+	  ><B
+	  >h1</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "h2"
+	  ></A
+	  ><B
+	  >h2</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "h3"
+	  ></A
+	  ><B
+	  >h3</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "h4"
+	  ></A
+	  ><B
+	  >h4</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hpara"
+	  ></A
+	  ><B
+	  >hpara</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hdiv"
+	  ></A
+	  ><B
+	  >hdiv</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hspan"
+	  ></A
+	  ><B
+	  >hspan</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "margin"
+	  ></A
+	  ><B
+	  >margin</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "3"
+	  > Anchors</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "anchor"
+	  ></A
+	  ><B
+	  >anchor</B
+	  > :: [(String, <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >)] -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "makehref"
+	  ></A
+	  ><B
+	  >makehref</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "anchorname"
+	  ></A
+	  ><B
+	  >anchorname</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "4"
+	  > Text style</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hpre"
+	  ></A
+	  ><B
+	  >hpre</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hcentre"
+	  ></A
+	  ><B
+	  >hcentre</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hem"
+	  ></A
+	  ><B
+	  >hem</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "htt"
+	  ></A
+	  ><B
+	  >htt</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hbold"
+	  ></A
+	  ><B
+	  >hbold</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "parens"
+	  ></A
+	  ><B
+	  >parens</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  > -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "bullet"
+	  ></A
+	  ><B
+	  >bullet</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "5"
+	  > Tables</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "htable"
+	  ></A
+	  ><B
+	  >htable</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hrow"
+	  ></A
+	  ><B
+	  >hrow</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hcol"
+	  ></A
+	  ><B
+	  >hcol</B
+	  > :: [<A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  >] -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "6"
+	  > Breaks, lines</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hbr"
+	  ></A
+	  ><B
+	  >hbr</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "hhr"
+	  ></A
+	  ><B
+	  >hhr</B
+	  > :: <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section2"
+	><A NAME = "7"
+	  > Attributes</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "showattr"
+	  ></A
+	  ><B
+	  >showattr</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "!"
+	  ></A
+	  ><B
+	  >(!)</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "?"
+	  ></A
+	  ><B
+	  >(?)</B
+	  > :: String -&gt; <A HREF = "Text.XML.HaXml.Combinators.html#CFilter"
+	  >CFilter</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "section1"
+	><A NAME = "8"
+	  > A simple HTML pretty-printer</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "decl"
+	><A NAME = "htmlprint"
+	  ></A
+	  ><B
+	  >htmlprint</B
+	  > :: [<A HREF = "Text.XML.HaXml.Types.html#Content"
+	  >Content</A
+	  >] -&gt; <A HREF = "Text.PrettyPrint.HughesPJ.html#Doc"
+	  >Doc</A
+	  ></TD
+	></TR
+      ><TR
+      ><TD CLASS = "s15"
+	></TD
+	></TR
+      ><TR
+      ><TD CLASS = "botbar"
+	>Produced by <A HREF = "http://www.haskell.org/haddock"
+	  >Haddock</A
+	  > version 0.4</TD
+	></TR
+      ></TABLE
+    ></BODY
+  ></HTML
+>

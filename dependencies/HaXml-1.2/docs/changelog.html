@@ -1,0 +1,286 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>
+  HaXml change log
+</title>
+</head>
+
+<body bgcolor='#ffffff'>
+
+<center>
+<h1>HaXml change log</h1>
+</center>
+<hr>
+
+<h3>Changes for 1.12</h3>
+<p>
+<ul>
+<li> The licence has changed.  Previously covered by the Artistic Licence,
+     we have now converted to the LGPL for all the library code, and GPL
+     for the standalone tools.
+<li> Now includes a minimal Build.bat script for Windows, so you can
+     avoid any need for Cygwin utilities and get by with just GHC
+     and Mingw.
+<li> Fix a bug in DtdToHaskell, whereby an auxiliary datatype introduced
+     by the translation into Haskell could (in certain circumstances)
+     cause an extra layer of element tag nesting on the output (via the
+     'toElem' method).
+<li> Fixed the parsing of entity/character references in the error-correcting
+     HTML parser.
+<li> Changes in the signatures of Xml2Haskell (made in version 1.09)
+     have now been mirrored in the converse library, Haskell2Xml.
+     Thus, there are new functions <tt>readXml</tt> and
+     <tt>showXml</tt> converting to/from Strings, <tt>hGetXml</tt>
+     and <tt>hPutXml</tt> use file Handles, and the old functions using
+     filenames are renamed to <tt>fReadXml</tt> and <tt>fWriteXml</tt>.
+</ul>
+
+<h3>Changes for 1.11</h3>
+<p>
+<ul>
+<li> Fix a tiny but embarrassing bug in the previous fix for complex
+     DTDs being translated by DtdToHaskell.  It broke on a very simple
+     DTD like<br>
+     &nbsp;&nbsp;&nbsp;&nbsp;<tt>&lt;!ELEMENT A (B|C)&gt;</tt><br>
+     which became sequence<br>
+     &nbsp;&nbsp;&nbsp;&nbsp;<tt>data A = A B C</tt><br>
+     instead of choice<br>
+     &nbsp;&nbsp;&nbsp;&nbsp;<tt>data A = AB B | AC C</tt><br>
+</ul>
+
+<h3>Changes for 1.10</h3>
+<p>
+<ul>
+<li> All being well, HaXml now works again for Hugs (versions &ge;
+     September 2003).  The library sources are installed using
+     <em>hugs-package</em>, and the tools are installed as scripts
+     for <em>runhugs</em>.
+<li> Fixed the internal (and external) representations of XML character
+     references.
+<li> New combinators to `escape' and `unescape' reserved XML characters in
+     text and attribute values has been contributed by George Russell.
+     (e.g. to convert "&lt;" into "&amp;lt;".)
+<li> Bugfixes to DtdToHaskell: A DTD content specification of the form<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<tt>&lt;!ELEMENT A (B*,(C|(D?,E*)))&gt;</tt><br>
+     was incorrectly translated to the Haskell<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<tt>data A = A [B] (OneOf3 C (Maybe D) [E])</tt><br>
+     but the new (correct) translation is<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<tt>data A = A [B] (OneOf2 C (Maybe D,[E]))</tt><br>
+</ul>
+
+<h3>Changes for 1.09</h3>
+<p>
+<ul>
+<li> <em>ghc-6.0</em> (and newer) are supported.
+<li> <em>hmake</em> is no longer required to build HaXml, provided you
+     have <em>ghc --make</em>.
+<li> A new combinator <tt>path</tt> has been added to
+     Text.XML.HaXml.Combinators, allowing queries to be expressed in the
+     style of XPath.
+<li> Some of the signatures in Text.XML.HaXml.Xml2Haskell have changed,
+     in particular, there are new functions <tt>readXml</tt> and
+     <tt>showXml</tt> that convert to/from Strings, <tt>hGetXml</tt> and
+     <tt>hPutXml</tt> that use file Handles, and the old functions that
+     use filenames are renamed to <tt>fReadXml</tt> and <tt>fWriteXml</tt>.
+<li> DtdToHaskell previously generated incorrect code for reading an XML element
+     given the following DTD fragment: <pre>&lt;!ELEMENT foo (a,b)+ &gt;</pre>
+<li> The parser had a fault when reading conditional sections nested inside an
+     IGNORE section in a DTD.
+<li> In Text.XML.HaXml.Html.Generate, all functions now generate HTML tags
+     in lower-case rather than upper-case, to conform to the XHTML standard.
+<li> DtdToHaskell now accepts NOTATION types for attributes.  They are
+     treated just like enumeration types.
+<li> If you give an output filename as a command-line argument to DtdToHaskell,
+     it now uses the filename as the basis for the generated module name.
+<li> Fixed a configuration bug on the Cygwin platform with ghc-5.04.x.
+<li> <em>make install</em> now places the executables (DtdToHaskell, Xtract,
+     Validate, MkOneOf, Canonicalise) into the directory specified by
+     <tt>./configure --prefix=...</tt>
+</ul>
+
+<h3>Changes for 1.08a</h3>
+<p>
+<ul>
+<li> There were some simple import naming problems in some of the
+     demonstration files in the examples/ directory.
+<li> Embarrassingly, the string value of Text.XML.HaXml.version, previously
+     "1.07", is only now updated to "1.08".
+</ul>
+
+<h3>Changes for 1.08</h3>
+<p>
+<ul>
+<li> A new and highly useful function, Text.XML.HaXml.Validate.partialValidate,
+     does validation except for checking whether the root element type matches
+     that of the DTD's root element.  This is just what you need in order to
+     validate any partial document or sub-document.
+<li> The function Text.XML.HaXml.Html.Generate.htmlprint had a little
+     bug which caused it to loop infinitely if some text was longer
+     than 60 characters without a space.
+<li> The Xtract parser and combinators are now included in the HaXml
+     library package, rather than existing solely for the Xtract
+     command-line tool.
+<li> Dependencies in ghc-5.04.x are fixed.  You can now build HaXml for a
+     specific compiler version, using e.g.
+     <em>configure --buildwith=ghc-5.0x.x</em>.
+</ul>
+
+<h3>Changes for 1.07b</h3>
+<p>
+<ul>
+<li> The code generated by DtdToHaskell had a minor cut-and-paste error.
+</ul>
+
+<h3>Changes for 1.07a</h3>
+<p>
+<ul>
+<li> The file `script/echo.c' was missing from the distribution.
+     This only affected the configuration step on systems where
+     `echo -n' is not recognised (e.g. Solaris).
+</ul>
+
+<h3>Changes for 1.07</h3>
+<p>
+<ul>
+<li> The hierarchical namespace <tt>Text.Xml</tt> was incorrect.
+     It should be <tt>Text.XML</tt>
+<li> The ghc package now also works in GHCi (but only for ghci-5.02.3
+     and later).
+<li> If you have both ghc and nhc98 compilers available, the package
+     is built for both.  However, now the <em>configure --buildwith=</em>
+     option is available to choose to build for only one of them.
+</ul>
+
+<h3>Changes for 1.06</h3>
+<p>
+<ul>
+<li> HaXml now uses the new hierarchical namespace for modules,
+     specifically under the tree <tt>Text.Xml.HaXml</tt>.
+<li> The HaXml libraries now install as a separate `package' in both ghc
+     and nhc98.  Use <em>-package HaXml</em> to access them.
+<li> The library APIs are now documented using Haddock.
+<li> Due to popular request, we have added a new validator for checking
+     generic document content against a DTD.   This is available both as
+     a library function, and as a command-line tool.
+<li> DrIFT is now distributed separately by John Meacham, with much better
+     configuration and build support.  You still only need it if you
+     want to derive the <tt>Haskell2Xml</tt> class.
+<li> Bugfix: the lexer and parser now accept NOTATION declarations in the DTD.
+<li> Bugfix: a PublicId in a NOTATION decl is now correctly recognised by the
+             keyword PUBLIC, not PUBLICID.
+<li> Bugfix: the HTML parser now correctly accepts stand-alone tags like IMG.
+<li> Bugfix: instances of XmlContent now accept an empty string where #PCDATA
+             is expected.  Likewise, comments, processing instructions, and
+             character/entity references are now permitted to be scattered
+             thoughout some #PCDATA text.
+<li> Bugfix: the OneOfN types used in code generated by DtdToHaskell are
+             now supplied by default up to size 20, and a utility for
+             automatically generating larger sizes is included.
+</ul>
+
+<hr>
+<p>
+I didn't keep detailed changelogs for versions before 1.06, but
+here are the highlights.
+
+<h3>Changes for 1.05</h3>
+<ul>
+<li> In DtdToHaskell, fix some more bugs with empty PE References at the
+     end of an element content specification.
+</ul>
+
+<h3>Changes for 1.04</h3>
+<ul>
+<li> In DtdToHaskell, fix a bug whereby an empty PE Reference at the end
+     of an element content specification caused a parse error - the DTD
+     is now accepted.
+</ul>
+
+<h3>Changes for 1.03</h3>
+<ul>
+<li> In DtdToHaskell, added tagname prefixes to the attribute names of
+     enumeration types, to disambiguate when attributes of the same name
+     have different value-sets within different tags.
+<li> DtdToHaskell also now accepts Tokenized and Notation types, mapping
+     them to Strings.
+<li> Added an instance of Xml2Haskell for the Maybe type.
+</ul>
+
+<h3>Changes for 1.02</h3>
+<ul>
+<li> Added instances of Haskell2Xml for Float and Double.
+<li> Fixed a fault in DtdToHaskell's treatment of default attribute values.
+<li> Dtd parser now accepts (#PCDATA)* as a valid element content specification.
+</ul>
+
+<h3>Changes for 1.01</h3>
+<ul>
+<li> Fixed DtdToHaskell's treatment of default values for attributes.
+</ul>
+
+<h3>Changes for 1.00</h3>
+<ul>
+<li> Finally added support for the external subset of DTDs.
+</ul>
+
+<h3>Changes for 0.9</h3>
+<ul>
+<li> Reworked the Haskell2Xml and Xml2Haskell modules.
+</ul>
+
+<h3>Changes for 0.8b</h3>
+<ul>
+<li> Some minor bugfixes to DrIFT, ensuring H'98 compatibility.
+</ul>
+
+<h3>Changes for 0.8a</h3>
+<ul>
+<li> No code changes - just some restructuring of the build tree.
+</ul>
+
+<h3>Changes for 0.8</h3>
+<ul>
+<li> Bugfix: some PERefs didn't work.
+</ul>
+
+<h3>Changes for 0.7</h3>
+<ul>
+<li> Fixed imports for GHC.
+</ul>
+
+<h3>Changes for 0.6</h3>
+<ul>
+<li> Fixed preprocessor symbols to use the new standard __HASKELL98__.
+</ul>
+
+<h3>Changes for 0.5</h3>
+<ul>
+<li> Added GE entity reference-handling to parser.
+<li> Tweaked the pretty-printer.
+<li> Ensured Haskell'98 compliance.
+</ul>
+
+<h3>Changes for 0.4</h3>
+<ul>
+<li> Added separate HTML parser, some other bugfixes.
+</ul>
+
+<h3>Changes for 0.3</h3>
+<ul>
+<li> Bugfix release.
+</ul>
+
+<h3>Changes for 0.2</h3>
+<ul>
+<li> Added Haskell2Xml and Xml2Haskell.
+<li> Improved XML parser and printer.
+</ul>
+
+<h3>Release 0.1</h3>
+<ul>
+<li> Initial release.
+</ul>
+
+</body>
+</html>

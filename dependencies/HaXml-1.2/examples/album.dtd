@@ -1,0 +1,34 @@
+<!DOCTYPE album [
+<!ELEMENT album (title, artist, recording?, coverart, catalogno*,
+                 personnel, track*, notes) >
+<!ELEMENT title (#PCDATA) >
+<!ELEMENT artist (#PCDATA) >
+<!ELEMENT recording EMPTY>
+    <!ATTLIST recording date CDATA #IMPLIED
+                        place CDATA #IMPLIED>
+<!ELEMENT coverart (location)? >
+    <!ATTLIST coverart style CDATA #REQUIRED>
+<!ELEMENT location EMPTY >
+    <!ATTLIST location thumbnail CDATA #IMPLIED
+                       fullsize CDATA #IMPLIED>
+<!ELEMENT catalogno EMPTY >
+    <!ATTLIST catalogno label CDATA #REQUIRED
+                        number CDATA #REQUIRED
+                        format (CD | LP | MiniDisc) #IMPLIED
+                        releasedate CDATA #IMPLIED
+                        country CDATA #IMPLIED>
+<!ELEMENT personnel (player)+ >
+<!ELEMENT player EMPTY >
+    <!ATTLIST player name CDATA #REQUIRED
+                     instrument CDATA #REQUIRED>
+<!ELEMENT track EMPTY>
+    <!ATTLIST track title CDATA #REQUIRED
+                    credit CDATA #IMPLIED
+                    timing CDATA #IMPLIED>
+<!ELEMENT notes (#PCDATA | albumref | trackref)* >
+    <!ATTLIST notes author CDATA #IMPLIED>
+<!ELEMENT albumref (#PCDATA)>
+    <!ATTLIST albumref link CDATA #REQUIRED>
+<!ELEMENT trackref (#PCDATA)>
+    <!ATTLIST trackref link CDATA #IMPLIED>
+]>

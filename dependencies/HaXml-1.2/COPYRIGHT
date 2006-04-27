@@ -1,0 +1,35 @@
+The HaXml library and tools were written by and are copyright to
+    (c) copyright 1998-2004    Malcolm Wallace and Colin Runciman
+
+The library incorporates the module Text.ParserCombinators.HuttonMeijerWallace
+    (c) copyright 1996         Graham Hutton and Erik Meijer
+with modifications
+    (c) copyright 1998-2000    Malcolm Wallace
+and may also use or incorporate the module Text.PrettyPrint.HughesPJ
+    (c) copyright 1996-1997    John Hughes and Simon Peyton Jones
+
+The HaXml library is licensed under the terms of the GNU Lesser
+General Public Licence (LGPL), which can be found in the file called
+LICENCE-LGPL, with the following special exception:
+
+----
+As a relaxation of clause 6 of the LGPL, the copyright holders of this
+library give permission to use, copy, link, modify, and distribute,
+binary-only object-code versions of an executable linked with the
+Library, without requiring the supply of any mechanism to modify or
+replace the Library and relink (clauses 6a, 6b, 6c, 6d, 6e), provided
+that all the other terms of clause 6 are complied with.
+----
+
+The HaXml tools Xtract, Validate, DtdToHaskell, and MkOneOf, are
+licensed under the terms of the GNU General Public Licence (GPL),
+which can be found in the file called LICENCE-GPL.
+
+This library and toolset is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Licences for more details.
+
+If these licensing terms are not acceptable to you, please contact me for
+negotiation.  :-)
+    Malcolm.Wallace@cs.york.ac.uk
