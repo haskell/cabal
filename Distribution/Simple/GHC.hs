@@ -77,6 +77,11 @@ import Control.Monad		( unless, when )
 import Data.List		( isSuffixOf, nub )
 import System.Directory		( removeFile, getDirectoryContents,
 				  doesFileExist )
+
+#ifdef mingw32_HOST_OS
+import Distribution.Compat.FilePath ( splitFileName )
+#endif
+
 #ifndef __NHC__
 import Control.Exception (try)
 #else
