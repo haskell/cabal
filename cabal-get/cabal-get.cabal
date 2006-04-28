@@ -7,7 +7,7 @@ Maintainer: Lemmih <lemmih@gmail.com>
 Copyright: 2005 Lemmih <lemmih@gmail.com>
 Stability: Experimental
 Category: Distribution
-Build-depends: base, Cabal, mtl, network
+Build-depends: base, mtl, network
 Synopsis: Automatic installer for Cabal packages.
 Description:
   apt-get like tool.
