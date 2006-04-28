@@ -18,3 +18,5 @@ Description:
 
 Executable: cabal-install
 Main-is: CabalInstall.hs
+Extensions: CPP
+GHC-options: -i..
