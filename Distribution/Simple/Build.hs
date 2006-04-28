@@ -76,6 +76,10 @@ import qualified Distribution.Simple.JHC  as JHC
 -- import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
+#ifdef mingw32_HOST_OS
+import Distribution.PackageDescription (hasLibs)
+#endif
+
 #ifdef DEBUG
 import HUnit (Test)
 #endif

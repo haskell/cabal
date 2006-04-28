@@ -94,6 +94,9 @@ import Distribution.Compat.Directory (findExecutable)
 import Data.Char (isDigit)
 import Prelude hiding (catch)
 
+#ifdef mingw32_HOST_OS
+import Distribution.PackageDescription (hasLibs)
+#endif
 
 #ifdef DEBUG
 import HUnit
