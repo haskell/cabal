@@ -64,6 +64,8 @@ import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
 import Distribution.Setup (CopyDest(..))
 import Distribution.Compat.FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
+import Data.Maybe (fromMaybe)
+import Distribution.PackageDescription (hasLibs)
 import Foreign
 import Foreign.C
 #endif
