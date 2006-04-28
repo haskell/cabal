@@ -764,12 +764,34 @@ Other-Modules:   A, C, Utils</programlisting>
               <replaceable>filename list</replaceable>
             </term>
             <listitem>
-              <para>A list of header files from standard
-                include directories or those listed in
-                <literal>include-dirs</literal>, to be included in any
-                compilations via C.  These files typically contain
-                function prototypes for foreign imports used by the
-                package.</para>
+              <para>A list of header files already installed on the
+              system (i.e. not part of this package) to be included in
+              any compilations via C.  These files typically contain
+              function prototypes for foreign imports used by the
+              package.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>install-includes:</literal>
+              <replaceable>filename list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of header files from this package to be
+              included in any compilations via C.  These header files
+              will be installed into
+              <literal>$(libdir)/includes</literal> when the package
+              is installed.  Files listed in
+              <literal>install-includes:</literal> should be found in
+              one of the directories listed in
+              <literal>include-dirs</literal>.</para>
+
+	      <para><literal>install-includes</literal> is typically
+	      used to name header files that contain prototypes for
+	      foreign imports used in Haskell code in this package,
+	      for which the C implementations are also provided with
+	      the package.</para>
             </listitem>
           </varlistentry>
 
@@ -780,7 +802,9 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>A list of directories to search for header files,
-                both when using a C preprocessor and when compiling
+                when preprocessing with <literal>c2hs</literal>,
+                <literal>hsc2hs</literal>, <literal>ffihugs</literal>,
+                <literal>cpphs</literal>, or the C preprocessor, and also when compiling
                 via C.</para>
             </listitem>
           </varlistentry>
@@ -1723,7 +1747,31 @@ runhaskell Setup.hs unregister --gen-script</screen>
               bundle is unpacked on the target system.</para>
           </listitem>
         </varlistentry>
+
+	<varlistentry>
+	  <term><option>--inplace</option></term>
+	  <listitem>
+	    <para>Registers the package for use directly from the
+	    build tree, without needing to install it.  This can be
+	    useful for testing: there's no need to install the package
+	    after modifying it, just recompile and test.</para>
+	    
+	    <para>However, there are some caveats.  It only works with
+	    GHC (currently).  It only works if your package doesn't
+	    depend on having any supplemental files installed - plain
+	    Haskell libraries should be fine.</para>
+	  </listitem>
       </variablelist>
+
+      <varlistentry>
+	<term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
+	<listitem>
+	  <para>Specify the path to the package tool, e.g.
+		<command>ghc-pkg</command>.  This overrides the
+		<literal>hc-pkg</literal> tool discovered during
+		configure.</para>
+	</listitem>
+      </varlistentry>
     </sect2>
 
     <sect2 id="setup-unregister">
