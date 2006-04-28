@@ -49,7 +49,7 @@ build-stamp: config
 install: build-stamp
 	./setup install $(USER_FLAG)
 	cd cabal-install && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
-	cd cabal-get     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build && ./setup install
+	cd cabal-get     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build  && ./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
