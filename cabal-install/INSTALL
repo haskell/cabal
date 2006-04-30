@@ -1,2 +1,2 @@
-After building and installing with cabal, copy etc-cabal-get to
-/etc/cabal-get.
+After building and installing with cabal, copy etc-cabal-install to
+/etc/cabal-install.

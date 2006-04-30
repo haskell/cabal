@@ -1,6 +1,6 @@
 module Main where
 
-import qualified Network.Hackage.CabalGet.Main as CabalGet
+import qualified Network.Hackage.CabalInstall.Main as CabalInstall
 
 main :: IO ()
-main = CabalGet.main
+main = CabalInstall.main

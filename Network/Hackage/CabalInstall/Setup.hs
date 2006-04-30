@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Setup
+-- Module      :  Network.Hackage.CabalInstall.Setup
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Setup
+module Network.Hackage.CabalInstall.Setup
     ( emptyTempFlags
     , parseInstallArgs
     , parseGlobalArgs
@@ -24,7 +24,7 @@ import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usage
 import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
-import Network.Hackage.CabalGet.Types (TempFlags (..), Flag (..), Action (..)
+import Network.Hackage.CabalInstall.Types (TempFlags (..), Flag (..), Action (..)
                                       , UnresolvedDependency (..))
 
 emptyTempFlags :: TempFlags
@@ -59,7 +59,7 @@ globalOptions =
     , Option "s" ["with-server"] (ReqArg WithServer "URL")
                  "give the URL to a Hackage server"
     , Option "c" ["config-path"] (ReqArg WithConfPath "PATH")
-                 "give the path to the config dir. Default is /etc/cabal-get"
+                 "give the path to the config dir. Default is /etc/cabal-install"
     , Option "" ["tar-path"] (ReqArg WithTarPath "PATH")
                  "give the path to tar"
     , Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
