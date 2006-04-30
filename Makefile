@@ -45,10 +45,10 @@ config: setup
 build: build-stamp
 build-stamp: config
 	./setup build
-	cd cabal-get     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
+	cd cabal-install     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
 install: build-stamp
 	./setup install $(USER_FLAG)
-	cd cabal-get     && ./setup install
+	cd cabal-install     && ./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
