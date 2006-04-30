@@ -1,4 +1,4 @@
-Name: cabal-get
+Name: cabal-install
 Version: 0.3.0
 License: BSD4
 License-File: ../LICENSE
@@ -12,7 +12,7 @@ Synopsis: Automatic installer for Cabal packages.
 Description:
   apt-get like tool.
 
-Executable: cabal-get
-Main-is: CabalGet.hs
+Executable: cabal-install
+Main-is: CabalInstall.hs
 Extensions: CPP, OverlappingInstances, TypeSynonymInstances, TemplateHaskell
 GHC-options: -i.. -i../dependencies/hackage-client-0.1.0 -i../dependencies/XmlRpc-2005.5.5 -i../dependencies/Crypto-2.0.0 -i../dependencies/GnuPG-0.1.1 -i../dependencies/HaXml-1.2/src -i../dependencies/HTTP-2005.5.5 -i../dependencies/NewBinary-0.1
