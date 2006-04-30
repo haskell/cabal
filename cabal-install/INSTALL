@@ -1,0 +1,2 @@
+After building and installing with cabal, copy etc-cabal-get to
+/etc/cabal-get.
