@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Update
+-- Module      :  Network.Hackage.CabalInstall.Update
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,12 +10,12 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Update
+module Network.Hackage.CabalInstall.Update
     ( update
     ) where
 
-import Network.Hackage.CabalGet.Types (ConfigFlags (..), OutputGen(..))
-import Network.Hackage.CabalGet.Config (writeKnownPackages)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..))
+import Network.Hackage.CabalInstall.Config (writeKnownPackages)
 
 import Network.Hackage.Client (listPackages)
 

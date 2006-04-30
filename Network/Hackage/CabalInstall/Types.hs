@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Types
+-- Module      :  Network.Hackage.CabalInstall.Types
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -8,9 +8,9 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- All data types for the entire cabal-get system gathered here to avoid some .hs-boot files.
+-- All data types for the entire cabal-install system gathered here to avoid some .hs-boot files.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Types where
+module Network.Hackage.CabalInstall.Types where
 
 import Distribution.Setup (CompilerFlavor(..),Compiler)
 import Distribution.Package (PackageIdentifier)

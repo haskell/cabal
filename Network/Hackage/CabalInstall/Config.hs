@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Config
+-- Module      :  Network.Hackage.CabalInstall.Config
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Config
+module Network.Hackage.CabalInstall.Config
     ( packagesDirectoryName
     , getKnownServers
     , getKnownPackages
@@ -25,7 +25,7 @@ import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
 import Distribution.Compat.FilePath (joinFileName)
 
-import Network.Hackage.CabalGet.Types (ConfigFlags (..))
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..))
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"

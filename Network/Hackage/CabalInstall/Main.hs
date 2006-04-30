@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Main
+-- Module      :  Network.Hackage.CabalInstall.Main
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -8,21 +8,21 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Entry point to the default cabal-get front-end.
+-- Entry point to the default cabal-install front-end.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Main where
+module Network.Hackage.CabalInstall.Main where
 
 import System.Environment (getArgs)
-import Network.Hackage.CabalGet.Types (Action (..))
-import Network.Hackage.CabalGet.Setup (parseGlobalArgs, parseInstallArgs)
-import Network.Hackage.CabalGet.Configure (mkConfigFlags)
+import Network.Hackage.CabalInstall.Types (Action (..))
+import Network.Hackage.CabalInstall.Setup (parseGlobalArgs, parseInstallArgs)
+import Network.Hackage.CabalInstall.Configure (mkConfigFlags)
 
-import Network.Hackage.CabalGet.Install (install)
-import Network.Hackage.CabalGet.Info (info)
-import Network.Hackage.CabalGet.Update (update)
-import Network.Hackage.CabalGet.Fetch (fetch)
-import Network.Hackage.CabalGet.Clean (clean)
-import Network.Hackage.CabalGet.BuildDep (buildDep)
+import Network.Hackage.CabalInstall.Install (install)
+import Network.Hackage.CabalInstall.Info (info)
+import Network.Hackage.CabalInstall.Update (update)
+import Network.Hackage.CabalInstall.Fetch (fetch)
+import Network.Hackage.CabalInstall.Clean (clean)
+import Network.Hackage.CabalInstall.BuildDep (buildDep)
 
 
 main :: IO ()
