@@ -53,21 +53,5 @@ Exposed-Modules:
         Distribution.Compat.Exception,
         Distribution.Compat.FilePath,
         Distribution.Compat.RawSystem
---        Network.Hackage.CabalGet.BuildDep,
---        Network.Hackage.CabalGet.Clean,
---        Network.Hackage.CabalGet.Config,
---        Network.Hackage.CabalGet.Configure,
---        Network.Hackage.CabalGet.Dependency,
---        Network.Hackage.CabalGet.Fetch,
---        Network.Hackage.CabalGet.Info,
---        Network.Hackage.CabalGet.Install,
---        Network.Hackage.CabalGet.Main,
---        Network.Hackage.CabalGet.Setup,
---        Network.Hackage.CabalGet.TarUtils,
---        Network.Hackage.CabalGet.Types,
---        Network.Hackage.CabalGet.Update,
---        Network.Hackage.Client,
---        Network.Hackage.Interface,
---        Network.Hackage.Version
 Extensions: CPP, OverlappingInstances, TypeSynonymInstances, TemplateHaskell
 GHC-options: -idependencies/hackage-client-0.1.0 -idependencies/XmlRpc-2005.5.5  -idependencies/Crypto-2.0.0  -idependencies/GnuPG-0.1.1  -idependencies/HaXml-1.2/src -idependencies/HTTP-2005.5.5 -idependencies/NewBinary-0.1

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Dependency
+-- Module      :  Network.Hackage.CabalInstall.Dependency
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Various kinds of dependency resolution and utilities.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Dependency
+module Network.Hackage.CabalInstall.Dependency
     (
     -- * Dependency resolution
       resolveDependencies
@@ -31,8 +31,8 @@ import Data.List (nub, maximumBy)
 import Data.Maybe (mapMaybe)
 import Control.Monad (guard)
 
-import Network.Hackage.CabalGet.Config (getKnownPackages)
-import Network.Hackage.CabalGet.Types ( ResolvedPackage(..), UnresolvedDependency(..)
+import Network.Hackage.CabalInstall.Config (getKnownPackages)
+import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
                                       , ConfigFlags (..))
 import Text.Printf (printf)
 

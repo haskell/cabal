@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.BuildDep
+-- Module      :  Network.Hackage.CabalInstall.BuildDep
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,16 +10,16 @@
 --
 -- High level interface to a specialized instance of package installation.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.BuildDep where
+module Network.Hackage.CabalInstall.BuildDep where
 
-import Network.Hackage.CabalGet.Dependency (getPackages, getBuildDeps, resolveDependenciesAux)
-import Network.Hackage.CabalGet.Install (installPkg)
-import Network.Hackage.CabalGet.Types (ConfigFlags (..), UnresolvedDependency)
+import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps, resolveDependenciesAux)
+import Network.Hackage.CabalInstall.Install (installPkg)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency)
 
 import Distribution.Simple.Configure (getInstalledPackages)
 
 {-|
-  This function behaves exactly like 'Network.Hackage.CabalGet.Install.install' except
+  This function behaves exactly like 'Network.Hackage.CabalInstall.Install.install' except
   that it only builds the dependencies for packages.
 -}
 buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()

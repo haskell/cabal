@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.Configure
+-- Module      :  Network.Hackage.CabalInstall.Configure
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,16 +10,16 @@
 --
 -- Functions used to generate ConfigFlags.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.Configure
+module Network.Hackage.CabalInstall.Configure
     ( defaultOutputGen
     , mkConfigFlags
     ) where
 
 import Control.Monad (guard, mplus, when)
 
-import Network.Hackage.CabalGet.Types (ConfigFlags (..), OutputGen (..)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
                                       , TempFlags (..), ResolvedPackage (..))
-import Network.Hackage.CabalGet.Config (getKnownServers, selectValidConfigDir)
+import Network.Hackage.CabalInstall.Config (getKnownServers, selectValidConfigDir)
 
 import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
 import Distribution.ParseUtils (showDependency)
@@ -92,10 +92,10 @@ localPrefix
     = do home <- getHomeDirectory
          return (home `joinFileName` "usr")
 
--- |Compute the local config directory ('~/.cabal-get' on Linux).
+-- |Compute the local config directory ('~/.cabal-install' on Linux).
 localConfigDir :: IO FilePath
 localConfigDir
-    = getAppUserDataDirectory "cabal-get"
+    = getAppUserDataDirectory "cabal-install"
 
 {-|
   Give concrete answers to questions like:
@@ -118,7 +118,7 @@ mkConfigFlags cfg
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
                       else return Nothing
          confPath <- selectValidConfigDir ( maybe id (:) (tempConfPath cfg)
-                                            ["/etc/cabal-get"
+                                            ["/etc/cabal-install"
                                             ,localConfig] )
          printf "Using config dir: %s\n" confPath
          outputGen <- defaultOutputGen (tempVerbose cfg)

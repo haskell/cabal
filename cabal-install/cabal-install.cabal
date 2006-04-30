@@ -3,7 +3,7 @@ Version: 0.3.0
 License: BSD4
 License-File: ../LICENSE
 Author: Lemmih <lemmih@gmail.com>
-data-files: etc-cabal-get/serv.list
+data-files: etc-cabal-install/serv.list
 Maintainer: Lemmih <lemmih@gmail.com>
 Copyright: 2005 Lemmih <lemmih@gmail.com>
 Stability: Experimental

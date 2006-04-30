@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalGet.TarUtils
+-- Module      :  Network.Hackage.CabalInstall.TarUtils
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Utility functions for manipulating tar archives.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalGet.TarUtils
+module Network.Hackage.CabalInstall.TarUtils
     ( tarballGetFiles
     , locateFile
     , locateFileExt
