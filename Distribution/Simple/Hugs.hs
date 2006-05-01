@@ -101,10 +101,11 @@ build pkg_descr lbi verbose = do
 	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
   	    let paths_modulename = autogenModuleName pkg_descr ++ ".hs"
+	    let destPathsFile = exeDir `joinFileName` paths_modulename
 	    copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
-		     (exeDir `joinFileName` paths_modulename)
+		     destPathsFile
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
-	    compileFiles bi [destMainFile]
+	    compileFiles bi [destMainFile, destPathsFile]
 	
 	compileBuildInfo :: FilePath
                          -> [FilePath] -- ^library source dirs, if building exes
