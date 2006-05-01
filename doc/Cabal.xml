@@ -1761,17 +1761,18 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    depend on having any supplemental files installed - plain
 	    Haskell libraries should be fine.</para>
 	  </listitem>
-      </variablelist>
+	</varlistentry>
 
-      <varlistentry>
-	<term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
-	<listitem>
-	  <para>Specify the path to the package tool, e.g.
-		<command>ghc-pkg</command>.  This overrides the
-		<literal>hc-pkg</literal> tool discovered during
-		configure.</para>
-	</listitem>
-      </varlistentry>
+	<varlistentry>
+	  <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
+	  <listitem>
+	    <para>Specify the path to the package tool, e.g.
+		  <command>ghc-pkg</command>.  This overrides the
+		  <literal>hc-pkg</literal> tool discovered during
+		  configure.</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
     </sect2>
 
     <sect2 id="setup-unregister">
