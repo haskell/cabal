@@ -70,7 +70,7 @@ haddock: setup
 	./setup haddock
 
 clean-doc:
-	cd doc && make clean
+	cd doc && $(MAKE) clean
 
 doc: haddock
 	docbook2html doc/Cabal.xml --output doc/users-guide
@@ -89,11 +89,11 @@ clean-cabal:
 
 clean-hunit:
 	-rm -f hunit-stamp hunitInstall-stamp
-	cd tests/HUnit-1.0 && make clean
+	cd tests/HUnit-1.0 && $(MAKE) clean
 
 clean-test:
-	cd tests/A && make clean
-	cd tests/wash2hs && make clean
+	cd tests/A && $(MAKE) clean
+	cd tests/wash2hs && $(MAKE) clean
 
 remove: remove-cabal remove-hunit
 remove-cabal:
@@ -107,7 +107,7 @@ remove-hunit:
 
 hunit: hunit-stamp
 hunit-stamp:
-	cd tests/HUnit-1.0 && make && ./setup configure --prefix=$(PREF) && ./setup build
+	cd tests/HUnit-1.0 && $(MAKE) && ./setup configure --prefix=$(PREF) && ./setup build
 	touch $@
 
 hunitInstall: hunitInstall-stamp
@@ -122,14 +122,14 @@ moduleTest:
 	$(HC) $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:src:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest 
 
 tests: moduleTest clean
-	cd tests/A && make clean
-	cd tests/HUnit-1.0 && make clean
-	cd tests/A && make
-	cd tests/HUnit-1.0 && make
+	cd tests/A && $(MAKE) clean
+	cd tests/HUnit-1.0 && $(MAKE) clean
+	cd tests/A && $(MAKE)
+	cd tests/HUnit-1.0 && $(MAKE)
 
 check:
 	rm -f moduleTest
-	make moduleTest
+	$(MAKE) moduleTest
 	./moduleTest
 
 # distribution...
@@ -173,7 +173,7 @@ dist: haddock $(CABALBALL)
 	mv $(CABALBALL) $(TMPDISTLOC)
 	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL) && mv Cabal cabal
 	#mkdir $(TMPDISTLOC)/cabal/doc
-	make doc
+	$(MAKE) doc
 	cp -r dist/doc/html $(TMPDISTLOC)/cabal/doc/API
 	cp -r doc/users-guide $(TMPDISTLOC)/cabal/doc/users-guide
 	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
