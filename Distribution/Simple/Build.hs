@@ -240,7 +240,7 @@ get_prefix_stuff =
   "        (bindir',_) = splitFileName bindir\n"++
   "        (path',  _) = splitFileName path\n"++
   "\n"++
-  "foreign import stdcall unsafe \"GetModuleFileNameA\"\n"++
+  "foreign import stdcall unsafe \"windows.h GetModuleFileNameA\"\n"++
   "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"++
   "\n"++
   "joinFileName :: String -> String -> FilePath\n"++
