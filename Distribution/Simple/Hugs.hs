@@ -164,8 +164,7 @@ build pkg_descr lbi verbose = do
             let pkg_incs = ["\"" ++ inc ++ "\"" 
 			   | inc <- includes bi ++ installIncludes bi]
             let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
-            let pathFlag = "-P" ++ buildDir lbi ++ [searchPathSeparator]
-            let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
+            let hugsArgs = "-98" : map ("-i" ++) incs
             cfiles <- getCFiles file
             let cArgs =
                     ["-I" ++ dir | dir <- includeDirs bi] ++
