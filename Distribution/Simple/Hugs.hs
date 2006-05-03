@@ -92,7 +92,7 @@ build pkg_descr lbi verbose = do
     let pref = buildDir lbi
     withLib pkg_descr () $ \ l -> do
 	copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
-		paths_modulename
+		(pref `joinFileName` paths_modulename)
 	compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l)
     withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
   where
