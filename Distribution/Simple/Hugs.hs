@@ -90,9 +90,14 @@ import System.Directory		( Permissions(..), getPermissions,
 build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 build pkg_descr lbi verbose = do
     let pref = buildDir lbi
-    withLib pkg_descr () $ (\l -> compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l))
+    withLib pkg_descr () $ \ l -> do
+	copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
+		paths_modulename
+	compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l)
     withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
   where
+	paths_modulename = autogenModuleName pkg_descr ++ ".hs"
+
 	compileExecutable :: FilePath -> Executable -> IO ()
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
             let exeMods = otherModules bi
@@ -100,7 +105,6 @@ build pkg_descr lbi verbose = do
 	    let exeDir = destDir `joinFileName` exeName exe
 	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-  	    let paths_modulename = autogenModuleName pkg_descr ++ ".hs"
 	    let destPathsFile = exeDir `joinFileName` paths_modulename
 	    copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
 		     destPathsFile
