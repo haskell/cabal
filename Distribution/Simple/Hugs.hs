@@ -109,7 +109,7 @@ build pkg_descr lbi verbose = do
 	    copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
 		     destPathsFile
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
-	    compileFiles bi [destMainFile, destPathsFile]
+	    compileFiles bi exeDir [destMainFile, destPathsFile]
 	
 	compileBuildInfo :: FilePath
                          -> [FilePath] -- ^library source dirs, if building exes
@@ -132,7 +132,7 @@ build pkg_descr lbi verbose = do
 	    -- Pass 2: compile foreign stubs in build directory
 	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
 			modu <- mods]
-            compileFiles bi (concat stubsFileLists)
+            compileFiles bi destDir (concat stubsFileLists)
 
 	suffixes = ["hs", "lhs"]
 
@@ -148,12 +148,12 @@ build pkg_descr lbi verbose = do
 	      else
 	    	copyFile srcFile destFile
 
-        compileFiles :: BuildInfo -> [FilePath] -> IO ()
-        compileFiles bi fileList = do
+        compileFiles :: BuildInfo -> FilePath -> [FilePath] -> IO ()
+        compileFiles bi modDir fileList = do
 	    ffiFileList <- filterM testFFI fileList
             unless (null ffiFileList) $ do
                 when (verbose > 2) (putStrLn "Compiling FFI stubs")
-	        mapM_ (compileFFI bi) ffiFileList
+	        mapM_ (compileFFI bi modDir) ffiFileList
 
         -- Only compile FFI stubs for a file if it contains some FFI stuff
         testFFI :: FilePath -> IO Bool
@@ -161,14 +161,15 @@ build pkg_descr lbi verbose = do
             inp <- readHaskellFile file
             return ("foreign" `elem` symbols (stripComments False inp))
 
-        compileFFI :: BuildInfo -> FilePath -> IO ()
-        compileFFI bi file = do
+        compileFFI :: BuildInfo -> FilePath -> FilePath -> IO ()
+        compileFFI bi modDir file = do
             (_, opts, file_incs) <- getOptionsFromSource file
             let ghcOpts = hcOptions GHC opts
             let pkg_incs = ["\"" ++ inc ++ "\"" 
 			   | inc <- includes bi ++ installIncludes bi]
             let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
-            let hugsArgs = "-98" : map ("-i" ++) incs
+            let pathFlag = "-P" ++ modDir ++ [searchPathSeparator]
+            let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
             cfiles <- getCFiles file
             let cArgs =
                     ["-I" ++ dir | dir <- includeDirs bi] ++
