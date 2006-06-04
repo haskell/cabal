@@ -387,62 +387,69 @@ defaultMainWorker pkg_descr_in action args hooks
 
 -- (filter (\x -> notElem x overriders) overridden) ++ overriders
 
+
+getModulePaths :: BuildInfo -> [String] -> IO [FilePath]
+getModulePaths bi =
+   fmap concat .
+      mapM (flip (moduleToFilePath (hsSourceDirs bi)) ["hs", "lhs"])
+
 haddock :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> HaddockFlags -> IO ()
 haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
-                      let haddockName = programName $ haddockProgram
+                      let haddockName = programName haddockProgram
                       mHaddock <- lookupProgram haddockName programConf
-                      case mHaddock of
-                        Nothing -> (die "haddock command not found")
-                        Just h  -> return h
+                      maybe (die "haddock command not found") return mHaddock
 
     let targetDir = joinPaths distPref (joinPaths "doc" "html")
     let tmpDir = joinPaths (buildDir lbi) "tmp"
     createDirectoryIfMissing True tmpDir
     createDirectoryIfMissing True targetDir
     preprocessSources pkg_descr lbi verbose pps
-    
+
     setupMessage "Running Haddock for" pkg_descr
+
+    let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
+    let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
-        inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                               | m <- exposedModules lib ++ otherModules bi] >>= return . concat
-        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
+        inFiles <- getModulePaths bi (exposedModules lib ++ otherModules bi)
+        mockAll bi inFiles
         let showPkg = showPackageId (package pkg_descr)
         let prologName = showPkg ++ "-haddock-prolog.txt"
-        writeFile prologName ((description pkg_descr) ++ "\n")
-        let outFiles = map (joinFileName tmpDir)
-                       (map ((flip changeFileExt) "hs") inFiles)
+        writeFile prologName (description pkg_descr ++ "\n")
+        let outFiles = replaceLitExts inFiles
+        let haddockFile = joinFileExt (pkgName (package pkg_descr)) "haddock"
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", targetDir,
                   "-t", showPkg,
-                  "-p", prologName] ++ (programArgs confHaddock)
-                ++ (if verbose > 4 then ["-v"] else [])
-                ++ outFiles
-                ++ map ((++) "--hide=") (otherModules bi)
+                  "-D", joinFileName targetDir haddockFile,
+                  "-p", prologName]
+                 ++ programArgs confHaddock
+                 ++ (if verbose > 4 then ["-v"] else [])
+                 ++ outFiles
+                 ++ map ("--hide=" ++) (otherModules bi)
                 )
         removeFile prologName
     withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
             exeTargetDir = targetDir `joinFileName` exeName exe
         createDirectoryIfMissing True exeTargetDir
-        inFiles' <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                               | m <- otherModules bi] >>= return . concat
+        inFiles' <- getModulePaths bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         let inFiles = srcMainPath : inFiles'
-        mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose) inFiles
-        let outFiles = map (joinFileName tmpDir)
-                       (map ((flip changeFileExt) "hs") inFiles)
+        mockAll bi inFiles
+        let outFiles = replaceLitExts inFiles
         rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", exeTargetDir,
-                  "-t", exeName exe] ++ (programArgs confHaddock)
-                ++ (if verbose > 4 then ["-v"] else [])
-                ++ outFiles
+                  "-t", exeName exe]
+                 ++ programArgs confHaddock
+                 ++ (if verbose > 4 then ["-v"] else [])
+                 ++ outFiles
                 )
 
     removeDirectoryRecursive tmpDir
@@ -460,8 +467,9 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
                        ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose
                        return ()
         needsCpp :: PackageDescription -> Bool
-        needsCpp p | not (hasLibs p) = False
-                   | otherwise = any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
+        needsCpp p =
+           hasLibs p &&
+           any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
 
 pfe :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> PFEFlags -> IO ()
 pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
@@ -473,8 +481,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
         preprocessSources pkg_descr lbi verbose pps
-        inFiles <- sequence [moduleToFilePath (hsSourceDirs bi) m ["hs", "lhs"]
-                                | m <- mods] >>= return . concat
+        inFiles <- getModulePaths bi mods
         rawSystemProgramConf verbose (programName pfesetupProgram) (withPrograms lbi)
                 ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
                 ++ inFiles)
@@ -513,9 +520,8 @@ clean pkg_descr maybeLbi hooks (CleanFlags verbose) = do
                 try $ removeFile (startN ++ "_stub.c")
         removeGHCModuleStubs :: BuildInfo -> [String] -> IO ()
         removeGHCModuleStubs (BuildInfo{hsSourceDirs=dirs}) mods = do
-                s <- sequence [moduleToFilePath dirs (x ++"_stub") ["h", "c"]
-                                 | x <- mods ]
-                mapM_ removeFile (concat s)
+            s <- mapM (\x -> moduleToFilePath dirs (x ++"_stub") ["h", "c"]) mods
+            mapM_ removeFile (concat s)
         -- JHC FIXME remove exe-sources
         cleanJHCExtras lbi = do
             try $ removeFile (buildDir lbi `joinFileName` "jhc-pkg.conf")
@@ -531,7 +537,7 @@ clean pkg_descr maybeLbi hooks (CleanFlags verbose) = do
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
 no_extra_flags extra_flags  = 
-  die ("Unrecognised flags: " ++ concat (intersperse "," (extra_flags)))
+  die ("Unrecognised flags: " ++ concat (intersperse "," extra_flags))
 
 buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
 buildDirOpt = Option "b" ["scratchdir"] (reqDirArg setBuildDir)
