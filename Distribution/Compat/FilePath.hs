@@ -8,7 +8,7 @@ module Distribution.Compat.FilePath
          , dirName
          , joinFileName
          , joinFileExt
-         , joinPaths         
+         , joinPaths
          , changeFileExt
          , isRootedPath
          , isAbsolutePath
@@ -82,7 +82,7 @@ splitFileName p = (reverse (path2++drive), reverse fname)
     (fname,path1) = break isPathSeparator path
     path2 = case path1 of
       []                           -> "."
-      [_]                          -> path1   -- don't remove the trailing slash if 
+      [_]                          -> path1   -- don't remove the trailing slash if
                                               -- there is only one character
       (c:path) | isPathSeparator c -> path
       _                            -> path1
@@ -120,7 +120,7 @@ splitFileExt p =
   where
     (fname,path) = break isPathSeparator (reverse p)
 
--- | Split the path into directory, file name and extension. 
+-- | Split the path into directory, file name and extension.
 -- The function is an optimized version of the following equation:
 --
 -- > splitFilePath path = (dir,name,ext)
@@ -140,7 +140,7 @@ dirName :: FilePath -> FilePath
 dirName  = fst . splitFileName
 
 
--- | The 'joinFileName' function is the opposite of 'splitFileName'. 
+-- | The 'joinFileName' function is the opposite of 'splitFileName'.
 -- It joins directory and file names to form a complete file path.
 --
 -- The general rule is:
@@ -181,7 +181,7 @@ joinFileExt path ext = path ++ '.':ext
 joinPaths :: FilePath -> FilePath -> FilePath
 joinPaths path1 path2
   | isRootedPath path2 = path2
-  | otherwise          = 
+  | otherwise          =
 #if mingw32_HOST_OS || mingw32_TARGET_OS
         case path2 of
           d:':':path2' | take 2 path1 == [d,':'] -> path1 `joinFileName` path2'
@@ -190,11 +190,11 @@ joinPaths path1 path2
 #else
         path1 `joinFileName` path2
 #endif
-  
+
 -- | Changes the extension of a file path.
 changeFileExt :: FilePath           -- ^ The path information to modify.
           -> String                 -- ^ The new extension (without a leading period).
-                                    -- Specify an empty string to remove an existing 
+                                    -- Specify an empty string to remove an existing
                                     -- extension from path.
           -> FilePath               -- ^ A string containing the modified path information.
 changeFileExt path ext = joinFileExt name ext
@@ -234,7 +234,7 @@ dropAbsolutePrefix (_:':':cs)                       = cs
 dropAbsolutePrefix cs = cs
 
 -- | Split the path into a list of strings constituting the filepath
--- 
+--
 -- >  breakFilePath "/usr/bin/ls" == ["/","usr","bin","ls"]
 breakFilePath :: FilePath -> [String]
 breakFilePath = worker []
@@ -244,9 +244,9 @@ breakFilePath = worker []
               where (less,current) = splitFileName path
 
 -- | Drops a specified prefix from a filepath.
--- 
--- >  stripPrefix "." "Src/Test.hs" == "Src/Test.hs"
--- >  stripPrefix "Src" "Src/Test.hs" == "Test.hs"
+--
+-- >  dropPrefix "." "Src/Test.hs" == "Src/Test.hs"
+-- >  dropPrefix "Src" "Src/Test.hs" == "Test.hs"
 dropPrefix :: FilePath -> FilePath -> FilePath
 dropPrefix prefix path
     = worker (breakFilePath prefix) (breakFilePath path)
@@ -254,10 +254,10 @@ dropPrefix prefix path
               | x == y = worker xs ys
           worker _ ys = foldr1 joinPaths ys
 -- | Gets this path and all its parents.
--- The function is useful in case if you want to create 
--- some file but you aren\'t sure whether all directories 
+-- The function is useful in case if you want to create
+-- some file but you aren\'t sure whether all directories
 -- in the path exist or if you want to search upward for some file.
--- 
+--
 -- Some examples:
 --
 -- \[Posix\]
@@ -277,7 +277,7 @@ dropPrefix prefix path
 -- >  pathParents "c:dir1"         == ["c:.","c:dir1"]
 -- >  pathParents "dir1\\dir2"     == [".", "dir1", "dir1\\dir2"]
 --
--- Note that if the file is relative then the current directory (\".\") 
+-- Note that if the file is relative then the current directory (\".\")
 -- will be explicitly listed.
 pathParents :: FilePath -> [FilePath]
 pathParents p =
@@ -299,7 +299,7 @@ pathParents p =
 
        inits :: String -> [String]
        inits [] =  [""]
-       inits cs = 
+       inits cs =
          case pre of
            "."  -> inits suf
            ".." -> map (joinFileName pre) (dropEmptyPath $ inits suf)
@@ -312,12 +312,12 @@ pathParents p =
 -- | Given a list of file paths, returns the longest common parent.
 commonParent :: [FilePath] -> Maybe FilePath
 commonParent []           = Nothing
-commonParent paths@(p:ps) = 
+commonParent paths@(p:ps) =
   case common Nothing "" p ps of
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-    Nothing | all (not . isAbsolutePath) paths -> 
+    Nothing | all (not . isAbsolutePath) paths ->
       let
-         getDrive (d:':':_) ds 
+         getDrive (d:':':_) ds
            | not (d `elem` ds) = d:ds
          getDrive _         ds = ds
       in
@@ -341,7 +341,7 @@ commonParent paths@(p:ps) =
       | isPathSeparator c1 = checkSep i acc ps
     checkSep i acc ps      = i
 
-    removeSep i acc cs pacc []          = 
+    removeSep i acc cs pacc []          =
       common (Just (reverse (pathSeparator:acc))) (pathSeparator:acc) cs pacc
     removeSep i acc cs pacc ([]    :ps) = Just (reverse acc)
     removeSep i acc cs pacc ((c1:p):ps)
@@ -366,10 +366,10 @@ parseSearchPath path = split path
     split :: String -> [String]
     split s =
       case rest' of
-        []     -> [chunk] 
+        []     -> [chunk]
         _:rest -> chunk : split rest
       where
-        chunk = 
+        chunk =
           case chunk' of
 #ifdef mingw32_HOST_OS
             ('\"':xs@(_:_)) | last xs == '\"' -> init xs
@@ -411,8 +411,8 @@ pathSeparator = '\\'
 pathSeparator = '/'
 #endif
 
--- | A platform-specific character used to separate search path strings in 
--- environment variables. The separator is a colon (\":\") on Unix and Macintosh, 
+-- | A platform-specific character used to separate search path strings in
+-- environment variables. The separator is a colon (\":\") on Unix and Macintosh,
 -- and a semicolon (\";\") on the Windows operating system.
 searchPathSeparator :: Char
 #if mingw32_HOST_OS || mingw32_TARGET_OS
