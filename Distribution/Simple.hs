@@ -411,12 +411,13 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
 
     let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose)
+    let showPkg     = showPackageId (package pkg_descr)
+    let showDepPkgs = map showPackageId (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
         inFiles <- getModulePaths bi (exposedModules lib ++ otherModules bi)
         mockAll bi inFiles
-        let showPkg = showPackageId (package pkg_descr)
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
         let outFiles = replaceLitExts inFiles
@@ -425,9 +426,11 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         rawSystemProgram verbose confHaddock
                 (["-h",
                   "-o", targetDir,
-                  "-t", showPkg,
+                  "-t", showPkg ++ ": " ++ synopsis pkg_descr,
+                  "-k", showPkg,
                   "-D", joinFileName targetDir haddockFile,
                   "-p", prologName]
+                 ++ map ("--use-package=" ++) showDepPkgs
                  ++ programArgs confHaddock
                  ++ (if verbose > 4 then ["-v"] else [])
                  ++ outFiles
@@ -447,6 +450,7 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
                 (["-h",
                   "-o", exeTargetDir,
                   "-t", exeName exe]
+                 ++ map ("--use-package=" ++) (showPkg:showDepPkgs)
                  ++ programArgs confHaddock
                  ++ (if verbose > 4 then ["-v"] else [])
                  ++ outFiles
