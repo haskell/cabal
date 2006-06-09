@@ -83,8 +83,8 @@ module Distribution.PackageDescription (
 
 import Control.Monad(liftM, foldM, when)
 import Data.Char
-import Data.Maybe(fromMaybe, fromJust, isNothing, catMaybes)
-import Data.List (nub)
+import Data.Maybe(fromMaybe, isNothing, catMaybes)
+import Data.List (nub,lookup)
 import Text.PrettyPrint.HughesPJ
 import System.Directory(doesFileExist)
 import System.Environment(getProgName)
@@ -182,8 +182,8 @@ emptyPackageDescription
 -- |Get all the module names from the libraries in this package
 libModules :: PackageDescription -> [String]
 libModules PackageDescription{library=lib}
-    = (maybe [] exposedModules lib)
-      ++ (maybe [] (otherModules . libBuildInfo) lib)
+    = maybe [] exposedModules lib
+       ++ maybe [] (otherModules . libBuildInfo) lib
 
 -- |Get all the module names from the exes in this package
 exeModules :: PackageDescription -> [String]
@@ -193,6 +193,11 @@ exeModules PackageDescription{executables=execs}
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = maybe False (buildable . libBuildInfo) (library p)
+
+-- |'Maybe' version of 'hasLibs'
+maybeHasLibs :: PackageDescription -> Maybe Library
+maybeHasLibs p =
+   library p >>= (\lib -> toMaybe (buildable (libBuildInfo lib)) lib)
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
@@ -265,9 +270,8 @@ emptyHookedBuildInfo = (Nothing, [])
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
 withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
-withLib pkg_descr a f = if hasLibs pkg_descr
-                        then f (fromJust (library pkg_descr))
-                        else return a
+withLib pkg_descr a f =
+   maybe (return a) f (maybeHasLibs pkg_descr)
 
 setupMessage :: String -> PackageDescription -> IO ()
 setupMessage msg pkg_descr = 
@@ -526,7 +530,7 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
         parseExecutableStanza st@((lineNo, "executable",eName):_) =
           case lookupField "main-is" st of
             Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
-            Nothing           -> syntaxError lineNo $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
+            Nothing    -> syntaxError lineNo $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
         parseExecutableStanza ((lineNo, f,_):_) = 
           syntaxError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
         parseExecutableStanza _ = error "This shouldn't happen!"
@@ -540,21 +544,15 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
 
         -- ...
         lookupField :: String -> Stanza -> Maybe (LineNo,String)
+        lookupField x sts = lookup x (map (\(n,f,v) -> (f,(n,v))) sts)
 
-        lookupField x ((n,f,v):st)
-          | x == f      = Just (n,v)
-          | otherwise   = lookupField x st
-        lookupField _ [] = Nothing
 
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   stanzas@(mLibStr:exes) <- splitStanzas inp
   mLib <- parseLib mLibStr
-  case mLib of
-    Nothing      -> do biExes <- mapM parseExe stanzas
-                       return (Nothing, biExes)
-    lib@(Just _) -> do biExes <- mapM parseExe exes
-                       return (lib, biExes)
+  biExes <- mapM parseExe (maybe stanzas (const exes) mLib)
+  return (mLib, biExes)
   where
     parseLib :: Stanza -> ParseResult (Maybe BuildInfo)
     parseLib (bi@((_, inFieldName, _):_))
@@ -668,6 +666,9 @@ errorOut warnings errors = do
     mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
     exitWith (ExitFailure 1)
 
+toMaybe :: Bool -> a -> Maybe a
+toMaybe b x = if b then Just x else Nothing
+
 checkMissingFields :: PackageDescription -> [Maybe String]
 checkMissingFields pkg_descr = 
     [missingField (pkgName . package)    reqNameName
@@ -677,26 +678,23 @@ checkMissingFields pkg_descr =
                        -> String -- Name of field
                        -> Maybe String -- error message
           missingField f n
-              = if null (f pkg_descr)
-                 then Just $ "Missing field: " ++ n
-                 else Nothing
+              = toMaybe (null (f pkg_descr)) ("Missing field: " ++ n)
 
 sanityCheckLib :: Maybe Library -> Maybe String
-sanityCheckLib Nothing  = Nothing
-sanityCheckLib (Just l)
-    = if null $ exposedModules l
-      then Just "Non-empty library, but empty exposed modules list. Cabal may not build this library correctly"
-      else Nothing
+sanityCheckLib ml =
+   ml >>= (\l ->
+      toMaybe (null $ exposedModules l)
+              ("Non-empty library, but empty exposed modules list. " ++
+               "Cabal may not build this library correctly"))
 
 checkSanity :: Bool -> String -> Maybe String
-checkSanity False _  = Nothing
-checkSanity True  s  = Just s
+checkSanity = toMaybe
 
 hasMods :: PackageDescription -> Bool
-hasMods pkg_descr
-    | isNothing (library pkg_descr) = null $ executables pkg_descr
-    | otherwise = null (executables pkg_descr)
-                   && null (exposedModules (fromJust (library pkg_descr)))
+hasMods pkg_descr =
+   null (executables pkg_descr) &&
+      maybe True (null . exposedModules) (library pkg_descr)
+
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -874,10 +872,9 @@ comparePackageDescriptions p1 p2
                   -> Maybe String -- 
             myCmp f er = let e1 = f p1
                              e2 = f p2
-                          in if e1 == e2
-                              then Nothing
-                              else Just (er ++ " Expected: " ++ show e1
-                                            ++ " Got: " ++ show e2)
+                          in toMaybe (e1 /= e2)
+                                     (er ++ " Expected: " ++ show e1
+                                              ++ " Got: " ++ show e2)
 
 -- |Assert that the 2nd value parses correctly and matches the first value
 assertParseOk :: (Eq val) => String -> val -> ParseResult val -> Assertion
