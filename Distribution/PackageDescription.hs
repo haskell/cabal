@@ -75,6 +75,7 @@ module Distribution.PackageDescription (
         PError, showError,
         hcOptions,
         autogenModuleName,
+        haddockName,
 #ifdef DEBUG
         hunitTests,
         test
@@ -103,6 +104,7 @@ import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn)
 import Language.Haskell.Extension(Extension(..))
 
 import Distribution.Compat.ReadP as ReadP hiding (get)
+import Distribution.Compat.FilePath(joinFileExt)
 
 #ifdef DEBUG
 import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
@@ -339,6 +341,10 @@ autogenModuleName pkg_descr =
     "Paths_" ++ map fixchar (pkgName (package pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
+
+haddockName :: PackageDescription -> FilePath
+haddockName pkg_descr =
+   joinFileExt (pkgName (package pkg_descr)) "haddock"
 
 -- ------------------------------------------------------------
 -- * Parsing & Pretty printing
