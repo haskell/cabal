@@ -1,6 +1,7 @@
 module Distribution.Compat.Directory (
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
-        removeDirectoryRecursive, module System.Directory
+        removeDirectoryRecursive, module System.Directory,
+        getDirectoryContentsWithoutSpecial
   ) where
 
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
@@ -110,8 +111,8 @@ createDirectoryIfMissing parents file = do
 
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive startLoc = do
-  cont <- getDirectoryContents startLoc
-  sequence_ [rm (startLoc `joinFileName` x) | x <- cont, x /= "." && x /= ".."]
+  cont <- getDirectoryContentsWithoutSpecial startLoc
+  mapM_ (rm . joinFileName startLoc) cont
   removeDirectory startLoc
   where
     rm :: FilePath -> IO ()
@@ -124,3 +125,7 @@ removeDirectoryRecursive startLoc = do
                 Right _ -> return ()
 
 #endif
+
+getDirectoryContentsWithoutSpecial :: FilePath -> IO [FilePath]
+getDirectoryContentsWithoutSpecial =
+   fmap (filter (not . flip elem [".", ".."])) . getDirectoryContents
