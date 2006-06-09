@@ -53,6 +53,7 @@ module Distribution.Simple.Utils (
 	rawSystemPathExit,
         smartCopySources,
         copyFileVerbose,
+        copyDirectoryRecursiveVerbose,
         moduleToFilePath,
         mkLibName,
         mkProfLibName,
@@ -65,6 +66,8 @@ module Distribution.Simple.Utils (
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
+        distPref,
+        srcPref,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -81,7 +84,7 @@ module Distribution.Simple.Utils (
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally)
 
-import Control.Monad(when, filterM)
+import Control.Monad(when, filterM, unless)
 import Data.List (nub)
 import System.Environment (getProgName)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
@@ -92,13 +95,15 @@ import System.Posix.Internals (c_getpid)
 #endif
 
 import Distribution.Compat.FilePath
-	(splitFileName, splitFileExt, joinFileName, joinFileExt,
+	(splitFileName, splitFileExt, joinFileName, joinFileExt, joinPaths,
 	pathSeparator,splitFilePath)
 import System.Directory (getDirectoryContents, getCurrentDirectory
-			, doesFileExist, removeFile, getPermissions
+			, doesDirectoryExist, doesFileExist, removeFile, getPermissions
 			, Permissions(executable))
 
-import Distribution.Compat.Directory (copyFile,findExecutable,createDirectoryIfMissing)
+import Distribution.Compat.Directory
+           (copyFile, findExecutable, createDirectoryIfMissing,
+            getDirectoryContentsWithoutSpecial)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -266,8 +271,32 @@ copyFileVerbose verbose src dest = do
     putStrLn ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
--- |The path name that represents the current directory.  May be
--- system-specific.  In Unix, it's @\".\"@.
+-- adaptation of removeDirectoryRecursive
+copyDirectoryRecursiveVerbose :: Int -> FilePath -> FilePath -> IO ()
+copyDirectoryRecursiveVerbose verbose srcDir destDir = do
+  when (verbose > 0) $
+    putStrLn ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
+  let aux src dest =
+         let cp :: FilePath -> IO ()
+             cp f = let srcFile  = joinPaths src  f
+                        destFile = joinPaths dest f
+                    in  do success <- try (copyFileVerbose verbose srcFile destFile)
+                           case success of
+                              Left e  -> do isDir <- doesDirectoryExist srcFile
+                                            -- If f is not a directory, re-throw the error
+                                            unless isDir $ ioError e
+                                            aux srcFile destFile
+                              Right _ -> return ()
+         in  do createDirectoryIfMissing False dest
+                getDirectoryContentsWithoutSpecial src >>= mapM_ cp
+   in aux srcDir destDir
+
+
+
+
+-- | The path name that represents the current directory.
+-- In Unix, it's @\".\"@, but this is system-specific.
+-- (E.g. AmigaOS uses the empty string @\"\"@ for the current directory.)
 currentDir :: FilePath
 currentDir = "."
 
@@ -283,6 +312,21 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
+
+mkGHCiLibName :: FilePath -- ^file Prefix
+              -> String   -- ^library name.
+              -> String
+mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
+
+
+-- ------------------------------------------------------------
+-- * Some Paths
+-- ------------------------------------------------------------
+distPref :: FilePath
+distPref = "dist"
+
+srcPref :: FilePath
+srcPref = distPref `joinFileName` "src"
 
 -- ------------------------------------------------------------
 -- * temporary file names
