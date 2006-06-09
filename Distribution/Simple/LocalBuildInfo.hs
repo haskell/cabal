@@ -50,7 +50,7 @@ module Distribution.Simple.LocalBuildInfo (
 	default_libexecdir,
 	default_datadir,
 	default_datasubdir,
-	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkProgDir,
+	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
 	distPref, srcPref, autogenModulesDir, mkIncludeDir
@@ -273,6 +273,12 @@ mkDataDir pkg_descr lbi copydest =
 mkDataDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
 mkDataDirRel pkg_descr lbi copydest = 
   prefixRelPath pkg_descr lbi copydest (datadir lbi `joinFileName` datasubdir lbi)
+
+mkHaddockDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
+mkHaddockDir pkg_descr lbi copydest =
+  foldl1 joinPaths [mkDataDir pkg_descr lbi copydest, "doc", "html"]
+
+
 
 -- | Directory for program modules (Hugs only).
 mkProgDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath

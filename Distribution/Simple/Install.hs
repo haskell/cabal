@@ -60,7 +60,8 @@ import Distribution.PackageDescription (
 	setupMessage, hasLibs, withLib, withExe )
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir)
-import Distribution.Simple.Utils(copyFileVerbose, die)
+import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
+                                 mkProfLibName, mkGHCiLibName, die, rawSystemVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
@@ -73,6 +74,14 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
+import Data.List(any)
+import Data.Maybe(fromMaybe)
+import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
+                                     findExecutable)
+import Distribution.Compat.FilePath(splitFileName,joinFileName, dllExtension, exeExtension,
+				    splitFileExt, joinFileExt)
+import System.IO.Error(try)
+import System.Directory(Permissions(..), getPermissions, setPermissions)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -84,27 +93,37 @@ install :: PackageDescription
         -> CopyFlags
         -> IO ()
 install pkg_descr lbi (CopyFlags copydest verbose) = do
-  when (not (null (dataFiles pkg_descr))) $ do
+  let dataFilesExist = not (null (dataFiles pkg_descr))
+  docExists <- doesDirectoryExist haddockPref
+  when (verbose >= 4)
+       (putStrLn ("directory " ++ haddockPref ++
+                  " does exist: " ++ show docExists))
+  when (dataFilesExist || docExists) $ do
     let dataPref = mkDataDir pkg_descr lbi copydest
     createDirectoryIfMissing True dataPref
     flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let (dir, _) = splitFileName file
       createDirectoryIfMissing True (dataPref `joinFileName` dir)
       copyFileVerbose verbose file (dataPref `joinFileName` file)
+    when docExists $ do
+      let targetDir = mkHaddockDir pkg_descr lbi copydest
+      createDirectoryIfMissing True targetDir
+      copyDirectoryRecursiveVerbose verbose haddockPref targetDir
+      -- setPermissionsRecursive [Read] targetDir
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi copydest
   let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr) (GHC.installLib verbose (withPrograms lbi) (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
-                GHC.installExe verbose binPref buildPref pkg_descr
-     JHC  -> do withLib pkg_descr () $ JHC.installLib verbose libPref buildPref pkg_descr
-                withExe pkg_descr $ JHC.installExe verbose binPref buildPref pkg_descr
+     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withPrograms lbi) (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
+                installExeGHC verbose binPref buildPref pkg_descr
+     JHC  -> do withLib pkg_descr () $ installLibJHC verbose libPref buildPref pkg_descr
+                withExe pkg_descr $ installExeJHC verbose binPref buildPref pkg_descr
      Hugs -> do
        let progPref = mkProgDir pkg_descr lbi copydest
        let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
        Hugs.install verbose libPref progPref binPref targetProgPref buildPref pkg_descr
-     _    -> die ("only installing with GHC or Hugs is implemented")
+     _    -> die ("only installing with GHC, JHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
 

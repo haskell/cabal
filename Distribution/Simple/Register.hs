@@ -62,12 +62,11 @@ module Distribution.Simple.Register (
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir,
-					   mkIncludeDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-					BuildInfo(..), Library(..))
+					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Version (Version(..))
 import Distribution.InstalledPackageInfo
@@ -83,8 +82,7 @@ import Distribution.Compat.Directory
        (createDirectoryIfMissing,removeDirectoryRecursive,
         setPermissions, getPermissions, Permissions(executable)
        )
-import Distribution.Compat.FilePath (joinFileName, splitFileName,
-				     isAbsolutePath)
+import Distribution.Compat.FilePath (joinFileName)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
@@ -248,13 +246,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
   let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
-	build_dir = pwd `joinFileName` buildDir lbi
-	libdir = mkLibDir pkg_descr lbi NoCopyDest
-	incdir = mkIncludeDir libdir
-	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
-  --
-  return
-       emptyInstalledPackageInfo{
+    in
+    emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
         IPI.license           = license pkg_descr,
         IPI.copyright         = copyright pkg_descr,
@@ -285,8 +278,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.ldOptions         = ldOptions bi,
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
-	IPI.haddockInterfaces = [],
-	IPI.haddockHTMLs      = []
+	IPI.haddockInterfaces = [haddockFile],
+	IPI.haddockHTMLs      = [haddockDir]
         }
 
 -- -----------------------------------------------------------------------------
