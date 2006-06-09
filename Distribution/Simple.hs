@@ -82,14 +82,13 @@ import Distribution.Simple.Register	( register, unregister,
                                           regScriptLocation, unregScriptLocation
                                         )
 
-import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
-                                     configure, writePersistBuildConfig,
+import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, maybeGetPersistBuildConfig,
+                                     findProgram, configure, writePersistBuildConfig,
                                      localBuildInfoFile)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref, srcPref)
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath, findFile)
+                                  moduleToFilePath, findFile, distPref, srcPref)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPath)
 #endif
@@ -102,13 +101,13 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isJust, fromJust )
+import Data.Maybe       ( isNothing, isJust, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive, copyFile)
-import Distribution.Compat.FilePath(joinFileName, joinPaths, splitFileName, joinFileExt,
-                                    splitFileExt, changeFileExt)
+import Distribution.Compat.FilePath(joinFileName, joinPaths, joinFileExt,
+                                    splitFileName, splitFileExt, changeFileExt)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -401,10 +400,9 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
                       mHaddock <- lookupProgram haddockName programConf
                       maybe (die "haddock command not found") return mHaddock
 
-    let targetDir = joinPaths distPref (joinPaths "doc" "html")
     let tmpDir = joinPaths (buildDir lbi) "tmp"
     createDirectoryIfMissing True tmpDir
-    createDirectoryIfMissing True targetDir
+    createDirectoryIfMissing True haddockPref
     preprocessSources pkg_descr lbi verbose pps
 
     setupMessage "Running Haddock for" pkg_descr
@@ -421,14 +419,14 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
         let outFiles = replaceLitExts inFiles
-        let haddockFile = joinFileExt (pkgName (package pkg_descr)) "haddock"
+        let haddockFile = joinFileName haddockPref (haddockName pkg_descr)
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
                 (["-h",
-                  "-o", targetDir,
+                  "-o", haddockPref,
                   "-t", showPkg ++ ": " ++ synopsis pkg_descr,
                   "-k", showPkg,
-                  "-D", joinFileName targetDir haddockFile,
+                  "-D", haddockFile,
                   "-p", prologName]
                  ++ map ("--use-package=" ++) showDepPkgs
                  ++ programArgs confHaddock
@@ -439,7 +437,7 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         removeFile prologName
     withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
-            exeTargetDir = targetDir `joinFileName` exeName exe
+            exeTargetDir = haddockPref `joinFileName` exeName exe
         createDirectoryIfMissing True exeTargetDir
         inFiles' <- getModulePaths bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
