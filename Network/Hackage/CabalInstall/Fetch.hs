@@ -21,7 +21,7 @@ module Network.Hackage.CabalInstall.Fetch
     , isFetched
     ) where
 
-import Network.URI (URI,parseURI)
+import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Network.HTTP (ConnError(..), Request (..), simpleHTTP
                            , Response(..), RequestMethod (..))
 
@@ -35,6 +35,7 @@ import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDepende
 
 import Distribution.Package (PackageIdentifier, showPackageId)
 import Distribution.Compat.FilePath (joinFileName)
+import System.Directory (copyFile)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 
@@ -42,6 +43,9 @@ import Distribution.ParseUtils (parseDependency)
 downloadURI :: FilePath -- ^ Where to put it
             -> URI      -- ^ What to download
             -> IO (Maybe ConnError)
+downloadURI path uri | uriScheme uri == "file:" = do
+    copyFile (uriPath uri) path
+    return Nothing
 downloadURI path uri
     = do eitherResult <- simpleHTTP request
          case eitherResult of

@@ -11,6 +11,16 @@ import Data.Maybe
 import Network.Hackage.Version
 import Network.Hackage.Interface
 
+{-
+data ServerResource
+    = ResourceLocation URL
+    | UpdateLocation ServerResource URL
+    | PackageDescription PackageDescription
+    | AuthorDescription { email ... }
+    | ResourceBundle [ServerResource]
+    deriving (Show, Read, Typeable, Ord, Eq)
+-}
+
 getPkgDescription :: String -> PackageIdentifier -> IO (Maybe String)
 getPkgDescription url = remote url "getPkgDescription"
 
@@ -21,7 +31,7 @@ getDependencies :: String -> [Dependency] -> IO [(Dependency, Maybe ResolvedDepe
 getDependencies url = remote url "getDependencies"
 
 listPackages :: String -> IO [(PackageIdentifier,[Dependency],String)]
-listPackages url = remote url "listPackages"
+listPackages url = error "moose" -- remote url "listPackages"
 
 getPkgLocation :: String -> PackageIdentifier -> IO (Maybe String)
 getPkgLocation url = remote url "getPkgLocation"
