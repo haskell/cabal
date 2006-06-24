@@ -33,10 +33,10 @@ main = do args <- getArgs
           let runCmd f = do (globalArgs, pkgs) <- parseInstallArgs args
                             f config globalArgs pkgs
           case action of
-            ListCmd     -> runCmd list
             InstallCmd  -> runCmd install
             BuildDepCmd -> runCmd buildDep
             InfoCmd     -> runCmd info
+            ListCmd     -> list config args
             UpdateCmd   -> update config
             CleanCmd    -> clean config
             FetchCmd    -> fetch config args
