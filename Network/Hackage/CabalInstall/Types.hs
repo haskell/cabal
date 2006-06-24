@@ -26,6 +26,7 @@ data Action
     | UpdateCmd
     | InfoCmd
     | HelpCmd
+    | ListCmd
 
 data TempFlags = TempFlags {
         tempHcFlavor    :: Maybe CompilerFlavor,
