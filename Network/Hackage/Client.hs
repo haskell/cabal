@@ -30,7 +30,7 @@ getDependencies _ _ = fail "getDependencies unimplemented" -- remote url "getDep
 
 listPackages :: String -> IO [(PackageIdentifier,[Dependency],String)]
 listPackages url = do
-    x    <- getFrom url "latest.txt" -- remote url "listPackages"
+    x    <- getFrom url "00-latest.txt" -- remote url "listPackages"
     pkgs <- readIO x
     return $ map parsePkg pkgs
     where
