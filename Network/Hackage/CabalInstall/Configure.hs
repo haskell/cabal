@@ -120,7 +120,7 @@ mkConfigFlags cfg
          confPath <- selectValidConfigDir ( maybe id (:) (tempConfPath cfg)
                                             ["/etc/cabal-install"
                                             ,localConfig] )
-         printf "Using config dir: %s\n" confPath
+         when (tempVerbose cfg > 0) $ printf "Using config dir: %s\n" confPath
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
