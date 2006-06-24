@@ -1,5 +1,6 @@
 module Network.Hackage.Client where
 
+import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version
@@ -8,6 +9,7 @@ import Data.Maybe
 import Text.ParserCombinators.ReadP
 import Distribution.ParseUtils
 import Network.Hackage.CabalInstall.Types
+import Network.Hackage.CabalInstall.Fetch (readURI)
 
 type PathName = String
 
@@ -62,13 +64,12 @@ getPkgLocation url pkgId = return . Just $ url ++ "/" ++ pathOf pkgId "tar.gz"
 getServerVersion :: String -> IO Version
 getServerVersion url = fail "getServerVersion not implemented" -- remote url "getServerVersion"
 
-
 getFrom :: String -> String -> IO String
-getFrom ('f':'i':'l':'e':':':'/':'/':base) path = do
-    readFile $ base ++ "/" ++ path
-getFrom base path = fail $ "Cannot handle " ++ base ++ "/" ++ path
-    
-
+getFrom base path = case parseURI uri of
+    Just parsed -> readURI parsed
+    Nothing -> fail $ "Failed to parse url: " ++ show uri
+    where
+    uri = base ++ "/" ++ path
 
 {-
 isCompatible :: String -> IO Bool

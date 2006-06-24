@@ -144,7 +144,7 @@ getDependency ps (UnresolvedDependency { dependency=dep@(Dependency pkgname vran
               { fulfilling = dep
               , resolvedData = Nothing
               , pkgOptions = opts }
-        qs -> let PkgInfo pkg deps location _ = maximumBy versions qs
+        qs -> let PkgInfo { infoId = pkg, infoDeps = deps, infoURL = location } = maximumBy versions qs
                   versions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
               in ResolvedPackage
                  { fulfilling = dep

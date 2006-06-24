@@ -19,6 +19,7 @@ module Network.Hackage.CabalInstall.Fetch
     , packageFile
     , packagesDirectory
     , isFetched
+    , readURI
     ) where
 
 import Network.URI (URI,parseURI,uriScheme,uriPath)
@@ -40,15 +41,27 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 
 
+readURI :: URI -> IO String
+readURI uri
+    | uriScheme uri == "file:" = (readFile $ uriPath uri)
+    | otherwise = do
+        eitherResult <- simpleHTTP (Request uri GET [] "")
+        case eitherResult of
+           Left err -> fail $ printf "Failed to download '%s': %s" (show uri) (show err)
+           Right rsp
+               | rspCode rsp == (2,0,0) -> return (rspBody rsp)
+               | otherwise -> fail $ "Failed to download '" ++ show uri ++ "': Invalid HTTP code: " ++ show (rspCode rsp)
+
 downloadURI :: FilePath -- ^ Where to put it
             -> URI      -- ^ What to download
             -> IO (Maybe ConnError)
-downloadURI path uri | uriScheme uri == "file:" = do
-    copyFile (uriPath uri) path
-    return Nothing
 downloadURI path uri
-    = do eitherResult <- simpleHTTP request
-         case eitherResult of
+    | uriScheme uri == "file:" = do
+        copyFile (uriPath uri) path
+        return Nothing
+    | otherwise = do
+        eitherResult <- simpleHTTP request
+        case eitherResult of
            Left err -> return (Just err)
            Right rsp
                | rspCode rsp == (2,0,0) -> writeFile path (rspBody rsp) >> return Nothing
@@ -70,7 +83,7 @@ downloadPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
 downloadPackage cfg pkg url
     = do mbError <- downloadFile path url
          case mbError of
-           Just err -> error $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
+           Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
     where path = configConfPath cfg `joinFileName` packagesDirectoryName `joinFileName` showPackageId pkg
 
