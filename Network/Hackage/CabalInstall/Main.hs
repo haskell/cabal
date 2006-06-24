@@ -17,6 +17,7 @@ import Network.Hackage.CabalInstall.Types (Action (..))
 import Network.Hackage.CabalInstall.Setup (parseGlobalArgs, parseInstallArgs)
 import Network.Hackage.CabalInstall.Configure (mkConfigFlags)
 
+import Network.Hackage.CabalInstall.List (list)
 import Network.Hackage.CabalInstall.Install (install)
 import Network.Hackage.CabalInstall.Info (info)
 import Network.Hackage.CabalInstall.Update (update)
@@ -29,21 +30,14 @@ main :: IO ()
 main = do args <- getArgs
           (action, flags, args) <- parseGlobalArgs args
           config <- mkConfigFlags flags
+          let runCmd f = do (globalArgs, pkgs) <- parseInstallArgs args
+                            f config globalArgs pkgs
           case action of
-            InstallCmd
-                -> do (globalArgs, pkgs) <- parseInstallArgs args
-                      install config globalArgs pkgs
-            BuildDepCmd
-                -> do (globalArgs, pkgs) <- parseInstallArgs args
-                      buildDep config globalArgs pkgs
-            InfoCmd
-                -> do (globalArgs, pkgs) <- parseInstallArgs args
-                      info config globalArgs pkgs
-            UpdateCmd
-                -> update config
-            CleanCmd
-                -> clean config
-            FetchCmd
-                -> fetch config args
-            _ -> putStrLn "Unhandled command."
-
+            ListCmd     -> runCmd list
+            InstallCmd  -> runCmd install
+            BuildDepCmd -> runCmd buildDep
+            InfoCmd     -> runCmd info
+            UpdateCmd   -> update config
+            CleanCmd    -> clean config
+            FetchCmd    -> fetch config args
+            _           -> putStrLn "Unhandled command."
