@@ -7,6 +7,7 @@ import Data.Version
 import Data.Maybe
 import Text.ParserCombinators.ReadP
 import Distribution.ParseUtils
+import Network.Hackage.CabalInstall.Types
 
 type PathName = String
 
@@ -28,14 +29,19 @@ getPkgDescriptions url pkgIds = mapM (getPkgDescription url) pkgIds
 getDependencies :: String -> [Dependency] -> IO [(Dependency, Maybe ResolvedDependency)]
 getDependencies _ _ = fail "getDependencies unimplemented" -- remote url "getDependencies"
 
-listPackages :: String -> IO [(PackageIdentifier,[Dependency],String)]
+listPackages :: String -> IO [PkgInfo]
 listPackages url = do
     x    <- getFrom url "00-latest.txt" -- remote url "listPackages"
     pkgs <- readIO x
     return $ map parsePkg pkgs
     where
-    parsePkg :: Pkg -> (PackageIdentifier,[Dependency],String)
-    parsePkg (Pkg ident deps _) = (pkgId, pkgDeps, pkgURL)
+    parsePkg :: Pkg -> PkgInfo
+    parsePkg (Pkg ident deps pkgSynopsis) = PkgInfo
+        { infoId        = pkgId
+        , infoDeps      = pkgDeps
+        , infoSynopsis  = pkgSynopsis
+        , infoURL       = pkgURL
+        }
         where
         pkgId   = parseWith parsePackageId ident
         pkgDeps = map (parseWith parseDependency) deps

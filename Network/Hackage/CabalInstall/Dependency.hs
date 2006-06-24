@@ -33,7 +33,7 @@ import Control.Monad (guard)
 
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
 import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
-                                      , ConfigFlags (..))
+                                      , ConfigFlags (..), PkgInfo (..))
 import Text.Printf (printf)
 
 
@@ -135,7 +135,7 @@ fulfillDependency :: Dependency -> PackageIdentifier -> Bool
 fulfillDependency (Dependency depName vrange) pkg
     = pkgName pkg == depName && pkgVersion pkg `withinRange` vrange
 
-getDependency :: [(PackageIdentifier,[Dependency],String)]
+getDependency :: [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
 getDependency ps (UnresolvedDependency { dependency=dep@(Dependency pkgname vrange)
                                        , depOptions=opts})
@@ -144,15 +144,15 @@ getDependency ps (UnresolvedDependency { dependency=dep@(Dependency pkgname vran
               { fulfilling = dep
               , resolvedData = Nothing
               , pkgOptions = opts }
-        qs -> let (pkg,deps,location) = maximumBy versions qs
-                  versions (a,_,_) (b,_,_) = pkgVersion a `compare` pkgVersion b
+        qs -> let PkgInfo pkg deps location _ = maximumBy versions qs
+                  versions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
               in ResolvedPackage
                  { fulfilling = dep
                  , resolvedData = Just ( pkg
                                        , location
                                        , (map (getDependency ps) (map depToUnresolvedDep deps)))
                  , pkgOptions = opts }
-    where ok (p,_,_) = pkgName p == pkgname && pkgVersion p `withinRange` vrange
+    where ok PkgInfo{ infoId = p } = pkgName p == pkgname && pkgVersion p `withinRange` vrange
 
 -- |Get the PackageIdentifier, build options and location from a list of resolved packages.
 --  Throws an exception if a package couldn't be resolved.

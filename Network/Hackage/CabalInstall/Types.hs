@@ -18,6 +18,14 @@ import Distribution.Version (Dependency)
 
 import System.IO (Handle)
 
+data PkgInfo = PkgInfo
+    { infoId        :: PackageIdentifier
+    , infoDeps      :: [Dependency]
+    , infoSynopsis  :: String
+    , infoURL       :: String
+    }
+    deriving (Show, Read, Eq)
+
 data Action
     = FetchCmd
     | InstallCmd

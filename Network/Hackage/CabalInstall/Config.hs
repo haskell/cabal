@@ -25,7 +25,7 @@ import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
 import Distribution.Compat.FilePath (joinFileName)
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..))
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..))
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"
@@ -44,13 +44,13 @@ servList :: ConfigFlags -> FilePath
 servList cfg = configConfPath cfg `joinFileName` servListFile
 
 -- |Read the list of known packages from the pkg.list file.
-getKnownPackages :: ConfigFlags -> IO [(PackageIdentifier,[Dependency],String)]
+getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
     = fmap read (readFile (pkgList cfg))
       `mplus` return []
 
 -- |Write the list of known packages to the pkg.list file.
-writeKnownPackages :: ConfigFlags -> [(PackageIdentifier,[Dependency],String)] -> IO ()
+writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
 writeKnownPackages cfg pkgs
     = writeFile (pkgList cfg) (show pkgs)
 

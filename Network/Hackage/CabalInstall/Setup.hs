@@ -88,7 +88,7 @@ data Cmd = Cmd {
 
 
 commandList :: [Cmd]
-commandList = [fetchCmd, installCmd, buildDepCmd, updateCmd, cleanCmd, infoCmd]
+commandList = [fetchCmd, installCmd, buildDepCmd, updateCmd, cleanCmd, listCmd, infoCmd]
 
 lookupCommand :: String -> [Cmd] -> Maybe Cmd
 lookupCommand name = find ((==name) . cmdName)
@@ -170,6 +170,9 @@ fetchCmd = mkCmd "fetch" "Downloads packages for later installation or study." "
            
 installCmd :: Cmd
 installCmd = mkCmd "install" "Installs a list of packages." "" InstallCmd
+
+listCmd :: Cmd
+listCmd = mkCmd "list" "List available packages on the server." "" ListCmd
 
 buildDepCmd :: Cmd
 buildDepCmd = mkCmd "build-dep" "Installs the dependencies for a list of packages." "" BuildDepCmd
