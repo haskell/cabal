@@ -232,7 +232,12 @@ ppCpp' inputArgs bi lbi =
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n (cppOptions bi lbi)
+  where pp n = standardPP n (hcDefines (compiler lbi)
+                         ++ ["-I" ++ dir | dir <- includeDirs bi]
+                         ++ [opt | opt@('-':c:_) <- ccOptions bi, c == 'D' || c == 'I']
+                         ++ ["--cflag=" ++ opt | opt@('-':'U':_) <- ccOptions bi]
+                         ++ ["--lflag=-L" ++ dir | dir <- extraLibDirs bi]
+                         ++ ["--lflag=-l" ++ lib | lib <- extraLibs bi])
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi
