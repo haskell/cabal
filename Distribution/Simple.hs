@@ -82,13 +82,17 @@ import Distribution.Simple.Register	( register, unregister,
                                           regScriptLocation, unregScriptLocation
                                         )
 
-import Distribution.Simple.Configure(LocalBuildInfo(..), getPersistBuildConfig, maybeGetPersistBuildConfig,
+import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
                                      findProgram, configure, writePersistBuildConfig,
                                      localBuildInfoFile)
+
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath, findFile, distPref, srcPref)
+                                  moduleToFilePath, findFile,
+                                  distPref, srcPref, haddockPref)
+
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPath)
 #endif
@@ -101,7 +105,7 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isNothing, isJust, fromJust )
+import Data.Maybe       ( isJust, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 

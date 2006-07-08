@@ -67,6 +67,7 @@ module Distribution.Simple.Utils (
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
         distPref,
+        haddockPref,
         srcPref,
 #ifdef DEBUG
         hunitTests
@@ -313,12 +314,6 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
 
-mkGHCiLibName :: FilePath -- ^file Prefix
-              -> String   -- ^library name.
-              -> String
-mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
-
-
 -- ------------------------------------------------------------
 -- * Some Paths
 -- ------------------------------------------------------------
@@ -327,6 +322,9 @@ distPref = "dist"
 
 srcPref :: FilePath
 srcPref = distPref `joinFileName` "src"
+
+haddockPref :: FilePath
+haddockPref = foldl1 joinPaths [distPref, "doc", "html"]
 
 -- ------------------------------------------------------------
 -- * temporary file names
