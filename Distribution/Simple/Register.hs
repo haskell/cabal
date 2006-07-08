@@ -62,7 +62,8 @@ module Distribution.Simple.Register (
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir, mkHaddockDir,
+					   mkIncludeDir)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
@@ -82,7 +83,9 @@ import Distribution.Compat.Directory
        (createDirectoryIfMissing,removeDirectoryRecursive,
         setPermissions, getPermissions, Permissions(executable)
        )
-import Distribution.Compat.FilePath (joinFileName)
+
+import Distribution.Compat.FilePath (joinFileName, joinPaths, splitFileName,
+				     isAbsolutePath)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
@@ -246,8 +249,14 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
   let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
+	build_dir = pwd `joinFileName` buildDir lbi
+	libdir = mkLibDir pkg_descr lbi NoCopyDest
+	incdir = mkIncludeDir libdir
+	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
+        haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
+        haddockFile = joinPaths haddockDir (haddockName pkg_descr)
     in
-    emptyInstalledPackageInfo{
+    return emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
         IPI.license           = license pkg_descr,
         IPI.copyright         = copyright pkg_descr,
