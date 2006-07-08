@@ -59,9 +59,8 @@ import Distribution.PackageDescription (
 	PackageDescription(..),
 	setupMessage, hasLibs, withLib, withExe )
 import Distribution.Simple.LocalBuildInfo (
-        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir)
-import Distribution.Simple.Utils(smartCopySources, copyFileVerbose, mkLibName,
-                                 mkProfLibName, mkGHCiLibName, die, rawSystemVerbose)
+        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir, mkHaddockDir)
+import Distribution.Simple.Utils(copyFileVerbose, die, haddockPref,  copyDirectoryRecursiveVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
@@ -74,14 +73,8 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
-import Data.List(any)
-import Data.Maybe(fromMaybe)
-import Distribution.Compat.Directory(createDirectoryIfMissing, removeDirectoryRecursive,
-                                     findExecutable)
-import Distribution.Compat.FilePath(splitFileName,joinFileName, dllExtension, exeExtension,
-				    splitFileExt, joinFileExt)
-import System.IO.Error(try)
-import System.Directory(Permissions(..), getPermissions, setPermissions)
+import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist)
+import Distribution.Compat.FilePath(splitFileName,joinFileName)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -115,10 +108,10 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
   let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr) (installLibGHC verbose (withPrograms lbi) (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
-                installExeGHC verbose binPref buildPref pkg_descr
-     JHC  -> do withLib pkg_descr () $ installLibJHC verbose libPref buildPref pkg_descr
-                withExe pkg_descr $ installExeJHC verbose binPref buildPref pkg_descr
+     GHC  -> do when (hasLibs pkg_descr) (GHC.installLib verbose (withPrograms lbi) (withProfLib lbi) (withGHCiLib lbi) libPref buildPref pkg_descr)
+                GHC.installExe verbose binPref buildPref pkg_descr
+     JHC  -> do withLib pkg_descr () $ JHC.installLib verbose libPref buildPref pkg_descr
+                withExe pkg_descr $ JHC.installExe verbose binPref buildPref pkg_descr
      Hugs -> do
        let progPref = mkProgDir pkg_descr lbi copydest
        let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
