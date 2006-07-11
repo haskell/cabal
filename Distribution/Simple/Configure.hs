@@ -107,10 +107,10 @@ tryGetPersistBuildConfig = do
   e <- doesFileExist localBuildInfoFile
   let dieMsg = "error reading " ++ localBuildInfoFile ++ "; run \"setup configure\" command?\n"
   if (not e) then return $ Left dieMsg else do 
-  str <- readFile localBuildInfoFile
-  case reads str of
-    [(bi,_)] -> return $ Right bi
-    _        -> return $ Left  dieMsg
+    str <- readFile localBuildInfoFile
+    case reads str of
+      [(bi,_)] -> return $ Right bi
+      _        -> return $ Left  dieMsg
 
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
