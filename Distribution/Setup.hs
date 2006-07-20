@@ -116,6 +116,7 @@ data ConfigFlags = ConfigFlags {
         configC2hs     :: Maybe FilePath, -- ^C2hs path
         configCpphs    :: Maybe FilePath, -- ^Cpphs path
         configGreencard:: Maybe FilePath, -- ^GreenCard path
+        configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configPrefix   :: Maybe FilePath,
@@ -150,6 +151,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configAlex     = Nothing,
         configHsc2hs   = Nothing,
         configC2hs     = Nothing,
+        configVanillaLib  = True,
         configProfLib  = False,
         configProfExe  = False,
         configCpphs    = Nothing,
@@ -228,6 +230,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithHappy FilePath | WithAlex FilePath
           | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
           | WithGreencard FilePath
+          | WithVanillaLib | WithoutVanillaLib
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
 	  | WithGHCiLib | WithoutGHCiLib
@@ -429,6 +432,10 @@ configureCmd progConf = Cmd {
                "give the path to cpphs",
            Option "" ["with-greencard"] (reqPathArg WithGreencard)
                "give the path to greencard",
+           Option "" ["enable-library-vanilla"] (NoArg WithVanillaLib)
+               "Enable vanilla libraries",
+           Option "" ["disable-library-vanilla"] (NoArg WithoutVanillaLib)
+               "Disable vanilla libraries",
            Option "p" ["enable-library-profiling"] (NoArg WithProfLib)
                "Enable library profiling",
            Option "" ["disable-library-profiling"] (NoArg WithoutProfLib)
@@ -499,6 +506,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (WithProgram name path) = t { configPrograms = (userSpecifyPath
                                                                  name
                                                                  path (configPrograms t))}
+        updateCfg t WithVanillaLib       = t { configVanillaLib  = True }
+        updateCfg t WithoutVanillaLib    = t { configVanillaLib  = False, configGHCiLib = False }
         updateCfg t WithProfLib          = t { configProfLib  = True }
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
