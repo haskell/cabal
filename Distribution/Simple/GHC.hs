@@ -12,7 +12,7 @@
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
+modiication, are permitted provided that the following conditions are
 met:
 
     * Redistributions of source code must retain the above copyright
@@ -72,6 +72,7 @@ import Distribution.Compat.Directory
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
+import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
 import Data.List		( isSuffixOf, nub )
@@ -97,6 +98,7 @@ build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 build pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
+      ifVanillaLib b = when (b || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
 
@@ -116,6 +118,12 @@ build pkg_descr lbi verbose = do
       let libBi = libBuildInfo lib
           libTargetDir = pref
 
+          -- Note: I am not sure if this is really the right thing to
+          -- do, but I am doing based on these threads:
+          -- http://www.haskell.org/pipermail/template-haskell/2005-July/000466.html
+          -- http://www.haskell.org/pipermail/template-haskell/2003-July/000135.html
+          forceVanillaLib = elem TemplateHaskell (extensions libBi) 
+
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
@@ -133,7 +141,7 @@ build pkg_descr lbi verbose = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do rawSystemExit verbose ghcPath ghcArgs
+        do ifVanillaLib forceVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
            ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
 
       -- build any C sources
@@ -193,7 +201,7 @@ build pkg_descr lbi verbose = do
 		++ hObjs
                 ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
-        rawSystemPathExit verbose "ar" arArgs
+        ifVanillaLib forceVanillaLib (rawSystemPathExit verbose "ar" arArgs)
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
         let (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
@@ -316,20 +324,21 @@ installExe verbose pref buildPref pkg_descr
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Int      -- ^verbose
               -> ProgramConfiguration
+              -> Bool     -- ^has vanilla library
               -> Bool     -- ^has profiling library
 	      -> Bool     -- ^has GHCi libs
               -> FilePath -- ^install location
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
-installLib verbose programConf hasProf hasGHCi pref buildPref
+installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
               pd@PackageDescription{library=Just l,
                                     package=p}
-    = do smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True False
+    = do ifVanilla $ smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True False
          ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True False
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
 	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
-         copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
+         ifVanilla $ copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
          ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
 	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 
@@ -341,19 +350,20 @@ installLib verbose programConf hasProf hasGHCi pref buildPref
          let progName = programName $ ranlibProgram
          mProg <- lookupProgram progName programConf
          case foundProg mProg of
-           Just rl  -> do rawSystemProgram verbose rl [libTargetLoc]
+           Just rl  -> do ifVanilla $ rawSystemProgram verbose rl [libTargetLoc]
                           ifProf $ rawSystemProgram verbose rl [profLibTargetLoc]
 
            Nothing -> do let progName = programName $ arProgram
                          mProg <- lookupProgram progName programConf
                          case mProg of
-                          Just ar  -> do rawSystemProgram verbose ar ["-s", libTargetLoc]
+                          Just ar  -> do ifVanilla $ rawSystemProgram verbose ar ["-s", libTargetLoc]
                                          ifProf $ rawSystemProgram verbose ar ["-s", profLibTargetLoc]
                           Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
          return ()
-    where ifProf action = when hasProf (action >> return ())
+    where ifVanilla action = when hasVanilla (action >> return ())
+          ifProf action = when hasProf (action >> return ())
 	  ifGHCi action = when hasGHCi (action >> return ())
-installLib _ _ _ _ _ _ PackageDescription{library=Nothing}
+installLib _ _ _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
 -- | Install the files listed in install-includes
