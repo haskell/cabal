@@ -134,7 +134,7 @@ build pkg_descr lbi verbose = do
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False False
       let ghcArgs = 
                  pkg_conf
-              ++ ["-package-name", pkgName (package pkg_descr) ]
+              ++ ["-package-name", showPackageId (package pkg_descr) ]
 	      ++ (if splitObjs lbi then ["-split-objs"] else [])
               ++ constructGHCCmdLine lbi libBi libTargetDir verbose
               ++ (libModules pkg_descr)
