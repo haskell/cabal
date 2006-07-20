@@ -213,6 +213,7 @@ configure pkg_descr cfg
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
                               withCpphs=cpphs,
                               withGreencard=greencard,
+                              withVanillaLib=configVanillaLib cfg,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
 			      withGHCiLib=configGHCiLib cfg,
