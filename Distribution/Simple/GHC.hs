@@ -98,7 +98,17 @@ build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 build pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
-      ifVanillaLib b = when (b || withVanillaLib lbi)
+      ifVanillaLib = when (forceVanillaLib || withVanillaLib lbi)
+        where forceVanillaLib = False
+              --TODO: we may need to force the vanilla libs to build as it may
+              -- be that TemplateHaskell needs the vanilla libs even when
+              -- building profiling libs. See:
+              -- http://www.haskell.org/pipermail/template-haskell/2003-July/000135.html
+              --
+              -- So we might need something like this:
+              --
+              -- forceVanillaLib = elem TemplateHaskell (extensions libBi)
+
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
 
@@ -118,12 +128,6 @@ build pkg_descr lbi verbose = do
       let libBi = libBuildInfo lib
           libTargetDir = pref
 
-          -- Note: I am not sure if this is really the right thing to
-          -- do, but I am doing based on these threads:
-          -- http://www.haskell.org/pipermail/template-haskell/2005-July/000466.html
-          -- http://www.haskell.org/pipermail/template-haskell/2003-July/000135.html
-          forceVanillaLib = elem TemplateHaskell (extensions libBi) 
-
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
@@ -141,7 +145,7 @@ build pkg_descr lbi verbose = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do ifVanillaLib forceVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
+        do ifVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
            ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
 
       -- build any C sources
@@ -201,7 +205,7 @@ build pkg_descr lbi verbose = do
 		++ hObjs
                 ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
-        ifVanillaLib forceVanillaLib (rawSystemPathExit verbose "ar" arArgs)
+        ifVanillaLib (rawSystemPathExit verbose "ar" arArgs)
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
         let (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
