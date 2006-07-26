@@ -106,10 +106,10 @@ data LocalBuildInfo = LocalBuildInfo {
         withC2hs      :: Maybe FilePath, -- ^Might be the location of the C2hs executable.
         withCpphs     :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
         withGreencard :: Maybe FilePath, -- ^Might be the location of the GreenCard executable.
-        withVanillaLib:: Bool,
-        withProfLib   :: Bool,
-        withProfExe   :: Bool,
-	withGHCiLib   :: Bool,
+        withVanillaLib:: Bool,  -- ^Whether to build normal libs.
+        withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
+        withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
+        withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
 	splitObjs     :: Bool	-- ^Use -split-objs with GHC, if available
   } deriving (Read, Show)
 
