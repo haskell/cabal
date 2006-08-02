@@ -98,17 +98,7 @@ build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 build pkg_descr lbi verbose = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
-      ifVanillaLib = when (forceVanillaLib || withVanillaLib lbi)
-        where forceVanillaLib = False
-              --TODO: we may need to force the vanilla libs to build as it may
-              -- be that TemplateHaskell needs the vanilla libs even when
-              -- building profiling libs. See:
-              -- http://www.haskell.org/pipermail/template-haskell/2003-July/000135.html
-              --
-              -- So we might need something like this:
-              --
-              -- forceVanillaLib = elem TemplateHaskell (extensions libBi)
-
+      ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
 
@@ -127,6 +117,8 @@ build pkg_descr lbi verbose = do
       when (verbose > 3) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
           libTargetDir = pref
+	  forceVanillaLib = TemplateHaskell `elem` extensions libBi
+	  -- TH always needs vanilla libs, even when building for profiling
 
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
@@ -145,7 +137,7 @@ build pkg_descr lbi verbose = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do ifVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
+        do ifVanillaLib forceVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
            ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
 
       -- build any C sources
@@ -205,7 +197,7 @@ build pkg_descr lbi verbose = do
 		++ hObjs
                 ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
-        ifVanillaLib (rawSystemPathExit verbose "ar" arArgs)
+        ifVanillaLib forceVanillaLib (rawSystemPathExit verbose "ar" arArgs)
         ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
         let (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
@@ -247,21 +239,31 @@ build pkg_descr lbi verbose = do
 
                  let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                                    | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
-                 let binArgs = 
+                 let binArgs linkExe profExe =
                             pkg_conf
-                         ++ ["-I"++pref,
-                             "-o", targetDir `joinFileName` exeName'
-                            ]
+                         ++ ["-I"++pref]
+			 ++ (if linkExe
+			        then ["-o", targetDir `joinFileName` exeName']
+                                else ["-c"])
                          ++ constructGHCCmdLine lbi exeBi exeDir verbose
                          ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [srcMainFile]
 			 ++ ldOptions exeBi
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
-                         ++ if withProfExe lbi
+                         ++ if profExe
                                then "-prof":ghcProfOptions exeBi
                                else []
-                 rawSystemExit verbose ghcPath binArgs
+
+		 -- For building exe's for profiling that use TH we actually
+		 -- have to build twice, once without profiling and the again
+		 -- with profiling. This is because the code that TH needs to
+		 -- run at compile time needs to be the vanilla ABI so it can
+		 -- be loaded up and run by the compiler.
+		 when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
+		    (rawSystemExit verbose ghcPath (binArgs False False))
+
+		 rawSystemExit verbose ghcPath (binArgs True (withProfExe lbi))
 
 
 -- when using -split-objs, we need to search for object files in the
