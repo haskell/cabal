@@ -8,6 +8,7 @@ ifneq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 include $(TOP)/mk/boilerplate.mk
 
 HC		= $(GHC_INPLACE)
+MKDEPENDHS      = $(GHC_INPLACE)
 HS_PROG 	= cabal-setup
 
 EXCLUDED_SRCS 	= Setup.hs
