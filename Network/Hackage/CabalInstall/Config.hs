@@ -65,10 +65,7 @@ isValidConfigDir :: FilePath -> IO Bool
 isValidConfigDir path
     = do checks <- sequence
                    [ checkFiles readable [ path
-                                         , path `joinFileName` servListFile ]
-                   , checkFiles writable [ path
-                                         , path `joinFileName` pkgListFile
-                                         , path `joinFileName` packagesDirectoryName ]]
+                                         , path `joinFileName` servListFile ]]
          return (and checks)
 
 -- |Picks the first valid config directory or throws an exception if none were found.
@@ -81,11 +78,11 @@ selectValidConfigDir paths
 
 checkFiles :: (Permissions -> Bool) -> [FilePath] -> IO Bool
 checkFiles check
-    = worker
-    where worker [] = return True
-          worker (x:xs)
+    = worker True
+    where worker r [] = return r
+          worker r (x:xs)
               = do permissions <- getPermissions x
                    if check permissions
-                      then worker xs
+                      then worker r xs
                       else return False
-              `mplus` worker xs
+              `mplus` worker False xs
