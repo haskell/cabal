@@ -50,7 +50,7 @@ flattenDepList ps deps
                                                               guard (fulfillDependency dep pkg)
           worker [] = []
           worker (pkgInfo:xs)
-              = case getInstalledPkg ps (fulfilling pkgInfo) of
+              = case getLatestPkg ps (fulfilling pkgInfo) of
                   Just _pkg -> worker xs
                   Nothing
                       -> case resolvedData pkgInfo of
@@ -66,7 +66,7 @@ getBuildDeps :: [PackageIdentifier] -> [ResolvedPackage]
 getBuildDeps ps deps
     = nub $ concatMap worker deps
     where worker pkgInfo
-              = case getInstalledPkg ps (fulfilling pkgInfo) of
+              = case getLatestPkg ps (fulfilling pkgInfo) of
                   Just _pkg -> []
                   Nothing -> case resolvedData pkgInfo of
                                Just (_pkg,_location,subDeps)
@@ -122,8 +122,8 @@ resolvedDepToResolvedPkg (dep,rDep)
 
 -- |Locates a @PackageIdentifier@ which satisfies a given @Dependency@.
 --  Fails with "cannot satisfy dependency: %s." where %s == the given dependency.
-getInstalledPkg :: (Monad m) => [PackageIdentifier] -> Dependency -> m PackageIdentifier
-getInstalledPkg ps dep
+getLatestPkg :: (Monad m) => [PackageIdentifier] -> Dependency -> m PackageIdentifier
+getLatestPkg ps dep
     = case filter (fulfillDependency dep) ps of
         [] -> fail $ printf "cannot satisfy dependency: %s." (show (showDependency dep))
         qs -> let pkg = maximumBy versions qs
