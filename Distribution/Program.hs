@@ -32,7 +32,7 @@ module Distribution.Program( Program(..)
                            , pfesetupProgram
                            ) where
 
-import Data.FiniteMap
+import qualified Distribution.Compat.Map as Map
 import Control.Monad(when)
 import Data.Maybe(catMaybes)
 import System.Exit (ExitCode)
@@ -58,15 +58,15 @@ data ProgramLocation = EmptyLocation
                      | FoundOnSystem FilePath
       deriving (Read, Show)
 
-data ProgramConfiguration = ProgramConfiguration (FiniteMap String Program)
+data ProgramConfiguration = ProgramConfiguration (Map.Map String Program)
 
 -- Read & Show instances are based on listToFM
 
 instance Show ProgramConfiguration where
-  show (ProgramConfiguration s) = show $ fmToList s
+  show (ProgramConfiguration s) = show $ Map.toAscList s
 
 instance Read ProgramConfiguration where
-  readsPrec p s = [(ProgramConfiguration $ listToFM $ s', r)
+  readsPrec p s = [(ProgramConfiguration $ Map.fromList $ s', r)
                        | (s', r) <- readsPrec p s ]
 
 -- |The default list of programs and their arguments.  These programs
@@ -191,7 +191,7 @@ lookupProgram name conf =
 
 lookupPrograms :: ProgramConfiguration -> IO [(String, Maybe Program)]
 lookupPrograms conf@(ProgramConfiguration fm) = do
-  let l = eltsFM fm
+  let l = Map.elems fm
   mapM (\p -> do fp <- lookupProgram (programName p) conf
                  return (programName p, fp)
        ) l
@@ -204,7 +204,7 @@ userSpecifyPath :: String   -- ^Program name
                 -> ProgramConfiguration
                 -> ProgramConfiguration
 userSpecifyPath name path conf'@(ProgramConfiguration conf)
-    = case lookupFM conf name of
+    = case Map.lookup name conf of
        Just p  -> updateProgram (Just p{programLocation=UserSpecified path}) conf'
        Nothing -> updateProgram (Just $ Program name name [] (UserSpecified path))
                                 conf'
@@ -217,7 +217,7 @@ userSpecifyArgs :: String -- ^Program name
                 -> ProgramConfiguration
                 -> ProgramConfiguration
 userSpecifyArgs name args conf'@(ProgramConfiguration conf)
-    = case lookupFM conf name of
+    = case Map.lookup name conf of
        Just p  -> updateProgram (Just p{programArgs=(words args)}) conf'
        Nothing -> updateProgram (Just $ Program name name (words args) EmptyLocation) conf'
 
@@ -225,7 +225,7 @@ userSpecifyArgs name args conf'@(ProgramConfiguration conf)
 -- you pass in Nothing.
 updateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
 updateProgram (Just p@Program{programName=n}) (ProgramConfiguration conf)
-    = ProgramConfiguration $ addToFM conf n p
+    = ProgramConfiguration $ Map.insert n p conf
 updateProgram Nothing conf = conf
 
 -- |Runs the given program.
@@ -266,14 +266,14 @@ rawSystemProgramConf verbose progName programConf extraArgs
 
 -- Export?
 lookupProgram' :: String -> ProgramConfiguration -> Maybe Program
-lookupProgram' s (ProgramConfiguration conf) = lookupFM conf s
+lookupProgram' s (ProgramConfiguration conf) = Map.lookup s conf
 
 progListToFM :: [Program] -> ProgramConfiguration
 progListToFM progs = foldl
                      (\ (ProgramConfiguration conf')
                       p@(Program {programName=n})
-                          -> ProgramConfiguration (addToFM conf' n p))
-                     (ProgramConfiguration emptyFM)
+                          -> ProgramConfiguration (Map.insert n p conf'))
+                     (ProgramConfiguration Map.empty)
                      progs
 
 simpleProgram :: String -> Program
