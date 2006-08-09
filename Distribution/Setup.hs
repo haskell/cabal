@@ -73,7 +73,7 @@ import Distribution.Simple.Utils (die)
 import Distribution.Program(ProgramConfiguration(..),
                             userSpecifyPath, userSpecifyArgs)
 import Data.List(find)
-import Data.FiniteMap(keysFM)
+import Distribution.Compat.Map (keys)
 import Distribution.GetOpt
 import Distribution.Compat.FilePath (platformPath)
 import System.Exit
@@ -470,12 +470,12 @@ configureCmd progConf = Cmd {
         }
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-programArgsOptions (ProgramConfiguration conf) = map f (keysFM conf)
+programArgsOptions (ProgramConfiguration conf) = map f (keys conf)
     where f name = Option "" [name ++ "-args"] (reqPathArg (ProgramArgs name))
                    ("give the args to " ++ name)
 
 withProgramOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-withProgramOptions (ProgramConfiguration conf) = map f (keysFM conf)
+withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
     where f name = Option "" ["with-" ++ name] (reqPathArg (WithProgram name))
                    ("give the path to " ++ name)
 
