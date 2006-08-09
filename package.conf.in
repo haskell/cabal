@@ -40,6 +40,7 @@ exposed-modules:
 
 hidden-modules:
 	Distribution.GetOpt,
+	Distribution.Compat.Map,
 	Distribution.Compat.Exception,
 	Distribution.Compat.RawSystem,
 	Distribution.Compat.FilePath,

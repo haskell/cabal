@@ -49,6 +49,7 @@ Exposed-Modules:
         Distribution.Version,
 	Language.Haskell.Extension,
         Distribution.GetOpt,
+	Distribution.Compat.Map,
         Distribution.Compat.Directory,
         Distribution.Compat.Exception,
         Distribution.Compat.FilePath,
