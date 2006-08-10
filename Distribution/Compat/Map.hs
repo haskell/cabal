@@ -11,7 +11,7 @@ module Distribution.Compat.Map (
 
 import Prelude hiding ( lookup )
 
-#if __GLASGOW_HASKELL__ >= 603
+#if __GLASGOW_HASKELL__ >= 603 || !__GLASGOW_HASKELL__
 import Data.Map
 #else
 import Data.FiniteMap
