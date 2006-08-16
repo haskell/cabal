@@ -9,7 +9,12 @@ import Data.Maybe
 import Text.ParserCombinators.ReadP
 import Distribution.ParseUtils
 import Network.Hackage.CabalInstall.Types
-import Network.Hackage.CabalInstall.Fetch (readURI)
+import Network.Hackage.CabalInstall.Fetch (readURI,packagesDirectory)
+
+import Data.List (isSuffixOf)
+import Data.Tree (Forest(..), Tree(..), flatten)
+import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
+import System.IO.Unsafe (unsafeInterleaveIO)
 
 type PathName = String
 
@@ -18,8 +23,9 @@ data ResolvedDependency
     = ResolvedDependency PackageIdentifier String [(Dependency,Maybe ResolvedDependency)]
       deriving (Eq,Show)
 
-data Pkg = Pkg String [String] String
-    deriving (Show, Read)
+-- XXX remove
+-- data Pkg = Pkg String [String] String
+--     deriving (Show, Read)
 
 getPkgDescription :: String -> PackageIdentifier -> IO (Maybe String)
 getPkgDescription url pkgId = do
@@ -31,7 +37,42 @@ getPkgDescriptions url pkgIds = mapM (getPkgDescription url) pkgIds
 getDependencies :: String -> [Dependency] -> IO [(Dependency, Maybe ResolvedDependency)]
 getDependencies _ _ = fail "getDependencies unimplemented" -- remote url "getDependencies"
 
-listPackages :: String -> IO [PkgInfo]
+-- Scans the packages directory recursively collecting informations from all the .cabal files found.
+listPackages :: ConfigFlags -> String -> IO [PkgInfo]
+listPackages cfg url = do
+    dirTree <- lazyDirTree (packagesDirectory cfg)
+    let cabalFiles = filter (".cabal" `isSuffixOf`) (concatMap flatten dirTree)
+    pkgs <- mapM readPackageDescription cabalFiles
+    return (map parsePkg pkgs)
+    where lazyDirTree :: FilePath -> IO (Forest FilePath)
+          lazyDirTree dir = unsafeInterleaveIO $ do
+                              entries <- getDirectoryContents dir
+                              sequence [ do let filePath = dir ++ "/" ++ entry
+                                            isDirectory <- doesDirectoryExist filePath
+                                            if isDirectory
+                                              then do entries <- lazyDirTree filePath
+                                                      return Node {
+                                                          rootLabel = "",
+                                                          subForest = entries
+                                                        }
+                                              else return Node {
+                                                       rootLabel = filePath,
+                                                       subForest = []
+                                                     }
+                                       | entry <- entries
+                                       , entry /= "."
+                                       , entry /= ".." ]
+          parsePkg :: PackageDescription -> PkgInfo
+          parsePkg pkgDescription = PkgInfo
+              { infoId        = package pkgDescription
+              , infoDeps      = buildDepends pkgDescription
+              , infoSynopsis  = synopsis pkgDescription
+              , infoURL       = pkgURL
+              }
+              where
+                pkgURL  = url ++ "/" ++ pathOf (package pkgDescription) "tar.gz"
+
+{-
 listPackages url = do
     x    <- getFrom url "00-latest.txt" -- remote url "listPackages"
     pkgs <- readIO x
@@ -48,6 +89,7 @@ listPackages url = do
         pkgId   = parseWith parsePackageId ident
         pkgDeps = map (parseWith parseDependency) deps
         pkgURL  = url ++ "/" ++ pathOf pkgId "tar.gz"
+-}
 
 pathOf :: PackageIdentifier -> String -> PathName
 pathOf pkgId ext = concat [pkgName pkgId, "/", showPackageId pkgId, ".", ext]
