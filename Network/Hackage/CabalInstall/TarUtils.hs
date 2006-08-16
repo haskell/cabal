@@ -90,5 +90,5 @@ extractTarFile tarProg tarFile
          case eCode of
            ExitFailure err -> error $ printf "Failed to extract tar file '%s': %s." tarFile (show err)
            _ -> return ()
-    where args = ["-xzf",tarFile]
-          (dir,_) = splitFileName tarFile
+    where args = ["-xzf",fileName]
+          (dir,fileName) = splitFileName tarFile

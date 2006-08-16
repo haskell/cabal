@@ -20,6 +20,7 @@ module Network.Hackage.CabalInstall.Fetch
     , packagesDirectory
     , isFetched
     , readURI
+    , downloadIndex
     ) where
 
 import Network.URI (URI,parseURI,uriScheme,uriPath)
@@ -35,7 +36,7 @@ import Network.Hackage.CabalInstall.Config (packagesDirectoryName)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier, showPackageId)
-import Distribution.Compat.FilePath (joinFileName)
+import Distribution.Compat.FilePath (joinFileName, joinFileExt)
 import System.Directory (copyFile)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
@@ -86,6 +87,17 @@ downloadPackage cfg pkg url
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
     where path = configConfPath cfg `joinFileName` packagesDirectoryName `joinFileName` showPackageId pkg
+
+-- Downloads an index file to [config-dir/packages/serv-id
+downloadIndex :: ConfigFlags -> String -> IO String
+downloadIndex cfg serv
+    = do createDirectoryIfMissing True (packagesDirectory cfg)
+         mbError <- downloadFile path url
+         case mbError of
+           Just err -> fail $ printf "Failed to download index '%s'" (show err)
+           Nothing  -> return path
+    where url = serv ++ "/" ++ "00-index.tar.gz"
+          path = packagesDirectory cfg `joinFileName` "00-index" `joinFileExt` "tar.gz"
 
 -- |Full path to the packages directory.
 packagesDirectory :: ConfigFlags -> FilePath
