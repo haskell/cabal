@@ -49,6 +49,7 @@ module Distribution.Simple.Utils (
         rawSystemVerbose,
 	rawSystemExit,
         maybeExit,
+        xargs,
         matchesDescFile,
 	rawSystemPathExit,
         smartCopySources,
@@ -86,7 +87,7 @@ import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally)
 
 import Control.Monad(when, filterM, unless)
-import Data.List (nub)
+import Data.List (nub, unfoldr)
 import System.Environment (getProgName)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Error
@@ -169,6 +170,36 @@ rawSystemPathExit :: Int -> String -> [String] -> IO ()
 rawSystemPathExit verbose prog args = do
   maybeExit $ rawSystemPath verbose prog args
 
+-- | Like the unix xargs program. Useful for when we've got very long command
+-- lines that might overflow an OS limit on command line length and so you
+-- need to invoke a command multiple times to get all the args in.
+--
+-- Use it with either of the rawSystem variants above. For example:
+-- 
+-- > xargs (32*1024) (rawSystemPath verbose) prog fixedArgs bigArgs
+--
+xargs :: Int -> (FilePath -> [String] -> IO ExitCode)
+      -> FilePath -> [String] -> [String] -> IO ExitCode
+xargs maxSize rawSystem prog fixedArgs bigArgs =
+  let fixedArgSize = sum (map length fixedArgs)
+      chunkSize = maxSize - fixedArgSize
+      loop [] = return ExitSuccess
+      loop (args:remainingArgs) = do
+        status <- rawSystem prog (fixedArgs ++ args)
+        case status of
+          ExitSuccess -> loop remainingArgs
+          _           -> return status
+   in loop (chunks chunkSize bigArgs)
+
+  where chunks len = unfoldr $ \s ->
+          if null s then Nothing
+                    else Just (chunk [] len s)
+
+        chunk acc len []     = (reverse acc,[])
+        chunk acc len (s:ss)
+          | len' < len = chunk (s:acc) (len-len'-1) ss
+          | otherwise  = (reverse acc, s:ss)
+          where len' = length s
 
 -- ------------------------------------------------------------
 -- * File Utilities
