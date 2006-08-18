@@ -51,8 +51,9 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir,
 				  mkLibDir, mkIncludeDir )
-import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit, die,
-				  dirOf, moduleToFilePath,
+import Distribution.Simple.Utils( rawSystemExit, rawSystemPath,
+				  rawSystemVerbose, maybeExit, xargs,
+				  die, dirOf, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
                                   mkLibName, mkProfLibName, dotToSep )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
@@ -76,8 +77,9 @@ import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
 import Data.List		( isSuffixOf, nub )
-import System.Directory		( removeFile, getDirectoryContents,
-				  doesFileExist )
+import System.Directory		( removeFile, renameFile,
+				  getDirectoryContents, doesFileExist )
+import System.Exit              (ExitCode(..))
 
 #ifdef mingw32_HOST_OS
 import Distribution.Compat.FilePath ( splitFileName )
@@ -184,29 +186,51 @@ build pkg_descr lbi verbose = do
 	try (removeFile ghciLibName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
-		++ hObjs
+            arObjArgs =
+		   hObjs
                 ++ map (pref `joinFileName`) cObjs
                 ++ stubObjs
             arProfArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [profLibName]
-		++ hProfObjs
+            arProfObjArgs =
+		   hProfObjs
                 ++ stubProfObjs
 	    ldArgs = ["-r"]
                 ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
-	        ++ ["-o", ghciLibName]
-		++ hObjs
+	        ++ ["-o", ghciLibName `joinFileExt` "tmp"]
+            ldObjArgs =
+		   hObjs
                 ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
-        ifVanillaLib forceVanillaLib (rawSystemPathExit verbose "ar" arArgs)
-        ifProfLib (rawSystemPathExit verbose "ar" arProfArgs)
+
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-        let (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
+            (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
             (baseDir, _)     = splitFileName compilerDir
             ld = baseDir `joinFileName` "gcc-lib\\ld.exe"
-        ifGHCiLib (rawSystemExit verbose ld ldArgs)
+            rawSystemLd = rawSystemVerbose
+            maxCommandLineSize = 32 * 1024
 #else
-        ifGHCiLib (rawSystemPathExit verbose "ld" ldArgs)
+            ld = "ld"
+            rawSystemLd = rawSystemPath
+             --TODO: discover this at configure time on unix
+            maxCommandLineSize = 32 * 1024
 #endif
+            runLd ld args = do
+              exists <- doesFileExist ghciLibName
+              status <- rawSystemLd verbose ld
+                          (args ++ if exists then [ghciLibName] else [])
+              when (status == ExitSuccess)
+                   (renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName)
+              return status
+
+        ifVanillaLib False $ maybeExit $ xargs maxCommandLineSize
+          (rawSystemPath verbose) "ar" arArgs arObjArgs
+
+        ifProfLib $ maybeExit $ xargs maxCommandLineSize
+          (rawSystemPath verbose) "ar" arProfArgs arProfObjArgs
+
+        ifGHCiLib $ maybeExit $ xargs maxCommandLineSize
+          runLd ld ldArgs ldObjArgs
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
