@@ -11,11 +11,9 @@ GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =
-GHCPKGFLAGS = 
-#HCBASE=/tmp/ghc/bin/
-HCBASE=/usr/local/bin/
-HC=$(HCBASE)ghc
-HC_PKG=$(HCBASE)/ghc-pkg
+GHCPKGFLAGS =
+HC=ghc
+HC_PKG=ghc-pkg
 # Comment out this line if your system doesn't have System.Posix.
 ISPOSIX=-DHAVE_UNIX_PACKAGE
 
