@@ -67,7 +67,7 @@ import Distribution.Version	( Version(..) )
 import Distribution.Compat.FilePath
 				( joinFileName, exeExtension, joinFileExt,
 				  splitFilePath, objExtension, joinPaths,
-				  isAbsolutePath )
+                                  isAbsolutePath, splitFileExt )
 import Distribution.Compat.Directory 
 				( createDirectoryIfMissing )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
@@ -236,6 +236,11 @@ build pkg_descr lbi verbose = do
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
                  when (verbose > 3)
                       (putStrLn $ "Building executable: " ++ exeName' ++ "...")
+
+                 -- exeNameReal, the name that GHC really uses (with .exe on Windows)
+                 let exeNameReal = exeName' `joinFileExt`
+                                   (if null $ snd $ splitFileExt exeName' then exeExtension else "")
+
 		 let targetDir = pref `joinFileName` exeName'
                  let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
                  createDirectoryIfMissing True targetDir
@@ -267,7 +272,7 @@ build pkg_descr lbi verbose = do
                             pkg_conf
                          ++ ["-I"++pref]
 			 ++ (if linkExe
-			        then ["-o", targetDir `joinFileName` exeName']
+			        then ["-o", targetDir `joinFileName` exeNameReal]
                                 else ["-c"])
                          ++ constructGHCCmdLine lbi exeBi exeDir verbose
                          ++ [exeDir `joinFileName` x | x <- cObjs]
