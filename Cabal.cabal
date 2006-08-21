@@ -47,7 +47,8 @@ Exposed-Modules:
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
         Distribution.Version,
-	Language.Haskell.Extension,
+	Language.Haskell.Extension
+Other-Modules:
         Distribution.GetOpt,
 	Distribution.Compat.Map,
         Distribution.Compat.Directory,
