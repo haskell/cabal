@@ -426,15 +426,15 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         let haddockFile = joinFileName haddockPref (haddockName pkg_descr)
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
-                (["-h",
-                  "-o", haddockPref,
-                  "-t", showPkg ++ ": " ++ synopsis pkg_descr,
-                  "-k", showPkg,
-                  "-D", haddockFile,
-                  "-p", prologName]
+                (["--html",
+                  "--odir=" ++ haddockPref,
+                  "--title=" ++ showPkg ++ ": " ++ synopsis pkg_descr,
+                  "--package=" ++ showPkg,
+                  "--dump-interface=" ++ haddockFile,
+                  "--prologue=" ++ prologName]
                  ++ map ("--use-package=" ++) showDepPkgs
                  ++ programArgs confHaddock
-                 ++ (if verbose > 4 then ["-v"] else [])
+                 ++ (if verbose > 4 then ["--verbose"] else [])
                  ++ outFiles
                  ++ map ("--hide=" ++) (otherModules bi)
                 )
@@ -449,12 +449,12 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         mockAll bi inFiles
         let outFiles = replaceLitExts inFiles
         rawSystemProgram verbose confHaddock
-                (["-h",
-                  "-o", exeTargetDir,
-                  "-t", exeName exe]
+                (["--html",
+                  "--odir=" ++ exeTargetDir,
+                  "--title=" ++ exeName exe]
                  ++ map ("--use-package=" ++) (showPkg:showDepPkgs)
                  ++ programArgs confHaddock
-                 ++ (if verbose > 4 then ["-v"] else [])
+                 ++ (if verbose > 4 then ["--verbose"] else [])
                  ++ outFiles
                 )
 
