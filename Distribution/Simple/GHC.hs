@@ -208,12 +208,12 @@ build pkg_descr lbi verbose = do
             (baseDir, _)     = splitFileName compilerDir
             ld = baseDir `joinFileName` "gcc-lib\\ld.exe"
             rawSystemLd = rawSystemVerbose
-            maxCommandLineSize = 32 * 1024
+            maxCommandLineSize = 30 * 1024
 #else
             ld = "ld"
             rawSystemLd = rawSystemPath
              --TODO: discover this at configure time on unix
-            maxCommandLineSize = 32 * 1024
+            maxCommandLineSize = 30 * 1024
 #endif
             runLd ld args = do
               exists <- doesFileExist ghciLibName
