@@ -295,7 +295,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postBuild args flags pkg_descr localbuildinfo
 
             HaddockCmd -> do
-                (verbose, _, args) <- parseHaddockArgs args []
+                (verbose, _, args) <- parseHaddockArgs emptyHaddockFlags args []
                 pkg_descr <- hookOrInArgs preHaddock args verbose
 		localbuildinfo <- getPersistBuildConfig
 
@@ -397,7 +397,7 @@ getModulePaths bi =
       mapM (flip (moduleToFilePath (hsSourceDirs bi)) ["hs", "lhs"])
 
 haddock :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> HaddockFlags -> IO ()
-haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
+haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
                       let haddockName = programName haddockProgram
@@ -415,6 +415,7 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose)
     let showPkg     = showPackageId (package pkg_descr)
     let showDepPkgs = map showPackageId (packageDeps lbi)
+    let outputFlag  = if hoogle then "--hoogle" else "--html"
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -426,7 +427,7 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         let haddockFile = joinFileName haddockPref (haddockName pkg_descr)
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
-                (["--html",
+                ([outputFlag,
                   "--odir=" ++ haddockPref,
                   "--title=" ++ showPkg ++ ": " ++ synopsis pkg_descr,
                   "--package=" ++ showPkg,
@@ -449,7 +450,7 @@ haddock pkg_descr lbi hooks (HaddockFlags verbose) = do
         mockAll bi inFiles
         let outFiles = replaceLitExts inFiles
         rawSystemProgram verbose confHaddock
-                (["--html",
+                ([outputFlag,
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe]
                  ++ map ("--use-package=" ++) (showPkg:showDepPkgs)
