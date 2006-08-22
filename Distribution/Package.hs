@@ -46,7 +46,7 @@ module Distribution.Package (
 
 import Distribution.Version
 import Distribution.Compat.ReadP as ReadP
-import Data.Char ( isAlpha, isAlphaNum )
+import Data.Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
 data PackageIdentifier
@@ -65,10 +65,9 @@ parsePackageName :: ReadP r String
 parsePackageName = do ns <- sepBy1 component (char '-')
                       return (concat (intersperse "-" ns))
   where component = do 
-	   c <- satisfy isAlpha
-	   cs <- munch isAlphaNum
-	   return (c:cs)
-	-- each component begins with an alphabetic character, to avoid
+	   cs <- munch1 isAlphaNum
+	   if all isDigit cs then pfail else return cs
+	-- each component must contain an alphabetic character, to avoid
 	-- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 parsePackageId :: ReadP r PackageIdentifier
