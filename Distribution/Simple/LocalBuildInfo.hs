@@ -203,7 +203,7 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
 default_bindir :: FilePath
 default_bindir = "$prefix" `joinFileName`
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-	"$pkgid"
+	"Haskell" `joinFileName` "bin"
 #else
 	"bin"
 #endif
@@ -235,7 +235,7 @@ default_datadir :: PackageDescription -> IO FilePath
 default_datadir pkg_descr
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 	| hasLibs pkg_descr = getCommonFilesDir
-	| otherwise = return "$prefix"
+	| otherwise = return ("$prefix" `joinFileName` "Haskell")
 #else
 	= return  ("$prefix" `joinFileName` "share")
 #endif
