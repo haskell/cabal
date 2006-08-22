@@ -46,7 +46,8 @@ module Distribution.Setup (--parseArgs,
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), 
 			   InstallFlags(..), emptyInstallFlags,
-                           BuildFlags(..), CleanFlags(..), HaddockFlags(..), PFEFlags(..),
+                           HaddockFlags(..), emptyHaddockFlags,
+                           BuildFlags(..), CleanFlags(..), PFEFlags(..),
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
                            MaybeUserFlag(..), userOverride,
@@ -217,11 +218,16 @@ emptyRegisterFlags = RegisterFlags { regUser=MaybeUserNone,
 				     regWithHcPkg=Nothing,
 				     regVerbose=0 }
 
+data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
+                                 ,haddockVerbose :: Int}
+
+emptyHaddockFlags :: HaddockFlags
+emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 0}
+
 -- Following only have verbose flags, but for consistency and
 -- extensibility we make them into a type.
 data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
 data CleanFlags   = CleanFlags   {cleanVerbose   :: Int}
-data HaddockFlags = HaddockFlags {haddockVerbose :: Int}
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
@@ -257,6 +263,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DestDir FilePath
           -- For sdist:
           | Snapshot
+          -- For haddock:
+          | HaddockHoogle
           -- For everyone:
           | HelpFlag
           | Verbose Int
@@ -546,9 +554,17 @@ haddockCmd = Cmd {
         cmdName        = "haddock",
         cmdHelp        = "Generate Haddock HTML code from Exposed-Modules.",
         cmdDescription = "Requires cpphs and haddock.",
-        cmdOptions     = [cmd_help, cmd_verbose],
+        cmdOptions     = [cmd_help, cmd_verbose,
+                          Option "" ["hoogle"] (NoArg HaddockHoogle) "Generate a hoogle database"],
         cmdAction      = HaddockCmd
         }
+
+parseHaddockArgs :: HaddockFlags -> [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
+parseHaddockArgs  = parseArgs haddockCmd updateCfg
+  where updateCfg (HaddockFlags hoogle verbose) fl = case fl of
+            HaddockHoogle -> HaddockFlags True verbose
+            Verbose n     -> HaddockFlags hoogle n
+            _             -> error "Unexpected flag!"
 
 programaticaCmd :: Cmd a
 programaticaCmd = Cmd {
@@ -561,9 +577,6 @@ programaticaCmd = Cmd {
 
 parseProgramaticaArgs :: [String] -> [OptDescr a] -> IO (PFEFlags, [a], [String])
 parseProgramaticaArgs  = parseNoArgs programaticaCmd PFEFlags
-
-parseHaddockArgs :: [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
-parseHaddockArgs  = parseNoArgs haddockCmd HaddockFlags
 
 cleanCmd :: Cmd a
 cleanCmd = Cmd {

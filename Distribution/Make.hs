@@ -145,7 +145,7 @@ defaultMainNoRead pkg_descr
                 exitWith retVal
 
             HaddockCmd -> do 
-                (_, _, args) <- parseHaddockArgs args []
+                (_, _, args) <- parseHaddockArgs emptyHaddockFlags args []
                 no_extra_flags args
                 retVal <- exec "make docs"
                 case retVal of
