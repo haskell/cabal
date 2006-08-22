@@ -1438,7 +1438,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
 		<row>
 		  <entry><literal>--bindir</literal></entry>
-		  <entry><literal>$prefix\$pkgid</literal></entry>
+		  <entry><literal>$prefix\Haskell\bin</literal></entry>
 		  <entry><literal>$prefix/bin</literal></entry>
 		</row>
 
@@ -1462,7 +1462,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
 		<row>
 		  <entry><literal>--datadir</literal> (executable)</entry>
-		  <entry><literal>$prefix</literal></entry>
+		  <entry><literal>$prefix\Haskell</literal></entry>
 		  <entry><literal>$prefix/share</literal></entry>
 		</row>
 
