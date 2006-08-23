@@ -371,8 +371,11 @@ configCompiler hcFlavor hcPath hcPkg verbose
                       Nothing -> error "Unknown compiler"
        comp <- 
 	 case hcPath of
-	   Just path -> return path
-	   Nothing   -> findCompiler verbose flavor
+	   Just path -> do absolute <- doesFileExist path
+                           if absolute
+                             then return path
+                             else findCompiler verbose path
+	   Nothing   -> findCompiler verbose (compilerBinaryName flavor)
 
        ver <- configCompilerVersion flavor comp verbose
 
@@ -386,9 +389,8 @@ configCompiler hcFlavor hcPath hcPkg verbose
 			compilerPath=comp,
 			compilerPkgTool=pkgtool})
 
-findCompiler :: Int -> CompilerFlavor -> IO FilePath
-findCompiler verbose flavor = do
-  let prog = compilerBinaryName flavor
+findCompiler :: Int -> String -> IO FilePath
+findCompiler verbose prog = do
   when (verbose > 0) $ message $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of
@@ -436,13 +438,25 @@ guessPkgToolFromHCPath :: Int -> CompilerFlavor -> FilePath -> IO FilePath
 guessPkgToolFromHCPath verbose flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
            (dir,_)         = splitFileName path
-           pkgtool         = dir `joinFileName` pkgToolName `joinFileExt` exeExtension
-       when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ path
-       exists <- doesFileExist pkgtool
-       when (not exists) $
-	  die ("Cannot find package tool: " ++ pkgtool)
-       when (verbose > 0) $ message $ "found package tool in " ++ pkgtool
-       return pkgtool
+           verSuffix       = reverse $ takeWhile (`elem ` "0123456789.-") . reverse $ path
+           guessNormal     = dir `joinFileName` pkgToolName `joinFileExt` exeExtension
+           guessVersioned  = dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension 
+           guesses | null verSuffix = [guessNormal]
+                   | otherwise      = [guessVersioned, guessNormal]
+       message $ dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension
+       when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
+       file <- doesAnyFileExist guesses
+       case file of
+         Nothing -> die ("Cannot find package tool: " ++ pkgToolName)
+         Just pkgtool -> do when (verbose > 0) $ message $ "found package tool in " ++ pkgtool
+                            return pkgtool
+
+doesAnyFileExist :: [FilePath] -> IO (Maybe FilePath)
+doesAnyFileExist []           = return Nothing
+doesAnyFileExist (file:files) = do exists <- doesFileExist file
+                                   if exists
+                                     then return $ Just file
+                                     else doesAnyFileExist files
 
 message :: String -> IO ()
 message s = putStrLn $ "configure: " ++ s
