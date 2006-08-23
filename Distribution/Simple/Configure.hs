@@ -408,8 +408,8 @@ compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
 configCompilerVersion GHC compilerP verbose = do
-  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --version")
-  case pCheck (readP_to_S parseVersion (dropWhile (not.isDigit) str)) of
+  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --numeric-version")
+  case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
     _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
 configCompilerVersion JHC compilerP verbose = do
