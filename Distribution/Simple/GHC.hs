@@ -194,6 +194,7 @@ build pkg_descr lbi verbose = do
                 ++ [profLibName]
             arProfObjArgs =
 		   hProfObjs
+                ++ map (pref `joinFileName`) cObjs
                 ++ stubProfObjs
 	    ldArgs = ["-r"]
                 ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
