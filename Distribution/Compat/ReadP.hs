@@ -66,7 +66,7 @@ module Distribution.Compat.ReadP
   readP_to_S, -- :: ReadP a -> ReadS a
   readS_to_P  -- :: ReadS a -> ReadP a
   
-#if __GLASGOW_HASKELL__ < 603
+#if __GLASGOW_HASKELL__ < 603 && !__HUGS__
   -- * Properties
   -- $properties
 #endif
