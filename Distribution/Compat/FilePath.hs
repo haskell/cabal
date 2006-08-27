@@ -1,3 +1,4 @@
+-- #hide
 module Distribution.Compat.FilePath
          ( -- * File path
            FilePath
