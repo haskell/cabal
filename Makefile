@@ -212,7 +212,7 @@ VERSION		= 1.1.4
 
 PACKAGE_DEPS	= base
 
-SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (Cabal package)"
+SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries (Cabal package)"
 
 SRC_HC_OPTS   += -cpp
 
