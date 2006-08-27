@@ -72,7 +72,7 @@ module Distribution.PackageDescription (
         updatePackageDescription,
         -- * Utilities
         ParseResult(..),
-        PError, showError,
+        PError, PWarning, showError,
         hcOptions,
         autogenModuleName,
         haddockName,
