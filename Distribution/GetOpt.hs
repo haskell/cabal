@@ -283,6 +283,8 @@ test order cmdline = case getOpt order options cmdline of
 -----------------------------------------------------------------------------------------
 -}
 
+#endif
+
 {- $example
 
 To hopefully illuminate the role of the different data
@@ -320,5 +322,3 @@ compiler:
 >      where header = "Usage: ic [OPTION...] files..."
 
 -}
-
-#endif
