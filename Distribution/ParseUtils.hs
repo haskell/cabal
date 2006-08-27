@@ -44,7 +44,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- #hide
 module Distribution.ParseUtils (
-        LineNo, PError(..), locatedErrorMsg, showError, syntaxError, warning,
+        LineNo, PError(..), PWarning,
+        locatedErrorMsg, showError, syntaxError, warning,
 	runP, ParseResult(..),
 	StanzaField(..), splitStanzas, Stanza, singleStanza,
 	parseFilePathQ, parseTokenQ,
