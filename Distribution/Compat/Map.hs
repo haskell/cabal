@@ -1,3 +1,4 @@
+-- #hide
 module Distribution.Compat.Map (
    Map,
    member, lookup, findWithDefault,

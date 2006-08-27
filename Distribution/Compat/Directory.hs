@@ -1,3 +1,4 @@
+-- #hide
 module Distribution.Compat.Directory (
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
         removeDirectoryRecursive, module System.Directory,
