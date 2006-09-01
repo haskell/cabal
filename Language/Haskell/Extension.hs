@@ -47,6 +47,10 @@ module Language.Haskell.Extension (
 -- * Extension
 -- ------------------------------------------------------------
 
+-- NB:  if you add a constructor to 'Extension', be sure also to
+--      add it to Distribution.Compiler.extensionsTo_X_Flag
+--	(where X is each compiler)
+
 -- |This represents language extensions beyond Haskell 98 that are
 -- supported by some implementations, usually in some special mode.
 
@@ -70,6 +74,7 @@ data Extension
   | EmptyDataDecls
   | CPP
 
+  | BangPatterns
   | TypeSynonymInstances
   | TemplateHaskell
   | ForeignFunctionInterface
