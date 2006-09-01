@@ -121,6 +121,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag ImplicitParams               = Right "-fimplicit-params"
     extensionToGHCFlag CPP                          = Right "-cpp"
 
+    extensionToGHCFlag BangPatterns                 = Right "-fbang-patterns"
     extensionToGHCFlag RecursiveDo                  = Right "-fglasgow-exts"
     extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
     extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
