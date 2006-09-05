@@ -1652,6 +1652,22 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <title>setup haddock</title>
       <para>Build the interface documentation for a library using
         &Haddock;.</para>
+
+      <variablelist>
+        <varlistentry>
+          <term><option>--hoogle</option></term>
+          <listitem>
+            <para>Passing the --hoogle flag generates a
+            <ulink url="http://www.haskell.org/hoogle/">Hoogle</ulink> .hoo
+            file, at the location dist/doc/html/<package-name>.hoo, which can
+            be converted by Hoogle into a database for searching. This is
+            equivalent to running haddock with the --hoogle flag. For more
+            details about how to use a .hoo file see
+            <ulink url="http://www.haskell.org/hoogle/">http://www.haskell.org/hoogle/</ulink>.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </sect2>
 
     <sect2 id="setup-install">
