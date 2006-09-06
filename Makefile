@@ -24,7 +24,7 @@ GHCFLAGS += -package-conf ~/.ghc-packages
 endif
 
 # the cabal tarball...
-CABALBALL=cabal.tar.gz
+CABALBALL=cabal-$(CABALVERSION).tar.gz
 
 all: moduleTest
 
@@ -157,8 +157,7 @@ $(CABALBALL):
 	darcs record
 	rm -rf /tmp/cabal* /tmp/Cabal*
 	rm -rf $(TMPDISTLOC)
-	darcs dist
-	mv Cabal.tar.gz $(CABALBALL)
+	darcs dist --dist-name=cabal-$(CABALVERSION)
 
 TMPDISTLOC=/tmp/cabaldist
 
@@ -169,26 +168,25 @@ dist: haddock $(CABALBALL)
 	rm -rf $(TMPDISTLOC)
 	mkdir $(TMPDISTLOC)
 	mv $(CABALBALL) $(TMPDISTLOC)
-	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL) && mv Cabal cabal
+	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL)
 	#mkdir $(TMPDISTLOC)/cabal/doc
 	$(MAKE) doc
-	cp -r dist/doc/html $(TMPDISTLOC)/cabal/doc/API
-	cp -r doc/users-guide $(TMPDISTLOC)/cabal/doc/users-guide
-	cd ~/usr/doc/haskell/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
-	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal/doc
+	cp -r dist/doc/html $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc/API
+	cp -r doc/users-guide $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc/users-guide
+	cd ~/prgs/build/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
+	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc
 
-	cd $(TMPDISTLOC) && tar -zcvf $(CABALBALL) cabal
-#	rm -f /tmp/Cabal.tar.gz
-#	rm -rf /tmp/cabal
+	cd $(TMPDISTLOC) && rm -f $(CABALBALL) && tar -zcvf $(CABALBALL) cabal-$(CABALVERSION)
+	@echo "Cabal tarball built: $(TMPDISTLOC)/$(CABALBALL)"
 
 release: dist
 	mkdir $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal/releaseNotes $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal/changelog $(TMPDISTLOC)/release
-	cp -r $(TMPDISTLOC)/cabal/doc $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal.tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
-	scp -r $(TMPDISTLOC)/release ijones@www.haskell.org:~/cabal/release/cabal-$(CABALVERSION)
-	ssh ijones@www.haskell.org 'cd ~/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
+	cp $(TMPDISTLOC)/cabal-$(CABALVERSION)/releaseNotes $(TMPDISTLOC)/release
+	cp $(TMPDISTLOC)/cabal-$(CABALVERSION)/changelog $(TMPDISTLOC)/release
+	cp -r $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc $(TMPDISTLOC)/release
+	cp $(TMPDISTLOC)/cabal-$(CABALVERSION).tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
+	scp -r $(TMPDISTLOC)/release www.haskell.org:/home/haskell/cabal/release/cabal-$(CABALVERSION)
+	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
 
 else # boilerplate.mk exists
 # ----------------------------------------------------------------------------
