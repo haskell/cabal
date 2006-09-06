@@ -55,5 +55,4 @@ Other-Modules:
         Distribution.Compat.Exception,
         Distribution.Compat.FilePath,
         Distribution.Compat.RawSystem
-Extensions: CPP, OverlappingInstances, TypeSynonymInstances, TemplateHaskell
-GHC-options: -idependencies/hackage-client-0.1.0 -idependencies/XmlRpc-2005.5.5  -idependencies/Crypto-2.0.0  -idependencies/GnuPG-0.1.1  -idependencies/HaXml-1.2/src -idependencies/HTTP-2005.5.5 -idependencies/NewBinary-0.1
+Extensions: CPP
