@@ -5,7 +5,7 @@
 > import Distribution.Simple
 > import Distribution.PackageDescription (PackageDescription,
 >                                         readPackageDescription, readHookedBuildInfo)
-> import Distribution.Simple.Configure(LocalBuildInfo(..))
+> import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 > import Distribution.Setup(CopyFlags(..), CopyDest(..))
 > import Distribution.Compat.Directory (copyFile)
 > import Distribution.Compat.FilePath(joinPaths)
