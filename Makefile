@@ -43,12 +43,12 @@ config: setup
 build: build-stamp
 build-stamp: config
 	./setup build
-	cd cabal-install     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
-	cd cabal-setup     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.hs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
+#	cd cabal-install     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
+#	cd cabal-setup     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.hs -o setup && ./setup configure --ghc --prefix=$(PREF) && ./setup build 
 install: build-stamp
 	./setup install $(USER_FLAG)
-	cd cabal-install     && ./setup install
-	cd cabal-setup       && ./setup install
+#	cd cabal-install     && ./setup install
+#	cd cabal-setup       && ./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
@@ -196,7 +196,7 @@ else # boilerplate.mk exists
 
 include $(TOP)/mk/boilerplate.mk
 
-SUBDIRS = doc cabal-setup
+SUBDIRS = doc #cabal-setup
 
 ALL_DIRS = \
 	Distribution \
