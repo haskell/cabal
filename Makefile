@@ -7,7 +7,7 @@ ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 CABALVERSION=1.1.5.9.1
 KIND=rc
 #KIND=latest
-GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
+GHCFLAGS= --make -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =
