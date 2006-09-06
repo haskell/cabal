@@ -52,7 +52,8 @@ import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P ()
 import qualified Distribution.PackageDescription as D.PD (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
-import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Version (Version(..))
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
 import qualified Distribution.Simple.Install as D.S.I (hunitTests)
@@ -66,7 +67,10 @@ import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkg
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
+import Distribution.Simple.Configure (configCompiler)
+
 -- base
+import Data.List (intersperse)
 import Control.Monad(when, unless)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory,
@@ -74,6 +78,7 @@ import Directory(setCurrentDirectory, doesFileExist,
 import Distribution.Compat.Directory (removeDirectoryRecursive)
 import System.Cmd(system)
 import System.Exit(ExitCode(..))
+import System.Environment (getArgs)
 
 import HUnit(runTestTT, Test(..), Counts(..), assertBool,
              assertEqual, Assertion, showCounts)
@@ -147,8 +152,9 @@ assertCmdFail command comment
 tests :: FilePath       -- ^Currdir
       -> CompilerFlavor -- ^build setup with compiler
       -> CompilerFlavor -- ^configure with which compiler
+      -> Version        -- ^version of the compiler to use
       -> [Test]
-tests currDir comp compConf = [
+tests currDir comp compConf compVersion = [
 -- executableWithC
          TestLabel ("package exeWithC: " ++ compIdent) $ TestCase $
          do let targetDir =",tmp"
@@ -298,7 +304,8 @@ tests currDir comp compConf = [
             assertCopy
             doesFileExist "dist/build/A.hi-boot" >>=
               assertBool "build did not move A.hi-boot file into place lib"
-            doesFileExist ",tmp/lib/recursive-1.0/ghc-6.4.1/libHSrecursive-1.0.a" >>= -- FIX: Comp
+            doesFileExist (",tmp/lib/recursive-1.0/ghc-" ++ compVerStr
+	               ++ "/libHSrecursive-1.0.a") >>=
               assertBool "recursive build didn't create library"
             doesFileExist "dist/build/testExe/testExe-tmp/A.hi" >>=
               assertBool "build did not move A.hi-boot file into place exe"
@@ -338,7 +345,7 @@ tests currDir comp compConf = [
                                   >>= assertBool "library doesn't exist"
                                 doesFileExist (",tmp/bin/mainForA")
                                   >>= assertBool "installed bin doesn't exist"
-                                doesFileExist (",tmp/lib/test-1.0/ghc-6.4.1/libHStest-1.0.a")
+                                doesFileExist (",tmp/lib/test-1.0/ghc-" ++ compVerStr ++ "/libHStest-1.0.a")
                                   >>= assertBool "installed lib doesn't exist")
 -- wash2hs
        ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $ 
@@ -378,7 +385,8 @@ tests currDir comp compConf = [
                        assertBool "C.testSuffix did not get compiled to C.o."
                      doesFileExist "dist/build/D.o" >>=
                        assertBool "D.gc did not get compiled to D.o this is an overriding test"
-                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-6.4.1/" `joinFileName` "libHSwithHooks-1.0.a")
+                     doesFileExist (",tmp/lib/withHooks-1.0/ghc-" ++ compVerStr
+		                 ++ "/" `joinFileName` "libHSwithHooks-1.0.a")
                        >>= assertBool "library doesn't exist")
 
             doesFileExist ",tmp/bin/withHooks" >>= 
@@ -405,6 +413,7 @@ tests currDir comp compConf = [
       ]
     where testdir = currDir `joinFileName` "tests"
           compStr = show comp
+	  compVerStr = concat . intersperse "." . map show . versionBranch $ compVersion 
           compCmd = command comp
           compFlag = case compConf of
                       GHC -> "--ghc"
@@ -421,7 +430,7 @@ tests currDir comp compConf = [
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
           libForA pref  -- checks to see if the lib exists, for tests/A
-              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-6.4.1/" in
+              = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-" ++ compVerStr ++ "/" in
                  case compConf of
                   Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs", ".lhs"]
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
@@ -454,8 +463,20 @@ main = do putStrLn "compile successful"
                            D.PD.hunitTests ++ D.C.hunitTests)
           dir <- getCurrentDirectory
 --          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
-          globalTests <- sequence [runTestTT' $ TestList (tests dir x x)
-                                       | x <- [GHC, Hugs]]
+          args <- getArgs
+	  let testList :: CompilerFlavor -> Version -> [Test]
+	      testList compiler version
+	        | null args = tests dir compiler compiler version
+                | otherwise =
+		    case reads (head args) of
+                      [(n,_)] -> [ tests dir compiler compiler version !! n ]
+                      _ -> error "usage: moduleTest [test_num]"
+	      compilers = [GHC] --, Hugs]
+          globalTests <-
+	    flip mapM compilers $ \compilerFlavour -> do
+              compiler <- configCompiler (Just compilerFlavour) Nothing Nothing 0
+              let version = compilerVersion compiler
+              runTestTT' $ TestList (testList compilerFlavour version)
           putStrLn "-------------"
           putStrLn "Test Summary:"
           putStrLn $ showCounts $
