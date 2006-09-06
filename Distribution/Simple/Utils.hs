@@ -181,7 +181,7 @@ rawSystemPathExit verbose prog args = do
 xargs :: Int -> (FilePath -> [String] -> IO ExitCode)
       -> FilePath -> [String] -> [String] -> IO ExitCode
 xargs maxSize rawSystem prog fixedArgs bigArgs =
-  let fixedArgSize = sum (map length fixedArgs)
+  let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
       loop [] = return ExitSuccess
       loop (args:remainingArgs) = do
