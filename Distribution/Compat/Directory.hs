@@ -1,7 +1,10 @@
 -- #hide
 module Distribution.Compat.Directory (
+        module System.Directory,
+#if __GLASGOW_HASKELL__ <= 602
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
-        removeDirectoryRecursive, module System.Directory,
+        removeDirectoryRecursive,
+#endif
         getDirectoryContentsWithoutSpecial
   ) where
 
