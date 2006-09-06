@@ -4,7 +4,7 @@ ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 # ----------------------------------------------------------------------------
 # Standalone Makefile:
 
-CABALVERSION=1.1.4
+CABALVERSION=1.1.5.9.1
 KIND=rc
 #KIND=latest
 GHCFLAGS= --make -Wall -fno-warn-unused-matches -cpp
