@@ -1,6 +1,0 @@
-haskell-http (0.4-1) unstable; urgency=low
-
-  * Initial Debian package.
-
- -- Ganesh Sittampalam <ganesh-debs@earth.li>  Tue,  7 Dec 2004 02:11:23 +0000
-
