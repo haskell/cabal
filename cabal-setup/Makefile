@@ -14,7 +14,8 @@ HS_PROG 	= cabal-setup
 EXCLUDED_SRCS 	= Setup.hs
 SRC_HC_OPTS 	+= -package Cabal
 
-INSTALL_PROGS	+= $(HS_PROG)
+# Don't install this yet, it isn't ready
+# INSTALL_PROGS	+= $(HS_PROG)
 
 include $(TOP)/mk/target.mk
 

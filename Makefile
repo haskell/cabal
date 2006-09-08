@@ -194,7 +194,7 @@ else # boilerplate.mk exists
 
 include $(TOP)/mk/boilerplate.mk
 
-SUBDIRS = doc #cabal-setup
+SUBDIRS = doc cabal-setup
 
 ALL_DIRS = \
 	Distribution \
