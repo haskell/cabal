@@ -642,6 +642,7 @@ defaultUserHooks
                        -- This assumes sh (check for #! line?)
                        rawSystemPath verbose "sh" ("configure" : args')
 #else
+                       -- FIXME: should we really be discarding the exit code?
                        rawSystemVerbose verbose "./configure" args'
 #endif
                      else do

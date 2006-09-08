@@ -37,7 +37,7 @@ import Control.Monad(when)
 import Data.Maybe(catMaybes)
 import System.Exit (ExitCode)
 import Distribution.Compat.Directory(findExecutable)
-import Distribution.Simple.Utils (die, rawSystemVerbose)
+import Distribution.Simple.Utils (die, rawSystemVerbose, maybeExit)
 
 -- |Represents a program which cabal may call.
 data Program
@@ -232,26 +232,26 @@ updateProgram Nothing conf = conf
 rawSystemProgram :: Int      -- ^Verbosity
                  -> Program  -- ^The program to run
                  -> [String] -- ^Any /extra/ arguments to add
-                 -> IO ExitCode
+                 -> IO ()
 rawSystemProgram verbose (Program { programLocation=(UserSpecified p)
                                   , programArgs=args
-                                  })
+                                  }) extraArgs
+    = maybeExit $ rawSystemVerbose verbose p (extraArgs ++ args)
 
-                 extraArgs = rawSystemVerbose verbose p (extraArgs ++ args)
 rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
                                   , programArgs=args
-                                  })
+                                  }) extraArgs
+    = maybeExit $ rawSystemVerbose verbose p (args ++ extraArgs)
 
-                 extraArgs = rawSystemVerbose verbose p (args ++ extraArgs)
 rawSystemProgram _ (Program { programLocation=EmptyLocation
-                            , programName=n})_ 
+                            , programName=n}) _
     = die ("Error: Could not find location for program: " ++ n)
 
 rawSystemProgramConf :: Int -- ^verbosity
                      -> String -- ^The name of the program to run
                      -> ProgramConfiguration -- ^look up the program here
                      -> [String] -- ^Any /extra/ arguments to add
-                     -> IO ExitCode
+                     -> IO ()
 rawSystemProgramConf verbose progName programConf extraArgs 
     = do prog <- do mProg <- lookupProgram progName programConf
                     case mProg of
