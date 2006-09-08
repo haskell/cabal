@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp #-}
 -- #hide
 module Distribution.Compat.FilePath
          ( -- * File path

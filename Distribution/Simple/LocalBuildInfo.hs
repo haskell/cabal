@@ -1,5 +1,4 @@
-{-# OPTIONS -fffi #-}
-
+{-# OPTIONS_GHC -cpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LocalBuildInfo
