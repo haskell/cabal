@@ -360,11 +360,12 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>The version of Cabal required for this package.
-              Use ONLY if this package requires a particular version
-              of Cabal, since unfortunitely, early versions of Cabal
-              do not recognize this field.  List the field early in
-              your .cabal file so that it will appear as a syntax
-              error before any others.</para>
+                Use <emphasis>only</emphasis> if this package requires
+                a particular version of Cabal, since unfortunately
+                early versions of Cabal do not recognize this field.
+                List the field early in your <literal>.cabal</literal>
+                file so that it will appear as a syntax error before
+                any others.</para>
             </listitem>
           </varlistentry>
 
@@ -480,6 +481,12 @@ Other-Modules:   A, C, Utils</programlisting>
               <para>Description of the package.  This may be several
                 paragraphs, and should be aimed at a Haskell programmer
                 who has never heard of your package before.</para>
+
+              <para>For library packages, this field is used as
+                prologue text by <command>setup haddock</command>
+                (see <xref linkend="setup-haddock"/>), and thus may
+                contain the same markup as &Haddock; documentation
+                comments.</para>
             </listitem>
           </varlistentry>
 
@@ -693,8 +700,8 @@ Other-Modules:   A, C, Utils</programlisting>
                 source file affected, e.g.:</para>
               <programlisting>{-# LANGUAGE CPP, MultiParamTypeClasses #-}</programlisting>
 	      <note>
-		<para>GHC doesn't support the <literal>LANGUAGE</literal>
-		  pragma yet.</para>
+                <para>GHC versions prior to 6.6 do not support the
+                  <literal>LANGUAGE</literal> pragma.</para>
 	      </note>
             </listitem>
           </varlistentry>
@@ -971,7 +978,7 @@ executable: <replaceable>name</replaceable>
       <para>Neither of these files is required.  If they are absent, this
         setup script is equivalent to <literal>defaultMain</literal>.</para>
 
-      <example>
+      <example id="autoconf-example">
         <title>Using autoconf</title>
 
         <para>(This example is for people familiar with the &Autoconf;
@@ -1139,7 +1146,7 @@ copy :
       <command>runhaskell Setup.hs <option>--help</option></command>
     </cmdsynopsis>
 
-    <example>
+    <example id="system-install-example">
       <title>Building and installing a system package</title>
       <screen>
 runhaskell Setup.hs configure --ghc
@@ -1152,7 +1159,7 @@ runhaskell Setup.hs install</screen>
         package with GHC.</para>
     </example>
 
-    <example>
+    <example id="user-install-example">
       <title>Building and installing a user package</title>
       <screen>
 runhaskell Setup.hs configure --ghc --user --prefix=$HOME
@@ -1165,7 +1172,7 @@ runhaskell Setup.hs install</screen>
         (<option>--user</option>).</para>
     </example>
 
-    <example>
+    <example id="binary-package-example">
       <title>Creating a binary package</title>
       <para>When creating binary packages (e.g. for RedHat or
         Debian) one needs to create a tarball that can be sent to
@@ -1410,7 +1417,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 	</variablelist>
 
-	<sect4>
+	<sect4 id="simple-paths">
 	  <title>Paths in the simple build system</title>
 
 	  <para>For the simple build system, the following defaults
@@ -1653,17 +1660,18 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <para>Build the interface documentation for a library using
         &Haddock;.</para>
 
+      <para>This command takes the following option:</para>
+
       <variablelist>
         <varlistentry>
           <term><option>--hoogle</option></term>
           <listitem>
-            <para>Passing the --hoogle flag generates a
-            <ulink url="http://www.haskell.org/hoogle/">Hoogle</ulink> .hoo
-            file, at the location dist/doc/html/@lt;package-name@gt;.hoo, which can
-            be converted by Hoogle into a database for searching. This is
-            equivalent to running haddock with the --hoogle flag. For more
-            details about how to use a .hoo file see
-            <ulink url="http://www.haskell.org/hoogle/">http://www.haskell.org/hoogle/</ulink>.
+            <para>Generate a file
+            <filename>dist/doc/html/<replaceable>pkgid</replaceable>.txt</filename>,
+            which can be converted by
+            <ulink url="http://www.haskell.org/hoogle/">Hoogle</ulink>
+            into a database for searching. This is
+            equivalent to running &Haddock; with the <option>--hoogle</option> flag.
             </para>
           </listitem>
         </varlistentry>
