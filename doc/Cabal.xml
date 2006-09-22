@@ -1779,6 +1779,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    build tree, without needing to install it.  This can be
 	    useful for testing: there's no need to install the package
 	    after modifying it, just recompile and test.</para>
+
+            <para>This flag does not create a build-tree-local package
+            database.  It still registers the package in one of the
+            user or global databases.</para>
 	    
 	    <para>However, there are some caveats.  It only works with
 	    GHC (currently).  It only works if your package doesn't
