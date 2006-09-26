@@ -23,7 +23,8 @@ import Distribution.PackageDescription
 				  PackageDescription(..) )
 import System.Console.GetOpt
 import System.Environment
-import Control.Monad		( when )
+import System.Directory
+import Control.Monad		( when, unless )
 import System.Directory 	( doesFileExist )
 
 main = do
@@ -60,10 +61,16 @@ main = do
     trySetupScript f on_fail = do
        b <- doesFileExist f
        if not b then on_fail else do
-       rawSystemExit (verbose flags)
-         (compilerPath comp)
-         (cabal_flag ++ 
-          ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
+       hasSetup <- do b <- doesFileExist "setup"
+                      if not b then return False else do
+                      t1 <- getModificationTime f
+                      t2 <- getModificationTime "setup"
+                      return (t1 < t2)
+       unless hasSetup $
+         rawSystemExit (verbose flags)
+           (compilerPath comp)
+           (cabal_flag ++ 
+            ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
        rawSystemExit (verbose flags)
          ('.':pathSeparator:"setup")
          args
