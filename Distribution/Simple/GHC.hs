@@ -301,17 +301,18 @@ build pkg_descr lbi verbose = do
 -- Module_split directory for each module.
 getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
  	-> FilePath -> String -> IO [FilePath]
-getHaskellObjects pkg_descr libBi lbi pref obj_ext
+getHaskellObjects pkg_descr libBi lbi pref wanted_obj_ext
   | splitObjs lbi = do
 	let dirs = [ pref `joinFileName` (dotToSep x ++ "_split") 
 		   | x <- libModules pkg_descr ]
 	objss <- mapM getDirectoryContents dirs
 	let objs = [ dir `joinFileName` obj
 		   | (objs,dir) <- zip objss dirs, obj <- objs,
-		     obj_ext `isSuffixOf` obj ]
+                     let (_,obj_ext) = splitFileExt obj,
+		     wanted_obj_ext == obj_ext ]
 	return objs
   | otherwise  = 
-	return [ pref `joinFileName` (dotToSep x) `joinFileExt` obj_ext
+	return [ pref `joinFileName` (dotToSep x) `joinFileExt` wanted_obj_ext
                | x <- libModules pkg_descr ]
 
 
