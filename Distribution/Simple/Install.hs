@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install

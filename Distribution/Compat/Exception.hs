@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS -cpp #-}
 -- #hide
 module Distribution.Compat.Exception (bracket,finally) where
 
