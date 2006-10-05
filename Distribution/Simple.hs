@@ -625,6 +625,7 @@ defaultUserHooks
        sDistHook = \p _ h f -> sdist p f srcPref distPref (allSuffixHandlers h),
        pfeHook   = pfe,
        cleanHook = clean,
+       preHaddock  = readHook haddockVerbose,
        haddockHook = haddock,
        preReg    = readHook regVerbose,
        regHook   = defaultRegHook,
