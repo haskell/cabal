@@ -26,7 +26,7 @@ endif
 # the cabal tarball...
 CABALBALL=cabal-$(CABALVERSION).tar.gz
 
-all: moduleTest
+all: build
 
 # build the library itself
 
