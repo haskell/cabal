@@ -127,9 +127,14 @@ build pkg_descr lbi verbose = do
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbose (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False False
-      let ghcArgs = 
+      let ghc_vers = compilerVersion (compiler lbi)
+          packageId | versionBranch ghc_vers >= [6,4]
+                                = showPackageId (package pkg_descr)
+                    | otherwise = pkgName (package pkg_descr)
+          -- Only use the version number with ghc-6.4 and later
+          ghcArgs =
                  pkg_conf
-              ++ ["-package-name", showPackageId (package pkg_descr) ]
+              ++ ["-package-name", packageId ]
 	      ++ (if splitObjs lbi then ["-split-objs"] else [])
               ++ constructGHCCmdLine lbi libBi libTargetDir verbose
               ++ (libModules pkg_descr)
