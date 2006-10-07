@@ -38,7 +38,7 @@ Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
 
 config: setup
-	./setup configure --ghc --prefix=$(PREF)
+	./setup configure --ghc --with-compiler=$(HC) --prefix=$(PREF)
 
 build: build-stamp
 build-stamp: config
