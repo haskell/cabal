@@ -1,8 +1,7 @@
 Name: Cabal
 Version: 1.1.5.9.4
 Copyright: 2003-2006, Isaac Jones
--- Util dependency removed.  This may break ghc 6.2 builds :( Will
--- have to figure something out for ghc 6.2
+-- For ghc 6.2 you need to add 'unix' to Build-Depends:
 Build-Depends: base
 License: BSD3
 License-File: LICENSE
