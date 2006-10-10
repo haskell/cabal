@@ -660,7 +660,7 @@ sanityCheckPackage pkg_descr
                           "No license-file field."
           goodCabal = let v = (descCabalVersion pkg_descr)
                           in checkSanity (not $ cabalVersion  `withinRange` v)
-                                 ("This package requires Cabal verion: " ++ (showVersionRange v) ++ ".")
+                                 ("This package requires Cabal version: " ++ (showVersionRange v) ++ ".")
 
          in return $ (catMaybes [nothingToDo, noModules,
                                  allRights, noLicenseFile]
