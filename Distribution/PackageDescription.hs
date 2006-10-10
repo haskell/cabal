@@ -112,9 +112,13 @@ import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
 import Distribution.ParseUtils  (runP)
 #endif
 
--- |Fix. Figure out a way to get this from .cabal file
+-- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
-cabalVersion = Version [1,1,6] []
+#ifdef CABAL_VERSION
+cabalVersion = Version [CABAL_VERSION] []
+#else
+cabalVersion = error "Cabal was not bootstraped correctly"
+#endif
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
