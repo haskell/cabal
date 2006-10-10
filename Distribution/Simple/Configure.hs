@@ -443,7 +443,6 @@ guessPkgToolFromHCPath verbose flavor path
            guessVersioned  = dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension 
            guesses | null verSuffix = [guessNormal]
                    | otherwise      = [guessVersioned, guessNormal]
-       message $ dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension
        when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
        file <- doesAnyFileExist guesses
        case file of
