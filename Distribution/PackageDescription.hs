@@ -114,7 +114,7 @@ import Distribution.ParseUtils  (runP)
 
 -- |Fix. Figure out a way to get this from .cabal file
 cabalVersion :: Version
-cabalVersion = Version [1,1,4] []
+cabalVersion = Version [1,1,6] []
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
