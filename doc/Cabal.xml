@@ -73,13 +73,10 @@
     <note>
       <para>Packages are not part of the Haskell language;
         they simply populate the hierarchical space of module names.
-        It is still the case that all the modules of a program must have
-        distinct module names, regardless of the package they come from,
-        and whether they are exposed or hidden.
-        This also means that although some implementations (i.e. GHC) may
-        allow several versions of a package to be installed at the same
-        time, a program cannot use two packages, P and Q that depend
-        on different versions of the same underlying package R.</para>
+        In GHC 6.6 and later a program may contain multiple modules
+        with the same name if they come from separate packages; in all
+        other current Haskell systems packages may not overlap in the
+        modules they provide, including hidden modules.</para>
     </note>
   </sect1>
 
