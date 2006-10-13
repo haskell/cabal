@@ -97,10 +97,7 @@ data Action = ConfigCmd ConfigFlags   -- config
             | UnregisterCmd           -- unregister
 	    | HelpCmd		      -- help
 --            | NoCmd -- error case, help case.
---             | TestCmd 1.0?
---             | BDist -- 1.0
---            | CleanCmd                 -- clean
---            | NoCmd -- error case?
+--            | BDist -- 1.0
 
 -- ------------------------------------------------------------
 -- * Flag-related types
