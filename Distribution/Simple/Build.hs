@@ -235,8 +235,8 @@ get_prefix_stuff =
   "             return (prefixFromBinDir bindir bindirrel `joinFileName` dirRel)\n"++
   "  where\n"++
   "    prefixFromBinDir bindir path\n"++
-  "      | path' == \".\" = bindir'\n"++
-  "      | otherwise    = prefixFromBinDir bindir' path'\n"++
+  "      | path == \".\" || path == \"\" = bindir\n"++
+  "      | otherwise                 = prefixFromBinDir bindir' path'\n"++
   "      where\n"++
   "        (bindir',_) = splitFileName bindir\n"++
   "        (path',  _) = splitFileName path\n"++
