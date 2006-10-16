@@ -361,13 +361,16 @@ rawSystemPipe scriptName verbose pipeFrom path args = do
   writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
 #else
   writeFile scriptName ("#!/bin/sh\n\n"
-                        ++ "echo '" ++ pipeFrom
+                        ++ "echo '" ++ escapeForShell pipeFrom
                         ++ "' | " 
                         ++ (path ++ concatMap (' ':) args)
                         ++ "\n")
   p <- getPermissions scriptName
   setPermissions scriptName p{executable=True}
 #endif
+  where escapeForShell [] = []
+        escapeForShell (c@'\'':cs) = c : c : escapeForShell cs
+        escapeForShell (c     :cs) = c     : escapeForShell cs
 
 -- ------------------------------------------------------------
 -- * Testing
