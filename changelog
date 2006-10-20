@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+1.1.6.1  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
+	* Fix escaping of ' chars in register.sh script.
+	* Fix getDataDir etc. when bindir=$prefix
+	* New unlit code "ported" from cpphs-1.2
+
 1.1.6  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
 	* Released with GHC 6.6
 	* Added support for hoogle
