@@ -51,7 +51,9 @@ then this formula may help to hide the global version:
 
 If you have GHC 6.4.2 or later then it's recommended just to leave the
 old version of Cabal installed (unless you are really sure that no
-existing packages still needs it).
+existing packages still needs it). In particular in GHC 6.6, the "ghc"
+package depends on Cabal so you must not unregister that version of Cabal
+or you will break the ghc api package.
 
 Prior to GHC 6.4.2 however, GHC didn't deal particularly well with
 having multiple versions of packages installed at once. So if you are
