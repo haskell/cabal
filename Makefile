@@ -4,9 +4,9 @@ ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 # ----------------------------------------------------------------------------
 # Standalone Makefile:
 
-CABALVERSION=1.1.6
-KIND=rc
-#KIND=latest
+CABALVERSION=1.1.6.1
+#KIND=rc
+KIND=latest
 GHCFLAGS= --make -fno-warn-unused-matches -cpp
 # later: -Wall
 PREF=/usr/local
@@ -206,7 +206,7 @@ ALL_DIRS = \
 EXCLUDED_SRCS	= DefaultSetup.lhs Setup.lhs
 
 PACKAGE		= Cabal
-VERSION		= 1.1.6
+VERSION		= 1.1.6.1
 
 PACKAGE_DEPS	= base
 
