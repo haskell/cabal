@@ -76,7 +76,6 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (rawSystemExit, copyFileVerbose, die)
-import Distribution.Simple.Hugs (hugsPackageDir)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
@@ -188,9 +187,10 @@ register pkg_descr lbi regFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
-	createDirectoryIfMissing True (hugsPackageDir pkg_descr lbi)
+        let libdir = mkLibDir pkg_descr lbi NoCopyDest
+	createDirectoryIfMissing True libdir
 	copyFileVerbose verbose installedPkgConfigFile
-	    (hugsPackageDir pkg_descr lbi `joinFileName` "package.conf")
+	    (libdir `joinFileName` "package.conf")
       JHC -> when (verbose > 0) $ putStrLn "registering for JHC (nothing to do)"
       _   -> die ("only registering with GHC is implemented")
 
@@ -323,7 +323,7 @@ unregister pkg_descr lbi regFlags = do
 	rawSystemEmit unregScriptLocation genScript verbose pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
-        try $ removeDirectoryRecursive (hugsPackageDir pkg_descr lbi)
+        try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")

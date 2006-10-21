@@ -41,8 +41,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hugs (
-	build, install,
-	hugsPackageDir
+	build, install
  ) where
 
 import Distribution.PackageDescription
@@ -340,12 +339,6 @@ install verbose libDir installProgDir binDir targetProgDir buildPref pkg_descr =
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = ["hs", "lhs", dllExtension]
-
--- |Hugs library directory for a package
-hugsPackageDir :: PackageDescription -> LocalBuildInfo -> FilePath
-hugsPackageDir pkg_descr lbi =
-    mkLibDir pkg_descr lbi NoCopyDest
-	`joinFileName` "packages" `joinFileName` pkgName (package pkg_descr)
 
 -- |Filename used by Hugs for the main module of an executable.
 -- This is a simple filename, so that Hugs will look for any auxiliary
