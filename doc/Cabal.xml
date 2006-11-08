@@ -1531,10 +1531,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	<sect4 id="prefix-independence">
 	  <title>Prefix-independence</title>
 
-	  <para>On Windows (and perhaps other OSs), it is possible
-	    to query the pathname of the running binary.  This means
-	    that we can construct an installable executable package
-	    that is independent of its absolute install location.
+	  <para>On Windows, and when using Hugs on any system, it is
+	    possible to obtain the pathname of the running program.
+	    This means that we can construct an installable executable
+	    package that is independent of its absolute install location.
 	    The executable can find its auxiliary files by finding its
 	    own path and knowing the location of the other files relative
 	    to <replaceable>bindir</replaceable>.  Prefix-independence is
