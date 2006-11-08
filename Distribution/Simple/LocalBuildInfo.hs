@@ -49,7 +49,7 @@ module Distribution.Simple.LocalBuildInfo (
 	default_libexecdir,
 	default_datadir,
 	default_datasubdir,
-	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDir,
+	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
 	distPref, srcPref, autogenModulesDir, mkIncludeDir
@@ -283,8 +283,13 @@ mkHaddockDir pkg_descr lbi copydest =
 -- | Directory for program modules (Hugs only).
 mkProgDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkProgDir pkg_descr lbi copydest = 
-  absolutePath pkg_descr lbi copydest (libdir lbi) `joinFileName`
-  "hugs" `joinFileName` "programs"
+  absolutePath pkg_descr lbi copydest
+    (libdir lbi `joinFileName` "hugs" `joinFileName` "programs")
+
+mkProgDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
+mkProgDirRel pkg_descr lbi copydest =
+  prefixRelPath pkg_descr lbi copydest
+    (libdir lbi `joinFileName` "hugs" `joinFileName` "programs")
 
 prefixRelPath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
   -> Maybe FilePath
