@@ -58,7 +58,7 @@ import Distribution.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), mkBinDir, mkBinDirRel,
 				  mkLibDir, mkLibDirRel, mkDataDir,mkDataDirRel,
-				  mkLibexecDir, mkLibexecDirRel )
+				  mkLibexecDir, mkLibexecDirRel, mkProgDirRel )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
 import Distribution.Simple.Utils( die )
@@ -77,9 +77,7 @@ import qualified Distribution.Simple.JHC  as JHC
 -- import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
-#ifdef mingw32_HOST_OS
 import Distribution.PackageDescription (hasLibs)
-#endif
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -127,13 +125,14 @@ autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
 buildPathsModule :: PackageDescription -> LocalBuildInfo -> IO ()
 buildPathsModule pkg_descr lbi =
    let pragmas
-	| absolute = ""
+	| absolute || isHugs = ""
 	| otherwise =
 	  "{-# OPTIONS_GHC -fffi #-}\n"++
 	  "{-# LANGUAGE ForeignFunctionInterface #-}\n"
 
        foreign_imports
 	| absolute = ""
+	| isHugs = "import System.Environment\n"
 	| otherwise =
 	  "import Foreign\n"++
 	  "import Foreign.C\n"++
@@ -185,7 +184,9 @@ buildPathsModule pkg_descr lbi =
 	  "  dir <- getDataDir\n"++
 	  "  return (dir `joinFileName` name)\n"++
 	  "\n"++
-	  get_prefix_stuff
+	  get_prefix_stuff++
+	  "\n"++
+	  filename_stuff
    in do btime <- getModificationTime localBuildInfoFile
    	 exists <- doesFileExist paths_filepath
    	 ptime <- if exists
@@ -203,6 +204,7 @@ buildPathsModule pkg_descr lbi =
 	flat_datadirrel    = mkDataDirRel pkg_descr lbi NoCopyDest
 	flat_libexecdir    = mkLibexecDir pkg_descr lbi NoCopyDest
 	flat_libexecdirrel = mkLibexecDirRel pkg_descr lbi NoCopyDest
+	flat_progdirrel    = mkProgDirRel pkg_descr lbi NoCopyDest
 	
 	mkGetDir dir (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
@@ -210,17 +212,24 @@ buildPathsModule pkg_descr lbi =
 #if mingw32_HOST_OS
 	absolute = hasLibs pkg_descr || flat_bindirrel == Nothing
 #else
-	absolute = True
+	absolute = hasLibs pkg_descr || flat_progdirrel == Nothing || not isHugs
 #endif
 
   	paths_modulename = autogenModuleName pkg_descr
 	paths_filename = paths_modulename ++ ".hs"
 	paths_filepath = autogenModulesDir lbi `joinFileName` paths_filename
 
+	isHugs = compilerFlavor (compiler lbi) == Hugs
+        get_prefix_stuff
+          | isHugs    = "progdirrel :: String\n"++
+                        "progdirrel = "++show (fromJust flat_progdirrel)++"\n\n"++
+                        get_prefix_hugs
+          | otherwise = get_prefix_win32
+
 	path_sep = show [pathSeparator]
 
-get_prefix_stuff :: String
-get_prefix_stuff =
+get_prefix_win32 :: String
+get_prefix_win32 =
   "getPrefixDirRel :: FilePath -> IO FilePath\n"++
   "getPrefixDirRel dirRel = do \n"++
   "  let len = (2048::Int) -- plenty, PATH_MAX is 512 under Win32.\n"++
@@ -232,17 +241,27 @@ get_prefix_stuff =
   "     else do exePath <- peekCString buf\n"++
   "             free buf\n"++
   "             let (bindir,_) = splitFileName exePath\n"++
-  "             return (prefixFromBinDir bindir bindirrel `joinFileName` dirRel)\n"++
-  "  where\n"++
-  "    prefixFromBinDir bindir path\n"++
-  "      | path == \".\" || path == \"\" = bindir\n"++
-  "      | otherwise                 = prefixFromBinDir bindir' path'\n"++
-  "      where\n"++
-  "        (bindir',_) = splitFileName bindir\n"++
-  "        (path',  _) = splitFileName path\n"++
+  "             return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
   "\n"++
   "foreign import stdcall unsafe \"windows.h GetModuleFileNameA\"\n"++
-  "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"++
+  "  getModuleFileName :: Ptr () -> CString -> Int -> IO Int32\n"
+
+get_prefix_hugs :: String
+get_prefix_hugs =
+  "getPrefixDirRel :: FilePath -> IO FilePath\n"++
+  "getPrefixDirRel dirRel = do\n"++
+  "  mainPath <- getProgName\n"++
+  "  let (progPath,_) = splitFileName mainPath\n"++
+  "  let (progdir,_) = splitFileName progPath\n"++
+  "  return ((progdir `minusFileName` progdirrel) `joinFileName` dirRel)\n"
+
+filename_stuff :: String
+filename_stuff =
+  "minusFileName :: FilePath -> String -> FilePath\n"++
+  "minusFileName dir \"\"     = dir\n"++
+  "minusFileName dir \".\"    = dir\n"++
+  "minusFileName dir suffix =\n"++
+  "  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))\n"++
   "\n"++
   "joinFileName :: String -> String -> FilePath\n"++
   "joinFileName \"\"  fname = fname\n"++
@@ -252,6 +271,7 @@ get_prefix_stuff =
   "  | isPathSeparator (last dir) = dir++fname\n"++
   "  | otherwise                  = dir++pathSeparator:fname\n"++
   "\n"++
+  "splitFileName :: FilePath -> (String, String)\n"++
   "splitFileName p = (reverse (path2++drive), reverse fname)\n"++
   "  where\n"++
   "    (path,drive) = case p of\n"++
@@ -266,11 +286,18 @@ get_prefix_stuff =
   "      _                            -> path1\n"++
   "\n"++
   "pathSeparator :: Char\n"++
+#if mingw32_HOST_OS
   "pathSeparator = '\\\\'\n"++
+#else
+  "pathSeparator = '/'\n"++
+#endif
   "\n"++
   "isPathSeparator :: Char -> Bool\n"++
-  "isPathSeparator ch =\n"++
-  "  ch == '/' || ch == '\\\\'\n"
+#if mingw32_HOST_OS
+  "isPathSeparator c = c == '/' || c == '\\\\'\n"
+#else
+  "isPathSeparator c = c == '/'\n"
+#endif
 
 -- ------------------------------------------------------------
 -- * Testing
