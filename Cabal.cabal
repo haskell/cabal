@@ -49,6 +49,7 @@ Exposed-Modules:
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
         Distribution.Version,
+        Distribution.Compat.ReadP,
         Language.Haskell.Extension,
         Distribution.Compat.FilePath
 Other-Modules:
@@ -56,6 +57,5 @@ Other-Modules:
         Distribution.Compat.Map,
         Distribution.Compat.Directory,
         Distribution.Compat.Exception,
-        Distribution.Compat.RawSystem,
-        Distribution.Compat.ReadP
+        Distribution.Compat.RawSystem
 Extensions: CPP
