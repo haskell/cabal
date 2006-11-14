@@ -1,0 +1,13 @@
+Name: cabal-builder
+Version: 0.3.0
+License: BSD4
+License-File: ../LICENSE
+Author: Isaac jones <ijones@syntaxpolice.org>
+-- data-files: etc-cabal-install/serv.list
+Copyright: 2006 Isaac Jones
+Stability: Experimental
+Category: Distribution
+Build-depends: Cabal==1.1.5, cabal-install, base
+
+Executable: cabal-builder
+Main-Is: CabalBuilder.hs
