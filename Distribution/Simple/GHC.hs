@@ -210,18 +210,6 @@ build pkg_descr lbi verbose = do
                 ++ map (pref `joinFileName`) cObjs
 		++ stubObjs
 
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-            (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
-            (baseDir, _)     = splitFileName compilerDir
-            ld = baseDir `joinFileName` "gcc-lib\\ld.exe"
-            rawSystemLd = rawSystemVerbose
-            maxCommandLineSize = 30 * 1024
-#else
-            ld = "ld"
-            rawSystemLd = rawSystemPath
-             --TODO: discover this at configure time on unix
-            maxCommandLineSize = 30 * 1024
-#endif
             runLd ld args = do
               exists <- doesFileExist ghciLibName
               status <- rawSystemLd verbose ld
@@ -230,11 +218,36 @@ build pkg_descr lbi verbose = do
                    (renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName)
               return status
 
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+            rawSystemLd = rawSystemVerbose
+            maxCommandLineSize = 30 * 1024
+#else
+            rawSystemLd = rawSystemPath
+             --TODO: discover this at configure time on unix
+            maxCommandLineSize = 30 * 1024
+#endif
+        ld <- 
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+              let
+               (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
+               (baseDir, _)     = splitFileName compilerDir
+               binInstallLd     = baseDir `joinFileName` "gcc-lib\\ld.exe"
+	      in do
+              mb <- lookupProgram "ld" (withPrograms lbi)
+	      case fmap programLocation mb of
+	       Just (UserSpecified s) -> return s
+		     -- assume we're using an installed copy of GHC..
+	       _ -> return binInstallLd
+#else
+            return "ld"
+#endif
+        mbAr <- lookupProgram "ar" (withPrograms lbi) 
+	let arProg = case fmap programLocation mbAr of { Just (UserSpecified x) -> x ; _ -> "ar" }
         ifVanillaLib False $ maybeExit $ xargs maxCommandLineSize
-          (rawSystemPath verbose) "ar" arArgs arObjArgs
+          (rawSystemPath verbose) arProg arArgs arObjArgs
 
         ifProfLib $ maybeExit $ xargs maxCommandLineSize
-          (rawSystemPath verbose) "ar" arProfArgs arProfObjArgs
+          (rawSystemPath verbose) arProg arProfArgs arProfObjArgs
 
         ifGHCiLib $ maybeExit $ xargs maxCommandLineSize
           runLd ld ldArgs ldObjArgs
