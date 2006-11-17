@@ -59,6 +59,8 @@ import Distribution.Simple.Utils
         (smartCopySources, die, findPackageDesc, findFile, copyFileVerbose)
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Program ( lookupProgram, ProgramLocation(..), programLocation )
 
 import Control.Monad(when)
 import Data.Char (isSpace, toLower)
@@ -73,15 +75,15 @@ import Distribution.Compat.FilePath (joinFileName, splitFileName)
 import HUnit (Test)
 #endif
 
--- |Create a source distribution. FIX: Calls tar directly (won't work
--- on windows).
+-- |Create a source distribution.
 sdist :: PackageDescription
+      -> Maybe LocalBuildInfo
       -> SDistFlags -- verbose & snapshot
       -> FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg_descr_orig (SDistFlags snapshot verbose) tmpDir targetPref pps = do
+sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps = do
   time <- getClockTime
   ct <- toCalendarTime time
   let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
@@ -130,9 +132,20 @@ sdist pkg_descr_orig (SDistFlags snapshot verbose) tmpDir targetPref pps = do
     else copyFileVerbose verbose descFile targetDescFile
 
   let tarBallFilePath = targetPref `joinFileName` tarBallName pkg_descr
-  system $ "(cd " ++ tmpDir
-           ++ ";tar cf - " ++ (nameVersion pkg_descr) ++ ") | gzip -9 >"
-           ++ tarBallFilePath
+  let tarDefault = "tar"
+  tarProgram <- 
+    case mb_lbi of
+      Nothing -> return tarDefault
+      Just lbi -> do
+       mb <- lookupProgram "tar" (withPrograms lbi)
+       case fmap programLocation mb of
+         Just (UserSpecified s) -> return s
+	 _ -> return tarDefault
+   -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
+   -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
+   -- which is problematic in a Windows setting.]
+  let tarArgs = "-C"++tmpDir ++ " -czf " ++ tarBallFilePath 
+  system (tarProgram ++ ' ':tarArgs ++ ' ':(nameVersion pkg_descr))
   removeDirectoryRecursive tmpDir
   putStrLn $ "Source tarball created: " ++ tarBallFilePath
 
