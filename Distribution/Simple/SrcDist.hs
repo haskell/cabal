@@ -60,7 +60,7 @@ import Distribution.Simple.Utils
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Program ( lookupProgram, ProgramLocation(..), programLocation )
+import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
 
 import Control.Monad(when)
 import Data.Char (isSpace, toLower)
