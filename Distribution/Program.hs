@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 module Distribution.Program( Program(..)
                            , ProgramLocation(..)
                            , ProgramConfiguration(..)
@@ -79,7 +80,10 @@ defaultProgramConfiguration = progListToFM
                               , ranlibProgram
                               , simpleProgram "runghc"
                               , simpleProgram "runhugs"
-                              , arProgram]
+                              , arProgram
+			      , ldProgram
+			      , tarProgram
+			      ]
 -- haddock is currently the only one that really works.
 {-                              [ ghcProgram
                               , ghcPkgProgram
@@ -155,7 +159,14 @@ greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+ldProgram = Program "ld" "ld" [] (FoundOnSystem "<what-your-hs-compiler-shipped-with>")
+#else
 ldProgram = simpleProgram "ld"
+#endif
+
+tarProgram :: Program
+tarProgram = simpleProgram "tar"
 
 cppProgram :: Program
 cppProgram = simpleProgram "cpp"
