@@ -622,7 +622,7 @@ defaultUserHooks
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        preInst   = readHook installVerbose,
        instHook  = defaultInstallHook,
-       sDistHook = \p _ h f -> sdist p f srcPref distPref (allSuffixHandlers h),
+       sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
        pfeHook   = pfe,
        cleanHook = clean,
        preHaddock  = readHook haddockVerbose,
