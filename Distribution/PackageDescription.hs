@@ -425,7 +425,7 @@ basicStanzaFields =
 executableStanzaFields :: [StanzaField Executable]
 executableStanzaFields =
  [ simpleField "executable"
-                           showFreeText       (munch (const True))
+                           showToken          parseTokenQ
                            exeName            (\xs    exe -> exe{exeName=xs})
  , simpleField "main-is"
                            showFilePath       parseFilePathQ
