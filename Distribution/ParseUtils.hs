@@ -166,23 +166,23 @@ type Stanza = [(LineNo,String,String)]
 -- |Split a string into blank line-separated stanzas of
 -- "Field: value" groups
 splitStanzas :: String -> ParseResult [Stanza]
-splitStanzas = mapM mkStanza . map merge . groupStanzas . filter validLine . zip [1..] . lines
+splitStanzas = mapM mkStanza . map merge . groupStanzas . filter validLine . zip [1..] . map trimTrailingSpaces . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
                             _         -> True
         groupStanzas :: [(Int,String)] -> [[(Int,String)]]
         groupStanzas [] = []
-        groupStanzas xs = let (ys,zs) = break allSpaces xs
-                           in ys : groupStanzas (dropWhile allSpaces zs)
+        groupStanzas xs = let (ys,zs) = break (null . snd) xs
+                           in ys : groupStanzas (dropWhile (null . snd) zs)
 
-allSpaces :: (a, String) -> Bool
-allSpaces (_,xs) = all isSpace xs
+trimTrailingSpaces :: String -> String
+trimTrailingSpaces = reverse . dropWhile isSpace . reverse
 
 -- |Split a file into "Field: value" groups, but blank lines have no
 -- significance, unlike 'splitStanzas'.  A field value may span over blank
 -- lines.
 singleStanza :: String -> ParseResult Stanza
-singleStanza = mkStanza . merge . filter validLine . zip [1..] . lines
+singleStanza = mkStanza . merge . filter validLine . zip [1..] . map trimTrailingSpaces . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
                             []        -> False      -- blank line
