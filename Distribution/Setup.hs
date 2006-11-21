@@ -477,7 +477,7 @@ configureCmd progConf = Cmd {
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
 programArgsOptions (ProgramConfiguration conf) = map f (keys conf)
-    where f name = Option "" [name ++ "-args"] (reqPathArg (ProgramArgs name))
+    where f name = Option "" [name ++ "-args"] (reqArgArg (ProgramArgs name))
                    ("give the args to " ++ name)
 
 withProgramOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
@@ -487,6 +487,9 @@ withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . platformPath) "PATH"
+
+reqArgArg :: (FilePath -> a) -> ArgDescr a
+reqArgArg constr = ReqArg (constr . platformPath) "ARGS"
 
 reqDirArg :: (FilePath -> a) -> ArgDescr a
 reqDirArg constr = ReqArg (constr . platformPath) "DIR"
