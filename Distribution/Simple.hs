@@ -681,7 +681,7 @@ defaultRegHook :: PackageDescription -> LocalBuildInfo
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
-    else die "Package contains no library to register"
+    else setupMessage "Package contains no library to register:" pkg_descr
 
 -- ------------------------------------------------------------
 -- * Testing
