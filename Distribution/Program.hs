@@ -1,4 +1,28 @@
 {-# OPTIONS -cpp #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.Program
+-- Copyright   :  Isaac Jones 2006
+-- 
+-- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
+-- Stability   :  alpha
+-- Portability :  GHC, Hugs
+--
+-- Explanation: A program is basically a name, a location, and some
+-- arguments.
+--
+-- One nice thing about using it is that any program that is
+-- registered with Cabal will get some \"configure\" and \".cabal\"
+-- helpers like --with-foo-args --foo-path= and extra-foo-args.
+--
+-- There's also good default behavior for trying to find \"foo\" in
+-- PATH, being able to override its location, etc.
+--
+-- There's also a hook for adding programs in a Setup.lhs script.  See
+-- hookedPrograms in 'Distribution.Simple.UserHooks'.  This gives a
+-- hook user the ability to get the above flags and such so that they
+-- don't have to write all the PATH logic inside Setup.lhs.
+
 module Distribution.Program( Program(..)
                            , ProgramLocation(..)
                            , ProgramConfiguration(..)
