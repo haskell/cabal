@@ -6,6 +6,15 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+--
+-- PreProcessors are programs or functions which input a filename and
+-- output a Haskell file.  The general form of a preprocessor is input
+-- Foo.pp and output Foo.hs (where /pp/ is a unique extension that
+-- tells us which preprocessor to use eg. gc, ly, cpphs, x, y, etc.).
+-- Once a PreProcessor has been added to Cabal, either here or with
+-- 'Distribution.Simple.UserHooks', if Cabal finds a Foo.pp, it'll run the given
+-- preprocessor which should output a Foo.hs.
+
 {- Copyright (c) 2003-2005, Isaac Jones, Malcolm Wallace
 All rights reserved.
 
