@@ -41,10 +41,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.Configure (writePersistBuildConfig,
+module Distribution.Simple.Configure (configure,
+                                      writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
- 			  	      configure,
                                       localBuildInfoFile,
                                       findProgram,
                                       getInstalledPackages,
@@ -103,6 +103,7 @@ import Distribution.PackageDescription (hasLibs)
 import HUnit
 #endif
 
+-- internal function
 tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
 tryGetPersistBuildConfig = do
   e <- doesFileExist localBuildInfoFile
@@ -113,20 +114,25 @@ tryGetPersistBuildConfig = do
       [(bi,_)] -> return $ Right bi
       _        -> return $ Left  dieMsg
 
+-- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   lbi <- tryGetPersistBuildConfig
   either die return lbi
 
+-- |Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig :: IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig = do
   lbi <- tryGetPersistBuildConfig
   return $ either (const Nothing) Just lbi
 
+-- |After running configure, output the 'LocalBuildInfo' to the
+-- 'localBuildInfoFile'.
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
   writeFile localBuildInfoFile (show lbi)
 
+-- |@.setup-config@
 localBuildInfoFile :: FilePath
 localBuildInfoFile = "./.setup-config"
 
@@ -134,6 +140,8 @@ localBuildInfoFile = "./.setup-config"
 -- * Configuration
 -- -----------------------------------------------------------------------------
 
+-- |Perform the \"@.\/setup configure@\" action.
+-- Outputs the @.setup-config@ file.
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr cfg
   = do
