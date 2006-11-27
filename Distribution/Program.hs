@@ -23,9 +23,12 @@
 -- hook user the ability to get the above flags and such so that they
 -- don't have to write all the PATH logic inside Setup.lhs.
 
-module Distribution.Program( Program(..)
+module Distribution.Program(
+                           -- * Program-Related types
+                             Program(..)
                            , ProgramLocation(..)
                            , ProgramConfiguration(..)
+                           -- * Helper functions
                            , withProgramFlag
                            , programOptsFlag
                            , programOptsField
@@ -38,7 +41,7 @@ module Distribution.Program( Program(..)
                            , rawSystemProgram
                            , rawSystemProgramConf
                            , simpleProgram
-                             -- Programs
+                             -- * Programs that Cabal knows about
                            , ghcProgram
                            , ghcPkgProgram
                            , nhcProgram
@@ -66,9 +69,9 @@ import Distribution.Simple.Utils (die, rawSystemVerbose, maybeExit)
 
 -- |Represents a program which cabal may call.
 data Program
-    = Program { -- |The simple name of the program, eg ghc
+    = Program { -- |The simple name of the program, eg. ghc
                programName :: String
-                -- |The name of this program's binary, eg ghc-6.4
+                -- |The name of this program's binary, eg. ghc-6.4
               ,programBinName :: String
                 -- |Default command-line args for this program
               ,programArgs :: [String]
@@ -78,11 +81,12 @@ data Program
 
 -- |Similar to Maybe, but tells us whether it's specifed by user or
 -- not.  This includes not just the path, but the program as well.
-data ProgramLocation = EmptyLocation
-                     | UserSpecified FilePath
-                     | FoundOnSystem FilePath
+data ProgramLocation = EmptyLocation -- ^Like Nothing
+                     | UserSpecified FilePath -- ^The user gave the path to this program, eg. --ghc-path=\/usr\/bin\/ghc-6.6
+                     | FoundOnSystem FilePath -- ^The location of the program, as located by searching PATH.
       deriving (Read, Show)
 
+-- |The configuration is a collection of 'Program's.  It's a mapping from the name of the program (eg. ghc) to the Program.
 data ProgramConfiguration = ProgramConfiguration (Map.Map String Program)
 
 -- Read & Show instances are based on listToFM
@@ -125,17 +129,17 @@ defaultProgramConfiguration = progListToFM
                               , ranlib, ar
                               ]-}
 
--- |The flag for giving a path to this program.  eg --with-alex=\/usr\/bin\/alex
+-- |The flag for giving a path to this program.  eg. --with-alex=\/usr\/bin\/alex
 withProgramFlag :: Program -> String
 withProgramFlag Program{programName=n} = "with-" ++ n
 
 -- |The flag for giving args for this program.
---  eg --haddock-options=-s http:\/\/foo
+--  eg. --haddock-options=-s http:\/\/foo
 programOptsFlag :: Program -> String
 programOptsFlag Program{programName=n} = n ++ "-options"
 
 -- |The foo.cabal field for  giving args for this program.
---  eg haddock-options: -s http:\/\/foo
+--  eg. haddock-options: -s http:\/\/foo
 programOptsField :: Program -> String
 programOptsField = programOptsFlag
 
