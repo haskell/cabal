@@ -8,6 +8,8 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Invokes the "Distribution.Compiler"s to build the library and
+-- executables in this package.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
@@ -84,12 +86,12 @@ import HUnit (Test)
 #endif
 
 -- -----------------------------------------------------------------------------
--- Build the library
+-- |Build the libraries and executables in this package.
 
-build :: PackageDescription
-         -> LocalBuildInfo
-         -> BuildFlags
-         -> [ PPSuffixHandler ]
+build :: PackageDescription  -- ^mostly information from the .cabal file
+         -> LocalBuildInfo -- ^Configuration information
+         -> BuildFlags -- ^Flags that the user passed to build
+         -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi (BuildFlags verbose) suffixes = do
   -- check that there's something to build
