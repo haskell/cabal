@@ -8,7 +8,11 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Definition of the LocalBuildInfo data type.
+-- Definition of the 'LocalBuildInfo' data type.  This is basically
+-- the information that is gathered by the end of the configuration
+-- step which could include package information from ghc-pkg, flags
+-- the user passed to configure, and the location of tools in the
+-- PATH.
 
 {- All rights reserved.
 
@@ -69,11 +73,12 @@ import Foreign
 import Foreign.C
 #endif
 
--- |Data cached after configuration step.
+-- |Data cached after configuration step.  See also
+-- 'Distribution.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
   	prefix	      :: FilePath,
-		-- ^ The installation directory (eg. @/usr/local@, or
-		-- @C:/Program Files/foo-1.2@ on Windows.
+		-- ^ The installation directory (eg. @\/usr\/local@, or
+		-- @C:\/Program Files\/foo-1.2@ on Windows.
 	bindir        :: FilePath,
 		-- ^ The bin directory
 	libdir        :: FilePath,
