@@ -8,8 +8,9 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Explanation: Perform the \"@.\/setup install@\" action.  Move files into
--- place based on the prefix argument.
+-- Explanation: Perform the \"@.\/setup install@\" and \"@.\/setup
+-- copy@\" actions.  Move files into place based on the prefix
+-- argument.
 
 {- All rights reserved.
 
@@ -81,10 +82,13 @@ import Distribution.Compat.FilePath(splitFileName,joinFileName)
 import HUnit (Test)
 #endif
 
--- |FIX: nhc isn't implemented yet.
-install :: PackageDescription
-        -> LocalBuildInfo
-        -> CopyFlags
+-- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
+-- actions.  Move files into place based on the prefix argument.  FIX:
+-- nhc isn't implemented yet.
+
+install :: PackageDescription -- ^information from the .cabal file
+        -> LocalBuildInfo -- ^information from the configure step
+        -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
 install pkg_descr lbi (CopyFlags copydest verbose) = do
   let dataFilesExist = not (null (dataFiles pkg_descr))
