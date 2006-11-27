@@ -7,7 +7,7 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Packages.
+-- Packages are fundamentally just a name and a version.
 
 {- All rights reserved.
 
@@ -49,13 +49,15 @@ import Distribution.Compat.ReadP as ReadP
 import Data.Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
+-- | The name and version of a package.
 data PackageIdentifier
     = PackageIdentifier {
-	pkgName    :: String,
-	pkgVersion :: Version
+	pkgName    :: String, -- ^The name of this package, eg. foo
+	pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
      deriving (Read, Show, Eq, Ord)
 
+-- |Creates a string like foo-1.2
 showPackageId :: PackageIdentifier -> String
 showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
 showPackageId pkgid = 
@@ -70,6 +72,7 @@ parsePackageName = do ns <- sepBy1 component (char '-')
 	-- each component must contain an alphabetic character, to avoid
 	-- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
+-- |A package ID looks like foo-1.2.
 parsePackageId :: ReadP r PackageIdentifier
 parsePackageId = do 
   n <- parsePackageName
