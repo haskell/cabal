@@ -8,6 +8,9 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Build and Install implementations for GHC.  See
+-- 'Distribution.Simple.GHCPackageConfig.GHCPackageConfig' for
+-- registration-related stuff.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
