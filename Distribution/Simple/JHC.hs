@@ -7,6 +7,7 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Build and install functionality for the JHC compiler.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
