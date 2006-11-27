@@ -8,6 +8,9 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Implements the \"@.\/setup sdist@\" command, which creates a source
+-- distribution for this package.  That is, packs up the source code
+-- into a tarball.
 
 {- Copyright (c) 2003-2004, Simon Marlow
 All rights reserved.
@@ -76,9 +79,9 @@ import HUnit (Test)
 #endif
 
 -- |Create a source distribution.
-sdist :: PackageDescription
-      -> Maybe LocalBuildInfo
-      -> SDistFlags -- verbose & snapshot
+sdist :: PackageDescription -- ^information from the tarball
+      -> Maybe LocalBuildInfo -- ^Information from configure
+      -> SDistFlags -- ^verbose & snapshot
       -> FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
