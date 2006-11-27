@@ -9,7 +9,8 @@
 -- Portability :  portable
 --
 -- Explanation: Performs registration for GHC.  Specific to
--- ghc-pkg. Creates a GHC package config file.
+-- ghc-pkg. Creates a GHC package config file.  See also
+-- 'Distribution.Simple.GHC.build', etc.
 
 module Distribution.Simple.GHCPackageConfig (
 	GHCPackageConfig(..),
@@ -37,7 +38,7 @@ import System.Directory (doesFileExist, getPermissions, Permissions (..))
 import Distribution.Compat.FilePath (joinFileName)
 import Distribution.Compat.Directory (getHomeDirectory)
 
--- |Where ghc keeps the --user files.
+-- |Where ghc versions < 6.3 keeps the --user files.
 -- |return the file, whether it exists, and whether it's readable
 
 localPackageConfig :: IO FilePath
