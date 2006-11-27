@@ -106,7 +106,7 @@ data Action = ConfigCmd ConfigFlags   -- config
 -- | Flags to @configure@ command
 data ConfigFlags = ConfigFlags {
         configPrograms :: ProgramConfiguration, -- ^All programs that cabal may run
-        configHcFlavor :: Maybe CompilerFlavor,
+        configHcFlavor :: Maybe CompilerFlavor, -- ^The \"flavor\" of the compiler, sugh as GHC or Hugs.
         configHcPath   :: Maybe FilePath, -- ^given compiler location
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
         configHappy    :: Maybe FilePath, -- ^Happy path
@@ -134,11 +134,13 @@ data ConfigFlags = ConfigFlags {
 		-- ^subdirectory of datadir in which data files are installed
 
         configVerbose  :: Int,            -- ^verbosity level
-	configUser     :: Bool,		  -- ^--user flag?
+	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool		  -- ^Enable -split-objs with GHC
     }
 
+-- |The default configuration of a package, before running configure,
+-- most things are \"Nothing\", zero, etc.
 emptyConfigFlags :: ProgramConfiguration -> ConfigFlags
 emptyConfigFlags progConf = ConfigFlags {
         configPrograms = progConf,
@@ -172,6 +174,7 @@ emptyConfigFlags progConf = ConfigFlags {
 data CopyFlags = CopyFlags {copyDest      :: CopyDest
                            ,copyVerbose :: Int}
 
+-- |The location prefix for the /copy/ command.
 data CopyDest
   = NoCopyDest
   | CopyTo FilePath
@@ -179,8 +182,8 @@ data CopyDest
   deriving (Eq, Show)
 
 data MaybeUserFlag  = MaybeUserNone   -- ^no --user OR --global flag.
-                    | MaybeUserUser   -- ^--user flag
-                    | MaybeUserGlobal -- ^--global flag
+                    | MaybeUserUser   -- ^the --user flag
+                    | MaybeUserGlobal -- ^the --global flag
 
 -- |A 'MaybeUserFlag' overrides the default --user setting
 userOverride :: MaybeUserFlag -> Bool -> Bool
