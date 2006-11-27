@@ -8,6 +8,7 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Build and install functionality for Hugs.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
@@ -287,14 +288,14 @@ stripComments keepPragmas = stripCommentsLevel 0
 	copyPragma [] = []
 
 -- -----------------------------------------------------------------------------
--- Install for Hugs
+-- |Install for Hugs.
 -- For install, copy-prefix = prefix, but for copy they're different.
--- The library goes in <copy-prefix>/lib/hugs/packages/<pkgname>
--- (i.e. <prefix>/lib/hugs/packages/<pkgname> on the target system).
--- Each executable goes in <copy-prefix>/lib/hugs/programs/<exename>
--- (i.e. <prefix>/lib/hugs/programs/<exename> on the target system)
--- with a script <copy-prefix>/bin/<exename> pointing at
--- <prefix>/lib/hugs/programs/<exename>
+-- The library goes in \<copy-prefix>\/lib\/hugs\/packages\/\<pkgname>
+-- (i.e. \<prefix>\/lib\/hugs\/packages\/\<pkgname> on the target system).
+-- Each executable goes in \<copy-prefix>\/lib\/hugs\/programs\/\<exename>
+-- (i.e. \<prefix>\/lib\/hugs\/programs\/\<exename> on the target system)
+-- with a script \<copy-prefix>\/bin\/\<exename> pointing at
+-- \<prefix>\/lib\/hugs\/programs\/\<exename>.
 install
     :: Int      -- ^verbose
     -> FilePath -- ^Library install location
