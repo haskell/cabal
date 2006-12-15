@@ -696,8 +696,9 @@ registerCmd = Cmd {
 
 parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                      IO (RegisterFlags, [a], [String])
-parseRegisterArgs = parseArgs registerCmd updateCfg
-  where updateCfg reg fl = case fl of
+parseRegisterArgs = parseArgs registerCmd registerUpdateCfg
+
+registerUpdateCfg reg fl = case fl of
             UserFlag        -> reg { regUser=MaybeUserUser }
             GlobalFlag      -> reg { regUser=MaybeUserGlobal }
             Verbose n       -> reg { regVerbose=n }
@@ -725,7 +726,7 @@ unregisterCmd = Cmd {
 
 parseUnregisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                        IO (RegisterFlags, [a], [String])
-parseUnregisterArgs = parseRegisterArgs
+parseUnregisterArgs = parseArgs unregisterCmd registerUpdateCfg
 
 -- |Helper function for commands with no arguments except for verbose
 -- and help.
