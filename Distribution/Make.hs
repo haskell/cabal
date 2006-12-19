@@ -159,7 +159,8 @@ defaultMainNoRead pkg_descr
 
             BuildCmd -> basicCommand "Build" "make" (parseBuildArgs args [])
 
-            CleanCmd -> basicCommand "Clean" "make clean" (parseCleanArgs args [])
+            CleanCmd -> basicCommand "Clean" "make clean"
+                                     (parseCleanArgs emptyCleanFlags args [])
 
             SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
 
