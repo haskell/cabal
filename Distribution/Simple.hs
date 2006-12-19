@@ -312,12 +312,12 @@ defaultMainWorker pkg_descr_in action args hooks
                 postHook postPFE args verbose pkg_descr localbuildinfo
 
             CleanCmd -> do
-                (verbose,_, args) <- parseCleanArgs args []
-                pkg_descr <- hookOrInArgs preClean args verbose
+                (flags,_, args) <- parseCleanArgs emptyCleanFlags args []
+                pkg_descr <- hookOrInArgs preClean args flags
 		maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
-                cmdHook cleanHook pkg_descr maybeLocalbuildinfo verbose
-                postHook postClean args verbose pkg_descr maybeLocalbuildinfo
+                cmdHook cleanHook pkg_descr maybeLocalbuildinfo flags
+                postHook postClean args flags pkg_descr maybeLocalbuildinfo
 
             CopyCmd mprefix -> do
                 (flags, _, args) <- parseCopyArgs (CopyFlags mprefix 0) args []
@@ -496,12 +496,12 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
         return ()
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi hooks (CleanFlags verbose) = do
+clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure verbose) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
     try $ removeDirectoryRecursive (joinPaths distPref "doc")
     try $ removeFile installedPkgConfigFile
-    try $ removeFile localBuildInfoFile
+    try $ unless saveConfigure (removeFile localBuildInfoFile)
     try $ removeFile regScriptLocation
     try $ removeFile unregScriptLocation
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
