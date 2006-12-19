@@ -365,7 +365,10 @@ printGlobalHelp progConf =
                   do pname <- getProgName
                      let syntax_line = "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n  or:  " ++ pname ++ " COMMAND [FLAGS]\n\nGlobal flags:"
                      putStrLn (usageInfo syntax_line globalOptions)
-                     putStrLn "Commands:"
+                     putStrLn "Typical steps for installing Cabal packages:"
+                     mapM (\x -> putStrLn $ "  " ++ pname ++ " " ++ x)
+                              ["configure", "build", "install"]
+                     putStrLn "\nCommands:"
                      let maxlen = maximum [ length (cmdName cmd) | cmd <- (commandList progConf) ]
                      sequence_ [ do putStr "  "
                                     putStr (align maxlen (cmdName cmd))
@@ -373,6 +376,8 @@ printGlobalHelp progConf =
                                     putStrLn (cmdHelp cmd)
                                | cmd <- (commandList progConf) ]
                      putStrLn $ "\nFor more information about a command, try '" ++ pname ++ " COMMAND --help'."
+                     putStrLn $ "\nThis Setup program uses the Haskell Cabal Infrastructure."
+                     putStrLn $"See http://www.haskell.org/cabal/ for more information."
   where align n str = str ++ replicate (n - length str) ' '
 
 printCmdHelp :: Cmd a -> [OptDescr a] -> IO ()
