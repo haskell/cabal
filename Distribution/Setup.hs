@@ -47,7 +47,7 @@ module Distribution.Setup (--parseArgs,
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), 
 			   InstallFlags(..), emptyInstallFlags,
-                           HaddockFlags(..), emptyHaddockFlags,
+                           HaddockFlags(..), emptyHaddockFlags, emptyCleanFlags,
                            BuildFlags(..), CleanFlags(..), PFEFlags(..),
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
@@ -225,10 +225,14 @@ data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 0}
 
+data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
+                                 ,cleanVerbose   :: Int}
+emptyCleanFlags :: CleanFlags
+emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 0}
+
 -- Following only have verbose flags, but for consistency and
 -- extensibility we make them into a type.
 data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
-data CleanFlags   = CleanFlags   {cleanVerbose   :: Int}
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
@@ -266,6 +270,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | Snapshot
           -- For haddock:
           | HaddockHoogle
+          -- For clean:
+          | SaveConfigure -- ^don't delete .setup-config during clean
           -- For everyone:
           | HelpFlag
           | Verbose Int
@@ -592,12 +598,19 @@ cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
         cmdDescription = "Removes .hi, .o, preprocessed sources, etc.\n", -- Multi-line!
-        cmdOptions     = [cmd_help, cmd_verbose],
+        cmdOptions     = [cmd_help, cmd_verbose,
+           Option "s" ["save-configure"] (NoArg SaveConfigure)
+               "Do not remove the configuration file (.setup-config) during cleaning.  Saves need to reconfigure."],
         cmdAction      = CleanCmd
         }
 
-parseCleanArgs :: [String] -> [OptDescr a] -> IO (CleanFlags, [a], [String])
-parseCleanArgs = parseNoArgs cleanCmd CleanFlags
+parseCleanArgs :: CleanFlags -> [String] -> [OptDescr a] ->
+                    IO (CleanFlags, [a], [String])
+parseCleanArgs  = parseArgs cleanCmd updateCfg
+  where updateCfg (CleanFlags saveConfigure verbose) fl = case fl of
+            SaveConfigure -> CleanFlags True verbose
+            Verbose n     -> CleanFlags saveConfigure n
+            _             -> error "Unexpected flag!"
 
 installCmd :: Cmd a
 installCmd = Cmd {
