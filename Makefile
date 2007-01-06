@@ -213,7 +213,8 @@ PACKAGE_DEPS	= base
 
 SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries (Cabal package)"
 
-SRC_HC_OPTS   += -cpp
+comma = ,
+SRC_HC_OPTS   += -cpp -DCABAL_VERSION=$(subst .,$(comma),$(CABALVERSION))
 
 include $(TOP)/mk/target.mk
 
