@@ -454,7 +454,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe]
-                 ++ map ("--use-package=" ++) (showPkg:showDepPkgs)
+                 ++ map ("--use-package=" ++) showDepPkgs
                  ++ programArgs confHaddock
                  ++ (if verbose > 4 then ["--verbose"] else [])
                  ++ outFiles
