@@ -1,0 +1,8 @@
+#!/bin/sh
+
+darcs get http://hackage.haskell.org/~paolo/darcs/cabal-install/ && \
+cd cabal-install && \
+make install-user && \
+cabal-install update && \
+cabal-install install --prefix=/tmp --user hnop && \
+ls -l /tmp/bin/hnop
