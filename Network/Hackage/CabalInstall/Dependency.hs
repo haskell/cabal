@@ -26,14 +26,13 @@ import Distribution.Version (Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.ParseUtils (showDependency)
 
-import Network.Hackage.Interface
 import Data.List (nub, maximumBy)
 import Data.Maybe (mapMaybe)
 import Control.Monad (guard)
 
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
 import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
-                                      , ConfigFlags (..), PkgInfo (..))
+                                      , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..))
 import Text.Printf (printf)
 
 

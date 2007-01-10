@@ -18,11 +18,6 @@ import System.IO.Unsafe (unsafeInterleaveIO)
 
 type PathName = String
 
--- Resolved dependency, pkg location and resolved dependencies of the dependency.
-data ResolvedDependency
-    = ResolvedDependency PackageIdentifier String [(Dependency,Maybe ResolvedDependency)]
-      deriving (Eq,Show)
-
 -- XXX remove
 -- data Pkg = Pkg String [String] String
 --     deriving (Show, Read)
