@@ -306,7 +306,7 @@ tests currDir comp compConf compVersion = [
             doesFileExist "dist/build/A.hi-boot" >>=
               assertBool "build did not move A.hi-boot file into place lib"
             doesFileExist (",tmp/lib/recursive-1.0/ghc-" ++ compVerStr
-	               ++ "/libHSrecursive-1.0.a") >>=
+                       ++ "/libHSrecursive-1.0.a") >>=
               assertBool "recursive build didn't create library"
             doesFileExist "dist/build/testExe/testExe-tmp/A.hi" >>=
               assertBool "build did not move A.hi-boot file into place exe"
@@ -387,7 +387,7 @@ tests currDir comp compConf compVersion = [
                      doesFileExist "dist/build/D.o" >>=
                        assertBool "D.gc did not get compiled to D.o this is an overriding test"
                      doesFileExist (",tmp/lib/withHooks-1.0/ghc-" ++ compVerStr
-		                 ++ "/" `joinFileName` "libHSwithHooks-1.0.a")
+                                 ++ "/" `joinFileName` "libHSwithHooks-1.0.a")
                        >>= assertBool "library doesn't exist")
 
             doesFileExist ",tmp/bin/withHooks" >>= 
@@ -414,7 +414,7 @@ tests currDir comp compConf compVersion = [
       ]
     where testdir = currDir `joinFileName` "tests"
           compStr = show comp
-	  compVerStr = concat . intersperse "." . map show . versionBranch $ compVersion 
+          compVerStr = concat . intersperse "." . map show . versionBranch $ compVersion 
           compCmd = command comp
           compFlag = case compConf of
                       GHC -> "--ghc"
@@ -468,16 +468,16 @@ main = do putStrLn "compile successful"
           dir <- getCurrentDirectory
 --          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
           args <- getArgs
-	  let testList :: CompilerFlavor -> Version -> [Test]
-	      testList compiler version
-	        | null args = tests dir compiler compiler version
+          let testList :: CompilerFlavor -> Version -> [Test]
+              testList compiler version
+                | null args = tests dir compiler compiler version
                 | otherwise =
-		    case reads (head args) of
+                    case reads (head args) of
                       [(n,_)] -> [ tests dir compiler compiler version !! n ]
                       _ -> error "usage: moduleTest [test_num]"
-	      compilers = [GHC] --, Hugs]
+              compilers = [GHC] --, Hugs]
           globalTests <-
-	    flip mapM compilers $ \compilerFlavour -> do
+            flip mapM compilers $ \compilerFlavour -> do
               compiler <- configCompiler (Just compilerFlavour) Nothing Nothing 0
               let version = compilerVersion compiler
               runTestTT' $ TestList (testList compilerFlavour version)
