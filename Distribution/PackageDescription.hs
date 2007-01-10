@@ -673,11 +673,12 @@ sanityCheckPackage pkg_descr
                      ,catMaybes $ libSane:goodCabal:(checkMissingFields pkg_descr))
 
 -- |Output warnings and errors. Exit if any errors.
-errorOut :: [String]  -- ^Warnings
+errorOut :: Int       -- ^Verbosity
+         -> [String]  -- ^Warnings
          -> [String]  -- ^errors
          -> IO ()
-errorOut warnings errors = do
-  mapM warn warnings
+errorOut verbosity warnings errors = do
+  when (verbosity > 0) $ mapM_ warn warnings
   when (not (null errors)) $ do
     pname <- getProgName
     mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors

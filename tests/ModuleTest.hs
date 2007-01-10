@@ -423,12 +423,12 @@ tests currDir comp compConf compVersion = [
           compIdent = compStr ++ "/" ++ compFlag
           testPrelude = system "make clean >> out.build" >> system "make >> out.build"
           assertConfigure pref
-              = assertCmd' compCmd ("configure --user --prefix=" ++ pref ++ " " ++ compFlag)
+              = assertCmd' compCmd ("configure -v0 --user --prefix=" ++ pref ++ " " ++ compFlag)
                            "configure returned error code"
-          assertBuild = assertCmd' compCmd "build" "build returned error code"
-          assertCopy  = assertCmd' compCmd "copy"  "copy returned error code"
-          assertClean  = assertCmd' compCmd "clean"  "clean returned error code"
-          assertHaddock = assertCmd' compCmd "haddock" "setup haddock returned error code."
+          assertBuild = assertCmd' compCmd "build -v0" "build returned error code"
+          assertCopy  = assertCmd' compCmd "copy -v0"  "copy returned error code"
+          assertClean  = assertCmd' compCmd "clean -v0"  "clean returned error code"
+          assertHaddock = assertCmd' compCmd "haddock -v0" "setup haddock returned error code."
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
           command c = error ("Unhandled compiler: " ++ show c)
