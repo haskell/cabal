@@ -8,7 +8,8 @@ Maintainer: Lemmih <lemmih@gmail.com>, Paolo Martini <paolo@nemail.it>
 Copyright: 2005 Lemmih <lemmih@gmail.com>, 2006 Paolo Martini <paolo@nemail.it>
 Stability: Experimental
 Category: Distribution
-Build-depends: base, mtl, network, Cabal
+-- For GHC <6.6, remove regex-compat
+Build-depends: base, mtl, network, Cabal, regex-compat
 Synopsis: Automatic installer for Cabal packages.
 Description:
   apt-get like tool.
