@@ -358,10 +358,15 @@ haddockName pkg_descr =
 -- the strings for the required fields are necessary here, and so we
 -- don't repeat ourselves, I name them:
 
+reqNameName :: String
 reqNameName       = "name"
+reqNameVersion :: String
 reqNameVersion    = "version"
+reqNameCopyright :: String
 reqNameCopyright  = "copyright"
+reqNameMaintainer :: String
 reqNameMaintainer = "maintainer"
+reqNameSynopsis :: String
 reqNameSynopsis   = "synopsis"
 
 basicStanzaFields :: [StanzaField PackageDescription]
@@ -584,8 +589,8 @@ parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
           | name == f = set lineNo val binfo
           | otherwise = parseBInfoField fields binfo (lineNo, f, val)
 -- ignore "x-" extension fields without a warning
-parseBInfoField [] binfo (lineNo, 'x':'-':f, _) = return binfo
-parseBInfoField [] binfo (lineNo, f, _) = do
+parseBInfoField [] binfo (_ , 'x':'-':_, _) = return binfo
+parseBInfoField [] binfo (_, f, _) = do
           warning $ "Unknown field '" ++ f ++ "'"
           return binfo
 
@@ -614,6 +619,7 @@ showPackageDescription pkg = render $
     ppFields pkg' ((StanzaField name get _):flds) =
            ppField name (get pkg') $$ ppFields pkg' flds
 
+ppField :: String -> Doc -> Doc
 ppField name field = text name <> colon <+> field
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()

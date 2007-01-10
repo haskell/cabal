@@ -92,7 +92,6 @@ import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)
-import Data.Char (isDigit)
 import Prelude hiding (catch)
 
 #ifdef mingw32_HOST_OS
@@ -258,8 +257,13 @@ messageDir :: PackageDescription -> LocalBuildInfo -> String
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath)
 	-> IO ()
-messageDir pkg_descr lbi name mkDir mkDirRel = 
-  message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
+messageDir pkg_descr lbi name mkDir
+#if mingw32_HOST_OS
+                                    mkDirRel
+#else
+                                    _
+#endif
+ = message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
   where
 #if mingw32_HOST_OS
     rel_note

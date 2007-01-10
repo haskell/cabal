@@ -187,10 +187,10 @@ register pkg_descr lbi regFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
-        let libdir = mkLibDir pkg_descr lbi NoCopyDest
-	createDirectoryIfMissing True libdir
+        let the_libdir = mkLibDir pkg_descr lbi NoCopyDest
+	createDirectoryIfMissing True the_libdir
 	copyFileVerbose verbose installedPkgConfigFile
-	    (libdir `joinFileName` "package.conf")
+	    (the_libdir `joinFileName` "package.conf")
       JHC -> when (verbose > 0) $ putStrLn "registering for JHC (nothing to do)"
       _   -> die ("only registering with GHC is implemented")
 
@@ -251,8 +251,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
 	build_dir = pwd `joinFileName` buildDir lbi
-	libdir = mkLibDir pkg_descr lbi NoCopyDest
-	incdir = mkIncludeDir libdir
+	the_libdir = mkLibDir pkg_descr lbi NoCopyDest
+	incdir = mkIncludeDir the_libdir
 	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
         haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
         haddockFile = joinPaths haddockDir (haddockName pkg_descr)
@@ -271,8 +271,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
 	IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [if inplace then build_dir else libdir],
-        IPI.libraryDirs       = (if inplace then build_dir else libdir)
+        IPI.importDirs        = [if inplace then build_dir else the_libdir],
+        IPI.libraryDirs       = (if inplace then build_dir else the_libdir)
 				: extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
@@ -338,7 +338,7 @@ rawSystemEmit :: FilePath -- ^Script name
               -> IO ()
 rawSystemEmit _ False verbosity path args
     = rawSystemExit verbosity path args
-rawSystemEmit scriptName True verbosity path args = do
+rawSystemEmit scriptName True _ path args = do
 #if mingw32_HOST_OS || mingw32_TARGET_OS
   writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
 #else
@@ -356,7 +356,7 @@ rawSystemPipe :: FilePath -- ^Script location
               -> FilePath -- ^Program to run
               -> [String] -- ^Args
               -> IO ()
-rawSystemPipe scriptName verbose pipeFrom path args = do
+rawSystemPipe scriptName _ pipeFrom path args = do
 #if mingw32_HOST_OS || mingw32_TARGET_OS
   writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
 #else

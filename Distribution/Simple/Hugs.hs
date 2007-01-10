@@ -51,14 +51,11 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
-import Distribution.Package  	( PackageIdentifier(..) )
-import Distribution.Setup 	( CopyDest(..) )
 import Distribution.PreProcess 	( ppCpp )
 import Distribution.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), 
-				  mkLibDir, autogenModulesDir )
+				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils( rawSystemExit, die,
 				  dirOf, dotToSep, moduleToFilePath,
 				  smartCopySources, findFile )
@@ -275,7 +272,7 @@ stripComments keepPragmas = stripCommentsLevel 0
 	stripCommentsLevel n ('{':'-':cs) = stripCommentsLevel (n+1) cs
 	stripCommentsLevel 0 (c:cs) = c : stripCommentsLevel 0 cs
 	stripCommentsLevel n ('-':'}':cs) = stripCommentsLevel (n-1) cs
-	stripCommentsLevel n (c:cs) = stripCommentsLevel n cs
+	stripCommentsLevel n (_:cs) = stripCommentsLevel n cs
 	stripCommentsLevel _ [] = []
 
 	copyString ('\\':c:cs) = '\\' : c : copyString cs
@@ -306,18 +303,17 @@ install
     -> PackageDescription
     -> IO ()
 install verbose libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
-    withLib pkg_descr () $ \ libInfo -> do
-        try $ removeDirectoryRecursive libDir
-        smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
+    try $ removeDirectoryRecursive libDir
+    smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
     let buildProgDir = buildPref `joinFileName` "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissing True binDir
     withExe pkg_descr $ \ exe -> do
-        let buildDir = buildProgDir `joinFileName` exeName exe
+        let theBuildDir = buildProgDir `joinFileName` exeName exe
         let installDir = installProgDir `joinFileName` exeName exe
         let targetDir = targetProgDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
-        smartCopySources verbose [buildDir] installDir
+        smartCopySources verbose [theBuildDir] installDir
             ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes True False
         let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
