@@ -208,7 +208,7 @@ buildPathsModule pkg_descr lbi =
 	flat_libexecdirrel = mkLibexecDirRel pkg_descr lbi NoCopyDest
 	flat_progdirrel    = mkProgDirRel pkg_descr lbi NoCopyDest
 	
-	mkGetDir dir (Just dirrel) = "getPrefixDirRel " ++ show dirrel
+	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
 
 #if mingw32_HOST_OS

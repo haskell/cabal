@@ -66,9 +66,6 @@ import Distribution.Simple.Utils(copyFileVerbose, die, haddockPref,  copyDirecto
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
-import Distribution.Compat.Directory(createDirectoryIfMissing)
-import Distribution.Compat.FilePath(splitFileName,joinFileName)
-
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
 -- import qualified Distribution.Simple.NHC  as NHC
