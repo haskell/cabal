@@ -1,3 +1,4 @@
+
 -----------------------------------------------------------------------------
 
 -- |
@@ -46,7 +47,7 @@ module Main where
 
 import qualified Distribution.Version as D.V (hunitTests)
 -- import qualified Distribution.InstalledPackageInfo(hunitTests)
-import qualified Distribution.License as D.L
+import qualified Distribution.License as D.L ()
 import qualified Distribution.Compiler as D.C (hunitTests)
 import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P ()
@@ -71,7 +72,7 @@ import Distribution.Simple.Configure (configCompiler)
 
 -- base
 import Data.List (intersperse)
-import Control.Monad(when, unless)
+import Control.Monad(when)
 import Directory(setCurrentDirectory, doesFileExist,
                  doesDirectoryExist, getCurrentDirectory,
                  getPermissions, Permissions(..))
@@ -200,8 +201,8 @@ tests currDir comp compConf compVersion = [
             assertCmd' compCmd "register --user" "pkg A, register failed"
             assertCmd' compCmd "unregister --user" "pkg A, unregister failed"
             -- tricky, script-based register
-            registerAndExecute comp "pkg A: register with script failed"
-            unregisterAndExecute comp "pkg A: unregister with script failed"
+            registerAndExecute "pkg A: register with script failed"
+            unregisterAndExecute "pkg A: unregister with script failed"
             -- non-trick non-script based register
             assertCmd' compCmd "register --user" "regular register returned error"
             assertCmd' compCmd "unregister --user" "regular unregister returned error"
@@ -215,12 +216,12 @@ tests currDir comp compConf compVersion = [
               assertBool "testB not produced"
             libForA ",tmp2"
          ,TestLabel ("package A and install w/ no prefix: " ++ compIdent) $ TestCase $
-         do let targetDir = ",tmp/lib/test-1.0/ghc-6.4" -- FIX: Compiler-version
-            removeDirectoryRecursive ",tmp"
+         do let targetDir = ",tmp"
+            removeDirectoryRecursive targetDir
             when (comp == GHC) -- FIX: hugs can't do --user yet
               (do system $ "ghc-pkg unregister --user test-1.0"
                   assertCmd' compCmd "install --user" "install --user failed"
-                  libForA ",tmp"
+                  libForA targetDir
                   assertCmd' compCmd "unregister --user" "unregister failed")
 -- HUnit
          ,TestLabel ("testing the HUnit package" ++ compIdent) $ TestCase $ 
@@ -336,8 +337,8 @@ tests currDir comp compConf compVersion = [
             assertHaddock
             assertBuild
             assertCopy
-            registerAndExecute comp "pkg depOnLib: register with script failed"
-            unregisterAndExecute comp "pkg DepOnLib: unregister with script failed"
+            registerAndExecute "pkg depOnLib: register with script failed"
+            unregisterAndExecute "pkg DepOnLib: unregister with script failed"
             when (comp == GHC) (do 
                                 doesFileExist "dist/build/mainForA/mainForA" >>= 
                                   assertBool "build did not create the executable: mainForA"
@@ -418,6 +419,7 @@ tests currDir comp compConf compVersion = [
           compFlag = case compConf of
                       GHC -> "--ghc"
                       Hugs -> "--hugs"
+                      _ -> error ("Unhandled compiler: " ++ show compConf)
           compIdent = compStr ++ "/" ++ compFlag
           testPrelude = system "make clean >> out.build" >> system "make >> out.build"
           assertConfigure pref
@@ -429,6 +431,7 @@ tests currDir comp compConf compVersion = [
           assertHaddock = assertCmd' compCmd "haddock" "setup haddock returned error code."
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
+          command c = error ("Unhandled compiler: " ++ show c)
           libForA pref  -- checks to see if the lib exists, for tests/A
               = let ghcTargetDir = pref ++ "/lib/test-1.0/ghc-" ++ compVerStr ++ "/" in
                  case compConf of
@@ -436,14 +439,15 @@ tests currDir comp compConf compVersion = [
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
                              doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
+                  _ -> error ("Unhandled compiler: " ++ show compConf)
           dumpScriptFlag = "--gen-script"
-          registerAndExecute comp comment = do
+          registerAndExecute comment = do
             assertCmd' compCmd ("register --user "++dumpScriptFlag) comment
             if comp == GHC
                then assertCmd' "./register.sh" "" "reg script failed" 
                else do ex <- doesFileExist "register.sh"
                        assertBool "hugs should not produce register.sh" (not ex) 
-          unregisterAndExecute comp comment = do
+          unregisterAndExecute comment = do
             assertCmd' compCmd ("unregister --user "++dumpScriptFlag) comment
             if comp == GHC
                then assertCmd' "./unregister.sh" "" "reg script failed"
