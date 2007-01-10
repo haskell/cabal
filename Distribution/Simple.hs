@@ -282,9 +282,9 @@ defaultMainWorker pkg_descr_in action args hooks
                 errorOut warns ers
 
                 let c = maybe (confHook defaultUserHooks) confHook hooks
-                localbuildinfo <- c pkg_descr flags
+                localbuildinfo <- c pkg_descr flags'
                 writePersistBuildConfig (foldr id localbuildinfo optFns)
-                postHook postConf args flags pkg_descr localbuildinfo
+                postHook postConf args' flags' pkg_descr localbuildinfo
 
             BuildCmd -> do
                 (flags, _, args') <- parseBuildArgs args []
@@ -292,7 +292,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook buildHook pkg_descr localbuildinfo flags
-                postHook postBuild args flags pkg_descr localbuildinfo
+                postHook postBuild args' flags pkg_descr localbuildinfo
 
             HaddockCmd -> do
                 (verbose, _, args') <- parseHaddockArgs emptyHaddockFlags args []
@@ -300,7 +300,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook haddockHook pkg_descr localbuildinfo verbose
-                postHook postHaddock args verbose pkg_descr localbuildinfo
+                postHook postHaddock args' verbose pkg_descr localbuildinfo
 
             ProgramaticaCmd -> do
                 (verbose, _, args') <- parseProgramaticaArgs args []
@@ -308,7 +308,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook pfeHook pkg_descr localbuildinfo verbose
-                postHook postPFE args verbose pkg_descr localbuildinfo
+                postHook postPFE args' verbose pkg_descr localbuildinfo
 
             CleanCmd -> do
                 (flags,_, args') <- parseCleanArgs emptyCleanFlags args []
@@ -316,7 +316,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
                 cmdHook cleanHook pkg_descr maybeLocalbuildinfo flags
-                postHook postClean args flags pkg_descr maybeLocalbuildinfo
+                postHook postClean args' flags pkg_descr maybeLocalbuildinfo
 
             CopyCmd mprefix -> do
                 (flags, _, args') <- parseCopyArgs (CopyFlags mprefix 0) args []
@@ -324,7 +324,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook copyHook pkg_descr localbuildinfo flags
-                postHook postCopy args flags pkg_descr localbuildinfo
+                postHook postCopy args' flags pkg_descr localbuildinfo
 
             InstallCmd -> do
                 (flags, _, args') <- parseInstallArgs emptyInstallFlags args []
@@ -332,7 +332,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook instHook pkg_descr localbuildinfo flags
-                postHook postInst args flags pkg_descr localbuildinfo
+                postHook postInst args' flags pkg_descr localbuildinfo
 
             SDistCmd -> do
                 (flags,_, args') <- parseSDistArgs args []
@@ -340,7 +340,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
                 cmdHook sDistHook pkg_descr maybeLocalbuildinfo flags
-                postHook postSDist args flags pkg_descr maybeLocalbuildinfo
+                postHook postSDist args' flags pkg_descr maybeLocalbuildinfo
 
             TestCmd -> do
                 (_,_, args') <- parseTestArgs args []
@@ -357,7 +357,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook regHook pkg_descr localbuildinfo flags 
-                postHook postReg args flags pkg_descr localbuildinfo
+                postHook postReg args' flags pkg_descr localbuildinfo
 
             UnregisterCmd -> do
                 (flags,_, args') <- parseUnregisterArgs emptyRegisterFlags args []
@@ -365,7 +365,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook unregHook pkg_descr localbuildinfo flags
-                postHook postUnreg args flags pkg_descr localbuildinfo
+                postHook postUnreg args' flags pkg_descr localbuildinfo
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
