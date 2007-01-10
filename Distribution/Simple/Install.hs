@@ -108,7 +108,7 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi copydest
   let binPref = mkBinDir pkg_descr lbi copydest
-  setupMessage ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
+  setupMessage verbose ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr)
                      (GHC.installLib verbose (withPrograms lbi)

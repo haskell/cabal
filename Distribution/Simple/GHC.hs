@@ -418,7 +418,7 @@ installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
                          case mArProg of
                           Just ar  -> do ifVanilla $ rawSystemProgram verbose ar ["-s", libTargetLoc]
                                          ifProf $ rawSystemProgram verbose ar ["-s", profLibTargetLoc]
-                          Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
+                          Nothing -> setupMessage verbose "Warning: Unable to generate index for library (missing ranlib and ar)" pd
          return ()
     where ifVanilla action = when hasVanilla (action >> return ())
           ifProf action = when hasProf (action >> return ())

@@ -197,7 +197,7 @@ data InstallFlags = InstallFlags {installUserFlags::MaybeUserFlag
 
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
-				  installVerbose=0 }
+				  installVerbose=1 }
 
 -- | Flags to @sdist@: (snapshot, verbose)
 data SDistFlags = SDistFlags {sDistSnapshot::Bool
@@ -217,18 +217,18 @@ emptyRegisterFlags = RegisterFlags { regUser=MaybeUserNone,
 				     regGenScript=False,
 				     regInPlace=False,
 				     regWithHcPkg=Nothing,
-				     regVerbose=0 }
+				     regVerbose=1 }
 
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
                                  ,haddockVerbose :: Int}
 
 emptyHaddockFlags :: HaddockFlags
-emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 0}
+emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 1}
 
 data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
                                  ,cleanVerbose   :: Int}
 emptyCleanFlags :: CleanFlags
-emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 0}
+emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 1}
 
 -- Following only have verbose flags, but for consistency and
 -- extensibility we make them into a type.
@@ -753,7 +753,7 @@ parseUnregisterArgs = parseArgs unregisterCmd registerUpdateCfg
 parseNoArgs :: (Cmd a)
             -> (Int -> b) -- Constructor to make this type.
             -> [String] -> [OptDescr a]-> IO (b, [a], [String])
-parseNoArgs cmd c = parseArgs cmd updateCfg (c 0)
+parseNoArgs cmd c = parseArgs cmd updateCfg (c 1) -- 1 is the default verbosity
   where
     updateCfg _ (Verbose n) = c n
     updateCfg _ _           = error "Unexpected flag!"

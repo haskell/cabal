@@ -107,7 +107,7 @@ preprocessSources :: PackageDescription
 
 preprocessSources pkg_descr lbi verbose handlers = do
     withLib pkg_descr () $ \ lib -> do
-        setupMessage "Preprocessing library" pkg_descr
+        setupMessage verbose "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
 	let biHandlers = localHandlers bi
 	sequence_ [do retVal <- preprocessModule (hsSourceDirs bi) modu
@@ -116,7 +116,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
                              (die $ "got error code while preprocessing: " ++ modu)
                    | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
-        setupMessage "Preprocessing executables for" pkg_descr
+        setupMessage verbose "Preprocessing executables for" pkg_descr
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
 	let biHandlers = localHandlers bi

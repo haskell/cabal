@@ -409,7 +409,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     createDirectoryIfMissing True haddockPref
     preprocessSources pkg_descr lbi verbose pps
 
-    setupMessage "Running Haddock for" pkg_descr
+    setupMessage verbose "Running Haddock for" pkg_descr
 
     let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
@@ -681,7 +681,9 @@ defaultRegHook :: PackageDescription -> LocalBuildInfo
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
-    else setupMessage "Package contains no library to register:" pkg_descr
+    else setupMessage (regVerbose flags)
+                      "Package contains no library to register:"
+                      pkg_descr
 
 -- ------------------------------------------------------------
 -- * Testing

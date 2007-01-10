@@ -94,7 +94,7 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
         | snapshot  = updatePackage (updatePkgVersion
                         (updateVersionBranch (++ [date]))) pkg_descr_orig
         | otherwise = pkg_descr_orig
-  setupMessage "Building source dist for" pkg_descr
+  setupMessage verbose "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
