@@ -123,4 +123,6 @@ data UnresolvedDependency
     , depOptions :: [String]
     }
 
-
+data ResolvedDependency
+    = ResolvedDependency PackageIdentifier String [(Dependency,Maybe ResolvedDependency)]
+      deriving (Eq,Show)
