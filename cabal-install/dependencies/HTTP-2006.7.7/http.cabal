@@ -1,0 +1,26 @@
+Name: HTTP
+Version: 2006.7.7
+License: BSD3
+License-file: LICENSE
+Copyright: 
+  Copyright (c) 2002, Warrick Gray
+  Copyright (c) 2002-2005, Ian Lynagh
+  Copyright (c) 2003-2006, Bjorn Bringert
+  Copyright (c) 2004, Andre Furtado
+  Copyright (c) 2004, Ganesh Sittampalam
+  Copyright (c) 2004-2005, Dominic Steinitz
+Author: Warrick Gray <warrick.gray@hotmail.com>
+Maintainer: Bjorn Bringert <bjorn@bringert.net>
+Homepage: http://www.haskell.org/http/
+Description: A library for client-side HTTP
+Build-depends: base, network, parsec
+Exposed-modules: 
+                 Network.Stream,
+                 Network.TCP,                
+		 Network.HTTP,
+                 Network.Browser
+Other-modules:
+                 Network.HTTP.Base64,
+                 Network.HTTP.MD5,
+                 Network.HTTP.MD5Aux
+GHC-options: -O
