@@ -346,7 +346,7 @@ constructGHCCmdLine
         -> [String]
 constructGHCCmdLine lbi bi odir verbose = 
         ["--make"]
-     ++ (if verbose > 4 then ["-v"] else [])
+     ++ (if verbose > 4 then ["-v"] else if verbose > 0 then [] else ["-v0"])
 	    -- Unsupported extensions have already been checked by configure
      ++ (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
