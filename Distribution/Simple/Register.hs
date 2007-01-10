@@ -120,7 +120,7 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
-    setupMessage "No package to register" pkg_descr
+    setupMessage (regVerbose regFlags) "No package to register" pkg_descr
     return ()
   | otherwise = do
     let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
@@ -128,9 +128,10 @@ register pkg_descr lbi regFlags
         verbose = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
-    setupMessage (if genScript
-                     then ("Writing registration script: " ++ regScriptLocation)
-                     else "Registering")
+    setupMessage (regVerbose regFlags)
+                 (if genScript
+                  then ("Writing registration script: " ++ regScriptLocation)
+                  else "Registering")
                  pkg_descr
     case compilerFlavor (compiler lbi) of
       GHC -> do 
@@ -297,7 +298,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi regFlags = do
-  setupMessage "Unregistering" pkg_descr
+  setupMessage (regVerbose regFlags) "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
       genScript = regGenScript regFlags
       verbose = regVerbose regFlags
