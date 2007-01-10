@@ -280,9 +280,10 @@ withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
 withLib pkg_descr a f =
    maybe (return a) f (maybeHasLibs pkg_descr)
 
-setupMessage :: String -> PackageDescription -> IO ()
-setupMessage msg pkg_descr = 
-   putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+setupMessage :: Int -> String -> PackageDescription -> IO ()
+setupMessage verbosity msg pkg_descr =
+    when (verbosity > 0) $
+        putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 -- |Update the given package description with the output from the
 -- pre-hooks.

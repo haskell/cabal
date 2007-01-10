@@ -144,7 +144,7 @@ localBuildInfoFile = "./.setup-config"
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr cfg
   = do
-	setupMessage "Configuring" pkg_descr
+	setupMessage (configVerbose cfg) "Configuring" pkg_descr
 	removeInstalledConfig
         let lib = library pkg_descr
 	-- detect compiler

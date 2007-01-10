@@ -109,7 +109,7 @@ build pkg_descr lbi (BuildFlags verbose) suffixes = do
   buildPathsModule pkg_descr lbi
 
   preprocessSources pkg_descr lbi verbose suffixes
-  setupMessage "Building" pkg_descr
+  setupMessage verbose "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
    GHC  -> GHC.build  pkg_descr lbi verbose
    JHC  -> JHC.build  pkg_descr lbi verbose
