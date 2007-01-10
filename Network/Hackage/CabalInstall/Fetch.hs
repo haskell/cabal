@@ -15,7 +15,7 @@ module Network.Hackage.CabalInstall.Fetch
      -- * Commands
      fetch
     , -- * Utilities
-     fetchPackage
+      fetchPackage
     , packageFile
     , packagesDirectory
     , isFetched
@@ -118,8 +118,10 @@ fetchPackage cfg pkg location
     = do createDirectoryIfMissing True (packagesDirectory cfg)
          fetched <- isFetched cfg pkg
          if fetched
-            then return (packageFile cfg pkg)
-            else downloadPackage cfg pkg location
+            then do pkgIsPresent (configOutputGen cfg) pkg
+                    return (packageFile cfg pkg)
+            else do downloadingPkg (configOutputGen cfg) pkg
+                    downloadPackage cfg pkg location
 
 -- |Fetch a list of packages and their dependencies.
 fetch :: ConfigFlags -> [String] -> IO ()
