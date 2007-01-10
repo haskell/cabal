@@ -543,8 +543,9 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbose) = do
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
-no_extra_flags extra_flags  = 
-  die ("Unrecognised flags: " ++ concat (intersperse "," extra_flags))
+no_extra_flags extra_flags =
+ die $ concat
+     $ intersperse "\n" ("Unrecognised flags:" : map (' ' :) extra_flags)
 
 buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
 buildDirOpt = Option "b" ["scratchdir"] (reqDirArg setBuildDir)
