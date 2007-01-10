@@ -152,7 +152,7 @@ parseInstalledPackageInfo inp = do
   stLines <- singleStanza inp
 	-- not interested in stanzas, so just allow blank lines in
 	-- the package info.
-  foldM (parseBasicStanza fields) emptyInstalledPackageInfo stLines
+  foldM (parseBasicStanza all_fields) emptyInstalledPackageInfo stLines
 
 parseBasicStanza :: [StanzaField a]
 		    -> a
@@ -167,7 +167,7 @@ parseBasicStanza [] pkg (_, _, _) = return pkg
 -- Pretty-printing
 
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo pkg = render (ppFields fields)
+showInstalledPackageInfo pkg = render (ppFields all_fields)
   where
     ppFields [] = empty
     ppFields ((StanzaField name get' _):flds) = 
@@ -177,17 +177,18 @@ showInstalledPackageInfoField
 	:: String
 	-> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField field
-  = case [ (f,get') | (StanzaField f get' _) <- fields, f == field ] of
+  = case [ (f,get') | (StanzaField f get' _) <- all_fields, f == field ] of
 	[]      -> Nothing
 	((f,get'):_) -> Just (render . pprField f . get')
 
+pprField :: String -> Doc -> Doc
 pprField name field = text name <> colon <+> field
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
-fields :: [StanzaField InstalledPackageInfo]
-fields = basicStanzaFields ++ installedStanzaFields
+all_fields :: [StanzaField InstalledPackageInfo]
+all_fields = basicStanzaFields ++ installedStanzaFields
 
 basicStanzaFields :: [StanzaField InstalledPackageInfo]
 basicStanzaFields =
@@ -284,4 +285,6 @@ installedStanzaFields = [
 	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
+parsePackageId' :: ReadP [PackageIdentifier] PackageIdentifier
 parsePackageId' = parseQuoted parsePackageId <++ parsePackageId
+

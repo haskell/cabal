@@ -550,7 +550,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
         updateCfg t (Lift _)             = t
-        updateCfg t _                    = error $ "Unexpected flag!"
+        updateCfg _ _                    = error $ "Unexpected flag!"
 
 buildCmd :: Cmd a
 buildCmd = Cmd {
@@ -716,13 +716,14 @@ parseRegisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                      IO (RegisterFlags, [a], [String])
 parseRegisterArgs = parseArgs registerCmd registerUpdateCfg
 
+registerUpdateCfg :: RegisterFlags -> Flag a -> RegisterFlags
 registerUpdateCfg reg fl = case fl of
             UserFlag        -> reg { regUser=MaybeUserUser }
             GlobalFlag      -> reg { regUser=MaybeUserGlobal }
             Verbose n       -> reg { regVerbose=n }
             GenScriptFlag   -> reg { regGenScript=True }
-	    InPlaceFlag     -> reg { regInPlace=True }
-	    WithHcPkg f	    -> reg { regWithHcPkg=Just f }
+            InPlaceFlag     -> reg { regInPlace=True }
+            WithHcPkg f     -> reg { regWithHcPkg=Just f }
             _               -> error $ "Unexpected flag!"
 
 unregisterCmd :: Cmd a

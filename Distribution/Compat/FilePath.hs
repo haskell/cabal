@@ -96,7 +96,7 @@ splitFileName p = (reverse path1, reverse fname1)
       "" -> "."
       _  -> case dropWhile isPathSeparator path of
         "" -> [pathSeparator]
-        p  -> p
+        _  -> path
     fname1 = case fname of
       "" -> "."
       _  -> fname
@@ -293,8 +293,8 @@ pathParents p =
        (root,path) = ("",p)
 #endif
        (root',root'',path') = case path of
-         (c:path) | isPathSeparator c -> (root++[pathSeparator],root++[pathSeparator],path)
-         _                            -> (root                 ,root++"."            ,path)
+         (c:path_tail) | isPathSeparator c -> (root++[pathSeparator],root++[pathSeparator],path_tail)
+         _                                 -> (root                 ,root++"."            ,path)
 
        dropEmptyPath ("":paths) = paths
        dropEmptyPath paths      = paths
@@ -308,14 +308,14 @@ pathParents p =
            _    -> "" : map (joinFileName pre) (inits suf)
          where
            (pre,suf) = case break isPathSeparator cs of
-              (pre,"")    -> (pre, "")
-              (pre,_:suf) -> (pre,suf)
+              (prefix,"")       -> (prefix, "")
+              (prefix,_:suffix) -> (prefix,suffix)
 
 -- | Given a list of file paths, returns the longest common parent.
 commonParent :: [FilePath] -> Maybe FilePath
 commonParent []           = Nothing
-commonParent paths@(p:ps) =
-  case common Nothing "" p ps of
+commonParent paths@(path:paths') =
+  case common Nothing "" path paths' of
 #if mingw32_HOST_OS || mingw32_TARGET_OS
     Nothing | all (not . isAbsolutePath) paths ->
       let
@@ -337,24 +337,24 @@ commonParent paths@(p:ps) =
       | isPathSeparator c  = removeSep  i acc   cs [] ps
       | otherwise          = removeChar i acc c cs [] ps
 
-    checkSep i acc []      = Just (reverse acc)
-    checkSep i acc ([]:ps) = Just (reverse acc)
-    checkSep i acc ((c1:p):ps)
+    checkSep _ acc []      = Just (reverse acc)
+    checkSep _ acc ([]:_) = Just (reverse acc)
+    checkSep i acc ((c1:_):ps)
       | isPathSeparator c1 = checkSep i acc ps
-    checkSep i acc ps      = i
+    checkSep i _   _       = i
 
-    removeSep i acc cs pacc []          =
+    removeSep _ acc cs pacc []          =
       common (Just (reverse (pathSeparator:acc))) (pathSeparator:acc) cs pacc
-    removeSep i acc cs pacc ([]    :ps) = Just (reverse acc)
+    removeSep _ acc _  _    ([]    :_ ) = Just (reverse acc)
     removeSep i acc cs pacc ((c1:p):ps)
       | isPathSeparator c1              = removeSep i acc cs (p:pacc) ps
-    removeSep i acc cs pacc ps          = i
+    removeSep i _   _  _    _           = i
 
     removeChar i acc c cs pacc []          = common i (c:acc) cs pacc
-    removeChar i acc c cs pacc ([]    :ps) = i
+    removeChar i _   _ _  _    ([]    :_ ) = i
     removeChar i acc c cs pacc ((c1:p):ps)
       | c == c1                            = removeChar i acc c cs (p:pacc) ps
-    removeChar i acc c cs pacc ps          = i
+    removeChar i _   _ _  _    _           = i
 
 --------------------------------------------------------------
 -- * Search path

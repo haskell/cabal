@@ -91,7 +91,7 @@ build pkg_descr lbi verbose = do
       rawSystemExit verbose jhcPath (["-o",out] ++ args ++ [modulePath exe])
 
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Int -> [String]
-constructJHCCmdLine lbi bi odir verbose =
+constructJHCCmdLine lbi bi _odir verbose =
         (if verbose > 4 then ["-v"] else [])
      ++ snd (extensionsToJHCFlag (extensions bi))
      ++ hcOptions JHC (options bi)
@@ -112,13 +112,14 @@ jhcPkgConf pd =
              ]
                          
 installLib :: Int -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
-installLib verb dest build pkg_descr _ = do
+installLib verb dest build_dir pkg_descr _ = do
     let p = showPackageId (package pkg_descr)++".hl"
     createDirectoryIfMissing True dest
-    copyFileVerbose verb (joinFileName build p) (joinFileName dest p)
+    copyFileVerbose verb (joinFileName build_dir p) (joinFileName dest p)
 
 installExe :: Int -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
-installExe verb dest build pkg_descr exe = do
+installExe verb dest build_dir _ exe = do
     let out   = exeName exe `joinFileName` exeExtension
     createDirectoryIfMissing True dest
-    copyFileVerbose verb (joinFileName build out) (joinFileName dest out)
+    copyFileVerbose verb (joinFileName build_dir out) (joinFileName dest out)
+

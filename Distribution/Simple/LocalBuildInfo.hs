@@ -213,7 +213,7 @@ default_bindir = "$prefix" `joinFileName`
 #endif
 
 default_libdir :: Compiler -> FilePath
-default_libdir hc = "$prefix" `joinFileName`
+default_libdir _ = "$prefix" `joinFileName`
 #if mingw32_HOST_OS || mingw32_TARGET_OS
                  "Haskell"
 #else
@@ -236,11 +236,12 @@ default_libexecdir = "$prefix" `joinFileName`
 #endif
 
 default_datadir :: PackageDescription -> IO FilePath
-default_datadir pkg_descr
 #if mingw32_HOST_OS || mingw32_TARGET_OS
+default_datadir pkg_descr
 	| hasLibs pkg_descr = getCommonFilesDir
 	| otherwise = return ("$prefix" `joinFileName` "Haskell")
 #else
+default_datadir _
 	= return  ("$prefix" `joinFileName` "share")
 #endif
 
@@ -300,13 +301,13 @@ prefixRelPath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
   -> Maybe FilePath
 prefixRelPath pkg_descr lbi0 copydest ('$':'p':'r':'e':'f':'i':'x':s) = Just $
   case s of
-    (c:s) | isPathSeparator c -> substDir pkg_descr lbi s
-    s                         -> substDir pkg_descr lbi s
+    (c:s') | isPathSeparator c -> substDir pkg_descr lbi s'
+    _                          -> substDir pkg_descr lbi s
   where
     lbi = case copydest of 
             CopyPrefix d -> lbi0{prefix=d}
             _otherwise   -> lbi0
-prefixRelPath pkg_descr lbi copydest s = Nothing
+prefixRelPath _         _   _        _ = Nothing
 
 absolutePath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 	-> FilePath
@@ -317,7 +318,7 @@ absolutePath pkg_descr lbi copydest s =
     CopyTo     p -> p `joinFileName` (dropAbsolutePrefix (substDir pkg_descr lbi s))
 
 substDir :: PackageDescription -> LocalBuildInfo -> String -> String
-substDir pkg_descr lbi s = loop s
+substDir pkg_descr lbi xs = loop xs
  where
   loop "" = ""
   loop ('$':'p':'r':'e':'f':'i':'x':s) 
@@ -332,3 +333,4 @@ substDir pkg_descr lbi s = loop s
 	= show (pkgVersion (package pkg_descr)) ++ loop s
   loop ('$':'$':s) = '$' : loop s
   loop (c:s) = c : loop s
+
