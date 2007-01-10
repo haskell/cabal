@@ -53,10 +53,12 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir,
-				  mkLibDir, mkIncludeDir )
+				( LocalBuildInfo(..), autogenModulesDir, mkIncludeDir )
 import Distribution.Simple.Utils( rawSystemExit, rawSystemPath,
-				  rawSystemVerbose, maybeExit, xargs,
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+				  rawSystemVerbose,
+#endif
+                  maybeExit, xargs,
 				  die, dirOf, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
                                   mkLibName, mkProfLibName, dotToSep )
@@ -80,7 +82,7 @@ import qualified Distribution.Simple.GHCPackageConfig as GHC
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
-import Data.List		( isSuffixOf, nub )
+import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.Exit              (ExitCode(..))
@@ -155,8 +157,7 @@ build pkg_descr lbi verbose = do
       unless (null (cSources libBi)) $ do
          when (verbose > 3) (putStrLn "Building C Sources...")
          -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
-         sequence_ [do let ghc_vers = compilerVersion (compiler lbi)
-			   odir | versionBranch ghc_vers >= [6,4,1] = pref
+         sequence_ [do let odir | versionBranch ghc_vers >= [6,4,1] = pref
 				| otherwise = pref `joinFileName` dirOf c
 				-- ghc 6.4.1 fixed a bug in -odir handling
 				-- for C compilations.
@@ -322,13 +323,13 @@ build pkg_descr lbi verbose = do
 -- Module_split directory for each module.
 getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
  	-> FilePath -> String -> IO [FilePath]
-getHaskellObjects pkg_descr libBi lbi pref wanted_obj_ext
+getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext
   | splitObjs lbi = do
 	let dirs = [ pref `joinFileName` (dotToSep x ++ "_split") 
 		   | x <- libModules pkg_descr ]
 	objss <- mapM getDirectoryContents dirs
 	let objs = [ dir `joinFileName` obj
-		   | (objs,dir) <- zip objss dirs, obj <- objs,
+		   | (objs',dir) <- zip objss dirs, obj <- objs',
                      let (_,obj_ext) = splitFileExt obj,
 		     wanted_obj_ext == obj_ext ]
 	return objs
@@ -376,9 +377,9 @@ installExe :: Int      -- ^verbose
               -> PackageDescription -> IO ()
 installExe verbose pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
-         withExe pkg_descr $ \ (Executable e _ b) -> do
-             let exeName = e `joinFileExt` exeExtension
-             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` exeName) (pref `joinFileName` exeName)
+         withExe pkg_descr $ \ (Executable e _ _) -> do
+             let exeFileName = e `joinFileExt` exeExtension
+             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` exeFileName) (pref `joinFileName` exeFileName)
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Int      -- ^verbose
@@ -390,7 +391,7 @@ installLib    :: Int      -- ^verbose
               -> FilePath -- ^Build location
               -> PackageDescription -> IO ()
 installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
-              pd@PackageDescription{library=Just l,
+              pd@PackageDescription{library=Just _,
                                     package=p}
     = do ifVanilla $ smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True False
          ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True False
@@ -406,15 +407,15 @@ installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
          -- don't worry too much about it.
-         let progName = programName $ ranlibProgram
-         mProg <- lookupProgram progName programConf
-         case foundProg mProg of
+         let ranlibProgName = programName $ ranlibProgram
+         mRanlibProg <- lookupProgram ranlibProgName programConf
+         case foundProg mRanlibProg of
            Just rl  -> do ifVanilla $ rawSystemProgram verbose rl [libTargetLoc]
                           ifProf $ rawSystemProgram verbose rl [profLibTargetLoc]
 
-           Nothing -> do let progName = programName $ arProgram
-                         mProg <- lookupProgram progName programConf
-                         case mProg of
+           Nothing -> do let arProgName = programName $ arProgram
+                         mArProg <- lookupProgram arProgName programConf
+                         case mArProg of
                           Just ar  -> do ifVanilla $ rawSystemProgram verbose ar ["-s", libTargetLoc]
                                          ifProf $ rawSystemProgram verbose ar ["-s", profLibTargetLoc]
                           Nothing -> setupMessage  "Warning: Unable to generate index for library (missing ranlib and ar)" pd
@@ -427,7 +428,7 @@ installLib _ _ _ _ _ _ _ PackageDescription{library=Nothing}
 
 -- | Install the files listed in install-includes
 installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbose pkg_descr@PackageDescription{library=Just l} libdir
+installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
  = do
    createDirectoryIfMissing True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
@@ -436,13 +437,14 @@ installIncludeFiles verbose pkg_descr@PackageDescription{library=Just l} libdir
   where
    relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)
    lbi = libBuildInfo l
-   incdir = mkIncludeDir libdir
+   incdir = mkIncludeDir theLibdir
 
    findInc [] f = die ("can't find include file " ++ f)
    findInc (d:ds) f = do
      let path = (d `joinFileName` f)
      b <- doesFileExist path
      if b then return (f,path) else findInc ds f
+installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
 
 -- Also checks whether the program was actually found.
 foundProg :: Maybe Program -> Maybe Program
