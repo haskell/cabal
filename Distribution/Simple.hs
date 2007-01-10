@@ -279,7 +279,7 @@ defaultMainWorker pkg_descr_in action args hooks
                         parseConfigureArgs (allPrograms hooks) flags args [buildDirOpt]
                 pkg_descr <- hookOrInArgs preConf args' flags'
                 (warns, ers) <- sanityCheckPackage pkg_descr
-                errorOut warns ers
+                errorOut (configVerbose flags') warns ers
 
                 let c = maybe (confHook defaultUserHooks) confHook hooks
                 localbuildinfo <- c pkg_descr flags'
