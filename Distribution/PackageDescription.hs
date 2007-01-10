@@ -117,7 +117,7 @@ cabalVersion :: Version
 #ifdef CABAL_VERSION
 cabalVersion = Version [CABAL_VERSION] []
 #else
-cabalVersion = error "Cabal was not bootstraped correctly"
+cabalVersion = error "Cabal was not bootstrapped correctly"
 #endif
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
