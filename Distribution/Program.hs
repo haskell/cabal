@@ -61,9 +61,6 @@ module Distribution.Program(
                            ) where
 
 import qualified Distribution.Compat.Map as Map
-import Control.Monad(when)
-import Data.Maybe(catMaybes)
-import System.Exit (ExitCode)
 import Distribution.Compat.Directory(findExecutable)
 import Distribution.Simple.Utils (die, rawSystemVerbose, maybeExit)
 
