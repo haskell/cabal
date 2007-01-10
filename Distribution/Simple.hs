@@ -84,8 +84,7 @@ import Distribution.Simple.Register	( register, unregister,
                                         )
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
-                                     findProgram, configure, writePersistBuildConfig,
-                                     localBuildInfoFile)
+                                     configure, writePersistBuildConfig, localBuildInfoFile)
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Install(install)
@@ -220,21 +219,21 @@ defaultMain = getArgs >>=defaultMainArgs
 
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs args = do
-                 (action, args) <- parseGlobalArgs (allPrograms Nothing) args
+                 (action, args') <- parseGlobalArgs (allPrograms Nothing) args
                  pkg_descr_file <- defaultPackageDesc
                  pkg_descr <- readPackageDescription pkg_descr_file
-                 defaultMainWorker pkg_descr action args Nothing
+                 defaultMainWorker pkg_descr action args' Nothing
                  return ()
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
 defaultMainWithHooks hooks
     = do args <- getArgs
-         (action, args) <- parseGlobalArgs (allPrograms (Just hooks)) args
+         (action, args') <- parseGlobalArgs (allPrograms (Just hooks)) args
          maybeDesc <- readDesc hooks
          pkg_descr <- maybe (defaultPackageDesc >>= readPackageDescription)
                             return maybeDesc
-         defaultMainWorker pkg_descr action args (Just hooks)
+         defaultMainWorker pkg_descr action args' (Just hooks)
          return ()
 
 -- |Like 'defaultMain', but accepts the package description as input
@@ -242,8 +241,8 @@ defaultMainWithHooks hooks
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         (action, args) <- parseGlobalArgs (allPrograms Nothing) args
-         defaultMainWorker pkg_descr action args Nothing
+         (action, args') <- parseGlobalArgs (allPrograms Nothing) args
+         defaultMainWorker pkg_descr action args' Nothing
          return ()
 
 -- |Combine the programs in the given hooks with the programs built
@@ -276,94 +275,94 @@ defaultMainWorker :: PackageDescription
 defaultMainWorker pkg_descr_in action args hooks
     = do case action of
             ConfigCmd flags -> do
-                (flags, optFns, args) <-
-			parseConfigureArgs (allPrograms hooks) flags args [buildDirOpt]
-                pkg_descr <- hookOrInArgs preConf args flags
+                (flags', optFns, args') <-
+                        parseConfigureArgs (allPrograms hooks) flags args [buildDirOpt]
+                pkg_descr <- hookOrInArgs preConf args' flags'
                 (warns, ers) <- sanityCheckPackage pkg_descr
                 errorOut warns ers
 
                 let c = maybe (confHook defaultUserHooks) confHook hooks
-		localbuildinfo <- c pkg_descr flags
-		writePersistBuildConfig (foldr id localbuildinfo optFns)
+                localbuildinfo <- c pkg_descr flags
+                writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf args flags pkg_descr localbuildinfo
 
             BuildCmd -> do
-                (flags, _, args) <- parseBuildArgs args []
-                pkg_descr <- hookOrInArgs preBuild args flags
-		localbuildinfo <- getPersistBuildConfig
+                (flags, _, args') <- parseBuildArgs args []
+                pkg_descr <- hookOrInArgs preBuild args' flags
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook buildHook pkg_descr localbuildinfo flags
                 postHook postBuild args flags pkg_descr localbuildinfo
 
             HaddockCmd -> do
-                (verbose, _, args) <- parseHaddockArgs emptyHaddockFlags args []
-                pkg_descr <- hookOrInArgs preHaddock args verbose
-		localbuildinfo <- getPersistBuildConfig
+                (verbose, _, args') <- parseHaddockArgs emptyHaddockFlags args []
+                pkg_descr <- hookOrInArgs preHaddock args' verbose
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook haddockHook pkg_descr localbuildinfo verbose
                 postHook postHaddock args verbose pkg_descr localbuildinfo
 
             ProgramaticaCmd -> do
-                (verbose, _, args) <- parseProgramaticaArgs args []
-                pkg_descr <- hookOrInArgs prePFE args verbose
+                (verbose, _, args') <- parseProgramaticaArgs args []
+                pkg_descr <- hookOrInArgs prePFE args' verbose
                 localbuildinfo <- getPersistBuildConfig
 
                 cmdHook pfeHook pkg_descr localbuildinfo verbose
                 postHook postPFE args verbose pkg_descr localbuildinfo
 
             CleanCmd -> do
-                (flags,_, args) <- parseCleanArgs emptyCleanFlags args []
-                pkg_descr <- hookOrInArgs preClean args flags
-		maybeLocalbuildinfo <- maybeGetPersistBuildConfig
+                (flags,_, args') <- parseCleanArgs emptyCleanFlags args []
+                pkg_descr <- hookOrInArgs preClean args' flags
+                maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
                 cmdHook cleanHook pkg_descr maybeLocalbuildinfo flags
                 postHook postClean args flags pkg_descr maybeLocalbuildinfo
 
             CopyCmd mprefix -> do
-                (flags, _, args) <- parseCopyArgs (CopyFlags mprefix 0) args []
-                pkg_descr <- hookOrInArgs preCopy args flags
-		localbuildinfo <- getPersistBuildConfig
+                (flags, _, args') <- parseCopyArgs (CopyFlags mprefix 0) args []
+                pkg_descr <- hookOrInArgs preCopy args' flags
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook copyHook pkg_descr localbuildinfo flags
                 postHook postCopy args flags pkg_descr localbuildinfo
 
             InstallCmd -> do
-                (flags, _, args) <- parseInstallArgs emptyInstallFlags args []
-                pkg_descr <- hookOrInArgs preInst args flags
-		localbuildinfo <- getPersistBuildConfig
+                (flags, _, args') <- parseInstallArgs emptyInstallFlags args []
+                pkg_descr <- hookOrInArgs preInst args' flags
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook instHook pkg_descr localbuildinfo flags
                 postHook postInst args flags pkg_descr localbuildinfo
 
             SDistCmd -> do
-                (flags,_, args) <- parseSDistArgs args []
-                pkg_descr <- hookOrInArgs preSDist args flags
+                (flags,_, args') <- parseSDistArgs args []
+                pkg_descr <- hookOrInArgs preSDist args' flags
                 maybeLocalbuildinfo <- maybeGetPersistBuildConfig
 
                 cmdHook sDistHook pkg_descr maybeLocalbuildinfo flags
                 postHook postSDist args flags pkg_descr maybeLocalbuildinfo
 
             TestCmd -> do
-                (verbose,_, args) <- parseTestArgs args []
+                (_,_, args') <- parseTestArgs args []
                 case hooks of
                  Nothing -> return ExitSuccess
                  Just h  -> do localbuildinfo <- getPersistBuildConfig
-                               out <- (runTests h) args False pkg_descr_in localbuildinfo
+                               out <- (runTests h) args' False pkg_descr_in localbuildinfo
                                when (isFailure out) (exitWith out)
                                return out
 
             RegisterCmd  -> do
-                (flags, _, args) <- parseRegisterArgs emptyRegisterFlags args []
-                pkg_descr <- hookOrInArgs preReg args flags
-		localbuildinfo <- getPersistBuildConfig
+                (flags, _, args') <- parseRegisterArgs emptyRegisterFlags args []
+                pkg_descr <- hookOrInArgs preReg args' flags
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook regHook pkg_descr localbuildinfo flags 
                 postHook postReg args flags pkg_descr localbuildinfo
 
             UnregisterCmd -> do
-                (flags,_, args) <- parseUnregisterArgs emptyRegisterFlags args []
-                pkg_descr <- hookOrInArgs preUnreg args flags
-		localbuildinfo <- getPersistBuildConfig
+                (flags,_, args') <- parseUnregisterArgs emptyRegisterFlags args []
+                pkg_descr <- hookOrInArgs preUnreg args' flags
+                localbuildinfo <- getPersistBuildConfig
 
                 cmdHook unregHook pkg_descr localbuildinfo flags
                 postHook postUnreg args flags pkg_descr localbuildinfo
@@ -380,10 +379,10 @@ defaultMainWorker pkg_descr_in action args hooks
                     Just h -> do pbi <- f h a i
                                  return (updatePackageDescription pbi pkg_descr_in)
         cmdHook f desc lbi = (maybe (f defaultUserHooks) f hooks) desc lbi hooks
-        postHook f args flags pkg_descr localbuildinfo
+        postHook f arguments flags pkg_descr localbuildinfo
                  = case hooks of
                     Nothing -> return ExitSuccess
-                    Just h  -> f h args flags pkg_descr localbuildinfo
+                    Just h  -> f h arguments flags pkg_descr localbuildinfo
 
         isFailure :: ExitCode -> Bool
         isFailure (ExitFailure _) = True
@@ -401,8 +400,8 @@ haddock :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> HaddockFla
 haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
-                      let haddockName = programName haddockProgram
-                      mHaddock <- lookupProgram haddockName programConf
+                      let haddockPath = programName haddockProgram
+                      mHaddock <- lookupProgram haddockPath programConf
                       maybe (die "haddock command not found") return mHaddock
 
     let tmpDir = joinPaths (buildDir lbi) "tmp"
@@ -413,7 +412,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     setupMessage "Running Haddock for" pkg_descr
 
     let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
-    let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] pkg_descr bi lbi tmpDir verbose)
+    let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
     let showDepPkgs = map showPackageId (packageDeps lbi)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
@@ -462,7 +461,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
 
     removeDirectoryRecursive tmpDir
   where
-        mockPP inputArgs pkg_descr bi lbi pref verbose file
+        mockPP inputArgs bi pref file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir = joinPaths pref filePref
                  let targetFile = joinFileName targetDir fileName
@@ -496,7 +495,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
         return ()
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure verbose) = do
+clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbose) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
     try $ removeDirectoryRecursive (joinPaths distPref "doc")
@@ -515,7 +514,7 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure verbose) = do
           JHC -> cleanJHCExtras lbi
           _   -> return ()
   where
-        cleanGHCExtras lbi = do
+        cleanGHCExtras _ = do
             -- remove source stubs for library
             withLib pkg_descr () $ \ Library{libBuildInfo=bi} ->
                 removeGHCModuleStubs bi (libModules pkg_descr)
@@ -633,7 +632,7 @@ defaultUserHooks
        preUnreg  = readHook regVerbose
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
-          defaultPostConf args flags pkg_descr lbi
+          defaultPostConf args flags _ _
               = do let verbose = configVerbose flags
                        args' = configureArgs flags ++ args
                    confExists <- doesFileExist "configure"

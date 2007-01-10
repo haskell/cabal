@@ -180,12 +180,12 @@ rawSystemPathExit verbose prog args = do
 --
 xargs :: Int -> (FilePath -> [String] -> IO ExitCode)
       -> FilePath -> [String] -> [String] -> IO ExitCode
-xargs maxSize rawSystem prog fixedArgs bigArgs =
+xargs maxSize rawSystemFun prog fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
       loop [] = return ExitSuccess
       loop (args:remainingArgs) = do
-        status <- rawSystem prog (fixedArgs ++ args)
+        status <- rawSystemFun prog (fixedArgs ++ args)
         case status of
           ExitSuccess -> loop remainingArgs
           _           -> return status
@@ -195,7 +195,7 @@ xargs maxSize rawSystem prog fixedArgs bigArgs =
           if null s then Nothing
                     else Just (chunk [] len s)
 
-        chunk acc len []     = (reverse acc,[])
+        chunk acc _   []     = (reverse acc,[])
         chunk acc len (s:ss)
           | len' < len = chunk (s:acc) (len-len'-1) ss
           | otherwise  = (reverse acc, s:ss)
@@ -255,7 +255,7 @@ findFile prefPathsIn locPath = do
   case nub paths of -- also ignore dups, though above nub should fix this.
     [path] -> return path
     []     -> die (locPath ++ " doesn't exist")
-    paths  -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths))
+    paths' -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths'))
 
 dotToSep :: String -> String
 dotToSep = map dts
