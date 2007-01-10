@@ -166,7 +166,9 @@ tests currDir comp compConf compVersion = [
             assertConfigure targetDir
             assertBuild
             assertCopy
-            assertCmd ",tmp/bin/tt" "exeWithC failed"
+            assertCmd (targetDir `joinFileName` "bin/tt" ++ " > "
+                    ++ targetDir `joinFileName` "out")
+                      "exeWithC failed"
 -- A
         ,TestLabel ("package A: " ++ compIdent) $ TestCase $
          do let targetDir = ",tmp"
