@@ -78,8 +78,10 @@ clean: clean-cabal clean-hunit clean-test clean-doc
 
 clean-cabal:
 	-rm -f Distribution/*.o Distribution/*.hi
+	-rm -f Distribution/Compat/*.o Distribution/Compat/*.hi
+	-rm -f Distribution/PreProcess/*.o Distribution/PreProcess/*.hi
 	-rm -f Distribution/Simple/*.o Distribution/Simple/*.hi
-	-rm -f Compat/*.o Compat/*.hi
+	-rm -f Language/Haskell/*.o Language/Haskell/*.hi
 	-rm -f darcs* out.build *~ semantic.cache* x*.html
 	-rm -f library-infrastructure--darcs.tar.gz
 	-rm -rf setup *.o *.hi moduleTest dist installed-pkg-config
