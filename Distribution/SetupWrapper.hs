@@ -9,11 +9,14 @@
 -- Portability :  portable
 --
 -- The user interface to building and installing Cabal packages.
--- This builds the setup script and runs it with the given arguments.
--- If there is no setup script, it calls 'defaultMain'.
+-- If the @Built-Type@ field is specified as something other than
+-- 'Custom', and the current version of Cabal is acceptable, this performs
+-- setup actions directly.  Otherwise it builds the setup script and
+-- runs it with the given arguments.
 
 module Distribution.SetupWrapper (setupWrapper) where
 
+import qualified Distribution.Make as Make
 import Distribution.Simple
 import Distribution.Simple.Utils
 import Distribution.Simple.Configure
@@ -22,7 +25,8 @@ import Distribution.Simple.Configure
 import Distribution.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
-				  PackageDescription(..) )
+				  PackageDescription(..),
+                                  BuildType(..), cabalVersion )
 import System.Console.GetOpt
 import System.Directory
 import Control.Exception        ( finally )
@@ -32,14 +36,14 @@ import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirecto
   -- read the .cabal file
   -- 	- attempt to find the version of Cabal required
 
-  -- if there's a Setup script, 
+  -- if the Cabal file specifies the build type (not Custom),
+  --    - behave like a boilerplate Setup.hs of that type
+  -- otherwise,
   --    - if we find GHC,
-  --	    - build it with the right version of Cabal
+  --	    - build the Setup script with the right version of Cabal
   --        - invoke it with args
   --    - if we find runhaskell (TODO)
   --        - use runhaskell to invoke it
-  -- otherwise,
-  --	- behave like a boilerplate Setup.hs
   --
   -- Later:
   --    - add support for multiple packages, by figuring out
@@ -78,18 +82,24 @@ setupWrapper args mdir = inDir mdir $ do
          ('.':pathSeparator:"setup")
          args
 
-  trySetupScript "Setup.hs"  $ do
-  trySetupScript "Setup.lhs" $ do
-  trySetupScript ".Setup.hs" $ do
-  
-  -- Setup.hs doesn't exist, we need to behave like defaultMain
-  if descCabalVersion pkg_descr == AnyVersion
-	then defaultMain
-		-- doesn't matter which version we use, so no need to compile
-		-- a special Setup.hs.
-	else do writeFile ".Setup.hs" 
-			  "import Distribution.Simple; main=defaultMain"
+  case lookup (buildType pkg_descr) buildTypes of
+    Just (mainAction, mainText) ->
+      if withinRange cabalVersion (descCabalVersion pkg_descr)
+	then mainAction         -- current version is OK, so no need
+                                -- to compile a special Setup.hs.
+	else do writeFile ".Setup.hs" mainText
 		trySetupScript ".Setup.hs" $ error "panic! shouldn't happen"
+    Nothing ->
+      trySetupScript "Setup.hs"  $
+      trySetupScript "Setup.lhs" $
+      die "no special Build-Type, but lacks Setup.hs or Setup.lhs"
+
+buildTypes :: [(BuildType, (IO (), String))]
+buildTypes = [
+  (Simple, (defaultMain, "import Distribution.Simple; main=defaultMain")),
+  (Configure, (defaultMainWithHooks defaultUserHooks,
+    "import Distribution.Simple; main=defaultMainWithHooks defaultUserHooks")),
+  (Make, (Make.defaultMain, "import Distribution.Make; main=defaultMain"))]
 
 inDir :: Maybe FilePath -> IO () -> IO ()
 inDir Nothing m = m
