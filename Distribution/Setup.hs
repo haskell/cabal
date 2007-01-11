@@ -98,6 +98,7 @@ data Action = ConfigCmd ConfigFlags   -- config
 	    | HelpCmd		      -- help
 --            | NoCmd -- error case, help case.
 --            | BDist -- 1.0
+    deriving Show
 
 -- ------------------------------------------------------------
 -- * Flag-related types
@@ -138,6 +139,7 @@ data ConfigFlags = ConfigFlags {
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool		  -- ^Enable -split-objs with GHC
     }
+    deriving Show
 
 -- |The default configuration of a package, before running configure,
 -- most things are \"Nothing\", zero, etc.
@@ -173,6 +175,7 @@ emptyConfigFlags progConf = ConfigFlags {
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbose)
 data CopyFlags = CopyFlags {copyDest      :: CopyDest
                            ,copyVerbose :: Int}
+    deriving Show
 
 -- |The location prefix for the /copy/ command.
 data CopyDest
@@ -184,6 +187,7 @@ data CopyDest
 data MaybeUserFlag  = MaybeUserNone   -- ^no --user OR --global flag.
                     | MaybeUserUser   -- ^the --user flag
                     | MaybeUserGlobal -- ^the --global flag
+    deriving Show
 
 -- |A 'MaybeUserFlag' overrides the default --user setting
 userOverride :: MaybeUserFlag -> Bool -> Bool
@@ -194,6 +198,7 @@ _               `userOverride` r = r
 -- | Flags to @install@: (user package, verbose)
 data InstallFlags = InstallFlags {installUserFlags::MaybeUserFlag
                                  ,installVerbose :: Int}
+    deriving Show
 
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
@@ -202,6 +207,7 @@ emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
 -- | Flags to @sdist@: (snapshot, verbose)
 data SDistFlags = SDistFlags {sDistSnapshot::Bool
                              ,sDistVerbose:: Int}
+    deriving Show
 
 -- | Flags to @register@ and @unregister@: (user package, gen-script, 
 -- in-place, verbose)
@@ -210,6 +216,7 @@ data RegisterFlags = RegisterFlags {regUser::MaybeUserFlag
 				   ,regInPlace::Bool
 				   ,regWithHcPkg::Maybe FilePath
                                    ,regVerbose::Int}
+    deriving Show
 
 
 emptyRegisterFlags :: RegisterFlags
@@ -221,19 +228,23 @@ emptyRegisterFlags = RegisterFlags { regUser=MaybeUserNone,
 
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
                                  ,haddockVerbose :: Int}
+    deriving Show
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 1}
 
 data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
                                  ,cleanVerbose   :: Int}
+    deriving Show
 emptyCleanFlags :: CleanFlags
 emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 1}
 
 -- Following only have verbose flags, but for consistency and
 -- extensibility we make them into a type.
 data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
+    deriving Show
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
+    deriving Show
 
 -- |Most of these flags are for Configure, but InstPrefix is for Copy.
 data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
