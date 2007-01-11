@@ -40,7 +40,9 @@ data Action
 data TempFlags = TempFlags {
         tempHcFlavor    :: Maybe CompilerFlavor,
         tempHcPath      :: Maybe FilePath, -- ^given compiler location
-        tempConfPath    :: Maybe FilePath,
+        tempConfDir     :: Maybe FilePath,
+        tempCacheDir    :: Maybe FilePath,
+        tempPkgListDir  :: Maybe FilePath,
         tempHcPkg       :: Maybe FilePath, -- ^given hc-pkg location
         tempPrefix      :: Maybe FilePath,
         tempServers     :: [String],       -- ^Available Hackage servers.
@@ -54,7 +56,9 @@ data TempFlags = TempFlags {
 
 data ConfigFlags = ConfigFlags {
         configCompiler    :: Compiler,
-        configConfPath    :: FilePath,
+        configConfDir     :: FilePath,
+        configCacheDir    :: FilePath,
+        configPkgListDir  :: FilePath,
         configPrefix      :: Maybe FilePath,
         configServers     :: [String],       -- ^Available Hackage servers.
         configTarPath     :: FilePath,
@@ -68,7 +72,8 @@ data ConfigFlags = ConfigFlags {
 data Flag
     = GhcFlag | NhcFlag | HugsFlag
     | WithCompiler FilePath | WithHcPkg FilePath
-    | WithConfPath FilePath | WithTarPath FilePath
+    | WithConfDir FilePath | WithCacheDir FilePath | WithPkgListDir FilePath 
+    | WithTarPath FilePath
     | WithServer String
     | UserFlag | GlobalFlag
     | UserInstallFlag | GlobalInstallFlag

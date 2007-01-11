@@ -19,7 +19,8 @@ import Control.Monad (guard, mplus, when)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
                                       , TempFlags (..), ResolvedPackage (..))
-import Network.Hackage.CabalInstall.Config (getKnownServers, selectValidConfigDir)
+import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, defaultPkgListDir,
+                                            getKnownServers, selectValidConfigDir)
 
 import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
 import Distribution.ParseUtils (showDependency)
@@ -118,14 +119,21 @@ mkConfigFlags cfg
          prefix <- if tempUserIns cfg || tempUser cfg
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
                       else return Nothing
-         confPath <- selectValidConfigDir ( maybe id (:) (tempConfPath cfg)
-                                            ["/etc/cabal-install"
-                                            ,localConfig] )
-         when (tempVerbose cfg > 0) $ printf "Using config dir: %s\n" confPath
+         confDir <- selectValidConfigDir ( maybe id (:) (tempConfDir cfg)
+                                           [defaultConfDir, localConfig] )
+         -- FIXME: put these in the user dir if it's a user installation
+         let cacheDir   = fromMaybe defaultCacheDir (tempCacheDir cfg)
+         let pkgListDir = fromMaybe defaultPkgListDir (tempPkgListDir cfg)
+         when (tempVerbose cfg > 0) $ do printf "Using config dir: %s\n" confDir
+                                         printf "Using cache dir: %s\n" cacheDir
+                                         printf "Using pkglist dir: %s\n" pkgListDir
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
-                      , configConfPath    = confPath
+                      , configConfDir     = confDir
+                      -- FIXME: put it in the user dir if it's a user isntallation
+                      , configCacheDir    = cacheDir
+                      , configPkgListDir  = pkgListDir
                       , configPrefix      = prefix
                       , configServers     = []
                       , configTarPath     = tarProg
