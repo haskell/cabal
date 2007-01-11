@@ -14,7 +14,7 @@ module Network.Hackage.CabalInstall.Main where
 
 import System.Environment (getArgs)
 import Network.Hackage.CabalInstall.Types (Action (..))
-import Network.Hackage.CabalInstall.Setup (parseGlobalArgs, parseInstallArgs)
+import Network.Hackage.CabalInstall.Setup (parseGlobalArgs, parsePackageArgs)
 import Network.Hackage.CabalInstall.Configure (mkConfigFlags)
 
 import Network.Hackage.CabalInstall.List (list)
@@ -30,7 +30,7 @@ main :: IO ()
 main = do args <- getArgs
           (action, flags, args) <- parseGlobalArgs args
           config <- mkConfigFlags flags
-          let runCmd f = do (globalArgs, pkgs) <- parseInstallArgs args
+          let runCmd f = do (globalArgs, pkgs) <- parsePackageArgs action args
                             f config globalArgs pkgs
           case action of
             InstallCmd  -> runCmd install

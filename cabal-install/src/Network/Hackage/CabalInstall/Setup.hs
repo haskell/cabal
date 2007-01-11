@@ -12,10 +12,11 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Setup
     ( emptyTempFlags
-    , parseInstallArgs
+    , parsePackageArgs
     , parseGlobalArgs
     ) where
 
+import Data.Maybe (fromMaybe)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 import Distribution.Setup (defaultCompilerFlavor, CompilerFlavor(..))
@@ -90,8 +91,8 @@ data Cmd = Cmd {
 commandList :: [Cmd]
 commandList = [fetchCmd, installCmd, buildDepCmd, updateCmd, cleanCmd, listCmd, infoCmd]
 
-lookupCommand :: String -> [Cmd] -> Maybe Cmd
-lookupCommand name = find ((==name) . cmdName)
+lookupCommand :: String -> Maybe Cmd
+lookupCommand name = find ((==name) . cmdName) commandList
 
 printGlobalHelp :: IO ()
 printGlobalHelp = do pname <- getProgName
@@ -108,11 +109,13 @@ printGlobalHelp = do pname <- getProgName
                                | cmd <- commandList ]
   where align n str = str ++ replicate (n - length str) ' '
 
-printCmdHelp :: Cmd -> IO ()
-printCmdHelp cmd = do pname <- getProgName
-                      let syntax_line = "Usage: " ++ pname ++ " " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
-                      putStrLn (usageInfo syntax_line (cmdOptions cmd))
-                      putStr (cmdDescription cmd)
+printActionHelp :: Action -> IO ()
+printActionHelp action = 
+    do let [cmd] = [c | c <- commandList, cmdAction c == action]
+       pname <- getProgName
+       let syntax_line = "Usage: " ++ pname ++ " " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
+       putStrLn (usageInfo syntax_line (cmdOptions cmd))
+       putStrLn (cmdDescription cmd)
 
 hasHelpFlag :: [Flag] -> Bool
 hasHelpFlag flags = HelpFlag `elem` flags
@@ -124,7 +127,7 @@ parseGlobalArgs args =
       printGlobalHelp
       exitWith ExitSuccess
     (flags, cname:cargs, _, []) ->
-      case lookupCommand cname commandList of
+      case lookupCommand cname of
         Just cmd -> return (cmdAction cmd,mkTempFlags flags emptyTempFlags, cargs)
         Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"
                        exitWith (ExitFailure 1)
@@ -184,10 +187,11 @@ infoCmd :: Cmd
 infoCmd = mkCmd "info" "Emit some info"
            "Emits information about dependency resolution" InfoCmd
 
-parseInstallArgs :: [String] -> IO ([String],[UnresolvedDependency])
-parseInstallArgs [] = do printCmdHelp installCmd
-                         exitWith ExitSuccess
-parseInstallArgs args
+parsePackageArgs :: Action -> [String] -> IO ([String],[UnresolvedDependency])
+parsePackageArgs action [] = do 
+  printActionHelp action
+  exitWith ExitSuccess
+parsePackageArgs _ args
     = return (globalArgs,parsePkgArgs pkgs)
     where (globalArgs,pkgs) = break (not.(==)'-'.head) args
           parseDep dep
