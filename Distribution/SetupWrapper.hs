@@ -49,13 +49,13 @@ setupWrapper ::
        [String] -- ^ Command-line arguments.
     -> Maybe FilePath -- ^ Directory to run in. If 'Nothing', the current directory is used.
     -> IO ()
-setupWrapper args mdir = inDir mdir $ do
-  pkg_descr_file <- defaultPackageDesc
-  pkg_descr <- readPackageDescription pkg_descr_file
-  
+setupWrapper args mdir = inDir mdir $ do  
   let (flag_fn, non_opts, unrec_opts, errs) = getOpt' Permute opts args
   when (not (null errs)) $ die (unlines errs)
   let flags = foldr (.) id flag_fn defaultFlags
+
+  pkg_descr_file <- defaultPackageDesc (verbose flags)
+  pkg_descr <- readPackageDescription (verbose flags) pkg_descr_file 
 
   comp <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags) 0
   cabal_flag <- configCabalFlag flags (descCabalVersion pkg_descr) comp
@@ -108,7 +108,7 @@ data Flags
 defaultFlags = Flags {
   withCompiler = Nothing,
   withHcPkg    = Nothing,
-  verbose      = 0
+  verbose      = 1
  }
 
 setWithCompiler f flags = flags{ withCompiler=f }
