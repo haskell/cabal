@@ -11,7 +11,10 @@
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Config
-    ( packagesDirectoryName
+    ( packagesDirectory
+    , defaultConfDir
+    , defaultCacheDir
+    , defaultPkgListDir
     , getKnownServers
     , getKnownPackages
     , writeKnownPackages
@@ -21,7 +24,7 @@ module Network.Hackage.CabalInstall.Config
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
-import System.Directory (Permissions (..), getPermissions)
+import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing)
 import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
 
@@ -30,6 +33,18 @@ import Distribution.Version (Dependency)
 import Distribution.Compat.FilePath (joinFileName)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..))
+
+-- FIXME: should be different on Windows
+defaultConfDir :: FilePath
+defaultConfDir = "/etc/cabal-install"
+
+-- FIXME: should be different on Windows
+defaultCacheDir :: FilePath
+defaultCacheDir = "/var/cache/cabal-install"
+
+-- FIXME: should be different on Windows
+defaultPkgListDir :: FilePath
+defaultPkgListDir = "/var/lib/cabal-install"
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"
@@ -41,11 +56,18 @@ servListFile = "serv.list"
 packagesDirectoryName :: FilePath
 packagesDirectoryName = "packages"
 
-pkgList :: ConfigFlags -> FilePath
-pkgList cfg = configConfPath cfg `joinFileName` pkgListFile
-
+-- | Full path to the server list file
 servList :: ConfigFlags -> FilePath
-servList cfg = configConfPath cfg `joinFileName` servListFile
+servList cfg = configConfDir cfg `joinFileName` servListFile
+
+-- | Full path to the packages directory.
+packagesDirectory :: ConfigFlags -> FilePath
+packagesDirectory cfg = configCacheDir cfg `joinFileName` packagesDirectoryName
+
+-- | Full path to the package list file
+pkgList :: ConfigFlags -> FilePath
+pkgList cfg = configPkgListDir cfg `joinFileName` pkgListFile
+
 
 -- |Read the list of known packages from the pkg.list file.
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
@@ -65,7 +87,8 @@ getKnownPackages cfg
 -- |Write the list of known packages to the pkg.list file.
 writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
 writeKnownPackages cfg pkgs
-    = writeFile (pkgList cfg) (show pkgs)
+    = do createDirectoryIfMissing True (configPkgListDir cfg)
+         writeFile (pkgList cfg) (show pkgs)
 
 getKnownServers :: ConfigFlags -> IO [String]
 getKnownServers cfg
