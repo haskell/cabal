@@ -124,11 +124,11 @@ die msg = do
   hPutStrLn stderr (pname ++ ": " ++ msg)
   exitWith (ExitFailure 1)
 
-warn :: String -> IO ()
-warn msg = do
+warn :: Int -> String -> IO ()
+warn verbosity msg = do
   hFlush stdout
   pname <- getProgName
-  hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
+  when (verbosity > 0) $ hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -411,38 +411,41 @@ multiDesc l = die $ "Multiple description files found.  Please use only one of :
                       ++ show (filter (/= oldDescFile) l)
 
 -- |A list of possibly correct description files.  Should be pre-filtered.
-descriptionCheck :: [FilePath] -> IO FilePath
-descriptionCheck [] = noDesc
-descriptionCheck [x]
+descriptionCheck :: Int -> [FilePath] -> IO FilePath
+descriptionCheck _ [] = noDesc
+descriptionCheck verbosity [x]
     | x == oldDescFile
-        = do warn $ "The filename \"Setup.description\" is deprecated, please move to <pkgname>." ++ cabalExt
+        = do warn verbosity $ "The filename \"Setup.description\" is deprecated, please move to <pkgname>." ++ cabalExt
              return x
     | matchesDescFile x = return x
     | otherwise = noDesc
-descriptionCheck [x,y]
+descriptionCheck verbosity [x,y]
     | x == oldDescFile
-        = do warn $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
+        = do warn verbosity $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
                   ++ y ++ "\""
              return y
     | y == oldDescFile
-        = do warn $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
+        = do warn verbosity $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
                   ++ x ++ "\""
              return x
 
     | otherwise = multiDesc [x,y]
-descriptionCheck l = multiDesc l
+descriptionCheck _ l = multiDesc l
 
 -- |Package description file (/pkgname/@.cabal@)
-defaultPackageDesc :: IO FilePath
-defaultPackageDesc = getCurrentDirectory >>= findPackageDesc
+defaultPackageDesc :: Int -> IO FilePath
+defaultPackageDesc verbosity
+    = getCurrentDirectory >>= findPackageDesc verbosity
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
-findPackageDesc :: FilePath    -- ^Where to look
+findPackageDesc :: Int         -- ^Verbosity
+                -> FilePath    -- ^Where to look
                 -> IO FilePath -- <pkgname>.cabal
-findPackageDesc p = do ls <- getDirectoryContents p
-                       let descs = filter matchesDescFile ls
-                       descriptionCheck descs
+findPackageDesc verbosity p
+ = do ls <- getDirectoryContents p
+      let descs = filter matchesDescFile ls
+      descriptionCheck verbosity descs
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)

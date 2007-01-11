@@ -498,8 +498,8 @@ binfoFields =
 
 -- | Given a parser and a filename, return the parse of the file,
 -- after checking if the file exists.
-readAndParseFile ::  (String -> ParseResult a) -> FilePath -> IO a
-readAndParseFile parser fpath = do 
+readAndParseFile :: Int -> (String -> ParseResult a) -> FilePath -> IO a
+readAndParseFile verbosity parser fpath = do
   exists <- doesFileExist fpath
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
   str <- readFile fpath
@@ -508,15 +508,15 @@ readAndParseFile parser fpath = do
         let (lineNo, message) = locatedErrorMsg e
         dieWithLocation fpath lineNo message
     ParseOk ws x -> do
-        mapM_ warn ws
+        mapM_ (warn verbosity) ws
         return x
 
 -- |Parse the given package file.
-readPackageDescription :: FilePath -> IO PackageDescription
-readPackageDescription = readAndParseFile parseDescription 
+readPackageDescription :: Int -> FilePath -> IO PackageDescription
+readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
 
-readHookedBuildInfo :: FilePath -> IO HookedBuildInfo
-readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
+readHookedBuildInfo :: Int -> FilePath -> IO HookedBuildInfo
+readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription inp = do (st:sts) <- splitStanzas inp
@@ -679,10 +679,10 @@ errorOut :: Int       -- ^Verbosity
          -> [String]  -- ^errors
          -> IO ()
 errorOut verbosity warnings errors = do
-  when (verbosity > 0) $ mapM_ warn warnings
+  mapM_ (warn verbosity) warnings
   when (not (null errors)) $ do
     pname <- getProgName
-    mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
+    mapM_ (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
     exitWith (ExitFailure 1)
 
 toMaybe :: Bool -> a -> Maybe a

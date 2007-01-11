@@ -107,10 +107,16 @@ exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
            >> system cmd
 
 defaultMain :: IO ()
-defaultMain = defaultPackageDesc >>= readPackageDescription >>= defaultMainNoRead
+defaultMain = defaultMainHelper (\verbosity ->
+                  defaultPackageDesc verbosity >>=
+                  readPackageDescription verbosity)
 
 defaultMainNoRead :: PackageDescription -> IO ()
-defaultMainNoRead pkg_descr
+defaultMainNoRead pkg_descr = defaultMainHelper (\_ -> return pkg_descr)
+
+-- XXX get_pkg_descr isn't used?!
+defaultMainHelper :: (Int -> IO PackageDescription) -> IO ()
+defaultMainHelper get_pkg_descr
     = do args <- getArgs
          (action, args) <- parseGlobalArgs defaultProgramConfiguration args
          case action of
