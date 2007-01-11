@@ -102,6 +102,9 @@ data OutputGen
                              -> IO () -- Show package which isn't available from any server.
       , cmdStdout      :: Maybe Handle
       , cmdStderr      :: Maybe Handle
+      , -- | Output a message.
+        message :: Int -- ^ minimum verbosity needed to output this message
+                -> String -> IO ()
       }
 
 

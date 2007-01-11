@@ -17,4 +17,4 @@ import System.Environment
 
 main = do 
   args <- getArgs
-  setupWrapper args
+  setupWrapper args Nothing

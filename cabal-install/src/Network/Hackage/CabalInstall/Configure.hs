@@ -62,6 +62,7 @@ defaultOutputGen verbose
                 , showOtherPackageInfo = showOtherPkg
                 , cmdStdout      = outch
                 , cmdStderr      = errch 
+                , message        = \v s -> when (verbose >= v) (putStrLn s)
                 }
     where showOtherPkg mbPkg dep
               = do printf "  Package:     '%s'\n" (show $ showDependency dep)
