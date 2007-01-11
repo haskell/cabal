@@ -33,6 +33,7 @@ Exposed-Modules:
         Distribution.PreProcess,
         Distribution.PreProcess.Unlit,
         Distribution.Setup,
+        Distribution.SetupWrapper,
         Distribution.Simple,
         Distribution.Simple.Build,
         Distribution.Simple.Configure,
