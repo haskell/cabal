@@ -1,6 +1,7 @@
 
 # Some hacks
-HC = $(shell grep "^HC=" ../../Makefile | sed "s/HC=//")
+HC     = $(shell grep "^HC="     ../../Makefile | sed "s/HC=//")
+HC_PKG = $(shell grep "^HC_PKG=" ../../Makefile | sed "s/HC_PKG=//")
 comma = ,
 CABALVERSION = $(shell grep "^CABALVERSION=" ../../Makefile | sed "s/CABALVERSION=//")
 
@@ -22,3 +23,9 @@ check: setup
 #	ls /tmp/foo*
 	./setup sdist
 	ls dist
+
+unregister-test:
+	-$(HC_PKG) unregister --force --user test-1.0 2> /dev/null
+
+.PHONY: unregister-test
+
