@@ -437,7 +437,7 @@ systemGetStdout :: Int -> String -> IO String
 systemGetStdout verbose cmd = do
   withTempFile "." "" $ \tmp -> do
     let cmd_line = cmd ++ " >" ++ tmp
-    when (verbose > 0) $ putStrLn cmd_line
+    when (verbose > 1) $ putStrLn cmd_line
     maybeExit $ system cmd_line
     str <- readFile tmp
     let eval [] = ' '; eval xs = last xs
