@@ -124,7 +124,7 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
                 "import Distribution.Simple",
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
-  descFile <- getCurrentDirectory >>= findPackageDesc
+  descFile <- getCurrentDirectory >>= findPackageDesc verbose
   let targetDescFile = targetDir `joinFileName` descFile
   -- We could just writePackageDescription targetDescFile pkg_descr,
   -- but that would lose comments and formatting.

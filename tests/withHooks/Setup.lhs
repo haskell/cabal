@@ -6,7 +6,7 @@
 > import Distribution.PackageDescription (PackageDescription,
 >                                         readPackageDescription, readHookedBuildInfo)
 > import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-> import Distribution.Setup(CopyFlags(..), CopyDest(..))
+> import Distribution.Setup(CopyFlags(..), CopyDest(..), ConfigFlags(..))
 > import Distribution.Compat.Directory (copyFile)
 > import Distribution.Compat.FilePath(joinPaths)
 > import Distribution.Simple.Utils (defaultHookedPackageDesc)
@@ -18,12 +18,13 @@
 
  myPreConf :: Args -> ConfigFlags -> IO HookedBuildInfo
 
-> myPreConf (h:_) _ = do when (h /= "--woohoo")
->                         (error "--woohoo flag (for testing) not passed to ./setup configure.")
+> myPreConf (h:_) flags = do
+>                        when (h /= "--woohoo")
+>                             (error "--woohoo flag (for testing) not passed to ./setup configure.")
 >                        copyFile "Setup.buildinfo.in" "Setup.buildinfo"
 >                        m <- defaultHookedPackageDesc
 >                        when (isNothing m) (error "can't open hooked package description!")
->                        readHookedBuildInfo (fromJust m)
+>                        readHookedBuildInfo (configVerbose flags) (fromJust m)
 >
 > myPreConf [] _ = error "--woohoo flag (for testing) not passed to ./setup configure."
 

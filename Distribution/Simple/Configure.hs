@@ -172,7 +172,7 @@ configure pkg_descr cfg
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
         let exts = fst $ extensionsToFlags f' extlist
-        unless (null exts) $ warn $ -- Just warn, FIXME: Should this be an error?
+        unless (null exts) $ warn (configVerbose cfg) $ -- Just warn, FIXME: Should this be an error?
             show f' ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
@@ -203,8 +203,9 @@ configure pkg_descr cfg
 		then return False
 		else case f' of
 			    GHC | ver >= Version [6,5] [] -> return True
-	    		    _ -> do warn ("this compiler does not support " ++
-					    "--enable-split-objs; ignoring")
+	    		    _ -> do warn (configVerbose cfg)
+                                         ("this compiler does not support " ++
+					  "--enable-split-objs; ignoring")
 				    return False
 
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
