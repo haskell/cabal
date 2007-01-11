@@ -221,19 +221,18 @@ tests currDir comp compConf compVersion = [
          do let targetDir = ",tmp"
             removeDirectoryRecursive targetDir
             when (comp == GHC) -- FIX: hugs can't do --user yet
-              (do system $ "ghc-pkg unregister --user test-1.0"
-                  assertCmd' compCmd "install --user" "install --user failed"
+              (do assertCmd "make -s unregister-test" "unregister test"
+                  assertCmd' compCmd "install -v0 --user" "install --user failed"
                   libForA targetDir
-                  assertCmd' compCmd "unregister --user" "unregister failed")
+                  assertCmd' compCmd "unregister -v0 --user" "unregister failed")
 -- HUnit
         ,TestLabel ("testing the HUnit package" ++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
             GHC.maybeCreateLocalPackageConfig
-            system "make clean"
-            system "make"
-            assertCmd' compCmd "configure" "configure failed"
-            system "setup unregister --user"
-
+            system "make -s clean"
+            system "make -s"
+            assertCmd' compCmd "configure -v0" "configure failed"
+            assertCmd' compCmd "unregister -v0 --user" "unregister failed"
 
             system $ "touch " ++ D.S.C.localBuildInfoFile
             system $ "touch " ++ D.S.R.installedPkgConfigFile
@@ -244,7 +243,7 @@ tests currDir comp compConf compVersion = [
             assertBuild
             doesDirectoryExist "dist/build" >>=
               assertBool "HUnit build did not create build directory"
-            assertCmd' compCmd "clean" "hunit clean"
+            assertCmd' compCmd "clean -v0" "hunit clean"
             doesDirectoryExist "dist/build" >>=
               assertEqual "HUnit clean did not get rid of build directory" False
 
@@ -259,7 +258,7 @@ tests currDir comp compConf compVersion = [
             assertBuild
             when (comp == GHC) -- tests building w/ an installed -package
                  (do pkgConf <- GHC.localPackageConfig
-                     assertCmd' compCmd "install --user" "hunit install"
+                     assertCmd' compCmd "install -v0 --user" "hunit install"
                      assertCmd ("ghc -package-conf " ++ pkgConf
                                 ++ " -package HUnitTest HUnitTester.hs -o ./hunitTest")
                                 "compile w/ hunit"
@@ -267,7 +266,7 @@ tests currDir comp compConf compVersion = [
                      assertCmd' compCmd "unregister --user" "unregister failed")
             assertClean
             doesDirectoryExist "dist/doc" >>= assertEqual "clean dist/doc" False
-            assertCmd "make clean" "make clean failed"
+            assertCmd "make -s clean" "make clean failed"
 
 -- twoMains
         ,TestLabel ("package twoMains: building " ++ compIdent) $ TestCase $
@@ -281,15 +280,15 @@ tests currDir comp compConf compVersion = [
               assertBool "install did not create the executable: testA"
             doesFileExist ",tmp/bin/testB" >>=
               assertBool "install did not create the executable: testB"
-            assertCmd "./,tmp/bin/testA isA" "A is not A"
-            assertCmd "./,tmp/bin/testB isB" "B is not B"
+            assertCmd "./,tmp/bin/testA isA >  out" "A is not A"
+            assertCmd "./,tmp/bin/testB isB >> out" "B is not B"
             -- no register, since there's no library
 -- buildinfo
         ,TestLabel ("buildinfo with multiple executables " ++ compIdent) $ TestCase $
          do setCurrentDirectory (testdir `joinFileName` "buildInfo")
             testPrelude
             assertConfigure ",tmp"
-            assertCmd' compCmd "haddock" "setup haddock returned error code."
+            assertHaddock
             assertBuild
             assertCopy
             doesFileExist ",tmp/bin/exe1" >>=
@@ -321,7 +320,7 @@ tests currDir comp compConf compVersion = [
             assertConfigure "/tmp"
             assertBuild
             -- install it so we can test building with it.
-            assertCmd' compCmd "install --user" "ffi-package install"
+            assertCmd' compCmd "install -v0 --user" "ffi-package install"
             assertClean
             doesFileExist "src/TestFFI_stub.c" >>=
                 assertEqual "FFI-generated stub not cleaned." False
@@ -354,7 +353,7 @@ tests currDir comp compConf compVersion = [
         ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $
          do setCurrentDirectory (testdir `joinFileName` "wash2hs")
             testPrelude
-            assertCmdFail (compCmd ++ " configure --someUnknownFlag")
+            assertCmdFail (compCmd ++ " configure -v0 --someUnknownFlag 2> err")
                           "wash2hs configure with unknown flag"
             assertConfigure ",tmp"
             assertHaddock
@@ -371,18 +370,18 @@ tests currDir comp compConf compVersion = [
         ,TestLabel ("package withHooks: " ++ compIdent) $ TestCase $
          do setCurrentDirectory (testdir `joinFileName` "withHooks")
             testPrelude
-            assertCmd' compCmd ("configure --prefix=,tmp --woohoo " ++ compFlag)
+            assertCmd' compCmd ("configure -v0 --prefix=,tmp --woohoo " ++ compFlag)
               "configure returned error code"
-            assertCmdFail (compCmd ++ " test --asdf") "test was supposed to fail"
-            assertCmd' compCmd ("test --pass") "test should not have failed"
+            assertCmdFail (compCmd ++ " test -v0 --asdf > out") "test was supposed to fail"
+            assertCmd' compCmd ("test -v0 --pass >> out") "test should not have failed"
 
             assertHaddock
             assertBuild
-            assertCmd' compCmd "copy --copy-prefix=,tmp" "copy w/ prefix"
+            assertCmd' compCmd "copy -v0 --copy-prefix=,tmp" "copy w/ prefix"
             doesFileExist ",tmp/withHooks" >>=  -- this file is added w/ the hook.
               assertBool "hooked copy, redirecting prefix didn't work."
-            assertCmd' compCmd "register --user" "regular register returned error"
-            assertCmd' compCmd "unregister --user" "regular unregister returned error"
+            assertCmd' compCmd "register -v0 --user" "regular register returned error"
+            assertCmd' compCmd "unregister -v0 --user" "regular unregister returned error"
             when (comp == GHC) -- FIX: come up with good test for Hugs
                  (do doesFileExist "dist/build/C.o" >>=
                        assertBool "C.testSuffix did not get compiled to C.o."
@@ -427,10 +426,15 @@ tests currDir comp compConf compVersion = [
           assertConfigure pref
               = assertCmd' compCmd ("configure -v0 --user --prefix=" ++ pref ++ " " ++ compFlag)
                            "configure returned error code"
-          assertBuild = assertCmd' compCmd "build -v0" "build returned error code"
+          -- XXX redirecting stderr is a hack. ar says
+          -- /usr/bin/ar: creating dist/build/libHStest-1.0.a
+          -- in the A test
+          assertBuild = assertCmd' compCmd "build -v0 2> err" "build returned error code"
           assertCopy  = assertCmd' compCmd "copy -v0"  "copy returned error code"
           assertClean  = assertCmd' compCmd "clean -v0"  "clean returned error code"
-          assertHaddock = assertCmd' compCmd "haddock -v0" "setup haddock returned error code."
+          -- XXX Redirecting stderr is a hack - haddock needs to allow
+          -- us to tell it to be quiet
+          assertHaddock = assertCmd' compCmd "haddock -v0 2> err" "setup haddock returned error code."
           command GHC = "./setup"
           command Hugs = "runhugs -98 Setup.lhs"
           command c = error ("Unhandled compiler: " ++ show c)
@@ -444,7 +448,7 @@ tests currDir comp compConf compVersion = [
                   _ -> error ("Unhandled compiler: " ++ show compConf)
           dumpScriptFlag = "--gen-script"
           registerAndExecute comment = do
-            assertCmd' compCmd ("register -0 --user "++dumpScriptFlag) comment
+            assertCmd' compCmd ("register -v0 --user "++dumpScriptFlag) comment
             if comp == GHC
                then assertCmd' "./register.sh" "" "reg script failed"
                else do ex <- doesFileExist "register.sh"
