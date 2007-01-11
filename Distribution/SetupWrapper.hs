@@ -25,8 +25,9 @@ import Distribution.PackageDescription
 				  PackageDescription(..) )
 import System.Console.GetOpt
 import System.Directory
+import Control.Exception        ( finally )
 import Control.Monad		( when, unless )
-import System.Directory 	( doesFileExist )
+import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirectory )
 
   -- read the .cabal file
   -- 	- attempt to find the version of Cabal required
@@ -44,8 +45,11 @@ import System.Directory 	( doesFileExist )
   --    - add support for multiple packages, by figuring out
   --      dependencies here and building/installing the sub packages
   --      in the right order.
-setupWrapper :: [String] -> IO ()
-setupWrapper args = do
+setupWrapper :: 
+       [String] -- ^ Command-line arguments.
+    -> Maybe FilePath -- ^ Directory to run in. If 'Nothing', the current directory is used.
+    -> IO ()
+setupWrapper args mdir = inDir mdir $ do
   pkg_descr_file <- defaultPackageDesc
   pkg_descr <- readPackageDescription pkg_descr_file
   
@@ -86,6 +90,13 @@ setupWrapper args = do
 	else do writeFile ".Setup.hs" 
 			  "import Distribution.Simple; main=defaultMain"
 		trySetupScript ".Setup.hs" $ error "panic! shouldn't happen"
+
+inDir :: Maybe FilePath -> IO () -> IO ()
+inDir Nothing m = m
+inDir (Just d) m = do
+  old <- getCurrentDirectory
+  setCurrentDirectory d
+  m `finally` setCurrentDirectory old
 
 data Flags
   = Flags {
