@@ -25,13 +25,16 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency
                                       ,OutputGen(..))
 import Network.Hackage.CabalInstall.TarUtils
 
+import Distribution.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Compat.FilePath (joinFileName, splitFileName)
 
-import Text.Printf (printf)
+import Data.Maybe (fromMaybe, maybeToList)
+import Text.Printf (printf, PrintfType)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
                         ,removeDirectoryRecursive, copyFile)
+import System.IO (hPutStrLn, stderr)
 import System.Process (runProcess, waitForProcess, terminateProcess)
 import System.Exit (ExitCode(..))
 import System.Posix.Signals
@@ -59,16 +62,14 @@ downloadPkg cfg pkg location
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
 mkPkgOps :: ConfigFlags -> String -> [String] -> [String]
-mkPkgOps cfg "configure" ops
-    = let ops' = if configUserIns cfg then "--user":ops else ops
-      in case configPrefix cfg of
-           Nothing -> ops'
-           Just pref -> ("--prefix=" ++ pref):ops'
-
-mkPkgOps cfg "install" _ops
-    | configUserIns cfg = return "--user"
-mkPkgOps _cfg _ _ops
-    = []
+mkPkgOps cfg cmd ops = verbosity ++
+  case cmd of
+    "configure" -> user ++ prefix ++ ops
+    "install"   -> user
+    _ -> []
+ where verbosity = ["--verbose=" ++ show (configVerbose cfg)]
+       user = if configUserIns cfg then ["--user"] else []
+       prefix = maybeToList (fmap ("--prefix=" ++) (configPrefix cfg))
 
 {-|
   Download, build and install a given package with some given flags.
@@ -79,15 +80,13 @@ mkPkgOps _cfg _ _ops
 
     * The fetched tarball is then moved to a temporary directory (\/tmp on linux) and unpacked.
 
-    * The lowest directory with a .cabal file is located and searched for a \'Setup.lhs\' or
-      \'Setup.hs\' file.
-
-    * \'runhaskell [Setup script] configure\' is called with the user specified options, \'--user\'
+    * setupWrapper (equivalent to cabal-setup) is called with the options
+      \'configure\' and the user specified options, \'--user\'
       if the 'configUser' flag is @True@ and \'--prefix=[PREFIX]\' if 'configPrefix' is not @Nothing@.
 
-    * \'runhaskell [Setup script] build\' is called with no options.
+    * setupWrapper \'build\' is called with no options.
 
-    * \'runhaskell [Setup script] install\' is called with the \'--user\' flag if 'configUserIns' is @True@.
+    * setupWrapper \'install\' is called with the \'--user\' flag if 'configUserIns' is @True@.
 
     * The installation finishes by deleting the unpacked tarball.
 -} 
@@ -100,22 +99,15 @@ installPkg cfg globalArgs (pkg,ops,location)
          tmp <- getTemporaryDirectory
          let tmpDirPath = tmp `joinFileName` printf "TMP%sTMP" (showPackageId pkg)
              tmpPkgPath = tmpDirPath `joinFileName` printf "TAR%s.tgz" (showPackageId pkg)
-             setup setupScript cmd
-                 = let (path,script) = splitFileName setupScript
-                       cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
-                   in do executingCmd output runHc (script:cmd:cmdOps)
-                         h <- runProcess runHc (script:cmd:cmdOps)
-                                                 (Just (tmpDirPath `joinFileName` path))
-                                                 Nothing Nothing (cmdStdout output) (cmdStderr output)
-                         oldHandler <- installHandler keyboardSignal (Catch (terminateProcess h)) Nothing
-                         e <- waitForProcess h
-                         installHandler keyboardSignal oldHandler Nothing 
-                         case e of
-                           ExitFailure err -> cmdFailed output cmd (script:cmd:cmdOps) err
-                           _ -> return ()
+             setup cmd
+                 = let cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
+                       path = tmpDirPath `joinFileName` showPackageId pkg
+                   in do message output 3 $ unwords ["setupWrapper", show (cmd:cmdOps), show path]
+                         setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
                   (do copyFile pkgPath tmpPkgPath
+                      message output 3 (printf "Extracting %s..." tmpPkgPath)
                       extractTarFile tarProg tmpPkgPath
                       installUnpackedPkg cfg pkg tmpPkgPath setup
                       return ())
@@ -124,26 +116,21 @@ installPkg cfg globalArgs (pkg,ops,location)
           output = configOutputGen cfg
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier -> FilePath
-                   -> (String -> String -> IO ()) -> IO ()
+                   -> (String -> IO ()) -> IO ()
 installUnpackedPkg cfg pkgId tarFile setup
     = do tarFiles <- tarballGetFiles tarProg tarFile
          let cabalFile = locateFileExt tarFiles "cabal"
          case cabalFile of
            Just f -> let (path,_) = splitFileName f
-                         mbScript = locateFile tarFiles path ["Setup.lhs", "Setup.hs"]
-                     in case mbScript of
-                          Just script
-                              -> do buildingPkg output pkgId
-                                    stepConfigPkg output pkgId
-                                    setup script "configure"
-                                    stepBuildPkg output pkgId
-                                    setup script "build"
-                                    stepInstallPkg output pkgId
-                                    setup script "install"
-                                    stepFinishedPkg output pkgId
-                                    return ()
-                          Nothing
-                              -> noSetupScript output pkgId
+                     in do buildingPkg output pkgId
+                           stepConfigPkg output pkgId
+                           setup "configure"
+                           stepBuildPkg output pkgId
+                           setup "build"
+                           stepInstallPkg output pkgId
+                           setup "install"
+                           stepFinishedPkg output pkgId
+                           return ()
            Nothing -> noCabalFile output pkgId
     where output = configOutputGen cfg
           tarProg = configTarPath cfg
