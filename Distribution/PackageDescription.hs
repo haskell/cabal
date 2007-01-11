@@ -60,6 +60,7 @@ module Distribution.PackageDescription (
         Executable(..),
         withExe,
         exeModules,
+        BuildType(..),
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
@@ -77,6 +78,7 @@ module Distribution.PackageDescription (
         hcOptions,
         autogenModuleName,
         haddockName,
+        cabalVersion,
 #ifdef DEBUG
         hunitTests,
         test
@@ -144,6 +146,7 @@ data PackageDescription
         category       :: String,
         buildDepends   :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
+        buildType      :: BuildType,
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
@@ -168,6 +171,7 @@ emptyPackageDescription
                       license      = AllRightsReserved,
                       licenseFile  = "",
                       descCabalVersion = AnyVersion,
+                      buildType    = Custom,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",
@@ -269,6 +273,16 @@ type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
 emptyHookedBuildInfo :: HookedBuildInfo
 emptyHookedBuildInfo = (Nothing, [])
+
+-- | The type of build system used by this package.
+data BuildType
+  = Simple      -- ^ calls @Distribution.Simple.defaultMain@
+  | Configure   -- ^ calls @Distribution.Simple.defaultMainWithHooks defaultUserHooks@,
+                -- which invokes @configure@ to generate additional build
+                -- information used by later phases.
+  | Make        -- ^ calls @Distribution.Make.defaultMain@
+  | Custom      -- ^ uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
+                deriving (Show, Read, Eq)
 
 -- ------------------------------------------------------------
 -- * Utils
@@ -381,6 +395,9 @@ basicStanzaFields =
  , simpleField "cabal-version"
                            (text . showVersionRange) parseVersionRange
                            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
+ , simpleField "build-type"
+                           (text . show)          parseReadSQ
+                           buildType              (\t pkg -> pkg{buildType=t})
  , simpleField "license"
                            (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
@@ -786,7 +803,8 @@ testPkgDescAnswer =
                     synopsis = "a nice package!",
                     description = "a really nice package!",
                     category = "tools",
-                               descCabalVersion=LaterVersion (Version [1,1,1] []),
+                    descCabalVersion=LaterVersion (Version [1,1,1] []),
+                    buildType=Custom,
                     buildDepends = [Dependency "haskell-src" AnyVersion,
                                      Dependency "HUnit"
                                      (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
@@ -883,7 +901,7 @@ comparePackageDescriptions :: PackageDescription
                            -> PackageDescription
                            -> [String]      -- ^Errors
 comparePackageDescriptions p1 p2
-    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp descCabalVersion "cabal-version":[]
+    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp descCabalVersion "cabal-version": myCmp buildType "build-type": []
 
 
       where myCmp :: (Eq a, Show a) => (PackageDescription -> a)

@@ -54,7 +54,7 @@ module Distribution.ParseUtils (
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
 	simpleField, listField, commaListField, optsField, 
-	parseReadS, parseQuoted,
+	parseReadS, parseReadSQ, parseQuoted,
   ) where
 
 import Text.PrettyPrint.HughesPJ
@@ -270,6 +270,10 @@ parseLicenseQ = parseQuoted parseReadS <++ parseReadS
 
 parseExtensionQ :: ReadP r Extension
 parseExtensionQ = parseQuoted parseReadS <++ parseReadS
+
+-- | Parse something optionally wrapped in quotes.
+parseReadSQ :: Read a => ReadP r a
+parseReadSQ = parseQuoted parseReadS <++ parseReadS
 
 parseTokenQ :: ReadP r String
 parseTokenQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')

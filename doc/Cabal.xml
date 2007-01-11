@@ -5,6 +5,7 @@
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution-Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution-License.html#t:License"><literal>License</literal></ulink>'>
     <!ENTITY Extension '<ulink url="../libraries/Cabal/Language-Haskell-Extension.html#t:Extension"><literal>Extension</literal></ulink>'>
+    <!ENTITY BuildType '<ulink url="../libraries/Cabal/Distribution-PackageDescription.html#t:BuildType"><literal>BuildType</literal></ulink>'>
     <!ENTITY Alex '<ulink url="http://www.haskell.org/alex/"><command>alex</command></ulink>'>
     <!ENTITY Autoconf '<ulink url="http://www.gnu.org/software/autoconf/"><command>autoconf</command></ulink>'>
     <!ENTITY C2hs '<ulink url="http://www.cse.unsw.edu.au/~chak/haskell/c2hs/"><command>c2hs</command></ulink>'>
@@ -129,6 +130,7 @@ License:        BSD3
 Author:         Dean Herington
 Homepage:       http://hunit.sourceforge.net/
 Category:       Testing
+Build-Type:     Simple
 Build-Depends:  base
 Synopsis:       Unit testing framework for Haskell
 Exposed-modules:
@@ -149,6 +151,7 @@ Version:        0.0
 License:        BSD3
 Author:         Angela Author
 Synopsis:       Small package with two programs
+Build-Type:     Simple
 Build-Depends:  HUnit
 
 Executable:     program1
@@ -170,6 +173,7 @@ Version:         0.0
 License:         BSD3
 Author:          Angela Author
 Synopsis:        Package with library and two programs
+Build-Type:      Simple
 Build-Depends:   HUnit
 Exposed-Modules: A, B, C
 
@@ -363,6 +367,20 @@ Other-Modules:   A, C, Utils</programlisting>
                 List the field early in your <literal>.cabal</literal>
                 file so that it will appear as a syntax error before
                 any others.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>build-type:</literal> <replaceable>identifier</replaceable>
+            </term>
+            <listitem>
+              <para>The type of build used by this package.
+                Build types are the constructors of the &BuildType; type,
+                defaulting to <literal>Custom</literal>.
+                If this field is given a value other than
+                <literal>Custom</literal>, some tools will be able to
+                build the package without using the setup script.</para>
             </listitem>
           </varlistentry>
 
@@ -915,9 +933,10 @@ Other-Modules:   A, C, Utils</programlisting>
 
       <para>For some packages, especially those interfacing with C
         libraries, implementation details and the build procedure depend
-        on the build environment.  The simple build infrastructure
-        can handle many such situations using a slightly longer
-        <filename>Setup.hs</filename>:</para>
+        on the build environment.  A variant of the simple build
+        infrastructure (the <literal>build-type</literal>
+        <literal>Configure</literal>) handles many such situations using
+        a slightly longer <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
 main = defaultMainWithHooks defaultUserHooks</programlisting>
