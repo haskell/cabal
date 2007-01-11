@@ -219,21 +219,22 @@ defaultMain = getArgs >>=defaultMainArgs
 
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs args = do
-                 (action, args') <- parseGlobalArgs (allPrograms Nothing) args
-                 pkg_descr_file <- defaultPackageDesc
-                 pkg_descr <- readPackageDescription pkg_descr_file
-                 defaultMainWorker pkg_descr action args' Nothing
-                 return ()
+    let hooks = theRealDefaultUserHooks
+    (action, args') <- parseGlobalArgs (allPrograms hooks) args
+    pkg_descr_file <- defaultPackageDesc
+    pkg_descr <- readPackageDescription pkg_descr_file
+    defaultMainWorker pkg_descr action args' hooks
+    return ()
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
 defaultMainWithHooks hooks
     = do args <- getArgs
-         (action, args') <- parseGlobalArgs (allPrograms (Just hooks)) args
+         (action, args') <- parseGlobalArgs (allPrograms hooks) args
          maybeDesc <- readDesc hooks
          pkg_descr <- maybe (defaultPackageDesc >>= readPackageDescription)
                             return maybeDesc
-         defaultMainWorker pkg_descr action args' (Just hooks)
+         defaultMainWorker pkg_descr action args' hooks
          return ()
 
 -- |Like 'defaultMain', but accepts the package description as input
@@ -241,18 +242,18 @@ defaultMainWithHooks hooks
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr
     = do args <- getArgs
-         (action, args') <- parseGlobalArgs (allPrograms Nothing) args
-         defaultMainWorker pkg_descr action args' Nothing
+         let hooks = theRealDefaultUserHooks
+         (action, args') <- parseGlobalArgs (allPrograms hooks) args
+         defaultMainWorker pkg_descr action args' hooks
          return ()
 
 -- |Combine the programs in the given hooks with the programs built
 -- into cabal.
-allPrograms :: Maybe UserHooks
+allPrograms :: UserHooks
             -> ProgramConfiguration -- combine defaults w/ user programs
-allPrograms Nothing = defaultProgramConfiguration
-allPrograms (Just h) = foldl (\pConf p -> updateProgram (Just p) pConf)
-                        defaultProgramConfiguration
-                        (hookedPrograms h)
+allPrograms hooks = foldl (\pConf p -> updateProgram (Just p) pConf)
+                          defaultProgramConfiguration
+                          (hookedPrograms hooks)
 
 -- |Combine the preprocessors in the given hooks with the
 -- preprocessors built into cabal.
@@ -270,7 +271,7 @@ allSuffixHandlers hooks
 defaultMainWorker :: PackageDescription
                   -> Action
                   -> [String] -- ^args1
-                  -> Maybe UserHooks
+                  -> UserHooks
                   -> IO ExitCode
 defaultMainWorker pkg_descr_in action args hooks
     = do case action of
@@ -281,7 +282,7 @@ defaultMainWorker pkg_descr_in action args hooks
                 (warns, ers) <- sanityCheckPackage pkg_descr
                 errorOut (configVerbose flags') warns ers
 
-                let c = maybe (confHook defaultUserHooks) confHook hooks
+                let c = confHook hooks
                 localbuildinfo <- c pkg_descr flags'
                 writePersistBuildConfig (foldr id localbuildinfo optFns)
                 postHook postConf args' flags' pkg_descr localbuildinfo
@@ -344,12 +345,10 @@ defaultMainWorker pkg_descr_in action args hooks
 
             TestCmd -> do
                 (_,_, args') <- parseTestArgs args []
-                case hooks of
-                 Nothing -> return ExitSuccess
-                 Just h  -> do localbuildinfo <- getPersistBuildConfig
-                               out <- (runTests h) args' False pkg_descr_in localbuildinfo
-                               when (isFailure out) (exitWith out)
-                               return out
+                localbuildinfo <- getPersistBuildConfig
+                out <- (runTests hooks) args' False pkg_descr_in localbuildinfo
+                when (isFailure out) (exitWith out)
+                return out
 
             RegisterCmd  -> do
                 (flags, _, args') <- parseRegisterArgs emptyRegisterFlags args []
@@ -374,15 +373,13 @@ defaultMainWorker pkg_descr_in action args hooks
                      -> b
                      -> IO PackageDescription
         hookOrInArgs f a i
-                 = case hooks of
-                    Nothing -> no_extra_flags a >> return pkg_descr_in
-                    Just h -> do pbi <- f h a i
-                                 return (updatePackageDescription pbi pkg_descr_in)
-        cmdHook f desc lbi = (maybe (f defaultUserHooks) f hooks) desc lbi hooks
+            = do pbi <- f hooks a i
+                 return (updatePackageDescription pbi pkg_descr_in)
+        -- XXX (Just hooks) below should be hooks; will change the
+        -- interface, but needs to be done!
+        cmdHook f desc lbi = (f hooks) desc lbi (Just hooks)
         postHook f arguments flags pkg_descr localbuildinfo
-                 = case hooks of
-                    Nothing -> return ExitSuccess
-                    Just h  -> f h arguments flags pkg_descr localbuildinfo
+                 = f hooks arguments flags pkg_descr localbuildinfo
 
         isFailure :: ExitCode -> Bool
         isFailure (ExitFailure _) = True
@@ -595,6 +592,25 @@ emptyUserHooks
     where rn  _ _    = return emptyHookedBuildInfo
           res _ _ _ _  = return ExitSuccess
           ru _ _ _ _ = return ()
+
+theRealDefaultUserHooks :: UserHooks
+theRealDefaultUserHooks
+    = emptyUserHooks
+      {
+       preConf   = no_extra_flags_rn,
+       confHook  = configure,
+       buildHook = defaultBuildHook,
+       haddockHook = haddock,
+       pfeHook   = pfe,
+       cleanHook = clean,
+       copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
+       instHook  = defaultInstallHook,
+       sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
+       regHook   = defaultRegHook,
+       unregHook = \p l _ f -> unregister p l f
+      }
+    where no_extra_flags_rn as _    = do no_extra_flags as
+                                         return emptyHookedBuildInfo
 
 -- |Basic default 'UserHooks':
 --
