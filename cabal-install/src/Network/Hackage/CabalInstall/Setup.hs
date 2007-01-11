@@ -25,6 +25,7 @@ import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usage
 import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
+import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, defaultPkgListDir)
 import Network.Hackage.CabalInstall.Types (TempFlags (..), Flag (..), Action (..)
                                       , UnresolvedDependency (..))
 
@@ -32,7 +33,9 @@ emptyTempFlags :: TempFlags
 emptyTempFlags = TempFlags {
         tempHcFlavor    = defaultCompilerFlavor, -- Nothing,
         tempHcPath      = Nothing,
-        tempConfPath    = Nothing,
+        tempConfDir     = Nothing,
+        tempCacheDir    = Nothing,
+        tempPkgListDir  = Nothing,
         tempHcPkg       = Nothing,
         tempPrefix      = Nothing,
         tempServers     = [],
@@ -59,8 +62,12 @@ globalOptions =
     , Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs"
     , Option "s" ["with-server"] (ReqArg WithServer "URL")
                  "give the URL to a Hackage server"
-    , Option "c" ["config-path"] (ReqArg WithConfPath "PATH")
-                 "give the path to the config dir. Default is /etc/cabal-install"
+    , Option "c" ["config-dir"] (ReqArg WithConfDir "PATH")
+                 ("give the path to the config dir. Default is " ++ defaultConfDir)
+    , Option "" ["cache-dir"] (ReqArg WithCacheDir "PATH")
+                 ("give the path to the package cache dir. Default is " ++ defaultCacheDir)
+    , Option "" ["pkglist-dir"] (ReqArg WithPkgListDir "PATH")
+                 ("give the path to the package list dir. Default is " ++ defaultPkgListDir)
     , Option "" ["tar-path"] (ReqArg WithTarPath "PATH")
                  "give the path to tar"
     , Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
@@ -145,7 +152,9 @@ mkTempFlags = updateCfg
             NhcFlag           -> t { tempHcFlavor    = Just NHC }
             HugsFlag          -> t { tempHcFlavor    = Just Hugs }
             WithCompiler path -> t { tempHcPath      = Just path }
-            WithConfPath path -> t { tempConfPath    = Just path }
+            WithConfDir path  -> t { tempConfDir     = Just path }
+            WithCacheDir path -> t { tempCacheDir    = Just path }
+            WithPkgListDir path  -> t { tempPkgListDir  = Just path }
             WithHcPkg path    -> t { tempHcPkg       = Just path }
             WithServer url    -> t { tempServers     = url:tempServers t }
             Verbose n         -> t { tempVerbose     = n }

@@ -32,7 +32,7 @@ import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..))
-import Network.Hackage.CabalInstall.Config (packagesDirectoryName)
+import Network.Hackage.CabalInstall.Config (packagesDirectory)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier, showPackageId)
@@ -86,7 +86,7 @@ downloadPackage cfg pkg url
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
-    where path = configConfPath cfg `joinFileName` packagesDirectoryName `joinFileName` showPackageId pkg
+    where path = packageFile cfg pkg
 
 -- Downloads an index file to [config-dir/packages/serv-id
 downloadIndex :: ConfigFlags -> String -> IO String
@@ -98,10 +98,6 @@ downloadIndex cfg serv
            Nothing  -> return path
     where url = serv ++ "/" ++ "00-index.tar.gz"
           path = packagesDirectory cfg `joinFileName` "00-index" `joinFileExt` "tar.gz"
-
--- |Full path to the packages directory.
-packagesDirectory :: ConfigFlags -> FilePath
-packagesDirectory cfg = configConfPath cfg `joinFileName` packagesDirectoryName
 
 -- |Generate the full path to a given @PackageIdentifer@.
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
