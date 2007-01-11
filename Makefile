@@ -8,7 +8,7 @@ ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 
 KIND=rc
 #KIND=latest
-GHCFLAGS= --make -fno-warn-unused-matches -cpp -Wall
+GHCFLAGS= --make -cpp -Wall
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =
