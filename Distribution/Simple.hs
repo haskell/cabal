@@ -105,7 +105,6 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad(when, unless)
 import Data.List	( intersperse, unionBy )
-import Data.Maybe       ( isJust, fromJust )
 import System.IO.Error (try)
 import Distribution.GetOpt
 
@@ -477,9 +476,9 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                        ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose
                        return ()
         needsCpp :: PackageDescription -> Bool
-        needsCpp p =
-           hasLibs p &&
-           any (== CPP) (extensions $ libBuildInfo $ fromJust $ library p)
+        needsCpp p = case library p of
+          Nothing  -> False
+          Just lib -> CPP `elem` extensions (libBuildInfo lib)
 
 pfe :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> PFEFlags -> IO ()
 pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
@@ -509,8 +508,9 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbose) = do
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
-    when (isJust maybeLbi) $ do
-        let lbi = fromJust maybeLbi
+    case maybeLbi of
+      Nothing  -> return ()
+      Just lbi -> do
         try $ removeDirectoryRecursive (buildDir lbi)
         case compilerFlavor (compiler lbi) of
           GHC -> cleanGHCExtras lbi
