@@ -1,1 +1,6 @@
-import Distribution.Simple; main=defaultMain
+
+import Distribution.Simple
+
+main :: IO ()
+main = defaultMain
+
