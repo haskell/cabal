@@ -35,6 +35,7 @@ data Action
     | InfoCmd
     | HelpCmd
     | ListCmd
+ deriving (Eq)
 
 data TempFlags = TempFlags {
         tempHcFlavor    :: Maybe CompilerFlavor,
