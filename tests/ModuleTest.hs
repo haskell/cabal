@@ -195,19 +195,19 @@ tests currDir comp compConf compVersion = [
               assertBool "testA not produced"
             doesFileExist ",tmp/bin/testB" >>=
               assertBool "testB not produced"
-            assertCmd' compCmd "sdist" "setup sdist returned error code"
+            assertCmd' compCmd "sdist -v0" "setup sdist returned error code"
             doesFileExist "dist/test-1.0.tar.gz" >>=
               assertBool "sdist did not put the expected file in place"
             doesFileExist "dist/src" >>=
               assertEqual "dist/src exists" False
-            assertCmd' compCmd "register --user" "pkg A, register failed"
-            assertCmd' compCmd "unregister --user" "pkg A, unregister failed"
+            assertCmd' compCmd "register -v0 --user" "pkg A, register failed"
+            assertCmd' compCmd "unregister -v0 --user" "pkg A, unregister failed"
             -- tricky, script-based register
             registerAndExecute "pkg A: register with script failed"
             unregisterAndExecute "pkg A: unregister with script failed"
             -- non-trick non-script based register
-            assertCmd' compCmd "register --user" "regular register returned error"
-            assertCmd' compCmd "unregister --user" "regular unregister returned error"
+            assertCmd' compCmd "register -v0 --user" "regular register returned error"
+            assertCmd' compCmd "unregister -v0 --user" "regular unregister returned error"
 
         ,TestLabel ("package A copy-prefix: " ++ compIdent) $ TestCase $ -- (uses above config)
          do let targetDir = ",tmp2"
@@ -444,13 +444,13 @@ tests currDir comp compConf compVersion = [
                   _ -> error ("Unhandled compiler: " ++ show compConf)
           dumpScriptFlag = "--gen-script"
           registerAndExecute comment = do
-            assertCmd' compCmd ("register --user "++dumpScriptFlag) comment
+            assertCmd' compCmd ("register -0 --user "++dumpScriptFlag) comment
             if comp == GHC
                then assertCmd' "./register.sh" "" "reg script failed"
                else do ex <- doesFileExist "register.sh"
                        assertBool "hugs should not produce register.sh" (not ex)
           unregisterAndExecute comment = do
-            assertCmd' compCmd ("unregister --user "++dumpScriptFlag) comment
+            assertCmd' compCmd ("unregister -v0 --user "++dumpScriptFlag) comment
             if comp == GHC
                then assertCmd' "./unregister.sh" "" "reg script failed"
                else do ex <- doesFileExist "unregister.sh"
