@@ -120,10 +120,10 @@ build pkg_descr lbi verbose = do
             when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
             flip mapM_ mods $ \ m -> do
                 fs <- moduleToFilePath srcDirs m suffixes
-                if null fs then
+                case fs of
+                  [] ->
                     die ("can't find source for module " ++ m)
-                  else do
-                    let srcFile = head fs
+                  srcFile:_ -> do
                     let (_, ext) = splitFileExt srcFile
                     copyModule useCpp bi srcFile
                         (destDir `joinFileName` dotToSep m `joinFileExt` ext)
