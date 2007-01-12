@@ -99,6 +99,12 @@ localConfigDir :: IO FilePath
 localConfigDir
     = getAppUserDataDirectory "cabal-install"
 
+localCacheDir :: IO FilePath
+localCacheDir = localConfigDir
+
+localPkgListDir :: IO FilePath
+localPkgListDir = localConfigDir
+
 {-|
   Give concrete answers to questions like:
 
@@ -115,15 +121,19 @@ mkConfigFlags cfg
     = do runHc <- findProgramOrDie "runhaskell" (tempRunHc cfg)
          tarProg <- findProgramOrDie "tar" (tempTarPath cfg)
          comp <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) (tempVerbose cfg)
+         let userIns = tempUserIns cfg || tempUser cfg
          localConfig <- localConfigDir
-         prefix <- if tempUserIns cfg || tempUser cfg
+         prefix <- if userIns
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
                       else return Nothing
          confDir <- selectValidConfigDir ( maybe id (:) (tempConfDir cfg)
                                            [defaultConfDir, localConfig] )
-         -- FIXME: put these in the user dir if it's a user installation
-         let cacheDir   = fromMaybe defaultCacheDir (tempCacheDir cfg)
-         let pkgListDir = fromMaybe defaultPkgListDir (tempPkgListDir cfg)
+         cacheDir <- if userIns
+                        then maybe localCacheDir return (tempCacheDir cfg)
+                        else return $ fromMaybe defaultCacheDir (tempCacheDir cfg)
+         pkgListDir <- if userIns
+                        then maybe localPkgListDir return (tempPkgListDir cfg)
+                        else return $ fromMaybe defaultPkgListDir (tempPkgListDir cfg)
          when (tempVerbose cfg > 0) $ do printf "Using config dir: %s\n" confDir
                                          printf "Using cache dir: %s\n" cacheDir
                                          printf "Using pkglist dir: %s\n" pkgListDir
@@ -131,7 +141,6 @@ mkConfigFlags cfg
          let config = ConfigFlags
                       { configCompiler    = comp
                       , configConfDir     = confDir
-                      -- FIXME: put it in the user dir if it's a user isntallation
                       , configCacheDir    = cacheDir
                       , configPkgListDir  = pkgListDir
                       , configPrefix      = prefix
@@ -141,7 +150,7 @@ mkConfigFlags cfg
                       , configOutputGen   = outputGen
                       , configVerbose     = tempVerbose cfg
 --                      , configUpgradeDeps = tempUpgradeDeps cfg
-                      , configUserIns     = tempUserIns cfg || tempUser cfg
+                      , configUserIns     = userIns
                       }
          knownServers <- getKnownServers config
          return (config{ configServers = knownServers ++ tempServers cfg})
