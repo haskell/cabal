@@ -35,7 +35,7 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), Unr
 import Network.Hackage.CabalInstall.Config (packagesDirectory)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
-import Distribution.Package (PackageIdentifier, showPackageId)
+import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Compat.FilePath (joinFileName, joinFileExt)
 import System.Directory (copyFile)
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -101,7 +101,10 @@ downloadIndex cfg serv
 
 -- |Generate the full path to a given @PackageIdentifer@.
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
-packageFile cfg pkg = packagesDirectory cfg `joinFileName` (showPackageId pkg)
+packageFile cfg pkg = packagesDirectory cfg 
+                      `joinFileName` pkgName pkg
+                      `joinFileName` showPackageId pkg 
+                      `joinFileExt` "tar.gz"
 
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: ConfigFlags -> PackageIdentifier -> IO Bool
