@@ -121,7 +121,7 @@ mkConfigFlags cfg
     = do runHc <- findProgramOrDie "runhaskell" (tempRunHc cfg)
          tarProg <- findProgramOrDie "tar" (tempTarPath cfg)
          comp <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) (tempVerbose cfg)
-         let userIns = tempUserIns cfg || tempUser cfg
+         let userIns = tempUserIns cfg
          localConfig <- localConfigDir
          prefix <- if userIns
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
