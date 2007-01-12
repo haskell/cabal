@@ -159,6 +159,7 @@ mkTempFlags = updateCfg
             WithServer url    -> t { tempServers     = url:tempServers t }
             Verbose n         -> t { tempVerbose     = n }
 --            UpgradeDeps       -> t { tempUpgradeDeps = True }
+            UserFlag          -> t { tempUser        = True }
             GlobalFlag        -> t { tempUser        = False }
             UserInstallFlag   -> t { tempUserIns     = True }
             GlobalInstallFlag -> t { tempUserIns     = False }
