@@ -50,7 +50,6 @@ data TempFlags = TempFlags {
         tempRunHc       :: Maybe FilePath,
         tempVerbose     :: Int,            -- ^verbosity level
 --        tempUpgradeDeps :: Bool,
-        tempUser        :: Bool,           -- ^--user flag
         tempUserIns     :: Bool            -- ^--user-install flag
    }
 
