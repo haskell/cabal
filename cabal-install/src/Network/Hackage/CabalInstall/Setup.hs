@@ -43,7 +43,6 @@ emptyTempFlags = TempFlags {
         tempTarPath     = Nothing,
         tempVerbose     = 3,
 --        tempUpgradeDeps = False,
-        tempUser        = False,
         tempUserIns     = False
    }
 
@@ -80,10 +79,6 @@ globalOptions =
                  "upon registration, register this package in the user's local package database"
     , Option "" ["global-install"] (NoArg GlobalInstallFlag)
                  "upon registration, register this package in the system-wide package database"
-    , Option "" ["user-deps"] (NoArg UserFlag)
-                 "allow dependencies to be satisfied from the user package database"
-    , Option "" ["global-deps"] (NoArg GlobalFlag)
-                 "(default) dependencies must be satisfied from the global package database"
     ]
 
 data Cmd = Cmd {
@@ -159,8 +154,6 @@ mkTempFlags = updateCfg
             WithServer url    -> t { tempServers     = url:tempServers t }
             Verbose n         -> t { tempVerbose     = n }
 --            UpgradeDeps       -> t { tempUpgradeDeps = True }
-            UserFlag          -> t { tempUser        = True }
-            GlobalFlag        -> t { tempUser        = False }
             UserInstallFlag   -> t { tempUserIns     = True }
             GlobalInstallFlag -> t { tempUserIns     = False }
             _                 -> error $ "Unexpected flag!"
