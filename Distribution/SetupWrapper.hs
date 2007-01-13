@@ -57,6 +57,7 @@ setupWrapper args mdir = inDir mdir $ do
   let (flag_fn, non_opts, unrec_opts, errs) = getOpt' Permute opts args
   when (not (null errs)) $ die (unlines errs)
   let flags = foldr (.) id flag_fn defaultFlags
+  let setup_args = unrec_opts ++ non_opts
 
   pkg_descr_file <- defaultPackageDesc (verbose flags)
   pkg_descr <- readPackageDescription (verbose flags) pkg_descr_file 
@@ -80,13 +81,13 @@ setupWrapper args mdir = inDir mdir $ do
             ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
        rawSystemExit (verbose flags)
          ('.':pathSeparator:"setup")
-         args
+         setup_args
 
   case lookup (buildType pkg_descr) buildTypes of
     Just (mainAction, mainText) ->
       if withinRange cabalVersion (descCabalVersion pkg_descr)
-	then mainAction         -- current version is OK, so no need
-                                -- to compile a special Setup.hs.
+	then mainAction setup_args -- current version is OK, so no need
+				   -- to compile a special Setup.hs.
 	else do writeFile ".Setup.hs" mainText
 		trySetupScript ".Setup.hs" $ error "panic! shouldn't happen"
     Nothing ->
@@ -127,10 +128,10 @@ setVerbose      v flags = flags{ verbose=v }
 
 opts :: [OptDescr (Flags -> Flags)]
 opts = [
-           Option "w" ["with-compiler"] (reqPathArg (setWithCompiler.Just))
-               "give the path to a particular compiler",
-           Option "" ["with-hc-pkg"] (reqPathArg (setWithHcPkg.Just))
-               "give the path to the package tool",
+           Option "w" ["with-setup-compiler"] (reqPathArg (setWithCompiler.Just))
+               "give the path to a particular compiler to use on setup",
+           Option "" ["with-setup-hc-pkg"] (reqPathArg (setWithHcPkg.Just))
+               "give the path to the package tool to use on setup",
 	   Option "v" ["verbose"] (OptArg (setVerbose . maybe 3 read) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   ]
 
