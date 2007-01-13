@@ -57,7 +57,8 @@ module Distribution.Simple (
 	defaultMain, defaultMainNoRead, defaultMainArgs,
         -- * Customization
         UserHooks(..), Args,
-        defaultMainWithHooks, defaultUserHooks, emptyUserHooks,
+        defaultMainWithHooks, defaultMainWithHooksArgs,
+        defaultUserHooks, emptyUserHooks,
         defaultHookedPackageDesc
 #ifdef DEBUG        
         ,simpleHunitTests
@@ -227,7 +228,10 @@ defaultMainArgs args = do
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
-defaultMainWithHooks hooks
+defaultMainWithHooks hooks = getArgs >>= defaultMainWithHooksArgs hooks
+
+defaultMainWithHooksArgs :: UserHooks -> [String] -> IO ()
+defaultMainWithHooksArgs hooks args
     = do args <- getArgs
          (action, args') <- parseGlobalArgs (allPrograms hooks) args
          let get_pkg_descr verbosity = do
