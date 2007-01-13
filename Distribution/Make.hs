@@ -83,7 +83,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Make (
 	module Distribution.Package,
 	License(..), Version(..),
-	defaultMain, defaultMainNoRead
+	defaultMain, defaultMainArgs, defaultMainNoRead
   ) where
 
 -- local
@@ -107,18 +107,23 @@ exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
            >> system cmd
 
 defaultMain :: IO ()
-defaultMain = defaultMainHelper (\verbosity ->
-                  defaultPackageDesc verbosity >>=
-                  readPackageDescription verbosity)
+defaultMain = getArgs >>= defaultMainArgs
+
+defaultMainArgs :: [String] -> IO ()
+defaultMainArgs args =
+    defaultMainHelper args $ \ verbosity ->
+    defaultPackageDesc verbosity >>=
+        readPackageDescription verbosity
 
 defaultMainNoRead :: PackageDescription -> IO ()
-defaultMainNoRead pkg_descr = defaultMainHelper (\_ -> return pkg_descr)
+defaultMainNoRead pkg_descr = do
+    args <- getArgs
+    defaultMainHelper args $ \ _ -> return pkg_descr
 
 -- XXX get_pkg_descr isn't used?!
-defaultMainHelper :: (Int -> IO PackageDescription) -> IO ()
-defaultMainHelper get_pkg_descr
-    = do args <- getArgs
-         (action, args) <- parseGlobalArgs defaultProgramConfiguration args
+defaultMainHelper :: [String] -> (Int -> IO PackageDescription) -> IO ()
+defaultMainHelper args get_pkg_descr
+    = do (action, args) <- parseGlobalArgs defaultProgramConfiguration args
          case action of
             ConfigCmd flags -> do
                 (flags, _, args) <- parseConfigureArgs defaultProgramConfiguration flags args []

@@ -95,12 +95,12 @@ setupWrapper args mdir = inDir mdir $ do
       trySetupScript "Setup.lhs" $
       die "no special Build-Type, but lacks Setup.hs or Setup.lhs"
 
-buildTypes :: [(BuildType, (IO (), String))]
+buildTypes :: [(BuildType, ([String] -> IO (), String))]
 buildTypes = [
-  (Simple, (defaultMain, "import Distribution.Simple; main=defaultMain")),
-  (Configure, (defaultMainWithHooks defaultUserHooks,
+  (Simple, (defaultMainArgs, "import Distribution.Simple; main=defaultMain")),
+  (Configure, (defaultMainWithHooksArgs defaultUserHooks,
     "import Distribution.Simple; main=defaultMainWithHooks defaultUserHooks")),
-  (Make, (Make.defaultMain, "import Distribution.Make; main=defaultMain"))]
+  (Make, (Make.defaultMainArgs, "import Distribution.Make; main=defaultMain"))]
 
 inDir :: Maybe FilePath -> IO () -> IO ()
 inDir Nothing m = m
