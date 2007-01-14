@@ -73,20 +73,20 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
-	BuildInfo(..), Executable(..), setupMessage )
+	BuildInfo(..), Executable(..), setupMessage,
+        satisfyDependency)
 import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
-			     parseVersion, showVersion, withinRange,
-			     showVersionRange)
+			     parseVersion, showVersion, showVersionRange)
 
-import Data.List (intersperse, nub, maximumBy, isPrefixOf)
+import Data.List (intersperse, nub, isPrefixOf)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..),
-                            lookupPrograms, updateProgram)
+                            lookupPrograms, maybeUpdateProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -144,11 +144,29 @@ localBuildInfoFile = "./.setup-config"
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr cfg
   = do
-	setupMessage (configVerbose cfg) "Configuring" pkg_descr
-	removeInstalledConfig
-        let lib = library pkg_descr
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
+
+        -- FIXME: currently only GHC has hc-pkg
+        ipkgs <- case f' of
+                      GHC | ver >= Version [6,3] [] ->
+                        getInstalledPackagesAux comp cfg
+                      JHC ->
+                        getInstalledPackagesJHC comp cfg
+                      _ -> do
+                        return $ map setDepByVersion (buildDepends pkg_descr)
+	setupMessage (configVerbose cfg) "Configuring" pkg_descr
+
+        dep_pkgs <- case f' of
+                      GHC | ver >= Version [6,3] [] -> do
+	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+                      JHC                           -> do
+	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+                      _                             -> do
+                        return $ map setDepByVersion (buildDepends pkg_descr)
+
+
+	removeInstalledConfig
 
 	-- installation directories
 	defPrefix <- default_prefix
@@ -169,6 +187,7 @@ configure pkg_descr cfg
 				  (configDataSubDir cfg)
 
         -- check extensions
+        let lib = library pkg_descr
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
         let exts = fst $ extensionsToFlags f' extlist
@@ -185,18 +204,8 @@ configure pkg_descr cfg
         cpphs     <- findProgram "cpphs"     (configCpphs cfg)
         greencard <- findProgram "greencard" (configGreencard cfg)
 
-        let newConfig = foldr (\(_, p) c -> updateProgram p c) (configPrograms cfg) foundPrograms
-
-        -- FIXME: currently only GHC has hc-pkg
-        dep_pkgs <- case f' of
-                      GHC | ver >= Version [6,3] [] -> do
-                        ipkgs <-  getInstalledPackagesAux comp cfg
-	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
-                      JHC                           -> do
-                        ipkgs <-  getInstalledPackagesJHC comp cfg
-	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
-                      _                             -> do
-                        return $ map setDepByVersion (buildDepends pkg_descr)
+        let newConfig = foldr (\(_, p) c -> maybeUpdateProgram p c) 
+                              (configPrograms cfg) foundPrograms
 
 	split_objs <- 
 	   if not (configSplitObjs cfg)
@@ -315,18 +324,14 @@ reportProgram' name Nothing = message ("No " ++ name ++ " found")
 
 -- | Test for a package dependency and record the version we have installed.
 configDependency :: [PackageIdentifier] -> Dependency -> IO PackageIdentifier
-configDependency ps (Dependency pkgname vrange) = do
-  let
-	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
-  --
-  case filter ok ps of
-    [] -> die ("cannot satisfy dependency " ++ 
+configDependency ps dep@(Dependency pkgname vrange) =
+  case satisfyDependency ps dep of
+	Nothing -> die ("cannot satisfy dependency " ++ 
 			pkgname ++ showVersionRange vrange)
-    qs -> let 
-	    pkg = maximumBy versions qs
-	    versions a b = pkgVersion a `compare` pkgVersion b
-	  in do message ("Dependency " ++ pkgname ++ showVersionRange vrange ++
-			 ": using " ++ showPackageId pkg)
+	Just pkg -> do
+		message ("Dependency " ++ pkgname ++ 
+			showVersionRange vrange ++
+		 	": using " ++ showPackageId pkg)
 		return pkg
 
 getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]

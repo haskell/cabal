@@ -61,8 +61,9 @@ import Distribution.PackageDescription (
 	PackageDescription(..),
 	setupMessage, hasLibs, withLib, withExe )
 import Distribution.Simple.LocalBuildInfo (
-        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir, mkHaddockDir)
-import Distribution.Simple.Utils(copyFileVerbose, die, haddockPref,  copyDirectoryRecursiveVerbose)
+        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir,
+        mkHaddockDir, haddockPref)
+import Distribution.Simple.Utils(copyFileVerbose, die, copyDirectoryRecursiveVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 

@@ -45,25 +45,32 @@ module Distribution.PackageDescription (
         PackageDescription(..),
         emptyPackageDescription,
         readPackageDescription,
-        parseDescription,
-        StanzaField(..),
-        LineNo,
-        basicStanzaFields,
         writePackageDescription,
         showPackageDescription,
-        sanityCheckPackage, errorOut,
-        setupMessage,
+        BuildType(..),
+
+	-- ** Libraries
         Library(..),
         withLib,
         hasLibs,
         libModules,
+
+	-- ** Executables
         Executable(..),
         withExe,
         exeModules,
-        BuildType(..),
+
+	-- ** Parsing
+        FieldDescr(..),
+        LineNo,
+
+	-- ** Sanity checking
+        sanityCheckPackage,
+
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
+
         -- ** Supplementary build information
         HookedBuildInfo,
         emptyHookedBuildInfo,
@@ -72,14 +79,18 @@ module Distribution.PackageDescription (
         writeHookedBuildInfo,
         showHookedBuildInfo,        
         updatePackageDescription,
+
         -- * Utilities
+	satisfyDependency,
         ParseResult(..),
-        PError, PWarning, showError,
         hcOptions,
         autogenModuleName,
         haddockName,
+        setupMessage,
         cabalVersion,
+
 #ifdef DEBUG
+	-- * Debugging
         hunitTests,
         test
 #endif
@@ -88,12 +99,9 @@ module Distribution.PackageDescription (
 import Control.Monad(liftM, foldM, when)
 import Data.Char
 import Data.Maybe(fromMaybe, isNothing, catMaybes)
-import Data.List (nub,lookup)
-import Text.PrettyPrint.HughesPJ
+import Data.List (nub,maximumBy)
+import Text.PrettyPrint.HughesPJ as Pretty
 import System.Directory(doesFileExist)
-import System.Environment(getProgName)
-import System.IO(hPutStrLn, stderr)
-import System.Exit
 
 import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
@@ -111,7 +119,7 @@ import Distribution.Compat.FilePath(joinFileExt)
 
 #ifdef DEBUG
 import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
-import Distribution.ParseUtils  (runP)
+import Data.List (sortBy)
 #endif
 
 -- We only get our own version number when we're building with ourselves
@@ -121,6 +129,9 @@ cabalVersion = Version [CABAL_VERSION] []
 #else
 cabalVersion = error "Cabal was not bootstrapped correctly"
 #endif
+
+-- -----------------------------------------------------------------------------
+-- The PackageDescription type
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
@@ -156,15 +167,6 @@ data PackageDescription
     }
     deriving (Show, Read, Eq)
 
-data Library = Library {
-        exposedModules    :: [String],
-        libBuildInfo      :: BuildInfo
-    }
-    deriving (Show, Eq, Read)
-
-emptyLibrary :: Library
-emptyLibrary = Library [] emptyBuildInfo
-
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
@@ -190,16 +192,104 @@ emptyPackageDescription
                       extraTmpFiles = []
                      }
 
--- |Get all the module names from the libraries in this package
-libModules :: PackageDescription -> [String]
-libModules PackageDescription{library=lib}
-    = maybe [] exposedModules lib
-       ++ maybe [] (otherModules . libBuildInfo) lib
+-- | The type of build system used by this package.
+data BuildType
+  = Simple      -- ^ calls @Distribution.Simple.defaultMain@
+  | Configure   -- ^ calls @Distribution.Simple.defaultMainWithHooks defaultUserHooks@,
+                -- which invokes @configure@ to generate additional build
+                -- information used by later phases.
+  | Make        -- ^ calls @Distribution.Make.defaultMain@
+  | Custom      -- ^ uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
+                deriving (Show, Read, Eq)
 
--- |Get all the module names from the exes in this package
-exeModules :: PackageDescription -> [String]
-exeModules PackageDescription{executables=execs}
-    = concatMap (otherModules . buildInfo) execs
+-- the strings for the required fields are necessary here, and so we
+-- don't repeat ourselves, I name them:
+reqNameName	  :: String
+reqNameName       = "name"
+reqNameVersion	  :: String
+reqNameVersion    = "version"
+reqNameCopyright  :: String
+reqNameCopyright  = "copyright"
+reqNameMaintainer :: String
+reqNameMaintainer = "maintainer"
+reqNameSynopsis   :: String
+reqNameSynopsis   = "synopsis"
+
+pkgDescrFieldDescrs :: [FieldDescr PackageDescription]
+pkgDescrFieldDescrs =
+ [ simpleField reqNameName
+           text                   parsePackageName
+           (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
+ , simpleField reqNameVersion
+           (text . showVersion)   parseVersion
+           (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+ , simpleField "cabal-version"
+           (text . showVersionRange) parseVersionRange
+           descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
+ , simpleField "build-type"
+           (text . show)          parseReadSQ
+           buildType              (\t pkg -> pkg{buildType=t})
+ , simpleField "license"
+           (text . show)          parseLicenseQ
+           license                (\l pkg -> pkg{license=l})
+ , simpleField "license-file"
+           showFilePath           parseFilePathQ
+           licenseFile            (\l pkg -> pkg{licenseFile=l})
+ , simpleField reqNameCopyright
+           showFreeText           (munch (const True))
+           copyright              (\val pkg -> pkg{copyright=val})
+ , simpleField reqNameMaintainer
+           showFreeText           (munch (const True))
+           maintainer             (\val pkg -> pkg{maintainer=val})
+ , commaListField  "build-depends"
+           showDependency         parseDependency
+           buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
+ , simpleField "stability"
+           showFreeText           (munch (const True))
+           stability              (\val pkg -> pkg{stability=val})
+ , simpleField "homepage"
+           showFreeText           (munch (const True))
+           homepage               (\val pkg -> pkg{homepage=val})
+ , simpleField "package-url"
+           showFreeText           (munch (const True))
+           pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
+ , simpleField reqNameSynopsis
+           showFreeText           (munch (const True))
+           synopsis               (\val pkg -> pkg{synopsis=val})
+ , simpleField "description"
+           showFreeText           (munch (const True))
+           description            (\val pkg -> pkg{description=val})
+ , simpleField "category"
+           showFreeText           (munch (const True))
+           category               (\val pkg -> pkg{category=val})
+ , simpleField "author"
+           showFreeText           (munch (const True))
+           author                 (\val pkg -> pkg{author=val})
+ , listField "tested-with"
+           showTestedWith         parseTestedWithQ
+           testedWith             (\val pkg -> pkg{testedWith=val})
+ , listField "data-files"  
+           showFilePath           parseFilePathQ
+           dataFiles              (\val pkg -> pkg{dataFiles=val})
+ , listField "extra-source-files" 
+           showFilePath    parseFilePathQ
+           extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
+ , listField "extra-tmp-files" 
+           showFilePath       parseFilePathQ
+           extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
+ ]
+
+-- ---------------------------------------------------------------------------
+-- The Library type
+
+data Library = Library {
+        exposedModules    :: [String],
+        libBuildInfo      :: BuildInfo
+    }
+    deriving (Show, Eq, Read)
+
+emptyLibrary :: Library
+emptyLibrary = Library [] emptyBuildInfo
 
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
@@ -209,6 +299,71 @@ hasLibs p = maybe False (buildable . libBuildInfo) (library p)
 maybeHasLibs :: PackageDescription -> Maybe Library
 maybeHasLibs p =
    library p >>= (\lib -> toMaybe (buildable (libBuildInfo lib)) lib)
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.
+withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
+withLib pkg_descr a f =
+   maybe (return a) f (maybeHasLibs pkg_descr)
+
+-- |Get all the module names from the libraries in this package
+libModules :: PackageDescription -> [String]
+libModules PackageDescription{library=lib}
+    = maybe [] exposedModules lib
+       ++ maybe [] (otherModules . libBuildInfo) lib
+
+libFieldDescrs :: [FieldDescr Library]
+libFieldDescrs = map biToLib binfoFieldDescrs
+  ++ [
+      listField "exposed-modules" text parseModuleNameQ
+	 exposedModules (\mods lib -> lib{exposedModules=mods})
+     ]
+  where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
+
+-- ---------------------------------------------------------------------------
+-- The Executable type
+
+data Executable = Executable {
+        exeName    :: String,
+        modulePath :: FilePath,
+        buildInfo  :: BuildInfo
+    }
+    deriving (Show, Read, Eq)
+
+emptyExecutable :: Executable
+emptyExecutable = Executable {
+                      exeName = "",
+                      modulePath = "",
+                      buildInfo = emptyBuildInfo
+                     }
+
+-- | Perform the action on each buildable 'Executable' in the package
+-- description.
+withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
+withExe pkg_descr f =
+  sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
+
+-- |Get all the module names from the exes in this package
+exeModules :: PackageDescription -> [String]
+exeModules PackageDescription{executables=execs}
+    = concatMap (otherModules . buildInfo) execs
+
+executableFieldDescrs :: [FieldDescr Executable]
+executableFieldDescrs = 
+  [ -- note ordering: configuration must come first, for
+    -- showPackageDescription.
+    simpleField "executable"
+                           showToken          parseTokenQ
+                           exeName            (\xs    exe -> exe{exeName=xs})
+  , simpleField "main-is"
+                           showFilePath       parseFilePathQ
+                           modulePath         (\xs    exe -> exe{modulePath=xs})
+  ]
+  ++ map biToExe binfoFieldDescrs
+  where biToExe = liftField buildInfo (\bi exe -> exe{buildInfo=bi})
+
+-- ---------------------------------------------------------------------------
+-- The BuildInfo type
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
@@ -226,7 +381,7 @@ data BuildInfo = BuildInfo {
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
 	installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
-        ghcProfOptions       :: [String]
+        ghcProfOptions    :: [String]
     }
     deriving (Show,Read,Eq)
 
@@ -249,55 +404,78 @@ emptyBuildInfo = BuildInfo {
                       ghcProfOptions       = []
                      }
 
-data Executable = Executable {
-        exeName    :: String,
-        modulePath :: FilePath,
-        buildInfo  :: BuildInfo
-    }
-    deriving (Show, Read, Eq)
-
-emptyExecutable :: Executable
-emptyExecutable = Executable {
-                      exeName = "",
-                      modulePath = "",
-                      buildInfo = emptyBuildInfo
-                     }
-
--- | Perform the action on each buildable 'Executable' in the package
--- description.
-withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
-withExe pkg_descr f =
-  sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
-
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
 emptyHookedBuildInfo :: HookedBuildInfo
 emptyHookedBuildInfo = (Nothing, [])
 
--- | The type of build system used by this package.
-data BuildType
-  = Simple      -- ^ calls @Distribution.Simple.defaultMain@
-  | Configure   -- ^ calls @Distribution.Simple.defaultMainWithHooks defaultUserHooks@,
-                -- which invokes @configure@ to generate additional build
-                -- information used by later phases.
-  | Make        -- ^ calls @Distribution.Make.defaultMain@
-  | Custom      -- ^ uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
-                deriving (Show, Read, Eq)
+binfoFieldDescrs :: [FieldDescr BuildInfo]
+binfoFieldDescrs =
+ [ simpleField "buildable"
+           (text . show)      parseReadS
+           buildable          (\val binfo -> binfo{buildable=val})
+ , listField "cc-options"
+           showToken          parseTokenQ
+           ccOptions          (\val binfo -> binfo{ccOptions=val})
+ , listField "ld-options"
+           showToken          parseTokenQ
+           ldOptions          (\val binfo -> binfo{ldOptions=val})
+ , listField "frameworks"
+           showToken          parseTokenQ
+           frameworks         (\val binfo -> binfo{frameworks=val})
+ , listField   "c-sources"
+           showFilePath       parseFilePathQ
+           cSources           (\paths binfo -> binfo{cSources=paths})
+ , listField   "extensions"
+           (text . show)      parseExtensionQ
+           extensions         (\exts  binfo -> binfo{extensions=exts})
+ , listField   "extra-libraries"
+           showToken          parseTokenQ
+           extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
+ , listField   "extra-lib-dirs"
+           showFilePath       parseFilePathQ
+           extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
+ , listField   "includes"
+           showFilePath       parseFilePathQ
+           includes           (\paths binfo -> binfo{includes=paths})
+ , listField   "install-includes"
+           showFilePath       parseFilePathQ
+           installIncludes    (\paths binfo -> binfo{installIncludes=paths})
+ , listField   "include-dirs"
+           showFilePath       parseFilePathQ
+           includeDirs        (\paths binfo -> binfo{includeDirs=paths})
+ , listField   "hs-source-dirs"
+           showFilePath       parseFilePathQ
+           hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
+ , listField   "other-modules"         
+           text               parseModuleNameQ
+           otherModules       (\val binfo -> binfo{otherModules=val})
+ , listField   "ghc-prof-options"         
+           text               parseTokenQ
+           ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
+ , optsField   "ghc-options"  GHC
+           options            (\path  binfo -> binfo{options=path})
+ , optsField   "hugs-options" Hugs
+           options            (\path  binfo -> binfo{options=path})
+ , optsField   "nhc-options"  NHC
+           options            (\path  binfo -> binfo{options=path})
+ , optsField   "jhc-options"  JHC
+           options            (\path  binfo -> binfo{options=path})
+ ]
 
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
 
--- |If the package description has a library section, call the given
---  function with the library build info as argument.
-withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
-withLib pkg_descr a f =
-   maybe (return a) f (maybeHasLibs pkg_descr)
-
-setupMessage :: Int -> String -> PackageDescription -> IO ()
-setupMessage verbosity msg pkg_descr =
-    when (verbosity > 0) $
-        putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+satisfyDependency :: [PackageIdentifier] -> Dependency
+	-> Maybe PackageIdentifier
+satisfyDependency pkgs (Dependency pkgname vrange) =
+  case filter ok pkgs of
+    [] -> Nothing 
+    qs -> Just (maximumBy versions qs)
+  where
+	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
+        versions a b = pkgVersion a `compare` pkgVersion b
 
 -- |Update the given package description with the output from the
 -- pre-hooks.
@@ -366,152 +544,13 @@ haddockName :: PackageDescription -> FilePath
 haddockName pkg_descr =
    joinFileExt (pkgName (package pkg_descr)) "haddock"
 
--- ------------------------------------------------------------
--- * Parsing & Pretty printing
--- ------------------------------------------------------------
+setupMessage :: Int -> String -> PackageDescription -> IO ()
+setupMessage verbosity msg pkg_descr =
+    when (verbosity > 0) $
+        putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
--- the strings for the required fields are necessary here, and so we
--- don't repeat ourselves, I name them:
-
-reqNameName :: String
-reqNameName       = "name"
-reqNameVersion :: String
-reqNameVersion    = "version"
-reqNameCopyright :: String
-reqNameCopyright  = "copyright"
-reqNameMaintainer :: String
-reqNameMaintainer = "maintainer"
-reqNameSynopsis :: String
-reqNameSynopsis   = "synopsis"
-
-basicStanzaFields :: [StanzaField PackageDescription]
-basicStanzaFields =
- [ simpleField reqNameName
-                           text                   parsePackageName
-                           (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
- , simpleField reqNameVersion
-                           (text . showVersion)   parseVersion
-                           (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
- , simpleField "cabal-version"
-                           (text . showVersionRange) parseVersionRange
-                           descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
- , simpleField "build-type"
-                           (text . show)          parseReadSQ
-                           buildType              (\t pkg -> pkg{buildType=t})
- , simpleField "license"
-                           (text . show)          parseLicenseQ
-                           license                (\l pkg -> pkg{license=l})
- , simpleField "license-file"
-                           showFilePath           parseFilePathQ
-                           licenseFile            (\l pkg -> pkg{licenseFile=l})
- , simpleField reqNameCopyright
-                           showFreeText           (munch (const True))
-                           copyright              (\val pkg -> pkg{copyright=val})
- , simpleField reqNameMaintainer
-                           showFreeText           (munch (const True))
-                           maintainer             (\val pkg -> pkg{maintainer=val})
- , commaListField  "build-depends"
-                           showDependency         parseDependency
-                           buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
- , simpleField "stability"
-                           showFreeText           (munch (const True))
-                           stability              (\val pkg -> pkg{stability=val})
- , simpleField "homepage"
-                           showFreeText           (munch (const True))
-                           homepage               (\val pkg -> pkg{homepage=val})
- , simpleField "package-url"
-                           showFreeText           (munch (const True))
-                           pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
- , simpleField reqNameSynopsis
-                           showFreeText           (munch (const True))
-                           synopsis               (\val pkg -> pkg{synopsis=val})
- , simpleField "description"
-                           showFreeText           (munch (const True))
-                           description            (\val pkg -> pkg{description=val})
- , simpleField "category"
-                           showFreeText           (munch (const True))
-                           category               (\val pkg -> pkg{category=val})
- , simpleField "author"
-                           showFreeText           (munch (const True))
-                           author                 (\val pkg -> pkg{author=val})
- , listField "tested-with"
-                           showTestedWith         parseTestedWithQ
-                           testedWith             (\val pkg -> pkg{testedWith=val})
- , listField "data-files"  showFilePath           parseFilePathQ
-                           dataFiles              (\val pkg -> pkg{dataFiles=val})
- , listField "extra-source-files" showFilePath    parseFilePathQ
-                           extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
- , listField "extra-tmp-files" showFilePath       parseFilePathQ
-                           extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
- ]
-
-executableStanzaFields :: [StanzaField Executable]
-executableStanzaFields =
- [ simpleField "executable"
-                           showToken          parseTokenQ
-                           exeName            (\xs    exe -> exe{exeName=xs})
- , simpleField "main-is"
-                           showFilePath       parseFilePathQ
-                           modulePath         (\xs    exe -> exe{modulePath=xs})
- ]
-
-binfoFields :: [StanzaField BuildInfo]
-binfoFields =
- [ simpleField "buildable"
-                           (text . show)      parseReadS
-                           buildable          (\val binfo -> binfo{buildable=val})
- , listField "cc-options"
-                           showToken          parseTokenQ
-                           ccOptions          (\val binfo -> binfo{ccOptions=val})
- , listField "ld-options"
-                           showToken          parseTokenQ
-                           ldOptions          (\val binfo -> binfo{ldOptions=val})
- , listField "frameworks"
-                           showToken          parseTokenQ
-                           frameworks         (\val binfo -> binfo{frameworks=val})
- , listField   "c-sources"
-                           showFilePath       parseFilePathQ
-                           cSources           (\paths binfo -> binfo{cSources=paths})
- , listField   "extensions"
-                           (text . show)      parseExtensionQ
-                           extensions         (\exts  binfo -> binfo{extensions=exts})
- , listField   "extra-libraries"
-                           showToken          parseTokenQ
-                           extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
- , listField   "extra-lib-dirs"
-                           showFilePath       parseFilePathQ
-                           extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
- , listField   "includes"
-                           showFilePath       parseFilePathQ
-                           includes           (\paths binfo -> binfo{includes=paths})
- , listField   "install-includes"
-                           showFilePath       parseFilePathQ
-                           includes           (\paths binfo -> binfo{installIncludes=paths})
- , listField   "include-dirs"
-                           showFilePath       parseFilePathQ
-                           includeDirs        (\paths binfo -> binfo{includeDirs=paths})
- , listField   "hs-source-dirs"
-                           showFilePath       parseFilePathQ
-                           hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
- , listField   "other-modules"         
-                           text               parseModuleNameQ
-                           otherModules       (\val binfo -> binfo{otherModules=val})
- , listField   "ghc-prof-options"         
-                           text               parseTokenQ
-                           ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
- , optsField   "ghc-options"  GHC
-                           options            (\path  binfo -> binfo{options=path})
- , optsField   "hugs-options" Hugs
-                           options            (\path  binfo -> binfo{options=path})
- , optsField   "nhc-options"  NHC
-                           options            (\path  binfo -> binfo{options=path})
- , optsField   "jhc-options"  JHC
-                           options            (\path  binfo -> binfo{options=path})
- ]
-
-
--- --------------------------------------------
--- ** Parsing
+-- ---------------------------------------------------------------
+-- Parsing
 
 -- | Given a parser and a filename, return the parse of the file,
 -- after checking if the file exists.
@@ -528,117 +567,103 @@ readAndParseFile verbosity parser fpath = do
         mapM_ (warn verbosity) ws
         return x
 
--- |Parse the given package file.
-readPackageDescription :: Int -> FilePath -> IO PackageDescription
-readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
-
 readHookedBuildInfo :: Int -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 
+-- |Parse the given package file.
+readPackageDescription :: Int -> FilePath -> IO PackageDescription
+readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
 parseDescription :: String -> ParseResult PackageDescription
-parseDescription inp = do (st:sts) <- splitStanzas inp
-                          pkg <- foldM (parseBasicStanza basicStanzaFields) emptyPackageDescription st
-                          exes <- mapM parseExecutableStanza sts
-                          return pkg{executables=exes}
-  where -- The basic stanza, with library building info
-        parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
-          | name == f = set lineNo val pkg
-          | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
-          {-     
-     , listField   "exposed-modules"
-                           text               parseModuleNameQ
-                           (\p -> maybe [] exposedModules (library p))
-                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
-                                              pkg{library = Just lib{exposedModules=xs}})
--}
-        parseBasicStanza [] pkg (lineNo, f, val)
-          | "exposed-modules" == f = do
-               mods <- runP lineNo f (parseOptCommaList parseModuleNameQ) val
-               return pkg{library=Just lib{exposedModules=mods}}
-          | otherwise = do
-               bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
-               return pkg{library=Just lib{libBuildInfo=bi}}
-          where
-            lib = fromMaybe emptyLibrary (library pkg)
+parseDescription str = do 
+  all_fields0 <- readFields str
+  all_fields <- mapM deprecField all_fields0
+  let (st:sts) = stanzas all_fields
+  pkg <- parseFields basic_field_descrs emptyPackageDescription st
+  foldM parseExtraStanza pkg sts
+  where
+        parseExtraStanza pkg st@((_lineNo, "executable",_eName):_) = do
+		exe <- parseFields executableFieldDescrs emptyExecutable st
+		return pkg{executables= executables pkg ++ [exe]}
+        parseExtraStanza _ x = error ("This shouldn't happen!" ++ show x)
 
-        parseExecutableStanza st@((lineNo, "executable",eName):_) =
-          case lookupField "main-is" st of
-            Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
-            Nothing    -> syntaxError lineNo $ "No 'Main-Is' field found for " ++ eName ++ " stanza"
-        parseExecutableStanza ((lineNo, f,_):_) = 
-          syntaxError lineNo $ "'Executable' stanza starting with field '" ++ f ++ "'"
-        parseExecutableStanza _ = error "This shouldn't happen!"
+basic_field_descrs :: [FieldDescr PackageDescription]
+basic_field_descrs = pkgDescrFieldDescrs ++ map liftToPkg libFieldDescrs
+  where liftToPkg = liftField (fromMaybe emptyLibrary . library)
+			      (\lib pkg -> pkg{library = Just lib})
 
-        parseExecutableField ((StanzaField name _ set):fields) exe (lineNo, f, val)
-          | name == f = set lineNo val exe
-          | otherwise = parseExecutableField fields exe (lineNo, f, val)
-        parseExecutableField [] exe (lineNo, f, val) = do
-          binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
-          return exe{buildInfo=binfo}
+stanzas :: [Field] -> [[Field]]
+stanzas [] = []
+stanzas (f:fields) = (f:this) : stanzas rest
+  where (this, rest) = break isStanzaHeader fields
 
-        -- ...
-        lookupField :: String -> Stanza -> Maybe (LineNo,String)
-        lookupField x sts = lookup x (map (\(n,f,v) -> (f,(n,v))) sts)
+isStanzaHeader :: Field -> Bool
+isStanzaHeader (_,f,_) = f == "executable"
+
+parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a
+parseFields descrs ini fields = foldM (parseField descrs) ini fields
+
+parseField :: [FieldDescr a] -> a -> Field -> ParseResult a
+parseField ((FieldDescr name _ parse):fields) a (lineNo, f, val)
+  | name == f = parse lineNo val a
+  | otherwise = parseField fields a (lineNo, f, val)
+-- ignore "x-" extension fields without a warning
+parseField [] a (_, 'x':'-':_, _) = return a
+parseField [] a (_, f, _) = do
+          warning $ "Unknown field '" ++ f ++ "'"
+          return a
+
+-- Handle deprecated fields
+deprecField :: Field -> ParseResult Field
+deprecField (line,fld,val) = do
+  fld' <- case fld of
+	     "hs-source-dir"
+		-> do warning "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs."
+		      return "hs-source-dirs"
+	     "other-files"
+		-> do warning "The field \"other-files\" is deprecated, please use extra-source-files."
+		      return "extra-source-files"
+	     _ -> return fld
+  return (line,fld',val)
 
 
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
-  stanzas@(mLibStr:exes) <- splitStanzas inp
-  mLib <- parseLib mLibStr
-  biExes <- mapM parseExe (maybe stanzas (const exes) mLib)
+  fields <- readFields inp
+  let ss@(mLibFields:exes) = stanzas fields
+  mLib <- parseLib mLibFields
+  biExes <- mapM parseExe (maybe ss (const exes) mLib)
   return (mLib, biExes)
   where
-    parseLib :: Stanza -> ParseResult (Maybe BuildInfo)
+    parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
     parseLib (bi@((_, inFieldName, _):_))
         | map toLower inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
-    parseExe :: Stanza -> ParseResult (String, BuildInfo)
+
+    parseExe :: [Field] -> ParseResult (String, BuildInfo)
     parseExe ((lineNo, inFieldName, mName):bi)
         | map toLower inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
         | otherwise = syntaxError lineNo "expecting 'executable' at top of stanza"
     parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
-    parseBI :: Stanza -> ParseResult BuildInfo
-    parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
 
-parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
-parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
-          | name == f = set lineNo val binfo
-          | otherwise = parseBInfoField fields binfo (lineNo, f, val)
--- ignore "x-" extension fields without a warning
-parseBInfoField [] binfo (_ , 'x':'-':_, _) = return binfo
-parseBInfoField [] binfo (_, f, _) = do
-          warning $ "Unknown field '" ++ f ++ "'"
-          return binfo
+    parseBI st = parseFields binfoFieldDescrs emptyBuildInfo st
 
--- --------------------------------------------
--- ** Pretty printing
+-- ---------------------------------------------------------------------------
+-- Pretty printing
 
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
 writePackageDescription fpath pkg = writeFile fpath (showPackageDescription pkg)
 
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
-  ppFields pkg basicStanzaFields $$
+  ppFields pkg pkgDescrFieldDescrs $$
   (case library pkg of
      Nothing  -> empty
-     Just lib -> 
-        text "exposed-modules" <> colon <+> fsep (punctuate comma (map text (exposedModules lib))) $$
-        ppFields (libBuildInfo lib) binfoFields) $$
+     Just lib -> ppFields lib libFieldDescrs) $$
   vcat (map ppExecutable (executables pkg))
   where
-    ppExecutable exe =
-      space $$
-      ppFields exe executableStanzaFields $$
-      ppFields (buildInfo exe) binfoFields
-
-    ppFields _ [] = empty
-    ppFields pkg' ((StanzaField name get _):flds) =
-           ppField name (get pkg') $$ ppFields pkg' flds
-
-ppField :: String -> Doc -> Doc
-ppField name field = text name <> colon <+> field
+    ppExecutable exe = space $$ ppFields exe executableFieldDescrs
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
 writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
@@ -647,18 +672,21 @@ showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
   (case mb_lib_bi of
      Nothing -> empty
-     Just bi -> ppFields bi binfoFields) $$
+     Just bi -> ppFields bi binfoFieldDescrs) $$
   vcat (map ppExeBuildInfo ex_bi)
   where
     ppExeBuildInfo (name, bi) =
       space $$
       text "executable:" <+> text name $$
-      ppFields bi binfoFields
+      ppFields bi binfoFieldDescrs
 
-    ppFields _  [] = empty
-    ppFields bi ((StanzaField name get _):flds) =
-           ppField name (get bi) $$ ppFields bi flds
+ppFields :: a -> [FieldDescr a] -> Doc
+ppFields _ [] = empty
+ppFields pkg' ((FieldDescr name get _):flds) =
+     ppField name (get pkg') $$ ppFields pkg' flds
 
+ppField :: String -> Doc -> Doc
+ppField name fielddoc = text name <> colon <+> fielddoc
 
 -- ------------------------------------------------------------
 -- * Sanity Checking
@@ -685,22 +713,9 @@ sanityCheckPackage pkg_descr
           goodCabal = let v = (descCabalVersion pkg_descr)
                           in checkSanity (not $ cabalVersion  `withinRange` v)
                                  ("This package requires Cabal version: " ++ (showVersionRange v) ++ ".")
-
-         in return $ (catMaybes [nothingToDo, noModules,
-                                 allRights, noLicenseFile]
-                     ,catMaybes $ libSane:goodCabal:(checkMissingFields pkg_descr))
-
--- |Output warnings and errors. Exit if any errors.
-errorOut :: Int       -- ^Verbosity
-         -> [String]  -- ^Warnings
-         -> [String]  -- ^errors
-         -> IO ()
-errorOut verbosity warnings errors = do
-  mapM_ (warn verbosity) warnings
-  when (not (null errors)) $ do
-    pname <- getProgName
-    mapM_ (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
-    exitWith (ExitFailure 1)
+         in return $ ( catMaybes [nothingToDo, noModules, allRights, noLicenseFile],
+                       catMaybes (libSane:goodCabal: checkMissingFields pkg_descr
+			  ++ map sanityCheckExe (executables pkg_descr)) )
 
 toMaybe :: Bool -> a -> Maybe a
 toMaybe b x = if b then Just x else Nothing
@@ -722,6 +737,12 @@ sanityCheckLib ml =
       toMaybe (null $ exposedModules l)
               ("Non-empty library, but empty exposed modules list. " ++
                "Cabal may not build this library correctly"))
+
+sanityCheckExe :: Executable -> Maybe String
+sanityCheckExe exe
+   = if null (modulePath exe)
+	then Just ("No 'Main-Is' field found for executable " ++ exeName exe)
+	else Nothing
 
 checkSanity :: Bool -> String -> Maybe String
 checkSanity = toMaybe
@@ -834,19 +855,18 @@ testPkgDescAnswer =
                            includeDirs = ["your/slightest", "look/will"],
                            includes = ["/easily/unclose", "/me", "funky, path\\name"],
                            installIncludes = ["/easily/unclose", "/me", "funky, path\\name"],
-                           -- Note reversed order:
                            ghcProfOptions = [],
-                           options = [(JHC,[]),(NHC, []), (Hugs,["+TH"]), (GHC,["-fTH","-fglasgow-exts"])]}
-                    },
+                           options = [(GHC,["-fTH","-fglasgow-exts"]),(Hugs,["+TH"]),(NHC,[]),(JHC,[])]
+                    }},
                     executables = [Executable "somescript" 
                        "SomeFile.hs" (
                       emptyBuildInfo{
                         otherModules=["Foo1","Util","Main"],
                         hsSourceDirs = ["scripts"],
                         extensions = [OverlappingInstances],
-                        options = [(JHC,[]),(NHC,[]),(Hugs,[]),(GHC,[])]
+                        options = [(GHC,[]),(Hugs,[]),(NHC,[]),(JHC,[])]
                       })]
-}
+  }
 
 hunitTests :: [Test]
 hunitTests = [
@@ -878,7 +898,7 @@ hunitTests = [
 
              TestLabel "Package description" $ TestCase $ 
                 assertParseOk "entire package description" testPkgDescAnswer
-                                                         (parseDescription testPkgDesc),
+                                               (parseDescription testPkgDesc),
              TestLabel "Package description pretty" $ TestCase $ 
                 case parseDescription testPkgDesc of
                  ParseFailed _ -> assertBool "can't parse description" False
@@ -887,8 +907,8 @@ hunitTests = [
                                     assertBool "can't parse description after pretty print!" False
                                 ParseOk _ d' -> 
                                     assertBool ("parse . show . parse not identity."
-                                                ++"   Incorrect fields:"
-                                                ++ (show $ comparePackageDescriptions d d'))
+                                                ++"   Incorrect fields:\n"
+                                                ++ (unlines $ comparePackageDescriptions d d'))
                                                (d == d'),
             TestLabel "Sanity checker" $ TestCase $ do
               (warns, ers) <- sanityCheckPackage emptyPackageDescription
@@ -901,17 +921,49 @@ comparePackageDescriptions :: PackageDescription
                            -> PackageDescription
                            -> [String]      -- ^Errors
 comparePackageDescriptions p1 p2
-    = catMaybes $ myCmp package "package" : myCmp license "license": myCmp licenseFile "licenseFile":  myCmp copyright "copyright":  myCmp maintainer "maintainer":  myCmp author "author":  myCmp stability "stability":  myCmp testedWith "testedWith":  myCmp homepage "homepage":  myCmp pkgUrl "pkgUrl":  myCmp synopsis "synopsis":  myCmp description "description":  myCmp category "category":  myCmp buildDepends "buildDepends":  myCmp library "library":  myCmp executables "executables": myCmp descCabalVersion "cabal-version": myCmp buildType "build-type": []
-
-
-      where myCmp :: (Eq a, Show a) => (PackageDescription -> a)
+    = catMaybes $ myCmp package          "package" 
+                : myCmp license          "license"
+                : myCmp licenseFile      "licenseFile"
+                : myCmp copyright        "copyright"
+                : myCmp maintainer       "maintainer"
+                : myCmp author           "author"
+                : myCmp stability        "stability"
+                : myCmp testedWith       "testedWith"
+                : myCmp homepage         "homepage"
+                : myCmp pkgUrl           "pkgUrl"
+                : myCmp synopsis         "synopsis"
+                : myCmp description      "description"
+                : myCmp category         "category"
+                : myCmp buildDepends     "buildDepends"
+                : myCmp library          "library"
+                : myCmp executables      "executables"
+                : myCmp descCabalVersion "cabal-version" 
+                : myCmp buildType        "build-type" : []
+      where canon_p1 = canonOptions p1
+            canon_p2 = canonOptions p2
+        
+            myCmp :: (Eq a, Show a) => (PackageDescription -> a)
                   -> String       -- Error message
                   -> Maybe String -- 
-            myCmp f er = let e1 = f p1
-                             e2 = f p2
+            myCmp f er = let e1 = f canon_p1
+                             e2 = f canon_p2
                           in toMaybe (e1 /= e2)
                                      (er ++ " Expected: " ++ show e1
                                               ++ " Got: " ++ show e2)
+
+canonOptions :: PackageDescription -> PackageDescription
+canonOptions pd =
+   pd{ library = fmap canonLib (library pd),
+       executables = map canonExe (executables pd) }
+  where
+        canonLib l = l { libBuildInfo = canonBI (libBuildInfo l) }
+        canonExe e = e { buildInfo = canonBI (buildInfo e) }
+
+        canonBI bi = bi { options = canonOptions (options bi) }
+
+        canonOptions opts = sortBy (comparing fst) opts
+
+        comparing f a b = f a `compare` f b
 
 -- |Assert that the 2nd value parses correctly and matches the first value
 assertParseOk :: (Eq val) => String -> val -> ParseResult val -> Assertion
@@ -924,3 +976,4 @@ assertParseOk mes expected actual
 test :: IO Counts
 test = runTestTT (TestList hunitTests)
 #endif
+

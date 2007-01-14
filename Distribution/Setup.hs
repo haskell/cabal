@@ -415,7 +415,7 @@ parseGlobalArgs :: ProgramConfiguration -> [String] -> IO (Action,[String])
 parseGlobalArgs progConf args =
   case getOpt' RequireOrder globalOptions args of
     (flags, _, _, []) | hasHelpFlag flags -> do
-      (printGlobalHelp progConf)
+      printGlobalHelp progConf
       exitWith ExitSuccess
     (_, cname:cargs, extra_args, []) -> do
       case lookupCommand cname (commandList progConf) of
