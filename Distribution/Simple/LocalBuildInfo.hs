@@ -56,7 +56,7 @@ module Distribution.Simple.LocalBuildInfo (
 	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
-	distPref, srcPref, autogenModulesDir, mkIncludeDir
+	distPref, srcPref, haddockPref, autogenModulesDir, mkIncludeDir
   ) where
 
 
@@ -126,6 +126,9 @@ distPref = "dist"
 
 srcPref :: FilePath
 srcPref = distPref `joinFileName` "src"
+
+haddockPref :: FilePath
+haddockPref = foldl1 joinPaths [distPref, "doc", "html"]
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String

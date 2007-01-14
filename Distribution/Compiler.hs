@@ -69,7 +69,7 @@ import HUnit (Test)
 
 data CompilerFlavor
   = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
-              deriving (Show, Read, Eq)
+              deriving (Show, Read, Eq, Ord)
 
 data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
 			  compilerVersion :: Version,

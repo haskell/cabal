@@ -44,29 +44,32 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- #hide
 module Distribution.ParseUtils (
-        LineNo, PError(..), PWarning,
-        locatedErrorMsg, showError, syntaxError, warning,
+        LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
 	runP, ParseResult(..),
-	StanzaField(..), splitStanzas, Stanza, singleStanza,
+	Field,
+	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
 	parsePackageNameQ, parseVersionRangeQ,
-	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList, parseOptCommaList,
+	parseTestedWithQ, parseLicenseQ, parseExtensionQ, 
+	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
-	simpleField, listField, commaListField, optsField, 
+	field, simpleField, listField, commaListField, optsField, liftField,
 	parseReadS, parseReadSQ, parseQuoted,
   ) where
 
-import Text.PrettyPrint.HughesPJ
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Compat.FilePath (platformPath)
+import Language.Haskell.Extension (Extension)
+
+import Text.PrettyPrint.HughesPJ
 import Control.Monad (liftM)
 import Data.Char
-import Language.Haskell.Extension (Extension)
+import Data.Maybe	( fromMaybe)
 
 -- -----------------------------------------------------------------------------
 
@@ -91,22 +94,15 @@ instance Monad ParseResult where
 	fail s = ParseFailed (FromString s Nothing)
 
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
-runP lineNo field p s =
+runP lineNo fieldname p s =
   case [ x | (x,"") <- results ] of
     [a] -> ParseOk [] a
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
              [a] -> ParseOk [] a
-             []  -> ParseFailed (NoParse field lineNo)
-             _   -> ParseFailed (AmbigousParse field lineNo)
-    _   -> ParseFailed (AmbigousParse field lineNo)
+             []  -> ParseFailed (NoParse fieldname lineNo)
+             _   -> ParseFailed (AmbigousParse fieldname lineNo)
+    _   -> ParseFailed (AmbigousParse fieldname lineNo)
   where results = readP_to_S p s
-
--- TODO: deprecated
-showError :: PError -> String
-showError e =
-  case locatedErrorMsg e of
-    (Just n,  s) -> "Line "++show n++": " ++ s
-    (Nothing, s) -> s
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambigous parse in field '"++f++"'")
@@ -119,70 +115,61 @@ syntaxError n s = ParseFailed $ FromString s (Just n)
 warning :: String -> ParseResult ()
 warning s = ParseOk [s] ()
 
-data StanzaField a 
-  = StanzaField 
+data FieldDescr a 
+  = FieldDescr 
       { fieldName     :: String
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
       }
 
-simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
-simpleField name showF readF get set = StanzaField name
-   (\st -> showF (get st))
-   (\lineNo val st -> do
-       x <- runP lineNo name readF val
-       return (set x st))
+field :: String -> (a -> Doc) -> (ReadP a a) -> FieldDescr a
+field name showF readF = 
+  FieldDescr name showF (\lineNo val _st -> runP lineNo name readF val)
 
-commaListField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
-commaListField name showF readF get set = StanzaField name
-   (\st -> fsep (punctuate comma (map showF (get st))))
-   (\lineNo val st -> do
-       xs <- runP lineNo name (parseCommaList readF) val
-       return (set xs st))
+liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
+liftField get set (FieldDescr name showF parseF)
+ = FieldDescr name (\b -> showF (get b))
+	(\lineNo str b -> do
+	    a <- parseF lineNo str (get b)
+	    return (set a b))
 
-listField :: String -> (a -> Doc) -> (ReadP [a] a) -> (b -> [a]) -> ([a] -> b -> b) -> StanzaField b
-listField name showF readF get set = StanzaField name
-   (\st -> fsep (map showF (get st)))
-   (\lineNo val st -> do
-       xs <- runP lineNo name (parseOptCommaList readF) val
-       return (set xs st))
+simpleField :: String -> (a -> Doc) -> (ReadP a a)
+            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
+simpleField name showF readF get set
+  = liftField get set $ field name showF readF
 
-optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> StanzaField b
-optsField name flavor get set = StanzaField name
-   (\st -> case lookup flavor (get st) of
-        Just args -> hsep (map text args)
-        Nothing   -> empty)
-   (\_ val st -> 
-       let
-         old_val  = get st
-         old_args = case lookup flavor old_val of
-                       Just args -> args
-                       Nothing   -> []
-         val'     = filter (\(f,_) -> f/=flavor) old_val
-       in return (set ((flavor,words val++old_args) : val') st))
+commaListField :: String -> (a -> Doc) -> (ReadP [a] a)
+		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListField name showF readF get set = 
+  liftField get set $ 
+    field name (fsep . punctuate comma . map showF) (parseCommaList readF)
 
-type Stanza = [(LineNo,String,String)]
+listField :: String -> (a -> Doc) -> (ReadP [a] a)
+		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+listField name showF readF get set = 
+  liftField get set $ 
+    field name (fsep . map showF) (parseOptCommaList readF)
 
--- |Split a string into blank line-separated stanzas of
--- "Field: value" groups
-splitStanzas :: String -> ParseResult [Stanza]
-splitStanzas = mapM mkStanza . map merge . groupStanzas . filter validLine . zip [1..] . map trimTrailingSpaces . lines
-  where validLine (_,s) = case dropWhile isSpace s of
-                            '-':'-':_ -> False      -- Comment
-                            _         -> True
-        groupStanzas :: [(Int,String)] -> [[(Int,String)]]
-        groupStanzas [] = []
-        groupStanzas xs = let (ys,zs) = break (null . snd) xs
-                           in ys : groupStanzas (dropWhile (null . snd) zs)
+optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
+optsField name flavor get set = 
+   liftField (fromMaybe [] . lookup flavor . get) 
+	     (\opts b -> set (update flavor opts (get b)) b) $
+	field name (hsep . map text)
+		   (sepBy parseTokenQ' (munch1 isSpace))
+  where
+        update f opts [] = [(f,opts)]
+	update f opts ((f',opts'):rest)
+           | f == f'   = (f, opts ++ opts') : rest
+           | otherwise = (f',opts') : update f opts rest
 
 trimTrailingSpaces :: String -> String
 trimTrailingSpaces = reverse . dropWhile isSpace . reverse
 
--- |Split a file into "Field: value" groups, but blank lines have no
--- significance, unlike 'splitStanzas'.  A field value may span over blank
--- lines.
-singleStanza :: String -> ParseResult Stanza
-singleStanza = mkStanza . merge . filter validLine . zip [1..] . map trimTrailingSpaces . lines
+type Field  = (LineNo,String,String)
+
+-- |Split a file into "Field: value" groups
+readFields :: String -> ParseResult [Field]
+readFields = mkStanza . merge . filter validLine . zip [1..] . map trimTrailingSpaces . lines
   where validLine (_,s) = case dropWhile isSpace s of
                             '-':'-':_ -> False      -- Comment
                             []        -> False      -- blank line
@@ -196,29 +183,19 @@ merge ((n,x):(_,c:s):ys)
 merge ((n,x):ys) = (n,x) : merge ys
 merge []         = []
 
-mkStanza :: [(Int,String)] -> ParseResult Stanza
+mkStanza :: [(Int,String)] -> ParseResult [Field]
 mkStanza []          = return []
+mkStanza ((n,'#':xs):ys) | not (isSpace (head xs)) = do
+  ss <- mkStanza ys
+  return ((n, '#':dir, dropWhile isSpace val) : ss)
+  where (dir,val) = break isSpace xs
 mkStanza ((n,xs):ys) =
   case break (==':') xs of
-    (fld', ':':val) -> do
-       let fld'' = map toLower fld'
-       fld <- case () of
-                _ | fld'' == "hs-source-dir"
-                           -> do warning "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs."
-                                 return "hs-source-dirs"
-                  | fld'' == "other-files"
-                           -> do warning "The field \"other-files\" is deprecated, please use extra-source-files."
-                                 return "extra-source-files"
-                  | otherwise -> return fld''
+    (fld0, ':':val) -> do
+       let fld = map toLower fld0
        ss <- mkStanza ys
-       checkDuplField fld ss
        return ((n, fld, dropWhile isSpace val):ss)
     (_, _)       -> syntaxError n "Invalid syntax (no colon after field name)"
-  where
-    checkDuplField _ [] = return ()
-    checkDuplField fld ((n',fld',_):xs')
-      | fld' == fld = syntaxError (max n n') $ "The field "++fld++" was already defined on line " ++ show (min n n')
-      | otherwise   = checkDuplField fld xs'
 
 -- |parse a module name
 parseModuleNameQ :: ReadP r String
@@ -278,15 +255,22 @@ parseReadSQ = parseQuoted parseReadS <++ parseReadS
 parseTokenQ :: ReadP r String
 parseTokenQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
+parseTokenQ' :: ReadP r String
+parseTokenQ' = parseReadS <++ munch1 (\x -> not (isSpace x))
+
+parseSepList :: ReadP r b
+	     -> ReadP r a -- ^The parser for the stuff between commas
+             -> ReadP r [a]
+parseSepList sepr p = sepBy p separator
+    where separator = skipSpaces >> sepr >> skipSpaces
+
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
-parseCommaList p = sepBy p separator
-    where separator = skipSpaces >> ReadP.char ',' >> skipSpaces
+parseCommaList = parseSepList (ReadP.char ',')
 
 parseOptCommaList :: ReadP r a -- ^The parser for the stuff between commas
-               -> ReadP r [a]
-parseOptCommaList p = sepBy p separator
-    where separator = skipSpaces >> optional (ReadP.char ',') >> skipSpaces
+                  -> ReadP r [a]
+parseOptCommaList = parseSepList (optional (ReadP.char ','))
 
 parseQuoted :: ReadP r a -> ReadP r a
 parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
