@@ -55,7 +55,7 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils (
-	StanzaField(..), singleStanza, ParseResult(..), LineNo,
+	FieldDescr(..), readFields, ParseResult(..), LineNo,
 	simpleField, listField, parseLicenseQ,
 	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
@@ -149,16 +149,16 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
 parseInstalledPackageInfo inp = do
-  stLines <- singleStanza inp
+  stLines <- readFields inp
 	-- not interested in stanzas, so just allow blank lines in
 	-- the package info.
   foldM (parseBasicStanza all_fields) emptyInstalledPackageInfo stLines
 
-parseBasicStanza :: [StanzaField a]
+parseBasicStanza :: [FieldDescr a]
 		    -> a
 		    -> (LineNo, String, String)
 		    -> ParseResult a
-parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
+parseBasicStanza ((FieldDescr name _ set):fields) pkg (lineNo, f, val)
   | name == f = set lineNo val pkg
   | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
 parseBasicStanza [] pkg (_, _, _) = return pkg
@@ -170,14 +170,14 @@ showInstalledPackageInfo :: InstalledPackageInfo -> String
 showInstalledPackageInfo pkg = render (ppFields all_fields)
   where
     ppFields [] = empty
-    ppFields ((StanzaField name get' _):flds) = 
+    ppFields ((FieldDescr name get' _):flds) = 
 	pprField name (get' pkg) $$ ppFields flds
 
 showInstalledPackageInfoField
 	:: String
 	-> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField field
-  = case [ (f,get') | (StanzaField f get' _) <- all_fields, f == field ] of
+  = case [ (f,get') | (FieldDescr f get' _) <- all_fields, f == field ] of
 	[]      -> Nothing
 	((f,get'):_) -> Just (render . pprField f . get')
 
@@ -187,11 +187,11 @@ pprField name field = text name <> colon <+> field
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
-all_fields :: [StanzaField InstalledPackageInfo]
-all_fields = basicStanzaFields ++ installedStanzaFields
+all_fields :: [FieldDescr InstalledPackageInfo]
+all_fields = basicFieldDescrs ++ installedFieldDescrs
 
-basicStanzaFields :: [StanzaField InstalledPackageInfo]
-basicStanzaFields =
+basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
+basicFieldDescrs =
  [ simpleField "name"
                            text                   parsePackageNameQ
                            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
@@ -227,8 +227,8 @@ basicStanzaFields =
                            author                 (\val pkg -> pkg{author=val})
  ]
 
-installedStanzaFields :: [StanzaField InstalledPackageInfo]
-installedStanzaFields = [
+installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
+installedFieldDescrs = [
    simpleField "exposed"
 	(text.show) 	   parseReadS
 	exposed     	   (\val pkg -> pkg{exposed=val})

@@ -34,6 +34,7 @@ module Distribution.Program(
                            , programOptsField
                            , defaultProgramConfiguration
                            , updateProgram
+                           , maybeUpdateProgram
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
@@ -241,8 +242,8 @@ userSpecifyPath :: String   -- ^Program name
                 -> ProgramConfiguration
 userSpecifyPath name path conf'@(ProgramConfiguration conf)
     = case Map.lookup name conf of
-       Just p  -> updateProgram (Just p{programLocation=UserSpecified path}) conf'
-       Nothing -> updateProgram (Just $ Program name name [] (UserSpecified path))
+       Just p  -> updateProgram p{programLocation=UserSpecified path} conf'
+       Nothing -> updateProgram (Program name name [] (UserSpecified path))
                                 conf'
 
 -- |User-specify the arguments for this program.  Basically override
@@ -254,15 +255,17 @@ userSpecifyArgs :: String -- ^Program name
                 -> ProgramConfiguration
 userSpecifyArgs name args conf'@(ProgramConfiguration conf)
     = case Map.lookup name conf of
-       Just p  -> updateProgram (Just p{programArgs=(words args)}) conf'
-       Nothing -> updateProgram (Just $ Program name name (words args) EmptyLocation) conf'
+       Just p  -> updateProgram p{programArgs=(words args)} conf'
+       Nothing -> updateProgram (Program name name (words args) EmptyLocation) conf'
 
 -- |Update this program's entry in the configuration.  No changes if
 -- you pass in Nothing.
-updateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
-updateProgram (Just p@Program{programName=n}) (ProgramConfiguration conf)
+updateProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
+updateProgram p@Program{programName=n} (ProgramConfiguration conf)
     = ProgramConfiguration $ Map.insert n p conf
-updateProgram Nothing conf = conf
+
+maybeUpdateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
+maybeUpdateProgram m c = maybe c (\p -> updateProgram p c) m
 
 -- |Runs the given program.
 rawSystemProgram :: Int      -- ^Verbosity
