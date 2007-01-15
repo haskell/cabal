@@ -370,6 +370,7 @@ executableFieldDescrs =
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
+        cpphsOptions      :: [String],  -- ^ options for cpphs
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
         frameworks        :: [String], -- ^support frameworks for Mac OS X
@@ -390,6 +391,7 @@ data BuildInfo = BuildInfo {
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = BuildInfo {
                       buildable         = True,
+                      cpphsOptions      = [],
                       ccOptions         = [],
                       ldOptions         = [],
                       frameworks        = [],
@@ -426,6 +428,9 @@ binfoFieldDescrs =
  [ simpleField "buildable"
            (text . show)      parseReadS
            buildable          (\val binfo -> binfo{buildable=val})
+ , listField "cpphs-options"
+           showToken          parseTokenQ
+           cpphsOptions       (\val binfo -> binfo{cpphsOptions=val})
  , listField "cc-options"
            showToken          parseTokenQ
            ccOptions          (\val binfo -> binfo{ccOptions=val})
@@ -523,6 +528,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
     = b1{buildable         = buildable b1 && buildable b2,
+         cpphsOptions      = combine cpphsOptions,
          ccOptions         = combine ccOptions,
          ldOptions         = combine ldOptions,
          frameworks        = combine frameworks,
@@ -852,6 +858,7 @@ testPkgDescAnswer =
                         exposedModules = ["Distribution.Void", "Foo.Bar"],
                         libBuildInfo=BuildInfo {
                            buildable = True,
+                           cpphsOptions = [],
                            ccOptions = ["-g", "-o"],
                            ldOptions = ["-BStatic", "-dn"],
                            frameworks = ["foo"],
