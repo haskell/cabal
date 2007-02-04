@@ -50,6 +50,7 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
+                                      haddockVersion,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -74,7 +75,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage,
-        satisfyDependency)
+        satisfyDependency,haddockName)
 import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
@@ -86,7 +87,7 @@ import System.Directory
 import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..),
-                            lookupPrograms, maybeUpdateProgram)
+                            lookupProgram, lookupPrograms, maybeUpdateProgram)
 import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
@@ -237,7 +238,8 @@ configure pkg_descr cfg
                               withOptimization=configOptimization cfg,
 			      withGHCiLib=configGHCiLib cfg,
 			      splitObjs=split_objs,
-                              userConf=configUser cfg
+                              userConf=configUser cfg,
+                              usePackages=configUsePackages cfg
                              }
 
         -- FIXME: maybe this should only be printed when verbose?
@@ -439,6 +441,22 @@ configCompilerVersion JHC compilerP verbose = do
                    _   -> fail ("parsing version: "++ver++" failed.")
     _        -> fail ("reading version string: "++show str++" failed.")
 configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
+
+haddockVersion :: LocalBuildInfo -> IO Version
+haddockVersion lbi = fmap getVer verString
+ where
+   -- Invoking "haddock --version" gives a string like
+   -- "Haddock version 0.8, (c) Simon Marlow 2006" 
+   verString = do haddockProg <-
+                    fmap (fromMaybe noHaddock) $
+                    lookupProgram "haddock" (withPrograms lbi)
+                  systemGetStdout 0 (progLocPath (programLocation haddockProg)
+                                     ++ " --version")
+   getVer    = head . pCheck . readP_to_S parseVersion . init . (!! 2) . words
+   noHaddock = error "haddockVersion: cannot find haddock"
+   progLocPath EmptyLocation        = noHaddock
+   progLocPath (UserSpecified path) = path
+   progLocPath (FoundOnSystem path) = path
 
 systemGetStdout :: Int -> String -> IO String
 systemGetStdout verbose cmd = do

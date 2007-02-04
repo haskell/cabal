@@ -138,7 +138,8 @@ data ConfigFlags = ConfigFlags {
         configVerbose  :: Int,            -- ^verbosity level
 	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
-	configSplitObjs :: Bool		  -- ^Enable -split-objs with GHC
+	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
+        configUsePackages :: Bool         -- ^ auto-gen haddock --use-package
     }
     deriving Show
 
@@ -171,7 +172,8 @@ emptyConfigFlags progConf = ConfigFlags {
         configVerbose  = 1,
 	configUser     = False,
 	configGHCiLib  = True,
-	configSplitObjs = False -- takes longer, so turn off by default
+	configSplitObjs = False, -- takes longer, so turn off by default
+        configUsePackages = True
     }
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbose)
@@ -268,6 +270,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | LibExecDir FilePath
 	  | DataDir FilePath
 	  | DataSubDir FilePath
+          | WithUsePackages | WithoutUsePackages
 
           | ProgramArgs String String   -- program name, arguments
           | WithProgram String FilePath -- program name, location
@@ -493,7 +496,11 @@ configureCmd progConf = Cmd {
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
-               "(default) dependencies must be satisfied from the global package database"
+               "(default) dependencies must be satisfied from the global package database",
+           Option "" ["enable-use-packages"] (NoArg WithUsePackages)
+               "Automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs.",
+           Option "" ["disable-use-packages"] (NoArg WithoutUsePackages)
+               "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs."
            ]
 {- 
    FIX: Instead of using ++ here, we might add extra arguments.  That
@@ -569,6 +576,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t GlobalFlag           = t { configUser     = False }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
+	updateCfg t WithUsePackages	 = t { configUsePackages = True }
+	updateCfg t WithoutUsePackages	 = t { configUsePackages = False }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
