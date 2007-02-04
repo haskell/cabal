@@ -54,6 +54,8 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                )
     where
 
+
+import Distribution.Simple.Configure (haddockVersion)
 import Distribution.PreProcess.Unlit(unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
@@ -236,8 +238,17 @@ ppCpp' inputArgs bi lbi =
         locations = ["BUILD", "HOST"]
 
 	use_ghc inFile outFile verbose
-	  = rawSystemVerbose verbose (compilerPath hc) 
-		(["-E", "-cpp", "-optP-P", "-o", outFile, inFile] ++ extraArgs)
+	  = do p_p <- use_optP_P lbi
+               rawSystemVerbose verbose (compilerPath hc) 
+                   (["-E", "-cpp"] ++
+                    (if p_p then ["-optP-P"] else []) ++
+                    ["-o", outFile, inFile] ++ extraArgs)
+
+-- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
+-- pragmas are necessary for correct links when we preprocess.  So use
+-- -optP-P only if the Haddock version is prior to 0.8.
+use_optP_P :: LocalBuildInfo -> IO Bool
+use_optP_P lbi = fmap (< Version [0,8] []) (haddockVersion lbi)
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
