@@ -17,16 +17,21 @@ type Password = String
 
 main :: IO ()
 main = do args <- getArgs
-          (user, pwd, path) <- parseOptions args
-          let uri = uploadURI
-              auth = AuthBasic { auRealm    = "Hackage",
-                                 auUsername = user,
-                                 auPassword = pwd,
-                                 auSite     = uri }
-          req <- mkRequest uri path
-          (_,resp) <- browse (addAuthority auth >> request req)
-          print resp
-          putStrLn $ rspBody resp
+          (user, pwd, paths) <- parseOptions args
+          mapM_ (uploadPackage user pwd) paths
+
+uploadPackage :: Username -> Password -> FilePath -> IO ()
+uploadPackage user pwd path =
+  do
+  let uri = uploadURI
+      auth = AuthBasic { auRealm    = "Hackage",
+                         auUsername = user,
+                         auPassword = pwd,
+                         auSite     = uri }
+  req <- mkRequest uri path
+  (_,resp) <- browse (addAuthority auth >> request req)
+  print resp
+  putStrLn $ rspBody resp
 
 uploadURI :: URI
 uploadURI = fromJust $ parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
@@ -74,7 +79,7 @@ crlf = "\r\n"
 
 -- * Command-line options
 
-parseOptions :: [String] -> IO (Username, Password, FilePath)
-parseOptions [user,pwd,path] = return (user,pwd,path)
-parseOptions _ = do hPutStrLn stderr "Usage: cabal-upload <username> <password> <tarball>"
+parseOptions :: [String] -> IO (Username, Password, [FilePath])
+parseOptions (user:pwd:tarballs) = return (user,pwd,tarballs)
+parseOptions _ = do hPutStrLn stderr "Usage: cabal-upload <username> <password> [<tarball> ...]"
                     exitFailure
