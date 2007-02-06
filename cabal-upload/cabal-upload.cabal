@@ -1,0 +1,18 @@
+Name: cabal-upload
+Version: 0.1
+License: BSD4
+License-File: ../LICENSE
+Author: Bjorn Bringert
+Maintainer: Bjorn Bringert
+Copyright: 2007 Bjorn Bringert <bjorn@bringert.net>
+Stability: Experimental
+Category: Distribution
+Build-type: Simple
+Build-depends: base, network, HTTP >= 2007.2.6
+Synopsis: Uploads packages to Hackage
+Description:
+  This program uploads packages to the Hackage package database.
+
+Executable: cabal-upload
+Main-Is: CabalUpload.hs
+Hs-Source-Dirs: src
