@@ -7,12 +7,18 @@ import Data.Maybe
 import Network.URI
 import Numeric
 import System.Environment
+import System.Exit
+import System.IO
 import System.Random
 
+type Username = String
+type Password = String
+
 main :: IO ()
-main = do [user,pwd,path] <- getArgs
+main = do args <- getArgs
+          (user, pwd, path) <- parseOptions args
           let uri = uploadURI
-              auth = AuthBasic { auRealm = "Hackage",
+              auth = AuthBasic { auRealm    = "Hackage",
                                  auUsername = user,
                                  auPassword = pwd,
                                  auSite     = uri }
@@ -64,3 +70,10 @@ printBodyPart boundary (BodyPart hs c) = crlf ++ "--" ++ boundary ++ crlf ++ con
 
 crlf :: String
 crlf = "\r\n"
+
+-- * Command-line options
+
+parseOptions :: [String] -> IO (Username, Password, FilePath)
+parseOptions [user,pwd,path] = return (user,pwd,path)
+parseOptions _ = do hPutStrLn stderr "Usage: cabal-upload <username> <password> <tarball>"
+                    exitFailure
