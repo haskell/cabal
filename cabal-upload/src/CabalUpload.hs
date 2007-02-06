@@ -45,7 +45,8 @@ mkRequest uri path =
                          rqURI = uri,
                          rqMethod = POST,
                          rqHeaders = [Header HdrContentType ("multipart/form-data; boundary="++boundary),
-                                      Header HdrContentLength (show (length body))],
+                                      Header HdrContentLength (show (length body)),
+                                      Header HdrAccept ("text/plain")],
                          rqBody = body
                         }
 
