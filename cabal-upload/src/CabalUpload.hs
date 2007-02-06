@@ -4,6 +4,7 @@
 import Network.Browser
 import Network.HTTP
 
+import Data.Char
 import Data.Maybe
 import Network.URI
 import Numeric
@@ -28,10 +29,20 @@ uploadPackage user pwd path =
                          auUsername = user,
                          auPassword = pwd,
                          auSite     = uri }
+  putStr $ "Uploading " ++ path ++ "... "
+  hFlush stdout
   req <- mkRequest uri path
-  (_,resp) <- browse (addAuthority auth >> request req)
-  print resp
-  putStrLn $ rspBody resp
+  (_,resp) <- browse (setErrHandler ignoreMsg 
+                      >> setOutHandler ignoreMsg 
+                      >> addAuthority auth 
+                      >> request req)
+  case rspCode resp of
+    (2,0,0) -> do putStrLn "OK"
+    (x,y,z) -> do putStrLn $ "ERROR: " ++ map intToDigit [x,y,z] ++ " " ++ rspReason resp
+                  putStrLn $ rspBody resp
+
+ignoreMsg :: String -> IO ()
+ignoreMsg _ = return ()
 
 uploadURI :: URI
 uploadURI = fromJust $ parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
