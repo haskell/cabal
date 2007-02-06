@@ -1,4 +1,5 @@
 -- This is a quick hack for uploading packages to Hackage.
+-- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
 
 import Network.Browser
 import Network.HTTP
