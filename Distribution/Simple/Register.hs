@@ -193,7 +193,8 @@ register pkg_descr lbi regFlags
 	copyFileVerbose verbose installedPkgConfigFile
 	    (the_libdir `joinFileName` "package.conf")
       JHC -> when (verbose > 0) $ putStrLn "registering for JHC (nothing to do)"
-      _   -> die ("only registering with GHC is implemented")
+      NHC -> when (verbose > 0) $ putStrLn "registering nhc98 (nothing to do)"
+      _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
 
 userPkgConfErr :: String -> IO a
 userPkgConfErr local_conf = 
@@ -328,6 +329,9 @@ unregister pkg_descr lbi regFlags = do
 	rawSystemEmit unregScriptLocation genScript verbose pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
+        try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
+	return ()
+    NHC -> do
         try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
 	return ()
     _ ->

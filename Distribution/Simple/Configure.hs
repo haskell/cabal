@@ -437,7 +437,7 @@ configCompilerVersion GHC compilerP verbose = do
   case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
     _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
-configCompilerVersion JHC compilerP verbose = do
+configCompilerVersion comp compilerP verbose | comp `elem` [JHC,NHC] = do
   str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --version")
   case words str of
     (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of

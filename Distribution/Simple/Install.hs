@@ -69,7 +69,7 @@ import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
--- import qualified Distribution.Simple.NHC  as NHC
+import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
@@ -122,6 +122,7 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
        let progPref = mkProgDir pkg_descr lbi copydest
        let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
        Hugs.install verbose libPref progPref binPref targetProgPref buildPref pkg_descr
+     NHC  -> die ("installing with nhc98 is not yet implemented")
      _    -> die ("only installing with GHC, JHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
