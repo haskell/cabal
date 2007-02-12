@@ -29,7 +29,7 @@ import Distribution.PackageDescription
                                   BuildType(..), cabalVersion )
 import System.Console.GetOpt
 import System.Directory
-import Control.Exception        ( finally )
+import Distribution.Compat.Exception ( finally )
 import Control.Monad		( when, unless )
 import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirectory )
 
@@ -69,19 +69,19 @@ setupWrapper args mdir = inDir mdir $ do
     trySetupScript f on_fail = do
        b <- doesFileExist f
        if not b then on_fail else do
-       hasSetup <- do b <- doesFileExist "setup"
-                      if not b then return False else do
-                      t1 <- getModificationTime f
-                      t2 <- getModificationTime "setup"
-                      return (t1 < t2)
-       unless hasSetup $
+         hasSetup <- do b <- doesFileExist "setup"
+                        if not b then return False else do
+                          t1 <- getModificationTime f
+                          t2 <- getModificationTime "setup"
+                          return (t1 < t2)
+         unless hasSetup $
+           rawSystemExit (verbose flags)
+             (compilerPath comp)
+             (cabal_flag ++ 
+              ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
          rawSystemExit (verbose flags)
-           (compilerPath comp)
-           (cabal_flag ++ 
-            ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
-       rawSystemExit (verbose flags)
-         ('.':pathSeparator:"setup")
-         setup_args
+           ('.':pathSeparator:"setup")
+           setup_args
 
   case lookup (buildType pkg_descr) buildTypes of
     Just (mainAction, mainText) ->
