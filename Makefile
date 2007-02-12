@@ -203,7 +203,7 @@ ALL_DIRS = \
 	Distribution/Compat \
 	Language/Haskell
 
-EXCLUDED_SRCS = DefaultSetup.lhs
+EXCLUDED_SRCS	= DefaultSetup.lhs Setup.lhs
 
 PACKAGE		= Cabal
 VERSION		= 1.1.6
