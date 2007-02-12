@@ -39,9 +39,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.NHC (
-	build{-, install -}
- ) where
+module Distribution.Simple.NHC
+  ( build
+{-, install -}
+  ) where
 
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
@@ -55,12 +56,16 @@ import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
 build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
-build pkg_descr lbi verbose = do
+build pkg_descr lbi verbose =
   -- Unsupported extensions have already been checked by configure
-  let flags = snd $ extensionsToNHCFlag (maybe [] (extensions . libBuildInfo) (library pkg_descr))
+  let flags = ( snd
+              . extensionsToNHCFlag
+              . maybe [] (extensions . libBuildInfo)
+              . library ) pkg_descr in
   rawSystemExit verbose (compilerPath (compiler lbi))
-                (["-nhc98"]
+                (["-hc=nhc98"]
                 ++ flags
-                ++ maybe [] (hcOptions NHC . options . libBuildInfo) (library pkg_descr)
-                ++ (libModules pkg_descr))
+                ++ maybe [] (hcOptions NHC . options . libBuildInfo)
+                            (library pkg_descr)
+                ++ libModules pkg_descr)
 
