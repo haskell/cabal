@@ -119,6 +119,7 @@ data ConfigFlags = ConfigFlags {
         configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
+        configOptimization :: Bool,       -- ^Enable optimization.
         configPrefix   :: Maybe FilePath,
 		-- ^installation prefix
 	configBinDir   :: Maybe FilePath, 
@@ -157,6 +158,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configVanillaLib  = True,
         configProfLib  = False,
         configProfExe  = False,
+        configOptimization = True,
         configCpphs    = Nothing,
         configGreencard= Nothing,
         configPrefix   = Nothing,
@@ -255,6 +257,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithVanillaLib | WithoutVanillaLib
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
+          | WithOptimization | WithoutOptimization
 	  | WithGHCiLib | WithoutGHCiLib
 	  | WithSplitObjs | WithoutSplitObjs
 
@@ -475,6 +478,10 @@ configureCmd progConf = Cmd {
                "Enable executable profiling",
            Option "" ["disable-executable-profiling"] (NoArg WithoutProfExe)
                "Disable executable profiling",
+           Option "O" ["enable-optimization"] (NoArg WithOptimization)
+               "Build with optimization",
+           Option "" ["disable-optimization"] (NoArg WithoutOptimization)
+               "Build without optimization",
 	   Option "" ["enable-library-for-ghci"] (NoArg WithGHCiLib)
                "compile library for use with GHCi",
 	   Option "" ["disable-library-for-ghci"] (NoArg WithoutGHCiLib)
@@ -546,6 +553,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
         updateCfg t WithoutProfExe       = t { configProfExe  = False }
+        updateCfg t WithOptimization     = t { configOptimization = True }
+        updateCfg t WithoutOptimization  = t { configOptimization = False }
 	updateCfg t WithGHCiLib          = t { configGHCiLib  = True }
 	updateCfg t WithoutGHCiLib       = t { configGHCiLib  = False }
         updateCfg t (Prefix path)        = t { configPrefix   = Just path }

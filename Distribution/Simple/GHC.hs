@@ -361,6 +361,7 @@ constructGHCCmdLine lbi bi odir verbose =
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ++ installIncludes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+     ++ (if withOptimization lbi then ["-O"] else [])
      ++ hcOptions GHC (options bi)
      ++ snd (extensionsToGHCFlag (extensions bi))
 
