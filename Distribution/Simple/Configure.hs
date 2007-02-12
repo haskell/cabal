@@ -234,6 +234,7 @@ configure pkg_descr cfg
                               withVanillaLib=configVanillaLib cfg,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
+                              withOptimization=configOptimization cfg,
 			      withGHCiLib=configGHCiLib cfg,
 			      splitObjs=split_objs,
                               userConf=configUser cfg

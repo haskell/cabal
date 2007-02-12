@@ -1646,6 +1646,24 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		executables.</para>
 	    </listitem>
 	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-optimization</option> or <option>-O</option></term>
+	    <listitem>
+	      <para>(default) Build with optimization flags (if available).
+		This is appropriate for production use, taking more time
+		to build faster libraries and programs.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-optimization</option></term>
+	    <listitem>
+	      <para>Build without optimization.  This is suited for
+		development: building will be quicker, but the resulting
+		library or programs will be slower.</para>
+	    </listitem>
+	  </varlistentry>
 	</variablelist>
 
 	<para>In the simple build infrastructure, an additional option
