@@ -116,7 +116,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withOptimization :: Bool, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
 	splitObjs     :: Bool,	-- ^Use -split-objs with GHC, if available
-        usePackages   :: Bool   -- ^Auto-gen --use-package for haddock
+        haddockUsePackages   :: Bool   -- ^Auto-gen --use-package for haddock
 
   } deriving (Read, Show)
 
