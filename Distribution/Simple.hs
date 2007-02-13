@@ -424,7 +424,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                   "--package=" ++ showPkg,
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
-                 ++ if usePackages lbi then
+                 ++ if haddockUsePackages lbi then
                       map ("--use-package=" ++) showDepPkgs
                     else []
                  ++ programArgs confHaddock
@@ -446,7 +446,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe]
-                 ++ if usePackages lbi then
+                 ++ if haddockUsePackages lbi then
                       map ("--use-package=" ++) showDepPkgs
                     else []
                  ++ programArgs confHaddock
