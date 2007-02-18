@@ -824,10 +824,10 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>A list of directories to search for header files,
-                when preprocessing with <literal>c2hs</literal>,
-                <literal>hsc2hs</literal>, <literal>ffihugs</literal>,
-                <literal>cpphs</literal>, or the C preprocessor, and also when compiling
-                via C.</para>
+                when preprocessing with <command>c2hs</command>,
+                <command>hsc2hs</command>, <command>ffihugs</command>,
+                <command>cpphs</command> or the C preprocessor,
+		and also when compiling via C.</para>
             </listitem>
           </varlistentry>
 
@@ -1153,7 +1153,7 @@ copy :
       <arg><replaceable>command</replaceable></arg>
       <arg rep="repeat" choice="opt"><replaceable>option</replaceable></arg>
     </cmdsynopsis>
-    <para>where <literal>runhaskell</literal> might be
+    <para>where <replaceable>runhaskell</replaceable> might be
       <command>runhugs</command>, <command>runghc</command> or
       <command>runnhc</command>.  The <replaceable>command</replaceable>
       argument selects a particular step in the build/install process.
@@ -1719,7 +1719,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
         modules it contains available to programs.</para>
 
       <para>The install locations are determined by options to
-        <literal>setup configure</literal>
+        <command>setup configure</command>
 	(see <xref linkend="setup-configure-paths"/>).</para>
 
       <para>This command takes the following options:</para>
@@ -1830,7 +1830,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <listitem>
 	    <para>Specify the path to the package tool, e.g.
 		  <command>ghc-pkg</command>.  This overrides the
-		  <literal>hc-pkg</literal> tool discovered during
+		  <replaceable>hc-pkg</replaceable> tool discovered during
 		  configure.</para>
 	  </listitem>
 	</varlistentry>
