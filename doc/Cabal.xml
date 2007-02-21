@@ -1290,6 +1290,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		this must match the implementation selected above.
 		The default is to search for the usual name of the
 		selected implementation.</para>
+	      <para>This flag also attempts to set the <option>--with-hc-pkg</option> flag to the
+		package tool for this compiler.  Check the output of <literal>setup configure</literal>
+		to ensure that it finds the right package tool (or use <option>--with-hc-pkg</option> explicitly).
+		</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1297,7 +1301,8 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
 	    <listitem>
 	      <para>Specify the path to the package tool, e.g.
-		<command>ghc-pkg</command>.</para>
+		<command>ghc-pkg</command>.  The package tool must be compatible with the compiler specified
+	        by <option>--with-compiler</option>.</para>  
 	    </listitem>
 	  </varlistentry>
 
