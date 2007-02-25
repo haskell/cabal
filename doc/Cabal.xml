@@ -1101,13 +1101,14 @@ main = defaultMain</programlisting>
 
           <itemizedlist>
             <listitem>
-              <para>The <option>--with-hc</option>,
-                <option>--with-hc-pkg</option>,
+              <para>The <option>--with-hc-pkg</option>,
                 <option>--prefix</option>, <option>--bindir</option>,
                 <option>--libdir</option>, <option>--datadir</option>
                 and <option>--libexecdir</option> options to the
                 <literal>configure</literal> command are passed on to
-                the <filename>configure</filename> script.</para>
+                the <filename>configure</filename> script.
+                In addition the value of the <option>--with-compiler</option>
+                option is passed in a <option>--with-hc</option> option.</para>
             </listitem>
 
             <listitem>
@@ -1257,11 +1258,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <para>If a user-supplied <filename>configure</filename>
 	script is run (see <xref linkend="system-dependent"/>
 	or <xref linkend="complex-packages"/>), it is passed the
-	<option>--with-hc</option>, <option>--with-hc-pkg</option>,
+	<option>--with-hc-pkg</option>,
 	<option>--prefix</option>, <option>--bindir</option>,
 	<option>--libdir</option>, <option>--datadir</option> and
 	<option>--libexecdir</option> options, plus any unrecognized
-	options.</para>
+	options.
+	In addition the value of the <option>--with-compiler</option>
+	option is passed in a <option>--with-hc</option> option.</para>
 
       <sect3 id="setup-configure-programs">
 	<title>Programs used for building</title>
@@ -1290,10 +1293,12 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		this must match the implementation selected above.
 		The default is to search for the usual name of the
 		selected implementation.</para>
-	      <para>This flag also attempts to set the <option>--with-hc-pkg</option> flag to the
-		package tool for this compiler.  Check the output of <literal>setup configure</literal>
-		to ensure that it finds the right package tool (or use <option>--with-hc-pkg</option> explicitly).
-		</para>
+	      <para>This flag also sets the default value of the
+		<option>--with-hc-pkg</option> option to the package tool
+		for this compiler.
+		Check the output of <literal>setup configure</literal>
+		to ensure that it finds the right package tool (or use
+		<option>--with-hc-pkg</option> explicitly).</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1301,8 +1306,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
 	    <listitem>
 	      <para>Specify the path to the package tool, e.g.
-		<command>ghc-pkg</command>.  The package tool must be compatible with the compiler specified
-	        by <option>--with-compiler</option>.</para>  
+		<command>ghc-pkg</command>.
+		The package tool must be compatible with the compiler
+		specified by <option>--with-compiler</option>.
+		If this option is omitted, the default value is determined
+		from the compiler selected.</para>  
 	    </listitem>
 	  </varlistentry>
 
