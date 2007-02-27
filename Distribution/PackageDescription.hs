@@ -188,6 +188,14 @@ libModules PackageDescription{library=lib}
     = maybe [] exposedModules lib
        ++ maybe [] (otherModules . libBuildInfo) lib
 
+libFieldDescrs :: [StanzaField Library]
+libFieldDescrs = map biToLib binfoFields
+ ++ [
+ listField "exposed-modules" text parseModuleNameQ
+ exposedModules (\mods lib -> lib{exposedModules=mods})
+ ]
+ where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
+
 -- |Get all the module names from the exes in this package
 exeModules :: PackageDescription -> [String]
 exeModules PackageDescription{executables=execs}
@@ -360,6 +368,11 @@ reqNameCopyright  = "copyright"
 reqNameMaintainer = "maintainer"
 reqNameSynopsis   = "synopsis"
 
+initialStanzaFields :: [StanzaField PackageDescription]
+initialStanzaFields = basicStanzaFields ++ map liftToPkg libFieldDescrs
+ where liftToPkg = liftField (fromMaybe emptyLibrary . library)
+                             (\lib pkg -> pkg{library = Just lib})
+
 basicStanzaFields :: [StanzaField PackageDescription]
 basicStanzaFields =
  [ simpleField reqNameName
@@ -510,30 +523,10 @@ readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
 
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription inp = do (st:sts) <- splitStanzas inp
-                          pkg <- foldM (parseBasicStanza basicStanzaFields) emptyPackageDescription st
+                          pkg <- parseFields initialStanzaFields emptyPackageDescription st
                           exes <- mapM parseExecutableStanza sts
                           return pkg{executables=exes}
-  where -- The basic stanza, with library building info
-        parseBasicStanza ((StanzaField name _ set):fields) pkg (lineNo, f, val)
-          | name == f = set lineNo val pkg
-          | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
-          {-     
-     , listField   "exposed-modules"
-                           text               parseModuleNameQ
-                           (\p -> maybe [] exposedModules (library p))
-                           (\xs    pkg -> let lib = fromMaybe emptyLibrary (library pkg) in
-                                              pkg{library = Just lib{exposedModules=xs}})
--}
-        parseBasicStanza [] pkg (lineNo, f, val)
-          | "exposed-modules" == f = do
-               mods <- runP lineNo f (parseOptCommaList parseModuleNameQ) val
-               return pkg{library=Just lib{exposedModules=mods}}
-          | otherwise = do
-               bi <- parseBInfoField binfoFields (libBuildInfo lib) (lineNo, f, val)
-               return pkg{library=Just lib{libBuildInfo=bi}}
-          where
-            lib = fromMaybe emptyLibrary (library pkg)
-
+  where
         parseExecutableStanza st@((lineNo, "executable",eName):_) =
           case lookupField "main-is" st of
             Just (_,_) -> foldM (parseExecutableField executableStanzaFields) emptyExecutable st
@@ -546,7 +539,7 @@ parseDescription inp = do (st:sts) <- splitStanzas inp
           | name == f = set lineNo val exe
           | otherwise = parseExecutableField fields exe (lineNo, f, val)
         parseExecutableField [] exe (lineNo, f, val) = do
-          binfo <- parseBInfoField binfoFields (buildInfo exe) (lineNo, f, val)
+          binfo <- parseField binfoFields (buildInfo exe) (lineNo, f, val)
           return exe{buildInfo=binfo}
 
         -- ...
@@ -573,17 +566,20 @@ parseHookedBuildInfo inp = do
         | otherwise = syntaxError lineNo "expecting 'executable' at top of stanza"
     parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
     parseBI :: Stanza -> ParseResult BuildInfo
-    parseBI st = foldM (parseBInfoField binfoFields) emptyBuildInfo st
+    parseBI st = parseFields binfoFields emptyBuildInfo st
 
-parseBInfoField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
-parseBInfoField ((StanzaField name _ set):fields) binfo (lineNo, f, val)
-          | name == f = set lineNo val binfo
-          | otherwise = parseBInfoField fields binfo (lineNo, f, val)
+parseFields :: [StanzaField a] -> a -> [(LineNo, String, String)] -> ParseResult a
+parseFields descrs ini fields = foldM (parseField descrs) ini fields
+
+parseField :: [StanzaField a] -> a -> (LineNo, String, String) -> ParseResult a
+parseField ((StanzaField name _ set):fields) a (lineNo, f, val)
+          | name == f = set lineNo val a
+          | otherwise = parseField fields a (lineNo, f, val)
 -- ignore "x-" extension fields without a warning
-parseBInfoField [] binfo (lineNo, 'x':'-':f, _) = return binfo
-parseBInfoField [] binfo (lineNo, f, _) = do
+parseField [] a (lineNo, 'x':'-':f, _) = return a
+parseField [] a (lineNo, f, _) = do
           warning $ "Unknown field '" ++ f ++ "'"
-          return binfo
+          return a
 
 -- --------------------------------------------
 -- ** Pretty printing

@@ -53,7 +53,7 @@ module Distribution.ParseUtils (
 	parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
-	simpleField, listField, commaListField, optsField, 
+	liftField, simpleField, listField, commaListField, optsField,
 	parseReadS, parseQuoted,
   ) where
 
@@ -125,6 +125,13 @@ data StanzaField a
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
       }
+
+liftField :: (b -> a) -> (a -> b -> b) -> StanzaField a -> StanzaField b
+liftField get set (StanzaField name showF parseF)
+ = StanzaField name (\b -> showF (get b))
+        (\lineNo str b -> do
+            a <- parseF lineNo str (get b)
+            return (set a b))
 
 simpleField :: String -> (a -> Doc) -> (ReadP a a) -> (b -> a) -> (a -> b -> b) -> StanzaField b
 simpleField name showF readF get set = StanzaField name
