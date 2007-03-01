@@ -26,7 +26,7 @@ plain _ hs = hs
 
 classify :: [String] -> [Classified]
 classify []                = []
-classify ("\\begin{code":rest) = Blank : allProg rest
+classify ("\\begin{code}":rest) = Blank : allProg rest
    where allProg [] = []  -- Should give an error message,
                           -- but I have no good position information.
          allProg ("\\end{code}":xs) = Blank : classify xs
