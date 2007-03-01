@@ -55,7 +55,7 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
-         setupMessage, libModules)
+         withLib, withExe, setupMessage)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch))
 import Distribution.Simple.Utils
@@ -100,10 +100,10 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
   createDirectoryIfMissing True targetDir
   -- maybe move the library files into place
-  maybe (return ()) (\l -> prepareDir verbose targetDir pps (libModules pkg_descr) (libBuildInfo l))
-                    (library pkg_descr)
+  withLib pkg_descr () $ \ l ->
+    prepareDir verbose targetDir pps (exposedModules l) (libBuildInfo l)
   -- move the executables into place
-  flip mapM_ (executables pkg_descr) $ \ (Executable _ mainPath exeBi) -> do
+  withExe pkg_descr $ \ (Executable _ mainPath exeBi) -> do
     prepareDir verbose targetDir pps [] exeBi
     srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
     copyFileTo verbose targetDir srcMainFile
