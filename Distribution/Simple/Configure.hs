@@ -358,7 +358,7 @@ getInstalledPackages comp user verbose = do
    str <- systemCaptureStdout verbose cmd_line
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
        str1 = unlines (filter keep_line (lines str))
-       str2 = filter (`notElem` ",()") str1
+       str2 = filter (`notElem` ",(){}") str1
        --
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
      [ps] -> return ps
