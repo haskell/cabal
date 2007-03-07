@@ -241,6 +241,12 @@ ppCpp' inputArgs bi lbi =
 	  = do p_p <- use_optP_P lbi
                rawSystemVerbose verbose (compilerPath hc) 
                    (["-E", "-cpp"] ++
+                    -- This is a bit of an ugly hack. We're going to
+                    -- unlit the file ourselves later on if appropriate,
+                    -- so we need GHC not to unlit it now or it'll get
+                    -- double-unlitted. In the future we might switch to
+                    -- using cpphs --unlit instead.
+                    ["-x", "hs"] ++
                     (if p_p then ["-optP-P"] else []) ++
                     ["-o", outFile, inFile] ++ extraArgs)
 
