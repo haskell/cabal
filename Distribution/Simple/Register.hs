@@ -257,6 +257,9 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
         haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
         haddockFile = joinPaths haddockDir (haddockName pkg_descr)
+        inplace_lbi = lbi { datadir = pwd, datasubdir = "dist" }
+        haddockDirInplace = mkHaddockDir pkg_descr inplace_lbi NoCopyDest
+        haddockFileInplace = joinPaths haddockDirInplace (haddockName pkg_descr)
     in
     return emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
@@ -289,7 +292,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.ldOptions         = ldOptions bi,
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
-	IPI.haddockInterfaces = [haddockFile],
+	IPI.haddockInterfaces = [if inplace then haddockFileInplace
+                                        else haddockFile],
 	IPI.haddockHTMLs      = [haddockDir]
         }
 

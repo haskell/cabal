@@ -90,9 +90,9 @@ install :: PackageDescription -- ^information from the .cabal file
         -> IO ()
 install pkg_descr lbi (CopyFlags copydest verbose) = do
   let dataFilesExist = not (null (dataFiles pkg_descr))
-  docExists <- doesDirectoryExist haddockPref
+  docExists <- doesDirectoryExist $ haddockPref pkg_descr
   when (verbose >= 4)
-       (putStrLn ("directory " ++ haddockPref ++
+       (putStrLn ("directory " ++ haddockPref pkg_descr ++
                   " does exist: " ++ show docExists))
   when (dataFilesExist || docExists) $ do
     let dataPref = mkDataDir pkg_descr lbi copydest
@@ -104,7 +104,7 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
     when docExists $ do
       let targetDir = mkHaddockDir pkg_descr lbi copydest
       createDirectoryIfMissing True targetDir
-      copyDirectoryRecursiveVerbose verbose haddockPref targetDir
+      copyDirectoryRecursiveVerbose verbose (haddockPref pkg_descr) targetDir
       -- setPermissionsRecursive [Read] targetDir
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi copydest
