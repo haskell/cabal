@@ -130,8 +130,9 @@ distPref = "dist"
 srcPref :: FilePath
 srcPref = distPref `joinFileName` "src"
 
-haddockPref :: FilePath
-haddockPref = foldl1 joinPaths [distPref, "doc", "html"]
+haddockPref :: PackageDescription -> FilePath
+haddockPref pkg_descr
+    = foldl1 joinPaths [distPref, "doc", "html", pkgName (package pkg_descr)]
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
@@ -288,7 +289,8 @@ mkDataDirRel pkg_descr lbi copydest =
 
 mkHaddockDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkHaddockDir pkg_descr lbi copydest =
-  foldl1 joinPaths [mkDataDir pkg_descr lbi copydest, "doc", "html"]
+  foldl1 joinPaths [mkDataDir pkg_descr lbi copydest,
+                    "doc", "html", pkgName (package pkg_descr)]
 
 
 
