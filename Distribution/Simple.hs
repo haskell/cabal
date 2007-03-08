@@ -70,7 +70,7 @@ import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..),
-                            haddockProgram, rawSystemProgram, defaultProgramConfiguration,
+                            haddockProgram, ghcPkgProgram, rawSystemProgram, defaultProgramConfiguration,
                             pfesetupProgram, updateProgram,  rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
@@ -85,7 +85,8 @@ import Distribution.Simple.Register	( register, unregister,
                                         )
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
-                                     configure, writePersistBuildConfig, localBuildInfoFile)
+                                     configure, writePersistBuildConfig, localBuildInfoFile,
+                                     haddockVersion)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
                                             srcPref, haddockPref )
@@ -397,7 +398,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
 
     let tmpDir = joinPaths (buildDir lbi) "tmp"
     createDirectoryIfMissing True tmpDir
-    createDirectoryIfMissing True haddockPref
+    createDirectoryIfMissing True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi verbose pps
 
     setupMessage verbose "Running Haddock for" pkg_descr
@@ -407,6 +408,13 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     let showPkg     = showPackageId (package pkg_descr)
     let showDepPkgs = map showPackageId (packageDeps lbi)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
+    have_new_flags <- fmap (> Version [0,8] []) (haddockVersion lbi)
+    let ghcpkgFlags = if have_new_flags
+                      then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
+                      else []
+    let allowMissingHtmlFlags = if have_new_flags
+                                then ["--allow-missing-html"]
+                                else []
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -415,15 +423,18 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
         let outFiles = replaceLitExts inFiles
-        let haddockFile = joinFileName haddockPref (haddockName pkg_descr)
+        let haddockFile = joinFileName (haddockPref pkg_descr)
+                                       (haddockName pkg_descr)
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbose confHaddock
                 ([outputFlag,
-                  "--odir=" ++ haddockPref,
+                  "--odir=" ++ haddockPref pkg_descr,
                   "--title=" ++ showPkg ++ ": " ++ synopsis pkg_descr,
                   "--package=" ++ showPkg,
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
+                 ++ ghcpkgFlags
+                 ++ allowMissingHtmlFlags
                  ++ (if haddockUsePackages lbi
                      then map ("--use-package=" ++) showDepPkgs
                      else [])
@@ -435,7 +446,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
         removeFile prologName
     withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
-            exeTargetDir = haddockPref `joinFileName` exeName exe
+            exeTargetDir = haddockPref pkg_descr `joinFileName` exeName exe
         createDirectoryIfMissing True exeTargetDir
         inFiles' <- getModulePaths bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
@@ -446,6 +457,8 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe]
+                 ++ ghcpkgFlags
+                 ++ allowMissingHtmlFlags
                  ++ (if haddockUsePackages lbi
                      then map ("--use-package=" ++) showDepPkgs
                      else [])
