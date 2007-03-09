@@ -43,7 +43,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
-	build
+	build, makefile
 #ifdef DEBUG        
         ,hunitTests
 #endif
@@ -55,7 +55,8 @@ import Distribution.PackageDescription
 				  setupMessage, Executable(..), Library(..), 
                                   autogenModuleName )
 import Distribution.Package 	( PackageIdentifier(..), showPackageId )
-import Distribution.Setup	 (CopyDest(..), BuildFlags(..) )
+import Distribution.Setup	( CopyDest(..), BuildFlags(..), 
+                                  MakefileFlags(..) )
 import Distribution.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), mkBinDir, mkBinDirRel,
@@ -71,7 +72,7 @@ import Distribution.Compat.FilePath
 				( joinFileName, pathSeparator )
 
 import Data.Maybe		( maybeToList, fromJust )
-import Control.Monad 		( unless )
+import Control.Monad 		( unless, when )
 import System.Directory		( getModificationTime, doesFileExist)
 
 import qualified Distribution.Simple.GHC  as GHC
@@ -88,12 +89,37 @@ import HUnit (Test)
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
 
-build :: PackageDescription  -- ^mostly information from the .cabal file
+build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> LocalBuildInfo -- ^Configuration information
          -> BuildFlags -- ^Flags that the user passed to build
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi (BuildFlags verbose) suffixes = do
+  initialBuildSteps pkg_descr lbi verbose suffixes
+  setupMessage verbose "Building" pkg_descr
+  case compilerFlavor (compiler lbi) of
+    GHC  -> GHC.build  pkg_descr lbi verbose
+    JHC  -> JHC.build  pkg_descr lbi verbose
+    Hugs -> Hugs.build pkg_descr lbi verbose
+    _    -> die ("Building is not supported with this compiler.")
+
+makefile :: PackageDescription  -- ^mostly information from the .cabal file
+         -> LocalBuildInfo -- ^Configuration information
+         -> MakefileFlags -- ^Flags that the user passed to makefile
+         -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
+         -> IO ()
+makefile pkg_descr lbi flags suffixes = do
+  let verb = makefileVerbose flags
+  initialBuildSteps pkg_descr lbi verb suffixes
+  when (not (hasLibs pkg_descr)) $
+      die ("Makefile is only supported for libraries, currently.")
+  setupMessage verb "Generating Makefile" pkg_descr
+  case compilerFlavor (compiler lbi) of
+    GHC  -> GHC.makefile  pkg_descr lbi flags
+    _    -> die ("Generating a Makefile is not supported for this compiler.")
+
+
+initialBuildSteps pkg_descr lbi verbose suffixes = do
   -- check that there's something to build
   let buildInfos =
           map libBuildInfo (maybeToList (library pkg_descr)) ++
@@ -109,12 +135,6 @@ build pkg_descr lbi (BuildFlags verbose) suffixes = do
   buildPathsModule pkg_descr lbi
 
   preprocessSources pkg_descr lbi verbose suffixes
-  setupMessage verbose "Building" pkg_descr
-  case compilerFlavor (compiler lbi) of
-   GHC  -> GHC.build  pkg_descr lbi verbose
-   JHC  -> JHC.build  pkg_descr lbi verbose
-   Hugs -> Hugs.build pkg_descr lbi verbose
-   _    -> die ("Building is not supported with this compiler.")
 
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs
