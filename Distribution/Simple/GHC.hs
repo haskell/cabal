@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC
--- Copyright   :  Isaac Jones 2003-2006
+-- Copyright   :  Isaac Jones 2003-2007
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -44,9 +44,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-	build, installLib, installExe
+	build, makefile, installLib, installExe
  ) where
 
+import Distribution.Setup       ( MakefileFlags(..) )
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  withLib, setupMessage,
@@ -86,6 +87,7 @@ import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.Exit              (ExitCode(..))
+import System.IO
 
 #ifdef mingw32_HOST_OS
 import Distribution.Compat.FilePath ( splitFileName )
@@ -353,7 +355,10 @@ constructGHCCmdLine lbi bi odir verbose =
          else if verbose > 0 then []
          else                     ["-w", "-v0"])
 	    -- Unsupported extensions have already been checked by configure
-     ++ (if compilerVersion (compiler lbi) > Version [6,4] []
+     ++ ghcOptions lbi bi odir
+
+ghcOptions lbi bi odir
+     =  (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
      ++ ["-i"]
@@ -372,6 +377,40 @@ mkGHCiLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
+
+-- -----------------------------------------------------------------------------
+-- Building a Makefile
+
+makefile :: PackageDescription -> LocalBuildInfo -> MakefileFlags -> IO ()
+makefile pkg_descr lbi flags = do
+  let file = case makefileFile flags of
+                Just f ->  f
+                _otherwise -> "Makefile"
+  h <- openFile file WriteMode
+
+  let Just lib = library pkg_descr
+      bi = libBuildInfo lib
+  
+      ghc_vers = compilerVersion (compiler lbi)
+      packageId | versionBranch ghc_vers >= [6,4]
+                                = showPackageId (package pkg_descr)
+                 | otherwise = pkgName (package pkg_descr)
+  let decls = [
+        ("modules", unwords (exposedModules lib ++ otherModules bi)),
+        ("GHC", compilerPath (compiler lbi)),
+        ("WAYS", if withProfLib lbi then "p" else ""),
+        ("odir", buildDir lbi),
+        ("package", packageId),
+        ("GHC_OPTS", unwords (ghcOptions lbi bi (buildDir lbi))),
+        ("MAKEFILE", file)
+        ]
+  hPutStrLn h (unlines (map (\(a,b)-> a ++ " = " ++ munge b) decls))
+  hPutStrLn h makefileTemplate
+  hClose h
+ where
+  munge "" = ""
+  munge ('#':s) = '\\':'#':munge s
+  munge (c:s) = c : munge s
 
 -- -----------------------------------------------------------------------------
 -- Installing
@@ -457,3 +496,109 @@ foundProg :: Maybe Program -> Maybe Program
 foundProg Nothing = Nothing
 foundProg (Just Program{programLocation=EmptyLocation}) = Nothing
 foundProg x = x
+
+-- -----------------------------------------------------------------------------
+-- Makefile template
+
+makefileTemplate =
+ "GHC_OPTS += -package-name $(package) -i$(odir)\n"++
+ "\n"++
+ "# For adding options on the command-line\n"++
+ "GHC_OPTS += $(EXTRA_HC_OPTS)\n"++
+ "\n"++
+ "WAY_p_OPTS = -prof\n"++
+ "\n"++
+ "ifneq \"$(way)\" \"\"\n"++
+ "way_ := $(way)_\n"++
+ "_way := _$(way)\n"++
+ "GHC_OPTS += $(WAY_$(way)_OPTS)\n"++
+ "GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(way_)o\n"++
+ "endif\n"++
+ "\n"++
+ "OBJS = $(patsubst %,$(odir)/%.$(way_)o,$(subst .,/,$(modules)))\n"++
+ "\n"++
+ "all :: .depend $(OBJS)\n"++
+ "\n"++
+ ".depend : $(MAKEFILE)\n"++
+ "	$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)\n"++
+ "	for dir in $(sort $(foreach mod,$(OBJS),$(dir $(mod)))); do \\\n"++
+ "		if test ! -d $$dir; then mkdir $$dir; fi \\\n"++
+ "	done\n"++
+ "\n"++
+ "include .depend\n"++
+ "\n"++
+ "# suffix rules\n"++
+ "\n"++
+ "ifneq \"$(odir)\" \"\"\n"++
+ "odir_ = $(odir)/\n"++
+ "else\n"++
+ "odir_ =\n"++
+ "endif\n"++
+ "\n"++
+ "$(odir_)%.$(way_)o : %.hs\n"++
+ "	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
+ "\n"++
+ "$(odir_)%.$(way_)o : %.lhs	 \n"++
+ "	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
+ "\n"++
+ "$(odir_)%.$(way_)o : %.c\n"++
+ "	@$(RM) $@\n"++
+ "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\n"++
+ "$(odir_)%.$(way_)o : %.$(way_)s\n"++
+ "	@$(RM) $@\n"++
+ "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\n"++
+ "$(odir_)%.$(way_)o : %.S\n"++
+ "	@$(RM) $@\n"++
+ "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\n"++
+ "$(odir_)%.$(way_)s : %.c\n"++
+ "	@$(RM) $@\n"++
+ "	$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
+ "\n"++
+ "%.$(way_)hi : %.$(way_)o\n"++
+ "	@if [ ! -f $@ ] ; then \\\n"++
+ "	    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "	    exit 1; \\\n"++
+ "	else exit 0 ; \\\n"++
+ "	fi							\n"++
+ "\n"++
+ "%.$(way_)hi-boot : %.$(way_)o-boot\n"++
+ "	@if [ ! -f $@ ] ; then \\\n"++
+ "	    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "	    exit 1; \\\n"++
+ "	else exit 0 ; \\\n"++
+ "	fi							\n"++
+ "\n"++
+ "$(odir_)%.$(way_)hi : %.$(way_)hc\n"++
+ "	@if [ ! -f $@ ] ; then \\\n"++
+ "	    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "	    exit 1; \\\n"++
+ "	else exit 0 ; \\\n"++
+ "	fi\n"++
+ "\n"++
+ "show:\n"++
+ "	@echo '$(VALUE)=\"$($(VALUE))\"'\n"++
+ "\n"++
+ "\n"++
+ "ifneq \"$(strip $(WAYS))\" \"\"\n"++
+ "ifeq \"$(way)\" \"\"\n"++
+ "all ::\n"++
+ "# Don't rely on -e working, instead we check exit return codes from sub-makes.\n"++
+ "	@case '${MFLAGS}' in *-[ik]*) x_on_err=0;; *-r*[ik]*) x_on_err=0;; *) x_on_err=1;; esac; \\\n"++
+ "	for i in $(WAYS) ; do \\\n"++
+ "	  echo \"== $(MAKE) way=$$i -f $(MAKEFILE) $@;\"; \\\n"++
+ "	  $(MAKE) way=$$i -f $(MAKEFILE) --no-print-directory $(MFLAGS) $@ ; \\\n"++
+ "	  if [ $$? -eq 0 ] ; then true; else exit $$x_on_err; fi; \\\n"++
+ "	done\n"++
+ "	@echo \"== Finished recursively making \\`$@' for ways: $(WAYS) ...\"\n"++
+ "endif\n"++
+ "endif\n"++
+ "\n"++
+ "# We could consider adding this: the idea would be to have 'make' do\n"++
+ "# everything that 'setup build' does.\n"++
+ "# ifeq \"$(way)\" \"\"\n"++
+ "# all ::\n"++
+ "# 	./Setup build\n"++
+ "# endif\n"

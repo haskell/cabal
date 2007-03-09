@@ -49,6 +49,7 @@ module Distribution.Setup (--parseArgs,
 			   InstallFlags(..), emptyInstallFlags,
                            HaddockFlags(..), emptyHaddockFlags, emptyCleanFlags,
                            BuildFlags(..), CleanFlags(..), PFEFlags(..),
+                           MakefileFlags(..), emptyMakefileFlags,
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
                            MaybeUserFlag(..), userOverride,
@@ -58,6 +59,7 @@ module Distribution.Setup (--parseArgs,
 #endif
                            parseGlobalArgs, defaultCompilerFlavor,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
+                           parseMakefileArgs,
                            parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
                            parseUnregisterArgs, parseCopyArgs,
@@ -92,6 +94,7 @@ data Action = ConfigCmd ConfigFlags   -- config
             | ProgramaticaCmd         -- pfesetup
             | InstallCmd              -- install (install-prefix)
             | SDistCmd                -- sdist
+            | MakefileCmd             -- makefile
             | TestCmd                 -- test
             | RegisterCmd    	      -- register
             | UnregisterCmd           -- unregister
@@ -247,10 +250,17 @@ emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 1}
 -- extensibility we make them into a type.
 data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
     deriving Show
+
+data MakefileFlags = MakefileFlags {makefileVerbose :: Int,
+                                    makefileFile :: Maybe FilePath}
+    deriving Show
+emptyMakefileFlags = MakefileFlags {makefileVerbose = 1,
+                                    makefileFile = Nothing}
+
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
     deriving Show
 
--- |Most of these flags are for Configure, but InstPrefix is for Copy.
+-- | All the possible flags
 data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithCompiler FilePath | WithHcPkg FilePath
           | WithHappy FilePath | WithAlex FilePath
@@ -289,6 +299,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | HaddockHoogle
           -- For clean:
           | SaveConfigure -- ^don't delete .setup-config during clean
+          -- For makefile:
+          | MakefileFile FilePath
           -- For everyone:
           | HelpFlag
           | Verbose Int
@@ -376,7 +388,8 @@ data Cmd a = Cmd {
         }
 
 commandList :: ProgramConfiguration -> [Cmd a]
-commandList progConf = [(configureCmd progConf), buildCmd, cleanCmd, installCmd,
+commandList progConf = [(configureCmd progConf), buildCmd, makefileCmd,
+                        cleanCmd, installCmd,
                         copyCmd, sdistCmd, testCmd, haddockCmd, programaticaCmd,
                         registerCmd, unregisterCmd]
 
@@ -592,6 +605,24 @@ buildCmd = Cmd {
 
 parseBuildArgs :: [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
 parseBuildArgs = parseNoArgs buildCmd BuildFlags
+
+makefileCmd :: Cmd a
+makefileCmd = Cmd {
+        cmdName        = "makefile",
+        cmdHelp        = "Perform any necessary makefileing.",
+        cmdDescription = "",  -- This can be a multi-line description
+        cmdOptions     = [cmd_help, cmd_verbose,
+           Option "f" ["file"] (reqPathArg MakefileFile)
+               "Filename to use (default: Makefile)."],
+        cmdAction      = MakefileCmd
+        }
+
+parseMakefileArgs :: MakefileFlags -> [String] -> [OptDescr a] -> IO (MakefileFlags, [a], [String])
+parseMakefileArgs = parseArgs makefileCmd updateCfg
+  where updateCfg mflags fl =
+           case fl of
+                Verbose n      -> mflags{makefileVerbose=n}
+                MakefileFile f -> mflags{makefileFile=Just f}
 
 haddockCmd :: Cmd a
 haddockCmd = Cmd {

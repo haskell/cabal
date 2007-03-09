@@ -167,6 +167,8 @@ defaultMainHelper args get_pkg_descr
 
             BuildCmd -> basicCommand "Build" "make" (parseBuildArgs args [])
 
+            MakefileCmd -> exitWith ExitSuccess -- presumably nothing to do
+
             CleanCmd -> basicCommand "Clean" "make clean"
                                      (parseCleanArgs emptyCleanFlags args [])
 

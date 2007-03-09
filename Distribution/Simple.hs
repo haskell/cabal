@@ -77,7 +77,7 @@ import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 preprocessSources, PPSuffixHandler)
 import Distribution.Setup
 
-import Distribution.Simple.Build	( build )
+import Distribution.Simple.Build	( build, makefile )
 import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister,
                                           writeInstalledConfig, installedPkgConfigFile,
@@ -153,6 +153,14 @@ data UserHooks = UserHooks
      buildHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> BuildFlags -> IO (),
       -- |Hook to run after build command.  Second arg indicates verbosity level.
      postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+
+      -- |Hook to run before makefile command.  Second arg indicates verbosity level.
+     preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
+
+     -- |Over-ride this hook to gbet different behavior during makefile.
+     makefileHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> MakefileFlags -> IO (),
+      -- |Hook to run after makefile command.  Second arg indicates verbosity level.
+     postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
@@ -311,6 +319,11 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
             BuildCmd -> 
                 command parseBuildArgs buildVerbose
                         preBuild buildHook postBuild
+                        getPersistBuildConfig
+        
+            MakefileCmd ->
+                command (parseMakefileArgs emptyMakefileFlags) makefileVerbose
+                        preMakefile makefileHook postMakefile
                         getPersistBuildConfig
         
             HaddockCmd -> 
@@ -587,6 +600,9 @@ emptyUserHooks
        preBuild  = rn,
        buildHook = ru,
        postBuild = res,
+       preMakefile = rn,
+       makefileHook = ru,
+       postMakefile = res,
        preClean  = rn,
        cleanHook = ru,
        postClean = res,
@@ -623,6 +639,7 @@ simpleUserHooks =
     emptyUserHooks {
        confHook  = configure,
        buildHook = defaultBuildHook,
+       makefileHook = defaultMakefileHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
@@ -655,6 +672,7 @@ autoconfUserHooks
       {
        postConf  = defaultPostConf,
        preBuild  = readHook buildVerbose,
+       preMakefile = readHook makefileVerbose,
        preClean  = readHook cleanVerbose,
        preCopy   = readHook copyVerbose,
        preInst   = readHook installVerbose,
@@ -704,6 +722,13 @@ defaultBuildHook :: PackageDescription -> LocalBuildInfo
 	-> Maybe UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
+  when (hasLibs pkg_descr) $
+      writeInstalledConfig pkg_descr localbuildinfo False
+
+defaultMakefileHook :: PackageDescription -> LocalBuildInfo
+	-> Maybe UserHooks -> MakefileFlags -> IO ()
+defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
+  makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
       writeInstalledConfig pkg_descr localbuildinfo False
 
