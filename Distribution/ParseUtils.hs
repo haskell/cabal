@@ -196,11 +196,13 @@ singleStanza = mkStanza . merge . filter validLine . zip [1..] . map trimTrailin
                             _         -> True
 
 merge :: [(a, [Char])] -> [(a, [Char])]
-merge ((n,x):(_,c:s):ys) 
-  | c == ' ' || c == '\t' = case dropWhile isSpace s of
-                               ('.':s') -> merge ((n,x++"\n"++s'):ys)
-                               s'       -> merge ((n,x++"\n"++s'):ys)
-merge ((n,x):ys) = (n,x) : merge ys
+merge ((n,x):ys) = (n, x++concat (map (get_continuation . snd) rest)):merge ys'
+  where (rest, ys') = span (is_continuation . snd) ys
+        is_continuation (c:_) = isSpace c
+        is_continuation []    = False
+        get_continuation s = '\n':strip_dot (dropWhile isSpace s)
+        strip_dot "." = ""
+        strip_dot s   = s
 merge []         = []
 
 mkStanza :: [(Int,String)] -> ParseResult Stanza
