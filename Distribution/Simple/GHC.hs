@@ -305,7 +305,10 @@ build pkg_descr lbi verbose = do
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
                          ++ if profExe
-                               then "-prof":ghcProfOptions exeBi
+                               then ["-prof",
+                                     "-hisuf", "p_hi",
+                                     "-osuf", "p_o"
+                                    ] ++ ghcProfOptions exeBi
                                else []
 
 		 -- For building exe's for profiling that use TH we actually
