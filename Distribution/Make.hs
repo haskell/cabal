@@ -7,48 +7,45 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Explanation: Uses the parsed command-line from Distribution.Setup
--- in order to build haskell tools using a backend build system based
--- on Make.
---
--- Basic assumptions
---
--- Obviously we assume that there is a configure script, and that after the
--- ConfigCmd has been run, there is a Makefile.
+-- Uses the parsed command-line from Distribution.Setup in order to build
+-- Haskell tools using a backend build system based on make. Obviously we
+-- assume that there is a configure script, and that after the ConfigCmd has
+-- been run, there is a Makefile. Further assumptions:
 -- 
--- ConfigCmd:     We assume the configure script accepts:
--- 		--with-hc
--- 		--with-hc-pkg
--- 		--prefix
--- 		--bindir
--- 		--libdir
--- 		--libexecdir
--- 		--datadir
+-- [ConfigCmd] We assume the configure script accepts
+-- 		@--with-hc@,
+-- 		@--with-hc-pkg@,
+-- 		@--prefix@,
+-- 		@--bindir@,
+-- 		@--libdir@,
+-- 		@--libexecdir@,
+-- 		@--datadir@.
 -- 
--- BuildCmd:      We assume the default Makefile target will build everything
+-- [BuildCmd] We assume that the default Makefile target will build everything.
 -- 
--- InstallCmd:    We assume there is an install target
---                Note that we assume that this does *not* register the package!
+-- [InstallCmd] We assume there is an @install@ target. Note that we assume that
+-- this does *not* register the package!
 -- 
--- CopyCmd:       We assume there is a copy target, and a variable $(destdir)
--- 		The 'copy' target should probably just invoke make install recursively, eg.
--- 			copy :
+-- [CopyCmd]	We assume there is a @copy@ target, and a variable @$(destdir)@.
+-- 		The @copy@ target should probably just invoke @make install@
+--		recursively (e.g. @$(MAKE) install prefix=$(destdir)\/$(prefix)
+--		bindir=$(destdir)\/$(bindir)@. The reason we can\'t invoke @make
+--		install@ directly here is that we don\'t know the value of @$(prefix)@.
+-- 
+-- [SDistCmd] We assume there is a @dist@ target.
+-- 
+-- [RegisterCmd] We assume there is a @register@ target and a variable @$(user)@.
+-- 
+-- [UnregisterCmd] We assume there is an @unregister@ target.
+-- 
+-- [HaddockCmd] We assume there is a @docs@ or @doc@ target.
+-- 
+-- [ProgramaticaCmd] We assume there is a @programatica@ target.
+
+
+--			copy :
 -- 				$(MAKE) install prefix=$(destdir)/$(prefix) \
 -- 						bindir=$(destdir)/$(bindir) \
--- 						...
--- 		The reason we can't invoke make install directly here is that we don't
--- 		know the value of $(prefix).
--- 
--- SDistCmd:      We assume there is an dist target
--- 
--- RegisterCmd:   We assume there is a register target and a variable $(user)
--- 
--- UnregisterCmd: We assume there is an unregister target
--- 
--- HaddockCmd:    We assume there is a \"docs\" or \"doc\" target
--- 
--- ProgramaticaCmd: We assume there is a \"programatica\" target
-
 
 {- All rights reserved.
 
