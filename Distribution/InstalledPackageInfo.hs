@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.InstalledPackageInfo (
 	InstalledPackageInfo(..),
-	ParseResult(..),
+	ParseResult(..), PError(..), PWarning,
 	emptyInstalledPackageInfo,
 	parseInstalledPackageInfo,
 	showInstalledPackageInfo,
@@ -55,8 +55,8 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils (
-	FieldDescr(..), readFields, ParseResult(..), LineNo,
-	simpleField, listField, parseLicenseQ,
+	FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
+	LineNo,	simpleField, listField, parseLicenseQ,
 	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
