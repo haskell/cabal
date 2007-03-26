@@ -69,6 +69,7 @@ import Control.Monad(when)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
 import System.Cmd (system)
+import System.Exit (ExitCode(..))
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
@@ -148,9 +149,12 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
   let tarArgs = "-C"++tmpDir ++ " -czf " ++ tarBallFilePath 
-  system (tarProgram ++ ' ':tarArgs ++ ' ':(nameVersion pkg_descr))
+  ret <- system (tarProgram ++ ' ':tarArgs ++ ' ':(nameVersion pkg_descr))
   removeDirectoryRecursive tmpDir
-  putStrLn $ "Source tarball created: " ++ tarBallFilePath
+  case ret of
+    ExitSuccess -> putStrLn $ "Source tarball created: " ++ tarBallFilePath
+    ExitFailure n -> die ("source tarball creation failed!  Tar exited " ++
+                          "with status " ++ show n)
 
   where
     updatePackage f pd = pd { package = f (package pd) }
