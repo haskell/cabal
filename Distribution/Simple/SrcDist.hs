@@ -58,8 +58,8 @@ import Distribution.PackageDescription
          withLib, withExe, setupMessage)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch))
-import Distribution.Simple.Utils
-        (smartCopySources, die, findPackageDesc, findFile, copyFileVerbose)
+import Distribution.Simple.Utils (smartCopySources, die, findPackageDesc,
+                                  findFile, copyFileVerbose, rawSystemPath)
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -68,7 +68,6 @@ import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(progra
 import Control.Monad(when)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
-import System.Cmd (system)
 import System.Exit (ExitCode(..))
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
@@ -148,8 +147,8 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
    -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
-  let tarArgs = "-C"++tmpDir ++ " -czf " ++ tarBallFilePath 
-  ret <- system (tarProgram ++ ' ':tarArgs ++ ' ':(nameVersion pkg_descr))
+  ret <- rawSystemPath verbose tarProgram
+           ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
   removeDirectoryRecursive tmpDir
   case ret of
     ExitSuccess -> putStrLn $ "Source tarball created: " ++ tarBallFilePath
