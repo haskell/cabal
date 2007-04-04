@@ -362,13 +362,13 @@ withTempFile tmp_dir extn action
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 foreign import ccall unsafe "_getpid" getProcessID :: IO Int
-		 -- XXX relies on Int == Int32 on Windows
-#else
-#if !(__GLASGOW_HASKELL__ || __HUGS__)
-foreign import ccall unsafe "getpid" c_getpid :: IO CPid
-#endif
+		 -- relies on Int == Int32 on Windows
+#elif __GLASGOW_HASKELL__ || __HUGS__
 getProcessID :: IO Int
-getProcessID = c_getpid >>= return . fromIntegral
+getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
+#else
+-- error ToDo: getProcessID
+foreign import ccall unsafe "getpid" getProcessID :: IO Int
 #endif
 
 -- ------------------------------------------------------------
