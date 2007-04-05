@@ -1,2 +1,0 @@
-module A where
-newtype TA = MkTA GHC.Base.Int

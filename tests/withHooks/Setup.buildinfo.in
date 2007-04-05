@@ -1,5 +1,0 @@
-include-dirs: /tmp, /etc
-extensions: CPP
-
-executable: withHooks
-extensions: TemplateHaskell
