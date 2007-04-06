@@ -1,7 +1,7 @@
 #!/usr/bin/runhaskell
 
 > module Main (main) where
-> 
+>
 > import Data.List
 > import Distribution.Simple
 > import Distribution.PackageDescription
@@ -9,36 +9,43 @@
 > import Distribution.Setup
 > import Distribution.Simple.LocalBuildInfo
 > import System.Environment
-> 
+>
 > main :: IO ()
 > main = do args <- getArgs
 >           let (ghcArgs, args') = extractGhcArgs args
->           let hooks = defaultUserHooks {
+>               (_, args'') = extractConfigureArgs args'
+>               hooks = defaultUserHooks {
 >                   buildHook = add_ghc_options ghcArgs
 >                             $ buildHook defaultUserHooks }
->           withArgs args' $ defaultMainWithHooks hooks
-> 
+>           withArgs args'' $ defaultMainWithHooks hooks
+>
 > extractGhcArgs :: [String] -> ([String], [String])
-> extractGhcArgs args
+> extractGhcArgs = extractPrefixArgs "--ghc-option="
+>
+> extractConfigureArgs :: [String] -> ([String], [String])
+> extractConfigureArgs = extractPrefixArgs "--configure-option="
+>
+> extractPrefixArgs :: String -> [String] -> ([String], [String])
+> extractPrefixArgs prefix args
 >  = let f [] = ([], [])
 >        f (x:xs) = case f xs of
->                       (ghcArgs, otherArgs) ->
->                           case removePrefix "--ghc-option=" x of
->                               Just ghcArg ->
->                                   (ghcArg:ghcArgs, otherArgs)
+>                       (wantedArgs, otherArgs) ->
+>                           case removePrefix prefix x of
+>                               Just wantedArg ->
+>                                   (wantedArg:wantedArgs, otherArgs)
 >                               Nothing ->
->                                   (ghcArgs, x:otherArgs)
+>                                   (wantedArgs, x:otherArgs)
 >    in f args
-> 
+>
 > removePrefix :: String -> String -> Maybe String
 > removePrefix "" ys = Just ys
 > removePrefix (x:xs) (y:ys)
 >  | x == y = removePrefix xs ys
 >  | otherwise = Nothing
-> 
+>
 > type Hook a = PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> a
 >            -> IO ()
-> 
+>
 > add_ghc_options :: [String] -> Hook a -> Hook a
 > add_ghc_options args f pd lbi muhs x
 >  = do let lib' = case library pd of
