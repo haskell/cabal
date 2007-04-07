@@ -55,16 +55,19 @@ unlit file lhs = (unlines
                  . adjacent file (0::Int) Blank
                  . classify) (inlines lhs)
 
+-- Third argument is Comment, Blank or Program _
 adjacent :: FilePath -> Int -> Classified -> [Classified] -> [Classified]
-adjacent file 0 _             (x              :xs) = x : adjacent file 1 x xs -- force evaluation of line number
+adjacent file n y             xs
+ | file `seq` n `seq` y `seq` xs `seq` False = undefined
+-- Include (# 123 "foo") lines are always OK and are treated as blank
+-- The change our idea of filename and line number
+adjacent _    _ _             (x@(Include i f):xs) = x: adjacent f    i     Blank xs
+-- Other preprocessor lines (# ...) are always OK and are treated as blank
+adjacent file n _             (x@(Pre _)      :xs) = x: adjacent file (n+1) Blank xs
+-- Program and comment lines can't be adjacent
 adjacent file n   (Program _) (  Comment      :_ ) = error (message file n "program" "comment")
-adjacent _    _ y@(Program _) (x@(Include i f):xs) = x: adjacent f    i     y xs
-adjacent file n y@(Program _) (x@(Pre _)      :xs) = x: adjacent file (n+1) y xs
 adjacent file n   Comment     (  (Program _)  :_ ) = error (message file n "comment" "program")
-adjacent _    _ y@Comment     (x@(Include i f):xs) = x: adjacent f    i     y xs
-adjacent file n y@Comment     (x@(Pre _)      :xs) = x: adjacent file (n+1) y xs
-adjacent _    _ y@Blank       (x@(Include i f):xs) = x: adjacent f    i     y xs
-adjacent file n y@Blank       (x@(Pre _)      :xs) = x: adjacent file (n+1) y xs
+-- Anything else is fine, and x is an allowable value for the third argument
 adjacent file n _             (x              :xs) = x: adjacent file (n+1) x xs
 adjacent _    _ _             []                   = []
 
