@@ -16,6 +16,7 @@ module Network.Hackage.CabalInstall.Setup
     , parseGlobalArgs
     ) where
 
+import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
@@ -26,7 +27,7 @@ import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
 import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, defaultPkgListDir)
-import Network.Hackage.CabalInstall.Types (TempFlags (..), Flag (..), Action (..)
+import Network.Hackage.CabalInstall.Types (TempFlags (..), Action (..)
                                       , UnresolvedDependency (..))
 
 emptyTempFlags :: TempFlags
@@ -43,41 +44,42 @@ emptyTempFlags = TempFlags {
         tempTarPath     = Nothing,
         tempVerbose     = 3,
 --        tempUpgradeDeps = False,
-        tempUserIns     = False
+        tempUserIns     = False,
+        tempHelp        = False
    }
 
-cmd_verbose :: OptDescr Flag
+cmd_verbose :: OptDescr (TempFlags -> TempFlags)
 cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n")
               "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   where
-    verboseFlag mb_s = Verbose (maybe 3 read mb_s)
+    verboseFlag mb_s t = t { tempVerbose = maybe 3 read mb_s }
 
-globalOptions :: [OptDescr Flag]
+globalOptions :: [OptDescr (TempFlags -> TempFlags)]
 globalOptions =
-    [ Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
+    [ Option "h?" ["help"] (NoArg (\t -> t { tempHelp = True })) "Show this help text"
     , cmd_verbose 
-    , Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC"
-    , Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC"
-    , Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs"
-    , Option "s" ["with-server"] (ReqArg WithServer "URL")
+    , Option "g" ["ghc"] (NoArg (\t -> t { tempHcFlavor = Just GHC }))  "compile with GHC"
+    , Option "n" ["nhc"] (NoArg (\t -> t { tempHcFlavor = Just NHC }))  "compile with NHC"
+    , Option "" ["hugs"] (NoArg (\t -> t { tempHcFlavor = Just Hugs })) "compile with hugs"
+    , Option "s" ["with-server"] (ReqArg (\url t -> t { tempServers = url:tempServers t }) "URL")
                  "give the URL to a Hackage server"
-    , Option "c" ["config-dir"] (ReqArg WithConfDir "PATH")
+    , Option "c" ["config-dir"] (ReqArg (\path t -> t { tempConfDir = Just path }) "PATH")
                  ("give the path to the config dir. Default is " ++ defaultConfDir)
-    , Option "" ["cache-dir"] (ReqArg WithCacheDir "PATH")
+    , Option "" ["cache-dir"] (ReqArg (\path t -> t { tempCacheDir = Just path }) "PATH")
                  ("give the path to the package cache dir. Default is " ++ defaultCacheDir)
-    , Option "" ["pkglist-dir"] (ReqArg WithPkgListDir "PATH")
+    , Option "" ["pkglist-dir"] (ReqArg (\path t -> t { tempPkgListDir = Just path }) "PATH")
                  ("give the path to the package list dir. Default is " ++ defaultPkgListDir)
-    , Option "" ["tar-path"] (ReqArg WithTarPath "PATH")
+    , Option "" ["tar-path"] (ReqArg (\path t -> t { tempTarPath = Just path }) "PATH")
                  "give the path to tar"
-    , Option "w" ["with-compiler"] (ReqArg WithCompiler "PATH")
+    , Option "w" ["with-compiler"] (ReqArg (\path t -> t { tempHcPath = Just path }) "PATH")
                  "give the path to a particular compiler"
-    , Option "" ["with-hc-pkg"] (ReqArg WithHcPkg "PATH")
+    , Option "" ["with-hc-pkg"] (ReqArg (\path t -> t { tempHcPkg = Just path }) "PATH")
                  "give the path to the package tool"
---    , Option "" ["upgrade-deps"] (NoArg UpgradeDeps)
+--    , Option "" ["upgrade-deps"] (NoArg (\t -> t { tempUpgradeDeps = True }))
 --                 "Upgrade all dependencies which depend on the newly installed packages"
-    , Option "" ["user-install"] (NoArg UserInstallFlag)
+    , Option "" ["user-install"] (NoArg (\t -> t { tempUserIns     = True }))
                  "upon registration, register this package in the user's local package database"
-    , Option "" ["global-install"] (NoArg GlobalInstallFlag)
+    , Option "" ["global-install"] (NoArg (\t -> t { tempUserIns     = False }))
                  "upon registration, register this package in the system-wide package database"
     ]
 
@@ -85,10 +87,9 @@ data Cmd = Cmd {
         cmdName         :: String,
         cmdHelp         :: String, -- Short description
         cmdDescription  :: String, -- Long description
-        cmdOptions      :: [OptDescr Flag ],
+        cmdOptions      :: [OptDescr (TempFlags -> TempFlags)],
         cmdAction       :: Action
         }
-
 
 commandList :: [Cmd]
 commandList = [fetchCmd, installCmd, buildDepCmd, updateCmd, cleanCmd, listCmd, infoCmd]
@@ -119,45 +120,25 @@ printActionHelp action =
        putStrLn (usageInfo syntax_line (cmdOptions cmd))
        putStrLn (cmdDescription cmd)
 
-hasHelpFlag :: [Flag] -> Bool
-hasHelpFlag flags = HelpFlag `elem` flags
-
 parseGlobalArgs :: [String] -> IO (Action,TempFlags,[String])
-parseGlobalArgs args =
-  case getOpt' RequireOrder globalOptions args of
-    (flags, _, _, []) | hasHelpFlag flags -> do
-      printGlobalHelp
-      exitWith ExitSuccess
-    (flags, cname:cargs, _, []) ->
-      case lookupCommand cname of
-        Just cmd -> return (cmdAction cmd,mkTempFlags flags emptyTempFlags, cargs)
-        Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"
-                       exitWith (ExitFailure 1)
-    (_, [], _, [])  -> do putStrLn $ "No command given (try --help)"
-                          exitWith (ExitFailure 1)
-    (_, _, _, errs) -> do putStrLn "Errors:"
-                          mapM_ putStrLn errs
-                          exitWith (ExitFailure 1)
-
-mkTempFlags :: [Flag] -> TempFlags -> TempFlags
-mkTempFlags = updateCfg
-  where updateCfg (fl:flags) t = updateCfg flags $
-          case fl of
-            GhcFlag           -> t { tempHcFlavor    = Just GHC }
-            NhcFlag           -> t { tempHcFlavor    = Just NHC }
-            HugsFlag          -> t { tempHcFlavor    = Just Hugs }
-            WithCompiler path -> t { tempHcPath      = Just path }
-            WithConfDir path  -> t { tempConfDir     = Just path }
-            WithCacheDir path -> t { tempCacheDir    = Just path }
-            WithPkgListDir path  -> t { tempPkgListDir  = Just path }
-            WithHcPkg path    -> t { tempHcPkg       = Just path }
-            WithServer url    -> t { tempServers     = url:tempServers t }
-            Verbose n         -> t { tempVerbose     = n }
---            UpgradeDeps       -> t { tempUpgradeDeps = True }
-            UserInstallFlag   -> t { tempUserIns     = True }
-            GlobalInstallFlag -> t { tempUserIns     = False }
-            _                 -> error $ "Unexpected flag!"
-        updateCfg [] t = t
+parseGlobalArgs opts =
+  do let (fs, args, unrec, errs) = getOpt' RequireOrder globalOptions opts
+         flags = foldl (flip ($)) emptyTempFlags fs
+     when (tempHelp flags) $ do printGlobalHelp
+                                exitWith ExitSuccess
+     when (not (null errs)) $ do putStrLn "Errors:"
+                                 mapM_ putStrLn errs
+                                 exitWith (ExitFailure 1)
+     when (not (null unrec)) $ do putStrLn "Unrecognized options:"
+                                  mapM_ putStrLn unrec
+                                  exitWith (ExitFailure 1)
+     case args of
+       []          -> do putStrLn $ "No command given (try --help)"
+                         exitWith (ExitFailure 1)
+       cname:cargs -> case lookupCommand cname of
+                        Just cmd -> return (cmdAction cmd, flags, cargs)
+                        Nothing  -> do putStrLn $ "Unrecognised command: " ++ cname ++ " (try --help)"
+                                       exitWith (ExitFailure 1)
 
 mkCmd :: String -> String -> String -> Action -> Cmd
 mkCmd name help desc action =
