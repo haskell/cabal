@@ -50,7 +50,8 @@ data TempFlags = TempFlags {
         tempRunHc       :: Maybe FilePath,
         tempVerbose     :: Int,            -- ^verbosity level
 --        tempUpgradeDeps :: Bool,
-        tempUserIns     :: Bool            -- ^--user-install flag
+        tempUserIns     :: Bool,           -- ^--user-install flag
+        tempHelp        :: Bool
    }
 
 data ConfigFlags = ConfigFlags {
@@ -67,19 +68,6 @@ data ConfigFlags = ConfigFlags {
 --        configUpgradeDeps :: Bool,
         configUserIns     :: Bool            -- ^--user-install flag
    }
-
-data Flag
-    = GhcFlag | NhcFlag | HugsFlag
-    | WithCompiler FilePath | WithHcPkg FilePath
-    | WithConfDir FilePath | WithCacheDir FilePath | WithPkgListDir FilePath 
-    | WithTarPath FilePath
-    | WithServer String
-    | UserFlag | GlobalFlag
-    | UserInstallFlag | GlobalInstallFlag
---    | UpgradeDeps
-    | HelpFlag
-    | Verbose Int
-  deriving (Show, Eq)
 
 data OutputGen
     = OutputGen
