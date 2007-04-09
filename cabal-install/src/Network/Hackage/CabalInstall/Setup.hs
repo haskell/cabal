@@ -159,7 +159,7 @@ listCmd :: Cmd
 listCmd = mkCmd "list" "List available packages on the server." "" ListCmd
 
 buildDepCmd :: Cmd
-buildDepCmd = mkCmd "build-dep" "Installs the dependencies for a list of packages." "" BuildDepCmd
+buildDepCmd = mkCmd "build-dep" "Installs the dependencies for a list of packages or for a .cabal file." "" BuildDepCmd
 
 updateCmd :: Cmd
 updateCmd = mkCmd "update" "Updates list of known packages" "" UpdateCmd
