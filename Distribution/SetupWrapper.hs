@@ -30,6 +30,7 @@ import Distribution.PackageDescription
 import System.Console.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
+import Distribution.Compat.FilePath (pathSeparator)
 import Control.Monad		( when, unless )
 import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirectory )
 
@@ -144,10 +145,3 @@ configCabalFlag flags range comp = do
 	-- user packages are *allowed* here, no portability problem
   cabal_pkgid <- configDependency ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
-
-pathSeparator :: Char
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-pathSeparator = '\\'
-#else
-pathSeparator = '/'
-#endif
