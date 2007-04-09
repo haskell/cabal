@@ -16,6 +16,7 @@ module Network.Hackage.CabalInstall.Dependency
       resolveDependencies
     , resolveDependenciesAux 
     -- * Utilities
+    , depToUnresolvedDep
     , getPackages            -- :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
     , getBuildDeps           -- :: [PackageIdentifier] -> [ResolvedPackage] -> [ResolvedPackage]
     , filterFetchables       -- :: [ResolvedPackage] -> [(PackageIdentifier,String)]
