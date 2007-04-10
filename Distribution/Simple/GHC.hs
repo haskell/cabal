@@ -520,10 +520,10 @@ makefileTemplate =
  "all :: .depend $(OBJS)\n"++
  "\n"++
  ".depend : $(MAKEFILE)\n"++
- "	$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)\n"++
- "	for dir in $(sort $(foreach mod,$(OBJS),$(dir $(mod)))); do \\\n"++
- "		if test ! -d $$dir; then mkdir $$dir; fi \\\n"++
- "	done\n"++
+ "\t$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)\n"++
+ "\tfor dir in $(sort $(foreach mod,$(OBJS),$(dir $(mod)))); do \\\n"++
+ "\t\tif test ! -d $$dir; then mkdir $$dir; fi \\\n"++
+ "\tdone\n"++
  "\n"++
  "include .depend\n"++
  "\n"++
@@ -536,63 +536,63 @@ makefileTemplate =
  "endif\n"++
  "\n"++
  "$(odir_)%.$(way_)o : %.hs\n"++
- "	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
+ "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.lhs	 \n"++
- "	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
+ "$(odir_)%.$(way_)o : %.lhs\t \n"++
+ "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
  "\n"++
  "$(odir_)%.$(way_)o : %.c\n"++
- "	@$(RM) $@\n"++
- "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\t@$(RM) $@\n"++
+ "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
  "$(odir_)%.$(way_)o : %.$(way_)s\n"++
- "	@$(RM) $@\n"++
- "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\t@$(RM) $@\n"++
+ "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
  "$(odir_)%.$(way_)o : %.S\n"++
- "	@$(RM) $@\n"++
- "	$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
+ "\t@$(RM) $@\n"++
+ "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
  "$(odir_)%.$(way_)s : %.c\n"++
- "	@$(RM) $@\n"++
- "	$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
+ "\t@$(RM) $@\n"++
+ "\t$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
  "\n"++
  "%.$(way_)hi : %.$(way_)o\n"++
- "	@if [ ! -f $@ ] ; then \\\n"++
- "	    echo Panic! $< exists, but $@ does not.; \\\n"++
- "	    exit 1; \\\n"++
- "	else exit 0 ; \\\n"++
- "	fi							\n"++
+ "\t@if [ ! -f $@ ] ; then \\\n"++
+ "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "\t    exit 1; \\\n"++
+ "\telse exit 0 ; \\\n"++
+ "\tfi\n"++
  "\n"++
  "%.$(way_)hi-boot : %.$(way_)o-boot\n"++
- "	@if [ ! -f $@ ] ; then \\\n"++
- "	    echo Panic! $< exists, but $@ does not.; \\\n"++
- "	    exit 1; \\\n"++
- "	else exit 0 ; \\\n"++
- "	fi							\n"++
+ "\t@if [ ! -f $@ ] ; then \\\n"++
+ "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "\t    exit 1; \\\n"++
+ "\telse exit 0 ; \\\n"++
+ "\tfi\n"++
  "\n"++
  "$(odir_)%.$(way_)hi : %.$(way_)hc\n"++
- "	@if [ ! -f $@ ] ; then \\\n"++
- "	    echo Panic! $< exists, but $@ does not.; \\\n"++
- "	    exit 1; \\\n"++
- "	else exit 0 ; \\\n"++
- "	fi\n"++
+ "\t@if [ ! -f $@ ] ; then \\\n"++
+ "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
+ "\t    exit 1; \\\n"++
+ "\telse exit 0 ; \\\n"++
+ "\tfi\n"++
  "\n"++
  "show:\n"++
- "	@echo '$(VALUE)=\"$($(VALUE))\"'\n"++
+ "\t@echo '$(VALUE)=\"$($(VALUE))\"'\n"++
  "\n"++
  "\n"++
  "ifneq \"$(strip $(WAYS))\" \"\"\n"++
  "ifeq \"$(way)\" \"\"\n"++
  "all ::\n"++
  "# Don't rely on -e working, instead we check exit return codes from sub-makes.\n"++
- "	@case '${MFLAGS}' in *-[ik]*) x_on_err=0;; *-r*[ik]*) x_on_err=0;; *) x_on_err=1;; esac; \\\n"++
- "	for i in $(WAYS) ; do \\\n"++
- "	  echo \"== $(MAKE) way=$$i -f $(MAKEFILE) $@;\"; \\\n"++
- "	  $(MAKE) way=$$i -f $(MAKEFILE) --no-print-directory $(MFLAGS) $@ ; \\\n"++
- "	  if [ $$? -eq 0 ] ; then true; else exit $$x_on_err; fi; \\\n"++
- "	done\n"++
- "	@echo \"== Finished recursively making \\`$@' for ways: $(WAYS) ...\"\n"++
+ "\t@case '${MFLAGS}' in *-[ik]*) x_on_err=0;; *-r*[ik]*) x_on_err=0;; *) x_on_err=1;; esac; \\\n"++
+ "\tfor i in $(WAYS) ; do \\\n"++
+ "\t  echo \"== $(MAKE) way=$$i -f $(MAKEFILE) $@;\"; \\\n"++
+ "\t  $(MAKE) way=$$i -f $(MAKEFILE) --no-print-directory $(MFLAGS) $@ ; \\\n"++
+ "\t  if [ $$? -eq 0 ] ; then true; else exit $$x_on_err; fi; \\\n"++
+ "\tdone\n"++
+ "\t@echo \"== Finished recursively making \\`$@' for ways: $(WAYS) ...\"\n"++
  "endif\n"++
  "endif\n"++
  "\n"++
@@ -600,5 +600,5 @@ makefileTemplate =
  "# everything that 'setup build' does.\n"++
  "# ifeq \"$(way)\" \"\"\n"++
  "# all ::\n"++
- "# 	./Setup build\n"++
+ "# \t./Setup build\n"++
  "# endif\n"
