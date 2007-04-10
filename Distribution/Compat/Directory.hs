@@ -32,7 +32,7 @@ import Distribution.Compat.Exception (bracket)
 import Control.Monad (when, unless)
 #if !(mingw32_HOST_OS || mingw32_TARGET_OS)
 import System.Posix (getFileStatus,setFileMode,fileMode,accessTime,
-		     setFileMode,modificationTime,setFileTimes)
+		     modificationTime,setFileTimes)
 #endif
 
 findExecutable :: String -> IO (Maybe FilePath)
