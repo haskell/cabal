@@ -75,7 +75,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage,
-        satisfyDependency,haddockName)
+        satisfyDependency)
 import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
