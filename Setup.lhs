@@ -5,7 +5,6 @@
 > import Data.List
 > import Distribution.Simple
 > import Distribution.PackageDescription
-> import Distribution.PreProcess
 > import Distribution.Setup
 > import Distribution.Simple.LocalBuildInfo
 > import System.Environment
@@ -26,11 +25,11 @@
 > extractConfigureArgs = extractPrefixArgs "--configure-option="
 >
 > extractPrefixArgs :: String -> [String] -> ([String], [String])
-> extractPrefixArgs prefix args
+> extractPrefixArgs the_prefix args
 >  = let f [] = ([], [])
 >        f (x:xs) = case f xs of
 >                       (wantedArgs, otherArgs) ->
->                           case removePrefix prefix x of
+>                           case removePrefix the_prefix x of
 >                               Just wantedArg ->
 >                                   (wantedArg:wantedArgs, otherArgs)
 >                               Nothing ->
@@ -39,6 +38,7 @@
 >
 > removePrefix :: String -> String -> Maybe String
 > removePrefix "" ys = Just ys
+> removePrefix _  "" = Nothing
 > removePrefix (x:xs) (y:ys)
 >  | x == y = removePrefix xs ys
 >  | otherwise = Nothing
