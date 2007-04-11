@@ -254,6 +254,7 @@ data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
 data MakefileFlags = MakefileFlags {makefileVerbose :: Int,
                                     makefileFile :: Maybe FilePath}
     deriving Show
+emptyMakefileFlags :: MakefileFlags
 emptyMakefileFlags = MakefileFlags {makefileVerbose = 1,
                                     makefileFile = Nothing}
 
@@ -623,6 +624,7 @@ parseMakefileArgs = parseArgs makefileCmd updateCfg
            case fl of
                 Verbose n      -> mflags{makefileVerbose=n}
                 MakefileFile f -> mflags{makefileFile=Just f}
+                _              -> error "Unexpected flag!"
 
 haddockCmd :: Cmd a
 haddockCmd = Cmd {

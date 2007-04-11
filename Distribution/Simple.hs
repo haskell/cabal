@@ -70,7 +70,7 @@ import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..),
-                            haddockProgram, ghcPkgProgram, rawSystemProgram, defaultProgramConfiguration,
+                            haddockProgram, rawSystemProgram, defaultProgramConfiguration,
                             pfesetupProgram, updateProgram,  rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,

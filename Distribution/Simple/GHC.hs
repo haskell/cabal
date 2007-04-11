@@ -357,6 +357,7 @@ constructGHCCmdLine lbi bi odir verbose =
 	    -- Unsupported extensions have already been checked by configure
      ++ ghcOptions lbi bi odir
 
+ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
      =  (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
@@ -500,6 +501,7 @@ foundProg x = x
 -- -----------------------------------------------------------------------------
 -- Makefile template
 
+makefileTemplate :: String
 makefileTemplate =
  "GHC_OPTS += -package-name $(package) -i$(odir)\n"++
  "\n"++
