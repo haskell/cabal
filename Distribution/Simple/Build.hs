@@ -119,6 +119,11 @@ makefile pkg_descr lbi flags suffixes = do
     _    -> die ("Generating a Makefile is not supported for this compiler.")
 
 
+initialBuildSteps :: PackageDescription  -- ^mostly information from the .cabal file
+                  -> LocalBuildInfo -- ^Configuration information
+                  -> Int -- ^The verbosity to use
+                  -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
+                  -> IO ()
 initialBuildSteps pkg_descr lbi verbose suffixes = do
   -- check that there's something to build
   let buildInfos =
