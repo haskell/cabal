@@ -91,6 +91,8 @@ import System.IO.Error
 import System.Exit
 #if (__GLASGOW_HASKELL__ || __HUGS__) && !(mingw32_HOST_OS || mingw32_TARGET_OS)
 import System.Posix.Internals (c_getpid)
+#else
+import System.Posix.Types (CPid(..))
 #endif
 
 import Distribution.Compat.FilePath
@@ -362,13 +364,13 @@ withTempFile tmp_dir extn action
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 foreign import ccall unsafe "_getpid" getProcessID :: IO Int
-		 -- relies on Int == Int32 on Windows
-#elif __GLASGOW_HASKELL__ || __HUGS__
-getProcessID :: IO Int
-getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
+		 -- XXX relies on Int == Int32 on Windows
 #else
--- error ToDo: getProcessID
-foreign import ccall unsafe "getpid" getProcessID :: IO Int
+#if !(__GLASGOW_HASKELL__ || __HUGS__)
+foreign import ccall unsafe "getpid" c_getpid :: IO CPid
+#endif
+getProcessID :: IO Int
+getProcessID = c_getpid >>= return . fromIntegral
 #endif
 
 -- ------------------------------------------------------------
