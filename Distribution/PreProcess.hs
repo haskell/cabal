@@ -259,12 +259,21 @@ use_optP_P lbi = fmap (< Version [0,8] []) (haddockVersion lbi)
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
     = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n (hcDefines (compiler lbi)
-                         ++ ["-I" ++ dir | dir <- includeDirs bi]
-                         ++ [opt | opt@('-':c:_) <- ccOptions bi, c == 'D' || c == 'I']
-                         ++ ["--cflag=" ++ opt | opt@('-':'U':_) <- ccOptions bi]
-                         ++ ["--lflag=-L" ++ dir | dir <- extraLibDirs bi]
-                         ++ ["--lflag=-l" ++ lib | lib <- extraLibs bi])
+  where pp n = standardPP n flags
+        flags = hcDefines (compiler lbi)
+             ++ map ("--cflag=" ++) (getCcFlags bi)
+             ++ map ("--lflag=" ++) (getLdFlags bi)
+
+-- XXX This should probably be in a utils place, and used more widely
+getCcFlags :: BuildInfo -> [String]
+getCcFlags bi = map ("-I" ++) (includeDirs bi)
+             ++ ccOptions bi
+
+-- XXX This should probably be in a utils place, and used more widely
+getLdFlags :: BuildInfo -> [String]
+getLdFlags bi = map ("-L" ++) (extraLibDirs bi)
+             ++ map ("-l" ++) (extraLibs bi)
+             ++ ldOptions bi
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi
