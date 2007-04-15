@@ -47,7 +47,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- we can't easily look inside a tarball once its created.
 
 module Distribution.Simple.SrcDist (
-	sdist
+	 sdist
+        ,createArchive
+        ,prepareTree
+        ,tarBallName
+        ,copyFileTo
 #ifdef DEBUG        
         ,hunitTests
 #endif
@@ -87,13 +91,31 @@ sdist :: PackageDescription -- ^information from the tarball
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
 sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps = do
-  time <- getClockTime
-  ct <- toCalendarTime time
-  let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
-  let pkg_descr
-        | snapshot  = updatePackage (updatePkgVersion
-                        (updateVersionBranch (++ [date]))) pkg_descr_orig
-        | otherwise = pkg_descr_orig
+    time <- getClockTime
+    ct <- toCalendarTime time
+    let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
+    let pkg_descr
+          | snapshot  = updatePackage (updatePkgVersion
+                          (updateVersionBranch (++ [date]))) pkg_descr_orig
+          | otherwise = pkg_descr_orig
+    prepareTree pkg_descr verbose snapshot tmpDir pps date
+    createArchive pkg_descr verbose mb_lbi tmpDir targetPref
+    return ()
+  where
+    updatePackage f pd = pd { package = f (package pd) }
+    updatePkgVersion f pkg = pkg { pkgVersion = f (pkgVersion pkg) }
+    updateVersionBranch f v = v { versionBranch = f (versionBranch v) }
+
+-- |Prepare a directory tree of source files.
+prepareTree :: PackageDescription -- ^info from the cabal file
+            -> Int -- ^verbose
+            -> Bool -- ^snapshot
+            -> FilePath -- ^source tree to populate
+            -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+            -> Int -- ^date
+            -> IO FilePath
+
+prepareTree pkg_descr verbose snapshot tmpDir pps date = do
   setupMessage verbose "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
@@ -133,7 +155,28 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
       writeFile targetDescFile $
           unlines $ map (appendVersion date) $ lines $ contents
     else copyFileVerbose verbose descFile targetDescFile
+  return targetDir
 
+  where
+
+    appendVersion :: Int -> String -> String
+    appendVersion n line
+      | "version:" `isPrefixOf` map toLower line =
+            trimTrailingSpace line ++ "." ++ show n
+      | otherwise = line
+
+    trimTrailingSpace :: String -> String
+    trimTrailingSpace = reverse . dropWhile isSpace . reverse
+
+-- |Create an archive from a tree of source files, and clean up the tree.
+createArchive :: PackageDescription -- ^info from cabal file
+              -> Int -- ^verbose
+              -> Maybe LocalBuildInfo -- ^info from configure
+              -> FilePath -- ^source tree to archive
+              -> FilePath -- ^name of archive to create
+              -> IO FilePath
+
+createArchive pkg_descr verbose mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref `joinFileName` tarBallName pkg_descr
   let tarDefault = "tar"
   tarProgram <- 
@@ -151,15 +194,12 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
   removeDirectoryRecursive tmpDir
   case ret of
-    ExitSuccess -> putStrLn $ "Source tarball created: " ++ tarBallFilePath
+    ExitSuccess -> do
+      putStrLn $ "Source tarball created: " ++ tarBallFilePath
+      return tarBallFilePath
     ExitFailure n -> die ("source tarball creation failed!  Tar exited " ++
                           "with status " ++ show n)
-
   where
-    updatePackage f pd = pd { package = f (package pd) }
-    updatePkgVersion f pkg = pkg { pkgVersion = f (pkgVersion pkg) }
-    updateVersionBranch f v = v { versionBranch = f (versionBranch v) }
-
     appendVersion :: Int -> String -> String
     appendVersion n line
       | "version:" `isPrefixOf` map toLower line =
