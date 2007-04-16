@@ -401,6 +401,9 @@ makefile pkg_descr lbi flags = do
         ("GHC", compilerPath (compiler lbi)),
         ("WAYS", if withProfLib lbi then "p" else ""),
         ("odir", buildDir lbi),
+        ("srcdir", case hsSourceDirs bi of
+                        [one] -> one
+                        _     -> error "makefile: can't cope with multiple hs-source-dirs yet, sorry"),
         ("package", packageId),
         ("GHC_OPTS", unwords ( 
                            ["-package-name", packageId ]
@@ -540,32 +543,32 @@ makefileTemplate =
  "odir_ =\n"++
  "endif\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.hs\n"++
+ "$(odir_)%.$(way_)o : $(srcdir)/%.hs\n"++
  "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.lhs\t \n"++
+ "$(odir_)%.$(way_)o : $(srcdir)/%.lhs\t \n"++
  "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.c\n"++
+ "$(odir_)%.$(way_)o : $(srcdir)/%.c\n"++
  "\t@$(RM) $@\n"++
  "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.$(way_)s\n"++
+ "$(odir_)%.$(way_)o : $(srcdir)/%.$(way_)s\n"++
  "\t@$(RM) $@\n"++
  "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
- "$(odir_)%.$(way_)o : %.S\n"++
+ "$(odir_)%.$(way_)o : $(srcdir)/%.S\n"++
  "\t@$(RM) $@\n"++
  "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
  "\n"++
- "$(odir_)%.$(way_)s : %.c\n"++
+ "$(odir_)%.$(way_)s : $(srcdir)/%.c\n"++
  "\t@$(RM) $@\n"++
  "\t$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
  "\n"++
- "$(odir_)%.$(way_)o-boot : %.hs-boot\n"++
+ "$(odir_)%.$(way_)o-boot : $(srcdir)/%.hs-boot\n"++
  "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
  "\n"++
- "$(odir_)%.$(way_)o-boot : %.lhs-boot\n"++
+ "$(odir_)%.$(way_)o-boot : $(srcdir)/%.lhs-boot\n"++
  "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
  "\n"++
  "%.$(way_)hi : %.$(way_)o\n"++
