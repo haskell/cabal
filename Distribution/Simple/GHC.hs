@@ -560,10 +560,10 @@ makefileTemplate =
  "\t$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
  "\n"++
  "$(odir_)%.$(way_)o-boot : %.hs-boot\n"++
- "	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
+ "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
  "\n"++
  "$(odir_)%.$(way_)o-boot : %.lhs-boot\n"++
- "	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
+ "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
  "\n"++
  "%.$(way_)hi : %.$(way_)o\n"++
  "\t@if [ ! -f $@ ] ; then \\\n"++
