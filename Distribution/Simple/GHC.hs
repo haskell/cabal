@@ -527,7 +527,7 @@ makefileTemplate =
  ".depend : $(MAKEFILE)\n"++
  "\t$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)\n"++
  "\tfor dir in $(sort $(foreach mod,$(OBJS),$(dir $(mod)))); do \\\n"++
- "\t\tif test ! -d $$dir; then mkdir $$dir; fi \\\n"++
+ "\t\tif test ! -d $$dir; then mkdir -p $$dir; fi \\\n"++
  "\tdone\n"++
  "\n"++
  "include .depend\n"++
