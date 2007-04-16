@@ -402,7 +402,10 @@ makefile pkg_descr lbi flags = do
         ("WAYS", if withProfLib lbi then "p" else ""),
         ("odir", buildDir lbi),
         ("package", packageId),
-        ("GHC_OPTS", unwords (ghcOptions lbi bi (buildDir lbi))),
+        ("GHC_OPTS", unwords ( 
+                           ["-package-name", packageId ]
+	                ++ (if splitObjs lbi then ["-split-objs"] else [])
+                        ++ ghcOptions lbi bi (buildDir lbi))),
         ("MAKEFILE", file)
         ]
   hPutStrLn h (unlines (map (\(a,b)-> a ++ " = " ++ munge b) decls))
@@ -503,7 +506,7 @@ foundProg x = x
 
 makefileTemplate :: String
 makefileTemplate =
- "GHC_OPTS += -package-name $(package) -i$(odir)\n"++
+ "GHC_OPTS += -i$(odir)\n"++
  "\n"++
  "# For adding options on the command-line\n"++
  "GHC_OPTS += $(EXTRA_HC_OPTS)\n"++
