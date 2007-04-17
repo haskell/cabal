@@ -95,11 +95,7 @@ import Distribution.Simple.Utils (die, currentDir,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath, findFile, warn)
 
-#if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Simple.Utils (rawSystemPathExit)
-#else
-import Distribution.Simple.Utils (rawSystemExit)
-#endif
 import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
@@ -674,13 +670,7 @@ autoconfUserHooks
                        args' = configureArgs flags ++ args
                    confExists <- doesFileExist "configure"
                    if confExists then
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-                       -- FIXME: hack for script files under MinGW
-                       -- This assumes sh (check for #! line?)
                        rawSystemPathExit verbose "sh" ("configure" : args')
-#else
-                       rawSystemExit verbose "./configure" args'
-#endif
                      else
                        no_extra_flags args
 
