@@ -324,18 +324,22 @@ reportProgram' _ (Just Program{ programName=name
                   = message ("Using " ++ name ++ " given by user at: " ++ p)
 reportProgram' name Nothing = message ("No " ++ name ++ " found")
 
+hackageUrl :: String
+hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
 configDependency :: [PackageIdentifier] -> Dependency -> IO PackageIdentifier
 configDependency ps dep@(Dependency pkgname vrange) =
   case satisfyDependency ps dep of
-	Nothing -> die ("cannot satisfy dependency " ++ 
-			pkgname ++ showVersionRange vrange)
-	Just pkg -> do
-		message ("Dependency " ++ pkgname ++ 
-			showVersionRange vrange ++
-		 	": using " ++ showPackageId pkg)
-		return pkg
+        Nothing -> die ("cannot satisfy dependency " ++
+                        pkgname ++ showVersionRange vrange ++ "\n" ++
+                        "Perhaps you need to download and install it from\n" ++
+                        hackageUrl ++ pkgname ++ "?")
+        Just pkg -> do
+                message ("Dependency " ++ pkgname ++
+                        showVersionRange vrange ++
+                        ": using " ++ showPackageId pkg)
+                return pkg
 
 getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesJHC comp cfg = do
