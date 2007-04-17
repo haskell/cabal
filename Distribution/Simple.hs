@@ -91,12 +91,14 @@ import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuild
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
                                             srcPref, haddockPref )
 import Distribution.Simple.Install(install)
-import Distribution.Simple.Utils (die, currentDir, rawSystemVerbose,
+import Distribution.Simple.Utils (die, currentDir,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath, findFile, warn)
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-import Distribution.Simple.Utils (rawSystemPath)
+import Distribution.Simple.Utils (rawSystemPathExit)
+#else
+import Distribution.Simple.Utils (rawSystemExit)
 #endif
 import Language.Haskell.Extension
 -- Base
@@ -490,7 +492,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
                     then ppCpp' inputArgs bi lbi file targetFile verbose
-                    else copyFile file targetFile >> return ExitSuccess
+                    else copyFile file targetFile
                  when (targetFileExt == "lhs") $ do
                        ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose
                        return ()
@@ -689,14 +691,13 @@ autoconfUserHooks
 #if mingw32_HOST_OS || mingw32_TARGET_OS
                        -- FIXME: hack for script files under MinGW
                        -- This assumes sh (check for #! line?)
-                       rawSystemPath verbose "sh" ("configure" : args')
+                       rawSystemPathExit verbose "sh" ("configure" : args')
 #else
-                       -- FIXME: should we really be discarding the exit code?
-                       rawSystemVerbose verbose "./configure" args'
+                       rawSystemExit verbose "./configure" args'
 #endif
-                     else do
+                     else
                        no_extra_flags args
-                       return ExitSuccess
+                   return ExitSuccess
 
           readHook :: (a -> Int) -> Args -> a -> IO HookedBuildInfo
           readHook verbose a flags = do

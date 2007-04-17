@@ -63,16 +63,16 @@ import Distribution.PackageDescription
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch))
 import Distribution.Simple.Utils (smartCopySources, die, findPackageDesc,
-                                  findFile, copyFileVerbose, rawSystemPath)
+                                  findFile, copyFileVerbose, rawSystemPathExit)
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
 
+import Control.Exception (finally)
 import Control.Monad(when)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
-import System.Exit (ExitCode(..))
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
@@ -190,24 +190,12 @@ createArchive pkg_descr verbose mb_lbi tmpDir targetPref = do
    -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
-  ret <- rawSystemPath verbose tarProgram
+  rawSystemPathExit verbose tarProgram
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
-  removeDirectoryRecursive tmpDir
-  case ret of
-    ExitSuccess -> do
-      putStrLn $ "Source tarball created: " ++ tarBallFilePath
-      return tarBallFilePath
-    ExitFailure n -> die ("source tarball creation failed!  Tar exited " ++
-                          "with status " ++ show n)
-  where
-    appendVersion :: Int -> String -> String
-    appendVersion n line
-      | "version:" `isPrefixOf` map toLower line =
-            trimTrailingSpace line ++ "." ++ show n
-      | otherwise = line
-
-    trimTrailingSpace :: String -> String
-    trimTrailingSpace = reverse . dropWhile isSpace . reverse
+      -- XXX this should be done back where tmpDir is made, not here
+      `finally` removeDirectoryRecursive tmpDir
+  putStrLn $ "Source tarball created: " ++ tarBallFilePath
+  return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo
 prepareDir :: Int       -- ^verbose

@@ -55,7 +55,7 @@ import Distribution.PackageDescription
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir, mkIncludeDir )
-import Distribution.Simple.Utils( rawSystemExit, rawSystemPath,
+import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit,
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
 				  rawSystemVerbose,
 #endif
@@ -218,17 +218,15 @@ build pkg_descr lbi verbose = do
 
             runLd ld args = do
               exists <- doesFileExist ghciLibName
-              status <- rawSystemLd verbose ld
+              rawSystemLd verbose ld
                           (args ++ if exists then [ghciLibName] else [])
-              when (status == ExitSuccess)
-                   (renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName)
-              return status
+              renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName
 
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-            rawSystemLd = rawSystemVerbose
+            rawSystemLd = rawSystemExit
             maxCommandLineSize = 30 * 1024
 #else
-            rawSystemLd = rawSystemPath
+            rawSystemLd = rawSystemPathExit
              --TODO: discover this at configure time on unix
             maxCommandLineSize = 30 * 1024
 #endif
@@ -249,13 +247,13 @@ build pkg_descr lbi verbose = do
 #endif
         mbAr <- lookupProgram "ar" (withPrograms lbi) 
 	let arProg = case fmap programLocation mbAr of { Just (UserSpecified x) -> x ; _ -> "ar" }
-        ifVanillaLib False $ maybeExit $ xargs maxCommandLineSize
-          (rawSystemPath verbose) arProg arArgs arObjArgs
+        ifVanillaLib False $ xargs maxCommandLineSize
+          (rawSystemPathExit verbose) arProg arArgs arObjArgs
 
-        ifProfLib $ maybeExit $ xargs maxCommandLineSize
-          (rawSystemPath verbose) arProg arProfArgs arProfObjArgs
+        ifProfLib $ xargs maxCommandLineSize
+          (rawSystemPathExit verbose) arProg arProfArgs arProfObjArgs
 
-        ifGHCiLib $ maybeExit $ xargs maxCommandLineSize
+        ifGHCiLib $ xargs maxCommandLineSize
           runLd ld ldArgs ldObjArgs
 
   -- build any executables

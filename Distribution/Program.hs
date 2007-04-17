@@ -63,7 +63,7 @@ module Distribution.Program(
 
 import qualified Distribution.Compat.Map as Map
 import Distribution.Compat.Directory(findExecutable)
-import Distribution.Simple.Utils (die, rawSystemVerbose, maybeExit)
+import Distribution.Simple.Utils (die, rawSystemExit)
 
 -- |Represents a program which cabal may call.
 data Program
@@ -275,12 +275,12 @@ rawSystemProgram :: Int      -- ^Verbosity
 rawSystemProgram verbose (Program { programLocation=(UserSpecified p)
                                   , programArgs=args
                                   }) extraArgs
-    = maybeExit $ rawSystemVerbose verbose p (extraArgs ++ args)
+    = rawSystemExit verbose p (extraArgs ++ args)
 
 rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
                                   , programArgs=args
                                   }) extraArgs
-    = maybeExit $ rawSystemVerbose verbose p (args ++ extraArgs)
+    = rawSystemExit verbose p (args ++ extraArgs)
 
 rawSystemProgram _ (Program { programLocation=EmptyLocation
                             , programName=n}) _

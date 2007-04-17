@@ -62,13 +62,12 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemVerbose,
+import Distribution.Simple.Utils (rawSystemExit,
                                   moduleToFilePath, die, dieWithLocation)
 import Distribution.Version (Version(..))
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
-import System.Exit (ExitCode(..))
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
 import Distribution.Compat.FilePath
@@ -91,7 +90,7 @@ import Distribution.Compat.FilePath
 type PreProcessor = FilePath  -- Location of the source file in need of preprocessing
                   -> FilePath -- Output filename
                   -> Int      -- verbose
-                  -> IO ExitCode
+                  -> IO ()    -- Should exit if the preprocessor fails
 
 
 -- |A preprocessor for turning non-Haskell files with the given extension
@@ -111,23 +110,19 @@ preprocessSources pkg_descr lbi verbose handlers = do
     withLib pkg_descr () $ \ lib -> do
         setupMessage verbose "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
-	let biHandlers = localHandlers bi
-	sequence_ [do retVal <- preprocessModule (hsSourceDirs bi) modu
-                                                 verbose builtinSuffixes biHandlers
-                      unless (retVal == ExitSuccess)
-                             (die $ "got error code while preprocessing: " ++ modu)
-                   | modu <- libModules pkg_descr]
+        let biHandlers = localHandlers bi
+        sequence_ [ preprocessModule (hsSourceDirs bi) modu
+                                     verbose builtinSuffixes biHandlers
+                  | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
         setupMessage verbose "Preprocessing executables for" pkg_descr
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
-	let biHandlers = localHandlers bi
-	sequence_ [do retVal <- preprocessModule (nub $ (hsSourceDirs bi)
-                                     ++(maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
+        let biHandlers = localHandlers bi
+        sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
+                                  ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
                                      modu verbose builtinSuffixes biHandlers
-                      unless (retVal == ExitSuccess)
-                             (die $ "got error code while preprocessing: " ++ modu)
-                   | modu <- otherModules bi]
+                  | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
@@ -142,14 +137,14 @@ preprocessModule
     -> Int				-- ^verbose
     -> [String]				-- ^builtin suffixes
     -> [(String, PreProcessor)]		-- ^possible preprocessors
-    -> IO ExitCode
+    -> IO ()
 preprocessModule searchLoc modu verbose builtinSuffixes handlers = do
     bsrcFiles <- moduleToFilePath searchLoc modu builtinSuffixes
     psrcFiles <- moduleToFilePath searchLoc modu (map fst handlers)
     case psrcFiles of
 	[] -> case bsrcFiles of
 	          [] -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
-	          _  -> return ExitSuccess
+	          _  -> return ()
 	(psrcFile:_) -> do
 	    let (srcStem, ext) = splitFileExt psrcFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
@@ -160,9 +155,7 @@ preprocessModule searchLoc modu verbose builtinSuffixes handlers = do
 	                      btime <- getModificationTime bsrcFile
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)
-	    if recomp
-	      then pp psrcFile (srcStem `joinFileExt` "hs") verbose
-	      else return ExitSuccess
+	    when recomp $ pp psrcFile (srcStem `joinFileExt` "hs") verbose
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
@@ -202,7 +195,7 @@ ppGreenCard' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGreenCard' inputArgs _ lbi
     = maybe (ppNone "greencard") pp (withGreencard lbi)
     where pp greencard inFile outFile verbose
-              = rawSystemVerbose verbose greencard
+              = rawSystemExit verbose greencard
                     (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
 
 -- This one is useful for preprocessors that can't handle literate source.
@@ -211,7 +204,6 @@ ppUnlit :: PreProcessor
 ppUnlit inFile outFile _verbose = do
     contents <- readFile inFile
     writeFile outFile (unlit inFile contents)
-    return ExitSuccess
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
@@ -226,8 +218,8 @@ ppCpp' inputArgs bi lbi =
 	hc = compiler lbi
 
 	use_cpphs cpphs inFile outFile verbose
-	  = rawSystemVerbose verbose cpphs cpphsArgs
-	  where cpphsArgs = ("-O"++outFile) : inFile : "--noline" : "--strip"
+	  = rawSystemExit verbose cpphs cpphsArgs
+	  where cpphsArgs = ("-O" ++ outFile) : inFile : "--noline" : "--strip"
 				 : extraArgs
 
         extraArgs = sysDefines ++ cppOptions bi lbi ++ inputArgs
@@ -239,7 +231,7 @@ ppCpp' inputArgs bi lbi =
 
 	use_ghc inFile outFile verbose
 	  = do p_p <- use_optP_P lbi
-               rawSystemVerbose verbose (compilerPath hc) 
+               rawSystemExit verbose (compilerPath hc) 
                    (["-E", "-cpp"] ++
                     -- This is a bit of an ugly hack. We're going to
                     -- unlit the file ourselves later on if appropriate,
@@ -321,7 +313,7 @@ ppAlex _ lbi
 
 standardPP :: String -> [String] -> PreProcessor
 standardPP eName args inFile outFile verbose
-    = rawSystemVerbose verbose eName (args ++ ["-o", outFile, inFile])
+    = rawSystemExit verbose eName (args ++ ["-o", outFile, inFile])
 
 ppNone :: String -> PreProcessor
 ppNone name inFile _ _ =
