@@ -45,8 +45,6 @@ module Distribution.Simple.Utils (
 	die,
 	dieWithLocation,
 	warn,
-	rawSystemPath,
-        rawSystemVerbose,
 	rawSystemExit,
         maybeExit,
         xargs,
@@ -99,8 +97,7 @@ import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt, joinPaths,
 	pathSeparator,splitFilePath)
 import System.Directory (getDirectoryContents, getCurrentDirectory
-			, doesDirectoryExist, doesFileExist, removeFile, getPermissions
-			, Permissions(executable))
+			, doesDirectoryExist, doesFileExist, removeFile)
 
 import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
@@ -131,31 +128,10 @@ warn verbosity msg = do
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
-rawSystemPath :: Int -> String -> [String] -> IO ExitCode
-rawSystemPath verbose prog args = do
-  r <- findExecutable prog
-  case r of
-    Nothing   -> die ("Cannot find: " ++ prog)
-    Just path -> rawSystemVerbose verbose path args
-
-rawSystemVerbose :: Int -> FilePath -> [String] -> IO ExitCode
-rawSystemVerbose verbose prog args = do
-      when (verbose > 0) $
-        putStrLn (prog ++ concatMap (' ':) args)
-      e <- doesFileExist prog
-      if e
-         then do perms <- getPermissions prog
-                 if (executable perms)
-                    then rawSystem prog args
-                    else die ("Error: file is not executable: " ++ show prog)
-         else die ("Error: file does not exist: " ++ show prog)
-
 maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
   res <- cmd
-  if res /= ExitSuccess
-	then exitWith res  
-	else return ()
+  unless (res == ExitSuccess) $ exitWith res
 
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: Int -> FilePath -> [String] -> IO ()
@@ -167,7 +143,10 @@ rawSystemExit verbose path args = do
 -- Exit with the same exitcode if the subcommand fails
 rawSystemPathExit :: Int -> String -> [String] -> IO ()
 rawSystemPathExit verbose prog args = do
-  maybeExit $ rawSystemPath verbose prog args
+  r <- findExecutable prog
+  case r of
+    Nothing   -> die ("Cannot find: " ++ prog)
+    Just path -> rawSystemExit verbose path args
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
@@ -175,20 +154,14 @@ rawSystemPathExit verbose prog args = do
 --
 -- Use it with either of the rawSystem variants above. For example:
 -- 
--- > xargs (32*1024) (rawSystemPath verbose) prog fixedArgs bigArgs
+-- > xargs (32*1024) (rawSystemPathExit verbose) prog fixedArgs bigArgs
 --
-xargs :: Int -> (FilePath -> [String] -> IO ExitCode)
-      -> FilePath -> [String] -> [String] -> IO ExitCode
+xargs :: Int -> (FilePath -> [String] -> IO ())
+      -> FilePath -> [String] -> [String] -> IO ()
 xargs maxSize rawSystemFun prog fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
-      loop [] = return ExitSuccess
-      loop (args:remainingArgs) = do
-        status <- rawSystemFun prog (fixedArgs ++ args)
-        case status of
-          ExitSuccess -> loop remainingArgs
-          _           -> return status
-   in loop (chunks chunkSize bigArgs)
+   in mapM_ (rawSystemFun prog . (fixedArgs ++)) (chunks chunkSize bigArgs)
 
   where chunks len = unfoldr $ \s ->
           if null s then Nothing
