@@ -262,11 +262,8 @@ defaultMain__ margs mhooks mdescr = do
    let get_pkg_descr verbosity = 
 	 case mdescr of
 		Just pkg_descr -> return pkg_descr
-		Nothing -> 
-                    case mhooks of
-		        Nothing -> defaultPkgDescr
-			Just h -> do
-			    maybeDesc <- readDesc h
+		Nothing -> do
+			    maybeDesc <- readDesc hooks
 			    case maybeDesc of
 				Nothing -> defaultPkgDescr
 				Just p  -> return p
