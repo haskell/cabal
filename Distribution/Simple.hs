@@ -152,7 +152,7 @@ data UserHooks = UserHooks
      preBuild  :: Args -> BuildFlags -> IO HookedBuildInfo,
 
      -- |Over-ride this hook to gbet different behavior during build.
-     buildHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> BuildFlags -> IO (),
+     buildHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO (),
       -- |Hook to run after build command.  Second arg indicates verbosity level.
      postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -160,21 +160,21 @@ data UserHooks = UserHooks
      preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
 
      -- |Over-ride this hook to gbet different behavior during makefile.
-     makefileHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> MakefileFlags -> IO (),
+     makefileHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> MakefileFlags -> IO (),
       -- |Hook to run after makefile command.  Second arg indicates verbosity level.
      postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during clean.
-     cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO (),
+     cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO (),
       -- |Hook to run after clean command.  Second arg indicates verbosity level.
      postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during copy.
-     copyHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> CopyFlags -> IO (),
+     copyHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO (),
       -- |Hook to run after copy command
      postCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -182,7 +182,7 @@ data UserHooks = UserHooks
      preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
 
      -- |Over-ride this hook to get different behavior during install.
-     instHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> InstallFlags -> IO (),
+     instHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO (),
       -- |Hook to run after install command.  postInst should be run
       -- on the target, not on the build machine.
      postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
@@ -190,21 +190,21 @@ data UserHooks = UserHooks
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during sdist.
-     sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> SDistFlags -> IO (),
+     sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> SDistFlags -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
      postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before register command
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during pfe.
-     regHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> RegisterFlags -> IO (),
+     regHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
       -- |Hook to run after register command
      postReg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before unregister command
      preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
       -- |Over-ride this hook to get different behavior during pfe.
-     unregHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> RegisterFlags -> IO (),
+     unregHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
       -- |Hook to run after unregister command
      postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
@@ -212,13 +212,13 @@ data UserHooks = UserHooks
      preHaddock  :: Args -> HaddockFlags -> IO HookedBuildInfo,
       -- |Hook to run after haddock command.  Second arg indicates verbosity level.
      -- |Over-ride this hook to get different behavior during haddock.
-     haddockHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> HaddockFlags -> IO (),
+     haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
      postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
 
       -- |Hook to run before pfe command.  Second arg indicates verbosity level.
      prePFE  :: Args -> PFEFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during pfe.
-     pfeHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> PFEFlags -> IO (),
+     pfeHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO (),
       -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
      postPFE :: Args -> PFEFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
 
@@ -287,12 +287,10 @@ allPrograms h = foldl (flip updateProgram)
 
 -- | Combine the preprocessors in the given hooks with the
 -- preprocessors built into cabal.
-allSuffixHandlers :: Maybe UserHooks
+allSuffixHandlers :: UserHooks
                   -> [PPSuffixHandler]
 allSuffixHandlers hooks
-    = maybe knownSuffixHandlers
-      (\h -> overridesPP (hookedPreProcessors h) knownSuffixHandlers)
-      hooks
+    = overridesPP (hookedPreProcessors hooks) knownSuffixHandlers
     where
       overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
       overridesPP = unionBy (\x y -> fst x == fst y)
@@ -377,17 +375,15 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
 
             HelpCmd -> return ExitSuccess -- this is handled elsewhere
         where
-        command parse_args get_verbose 
-                pre_hook cmd_hook post_hook 
+        command parse_args get_verbose
+                pre_hook cmd_hook post_hook
                 get_build_config = do
            (flags, _, args) <- parse_args all_args []
            pbi <- pre_hook hooks args flags
            pkg_descr0 <- get_pkg_descr (get_verbose flags)
            let pkg_descr = updatePackageDescription pbi pkg_descr0
            localbuildinfo <- get_build_config
-        -- XXX (Just hooks) below should be hooks; will change the
-        -- interface, but needs to be done!
-           cmd_hook hooks pkg_descr localbuildinfo (Just hooks) flags
+           cmd_hook hooks pkg_descr localbuildinfo hooks flags
            post_hook hooks args flags pkg_descr localbuildinfo
 
         isFailure :: ExitCode -> Bool
@@ -403,7 +399,7 @@ getModulePaths bi =
 -- --------------------------------------------------------------------------
 -- Haddock support
 
-haddock :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> HaddockFlags -> IO ()
+haddock :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
 haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
@@ -505,7 +501,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
 -- --------------------------------------------------------------------------
 -- Programmatica support
 
-pfe :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> PFEFlags -> IO ()
+pfe :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO ()
 pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
     let pps = allSuffixHandlers hooks
     unless (hasLibs pkg_descr) $
@@ -525,7 +521,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
 -- --------------------------------------------------------------------------
 -- Cleaning
 
-clean :: PackageDescription -> Maybe LocalBuildInfo -> Maybe UserHooks -> CleanFlags -> IO ()
+clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO ()
 clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbose) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
@@ -712,7 +708,7 @@ autoconfUserHooks
                       readHookedBuildInfo verbosity infoFile
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
-	-> Maybe UserHooks ->InstallFlags -> IO ()
+	-> UserHooks ->InstallFlags -> IO ()
 defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbose) = do
   install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbose)
   when (hasLibs pkg_descr) $
@@ -720,21 +716,21 @@ defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbose) =
            emptyRegisterFlags{ regUser=uInstFlag, regVerbose=verbose }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
-	-> Maybe UserHooks -> BuildFlags -> IO ()
+	-> UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
       writeInstalledConfig pkg_descr localbuildinfo False
 
 defaultMakefileHook :: PackageDescription -> LocalBuildInfo
-	-> Maybe UserHooks -> MakefileFlags -> IO ()
+	-> UserHooks -> MakefileFlags -> IO ()
 defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
   makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
       writeInstalledConfig pkg_descr localbuildinfo False
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
-	-> Maybe UserHooks -> RegisterFlags -> IO ()
+	-> UserHooks -> RegisterFlags -> IO ()
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
