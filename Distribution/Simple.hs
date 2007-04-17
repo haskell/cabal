@@ -134,7 +134,7 @@ type Args = [String]
 -- to specify additional preprocessors.
 data UserHooks = UserHooks
     {
-     runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO ExitCode, -- ^Used for @.\/setup test@
+     runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (), -- ^Used for @.\/setup test@
      readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
      hookedPreProcessors :: [ PPSuffixHandler ],
         -- ^Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
@@ -146,7 +146,7 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to get different behavior during configure.
      confHook :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo,
       -- |Hook to run after configure command
-     postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before build command.  Second arg indicates verbosity level.
      preBuild  :: Args -> BuildFlags -> IO HookedBuildInfo,
@@ -154,7 +154,7 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to gbet different behavior during build.
      buildHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO (),
       -- |Hook to run after build command.  Second arg indicates verbosity level.
-     postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before makefile command.  Second arg indicates verbosity level.
      preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
@@ -162,21 +162,21 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to gbet different behavior during makefile.
      makefileHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> MakefileFlags -> IO (),
       -- |Hook to run after makefile command.  Second arg indicates verbosity level.
-     postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before clean command.  Second arg indicates verbosity level.
      preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during clean.
      cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO (),
       -- |Hook to run after clean command.  Second arg indicates verbosity level.
-     postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
+     postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
 
       -- |Hook to run before copy command
      preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during copy.
      copyHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO (),
       -- |Hook to run after copy command
-     postCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before install command
      preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
@@ -185,42 +185,42 @@ data UserHooks = UserHooks
      instHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO (),
       -- |Hook to run after install command.  postInst should be run
       -- on the target, not on the build machine.
-     postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before sdist command.  Second arg indicates verbosity level.
      preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during sdist.
      sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> SDistFlags -> IO (),
       -- |Hook to run after sdist command.  Second arg indicates verbosity level.
-     postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO ExitCode,
+     postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
 
       -- |Hook to run before register command
      preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during pfe.
      regHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
       -- |Hook to run after register command
-     postReg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postReg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before unregister command
      preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
       -- |Over-ride this hook to get different behavior during pfe.
      unregHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
       -- |Hook to run after unregister command
-     postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before haddock command.  Second arg indicates verbosity level.
      preHaddock  :: Args -> HaddockFlags -> IO HookedBuildInfo,
       -- |Hook to run after haddock command.  Second arg indicates verbosity level.
      -- |Over-ride this hook to get different behavior during haddock.
      haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
-     postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode,
+     postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before pfe command.  Second arg indicates verbosity level.
      prePFE  :: Args -> PFEFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during pfe.
      pfeHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO (),
       -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
-     postPFE :: Args -> PFEFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
+     postPFE :: Args -> PFEFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 
     }
 
@@ -272,7 +272,6 @@ defaultMain__ margs mhooks mdescr = do
 		 pkg_descr_file <- defaultPackageDesc verbosity
          	 readPackageDescription verbosity pkg_descr_file
    defaultMainWorker get_pkg_descr action args' hooks prog_conf
-   return ()
 
 -- | Combine the programs in the given hooks with the programs built
 -- into cabal.
@@ -298,7 +297,7 @@ defaultMainWorker :: (Int -> IO PackageDescription)
                   -> [String]
                   -> UserHooks
                   -> ProgramConfiguration
-                  -> IO ExitCode
+                  -> IO ()
 defaultMainWorker get_pkg_descr action all_args hooks prog_conf
     = do case action of
             ConfigCmd flags -> do
@@ -357,8 +356,7 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                 (verbose,_, args) <- parseTestArgs all_args []
                 localbuildinfo <- getPersistBuildConfig
                 pkg_descr <- get_pkg_descr verbose
-                out <- runTests hooks args False pkg_descr localbuildinfo
-                if isFailure out then exitWith out else return out
+                runTests hooks args False pkg_descr localbuildinfo
 
             RegisterCmd  -> do
                 command (parseRegisterArgs emptyRegisterFlags) regVerbose
@@ -370,7 +368,7 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                         preUnreg unregHook postUnreg
                         getPersistBuildConfig
 
-            HelpCmd -> return ExitSuccess -- this is handled elsewhere
+            HelpCmd -> return () -- this is handled elsewhere
         where
         command parse_args get_verbose
                 pre_hook cmd_hook post_hook
@@ -382,10 +380,6 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
            localbuildinfo <- get_build_config
            cmd_hook hooks pkg_descr localbuildinfo hooks flags
            post_hook hooks args flags pkg_descr localbuildinfo
-
-        isFailure :: ExitCode -> Bool
-        isFailure (ExitFailure _) = True
-        isFailure _               = False
 
 
 getModulePaths :: BuildInfo -> [String] -> IO [FilePath]
@@ -585,46 +579,45 @@ emptyUserHooks :: UserHooks
 emptyUserHooks
     = UserHooks
       {
-       runTests  = res,
+       runTests  = ru,
        readDesc  = return Nothing,
        hookedPreProcessors = [],
        hookedPrograms      = [],
        preConf   = rn,
        confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
-       postConf  = res,
+       postConf  = ru,
        preBuild  = rn,
        buildHook = ru,
-       postBuild = res,
+       postBuild = ru,
        preMakefile = rn,
        makefileHook = ru,
-       postMakefile = res,
+       postMakefile = ru,
        preClean  = rn,
        cleanHook = ru,
-       postClean = res,
+       postClean = ru,
        preCopy   = rn,
        copyHook  = ru,
-       postCopy  = res,
+       postCopy  = ru,
        preInst   = rn,
        instHook  = ru,
-       postInst  = res,
+       postInst  = ru,
        preSDist  = rn,
        sDistHook = ru,
-       postSDist = res,
+       postSDist = ru,
        preReg    = rn,
        regHook   = ru,
-       postReg   = res,
+       postReg   = ru,
        preUnreg  = rn,
        unregHook = ru,
-       postUnreg = res,
+       postUnreg = ru,
        prePFE    = rn,
        pfeHook   = ru,
-       postPFE   = res,
+       postPFE   = ru,
        preHaddock  = rn,
        haddockHook = ru,
-       postHaddock = res
+       postHaddock = ru
       }
     where rn  args _   = no_extra_flags args >> return emptyHookedBuildInfo
-          res _ _ _ _  = return ExitSuccess
           ru _ _ _ _ = return ()
 
 -- | Hooks that correspond to a plain instantiation of the 
@@ -675,7 +668,7 @@ autoconfUserHooks
        preReg    = readHook regVerbose,
        preUnreg  = readHook regVerbose
       }
-    where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
+    where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
               = do let verbose = configVerbose flags
                        args' = configureArgs flags ++ args
@@ -690,7 +683,6 @@ autoconfUserHooks
 #endif
                      else
                        no_extra_flags args
-                   return ExitSuccess
 
           readHook :: (a -> Int) -> Args -> a -> IO HookedBuildInfo
           readHook verbose a flags = do
