@@ -47,7 +47,7 @@
 >            -> IO ()
 >
 > add_ghc_options :: [String] -> Hook a -> Hook a
-> add_ghc_options args f pd lbi muhs x
+> add_ghc_options args f pd lbi uhs x
 >  = do let lib' = case library pd of
 >                      Just lib ->
 >                          let bi = libBuildInfo lib
@@ -56,5 +56,5 @@
 >                          in lib { libBuildInfo = bi' }
 >                      Nothing -> error "Expected a library"
 >           pd' = pd { library = Just lib' }
->       f pd' lbi muhs x
+>       f pd' lbi uhs x
 
