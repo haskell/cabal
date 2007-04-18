@@ -69,7 +69,9 @@ import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
 
+#ifndef __NHC__
 import Control.Exception (finally)
+#endif
 import Control.Monad(when)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
@@ -80,6 +82,11 @@ import Distribution.Compat.FilePath (joinFileName, splitFileName)
 
 #ifdef DEBUG
 import HUnit (Test)
+#endif
+
+#ifdef __NHC__
+finally :: IO a -> IO b -> IO a
+x `finally` y = do { a <- x; y; return a }
 #endif
 
 -- |Create a source distribution.
