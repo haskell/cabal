@@ -56,11 +56,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir, mkIncludeDir )
 import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit,
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-				  rawSystemVerbose,
-#endif
-                  maybeExit, xargs,
-				  die, dirOf, moduleToFilePath,
+                  xargs, die, dirOf, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
                                   mkLibName, mkProfLibName, dotToSep )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
