@@ -82,7 +82,6 @@ import Control.Monad		( unless, when )
 import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
-import System.Exit              (ExitCode(..))
 import System.IO
 
 #ifdef mingw32_HOST_OS
