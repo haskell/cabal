@@ -43,7 +43,7 @@
 >  | x == y = removePrefix xs ys
 >  | otherwise = Nothing
 >
-> type Hook a = PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> a
+> type Hook a = PackageDescription -> LocalBuildInfo -> UserHooks -> a
 >            -> IO ()
 >
 > add_ghc_options :: [String] -> Hook a -> Hook a
