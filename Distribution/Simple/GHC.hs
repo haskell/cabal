@@ -88,10 +88,11 @@ import System.IO
 import Distribution.Compat.FilePath ( splitFileName )
 #endif
 
+-- System.IO used to export a different try, so we can't use try unqualified
 #ifndef __NHC__
-import Control.Exception (try)
+import Control.Exception as Try
 #else
-import IO (try)
+import IO as Try
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -188,9 +189,9 @@ build pkg_descr lbi verbose = do
 		else return []
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
-        try (removeFile libName) -- first remove library if it exists
-        try (removeFile profLibName) -- first remove library if it exists
-	try (removeFile ghciLibName) -- first remove library if it exists
+        Try.try (removeFile libName) -- first remove library if it exists
+        Try.try (removeFile profLibName) -- first remove library if it exists
+	Try.try (removeFile ghciLibName) -- first remove library if it exists
         let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
                 ++ [libName]
             arObjArgs =
