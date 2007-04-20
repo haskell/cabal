@@ -58,11 +58,11 @@ module Distribution.Simple.Install (
 #endif
 
 import Distribution.PackageDescription (
-	PackageDescription(..),
+	PackageDescription(..), BuildInfo(..), Library(..),
 	setupMessage, hasLibs, withLib, withExe )
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir,
-        mkHaddockDir, haddockPref)
+        mkHaddockDir, mkIncludeDir, haddockPref)
 import Distribution.Simple.Utils(copyFileVerbose, die, copyDirectoryRecursiveVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
@@ -73,8 +73,8 @@ import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
-import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist)
-import Distribution.Compat.FilePath(splitFileName,joinFileName)
+import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
+import Distribution.Compat.FilePath(splitFileName,joinFileName, isAbsolutePath)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -110,6 +110,11 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
   let libPref = mkLibDir pkg_descr lbi copydest
   let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage verbose ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
+
+  -- install include files for all compilers - they may be needed to compile
+  -- haskell files (using the CPP extension)
+  when (hasLibs pkg_descr) $ installIncludeFiles verbose pkg_descr libPref
+
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr)
                      (GHC.installLib verbose (withPrograms lbi)
@@ -126,6 +131,27 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
      _    -> die ("only installing with GHC, JHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
+
+-- | Install the files listed in install-includes
+installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
+installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
+ | not . null . installIncludes $ lbi
+ = do
+   createDirectoryIfMissing True incdir
+   incs <- mapM (findInc relincdirs) (installIncludes lbi)
+   sequence_ [ copyFileVerbose verbose path (incdir `joinFileName` f)
+	     | (f,path) <- incs ]
+  where
+   relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)
+   lbi = libBuildInfo l
+   incdir = mkIncludeDir theLibdir
+
+   findInc [] f = die ("can't find include file " ++ f)
+   findInc (d:ds) f = do
+     let path = (d `joinFileName` f)
+     b <- doesFileExist path
+     if b then return (f,path) else findInc ds f
+installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
 
 -- ------------------------------------------------------------
 -- * Testing
