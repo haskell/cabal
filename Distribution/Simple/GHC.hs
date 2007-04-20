@@ -361,7 +361,7 @@ ghcOptions lbi bi odir
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
-     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ++ installIncludes bi ]
+     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])

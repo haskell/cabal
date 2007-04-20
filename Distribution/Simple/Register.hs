@@ -285,8 +285,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 				 ++ if inplace 
 					then map (pwd `joinFileName`) relinc
 					else [incdir],
-        IPI.includes	      = includes bi ++ map (snd.splitFileName)
-						   (installIncludes bi),
+        IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
         IPI.ccOptions         = ccOptions bi,
