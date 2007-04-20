@@ -54,7 +54,7 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir, mkIncludeDir )
+				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit,
                   xargs, die, dirOf, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
@@ -451,8 +451,6 @@ installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
          ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
 	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 
-	 installIncludeFiles verbose pd pref
-
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
          -- don't worry too much about it.
@@ -474,26 +472,6 @@ installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
 	  ifGHCi action = when hasGHCi (action >> return ())
 installLib _ _ _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
-
--- | Install the files listed in install-includes
-installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
- = do
-   createDirectoryIfMissing True incdir
-   incs <- mapM (findInc relincdirs) (installIncludes lbi)
-   sequence_ [ copyFileVerbose verbose path (incdir `joinFileName` f)
-	     | (f,path) <- incs ]
-  where
-   relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)
-   lbi = libBuildInfo l
-   incdir = mkIncludeDir theLibdir
-
-   findInc [] f = die ("can't find include file " ++ f)
-   findInc (d:ds) f = do
-     let path = (d `joinFileName` f)
-     b <- doesFileExist path
-     if b then return (f,path) else findInc ds f
-installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
 
 -- Also checks whether the program was actually found.
 foundProg :: Maybe Program -> Maybe Program
