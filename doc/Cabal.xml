@@ -788,11 +788,12 @@ Other-Modules:   A, C, Utils</programlisting>
               <replaceable>filename list</replaceable>
             </term>
             <listitem>
-              <para>A list of header files already installed on the
-              system (i.e. not part of this package) to be included in
-              any compilations via C.  These files typically contain
-              function prototypes for foreign imports used by the
-              package.</para>
+              <para>A list of header files to be included in any
+              compilations via C.  This field applies to both header
+              files that are already installed on the system and to
+              those coming with the package to be isntalled.  These files
+              typically contain function prototypes for foreign imports
+              used by the package.</para>
             </listitem>
           </varlistentry>
 
@@ -803,8 +804,7 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>A list of header files from this package to be
-              included in any compilations via C.  These header files
-              will be installed into
+              installed into
               <literal>$(libdir)/includes</literal> when the package
               is installed.  Files listed in
               <literal>install-includes:</literal> should be found in
@@ -815,7 +815,9 @@ Other-Modules:   A, C, Utils</programlisting>
 	      used to name header files that contain prototypes for
 	      foreign imports used in Haskell code in this package,
 	      for which the C implementations are also provided with
-	      the package.</para>
+	      the package.  Note that to include them when compiling
+	      the package itself, they need to be listed in the
+	      <literal>includes:</literal> field as well.</para>
             </listitem>
           </varlistentry>
 
