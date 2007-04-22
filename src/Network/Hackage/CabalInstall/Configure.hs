@@ -45,7 +45,7 @@ defaultOutputGen verbose
          return OutputGen
                 { prepareInstall = \_pkgs -> return ()
                 , pkgIsPresent   = printf "'%s' is present.\n" . showPackageId
-                , downloadingPkg = printf "Downloading '%s'\n" . showPackageId
+                , downloadingPkg = printf "Downloading '%s'...\n" . showPackageId
                 , executingCmd   = \cmd args
                                  -> when (verbose > 0) $ printf "Executing: '%s %s'\n" cmd (unwords args)
                 , cmdFailed      = \cmd args errno
