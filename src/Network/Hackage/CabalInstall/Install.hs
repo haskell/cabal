@@ -56,8 +56,7 @@ downloadPkg cfg pkg location
          if fetched
             then do pkgIsPresent (configOutputGen cfg) pkg
                     return (packageFile cfg pkg)
-            else do downloadingPkg (configOutputGen cfg) pkg
-                    fetchPackage cfg pkg location
+            else fetchPackage cfg pkg location
 
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
