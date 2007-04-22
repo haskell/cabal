@@ -93,11 +93,37 @@ type PreProcessor = FilePath  -- Location of the source file in need of preproce
                   -> Int      -- verbose
                   -> IO ()    -- Should exit if the preprocessor fails
 
+-- We split the input and output file names into a base directory and the
+-- rest of the file name. The input base dir is the path in the list of search
+-- dirs that this file was found in. The output base dir is the build dir where
+-- all the generated source files are put.
+--
+-- The reason for splitting it up this way is that some pre-processors don't
+-- simply generate one output .hs file from one input file but have
+-- dependencies on other genereated files (notably c2hs, where building one
+-- .hs file may require reading other .chi files, and then compiling the .hs
+-- file may require reading a generated .h file). In these cases the generated
+-- files need to embed relative path names to each other (eg the generated .hs
+-- file mentions the .h file in the FFI imports). This path must be relative to
+-- the base directory where the genereated files are located, it cannot be
+-- relative to the top level of the build tree because the compilers do not
+-- look for .h files relative to there, ie we do not use "-I .", instead we use
+-- "-I dist/build" (or whatever dist dir has been set by the user)
+--
+-- Most pre-processors do not care of course, so the simplePP function
+-- handles the simple case.
+--
+type PreProcessorFull =
+    (FilePath, FilePath) -- Location of the source file relative to a base dir
+ -> (FilePath, FilePath) -- Output file name, relative to an output base dir
+ -> Int      -- verbosity
+ -> IO ()    -- Should exit if the preprocessor fails
+
 
 -- |A preprocessor for turning non-Haskell files with the given extension
 -- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
+    = (String, BuildInfo -> LocalBuildInfo -> PreProcessorFull)
 
 -- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
 -- a Haskell source file for each module.
@@ -139,7 +165,7 @@ preprocessModule
     -> String				-- ^module name
     -> Int				-- ^verbose
     -> [String]				-- ^builtin suffixes
-    -> [(String, PreProcessor)]		-- ^possible preprocessors
+    -> [(String, PreProcessorFull)]	-- ^possible preprocessors
     -> IO ()
 preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
@@ -168,8 +194,8 @@ preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
 	    when recomp $ do
               let destDir = destLoc `joinFileName` dirName srcStem
               createDirectoryIfMissing True destDir
-              pp psrcFile
-                 (destLoc `joinFileName` srcStem `joinFileExt` "hs") verbose
+              pp (psrcLoc, psrcRelFile)
+                 (destLoc, srcStem `joinFileExt` "hs") verbose
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
@@ -329,6 +355,14 @@ standardPP :: String -> [String] -> PreProcessor
 standardPP eName args inFile outFile verbose
     = rawSystemExit verbose eName (args ++ ["-o", outFile, inFile])
 
+simplePP :: PreProcessor
+         -> PreProcessorFull
+simplePP pp (inBaseDir, inRelativeFile)
+            (outBaseDir, outRelativeFile) verbosity
+    = pp inFile outFile verbosity
+  where inFile  = inBaseDir  `joinFileName` inRelativeFile
+        outFile = outBaseDir `joinFileName` outRelativeFile
+
 ppNone :: String -> PreProcessor
 ppNone name inFile _ _ =
     dieWithLocation inFile Nothing $ "no " ++ name ++ " preprocessor available"
@@ -340,11 +374,13 @@ ppSuffixes = map fst
 -- |Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     ppGreenCard)
-  , ("chs",    ppC2hs)
-  , ("hsc",    ppHsc2hs)
-  , ("x",      ppAlex)
-  , ("y",      ppHappy)
-  , ("ly",     ppHappy)
-  , ("cpphs",  ppCpp)
+  [ ("gc",     simplePP' ppGreenCard)
+  , ("chs",    simplePP' ppC2hs)
+  , ("hsc",    simplePP' ppHsc2hs)
+  , ("x",      simplePP' ppAlex)
+  , ("y",      simplePP' ppHappy)
+  , ("ly",     simplePP' ppHappy)
+  , ("cpphs",  simplePP' ppCpp)
   ]
+  where
+    simplePP' pp = \bi lbi -> simplePP (pp bi lbi)
