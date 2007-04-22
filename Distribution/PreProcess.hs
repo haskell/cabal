@@ -307,10 +307,16 @@ getLdFlags bi = map ("-L" ++) (extraLibDirs bi)
              ++ map ("-l" ++) (extraLibs bi)
              ++ ldOptions bi
 
-ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppC2hs bi lbi
-    = maybe (ppNone "c2hs") pp (withC2hs lbi)
-  where pp n = standardPP n (concat [["-C", opt] | opt <- cppOptions bi lbi])
+ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessorFull
+ppC2hs bi lbi = maybe (simplePP $ ppNone "c2hs") pp (withC2hs lbi)
+  where pp name (inBaseDir, inRelativeFile)
+                (outBaseDir, outRelativeFile) verbosity
+          = rawSystemExit verbosity name $
+                 ["--include=" ++ dir | dir <- hsSourceDirs bi ]
+              ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
+              ++ ["--output-dir=" ++ outBaseDir,
+                  "--output=" ++ outRelativeFile,
+                  inBaseDir `joinFileName` inRelativeFile]
 
 cppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 cppOptions bi lbi
@@ -375,7 +381,7 @@ ppSuffixes = map fst
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
   [ ("gc",     simplePP' ppGreenCard)
-  , ("chs",    simplePP' ppC2hs)
+  , ("chs",              ppC2hs)       -- c2hs is a more complicated one
   , ("hsc",    simplePP' ppHsc2hs)
   , ("x",      simplePP' ppAlex)
   , ("y",      simplePP' ppHappy)
