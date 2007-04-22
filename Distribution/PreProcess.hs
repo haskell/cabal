@@ -62,8 +62,8 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemExit,
-                                  moduleToFilePath, die, dieWithLocation)
+import Distribution.Simple.Utils (rawSystemExit, die, dieWithLocation,
+                                  moduleToFilePath, moduleToFilePath2)
 import Distribution.Version (Version(..))
 import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
@@ -71,7 +71,8 @@ import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
 import Distribution.Compat.FilePath
-	(splitFileExt, joinFileName, joinFileExt)
+	(splitFileExt, joinFileName, joinFileExt, dirName)
+import Distribution.Compat.Directory ( createDirectoryIfMissing )
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -111,7 +112,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
         setupMessage verbose "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
-        sequence_ [ preprocessModule (hsSourceDirs bi) modu
+        sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) modu
                                      verbose builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
@@ -121,6 +122,7 @@ preprocessSources pkg_descr lbi verbose handlers = do
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
                                   ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
+                                     (buildDir lbi)
                                      modu verbose builtinSuffixes biHandlers
                   | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
@@ -133,29 +135,41 @@ preprocessSources pkg_descr lbi verbose handlers = do
 -- if required.
 preprocessModule
     :: [FilePath]			-- ^source directories
+    -> FilePath                         -- ^destination directory
     -> String				-- ^module name
     -> Int				-- ^verbose
     -> [String]				-- ^builtin suffixes
     -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ()
-preprocessModule searchLoc modu verbose builtinSuffixes handlers = do
-    bsrcFiles <- moduleToFilePath searchLoc modu builtinSuffixes
-    psrcFiles <- moduleToFilePath searchLoc modu (map fst handlers)
+preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
+    -- look for files in the various source dirs with this module name
+    -- and a file extension of a known preprocessor
+    psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
     case psrcFiles of
-	[] -> case bsrcFiles of
+              -- no preprocessor file exists, look for an ordinary source file
+	[] -> do bsrcFiles  <- moduleToFilePath searchLoc modu builtinSuffixes
+                 case bsrcFiles of
 	          [] -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
 	          _  -> return ()
-	(psrcFile:_) -> do
-	    let (srcStem, ext) = splitFileExt psrcFile
+        ((psrcLoc, psrcRelFile):_) -> do
+            let (srcStem, ext) = splitFileExt psrcRelFile
+                psrcFile = psrcLoc `joinFileName` psrcRelFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
 	                       (lookup ext handlers)
-	    recomp <- case bsrcFiles of
+            -- look for existing pre-processed source file in the dest dir to
+            -- see if we really have to re-run the preprocessor.
+	    ppsrcFiles <- moduleToFilePath [destLoc] modu builtinSuffixes
+	    recomp <- case ppsrcFiles of
 	                  [] -> return True
-	                  (bsrcFile:_) -> do
-	                      btime <- getModificationTime bsrcFile
+	                  (ppsrcFile:_) -> do
+                              btime <- getModificationTime ppsrcFile
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)
-	    when recomp $ pp psrcFile (srcStem `joinFileExt` "hs") verbose
+	    when recomp $ do
+              let destDir = destLoc `joinFileName` dirName srcStem
+              createDirectoryIfMissing True destDir
+              pp psrcFile
+                 (destLoc `joinFileName` srcStem `joinFileExt` "hs") verbose
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)

@@ -55,6 +55,7 @@ module Distribution.Simple.Utils (
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
         moduleToFilePath,
+        moduleToFilePath2,
         mkLibName,
         mkProfLibName,
         currentDir,

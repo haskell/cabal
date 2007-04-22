@@ -290,7 +290,6 @@ build pkg_descr lbi verbose = do
                                    | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
                  let binArgs linkExe profExe =
                             pkg_conf
-                         ++ ["-I"++pref]
 			 ++ (if linkExe
 			        then ["-o", targetDir `joinFileName` exeNameReal]
                                 else ["-c"])
@@ -358,7 +357,9 @@ ghcOptions lbi bi odir
             else [])
      ++ ["-i"]
      ++ ["-i" ++ autogenModulesDir lbi]
+     ++ ["-i" ++ buildDir lbi]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+     ++ ["-I" ++ buildDir lbi]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
