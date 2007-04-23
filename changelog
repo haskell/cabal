@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+1.1.6.2  Ian Lynagh <igloo@earth.li> Apr 2007
+	* Fix compiling an executable for profiling with template haskell
+	* Fix C/Haskell type mismatches
+	* Set the Cabal version when building via the fptools build system
+
 1.1.6.1  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
 	* Fix escaping of ' chars in register.sh script.
 	* Fix getDataDir etc. when bindir=$prefix
