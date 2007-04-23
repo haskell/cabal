@@ -211,7 +211,8 @@ Other-Modules:   A, C, Utils</programlisting>
       <para>The package description file should have a name ending in
         <quote><literal>.cabal</literal></quote>.  There must be exactly
         one such file in the directory.  The first part of the name is
-        immaterial, but it is conventional to use the package name.</para>
+        usually the package name, and some of the tools that operate
+        on Cabal packages require this.</para>
 
       <para>In the package description file, lines beginning with
         <quote><literal>--</literal></quote> are treated as comments
@@ -237,7 +238,8 @@ Other-Modules:   A, C, Utils</programlisting>
         syntax like mail message headers.</para>
       <itemizedlist>
 	<listitem>
-          <para>case is not significant in field names</para>
+          <para>case is not significant in field names,
+            but is significant in field values</para>
 	</listitem>
 	<listitem>
           <para>to continue a field value, indent the next line</para>
