@@ -141,13 +141,6 @@ initialBuildSteps pkg_descr lbi verbose suffixes = do
   buildPathsModule pkg_descr lbi
 
   preprocessSources pkg_descr lbi verbose suffixes
-  setupMessage verbose "Building" pkg_descr
-  case compilerFlavor (compiler lbi) of
-   GHC  -> GHC.build  pkg_descr lbi verbose
-   JHC  -> JHC.build  pkg_descr lbi verbose
-   Hugs -> Hugs.build pkg_descr lbi verbose
-   NHC  -> NHC.build  pkg_descr lbi verbose
-   _    -> die ("Building is not supported with this compiler.")
 
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs
