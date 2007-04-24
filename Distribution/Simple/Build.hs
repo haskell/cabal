@@ -101,6 +101,7 @@ build pkg_descr lbi (BuildFlags verbose) suffixes = do
     GHC  -> GHC.build  pkg_descr lbi verbose
     JHC  -> JHC.build  pkg_descr lbi verbose
     Hugs -> Hugs.build pkg_descr lbi verbose
+    NHC  -> NHC.build  pkg_descr lbi verbose
     _    -> die ("Building is not supported with this compiler.")
 
 makefile :: PackageDescription  -- ^mostly information from the .cabal file
@@ -145,6 +146,7 @@ initialBuildSteps pkg_descr lbi verbose suffixes = do
    GHC  -> GHC.build  pkg_descr lbi verbose
    JHC  -> JHC.build  pkg_descr lbi verbose
    Hugs -> Hugs.build pkg_descr lbi verbose
+   NHC  -> NHC.build  pkg_descr lbi verbose
    _    -> die ("Building is not supported with this compiler.")
 
 -- ------------------------------------------------------------
