@@ -7,7 +7,7 @@ import System.Directory (doesFileExist)
 
 import Distribution.Compat.FilePath (joinFileName)
 
-#if (__GLASGOW_HASKELL__ || __HUGS__) && !(mingw32_HOST_OS || mingw32_TARGET_OS)
+#if (__GLASGOW_HASKELL__ || __HUGS__)
 import System.Posix.Internals (c_getpid)
 #else
 import System.Posix.Types (CPid(..))
@@ -37,13 +37,9 @@ openTempFile tmp_dir template
 		else do hnd <- openFile path ReadWriteMode
                         return (path, hnd)
 
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-foreign import ccall unsafe "_getpid" getProcessID :: IO Int
-		 -- XXX relies on Int == Int32 on Windows
-#else
 #if !(__GLASGOW_HASKELL__ || __HUGS__)
 foreign import ccall unsafe "getpid" c_getpid :: IO CPid
 #endif
+
 getProcessID :: IO Int
 getProcessID = c_getpid >>= return . fromIntegral
-#endif
