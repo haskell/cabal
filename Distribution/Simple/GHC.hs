@@ -381,6 +381,9 @@ makefile pkg_descr lbi flags = do
   let file = case makefileFile flags of
                 Just f ->  f
                 _otherwise -> "Makefile"
+  targetExists <- doesFileExist file
+  when targetExists $
+    die ("Not overwriting existing copy of " ++ file)
   h <- openFile file WriteMode
 
   let Just lib = library pkg_descr
