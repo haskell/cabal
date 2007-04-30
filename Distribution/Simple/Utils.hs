@@ -136,7 +136,7 @@ maybeExit cmd = do
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: Int -> FilePath -> [String] -> IO ()
 rawSystemExit verbose path args = do
-  when (verbose > 0) $
+  when (verbose > 1) $
     putStrLn (path ++ concatMap (' ':) args)
   maybeExit $ rawSystem path args
 
