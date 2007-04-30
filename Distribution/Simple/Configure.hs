@@ -76,7 +76,7 @@ import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage,
         satisfyDependency)
-import Distribution.Simple.Utils (die, warn, withTempFile,maybeExit)
+import Distribution.Simple.Utils (die, warn, maybeExit, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
 
@@ -88,7 +88,6 @@ import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
-import System.Cmd		( system )
 import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
@@ -345,8 +344,7 @@ getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesJHC comp cfg = do
    let verbose = configVerbose cfg
    when (verbose > 0) $ message "Reading installed packages..."
-   let cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" --list-libraries"
-   str <- systemCaptureStdout verbose cmd_line
+   str <- rawSystemStdout verbose (compilerPkgTool comp) ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
@@ -358,8 +356,7 @@ getInstalledPackages :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
 getInstalledPackages comp user verbose = do
    when (verbose > 0) $ message "Reading installed packages..."
    let user_flag = if user then "--user" else "--global"
-       cmd_line  = "\"" ++ compilerPkgTool comp ++ "\" " ++ user_flag ++ " list"
-   str <- systemCaptureStdout verbose cmd_line
+   str <- rawSystemStdout verbose (compilerPkgTool comp) [user_flag, "list"]
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
        str1 = unlines (filter keep_line (lines str))
        str2 = filter (`notElem` ",(){}") str1
@@ -367,18 +364,6 @@ getInstalledPackages comp user verbose = do
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
-
-systemCaptureStdout :: Int -> String -> IO String
-systemCaptureStdout verbose cmd = do
-   withTempFile "." "" $ \tmp -> do
-      let cmd_line  = cmd ++ " >" ++ tmp
-      when (verbose > 0) $ putStrLn cmd_line
-      res <- system cmd_line
-      case res of
-        ExitFailure _ -> die ("executing external program failed: "++cmd_line)
-        ExitSuccess   -> do str <- readFile tmp
-                            let ev [] = ' '; ev xs = last xs
-                            ev str `seq` return str
 
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
@@ -433,12 +418,12 @@ compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
 configCompilerVersion GHC compilerP verbose = do
-  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --numeric-version")
+  str <- rawSystemStdout verbose compilerP ["--numeric-version"]
   case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
     _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
 configCompilerVersion comp compilerP verbose | comp `elem` [JHC,NHC] = do
-  str <- systemGetStdout verbose ("\"" ++ compilerP ++ "\" --version")
+  str <- rawSystemStdout verbose compilerP ["--version"]
   case words str of
     (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of
                    [v] -> return v
@@ -454,23 +439,13 @@ haddockVersion lbi = fmap getVer verString
    verString = do haddockProg <-
                     fmap (fromMaybe noHaddock) $
                     lookupProgram "haddock" (withPrograms lbi)
-                  systemGetStdout 0 (progLocPath (programLocation haddockProg)
-                                     ++ " --version")
+                  rawSystemStdout 0
+                    (progLocPath (programLocation haddockProg)) ["--version"]
    getVer    = head . pCheck . readP_to_S parseVersion . init . (!! 2) . words
    noHaddock = error "haddockVersion: cannot find haddock"
    progLocPath EmptyLocation        = noHaddock
    progLocPath (UserSpecified path) = path
    progLocPath (FoundOnSystem path) = path
-
-systemGetStdout :: Int -> String -> IO String
-systemGetStdout verbose cmd = do
-  withTempFile "." "" $ \tmp -> do
-    let cmd_line = cmd ++ " >" ++ tmp
-    when (verbose > 1) $ putStrLn cmd_line
-    maybeExit $ system cmd_line
-    str <- readFile tmp
-    let eval [] = ' '; eval xs = last xs
-    eval str `seq` return str
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
