@@ -46,6 +46,7 @@ module Distribution.Simple.Utils (
 	dieWithLocation,
 	warn,
 	rawSystemExit,
+        rawSystemStdout,
         maybeExit,
         xargs,
         matchesDescFile,
@@ -59,7 +60,6 @@ module Distribution.Simple.Utils (
         currentDir,
 	dirOf,
         dotToSep,
-	withTempFile,
 	findFile,
         defaultPackageDesc,
         findPackageDesc,
@@ -79,7 +79,10 @@ module Distribution.Simple.Utils (
 #endif
 
 import Distribution.Compat.RawSystem (rawSystem)
-import Distribution.Compat.Exception (finally)
+import Distribution.Compat.Exception (finally, bracket)
+
+import Control.Exception (evaluate)
+import System.Process (runProcess, waitForProcess)
 
 import Control.Monad(when, filterM, unless)
 import Data.List (nub, unfoldr)
@@ -87,11 +90,6 @@ import System.Environment (getProgName)
 import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
-#if (__GLASGOW_HASKELL__ || __HUGS__) && !(mingw32_HOST_OS || mingw32_TARGET_OS)
-import System.Posix.Internals (c_getpid)
-#else
-import System.Posix.Types (CPid(..))
-#endif
 
 import Distribution.Compat.FilePath
 	(splitFileName, splitFileExt, joinFileName, joinFileExt, joinPaths,
@@ -102,6 +100,7 @@ import System.Directory (getDirectoryContents, getCurrentDirectory
 import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
             getDirectoryContentsWithoutSpecial)
+import Distribution.Compat.TempFile (openTempFile)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -147,6 +146,30 @@ rawSystemPathExit verbose prog args = do
   case r of
     Nothing   -> die ("Cannot find: " ++ prog)
     Just path -> rawSystemExit verbose path args
+
+-- Run a command and return its output
+
+rawSystemStdout :: Int -> FilePath -> [String] -> IO String
+rawSystemStdout verbose path args = do
+  when (verbose > 1) $
+    putStrLn (path ++ concatMap (' ':) args)
+
+  -- TODO Ideally we'd use runInteractiveProcess and not have to make any
+  --      silly temp files, however it is not possible to only connect pipes
+  --      to a subset of the process's stdin/out/err. We really cannot
+  --      connect to all three since then we'd need threads to pull on stdout
+  --      and stderr simultaniously to avoid deadlock, and using threads like
+  --      that would not be portable to Hugs for example.
+  bracket (openTempFile "." "tmp")
+          (\(tmpName, tmpHandle) -> removeFile tmpName)
+         $ \(tmpName, tmpHandle) -> do
+    cmdHandle <- runProcess path args Nothing Nothing
+                   Nothing (Just tmpHandle) Nothing
+    res <- waitForProcess cmdHandle
+    unless (res == ExitSuccess) $ exitWith res
+    output <- readFile tmpName
+    evaluate (length output)
+    return output
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
@@ -316,35 +339,6 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
-
--- ------------------------------------------------------------
--- * temporary file names
--- ------------------------------------------------------------
-
--- use a temporary filename that doesn't already exist.
--- NB. *not* secure (we don't atomically lock the tmp file we get)
-withTempFile :: FilePath -> String -> (FilePath -> IO a) -> IO a
-withTempFile tmp_dir extn action
-  = do x <- getProcessID
-       findTempName x
-  where 
-    findTempName x
-      = do let filename = ("tmp" ++ show x) `joinFileExt` extn
-	       path = tmp_dir `joinFileName` filename
-  	   b  <- doesFileExist path
-	   if b then findTempName (x+1)
-		else action path `finally` try (removeFile path)
-
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-foreign import ccall unsafe "_getpid" getProcessID :: IO Int
-		 -- XXX relies on Int == Int32 on Windows
-#else
-#if !(__GLASGOW_HASKELL__ || __HUGS__)
-foreign import ccall unsafe "getpid" c_getpid :: IO CPid
-#endif
-getProcessID :: IO Int
-getProcessID = c_getpid >>= return . fromIntegral
-#endif
 
 -- ------------------------------------------------------------
 -- * Finding the description file
