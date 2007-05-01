@@ -151,7 +151,7 @@ installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
      let path = (d `joinFileName` f)
      b <- doesFileExist path
      if b then return (f,path) else findInc ds f
-installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
+installIncludeFiles _ _ _ = return ()
 
 -- ------------------------------------------------------------
 -- * Testing
