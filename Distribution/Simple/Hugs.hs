@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
-import Distribution.PreProcess 	( ppCpp )
+import Distribution.PreProcess 	( ppCpp, PreProcessor, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
@@ -141,7 +141,7 @@ build pkg_descr lbi verbose = do
 	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
-	    	ppCpp bi lbi srcFile destFile verbose
+	    	runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbose
 	    	return ()
 	      else
 	    	copyFile srcFile destFile
