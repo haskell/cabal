@@ -1,0 +1,9 @@
+-- The point of this test is to check that the c2hs pre-processed .hs sources
+-- end up in dist/build and that the happy one stays in the src dir.
+-- Also, the happy one should be included into the sdist tarball.
+
+name:            preprocess
+version:         0.0
+build-depends:   base
+hs-source-dirs:  src
+exposed-modules: C2HsExample, HappyExample
