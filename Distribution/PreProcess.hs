@@ -190,7 +190,7 @@ preprocessModule
     -> [String]				-- ^builtin suffixes
     -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ()
-preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
+preprocessModule searchLoc buildLoc modu verbose builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
     psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
@@ -206,6 +206,16 @@ preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
                 psrcFile = psrcLoc `joinFileName` psrcRelFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
 	                       (lookup ext handlers)
+            -- Currently we put platform independent generated .hs files back
+            -- into the source dirs and put platform dependent ones into the
+            -- build dir. Really they should all go in the build dir, or at
+            -- least not in the source dirs (which should be considred
+            -- read-only), however for the moment we have no other way of
+            -- tracking which files should be included in the source
+            -- distribution tarball. Hopefully we can fix that soon.
+            let destLoc = if platformIndependent pp
+                            then psrcLoc
+                            else buildLoc
             -- look for existing pre-processed source file in the dest dir to
             -- see if we really have to re-run the preprocessor.
 	    ppsrcFiles <- moduleToFilePath [destLoc] modu builtinSuffixes
