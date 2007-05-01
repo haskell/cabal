@@ -74,7 +74,8 @@ import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..)
                             pfesetupProgram, updateProgram,  rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
-                                preprocessSources, PPSuffixHandler)
+                                preprocessSources, PPSuffixHandler,
+                                PreProcessor, runSimplePreProcessor)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build, makefile )
@@ -474,10 +475,12 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                  let (targetFileNoext, targetFileExt) = splitFileExt targetFile
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
-                    then ppCpp' inputArgs bi lbi file targetFile verbose
+                    then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
+                           file targetFile verbose
                     else copyFile file targetFile
                  when (targetFileExt == "lhs") $ do
-                       ppUnlit targetFile (joinFileExt targetFileNoext "hs") verbose
+                       runSimplePreProcessor ppUnlit
+                         targetFile (joinFileExt targetFileNoext "hs") verbose
                        return ()
         needsCpp :: PackageDescription -> Bool
         needsCpp p = case library p of

@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
+                                runSimplePreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
 				ppHappy, ppAlex, ppUnlit
@@ -81,18 +82,16 @@ import Distribution.Compat.Directory ( createDirectoryIfMissing )
 -- source file:
 --
 -- > ppTestHandler :: PreProcessor
--- > ppTestHandler inFile outFile verbose
--- >     = do when (verbose > 0) $
+-- > ppTestHandler =
+-- >   PreProcessor {
+-- >     platformIndependent = True,
+-- >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
+-- >       do when (verbose > 0) $
 -- >            putStrLn (inFile++" has been preprocessed to "++outFile)
 -- >          stuff <- readFile inFile
 -- >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
 -- >          return ExitSuccess
 --
-type PreProcessor = FilePath  -- Location of the source file in need of preprocessing
-                  -> FilePath -- Output filename
-                  -> Int      -- verbose
-                  -> IO ()    -- Should exit if the preprocessor fails
-
 -- We split the input and output file names into a base directory and the
 -- rest of the file name. The input base dir is the path in the list of search
 -- dirs that this file was found in. The output base dir is the build dir where
@@ -110,20 +109,44 @@ type PreProcessor = FilePath  -- Location of the source file in need of preproce
 -- look for .h files relative to there, ie we do not use "-I .", instead we use
 -- "-I dist/build" (or whatever dist dir has been set by the user)
 --
--- Most pre-processors do not care of course, so the simplePP function
--- handles the simple case.
+-- Most pre-processors do not care of course, so mkSimplePreProcessor and
+-- runSimplePreProcessor functions handle the simple case.
 --
-type PreProcessorFull =
-    (FilePath, FilePath) -- Location of the source file relative to a base dir
- -> (FilePath, FilePath) -- Output file name, relative to an output base dir
- -> Int      -- verbosity
- -> IO ()    -- Should exit if the preprocessor fails
+data PreProcessor = PreProcessor {
 
+  -- Is the output of the pre-processor platform independent? eg happy output
+  -- is portable haskell but c2hs's output is platform dependent.
+  -- This matters since only platform independent generated code can be
+  -- inlcuded into a source tarball.
+  platformIndependent :: Bool,
+                              
+  -- TODO: deal with pre-processors that have implementaion dependent output
+  --       eg alex and happy have --ghc flags. However we can't really inlcude
+  --       ghc-specific code into supposedly portable source tarballs.
+
+  runPreProcessor :: (FilePath, FilePath) -- Location of the source file relative to a base dir
+                  -> (FilePath, FilePath) -- Output file name, relative to an output base dir
+                  -> Int      -- verbosity
+                  -> IO ()    -- Should exit if the preprocessor fails
+  }
+
+mkSimplePreProcessor :: (FilePath -> FilePath -> Int -> IO ())
+                      -> (FilePath, FilePath)
+                      -> (FilePath, FilePath) -> Int -> IO ()
+mkSimplePreProcessor simplePP
+  (inBaseDir, inRelativeFile)
+  (outBaseDir, outRelativeFile) verbosity = simplePP inFile outFile verbosity
+  where inFile  = inBaseDir  `joinFileName` inRelativeFile
+        outFile = outBaseDir `joinFileName` outRelativeFile
+
+runSimplePreProcessor :: PreProcessor -> FilePath -> FilePath -> Int -> IO ()
+runSimplePreProcessor pp inFile outFile verbosity =
+  runPreProcessor pp (".", inFile) (".", outFile) verbosity
 
 -- |A preprocessor for turning non-Haskell files with the given extension
 -- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, BuildInfo -> LocalBuildInfo -> PreProcessorFull)
+    = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
 
 -- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
 -- a Haskell source file for each module.
@@ -161,22 +184,23 @@ preprocessSources pkg_descr lbi verbose handlers = do
 -- if required.
 preprocessModule
     :: [FilePath]			-- ^source directories
-    -> FilePath                         -- ^destination directory
+    -> FilePath                         -- ^build directory
     -> String				-- ^module name
     -> Int				-- ^verbose
     -> [String]				-- ^builtin suffixes
-    -> [(String, PreProcessorFull)]	-- ^possible preprocessors
+    -> [(String, PreProcessor)]		-- ^possible preprocessors
     -> IO ()
 preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
     psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
     case psrcFiles of
-              -- no preprocessor file exists, look for an ordinary source file
+        -- no preprocessor file exists, look for an ordinary source file
 	[] -> do bsrcFiles  <- moduleToFilePath searchLoc modu builtinSuffixes
                  case bsrcFiles of
 	          [] -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
 	          _  -> return ()
+        -- found a pre-processable file in one of the source dirs
         ((psrcLoc, psrcRelFile):_) -> do
             let (srcStem, ext) = splitFileExt psrcRelFile
                 psrcFile = psrcLoc `joinFileName` psrcRelFile
@@ -194,7 +218,8 @@ preprocessModule searchLoc destLoc modu verbose builtinSuffixes handlers = do
 	    when recomp $ do
               let destDir = destLoc `joinFileName` dirName srcStem
               createDirectoryIfMissing True destDir
-              pp (psrcLoc, psrcRelFile)
+              runPreProcessor pp
+                 (psrcLoc, psrcRelFile)
                  (destLoc, srcStem `joinFileExt` "hs") verbose
 
 removePreprocessedPackage :: PackageDescription
@@ -234,16 +259,24 @@ ppGreenCard = ppGreenCard' []
 ppGreenCard' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGreenCard' inputArgs _ lbi
     = maybe (ppNone "greencard") pp (withGreencard lbi)
-    where pp greencard inFile outFile verbose
-              = rawSystemExit verbose greencard
+    where pp greencard =
+            PreProcessor {
+              platformIndependent = False,
+              runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
+                rawSystemExit verbose greencard
                     (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
+            }
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
 ppUnlit :: PreProcessor
-ppUnlit inFile outFile _verbose = do
-    contents <- readFile inFile
-    writeFile outFile (unlit inFile contents)
+ppUnlit =
+  PreProcessor {
+    platformIndependent = True,
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbose -> do
+      contents <- readFile inFile
+      writeFile outFile (unlit inFile contents)
+  }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
@@ -251,9 +284,16 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp' inputArgs bi lbi =
   case withCpphs lbi of
-     Just path                          -> use_cpphs path
-     Nothing | compilerFlavor hc == GHC -> use_ghc
-     _otherwise                         -> ppNone "cpphs (or GHC)"
+     Just path  -> PreProcessor {
+                     platformIndependent = False,
+                     runPreProcessor = mkSimplePreProcessor (use_cpphs path)
+                   }
+     Nothing | compilerFlavor hc == GHC 
+                -> PreProcessor {
+                     platformIndependent = False,
+                     runPreProcessor = mkSimplePreProcessor use_ghc
+                   }
+     _otherwise -> ppNone "cpphs (or GHC)"
   where 
 	hc = compiler lbi
 
@@ -307,16 +347,21 @@ getLdFlags bi = map ("-L" ++) (extraLibDirs bi)
              ++ map ("-l" ++) (extraLibs bi)
              ++ ldOptions bi
 
-ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessorFull
-ppC2hs bi lbi = maybe (simplePP $ ppNone "c2hs") pp (withC2hs lbi)
-  where pp name (inBaseDir, inRelativeFile)
-                (outBaseDir, outRelativeFile) verbosity
-          = rawSystemExit verbosity name $
-                 ["--include=" ++ dir | dir <- hsSourceDirs bi ]
-              ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
-              ++ ["--output-dir=" ++ outBaseDir,
-                  "--output=" ++ outRelativeFile,
-                  inBaseDir `joinFileName` inRelativeFile]
+ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppC2hs bi lbi = maybe (ppNone "c2hs") pp (withC2hs lbi)
+  where
+    pp name =
+      PreProcessor {
+        platformIndependent = False,
+        runPreProcessor = \(inBaseDir, inRelativeFile)
+                           (outBaseDir, outRelativeFile) verbosity ->
+          rawSystemExit verbosity name $
+               ["--include=" ++ dir | dir <- hsSourceDirs bi ]
+            ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
+            ++ ["--output-dir=" ++ outBaseDir,
+                "--output=" ++ outRelativeFile,
+                inBaseDir `joinFileName` inRelativeFile]
+      }
 
 cppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 cppOptions bi lbi
@@ -344,7 +389,7 @@ versionInt (Version { versionBranch = n1:n2:_ })
 ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ lbi
     = maybe (ppNone "happy") pp (withHappy lbi)
-  where pp n = standardPP n (hcFlags hc)
+  where pp n = (standardPP n (hcFlags hc)) { platformIndependent = True }
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
@@ -352,26 +397,27 @@ ppHappy _ lbi
 ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppAlex _ lbi
     = maybe (ppNone "alex") pp (withAlex lbi)
-  where pp n = standardPP n (hcFlags hc)
+  where pp n = (standardPP n (hcFlags hc)) { platformIndependent = True }
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-g"]
 	hcFlags _ = []
 
 standardPP :: String -> [String] -> PreProcessor
-standardPP eName args inFile outFile verbose
-    = rawSystemExit verbose eName (args ++ ["-o", outFile, inFile])
-
-simplePP :: PreProcessor
-         -> PreProcessorFull
-simplePP pp (inBaseDir, inRelativeFile)
-            (outBaseDir, outRelativeFile) verbosity
-    = pp inFile outFile verbosity
-  where inFile  = inBaseDir  `joinFileName` inRelativeFile
-        outFile = outBaseDir `joinFileName` outRelativeFile
+standardPP eName args =
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
+      rawSystemExit verbose eName (args ++ ["-o", outFile, inFile])
+  }
 
 ppNone :: String -> PreProcessor
-ppNone name inFile _ _ =
-    dieWithLocation inFile Nothing $ "no " ++ name ++ " preprocessor available"
+ppNone name = 
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = mkSimplePreProcessor $ \inFile _ _ ->
+      dieWithLocation inFile Nothing $
+        "no " ++ name ++ " preprocessor available"
+  }
 
 -- |Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [ PPSuffixHandler ] -> [String]
@@ -380,13 +426,11 @@ ppSuffixes = map fst
 -- |Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [ PPSuffixHandler ]
 knownSuffixHandlers =
-  [ ("gc",     simplePP' ppGreenCard)
-  , ("chs",              ppC2hs)       -- c2hs is a more complicated one
-  , ("hsc",    simplePP' ppHsc2hs)
-  , ("x",      simplePP' ppAlex)
-  , ("y",      simplePP' ppHappy)
-  , ("ly",     simplePP' ppHappy)
-  , ("cpphs",  simplePP' ppCpp)
+  [ ("gc",     ppGreenCard)
+  , ("chs",    ppC2hs)
+  , ("hsc",    ppHsc2hs)
+  , ("x",      ppAlex)
+  , ("y",      ppHappy)
+  , ("ly",     ppHappy)
+  , ("cpphs",  ppCpp)
   ]
-  where
-    simplePP' pp = \bi lbi -> simplePP (pp bi lbi)
