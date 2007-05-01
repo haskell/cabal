@@ -65,7 +65,7 @@ import Distribution.Version (Version(versionBranch))
 import Distribution.Simple.Utils (smartCopySources, die, findPackageDesc,
                                   findFile, copyFileVerbose, rawSystemPathExit)
 import Distribution.Setup (SDistFlags(..))
-import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, removePreprocessed)
+import Distribution.PreProcess (PPSuffixHandler, ppSuffixes)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
 
@@ -214,7 +214,6 @@ prepareDir :: Int       -- ^verbose
 prepareDir verbose inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
     = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
          smartCopySources verbose srcDirs inPref (mods++mods') suff True True
-         removePreprocessed (map (joinFileName inPref) srcDirs) mods suff
          mapM_ (copyFileTo verbose inPref) cfiles
 
 copyFileTo :: Int -> FilePath -> FilePath -> IO ()
