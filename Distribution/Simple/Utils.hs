@@ -301,14 +301,14 @@ smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone pre
 
 copyFileVerbose :: Int -> FilePath -> FilePath -> IO ()
 copyFileVerbose verbose src dest = do
-  when (verbose > 0) $
+  when (verbose > 1) $
     putStrLn ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
 -- adaptation of removeDirectoryRecursive
 copyDirectoryRecursiveVerbose :: Int -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursiveVerbose verbose srcDir destDir = do
-  when (verbose > 0) $
+  when (verbose > 1) $
     putStrLn ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   let aux src dest =
          let cp :: FilePath -> IO ()
