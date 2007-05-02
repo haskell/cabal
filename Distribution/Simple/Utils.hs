@@ -82,7 +82,9 @@ module Distribution.Simple.Utils (
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally, bracket)
 
+#ifndef __NHC__
 import Control.Exception (evaluate)
+#endif
 import System.Process (runProcess, waitForProcess)
 
 import Control.Monad(when, filterM, unless)
@@ -107,6 +109,10 @@ import Distribution.Compat.TempFile (openTempFile)
 import HUnit ((~:), (~=?), Test(..), assertEqual)
 #endif
 
+#ifdef __NHC__
+evaluate :: a -> IO a
+evaluate x = x `seq` return x
+#endif
 -- ------------------------------------------------------------------------------- Utils for setup
 
 dieWithLocation :: FilePath -> (Maybe Int) -> String -> IO a
