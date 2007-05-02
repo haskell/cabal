@@ -153,7 +153,7 @@ register pkg_descr lbi regFlags
 
         instConfExists <- doesFileExist instConf
         when (not instConfExists && not genScript) $ do
-          when (verbose > 0) $
+          when (verbose > 1) $
             putStrLn ("create " ++ instConf)
           writeInstalledConfig pkg_descr lbi inplace
 
