@@ -107,7 +107,7 @@ import Distribution.Compat.Directory ( createDirectoryIfMissing )
 -- the base directory where the genereated files are located, it cannot be
 -- relative to the top level of the build tree because the compilers do not
 -- look for .h files relative to there, ie we do not use "-I .", instead we use
--- "-I dist/build" (or whatever dist dir has been set by the user)
+-- "-I dist\/build" (or whatever dist dir has been set by the user)
 --
 -- Most pre-processors do not care of course, so mkSimplePreProcessor and
 -- runSimplePreProcessor functions handle the simple case.
