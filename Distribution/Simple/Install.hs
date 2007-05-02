@@ -135,7 +135,6 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
 -- | Install the files listed in install-includes
 installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
 installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
- | not . null . installIncludes $ lbi
  = do
    createDirectoryIfMissing True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
@@ -151,7 +150,7 @@ installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
      let path = (d `joinFileName` f)
      b <- doesFileExist path
      if b then return (f,path) else findInc ds f
-installIncludeFiles _ _ _ = return ()
+installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
 
 -- ------------------------------------------------------------
 -- * Testing
