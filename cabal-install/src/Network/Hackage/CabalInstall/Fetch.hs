@@ -27,6 +27,7 @@ import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Network.HTTP (ConnError(..), Request (..), simpleHTTP
                            , Response(..), RequestMethod (..))
 
+import Control.Exception (bracket)
 import Control.Monad (filterM)
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
@@ -36,8 +37,9 @@ import Network.Hackage.CabalInstall.Config (packagesDirectory)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Compat.FilePath (joinFileName, joinFileExt)
+import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
+import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 
@@ -65,9 +67,11 @@ downloadURI path uri
         case eitherResult of
            Left err -> return (Just err)
            Right rsp
-               | rspCode rsp == (2,0,0) -> writeFile path (rspBody rsp) >> return Nothing
+               | rspCode rsp == (2,0,0) -> withBinaryFile path WriteMode (`hPutStr` rspBody rsp) 
+				                          >> return Nothing
                | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
     where request = Request uri GET [] ""
+
 
 
 downloadFile :: FilePath
@@ -97,14 +101,14 @@ downloadIndex cfg serv
            Just err -> fail $ printf "Failed to download index '%s'" (show err)
            Nothing  -> return path
     where url = serv ++ "/" ++ "00-index.tar.gz"
-          path = packagesDirectory cfg `joinFileName` "00-index" `joinFileExt` "tar.gz"
+          path = packagesDirectory cfg </> "00-index" <.> "tar.gz"
 
 -- |Generate the full path to a given @PackageIdentifer@.
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
 packageFile cfg pkg = packagesDirectory cfg 
-                      `joinFileName` pkgName pkg
-                      `joinFileName` showPackageId pkg 
-                      `joinFileExt` "tar.gz"
+                      </> pkgName pkg
+                      </> showPackageId pkg 
+                      <.> "tar.gz"
 
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: ConfigFlags -> PackageIdentifier -> IO Bool
@@ -140,3 +144,6 @@ fetch cfg pkgs
                    pkgIsPresent output pkg
                    return (not fetched)
           output = configOutputGen cfg
+
+withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
+withBinaryFile name mode = bracket (openBinaryFile name mode) hClose

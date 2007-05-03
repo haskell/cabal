@@ -21,7 +21,7 @@ import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
 import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
 import Distribution.PackageDescription (PackageDescription(..), readPackageDescription)
-import Distribution.Compat.FilePath (joinPaths)
+import System.FilePath ((</>), joinPath, addExtension)
 
 import Control.Monad (liftM)
 import Data.List (isSuffixOf)
@@ -35,7 +35,7 @@ update cfg =
               extractTarFile tarPath indexPath
               contents <- tarballGetFiles tarPath indexPath
               let packageDir = packagesDirectory cfg
-                  cabalFiles = [ packageDir `joinPaths` path
+                  cabalFiles = [ packageDir </> path
                                | path <- contents
                                , ".cabal" `isSuffixOf` path ]
               packageDescriptions <-
@@ -55,7 +55,7 @@ parsePkg server description =
             }
 
 pkgURL :: PackageIdentifier -> String -> String
-pkgURL identifier base = concat [base, "/", pkgName identifier, "/", showPackageId identifier, ".tar.gz"]
+pkgURL identifier base = joinPath [base, pkgName identifier, showPackageId identifier] `addExtension` ".tar.gz"
 
 concatMapM :: (Monad m) => [a] -> (a -> m [b]) -> m [b]
 concatMapM amb f = liftM concat (mapM f amb)

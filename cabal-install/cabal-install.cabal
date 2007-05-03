@@ -19,4 +19,4 @@ Executable: cabal-install
 Main-Is: CabalInstall.hs
 Hs-Source-Dirs: src
 Extensions: CPP, OverlappingInstances, TypeSynonymInstances, TemplateHaskell
-GHC-options: -idependencies/HTTP-2006.7.7
+GHC-options: -idependencies/HTTP-2006.7.7 -idependencies/filepath-1.0

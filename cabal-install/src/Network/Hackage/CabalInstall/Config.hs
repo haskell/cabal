@@ -24,27 +24,30 @@ module Network.Hackage.CabalInstall.Config
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
-import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing)
+import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
+	                    ,getTemporaryDirectory)
 import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
+import System.IO.Unsafe
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
-import Distribution.Compat.FilePath (joinFileName)
+import System.FilePath ((</>))
+import System.Directory
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..))
 
--- FIXME: should be different on Windows
-defaultConfDir :: FilePath
-defaultConfDir = "/etc/cabal-install"
+defaultConfDir, defaultCacheDir, defaultPkgListDir :: FilePath
 
--- FIXME: should be different on Windows
-defaultCacheDir :: FilePath
-defaultCacheDir = "/var/cache/cabal-install"
-
--- FIXME: should be different on Windows
-defaultPkgListDir :: FilePath
-defaultPkgListDir = "/var/lib/cabal-install"
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
+defaultConfDir    = "/" </> "etc" </> "cabal-install" --FIXME
+defaultCacheDir   = unsafePerformIO getTemporaryDirectory
+defaultPkgListDir = unsafePerformIO (getAppUserDataDirectory "cabal-install")
+#else
+defaultConfDir    = "/" </> "etc" </> "cabal-install"
+defaultCacheDir   = "/" </> "var" </> "cache" </> "cabal-install"
+defaultPkgListDir = "/" </> "var" </> "lib" </> "cabal-install"
+#endif
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"
@@ -58,15 +61,15 @@ packagesDirectoryName = "packages"
 
 -- | Full path to the server list file
 servList :: ConfigFlags -> FilePath
-servList cfg = configConfDir cfg `joinFileName` servListFile
+servList cfg = configConfDir cfg </> servListFile
 
 -- | Full path to the packages directory.
 packagesDirectory :: ConfigFlags -> FilePath
-packagesDirectory cfg = configCacheDir cfg `joinFileName` packagesDirectoryName
+packagesDirectory cfg = configCacheDir cfg </> packagesDirectoryName
 
 -- | Full path to the package list file
 pkgList :: ConfigFlags -> FilePath
-pkgList cfg = configPkgListDir cfg `joinFileName` pkgListFile
+pkgList cfg = configPkgListDir cfg </> pkgListFile
 
 
 -- |Read the list of known packages from the pkg.list file.
@@ -101,7 +104,7 @@ isValidConfigDir :: FilePath -> IO Bool
 isValidConfigDir path
     = do checks <- sequence
                    [ checkFiles readable [ path
-                                         , path `joinFileName` servListFile ]]
+                                         , path </> servListFile ]]
          return (and checks)
 
 -- |Picks the first valid config directory or throws an exception if none were found.
