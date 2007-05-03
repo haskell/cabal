@@ -1,16 +1,20 @@
 {-# OPTIONS -cpp #-}
 -- #hide
-module Distribution.Compat.TempFile (openTempFile) where
+module Distribution.Compat.TempFile (openTempFile, withTempFile) where
 
 import System.IO (openFile, Handle, IOMode(ReadWriteMode))
-import System.Directory (doesFileExist)
+import IO (try)
+import System.Directory (doesFileExist, removeFile)
 
-import Distribution.Compat.FilePath (joinFileName)
+import Distribution.Compat.FilePath (joinFileName,joinFileExt)
 
 #if (__GLASGOW_HASKELL__ || __HUGS__)
 import System.Posix.Internals (c_getpid)
+import Control.Exception (finally)
 #else
 import System.Posix.Types (CPid(..))
+
+a `finally` b = do { x <- a; b; return x }
 #endif
 
 
@@ -43,3 +47,18 @@ foreign import ccall unsafe "getpid" c_getpid :: IO CPid
 
 getProcessID :: IO Int
 getProcessID = c_getpid >>= return . fromIntegral
+
+-- use a temporary filename that doesn't already exist.
+-- NB. *not* secure (we don't atomically lock the tmp file we get)
+withTempFile :: FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempFile tmp_dir extn action
+  = do x <- getProcessID
+       findTempName x
+  where
+    findTempName x
+      = do let filename = ("tmp" ++ show x) `joinFileExt` extn
+               path = tmp_dir `joinFileName` filename
+           b  <- doesFileExist path
+           if b then findTempName (x+1)
+                else action path `finally` try (removeFile path)
+
