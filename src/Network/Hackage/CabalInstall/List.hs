@@ -16,7 +16,9 @@ module Network.Hackage.CabalInstall.List
 
 import Text.Regex
 import Data.Maybe (catMaybes, isJust)
-import Data.List (find, nub)
+import Data.List (find, nub, sortBy)
+import Data.Char as Char (toLower)
+import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
@@ -27,13 +29,18 @@ import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), Unresol
 list :: ConfigFlags -> [String] -> IO ()
 list cfg pats = do
     pkgs <- getKnownPackages cfg
-    mapM_ doList $ if null pats then pkgs else nub (concatMap (findInPkgs pkgs) pats)
+    let pkgs' | null pats = pkgs
+              | otherwise = nub (concatMap (findInPkgs pkgs) pats)
+    mapM_ doList (sortBy (comparing nameAndVersion) pkgs')
     where
     findInPkgs :: [PkgInfo] -> String -> [PkgInfo]
     findInPkgs pkgs pat = let rx = mkRegexWithOpts pat False False in
         filter (isJust . matchRegex rx . showInfo) pkgs
     showInfo :: PkgInfo -> String
     showInfo pkg = showPackageId (infoId pkg) ++ "\n" ++ infoSynopsis pkg
+    nameAndVersion PkgInfo { infoId =
+        PackageIdentifier { pkgName = name, pkgVersion = version }
+      } = (map Char.toLower name, name, version)
 
 doList :: PkgInfo -> IO ()
 doList info = do
