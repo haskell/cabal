@@ -85,6 +85,8 @@ import Distribution.Compat.Exception (finally, bracket)
 #ifndef __NHC__
 import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
+#else
+import System (system)
 #endif
 
 import Control.Monad(when, filterM, unless)
@@ -103,7 +105,7 @@ import System.Directory (getDirectoryContents, getCurrentDirectory
 import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
             getDirectoryContentsWithoutSpecial)
-import Distribution.Compat.TempFile (openTempFile)
+import Distribution.Compat.TempFile (openTempFile, withTempFile)
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -150,15 +152,20 @@ rawSystemPathExit verbose prog args = do
     Nothing   -> die ("Cannot find: " ++ prog)
     Just path -> rawSystemExit verbose path args
 
-#ifdef __NHC__
-rawSystemStdout :: Int -> FilePath -> [String] -> IO String
-rawSystemStdout verbose path args =
-    return "rawSystemStdout: not implemented portably"
-
-#else
 -- Run a command and return its output
-
 rawSystemStdout :: Int -> FilePath -> [String] -> IO String
+#ifdef __NHC__
+rawSystemStdout verbose cmd args = do
+   withTempFile "." "" $ \tmp -> do
+      let cmd_line  = cmd ++ unwords args ++ " >" ++ tmp
+      when (verbose > 1) $ putStrLn cmd_line
+      res <- system cmd_line
+      case res of
+        ExitFailure _ -> die ("executing external program failed: "++cmd_line)
+        ExitSuccess   -> do str <- readFile tmp
+                            let ev [] = ' '; ev xs = last xs
+                            ev str `seq` return str
+#else
 rawSystemStdout verbose path args = do
   when (verbose > 1) $
     putStrLn (path ++ concatMap (' ':) args)
