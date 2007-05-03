@@ -12,9 +12,10 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Config
     ( packagesDirectory
-    , defaultConfDir
-    , defaultCacheDir
-    , defaultPkgListDir
+    , getDefaultConfigDir
+    , getLocalConfigDir
+    , getLocalCacheDir
+    , getLocalPkgListDir
     , getKnownServers
     , getKnownPackages
     , writeKnownPackages
@@ -37,17 +38,23 @@ import System.Directory
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..))
 
-defaultConfDir, defaultCacheDir, defaultPkgListDir :: FilePath
+import Paths_cabal_install (getDataDir)
 
-#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
-defaultConfDir    = "/" </> "etc" </> "cabal-install" --FIXME
-defaultCacheDir   = unsafePerformIO getTemporaryDirectory
-defaultPkgListDir = unsafePerformIO (getAppUserDataDirectory "cabal-install")
-#else
-defaultConfDir    = "/" </> "etc" </> "cabal-install"
-defaultCacheDir   = "/" </> "var" </> "cache" </> "cabal-install"
-defaultPkgListDir = "/" </> "var" </> "lib" </> "cabal-install"
-#endif
+-- |Compute the global config directory
+-- (eg '/usr/local/share/cabal-install-0.3.0/' on Linux).
+getDefaultConfigDir :: IO FilePath
+getDefaultConfigDir = getDataDir
+
+-- |Compute the local config directory ('~/.cabal-install' on Linux).
+getLocalConfigDir :: IO FilePath
+getLocalConfigDir
+    = getAppUserDataDirectory "cabal-install"
+
+getLocalCacheDir :: IO FilePath
+getLocalCacheDir = getLocalConfigDir
+
+getLocalPkgListDir :: IO FilePath
+getLocalPkgListDir = getLocalConfigDir
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"

@@ -19,8 +19,9 @@ import Control.Monad (guard, mplus, when)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
                                       , TempFlags (..), ResolvedPackage (..))
-import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, defaultPkgListDir,
-                                            getKnownServers, selectValidConfigDir)
+import Network.Hackage.CabalInstall.Config
+         (getDefaultConfigDir, getLocalConfigDir, getLocalCacheDir,
+          getLocalPkgListDir, getKnownServers, selectValidConfigDir)
 
 import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
 import Distribution.ParseUtils (showDependency)
@@ -94,17 +95,6 @@ localPrefix
     = do home <- getHomeDirectory
          return (home </> "usr")
 
--- |Compute the local config directory ('~/.cabal-install' on Linux).
-localConfigDir :: IO FilePath
-localConfigDir
-    = getAppUserDataDirectory "cabal-install"
-
-localCacheDir :: IO FilePath
-localCacheDir = localConfigDir
-
-localPkgListDir :: IO FilePath
-localPkgListDir = localConfigDir
-
 {-|
   Give concrete answers to questions like:
 
@@ -122,18 +112,17 @@ mkConfigFlags cfg
          tarProg <- findProgramOrDie "tar" (tempTarPath cfg)
          comp <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) (tempVerbose cfg)
          let userIns = tempUserIns cfg
-         localConfig <- localConfigDir
          prefix <- if userIns
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
                       else return Nothing
+         defaultConfigDir <- getDefaultConfigDir
+         localConfigDir   <- getLocalConfigDir
+         localCacheDir    <- getLocalCacheDir
+         localPkgListDir  <- getLocalPkgListDir
          confDir <- selectValidConfigDir ( maybe id (:) (tempConfDir cfg)
-                                           [defaultConfDir, localConfig] )
-         cacheDir <- if userIns
-                        then maybe localCacheDir return (tempCacheDir cfg)
-                        else return $ fromMaybe defaultCacheDir (tempCacheDir cfg)
-         pkgListDir <- if userIns
-                        then maybe localPkgListDir return (tempPkgListDir cfg)
-                        else return $ fromMaybe defaultPkgListDir (tempPkgListDir cfg)
+                                           [localConfigDir, defaultConfigDir] )
+         let cacheDir   = fromMaybe localCacheDir   (tempCacheDir cfg)
+             pkgListDir = fromMaybe localPkgListDir (tempPkgListDir cfg)
          when (tempVerbose cfg > 1) $ do printf "Using config dir: %s\n" confDir
                                          printf "Using cache dir: %s\n" cacheDir
                                          printf "Using pkglist dir: %s\n" pkgListDir
