@@ -84,8 +84,8 @@ import Distribution.Compat.Exception (finally, bracket)
 
 #ifndef __NHC__
 import Control.Exception (evaluate)
-#endif
 import System.Process (runProcess, waitForProcess)
+#endif
 
 import Control.Monad(when, filterM, unless)
 import Data.List (nub, unfoldr)
@@ -109,10 +109,6 @@ import Distribution.Compat.TempFile (openTempFile)
 import HUnit ((~:), (~=?), Test(..), assertEqual)
 #endif
 
-#ifdef __NHC__
-evaluate :: a -> IO a
-evaluate x = x `seq` return x
-#endif
 -- ------------------------------------------------------------------------------- Utils for setup
 
 dieWithLocation :: FilePath -> (Maybe Int) -> String -> IO a
@@ -154,6 +150,12 @@ rawSystemPathExit verbose prog args = do
     Nothing   -> die ("Cannot find: " ++ prog)
     Just path -> rawSystemExit verbose path args
 
+#ifdef __NHC__
+rawSystemStdout :: Int -> FilePath -> [String] -> IO String
+rawSystemStdout verbose path args =
+    return "rawSystemStdout: not implemented portably"
+
+#else
 -- Run a command and return its output
 
 rawSystemStdout :: Int -> FilePath -> [String] -> IO String
@@ -177,6 +179,7 @@ rawSystemStdout verbose path args = do
     output <- readFile tmpName
     evaluate (length output)
     return output
+#endif
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
