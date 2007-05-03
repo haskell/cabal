@@ -1,7 +1,7 @@
 module Network.Hackage.Version where
 
 import Data.Version
-
+import Paths_cabal_install (version)
 
 clientVersion :: Version
-clientVersion = Version [0,1,0] []
+clientVersion = Paths_cabal_install.version
