@@ -401,11 +401,11 @@ configCompiler hcFlavor hcPath hcPkg verbose
 
 findCompiler :: Int -> String -> IO FilePath
 findCompiler verbose prog = do
-  when (verbose > 0) $ message $ "searching for " ++ prog ++ " in path."
+  when (verbose > 1) $ message $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of
    Nothing   -> die ("Cannot find compiler for " ++ prog)
-   Just path -> do when (verbose > 0) $ message ("found " ++ prog ++ " at "++ path)
+   Just path -> do when (verbose > 1) $ message ("found " ++ prog ++ " at "++ path)
 		   return path
    -- ToDo: check that compiler works?
 
@@ -459,11 +459,11 @@ guessPkgToolFromHCPath verbose flavor path
            guessVersioned  = dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension 
            guesses | null verSuffix = [guessNormal]
                    | otherwise      = [guessVersioned, guessNormal]
-       when (verbose > 0) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
+       when (verbose > 1) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
        file <- doesAnyFileExist guesses
        case file of
          Nothing -> die ("Cannot find package tool: " ++ pkgToolName)
-         Just pkgtool -> do when (verbose > 0) $ message $ "found package tool in " ++ pkgtool
+         Just pkgtool -> do when (verbose > 1) $ message $ "found package tool in " ++ pkgtool
                             return pkgtool
 
 doesAnyFileExist :: [FilePath] -> IO (Maybe FilePath)
