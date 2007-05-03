@@ -26,7 +26,6 @@ import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usage
 import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
-import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, defaultPkgListDir)
 import Network.Hackage.CabalInstall.Types (TempFlags (..), Action (..)
                                       , UnresolvedDependency (..))
 
@@ -64,11 +63,11 @@ globalOptions =
     , Option "s" ["with-server"] (ReqArg (\url t -> t { tempServers = url:tempServers t }) "URL")
                  "give the URL to a Hackage server"
     , Option "c" ["config-dir"] (ReqArg (\path t -> t { tempConfDir = Just path }) "PATH")
-                 ("give the path to the config dir. Default is " ++ defaultConfDir)
+                 ("override the path to the config dir.")
     , Option "" ["cache-dir"] (ReqArg (\path t -> t { tempCacheDir = Just path }) "PATH")
-                 ("give the path to the package cache dir. Default is " ++ defaultCacheDir)
+                 ("override the path to the package cache dir.")
     , Option "" ["pkglist-dir"] (ReqArg (\path t -> t { tempPkgListDir = Just path }) "PATH")
-                 ("give the path to the package list dir. Default is " ++ defaultPkgListDir)
+                 ("override the path to the package list dir.")
     , Option "" ["tar-path"] (ReqArg (\path t -> t { tempTarPath = Just path }) "PATH")
                  "give the path to tar"
     , Option "w" ["with-compiler"] (ReqArg (\path t -> t { tempHcPath = Just path }) "PATH")
