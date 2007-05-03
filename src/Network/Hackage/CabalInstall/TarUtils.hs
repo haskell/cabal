@@ -17,14 +17,13 @@ module Network.Hackage.CabalInstall.TarUtils
     , extractTarFile
     ) where
 
-import Distribution.Compat.FilePath (splitFileName, splitFileExt, breakFilePath)
+import System.FilePath
 import System.IO (hClose, hGetContents)
 import System.Process (runInteractiveProcess, runProcess, waitForProcess)
 import System.Exit (ExitCode(..))
 import Text.Printf (printf)
 import Data.List (find, sortBy)
 import Data.Maybe (listToMaybe)
-
 
 -- |List the files in a gzipped tar archive. Throwing an exception on failure.
 tarballGetFiles :: FilePath -- ^Path to the 'tar' binary.
@@ -74,11 +73,12 @@ Locate all files with a given extension and return the shortest result.
 -}
 locateFileExt :: [FilePath] -> String -> Maybe FilePath
 locateFileExt files fileExt
-    = let okExts = filter (\f -> let (_,ext) = splitFileExt f
-                                    in ext == fileExt) files
+    = let okExts = filter ((== fileExt) . tailNotNull . takeExtension) files
       in (listToMaybe (sortBy sortFn okExts))
     where comparing f a b = f a `compare` f b
-          sortFn = comparing (length.breakFilePath)
+          sortFn = comparing (length.splitPath)
+          tailNotNull [] = []
+          tailNotNull x  = tail x
 
 -- |Extract a given archive in the directory where it's placed.
 extractTarFile :: FilePath -- ^Path to the 'tar' binary.

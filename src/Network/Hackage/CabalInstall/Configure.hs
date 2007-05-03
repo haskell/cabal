@@ -25,7 +25,7 @@ import Network.Hackage.CabalInstall.Config (defaultConfDir, defaultCacheDir, def
 import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Package (showPackageId)
-import Distribution.Compat.FilePath (joinFileName)
+import System.FilePath ((</>))
 
 import Text.Printf (printf)
 import System.IO (openFile, IOMode (..))
@@ -38,8 +38,8 @@ import Data.Maybe (fromMaybe)
 defaultOutputGen :: Int -> IO OutputGen
 defaultOutputGen verbose
     = do (outch,errch) <- do guard (verbose <= 1)
-                             nullOut <- openFile "/dev/null" AppendMode
-                             nullErr <- openFile "/dev/null" AppendMode
+                             nullOut <- openFile ("/"</>"dev"</>"null") AppendMode
+                             nullErr <- openFile ("/"</>"dev"</>"null") AppendMode
                              return (Just nullOut, Just nullErr)
                          `mplus` return (Nothing,Nothing)
          return OutputGen
@@ -92,7 +92,7 @@ findProgramOrDie name p = fmap (fromMaybe (error $ printf "No %s found." name)) 
 localPrefix :: IO FilePath
 localPrefix
     = do home <- getHomeDirectory
-         return (home `joinFileName` "usr")
+         return (home </> "usr")
 
 -- |Compute the local config directory ('~/.cabal-install' on Linux).
 localConfigDir :: IO FilePath
