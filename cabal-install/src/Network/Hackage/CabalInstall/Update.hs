@@ -39,7 +39,7 @@ update cfg =
                                | path <- contents
                                , ".cabal" `isSuffixOf` path ]
               packageDescriptions <-
-                  mapM (readPackageDescription (configVerbose cfg)) cabalFiles
+                  mapM (readPackageDescription (configVerbose cfg - 1)) cabalFiles
               return $ map (parsePkg server) packageDescriptions
        writeKnownPackages cfg packages
     where servers = configServers cfg
