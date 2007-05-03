@@ -36,7 +36,7 @@ import Distribution.Version (Dependency)
 import System.FilePath ((</>))
 import System.Directory
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..))
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo (..))
 
 import Paths_cabal_install (getDataDir)
 
@@ -97,7 +97,9 @@ getKnownPackages cfg
 -- |Write the list of known packages to the pkg.list file.
 writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
 writeKnownPackages cfg pkgs
-    = do createDirectoryIfMissing True (configPkgListDir cfg)
+    = do message (configOutputGen cfg) 2 $
+           "creating package file " ++ pkgList cfg
+         createDirectoryIfMissing True (configPkgListDir cfg)
          writeFile (pkgList cfg) (show pkgs)
 
 getKnownServers :: ConfigFlags -> IO [String]
