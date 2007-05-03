@@ -28,7 +28,7 @@ import Network.Hackage.CabalInstall.TarUtils
 import Distribution.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Package (showPackageId, PackageIdentifier)
-import Distribution.Compat.FilePath (joinFileName, splitFileName)
+import System.FilePath ((</>), splitFileName)
 
 import Data.Maybe (fromMaybe, maybeToList)
 import Text.Printf (printf, PrintfType)
@@ -96,11 +96,11 @@ installPkg :: ConfigFlags
 installPkg cfg globalArgs (pkg,ops,location)
     = do pkgPath <- downloadPkg cfg pkg location
          tmp <- getTemporaryDirectory
-         let tmpDirPath = tmp `joinFileName` printf "TMP%sTMP" (showPackageId pkg)
-             tmpPkgPath = tmpDirPath `joinFileName` printf "TAR%s.tgz" (showPackageId pkg)
+         let tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId pkg)
+             tmpPkgPath = tmpDirPath </> printf "TAR%s.tgz" (showPackageId pkg)
              setup cmd
                  = let cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
-                       path = tmpDirPath `joinFileName` showPackageId pkg
+                       path = tmpDirPath </> showPackageId pkg
                    in do message output 3 $ unwords ["setupWrapper", show (cmd:cmdOps), show path]
                          setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
