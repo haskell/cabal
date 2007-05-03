@@ -134,7 +134,7 @@ mkConfigFlags cfg
          pkgListDir <- if userIns
                         then maybe localPkgListDir return (tempPkgListDir cfg)
                         else return $ fromMaybe defaultPkgListDir (tempPkgListDir cfg)
-         when (tempVerbose cfg > 0) $ do printf "Using config dir: %s\n" confDir
+         when (tempVerbose cfg > 1) $ do printf "Using config dir: %s\n" confDir
                                          printf "Using cache dir: %s\n" cacheDir
                                          printf "Using pkglist dir: %s\n" pkgListDir
          outputGen <- defaultOutputGen (tempVerbose cfg)
