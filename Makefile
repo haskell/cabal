@@ -44,15 +44,9 @@ config: setup
 build: build-stamp
 build-stamp: config
 	./setup build
-	./setup register --inplace --user #register cabal in-place so that cabal-install can use it.
-	cd cabal-install     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup && ./setup configure --ghc --with-compiler=$(HC) --prefix=$(PREF) && ./setup build
-	cd cabal-setup     && mkdir -p dist/tmp && $(HC) $(GHCFLAGS) -i.. -odir dist/tmp -hidir dist/tmp Setup.hs -o setup && ./setup configure --ghc --with-compiler=$(HC) --prefix=$(PREF) && ./setup build
-	$(HC_PKG) unregister Cabal --user #remove the in-pace register.
 
 install: build-stamp
 	./setup install $(USER_FLAG)
-#	cd cabal-install     && ./setup install
-#	cd cabal-setup       && ./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
