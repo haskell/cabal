@@ -3,7 +3,7 @@
 module Distribution.Compat.TempFile (openTempFile, withTempFile) where
 
 import System.IO (openFile, Handle, IOMode(ReadWriteMode))
-import IO (try)
+import System.IO.Error (try)
 import System.Directory (doesFileExist, removeFile)
 
 import Distribution.Compat.FilePath (joinFileName,joinFileExt)
