@@ -43,7 +43,7 @@ emptyTempFlags = TempFlags {
         tempTarPath     = Nothing,
         tempVerbose     = 1,
 --        tempUpgradeDeps = False,
-        tempUserIns     = False,
+        tempUserIns     = True,
         tempHelp        = False
    }
 
