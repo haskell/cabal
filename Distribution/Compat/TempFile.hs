@@ -3,18 +3,15 @@
 module Distribution.Compat.TempFile (openTempFile, withTempFile) where
 
 import System.IO (openFile, Handle, IOMode(ReadWriteMode))
-import System.IO.Error (try)
 import System.Directory (doesFileExist, removeFile)
+import Control.Exception (finally,try)
 
 import Distribution.Compat.FilePath (joinFileName,joinFileExt)
 
 #if (__GLASGOW_HASKELL__ || __HUGS__)
 import System.Posix.Internals (c_getpid)
-import Control.Exception (finally)
 #else
 import System.Posix.Types (CPid(..))
-
-a `finally` b = do { x <- a; b; return x }
 #endif
 
 
