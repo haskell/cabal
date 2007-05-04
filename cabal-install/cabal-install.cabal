@@ -14,7 +14,7 @@ Build-type: Simple
 Build-depends: base, mtl, network, regex-compat,
                filepath >= 1.0,
                Cabal>=1.1.7,
-               HTTP >= 2006.7.7
+               HTTP >= 1 && < 2
 data-files: serv.list
 
 Executable: cabal-install
