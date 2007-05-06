@@ -107,6 +107,7 @@ downloadIndex cfg serv
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
 packageFile cfg pkg = packagesDirectory cfg 
                       </> pkgName pkg
+                      </> showVersion (pkgVersion pkg)
                       </> showPackageId pkg 
                       <.> "tar.gz"
 
