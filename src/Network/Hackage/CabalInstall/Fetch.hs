@@ -29,6 +29,7 @@ import Network.HTTP (ConnError(..), Request (..), simpleHTTP
 
 import Control.Exception (bracket)
 import Control.Monad (filterM)
+import Data.Version
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
