@@ -219,6 +219,7 @@ configure pkg_descr cfg
 
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
 			      buildDir="dist" `joinFileName` "build",
+			      scratchDir="dist" `joinFileName` "scratch",
 			      bindir=my_bindir,
 			      libdir=my_libdir,
 			      libsubdir=my_libsubdir,
