@@ -126,7 +126,8 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
      Hugs -> do
        let progPref = mkProgDir pkg_descr lbi copydest
        let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
-       Hugs.install verbose libPref progPref binPref targetProgPref buildPref pkg_descr
+       let scratchPref = scratchDir lbi
+       Hugs.install verbose libPref progPref binPref targetProgPref scratchPref pkg_descr
      NHC  -> die ("installing with nhc98 is not yet implemented")
      _    -> die ("only installing with GHC, JHC or Hugs is implemented")
   return ()

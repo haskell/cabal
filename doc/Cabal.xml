@@ -1687,11 +1687,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  is recognized:</para>
 	<variablelist>
 	  <varlistentry>
-	    <term><option>--scratchdir</option>=<replaceable>dir</replaceable> or
-	      <option>-b</option><replaceable>dir</replaceable></term>
+	    <term><option>--scratchdir</option>=<replaceable>dir</replaceable></term>
 	    <listitem>
-	      <para>Specify the directory into which the package will be
-		built (default: <filename>dist/build</filename>).</para>
+	      <para>Specify the directory into which the Hugs output will be
+		placed (default: <filename>dist/scratch</filename>).</para>
 	    </listitem>
 	  </varlistentry>
 	</variablelist>
