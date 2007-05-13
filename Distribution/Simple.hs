@@ -299,7 +299,7 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
     = do case action of
             ConfigCmd flags -> do
                 (flags', optFns, args) <-
-			parseConfigureArgs prog_conf flags all_args [buildDirOpt]
+			parseConfigureArgs prog_conf flags all_args [scratchDirOpt]
                 pbi <- preConf hooks args flags'
                 pkg_descr0 <- get_pkg_descr (configVerbose flags')
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
@@ -568,10 +568,10 @@ no_extra_flags extra_flags =
  die $ concat
      $ intersperse "\n" ("Unrecognised flags:" : map (' ' :) extra_flags)
 
-buildDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
-buildDirOpt = Option "b" ["scratchdir"] (reqDirArg setBuildDir)
-		"directory to receive the built package [dist/build]"
-  where setBuildDir dir lbi = lbi { buildDir = dir }
+scratchDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
+scratchDirOpt = Option "b" ["scratchdir"] (reqDirArg setScratchDir)
+		"directory to receive the built package [dist/scratch]"
+  where setScratchDir dir lbi = lbi { scratchDir = dir }
 
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks

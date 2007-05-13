@@ -94,7 +94,9 @@ data LocalBuildInfo = LocalBuildInfo {
 	compiler      :: Compiler,
 		-- ^ The compiler we're building with
 	buildDir      :: FilePath,
-		-- ^ Where to put the result of building.
+		-- ^ Where to build the package.
+	scratchDir    :: FilePath,
+		-- ^ Where to put the result of the Hugs build.
 	packageDeps   :: [PackageIdentifier],
 		-- ^ Which packages we depend on, /exactly/.
 		-- The 'Distribution.PackageDescription.PackageDescription'

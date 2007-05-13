@@ -87,13 +87,16 @@ import System.Directory		( Permissions(..), getPermissions,
 -- |Building a package for Hugs.
 build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
 build pkg_descr lbi verbose = do
-    let pref = buildDir lbi
+    let pref = scratchDir lbi
+    createDirectoryIfMissing True pref
     withLib pkg_descr () $ \ l -> do
 	copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
 		(pref `joinFileName` paths_modulename)
 	compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l)
     withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
   where
+	srcDir = buildDir lbi
+
 	paths_modulename = autogenModuleName pkg_descr ++ ".hs"
 
 	compileExecutable :: FilePath -> Executable -> IO ()
@@ -109,14 +112,14 @@ build pkg_descr lbi verbose = do
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
 	    compileFiles bi exeDir [destMainFile, destPathsFile]
 	
-	compileBuildInfo :: FilePath
+	compileBuildInfo :: FilePath -- ^output directory
                          -> [FilePath] -- ^library source dirs, if building exes
                          -> [String] -- ^Modules
                          -> BuildInfo -> IO ()
 	compileBuildInfo destDir mLibSrcDirs mods bi = do
-	    -- Pass 1: copy or cpp files from src directory to build directory
+	    -- Pass 1: copy or cpp files from build directory to scratch directory
 	    let useCpp = CPP `elem` extensions bi
-	    let srcDirs = nub $ hsSourceDirs bi ++ mLibSrcDirs
+	    let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
             when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
             flip mapM_ mods $ \ m -> do
                 fs <- moduleToFilePath srcDirs m suffixes
@@ -127,7 +130,7 @@ build pkg_descr lbi verbose = do
                     let (_, ext) = splitFileExt srcFile
                     copyModule useCpp bi srcFile
                         (destDir `joinFileName` dotToSep m `joinFileExt` ext)
-	    -- Pass 2: compile foreign stubs in build directory
+	    -- Pass 2: compile foreign stubs in scratch directory
 	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
 			modu <- mods]
             compileFiles bi destDir (concat stubsFileLists)
