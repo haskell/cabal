@@ -82,11 +82,12 @@ module Distribution.Simple.Utils (
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (finally, bracket)
 
-#ifndef __NHC__
+#ifdef __GLASGOW_HASKELL__
 import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
 #else
-import System (system)
+import System.Cmd (system)
+import System.IO (hClose)
 #endif
 
 import Control.Monad(when, filterM, unless)
@@ -154,22 +155,11 @@ rawSystemPathExit verbose prog args = do
 
 -- Run a command and return its output
 rawSystemStdout :: Int -> FilePath -> [String] -> IO String
-#ifdef __NHC__
-rawSystemStdout verbose cmd args = do
-   withTempFile "." "" $ \tmp -> do
-      let cmd_line  = cmd ++ unwords args ++ " >" ++ tmp
-      when (verbose > 1) $ putStrLn cmd_line
-      res <- system cmd_line
-      case res of
-        ExitFailure _ -> die ("executing external program failed: "++cmd_line)
-        ExitSuccess   -> do str <- readFile tmp
-                            let ev [] = ' '; ev xs = last xs
-                            ev str `seq` return str
-#else
 rawSystemStdout verbose path args = do
   when (verbose > 1) $
     putStrLn (path ++ concatMap (' ':) args)
 
+#ifdef __GLASGOW_HASKELL__
   -- TODO Ideally we'd use runInteractiveProcess and not have to make any
   --      silly temp files, however it is not possible to only connect pipes
   --      to a subset of the process's stdin/out/err. We really cannot
@@ -186,6 +176,13 @@ rawSystemStdout verbose path args = do
     output <- readFile tmpName
     evaluate (length output)
     return output
+#else
+  withTempFile "." "" $ \tmpName -> do
+    let quote name = "'" ++ name ++ "'"
+    res <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+    unless (res == ExitSuccess) $ exitWith res
+    output <- readFile tmpName
+    length output `seq` return output
 #endif
 
 -- | Like the unix xargs program. Useful for when we've got very long command
