@@ -107,6 +107,7 @@ import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
             getDirectoryContentsWithoutSpecial)
 import Distribution.Compat.TempFile (openTempFile, withTempFile)
+import Distribution.Verbosity
 
 #ifdef DEBUG
 import HUnit ((~:), (~=?), Test(..), assertEqual)
@@ -125,11 +126,11 @@ die msg = do
   hPutStrLn stderr (pname ++ ": " ++ msg)
   exitWith (ExitFailure 1)
 
-warn :: Int -> String -> IO ()
+warn :: Verbosity -> String -> IO ()
 warn verbosity msg = do
   hFlush stdout
   pname <- getProgName
-  when (verbosity > 0) $ hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
+  when (verbosity >= normal) $ hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -139,24 +140,24 @@ maybeExit cmd = do
   unless (res == ExitSuccess) $ exitWith res
 
 -- Exit with the same exitcode if the subcommand fails
-rawSystemExit :: Int -> FilePath -> [String] -> IO ()
-rawSystemExit verbose path args = do
-  when (verbose > 1) $
+rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
+rawSystemExit verbosity path args = do
+  when (verbosity >= verbose) $
     putStrLn (path ++ concatMap (' ':) args)
   maybeExit $ rawSystem path args
 
 -- Exit with the same exitcode if the subcommand fails
-rawSystemPathExit :: Int -> String -> [String] -> IO ()
-rawSystemPathExit verbose prog args = do
+rawSystemPathExit :: Verbosity -> String -> [String] -> IO ()
+rawSystemPathExit verbosity prog args = do
   r <- findExecutable prog
   case r of
     Nothing   -> die ("Cannot find: " ++ prog)
-    Just path -> rawSystemExit verbose path args
+    Just path -> rawSystemExit verbosity path args
 
 -- Run a command and return its output
-rawSystemStdout :: Int -> FilePath -> [String] -> IO String
-rawSystemStdout verbose path args = do
-  when (verbose > 1) $
+rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
+rawSystemStdout verbosity path args = do
+  when (verbosity >= verbose) $
     putStrLn (path ++ concatMap (' ':) args)
 
 #ifdef __GLASGOW_HASKELL__
@@ -191,7 +192,7 @@ rawSystemStdout verbose path args = do
 --
 -- Use it with either of the rawSystem variants above. For example:
 -- 
--- > xargs (32*1024) (rawSystemPathExit verbose) prog fixedArgs bigArgs
+-- > xargs (32*1024) (rawSystemPathExit verbosity) prog fixedArgs bigArgs
 --
 xargs :: Int -> (FilePath -> [String] -> IO ())
       -> FilePath -> [String] -> [String] -> IO ()
@@ -277,7 +278,7 @@ dotToSep = map dts
 -- the input search suffixes.  It copies the files into the target
 -- directory.
 
-smartCopySources :: Int      -- ^verbose
+smartCopySources :: Verbosity -- ^verbosity
             -> [FilePath] -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
@@ -285,7 +286,7 @@ smartCopySources :: Int      -- ^verbose
             -> Bool     -- ^Exit if no such modules
             -> Bool     -- ^Preserve directory structure
             -> IO ()
-smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
+smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
     = do createDirectoryIfMissing True targetDir
          allLocations <- mapM moduleToFPErr sources
          let copies = [(srcDir `joinFileName` name,
@@ -297,7 +298,7 @@ smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone pre
 	 mapM_ (createDirectoryIfMissing True) $ nub $
              [fst (splitFileName targetFile) | (_, targetFile) <- copies]
 	 -- Put sources into place:
-	 sequence_ [copyFileVerbose verbose srcFile destFile |
+	 sequence_ [copyFileVerbose verbosity srcFile destFile |
                     (srcFile, destFile) <- copies]
     where moduleToFPErr m
               = do p <- moduleToFilePath2 srcDirs m searchSuffixes
@@ -306,22 +307,22 @@ smartCopySources verbose srcDirs targetDir sources searchSuffixes exitIfNone pre
                                        ++ " with any suffix: " ++ (show searchSuffixes)))
                    return p
 
-copyFileVerbose :: Int -> FilePath -> FilePath -> IO ()
-copyFileVerbose verbose src dest = do
-  when (verbose > 1) $
+copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
+copyFileVerbose verbosity src dest = do
+  when (verbosity >= verbose) $
     putStrLn ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
 -- adaptation of removeDirectoryRecursive
-copyDirectoryRecursiveVerbose :: Int -> FilePath -> FilePath -> IO ()
-copyDirectoryRecursiveVerbose verbose srcDir destDir = do
-  when (verbose > 1) $
+copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
+copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
+  when (verbosity >= verbose) $
     putStrLn ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   let aux src dest =
          let cp :: FilePath -> IO ()
              cp f = let srcFile  = joinPaths src  f
                         destFile = joinPaths dest f
-                    in  do success <- try (copyFileVerbose verbose srcFile destFile)
+                    in  do success <- try (copyFileVerbose verbosity srcFile destFile)
                            case success of
                               Left e  -> do isDir <- doesDirectoryExist srcFile
                                             -- If f is not a directory, re-throw the error
@@ -379,7 +380,7 @@ multiDesc l = die $ "Multiple description files found.  Please use only one of :
                       ++ show (filter (/= oldDescFile) l)
 
 -- |A list of possibly correct description files.  Should be pre-filtered.
-descriptionCheck :: Int -> [FilePath] -> IO FilePath
+descriptionCheck :: Verbosity -> [FilePath] -> IO FilePath
 descriptionCheck _ [] = noDesc
 descriptionCheck verbosity [x]
     | x == oldDescFile
@@ -401,13 +402,13 @@ descriptionCheck verbosity [x,y]
 descriptionCheck _ l = multiDesc l
 
 -- |Package description file (/pkgname/@.cabal@)
-defaultPackageDesc :: Int -> IO FilePath
+defaultPackageDesc :: Verbosity -> IO FilePath
 defaultPackageDesc verbosity
     = getCurrentDirectory >>= findPackageDesc verbosity
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
-findPackageDesc :: Int         -- ^Verbosity
+findPackageDesc :: Verbosity   -- ^Verbosity
                 -> FilePath    -- ^Where to look
                 -> IO FilePath -- <pkgname>.cabal
 findPackageDesc verbosity p

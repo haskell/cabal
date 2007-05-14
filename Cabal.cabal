@@ -48,6 +48,7 @@ Exposed-Modules:
         Distribution.Simple.Register,
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
+        Distribution.Verbosity,
         Distribution.Version,
         Distribution.Compat.ReadP,
         Language.Haskell.Extension,

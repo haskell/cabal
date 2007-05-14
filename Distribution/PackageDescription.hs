@@ -110,6 +110,7 @@ import Distribution.Version(Version(..), VersionRange(..), withinRange,
                             showVersion, parseVersion, showVersionRange, parseVersionRange)
 import Distribution.License(License(..))
 import Distribution.Version(Dependency(..))
+import Distribution.Verbosity
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn)
 import Language.Haskell.Extension(Extension(..))
@@ -544,9 +545,9 @@ haddockName :: PackageDescription -> FilePath
 haddockName pkg_descr =
    joinFileExt (pkgName (package pkg_descr)) "haddock"
 
-setupMessage :: Int -> String -> PackageDescription -> IO ()
+setupMessage :: Verbosity -> String -> PackageDescription -> IO ()
 setupMessage verbosity msg pkg_descr =
-    when (verbosity > 0) $
+    when (verbosity >= normal) $
         putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 -- ---------------------------------------------------------------
@@ -554,7 +555,7 @@ setupMessage verbosity msg pkg_descr =
 
 -- | Given a parser and a filename, return the parse of the file,
 -- after checking if the file exists.
-readAndParseFile :: Int -> (String -> ParseResult a) -> FilePath -> IO a
+readAndParseFile :: Verbosity -> (String -> ParseResult a) -> FilePath -> IO a
 readAndParseFile verbosity parser fpath = do
   exists <- doesFileExist fpath
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
@@ -567,12 +568,12 @@ readAndParseFile verbosity parser fpath = do
         mapM_ (warn verbosity) ws
         return x
 
-readHookedBuildInfo :: Int -> FilePath -> IO HookedBuildInfo
+readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 
 -- |Parse the given package file.
-readPackageDescription :: Int -> FilePath -> IO PackageDescription
-readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
+readPackageDescription :: Verbosity -> FilePath -> IO PackageDescription
+readPackageDescription verbosity = readAndParseFile verbosity parseDescription
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription str = do 
   all_fields0 <- readFields str

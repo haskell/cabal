@@ -68,7 +68,7 @@ import Distribution.Compat.FilePath
 				( joinFileName, splitFileExt, joinFileExt,
                                   dllExtension, searchPathSeparator,
                                   platformPath )
-
+import Distribution.Verbosity
 
 import Data.Char		( isSpace )
 import Data.Maybe		( mapMaybe )
@@ -85,8 +85,8 @@ import System.Directory		( Permissions(..), getPermissions,
 -- -----------------------------------------------------------------------------
 
 -- |Building a package for Hugs.
-build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
-build pkg_descr lbi verbose = do
+build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
+build pkg_descr lbi verbosity = do
     let pref = scratchDir lbi
     createDirectoryIfMissing True pref
     withLib pkg_descr () $ \ l -> do
@@ -120,7 +120,8 @@ build pkg_descr lbi verbose = do
 	    -- Pass 1: copy or cpp files from build directory to scratch directory
 	    let useCpp = CPP `elem` extensions bi
 	    let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
-            when (verbose > 3) (putStrLn $ "Source directories: " ++ show srcDirs)
+            when (verbosity >= verbose)
+                 (putStrLn $ "Source directories: " ++ show srcDirs)
             flip mapM_ mods $ \ m -> do
                 fs <- moduleToFilePath srcDirs m suffixes
                 case fs of
@@ -144,7 +145,7 @@ build pkg_descr lbi verbose = do
 	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
-	    	runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbose
+	    	runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
 	    	return ()
 	      else
 	    	copyFile srcFile destFile
@@ -153,8 +154,8 @@ build pkg_descr lbi verbose = do
         compileFiles bi modDir fileList = do
 	    ffiFileList <- filterM testFFI fileList
             unless (null ffiFileList) $ do
-                when (verbose > 2) (putStrLn "Compiling FFI stubs")
-	        mapM_ (compileFFI bi modDir) ffiFileList
+                when (verbosity >= normal) (putStrLn "Compiling FFI stubs")
+                mapM_ (compileFFI bi modDir) ffiFileList
 
         -- Only compile FFI stubs for a file if it contains some FFI stuff
         testFFI :: FilePath -> IO Bool
@@ -180,7 +181,7 @@ build pkg_descr lbi verbose = do
                     ldOptions bi ++
                     ["-l" ++ lib | lib <- extraLibs bi] ++
                     concat [["-framework", f] | f <- frameworks bi]
-            rawSystemExit verbose ffihugs (hugsArgs ++ file : cArgs)
+            rawSystemExit verbosity ffihugs (hugsArgs ++ file : cArgs)
 
 	ffihugs = compilerPath (compiler lbi)
 
@@ -297,17 +298,17 @@ stripComments keepPragmas = stripCommentsLevel 0
 -- with a script \<copy-prefix>\/bin\/\<exename> pointing at
 -- \<prefix>\/lib\/hugs\/programs\/\<exename>.
 install
-    :: Int      -- ^verbose
-    -> FilePath -- ^Library install location
-    -> FilePath -- ^Program install location
-    -> FilePath -- ^Executable install location
-    -> FilePath -- ^Program location on target system
-    -> FilePath -- ^Build location
+    :: Verbosity -- ^verbosity
+    -> FilePath  -- ^Library install location
+    -> FilePath  -- ^Program install location
+    -> FilePath  -- ^Executable install location
+    -> FilePath  -- ^Program location on target system
+    -> FilePath  -- ^Build location
     -> PackageDescription
     -> IO ()
-install verbose libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
+install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
     try $ removeDirectoryRecursive libDir
-    smartCopySources verbose [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
+    smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
     let buildProgDir = buildPref `joinFileName` "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissing True binDir
@@ -316,7 +317,7 @@ install verbose libDir installProgDir binDir targetProgDir buildPref pkg_descr =
         let installDir = installProgDir `joinFileName` exeName exe
         let targetDir = targetProgDir `joinFileName` exeName exe
         try $ removeDirectoryRecursive installDir
-        smartCopySources verbose [theBuildDir] installDir
+        smartCopySources verbosity [theBuildDir] installDir
             ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes True False
         let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?

@@ -66,6 +66,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (rawSystemExit, die, dieWithLocation,
                                   moduleToFilePath, moduleToFilePath2)
 import Distribution.Version (Version(..))
+import Distribution.Verbosity
 import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
@@ -85,8 +86,8 @@ import Distribution.Compat.Directory ( createDirectoryIfMissing )
 -- > ppTestHandler =
 -- >   PreProcessor {
 -- >     platformIndependent = True,
--- >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
--- >       do when (verbose > 0) $
+-- >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+-- >       do when (verbosity >= normal) $
 -- >            putStrLn (inFile++" has been preprocessed to "++outFile)
 -- >          stuff <- readFile inFile
 -- >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
@@ -126,20 +127,21 @@ data PreProcessor = PreProcessor {
 
   runPreProcessor :: (FilePath, FilePath) -- Location of the source file relative to a base dir
                   -> (FilePath, FilePath) -- Output file name, relative to an output base dir
-                  -> Int      -- verbosity
-                  -> IO ()    -- Should exit if the preprocessor fails
+                  -> Verbosity -- verbosity
+                  -> IO ()     -- Should exit if the preprocessor fails
   }
 
-mkSimplePreProcessor :: (FilePath -> FilePath -> Int -> IO ())
+mkSimplePreProcessor :: (FilePath -> FilePath -> Verbosity -> IO ())
                       -> (FilePath, FilePath)
-                      -> (FilePath, FilePath) -> Int -> IO ()
+                      -> (FilePath, FilePath) -> Verbosity -> IO ()
 mkSimplePreProcessor simplePP
   (inBaseDir, inRelativeFile)
   (outBaseDir, outRelativeFile) verbosity = simplePP inFile outFile verbosity
   where inFile  = inBaseDir  `joinFileName` inRelativeFile
         outFile = outBaseDir `joinFileName` outRelativeFile
 
-runSimplePreProcessor :: PreProcessor -> FilePath -> FilePath -> Int -> IO ()
+runSimplePreProcessor :: PreProcessor -> FilePath -> FilePath -> Verbosity
+                      -> IO ()
 runSimplePreProcessor pp inFile outFile verbosity =
   runPreProcessor pp (".", inFile) (".", outFile) verbosity
 
@@ -150,29 +152,29 @@ type PPSuffixHandler
 
 -- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
 -- a Haskell source file for each module.
-preprocessSources :: PackageDescription 
-		  -> LocalBuildInfo 
-		  -> Int                -- ^ verbose
+preprocessSources :: PackageDescription
+                  -> LocalBuildInfo
+                  -> Verbosity          -- ^ verbosity
                   -> [PPSuffixHandler]  -- ^ preprocessors to try
-		  -> IO ()
+                  -> IO ()
 
-preprocessSources pkg_descr lbi verbose handlers = do
+preprocessSources pkg_descr lbi verbosity handlers = do
     withLib pkg_descr () $ \ lib -> do
-        setupMessage verbose "Preprocessing library" pkg_descr
+        setupMessage verbosity "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) modu
-                                     verbose builtinSuffixes biHandlers
+                                     verbosity builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
-        setupMessage verbose "Preprocessing executables for" pkg_descr
+        setupMessage verbosity "Preprocessing executables for" pkg_descr
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
                                   ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
                                      (buildDir lbi)
-                                     modu verbose builtinSuffixes biHandlers
+                                     modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
@@ -183,14 +185,14 @@ preprocessSources pkg_descr lbi verbose handlers = do
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessModule
-    :: [FilePath]			-- ^source directories
-    -> FilePath                         -- ^build directory
-    -> String				-- ^module name
-    -> Int				-- ^verbose
-    -> [String]				-- ^builtin suffixes
-    -> [(String, PreProcessor)]		-- ^possible preprocessors
+    :: [FilePath]               -- ^source directories
+    -> FilePath                 -- ^build directory
+    -> String                   -- ^module name
+    -> Verbosity                -- ^verbosity
+    -> [String]                 -- ^builtin suffixes
+    -> [(String, PreProcessor)] -- ^possible preprocessors
     -> IO ()
-preprocessModule searchLoc buildLoc modu verbose builtinSuffixes handlers = do
+preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
     psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
@@ -230,7 +232,7 @@ preprocessModule searchLoc buildLoc modu verbose builtinSuffixes handlers = do
               createDirectoryIfMissing True destDir
               runPreProcessor pp
                  (psrcLoc, psrcRelFile)
-                 (destLoc, srcStem `joinFileExt` "hs") verbose
+                 (destLoc, srcStem `joinFileExt` "hs") verbosity
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
@@ -272,8 +274,8 @@ ppGreenCard' inputArgs _ lbi
     where pp greencard =
             PreProcessor {
               platformIndependent = False,
-              runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
-                rawSystemExit verbose greencard
+              runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+                rawSystemExit verbosity greencard
                     (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
             }
 
@@ -283,7 +285,7 @@ ppUnlit :: PreProcessor
 ppUnlit =
   PreProcessor {
     platformIndependent = True,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbose -> do
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity -> do
       contents <- readFile inFile
       writeFile outFile (unlit inFile contents)
   }
@@ -307,8 +309,8 @@ ppCpp' inputArgs bi lbi =
   where 
 	hc = compiler lbi
 
-	use_cpphs cpphs inFile outFile verbose
-	  = rawSystemExit verbose cpphs cpphsArgs
+	use_cpphs cpphs inFile outFile verbosity
+	  = rawSystemExit verbosity cpphs cpphsArgs
 	  where cpphsArgs = ("-O" ++ outFile) : inFile : "--noline" : "--strip"
 				 : extraArgs
 
@@ -319,9 +321,9 @@ ppCpp' inputArgs bi lbi =
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
         locations = ["BUILD", "HOST"]
 
-	use_ghc inFile outFile verbose
-	  = do p_p <- use_optP_P lbi
-               rawSystemExit verbose (compilerPath hc) 
+	use_ghc inFile outFile verbosity
+	  = do p_p <- use_optP_P verbosity lbi
+               rawSystemExit verbosity (compilerPath hc) 
                    (["-E", "-cpp"] ++
                     -- This is a bit of an ugly hack. We're going to
                     -- unlit the file ourselves later on if appropriate,
@@ -335,8 +337,9 @@ ppCpp' inputArgs bi lbi =
 -- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
 -- pragmas are necessary for correct links when we preprocess.  So use
 -- -optP-P only if the Haddock version is prior to 0.8.
-use_optP_P :: LocalBuildInfo -> IO Bool
-use_optP_P lbi = fmap (< Version [0,8] []) (haddockVersion lbi)
+use_optP_P :: Verbosity -> LocalBuildInfo -> IO Bool
+use_optP_P verbosity lbi
+ = fmap (< Version [0,8] []) (haddockVersion verbosity lbi)
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi
@@ -416,8 +419,8 @@ standardPP :: String -> [String] -> PreProcessor
 standardPP eName args =
   PreProcessor {
     platformIndependent = False,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbose ->
-      rawSystemExit verbose eName (args ++ ["-o", outFile, inFile])
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+      rawSystemExit verbosity eName (args ++ ["-o", outFile, inFile])
   }
 
 ppNone :: String -> PreProcessor

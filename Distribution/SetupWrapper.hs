@@ -31,6 +31,7 @@ import System.Console.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
 import Distribution.Compat.FilePath (pathSeparator)
+import Distribution.Verbosity
 import Control.Monad		( when, unless )
 import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirectory )
 
@@ -60,10 +61,11 @@ setupWrapper args mdir = inDir mdir $ do
   let flags = foldr (.) id flag_fn defaultFlags
   let setup_args = unrec_opts ++ non_opts
 
-  pkg_descr_file <- defaultPackageDesc (verbose flags)
-  pkg_descr <- readPackageDescription (verbose flags) pkg_descr_file 
+  pkg_descr_file <- defaultPackageDesc (verbosity flags)
+  pkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
 
-  comp <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags) 0
+  comp <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
+          normal
   cabal_flag <- configCabalFlag flags (descCabalVersion pkg_descr) comp
 
   let
@@ -76,11 +78,11 @@ setupWrapper args mdir = inDir mdir $ do
                           t2 <- getModificationTime "setup"
                           return (t1 < t2)
          unless hasSetup $
-           rawSystemExit (verbose flags)
+           rawSystemExit (verbosity flags)
              (compilerPath comp)
              (cabal_flag ++ 
-              ["--make", f, "-o", "setup", "-v"++show (verbose flags)])
-         rawSystemExit (verbose flags)
+              ["--make", f, "-o", "setup", "-v"++show (verbosity flags)])
+         rawSystemExit (verbosity flags)
            ('.':pathSeparator:"setup")
            setup_args
 
@@ -114,18 +116,18 @@ data Flags
   = Flags {
     withCompiler :: Maybe FilePath,
     withHcPkg    :: Maybe FilePath,
-    verbose      :: Int
+    verbosity      :: Verbosity
   }
 
 defaultFlags = Flags {
   withCompiler = Nothing,
   withHcPkg    = Nothing,
-  verbose      = 1
+  verbosity      = normal
  }
 
 setWithCompiler f flags = flags{ withCompiler=f }
 setWithHcPkg    f flags = flags{ withHcPkg=f }
-setVerbose      v flags = flags{ verbose=v }
+setVerbosity      v flags = flags{ verbosity=v }
 
 opts :: [OptDescr (Flags -> Flags)]
 opts = [
@@ -133,7 +135,7 @@ opts = [
                "give the path to a particular compiler to use on setup",
            Option "" ["with-setup-hc-pkg"] (reqPathArg (setWithHcPkg.Just))
                "give the path to the package tool to use on setup",
-	   Option "v" ["verbose"] (OptArg (setVerbose . maybe 3 read) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
+	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   ]
 
 noSetupScript = error "noSetupScript"
@@ -141,7 +143,7 @@ noSetupScript = error "noSetupScript"
 configCabalFlag :: Flags -> VersionRange -> Compiler -> IO [String]
 configCabalFlag flags AnyVersion _ = return []
 configCabalFlag flags range comp = do
-  ipkgs <-  getInstalledPackages comp True (verbose flags)
+  ipkgs <-  getInstalledPackages comp True (verbosity flags)
 	-- user packages are *allowed* here, no portability problem
   cabal_pkgid <- configDependency ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
