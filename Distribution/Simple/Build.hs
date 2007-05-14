@@ -81,6 +81,7 @@ import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Distribution.PackageDescription (hasLibs)
+import Distribution.Verbosity
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -94,14 +95,14 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> BuildFlags -- ^Flags that the user passed to build
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
-build pkg_descr lbi (BuildFlags verbose) suffixes = do
-  initialBuildSteps pkg_descr lbi verbose suffixes
-  setupMessage verbose "Building" pkg_descr
+build pkg_descr lbi (BuildFlags verbosity) suffixes = do
+  initialBuildSteps pkg_descr lbi verbosity suffixes
+  setupMessage verbosity "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.build  pkg_descr lbi verbose
-    JHC  -> JHC.build  pkg_descr lbi verbose
-    Hugs -> Hugs.build pkg_descr lbi verbose
-    NHC  -> NHC.build  pkg_descr lbi verbose
+    GHC  -> GHC.build  pkg_descr lbi verbosity
+    JHC  -> JHC.build  pkg_descr lbi verbosity
+    Hugs -> Hugs.build pkg_descr lbi verbosity
+    NHC  -> NHC.build  pkg_descr lbi verbosity
     _    -> die ("Building is not supported with this compiler.")
 
 makefile :: PackageDescription  -- ^mostly information from the .cabal file
@@ -122,10 +123,10 @@ makefile pkg_descr lbi flags suffixes = do
 
 initialBuildSteps :: PackageDescription  -- ^mostly information from the .cabal file
                   -> LocalBuildInfo -- ^Configuration information
-                  -> Int -- ^The verbosity to use
+                  -> Verbosity -- ^The verbosity to use
                   -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
                   -> IO ()
-initialBuildSteps pkg_descr lbi verbose suffixes = do
+initialBuildSteps pkg_descr lbi verbosity suffixes = do
   -- check that there's something to build
   let buildInfos =
           map libBuildInfo (maybeToList (library pkg_descr)) ++
@@ -140,7 +141,7 @@ initialBuildSteps pkg_descr lbi verbose suffixes = do
   createDirectoryIfMissing True (autogenModulesDir lbi)
   buildPathsModule pkg_descr lbi
 
-  preprocessSources pkg_descr lbi verbose suffixes
+  preprocessSources pkg_descr lbi verbosity suffixes
 
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs

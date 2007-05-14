@@ -76,6 +76,7 @@ import Distribution.Compat.Directory
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
+import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
@@ -100,8 +101,8 @@ import IO as Try
 
 -- |Building for GHC.  If .ghc-packages exists and is readable, add
 -- it to the command-line.
-build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
-build pkg_descr lbi verbose = do
+build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
+build pkg_descr lbi verbosity = do
   let pref = buildDir lbi
   let ghcPath = compilerPath (compiler lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
@@ -120,7 +121,7 @@ build pkg_descr lbi verbose = do
 	       
   -- Build lib
   withLib pkg_descr () $ \lib -> do
-      when (verbose > 3) (putStrLn "Building library...")
+      when (verbosity >= verbose) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
           libTargetDir = pref
 	  forceVanillaLib = TemplateHaskell `elem` extensions libBi
@@ -128,7 +129,7 @@ build pkg_descr lbi verbose = do
 
       createDirectoryIfMissing True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
-      smartCopySources verbose (hsSourceDirs libBi)
+      smartCopySources verbosity (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False False
       let ghc_vers = compilerVersion (compiler lbi)
           packageId | versionBranch ghc_vers >= [6,4]
@@ -139,7 +140,7 @@ build pkg_descr lbi verbose = do
                  pkg_conf
               ++ ["-package-name", packageId ]
 	      ++ (if splitObjs lbi then ["-split-objs"] else [])
-              ++ constructGHCCmdLine lbi libBi libTargetDir verbose
+              ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
               ++ ["-prof",
@@ -148,12 +149,12 @@ build pkg_descr lbi verbose = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do ifVanillaLib forceVanillaLib (rawSystemExit verbose ghcPath ghcArgs)
-           ifProfLib (rawSystemExit verbose ghcPath ghcArgsProf)
+        do ifVanillaLib forceVanillaLib (rawSystemExit verbosity ghcPath ghcArgs)
+           ifProfLib (rawSystemExit verbosity ghcPath ghcArgsProf)
 
       -- build any C sources
       unless (null (cSources libBi)) $ do
-         when (verbose > 3) (putStrLn "Building C Sources...")
+         when (verbosity >= verbose) (putStrLn "Building C Sources...")
          -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
          sequence_ [do let odir | versionBranch ghc_vers >= [6,4,1] = pref
 				| otherwise = pref `joinFileName` dirOf c
@@ -163,12 +164,12 @@ build pkg_descr lbi verbose = do
 		       let cArgs = ["-I" ++ dir | dir <- includeDirs libBi]
 			       ++ ["-optc" ++ opt | opt <- ccOptions libBi]
 			       ++ ["-odir", odir, "-hidir", pref, "-c"]
-			       ++ (if verbose > 4 then ["-v"] else [])
-                       rawSystemExit verbose ghcPath (cArgs ++ [c])
+			       ++ (if verbosity >= deafening then ["-v"] else [])
+                       rawSystemExit verbosity ghcPath (cArgs ++ [c])
                                    | c <- cSources libBi]
 
       -- link:
-      when (verbose > 3) (putStrLn "cabal-linking...")
+      when (verbosity > verbose) (putStrLn "cabal-linking...")
       let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
                   | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
           libName  = mkLibName pref (showPackageId (package pkg_descr))
@@ -192,13 +193,13 @@ build pkg_descr lbi verbose = do
         Try.try (removeFile libName) -- first remove library if it exists
         Try.try (removeFile profLibName) -- first remove library if it exists
 	Try.try (removeFile ghciLibName) -- first remove library if it exists
-        let arArgs = ["q"++ (if verbose > 4 then "v" else "")]
+        let arArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
                 ++ [libName]
             arObjArgs =
 		   hObjs
                 ++ map (pref `joinFileName`) cObjs
                 ++ stubObjs
-            arProfArgs = ["q"++ (if verbose > 4 then "v" else "")]
+            arProfArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
                 ++ [profLibName]
             arProfObjArgs =
 		   hProfObjs
@@ -214,7 +215,7 @@ build pkg_descr lbi verbose = do
 
             runLd ld args = do
               exists <- doesFileExist ghciLibName
-              rawSystemLd verbose ld
+              rawSystemLd verbosity ld
                           (args ++ if exists then [ghciLibName] else [])
               renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName
 
@@ -244,17 +245,17 @@ build pkg_descr lbi verbose = do
         mbAr <- lookupProgram "ar" (withPrograms lbi) 
 	let arProg = case fmap programLocation mbAr of { Just (UserSpecified x) -> x ; _ -> "ar" }
         ifVanillaLib False $ xargs maxCommandLineSize
-          (rawSystemPathExit verbose) arProg arArgs arObjArgs
+          (rawSystemPathExit verbosity) arProg arArgs arObjArgs
 
         ifProfLib $ xargs maxCommandLineSize
-          (rawSystemPathExit verbose) arProg arProfArgs arProfObjArgs
+          (rawSystemPathExit verbosity) arProg arProfArgs arProfObjArgs
 
         ifGHCiLib $ xargs maxCommandLineSize
           runLd ld ldArgs ldObjArgs
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
-                 when (verbose > 3)
+                 when (verbosity >= verbose)
                       (putStrLn $ "Building executable: " ++ exeName' ++ "...")
 
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
@@ -267,12 +268,12 @@ build pkg_descr lbi verbose = do
                  createDirectoryIfMissing True exeDir
                  -- put hi-boot files into place for mutually recursive modules
                  -- FIX: what about exeName.hi-boot?
-                 smartCopySources verbose (hsSourceDirs exeBi)
+                 smartCopySources verbosity (hsSourceDirs exeBi)
                                   exeDir (otherModules exeBi) ["hi-boot"] False False
 
                  -- build executables
                  unless (null (cSources exeBi)) $ do
-                  when (verbose > 3) (putStrLn "Building C Sources.")
+                  when (verbosity >= verbose) (putStrLn "Building C Sources.")
                   sequence_ [do let cSrcODir |versionBranch (compilerVersion (compiler lbi))
                                                     >= [6,4,1] = exeDir
                                              | otherwise 
@@ -281,8 +282,8 @@ build pkg_descr lbi verbose = do
 		                let cArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
 			                    ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
 			                    ++ ["-odir", cSrcODir, "-hidir", pref, "-c"]
-			                    ++ (if verbose > 4 then ["-v"] else [])
-                                rawSystemExit verbose ghcPath (cArgs ++ [c])
+			                    ++ (if verbosity >= deafening then ["-v"] else [])
+                                rawSystemExit verbosity ghcPath (cArgs ++ [c])
                                     | c <- cSources exeBi]
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
 
@@ -293,7 +294,7 @@ build pkg_descr lbi verbose = do
 			 ++ (if linkExe
 			        then ["-o", targetDir `joinFileName` exeNameReal]
                                 else ["-c"])
-                         ++ constructGHCCmdLine lbi exeBi exeDir verbose
+                         ++ constructGHCCmdLine lbi exeBi exeDir verbosity
                          ++ [exeDir `joinFileName` x | x <- cObjs]
                          ++ [srcMainFile]
 			 ++ ldOptions exeBi
@@ -312,9 +313,9 @@ build pkg_descr lbi verbose = do
 		 -- run at compile time needs to be the vanilla ABI so it can
 		 -- be loaded up and run by the compiler.
 		 when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
-		    (rawSystemExit verbose ghcPath (binArgs False False))
+		    (rawSystemExit verbosity ghcPath (binArgs False False))
 
-		 rawSystemExit verbose ghcPath (binArgs True (withProfExe lbi))
+		 rawSystemExit verbosity ghcPath (binArgs True (withProfExe lbi))
 
 
 -- when using -split-objs, we need to search for object files in the
@@ -337,17 +338,17 @@ getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext
 
 
 constructGHCCmdLine
-	:: LocalBuildInfo
+        :: LocalBuildInfo
         -> BuildInfo
-	-> FilePath
-	-> Int				-- verbosity level
+        -> FilePath
+        -> Verbosity
         -> [String]
-constructGHCCmdLine lbi bi odir verbose = 
+constructGHCCmdLine lbi bi odir verbosity =
         ["--make"]
-     ++ (if verbose > 4 then      ["-v"]
-         else if verbose > 0 then []
-         else                     ["-w", "-v0"])
-	    -- Unsupported extensions have already been checked by configure
+     ++ (     if verbosity >= deafening then ["-v"]
+         else if verbosity >= normal    then []
+         else                                ["-w", "-v0"])
+        -- Unsupported extensions have already been checked by configure
      ++ ghcOptions lbi bi odir
 
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
@@ -421,36 +422,37 @@ makefile pkg_descr lbi flags = do
 -- Installing
 
 -- |Install executables for GHC.
-installExe :: Int      -- ^verbose
-              -> FilePath -- ^install location
-              -> FilePath -- ^Build location
-              -> PackageDescription -> IO ()
-installExe verbose pref buildPref pkg_descr
+installExe :: Verbosity -- ^verbosity
+           -> FilePath  -- ^install location
+           -> FilePath  -- ^Build location
+           -> PackageDescription
+           -> IO ()
+installExe verbosity pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
          withExe pkg_descr $ \ (Executable e _ _) -> do
              let exeFileName = e `joinFileExt` exeExtension
-             copyFileVerbose verbose (buildPref `joinFileName` e `joinFileName` exeFileName) (pref `joinFileName` exeFileName)
+             copyFileVerbose verbosity (buildPref `joinFileName` e `joinFileName` exeFileName) (pref `joinFileName` exeFileName)
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
-installLib    :: Int      -- ^verbose
+installLib    :: Verbosity -- ^verbosity
               -> ProgramConfiguration
-              -> Bool     -- ^has vanilla library
-              -> Bool     -- ^has profiling library
-	      -> Bool     -- ^has GHCi libs
-              -> FilePath -- ^install location
-              -> FilePath -- ^Build location
+              -> Bool      -- ^has vanilla library
+              -> Bool      -- ^has profiling library
+              -> Bool      -- ^has GHCi libs
+              -> FilePath  -- ^install location
+              -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
-installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
+installLib verbosity programConf hasVanilla hasProf hasGHCi pref buildPref
               pd@PackageDescription{library=Just _,
                                     package=p}
-    = do ifVanilla $ smartCopySources verbose [buildPref] pref (libModules pd) ["hi"] True False
-         ifProf $ smartCopySources verbose [buildPref] pref (libModules pd) ["p_hi"] True False
+    = do ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"] True False
+         ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"] True False
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
 	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
-         ifVanilla $ copyFileVerbose verbose (mkLibName buildPref (showPackageId p)) libTargetLoc
-         ifProf $ copyFileVerbose verbose (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
-	 ifGHCi $ copyFileVerbose verbose (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
+         ifVanilla $ copyFileVerbose verbosity (mkLibName buildPref (showPackageId p)) libTargetLoc
+         ifProf $ copyFileVerbose verbosity (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
+	 ifGHCi $ copyFileVerbose verbosity (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
@@ -458,15 +460,15 @@ installLib verbose programConf hasVanilla hasProf hasGHCi pref buildPref
          let ranlibProgName = programName $ ranlibProgram
          mRanlibProg <- lookupProgram ranlibProgName programConf
          case foundProg mRanlibProg of
-           Just rl  -> do ifVanilla $ rawSystemProgram verbose rl [libTargetLoc]
-                          ifProf $ rawSystemProgram verbose rl [profLibTargetLoc]
+           Just rl  -> do ifVanilla $ rawSystemProgram verbosity rl [libTargetLoc]
+                          ifProf $ rawSystemProgram verbosity rl [profLibTargetLoc]
 
            Nothing -> do let arProgName = programName $ arProgram
                          mArProg <- lookupProgram arProgName programConf
                          case mArProg of
-                          Just ar  -> do ifVanilla $ rawSystemProgram verbose ar ["-s", libTargetLoc]
-                                         ifProf $ rawSystemProgram verbose ar ["-s", profLibTargetLoc]
-                          Nothing -> setupMessage verbose "Warning: Unable to generate index for library (missing ranlib and ar)" pd
+                          Just ar  -> do ifVanilla $ rawSystemProgram verbosity ar ["-s", libTargetLoc]
+                                         ifProf $ rawSystemProgram verbosity ar ["-s", profLibTargetLoc]
+                          Nothing -> setupMessage verbosity "Warning: Unable to generate index for library (missing ranlib and ar)" pd
          return ()
     where ifVanilla action = when hasVanilla (action >> return ())
           ifProf action = when hasProf (action >> return ())

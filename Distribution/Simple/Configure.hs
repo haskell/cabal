@@ -79,6 +79,7 @@ import Distribution.PackageDescription(
 import Distribution.Simple.Utils (die, warn, maybeExit, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
+import Distribution.Verbosity
 
 import Data.List (intersperse, nub, isPrefixOf)
 import Data.Char (isSpace)
@@ -343,9 +344,9 @@ configDependency ps dep@(Dependency pkgname vrange) =
 
 getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesJHC comp cfg = do
-   let verbose = configVerbose cfg
-   when (verbose > 0) $ message "Reading installed packages..."
-   str <- rawSystemStdout verbose (compilerPkgTool comp) ["--list-libraries"]
+   let verbosity = configVerbose cfg
+   when (verbosity >= normal) $ message "Reading installed packages..."
+   str <- rawSystemStdout verbosity (compilerPkgTool comp) ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
@@ -353,11 +354,11 @@ getInstalledPackagesJHC comp cfg = do
 getInstalledPackagesAux :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesAux comp cfg = getInstalledPackages comp (configUser cfg) (configVerbose cfg)
 
-getInstalledPackages :: Compiler -> Bool -> Int -> IO [PackageIdentifier]
-getInstalledPackages comp user verbose = do
-   when (verbose > 0) $ message "Reading installed packages..."
+getInstalledPackages :: Compiler -> Bool -> Verbosity -> IO [PackageIdentifier]
+getInstalledPackages comp user verbosity = do
+   when (verbosity >= normal) $ message "Reading installed packages..."
    let user_flag = if user then "--user" else "--global"
-   str <- rawSystemStdout verbose (compilerPkgTool comp) [user_flag, "list"]
+   str <- rawSystemStdout verbosity (compilerPkgTool comp) [user_flag, "list"]
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
        str1 = unlines (filter keep_line (lines str))
        str2 = filter (`notElem` ",(){}") str1
@@ -375,8 +376,9 @@ configCompilerAux cfg = configCompiler (configHcFlavor cfg)
                                        (configHcPkg cfg)
                                        (configVerbose cfg)
 
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath -> Int -> IO Compiler
-configCompiler hcFlavor hcPath hcPkg verbose
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
+               -> Verbosity -> IO Compiler
+configCompiler hcFlavor hcPath hcPkg verbosity
   = do let flavor = case hcFlavor of
                       Just f  -> f
                       Nothing -> error "Unknown compiler"
@@ -385,29 +387,29 @@ configCompiler hcFlavor hcPath hcPkg verbose
 	   Just path -> do absolute <- doesFileExist path
                            if absolute
                              then return path
-                             else findCompiler verbose path
-	   Nothing   -> findCompiler verbose (compilerBinaryName flavor)
+                             else findCompiler verbosity path
+	   Nothing   -> findCompiler verbosity (compilerBinaryName flavor)
 
-       ver <- configCompilerVersion flavor comp verbose
+       ver <- configCompilerVersion flavor comp verbosity
 
        pkgtool <-
 	 case hcPkg of
 	   Just path -> return path
-	   Nothing   -> guessPkgToolFromHCPath verbose flavor comp
+	   Nothing   -> guessPkgToolFromHCPath verbosity flavor comp
 
        return (Compiler{compilerFlavor=flavor,
 			compilerVersion=ver,
 			compilerPath=comp,
 			compilerPkgTool=pkgtool})
 
-findCompiler :: Int -> String -> IO FilePath
-findCompiler verbose prog = do
-  when (verbose > 1) $ message $ "searching for " ++ prog ++ " in path."
+findCompiler :: Verbosity -> String -> IO FilePath
+findCompiler verbosity prog = do
+  when (verbosity >= verbose) $ message $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of
    Nothing   -> die ("Cannot find compiler for " ++ prog)
-   Just path -> do when (verbose > 1) $ message ("found " ++ prog ++ " at "++ path)
-		   return path
+   Just path -> do when (verbosity >= verbose) $ message ("found " ++ prog ++ " at "++ path)
+                   return path
    -- ToDo: check that compiler works?
 
 compilerPkgToolName :: CompilerFlavor -> String
@@ -417,14 +419,14 @@ compilerPkgToolName Hugs = "hugs"
 compilerPkgToolName JHC  = "jhc"
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
-configCompilerVersion :: CompilerFlavor -> FilePath -> Int -> IO Version
-configCompilerVersion GHC compilerP verbose = do
-  str <- rawSystemStdout verbose compilerP ["--numeric-version"]
+configCompilerVersion :: CompilerFlavor -> FilePath -> Verbosity -> IO Version
+configCompilerVersion GHC compilerP verbosity = do
+  str <- rawSystemStdout verbosity compilerP ["--numeric-version"]
   case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
     _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
-configCompilerVersion comp compilerP verbose | comp `elem` [JHC,NHC] = do
-  str <- rawSystemStdout verbose compilerP ["--version"]
+configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
+  str <- rawSystemStdout verbosity compilerP ["--version"]
   case words str of
     (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of
                    [v] -> return v
@@ -432,15 +434,15 @@ configCompilerVersion comp compilerP verbose | comp `elem` [JHC,NHC] = do
     _        -> fail ("reading version string: "++show str++" failed.")
 configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
 
-haddockVersion :: LocalBuildInfo -> IO Version
-haddockVersion lbi = fmap getVer verString
+haddockVersion :: Verbosity -> LocalBuildInfo -> IO Version
+haddockVersion verbosity lbi = fmap getVer verString
  where
    -- Invoking "haddock --version" gives a string like
    -- "Haddock version 0.8, (c) Simon Marlow 2006" 
    verString = do haddockProg <-
                     fmap (fromMaybe noHaddock) $
                     lookupProgram "haddock" (withPrograms lbi)
-                  rawSystemStdout 0
+                  rawSystemStdout verbosity
                     (progLocPath (programLocation haddockProg)) ["--version"]
    getVer    = head . pCheck . readP_to_S parseVersion . init . (!! 2) . words
    noHaddock = error "haddockVersion: cannot find haddock"
@@ -451,8 +453,9 @@ haddockVersion lbi = fmap getVer verString
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
-guessPkgToolFromHCPath :: Int -> CompilerFlavor -> FilePath -> IO FilePath
-guessPkgToolFromHCPath verbose flavor path
+guessPkgToolFromHCPath :: Verbosity -> CompilerFlavor -> FilePath
+                       -> IO FilePath
+guessPkgToolFromHCPath verbosity flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
            (dir,_)         = splitFileName path
            verSuffix       = reverse $ takeWhile (`elem ` "0123456789.-") . reverse $ path
@@ -460,11 +463,11 @@ guessPkgToolFromHCPath verbose flavor path
            guessVersioned  = dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension 
            guesses | null verSuffix = [guessNormal]
                    | otherwise      = [guessVersioned, guessNormal]
-       when (verbose > 1) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
+       when (verbosity >= verbose) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
        file <- doesAnyFileExist guesses
        case file of
          Nothing -> die ("Cannot find package tool: " ++ pkgToolName)
-         Just pkgtool -> do when (verbose > 1) $ message $ "found package tool in " ++ pkgtool
+         Just pkgtool -> do when (verbosity >= verbose) $ message $ "found package tool in " ++ pkgtool
                             return pkgtool
 
 doesAnyFileExist :: [FilePath] -> IO (Maybe FilePath)

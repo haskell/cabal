@@ -97,6 +97,7 @@ import Distribution.Simple.Utils (die, currentDir,
                                   moduleToFilePath, findFile, warn)
 
 import Distribution.Simple.Utils (rawSystemPathExit)
+import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
@@ -289,7 +290,7 @@ allSuffixHandlers hooks
       overridesPP = unionBy (\x y -> fst x == fst y)
 
 -- | Helper function for /defaultMain/
-defaultMainWorker :: (Int -> IO PackageDescription)
+defaultMainWorker :: (Verbosity -> IO PackageDescription)
                   -> Action
                   -> [String]
                   -> UserHooks
@@ -335,7 +336,7 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                         maybeGetPersistBuildConfig
 
             CopyCmd mprefix -> do
-                command (parseCopyArgs (CopyFlags mprefix 0)) copyVerbose
+                command (parseCopyArgs (emptyCopyFlags mprefix)) copyVerbose
                         preCopy copyHook postCopy
                         getPersistBuildConfig
 
@@ -350,9 +351,9 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                         maybeGetPersistBuildConfig
 
             TestCmd -> do
-                (verbose,_, args) <- parseTestArgs all_args []
+                (verbosity,_, args) <- parseTestArgs all_args []
                 localbuildinfo <- getPersistBuildConfig
-                pkg_descr <- get_pkg_descr verbose
+                pkg_descr <- get_pkg_descr verbosity
                 runTests hooks args False pkg_descr localbuildinfo
 
             RegisterCmd  -> do
@@ -367,12 +368,12 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
 
             HelpCmd -> return () -- this is handled elsewhere
         where
-        command parse_args get_verbose
+        command parse_args get_verbosity
                 pre_hook cmd_hook post_hook
                 get_build_config = do
            (flags, _, args) <- parse_args all_args []
            pbi <- pre_hook hooks args flags
-           pkg_descr0 <- get_pkg_descr (get_verbose flags)
+           pkg_descr0 <- get_pkg_descr (get_verbosity flags)
            let pkg_descr = updatePackageDescription pbi pkg_descr0
            localbuildinfo <- get_build_config
            cmd_hook hooks pkg_descr localbuildinfo hooks flags
@@ -388,7 +389,7 @@ getModulePaths bi =
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
-haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
+haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
                       let haddockPath = programName haddockProgram
@@ -398,16 +399,16 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
     let tmpDir = joinPaths (buildDir lbi) "tmp"
     createDirectoryIfMissing True tmpDir
     createDirectoryIfMissing True $ haddockPref pkg_descr
-    preprocessSources pkg_descr lbi verbose pps
+    preprocessSources pkg_descr lbi verbosity pps
 
-    setupMessage verbose "Running Haddock for" pkg_descr
+    setupMessage verbosity "Running Haddock for" pkg_descr
 
     let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
     let showDepPkgs = map showPackageId (packageDeps lbi)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
-    have_new_flags <- fmap (> Version [0,8] []) (haddockVersion lbi)
+    have_new_flags <- fmap (> Version [0,8] []) (haddockVersion verbosity lbi)
     let ghcpkgFlags = if have_new_flags
                       then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
                       else []
@@ -425,7 +426,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
         let haddockFile = joinFileName (haddockPref pkg_descr)
                                        (haddockName pkg_descr)
         -- FIX: replace w/ rawSystemProgramConf?
-        rawSystemProgram verbose confHaddock
+        rawSystemProgram verbosity confHaddock
                 ([outputFlag,
                   "--odir=" ++ haddockPref pkg_descr,
                   "--title=" ++ showPkg ++ ": " ++ synopsis pkg_descr,
@@ -438,7 +439,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                      then map ("--use-package=" ++) showDepPkgs
                      else [])
                  ++ programArgs confHaddock
-                 ++ (if verbose > 4 then ["--verbose"] else [])
+                 ++ (if verbosity >= deafening then ["--verbose"] else [])
                  ++ outFiles
                  ++ map ("--hide=" ++) (otherModules bi)
                 )
@@ -452,7 +453,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
         let inFiles = srcMainPath : inFiles'
         mockAll bi inFiles
         let outFiles = replaceLitExts inFiles
-        rawSystemProgram verbose confHaddock
+        rawSystemProgram verbosity confHaddock
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe]
@@ -462,7 +463,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                      then map ("--use-package=" ++) showDepPkgs
                      else [])
                  ++ programArgs confHaddock
-                 ++ (if verbose > 4 then ["--verbose"] else [])
+                 ++ (if verbosity >= deafening then ["--verbose"] else [])
                  ++ outFiles
                 )
 
@@ -476,11 +477,11 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
                     then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
-                           file targetFile verbose
+                           file targetFile verbosity
                     else copyFile file targetFile
                  when (targetFileExt == "lhs") $ do
                        runSimplePreProcessor ppUnlit
-                         targetFile (joinFileExt targetFileNoext "hs") verbose
+                         targetFile (joinFileExt targetFileNoext "hs") verbosity
                        return ()
         needsCpp :: PackageDescription -> Bool
         needsCpp p = case library p of
@@ -492,7 +493,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbose) = do
 -- Programmatica support
 
 pfe :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO ()
-pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
+pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
     let pps = allSuffixHandlers hooks
     unless (hasLibs pkg_descr) $
         die "no libraries found in this project"
@@ -500,11 +501,13 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
         lbi <- getPersistBuildConfig
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
-        preprocessSources pkg_descr lbi verbose pps
+        preprocessSources pkg_descr lbi verbosity pps
         inFiles <- getModulePaths bi mods
-        rawSystemProgramConf verbose (programName pfesetupProgram) (withPrograms lbi)
-                ("noplogic":"cpp": (if verbose > 4 then ["-v"] else [])
-                ++ inFiles)
+        let verbFlags = if verbosity >= deafening then ["-v"] else []
+        rawSystemProgramConf verbosity
+                             (programName pfesetupProgram)
+                             (withPrograms lbi)
+                             ("noplogic" : "cpp" : verbFlags ++ inFiles)
         return ()
 
 
@@ -512,7 +515,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbose) = do
 -- Cleaning
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbose) = do
+clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
     try $ removeDirectoryRecursive (joinPaths distPref "doc")
@@ -669,33 +672,33 @@ autoconfUserHooks
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
-              = do let verbose = configVerbose flags
+              = do let verbosity = configVerbose flags
                        args' = configureArgs flags ++ args
                    confExists <- doesFileExist "configure"
                    if confExists then
-                       rawSystemPathExit verbose "sh" ("configure" : args')
+                       rawSystemPathExit verbosity "sh" ("configure" : args')
                      else
                        no_extra_flags args
 
-          readHook :: (a -> Int) -> Args -> a -> IO HookedBuildInfo
-          readHook verbose a flags = do
+          readHook :: (a -> Verbosity) -> Args -> a -> IO HookedBuildInfo
+          readHook get_verbosity a flags = do
               no_extra_flags a
               maybe_infoFile <- defaultHookedPackageDesc
               case maybe_infoFile of
                   Nothing       -> return emptyHookedBuildInfo
                   Just infoFile -> do
-                      let verbosity = verbose flags
-                      when (verbosity > 0) $
+                      let verbosity = get_verbosity flags
+                      when (verbosity >= normal) $
                           putStrLn $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo verbosity infoFile
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
-	-> UserHooks ->InstallFlags -> IO ()
-defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbose) = do
-  install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbose)
+                   -> UserHooks -> InstallFlags -> IO ()
+defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbosity) = do
+  install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbosity)
   when (hasLibs pkg_descr) $
-      register pkg_descr localbuildinfo 
-           emptyRegisterFlags{ regUser=uInstFlag, regVerbose=verbose }
+      register pkg_descr localbuildinfo
+           emptyRegisterFlags{ regUser=uInstFlag, regVerbose=verbosity }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> BuildFlags -> IO ()
@@ -725,7 +728,7 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
 -- ------------------------------------------------------------
 
 -- |Output warnings and errors. Exit if any errors.
-errorOut :: Int       -- ^Verbosity
+errorOut :: Verbosity -- ^Verbosity
          -> [String]  -- ^Warnings
          -> [String]  -- ^errors
          -> IO ()
