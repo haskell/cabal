@@ -80,7 +80,7 @@ module Distribution.Simple.Utils (
 #endif
 
 import Distribution.Compat.RawSystem (rawSystem)
-import Distribution.Compat.Exception (finally, bracket)
+import Distribution.Compat.Exception (bracket)
 
 #ifdef __GLASGOW_HASKELL__
 import Control.Exception (evaluate)
@@ -106,7 +106,11 @@ import System.Directory (getDirectoryContents, getCurrentDirectory
 import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
             getDirectoryContentsWithoutSpecial)
-import Distribution.Compat.TempFile (openTempFile, withTempFile)
+#ifdef __GLASGOW_HASKELL__
+import Distribution.Compat.TempFile (openTempFile)
+#else
+import Distribution.Compat.TempFile (withTempFile)
+#endif
 import Distribution.Verbosity
 
 #ifdef DEBUG
@@ -168,7 +172,7 @@ rawSystemStdout verbosity path args = do
   --      and stderr simultaniously to avoid deadlock, and using threads like
   --      that would not be portable to Hugs for example.
   bracket (openTempFile "." "tmp")
-          (\(tmpName, tmpHandle) -> removeFile tmpName)
+          (\(tmpName, _tmpHandle) -> removeFile tmpName)
          $ \(tmpName, tmpHandle) -> do
     cmdHandle <- runProcess path args Nothing Nothing
                    Nothing (Just tmpHandle) Nothing
