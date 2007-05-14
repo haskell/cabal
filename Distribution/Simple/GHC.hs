@@ -68,9 +68,9 @@ import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToGHCFlag )
 import Distribution.Version	( Version(..) )
 import Distribution.Compat.FilePath
-				( joinFileName, exeExtension, joinFileExt,
-				  splitFilePath, objExtension, joinPaths,
-                                  isAbsolutePath, splitFileExt )
+                                ( joinFileName, exeExtension, joinFileExt,
+                                  splitFilePath, objExtension, joinPaths,
+                                  splitFileExt )
 import Distribution.Compat.Directory 
 				( createDirectoryIfMissing )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
