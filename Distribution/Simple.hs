@@ -75,7 +75,7 @@ import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler,
-                                PreProcessor, runSimplePreProcessor)
+                                runSimplePreProcessor)
 import Distribution.Setup
 
 import Distribution.Simple.Build	( build, makefile )
