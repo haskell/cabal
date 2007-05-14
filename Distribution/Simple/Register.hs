@@ -71,6 +71,7 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Version (Version(..))
+import Distribution.Verbosity
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
@@ -125,7 +126,7 @@ register pkg_descr lbi regFlags
   | otherwise = do
     let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
         genScript = regGenScript regFlags
-        verbose = regVerbose regFlags
+        verbosity = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
     setupMessage (regVerbose regFlags)
@@ -153,7 +154,7 @@ register pkg_descr lbi regFlags
 
         instConfExists <- doesFileExist instConf
         when (not instConfExists && not genScript) $ do
-          when (verbose > 1) $
+          when (verbosity >= verbose) $
             putStrLn ("create " ++ instConf)
           writeInstalledConfig pkg_descr lbi inplace
 
@@ -182,18 +183,18 @@ register pkg_descr lbi regFlags
 
         if genScript
          then do cfg <- showInstalledConfig pkg_descr lbi inplace
-	         rawSystemPipe regScriptLocation verbose cfg
+                 rawSystemPipe regScriptLocation verbosity cfg
                            pkgTool allFlags
-         else rawSystemExit verbose pkgTool allFlags
+         else rawSystemExit verbosity pkgTool allFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
         let the_libdir = mkLibDir pkg_descr lbi NoCopyDest
 	createDirectoryIfMissing True the_libdir
-	copyFileVerbose verbose installedPkgConfigFile
+	copyFileVerbose verbosity installedPkgConfigFile
 	    (the_libdir `joinFileName` "package.conf")
-      JHC -> when (verbose > 0) $ putStrLn "registering for JHC (nothing to do)"
-      NHC -> when (verbose > 0) $ putStrLn "registering nhc98 (nothing to do)"
+      JHC -> when (verbosity >= normal) $ putStrLn "registering for JHC (nothing to do)"
+      NHC -> when (verbosity >= normal) $ putStrLn "registering nhc98 (nothing to do)"
       _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
 
 userPkgConfErr :: String -> IO a
@@ -305,7 +306,7 @@ unregister pkg_descr lbi regFlags = do
   setupMessage (regVerbose regFlags) "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
       genScript = regGenScript regFlags
-      verbose = regVerbose regFlags
+      verbosity = regVerbose regFlags
       user = regUser regFlags `userOverride` userConf lbi
   case compilerFlavor (compiler lbi) of
     GHC -> do
@@ -325,7 +326,7 @@ unregister pkg_descr lbi regFlags = do
         let pkgTool = case regWithHcPkg regFlags of
 			 Just f  -> f
 			 Nothing -> compilerPkgTool (compiler lbi)
-	rawSystemEmit unregScriptLocation genScript verbose pkgTool
+	rawSystemEmit unregScriptLocation genScript verbosity pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
         try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
@@ -338,11 +339,11 @@ unregister pkg_descr lbi regFlags = do
 
 -- |Like rawSystemExit, but optionally emits to a script instead of
 -- exiting. FIX: chmod +x?
-rawSystemEmit :: FilePath -- ^Script name
-              -> Bool     -- ^if true, emit, if false, run
-              -> Int      -- ^Verbosity
-              -> FilePath -- ^Program to run
-              -> [String] -- ^Args
+rawSystemEmit :: FilePath  -- ^Script name
+              -> Bool      -- ^if true, emit, if false, run
+              -> Verbosity -- ^Verbosity
+              -> FilePath  -- ^Program to run
+              -> [String]  -- ^Args
               -> IO ()
 rawSystemEmit _ False verbosity path args
     = rawSystemExit verbosity path args
@@ -358,11 +359,11 @@ rawSystemEmit scriptName True _ path args = do
 #endif
 
 -- |Like rawSystemEmit, except it has string for pipeFrom. FIX: chmod +x
-rawSystemPipe :: FilePath -- ^Script location
-              -> Int      -- ^Verbosity
-              -> String   -- ^where to pipe from
-              -> FilePath -- ^Program to run
-              -> [String] -- ^Args
+rawSystemPipe :: FilePath  -- ^Script location
+              -> Verbosity -- ^Verbosity
+              -> String    -- ^where to pipe from
+              -> FilePath  -- ^Program to run
+              -> [String]  -- ^Args
               -> IO ()
 rawSystemPipe scriptName _ pipeFrom path args = do
 #if mingw32_HOST_OS || mingw32_TARGET_OS

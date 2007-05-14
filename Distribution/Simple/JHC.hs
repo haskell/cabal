@@ -60,6 +60,7 @@ import Distribution.Compat.FilePath
 				( joinFileName, exeExtension )
 import Distribution.Compat.Directory
 				( createDirectoryIfMissing )
+import Distribution.Verbosity
 
 import Control.Monad		( when )
 import Data.List		( nub, intersperse )
@@ -70,29 +71,30 @@ import Data.List		( nub, intersperse )
 
 -- | Building a package for JHC.
 -- Currently C source files are not supported.
-build :: PackageDescription -> LocalBuildInfo -> Int -> IO ()
-build pkg_descr lbi verbose = do
+build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
+build pkg_descr lbi verbosity = do
   let jhcPath = compilerPath (compiler lbi)
   withLib pkg_descr () $ \lib -> do
-      when (verbose > 3) (putStrLn "Building library...")
+      when (verbosity >= verbose) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
-      let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbose
-      rawSystemExit verbose jhcPath (["-c"] ++ args ++ libModules pkg_descr)
+      let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
+      rawSystemExit verbosity jhcPath (["-c"] ++ args ++ libModules pkg_descr)
       let pkgid = showPackageId (package pkg_descr)
           pfile = buildDir lbi `joinFileName` "jhc-pkg.conf"
           hlfile= buildDir lbi `joinFileName` (pkgid ++ ".hl")
       writeFile pfile $ jhcPkgConf pkg_descr
-      rawSystemExit verbose jhcPath ["--build-hl="++pfile, "-o", hlfile]
+      rawSystemExit verbosity jhcPath ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
-      when (verbose > 3) (putStrLn ("Building executable "++exeName exe))
+      when (verbosity >= verbose)
+           (putStrLn ("Building executable "++exeName exe))
       let exeBi = buildInfo exe
       let out   = buildDir lbi `joinFileName` exeName exe
-      let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbose
-      rawSystemExit verbose jhcPath (["-o",out] ++ args ++ [modulePath exe])
+      let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
+      rawSystemExit verbosity jhcPath (["-o",out] ++ args ++ [modulePath exe])
 
-constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Int -> [String]
-constructJHCCmdLine lbi bi _odir verbose =
-        (if verbose > 4 then ["-v"] else [])
+constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [String]
+constructJHCCmdLine lbi bi _odir verbosity =
+        (if verbosity >= deafening then ["-v"] else [])
      ++ snd (extensionsToJHCFlag (extensions bi))
      ++ hcOptions JHC (options bi)
      ++ ["--noauto","-i-"]
@@ -110,14 +112,14 @@ jhcPkgConf pd =
              ,"exposed-modules: " ++ (comma id (exposedModules lib))
              ,"hidden-modules: " ++ (comma id (otherModules $ libBuildInfo lib))
              ]
-                         
-installLib :: Int -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
+
+installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
 installLib verb dest build_dir pkg_descr _ = do
     let p = showPackageId (package pkg_descr)++".hl"
     createDirectoryIfMissing True dest
     copyFileVerbose verb (joinFileName build_dir p) (joinFileName dest p)
 
-installExe :: Int -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
+installExe :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir _ exe = do
     let out   = exeName exe `joinFileName` exeExtension
     createDirectoryIfMissing True dest

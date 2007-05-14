@@ -64,6 +64,7 @@ module Distribution.Program(
 import qualified Distribution.Compat.Map as Map
 import Distribution.Compat.Directory(findExecutable)
 import Distribution.Simple.Utils (die, rawSystemExit)
+import Distribution.Verbosity
 
 -- |Represents a program which cabal may call.
 data Program
@@ -268,35 +269,35 @@ maybeUpdateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfigurat
 maybeUpdateProgram m c = maybe c (\p -> updateProgram p c) m
 
 -- |Runs the given program.
-rawSystemProgram :: Int      -- ^Verbosity
-                 -> Program  -- ^The program to run
-                 -> [String] -- ^Any /extra/ arguments to add
+rawSystemProgram :: Verbosity -- ^Verbosity
+                 -> Program   -- ^The program to run
+                 -> [String]  -- ^Any /extra/ arguments to add
                  -> IO ()
-rawSystemProgram verbose (Program { programLocation=(UserSpecified p)
-                                  , programArgs=args
-                                  }) extraArgs
-    = rawSystemExit verbose p (extraArgs ++ args)
+rawSystemProgram verbosity (Program { programLocation=(UserSpecified p)
+                                    , programArgs=args
+                                    }) extraArgs
+    = rawSystemExit verbosity p (extraArgs ++ args)
 
-rawSystemProgram verbose (Program { programLocation=(FoundOnSystem p)
-                                  , programArgs=args
-                                  }) extraArgs
-    = rawSystemExit verbose p (args ++ extraArgs)
+rawSystemProgram verbosity (Program { programLocation=(FoundOnSystem p)
+                                    , programArgs=args
+                                    }) extraArgs
+    = rawSystemExit verbosity p (args ++ extraArgs)
 
 rawSystemProgram _ (Program { programLocation=EmptyLocation
                             , programName=n}) _
     = die ("Error: Could not find location for program: " ++ n)
 
-rawSystemProgramConf :: Int -- ^verbosity
-                     -> String -- ^The name of the program to run
+rawSystemProgramConf :: Verbosity            -- ^verbosity
+                     -> String               -- ^The name of the program to run
                      -> ProgramConfiguration -- ^look up the program here
-                     -> [String] -- ^Any /extra/ arguments to add
+                     -> [String]             -- ^Any /extra/ arguments to add
                      -> IO ()
-rawSystemProgramConf verbose progName programConf extraArgs 
+rawSystemProgramConf verbosity progName programConf extraArgs 
     = do prog <- do mProg <- lookupProgram progName programConf
                     case mProg of
                         Nothing -> (die (progName ++ " command not found"))
                         Just h  -> return h
-         rawSystemProgram verbose prog extraArgs
+         rawSystemProgram verbosity prog extraArgs
 
 
 -- ------------------------------------------------------------

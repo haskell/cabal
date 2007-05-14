@@ -45,7 +45,7 @@ module Distribution.Setup (--parseArgs,
                            module Distribution.Compiler,
                            Action(..),
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
-                           CopyFlags(..), CopyDest(..), 
+                           CopyFlags(..), CopyDest(..), emptyCopyFlags,
 			   InstallFlags(..), emptyInstallFlags,
                            HaddockFlags(..), emptyHaddockFlags, emptyCleanFlags,
                            BuildFlags(..), CleanFlags(..), PFEFlags(..),
@@ -80,6 +80,7 @@ import Data.List(find)
 import Distribution.Compat.Map (keys)
 import Distribution.GetOpt
 import Distribution.Compat.FilePath (platformPath)
+import Distribution.Verbosity
 import System.Exit
 import System.Environment
 
@@ -138,7 +139,7 @@ data ConfigFlags = ConfigFlags {
 	configDataSubDir :: Maybe FilePath,
 		-- ^subdirectory of datadir in which data files are installed
 
-        configVerbose  :: Int,            -- ^verbosity level
+        configVerbose  :: Verbosity,            -- ^verbosity level
 	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
@@ -172,16 +173,16 @@ emptyConfigFlags progConf = ConfigFlags {
 	configLibExecDir = Nothing,
 	configDataDir  = Nothing,
 	configDataSubDir = Nothing,
-        configVerbose  = 1,
+        configVerbose  = normal,
 	configUser     = False,
 	configGHCiLib  = True,
 	configSplitObjs = False, -- takes longer, so turn off by default
         configHaddockUsePackages = True
     }
 
--- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbose)
-data CopyFlags = CopyFlags {copyDest      :: CopyDest
-                           ,copyVerbose :: Int}
+-- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
+data CopyFlags = CopyFlags {copyDest :: CopyDest
+                           ,copyVerbose :: Verbosity}
     deriving Show
 
 -- |The location prefix for the /copy/ command.
@@ -190,6 +191,10 @@ data CopyDest
   | CopyTo FilePath
   | CopyPrefix FilePath		-- DEPRECATED
   deriving (Eq, Show)
+
+emptyCopyFlags :: CopyDest -> CopyFlags
+emptyCopyFlags mprefix = CopyFlags{ copyDest = mprefix,
+                                    copyVerbose = normal }
 
 data MaybeUserFlag  = MaybeUserNone   -- ^no --user OR --global flag.
                     | MaybeUserUser   -- ^the --user flag
@@ -202,63 +207,64 @@ MaybeUserUser   `userOverride` _ = True
 MaybeUserGlobal `userOverride` _ = False
 _               `userOverride` r = r
 
--- | Flags to @install@: (user package, verbose)
-data InstallFlags = InstallFlags {installUserFlags::MaybeUserFlag
-                                 ,installVerbose :: Int}
+-- | Flags to @install@: (user package, verbosity)
+data InstallFlags = InstallFlags {installUserFlags :: MaybeUserFlag
+                                 ,installVerbose :: Verbosity}
     deriving Show
 
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
-				  installVerbose=1 }
+                                  installVerbose = normal }
 
--- | Flags to @sdist@: (snapshot, verbose)
-data SDistFlags = SDistFlags {sDistSnapshot::Bool
-                             ,sDistVerbose:: Int}
+-- | Flags to @sdist@: (snapshot, verbosity)
+data SDistFlags = SDistFlags {sDistSnapshot :: Bool
+                             ,sDistVerbose :: Verbosity}
     deriving Show
 
--- | Flags to @register@ and @unregister@: (user package, gen-script, 
--- in-place, verbose)
-data RegisterFlags = RegisterFlags {regUser::MaybeUserFlag
-                                   ,regGenScript::Bool
-				   ,regInPlace::Bool
-				   ,regWithHcPkg::Maybe FilePath
-                                   ,regVerbose::Int}
+-- | Flags to @register@ and @unregister@: (user package, gen-script,
+-- in-place, verbosity)
+data RegisterFlags = RegisterFlags { regUser :: MaybeUserFlag
+                                   , regGenScript :: Bool
+                                   , regInPlace :: Bool
+                                   , regWithHcPkg :: Maybe FilePath
+                                   , regVerbose :: Verbosity }
     deriving Show
 
 
 emptyRegisterFlags :: RegisterFlags
-emptyRegisterFlags = RegisterFlags { regUser=MaybeUserNone,
-				     regGenScript=False,
-				     regInPlace=False,
-				     regWithHcPkg=Nothing,
-				     regVerbose=1 }
+emptyRegisterFlags = RegisterFlags { regUser = MaybeUserNone,
+                                     regGenScript = False,
+                                     regInPlace = False,
+                                     regWithHcPkg = Nothing,
+                                     regVerbose = normal }
 
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
-                                 ,haddockVerbose :: Int}
+                                 ,haddockVerbose :: Verbosity}
     deriving Show
 
 emptyHaddockFlags :: HaddockFlags
-emptyHaddockFlags = HaddockFlags {haddockHoogle = False, haddockVerbose = 1}
+emptyHaddockFlags = HaddockFlags {haddockHoogle = False
+                                 ,haddockVerbose = normal}
 
 data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
-                                 ,cleanVerbose   :: Int}
+                                 ,cleanVerbose   :: Verbosity}
     deriving Show
 emptyCleanFlags :: CleanFlags
-emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = 1}
+emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = normal}
 
--- Following only have verbose flags, but for consistency and
+-- Following only have verbosity flags, but for consistency and
 -- extensibility we make them into a type.
-data BuildFlags   = BuildFlags   {buildVerbose   :: Int}
+data BuildFlags   = BuildFlags   {buildVerbose   :: Verbosity}
     deriving Show
 
-data MakefileFlags = MakefileFlags {makefileVerbose :: Int,
+data MakefileFlags = MakefileFlags {makefileVerbose :: Verbosity,
                                     makefileFile :: Maybe FilePath}
     deriving Show
 emptyMakefileFlags :: MakefileFlags
-emptyMakefileFlags = MakefileFlags {makefileVerbose = 1,
+emptyMakefileFlags = MakefileFlags {makefileVerbose = normal,
                                     makefileFile = Nothing}
 
-data PFEFlags     = PFEFlags     {pfeVerbose     :: Int}
+data PFEFlags     = PFEFlags     {pfeVerbose     :: Verbosity}
     deriving Show
 
 -- | All the possible flags
@@ -304,7 +310,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | MakefileFile FilePath
           -- For everyone:
           | HelpFlag
-          | Verbose Int
+          | Verbose Verbosity
 --          | Version?
           | Lift a
             deriving (Show, Eq)
@@ -359,9 +365,8 @@ cmd_help :: OptDescr (Flag a)
 cmd_help = Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
 
 cmd_verbose :: OptDescr (Flag a)
-cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
-  where
-    verboseFlag mb_s = Verbose (maybe 3 read mb_s)
+cmd_verbose = Option "v" ["verbose"] (OptArg (Verbose . flagToVerbosity) "n")
+              "Control verbosity (n is 0--2, default verbosity level is 1)"
 
 cmd_with_hc_pkg :: OptDescr (Flag a)
 cmd_with_hc_pkg = Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
@@ -638,8 +643,8 @@ haddockCmd = Cmd {
 
 parseHaddockArgs :: HaddockFlags -> [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
 parseHaddockArgs  = parseArgs haddockCmd updateCfg
-  where updateCfg (HaddockFlags hoogle verbose) fl = case fl of
-            HaddockHoogle -> HaddockFlags True verbose
+  where updateCfg (HaddockFlags hoogle verbosity) fl = case fl of
+            HaddockHoogle -> HaddockFlags True verbosity
             Verbose n     -> HaddockFlags hoogle n
             _             -> error "Unexpected flag!"
 
@@ -669,8 +674,8 @@ cleanCmd = Cmd {
 parseCleanArgs :: CleanFlags -> [String] -> [OptDescr a] ->
                     IO (CleanFlags, [a], [String])
 parseCleanArgs  = parseArgs cleanCmd updateCfg
-  where updateCfg (CleanFlags saveConfigure verbose) fl = case fl of
-            SaveConfigure -> CleanFlags True verbose
+  where updateCfg (CleanFlags saveConfigure verbosity) fl = case fl of
+            SaveConfigure -> CleanFlags True verbosity
             Verbose n     -> CleanFlags saveConfigure n
             _             -> error "Unexpected flag!"
 
@@ -707,9 +712,9 @@ copyCmd = Cmd {
 parseCopyArgs :: CopyFlags -> [String] -> [OptDescr a] ->
                     IO (CopyFlags, [a], [String])
 parseCopyArgs = parseArgs copyCmd updateCfg
-  where updateCfg (CopyFlags copydest verbose) fl = case fl of
-            InstPrefix path -> (CopyFlags (CopyPrefix path) verbose)
-	    DestDir path    -> (CopyFlags (CopyTo path) verbose)
+  where updateCfg (CopyFlags copydest verbosity) fl = case fl of
+            InstPrefix path -> (CopyFlags (CopyPrefix path) verbosity)
+	    DestDir path    -> (CopyFlags (CopyTo path) verbosity)
             Verbose n       -> (CopyFlags copydest n)
             _               -> error $ "Unexpected flag!"
 
@@ -717,10 +722,10 @@ parseCopyArgs = parseArgs copyCmd updateCfg
 parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
                     IO (InstallFlags, [a], [String])
 parseInstallArgs = parseArgs installCmd updateCfg
-  where updateCfg (InstallFlags uFlag verbose) fl = case fl of
+  where updateCfg (InstallFlags uFlag verbosity) fl = case fl of
             InstPrefix _ -> error "--install-prefix is obsolete. Use copy command instead."
-            UserFlag     -> (InstallFlags MaybeUserUser  verbose)
-            GlobalFlag   -> (InstallFlags MaybeUserGlobal verbose)
+            UserFlag     -> (InstallFlags MaybeUserUser   verbosity)
+            GlobalFlag   -> (InstallFlags MaybeUserGlobal verbosity)
             Verbose n    -> (InstallFlags uFlag n)
             _            -> error $ "Unexpected flag!"
 
@@ -737,9 +742,9 @@ sdistCmd = Cmd {
         }
 
 parseSDistArgs :: [String] -> [OptDescr a] -> IO (SDistFlags, [a], [String])
-parseSDistArgs = parseArgs sdistCmd updateCfg (SDistFlags False 0)
-  where updateCfg (SDistFlags snapshot verbose) fl = case fl of
-            Snapshot        -> (SDistFlags True verbose)
+parseSDistArgs = parseArgs sdistCmd updateCfg (SDistFlags False normal)
+  where updateCfg (SDistFlags snapshot verbosity) fl = case fl of
+            Snapshot        -> (SDistFlags True verbosity)
             Verbose n       -> (SDistFlags snapshot n)
             _               -> error $ "Unexpected flag!"
 
@@ -752,7 +757,7 @@ testCmd = Cmd {
         cmdAction      = TestCmd
         }
 
-parseTestArgs :: [String] -> [OptDescr a] -> IO (Int, [a], [String])
+parseTestArgs :: [String] -> [OptDescr a] -> IO (Verbosity, [a], [String])
 parseTestArgs = parseNoArgs testCmd id
 
 registerCmd :: Cmd a
@@ -809,13 +814,13 @@ parseUnregisterArgs :: RegisterFlags -> [String] -> [OptDescr a] ->
                        IO (RegisterFlags, [a], [String])
 parseUnregisterArgs = parseArgs unregisterCmd registerUpdateCfg
 
--- |Helper function for commands with no arguments except for verbose
+-- |Helper function for commands with no arguments except for verbosity
 -- and help.
 
 parseNoArgs :: (Cmd a)
-            -> (Int -> b) -- Constructor to make this type.
+            -> (Verbosity -> b) -- Constructor to make this type.
             -> [String] -> [OptDescr a]-> IO (b, [a], [String])
-parseNoArgs cmd c = parseArgs cmd updateCfg (c 1) -- 1 is the default verbosity
+parseNoArgs cmd c = parseArgs cmd updateCfg (c normal)
   where
     updateCfg _ (Verbose n) = c n
     updateCfg _ _           = error "Unexpected flag!"

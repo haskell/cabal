@@ -79,6 +79,7 @@ import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
 import Distribution.Compat.FilePath (joinFileName, splitFileName)
+import Distribution.Verbosity
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -92,12 +93,12 @@ x `finally` y = do { a <- x; y; return a }
 -- |Create a source distribution.
 sdist :: PackageDescription -- ^information from the tarball
       -> Maybe LocalBuildInfo -- ^Information from configure
-      -> SDistFlags -- ^verbose & snapshot
+      -> SDistFlags -- ^verbosity & snapshot
       -> FilePath -- ^build prefix (temp dir)
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps = do
+sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbosity) tmpDir targetPref pps = do
     time <- getClockTime
     ct <- toCalendarTime time
     let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
@@ -105,8 +106,8 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
           | snapshot  = updatePackage (updatePkgVersion
                           (updateVersionBranch (++ [date]))) pkg_descr_orig
           | otherwise = pkg_descr_orig
-    prepareTree pkg_descr verbose snapshot tmpDir pps date
-    createArchive pkg_descr verbose mb_lbi tmpDir targetPref
+    prepareTree pkg_descr verbosity snapshot tmpDir pps date
+    createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
     return ()
   where
     updatePackage f pd = pd { package = f (package pd) }
@@ -115,45 +116,45 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbose) tmpDir targetPref pps 
 
 -- |Prepare a directory tree of source files.
 prepareTree :: PackageDescription -- ^info from the cabal file
-            -> Int -- ^verbose
-            -> Bool -- ^snapshot
-            -> FilePath -- ^source tree to populate
+            -> Verbosity          -- ^verbosity
+            -> Bool               -- ^snapshot
+            -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
-            -> Int -- ^date
+            -> Int                -- ^date
             -> IO FilePath
 
-prepareTree pkg_descr verbose snapshot tmpDir pps date = do
-  setupMessage verbose "Building source dist for" pkg_descr
+prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
+  setupMessage verbosity "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
   createDirectoryIfMissing True targetDir
   -- maybe move the library files into place
   withLib pkg_descr () $ \ l ->
-    prepareDir verbose targetDir pps (exposedModules l) (libBuildInfo l)
+    prepareDir verbosity targetDir pps (exposedModules l) (libBuildInfo l)
   -- move the executables into place
   withExe pkg_descr $ \ (Executable _ mainPath exeBi) -> do
-    prepareDir verbose targetDir pps [] exeBi
+    prepareDir verbosity targetDir pps [] exeBi
     srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
-    copyFileTo verbose targetDir srcMainFile
+    copyFileTo verbosity targetDir srcMainFile
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
     let (dir, _) = splitFileName file
     createDirectoryIfMissing True (targetDir `joinFileName` dir)
-    copyFileVerbose verbose file (targetDir `joinFileName` file)
+    copyFileVerbose verbosity file (targetDir `joinFileName` file)
   when (not (null (licenseFile pkg_descr))) $
-    copyFileTo verbose targetDir (licenseFile pkg_descr)
+    copyFileTo verbosity targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
-    copyFileTo verbose targetDir fpath
+    copyFileTo verbosity targetDir fpath
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
   lhsExists <- doesFileExist "Setup.lhs"
-  if hsExists then copyFileTo verbose targetDir "Setup.hs"
-    else if lhsExists then copyFileTo verbose targetDir "Setup.lhs"
+  if hsExists then copyFileTo verbosity targetDir "Setup.hs"
+    else if lhsExists then copyFileTo verbosity targetDir "Setup.lhs"
     else writeFile (targetDir `joinFileName` "Setup.hs") $ unlines [
                 "import Distribution.Simple",
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
-  descFile <- getCurrentDirectory >>= findPackageDesc verbose
+  descFile <- getCurrentDirectory >>= findPackageDesc verbosity
   let targetDescFile = targetDir `joinFileName` descFile
   -- We could just writePackageDescription targetDescFile pkg_descr,
   -- but that would lose comments and formatting.
@@ -161,7 +162,7 @@ prepareTree pkg_descr verbose snapshot tmpDir pps date = do
       contents <- readFile descFile
       writeFile targetDescFile $
           unlines $ map (appendVersion date) $ lines $ contents
-    else copyFileVerbose verbose descFile targetDescFile
+    else copyFileVerbose verbosity descFile targetDescFile
   return targetDir
 
   where
@@ -176,14 +177,14 @@ prepareTree pkg_descr verbose snapshot tmpDir pps date = do
     trimTrailingSpace = reverse . dropWhile isSpace . reverse
 
 -- |Create an archive from a tree of source files, and clean up the tree.
-createArchive :: PackageDescription -- ^info from cabal file
-              -> Int -- ^verbose
+createArchive :: PackageDescription   -- ^info from cabal file
+              -> Verbosity            -- ^verbosity
               -> Maybe LocalBuildInfo -- ^info from configure
-              -> FilePath -- ^source tree to archive
-              -> FilePath -- ^name of archive to create
+              -> FilePath             -- ^source tree to archive
+              -> FilePath             -- ^name of archive to create
               -> IO FilePath
 
-createArchive pkg_descr verbose mb_lbi tmpDir targetPref = do
+createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref `joinFileName` tarBallName pkg_descr
   let tarDefault = "tar"
   tarProgram <- 
@@ -197,7 +198,7 @@ createArchive pkg_descr verbose mb_lbi tmpDir targetPref = do
    -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
-  rawSystemPathExit verbose tarProgram
+  rawSystemPathExit verbosity tarProgram
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
       -- XXX this should be done back where tmpDir is made, not here
       `finally` removeDirectoryRecursive tmpDir
@@ -205,22 +206,22 @@ createArchive pkg_descr verbose mb_lbi tmpDir targetPref = do
   return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo
-prepareDir :: Int       -- ^verbose
+prepareDir :: Verbosity -- ^verbosity
            -> FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbose inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
+prepareDir verbosity inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
     = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbose srcDirs inPref (mods++mods') suff True True
-         mapM_ (copyFileTo verbose inPref) cfiles
+         smartCopySources verbosity srcDirs inPref (mods++mods') suff True True
+         mapM_ (copyFileTo verbosity inPref) cfiles
 
-copyFileTo :: Int -> FilePath -> FilePath -> IO ()
-copyFileTo verbose dir file = do
+copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
+copyFileTo verbosity dir file = do
   let targetFile = dir `joinFileName` file
   createDirectoryIfMissing True (fst (splitFileName targetFile))
-  copyFileVerbose verbose file targetFile
+  copyFileVerbose verbosity file targetFile
 
 ------------------------------------------------------------
 

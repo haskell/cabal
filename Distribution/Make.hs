@@ -93,6 +93,7 @@ import Distribution.Simple.Utils (die, maybeExit, defaultPackageDesc)
 
 import Distribution.License (License(..))
 import Distribution.Version (Version(..))
+import Distribution.Verbosity
 
 import System.Environment(getArgs)
 import Data.List  ( intersperse )
@@ -118,7 +119,7 @@ defaultMainNoRead pkg_descr = do
     defaultMainHelper args $ \ _ -> return pkg_descr
 
 -- XXX get_pkg_descr isn't used?!
-defaultMainHelper :: [String] -> (Int -> IO PackageDescription) -> IO ()
+defaultMainHelper :: [String] -> (Verbosity -> IO PackageDescription) -> IO ()
 defaultMainHelper args get_pkg_descr
     = do (action, args) <- parseGlobalArgs defaultProgramConfiguration args
          case action of
@@ -132,7 +133,7 @@ defaultMainHelper args get_pkg_descr
                 exitWith retVal
 
             CopyCmd copydest0 -> do
-                ((CopyFlags copydest _), _, args) <- parseCopyArgs (CopyFlags copydest0 0) args []
+                ((CopyFlags copydest _), _, args) <- parseCopyArgs (CopyFlags copydest0 normal) args []
                 no_extra_flags args
 		let cmd = case copydest of 
 				NoCopyDest      -> "install"

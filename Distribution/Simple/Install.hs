@@ -76,6 +76,8 @@ import Control.Monad(when)
 import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import Distribution.Compat.FilePath(splitFileName,joinFileName, isAbsolutePath)
 
+import Distribution.Verbosity
+
 #ifdef DEBUG
 import HUnit (Test)
 #endif
@@ -88,10 +90,10 @@ install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
-install pkg_descr lbi (CopyFlags copydest verbose) = do
+install pkg_descr lbi (CopyFlags copydest verbosity) = do
   let dataFilesExist = not (null (dataFiles pkg_descr))
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
-  when (verbose >= 4)
+  when (verbosity >= verbose)
        (putStrLn ("directory " ++ haddockPref pkg_descr ++
                   " does exist: " ++ show docExists))
   when (dataFilesExist || docExists) $ do
@@ -100,46 +102,46 @@ install pkg_descr lbi (CopyFlags copydest verbose) = do
     flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let (dir, _) = splitFileName file
       createDirectoryIfMissing True (dataPref `joinFileName` dir)
-      copyFileVerbose verbose file (dataPref `joinFileName` file)
+      copyFileVerbose verbosity file (dataPref `joinFileName` file)
     when docExists $ do
       let targetDir = mkHaddockDir pkg_descr lbi copydest
       createDirectoryIfMissing True targetDir
-      copyDirectoryRecursiveVerbose verbose (haddockPref pkg_descr) targetDir
+      copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
       -- setPermissionsRecursive [Read] targetDir
   let buildPref = buildDir lbi
   let libPref = mkLibDir pkg_descr lbi copydest
   let binPref = mkBinDir pkg_descr lbi copydest
-  setupMessage verbose ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
+  setupMessage verbosity ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
-  when (hasLibs pkg_descr) $ installIncludeFiles verbose pkg_descr libPref
+  when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr libPref
 
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr)
-                     (GHC.installLib verbose (withPrograms lbi)
+                     (GHC.installLib verbosity (withPrograms lbi)
                        (withVanillaLib lbi) (withProfLib lbi)
                        (withGHCiLib lbi) libPref buildPref pkg_descr)
-                GHC.installExe verbose binPref buildPref pkg_descr
-     JHC  -> do withLib pkg_descr () $ JHC.installLib verbose libPref buildPref pkg_descr
-                withExe pkg_descr $ JHC.installExe verbose binPref buildPref pkg_descr
+                GHC.installExe verbosity binPref buildPref pkg_descr
+     JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
+                withExe pkg_descr $ JHC.installExe verbosity binPref buildPref pkg_descr
      Hugs -> do
        let progPref = mkProgDir pkg_descr lbi copydest
        let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
        let scratchPref = scratchDir lbi
-       Hugs.install verbose libPref progPref binPref targetProgPref scratchPref pkg_descr
+       Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref pkg_descr
      NHC  -> die ("installing with nhc98 is not yet implemented")
      _    -> die ("only installing with GHC, JHC or Hugs is implemented")
   return ()
   -- register step should be performed by caller.
 
 -- | Install the files listed in install-includes
-installIncludeFiles :: Int -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbose PackageDescription{library=Just l} theLibdir
+installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
+installIncludeFiles verbosity PackageDescription{library=Just l} theLibdir
  = do
    createDirectoryIfMissing True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
-   sequence_ [ copyFileVerbose verbose path (incdir `joinFileName` f)
+   sequence_ [ copyFileVerbose verbosity path (incdir `joinFileName` f)
 	     | (f,path) <- incs ]
   where
    relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)

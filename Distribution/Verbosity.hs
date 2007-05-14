@@ -1,14 +1,16 @@
+{-# OPTIONS -cpp -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.NHC
--- Copyright   :  Isaac Jones 2003-2006
--- 
+-- Module      :  Distribution.Verbosity
+-- Copyright   :  Ian Lynagh 2007
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
 --
+-- Verbosity for Cabal functions
 
-{- Copyright (c) 2003-2005, Isaac Jones
+{- Copyright (c) 2007, Ian Lynagh
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,34 +41,42 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.NHC
-  ( build
-{-, install -}
-  ) where
+module Distribution.Verbosity (
+  -- * Verbosity
+  Verbosity,
+  silent, normal, verbose, deafening,
+  intToVerbosity, flagToVerbosity
+ ) where
 
-import Distribution.PackageDescription
-				( PackageDescription(..), BuildInfo(..),
-				  Library(..), libModules, hcOptions)
-import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..) )
-import Distribution.Simple.Utils( rawSystemExit )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
-				  extensionsToNHCFlag )
-import Distribution.Verbosity
+data Verbosity = Silent | Normal | Verbose | Deafening
+    deriving (Show, Eq, Ord)
 
--- |FIX: For now, the target must contain a main module.  Not used
--- ATM. Re-add later.
-build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-build pkg_descr lbi verbosity =
-  -- Unsupported extensions have already been checked by configure
-  let flags = ( snd
-              . extensionsToNHCFlag
-              . maybe [] (extensions . libBuildInfo)
-              . library ) pkg_descr in
-  rawSystemExit verbosity (compilerPath (compiler lbi))
-                (["-hc=nhc98"]
-                ++ flags
-                ++ maybe [] (hcOptions NHC . options . libBuildInfo)
-                            (library pkg_descr)
-                ++ libModules pkg_descr)
+silent :: Verbosity
+silent = Silent
+
+normal :: Verbosity
+normal = Normal
+
+verbose :: Verbosity
+verbose = Verbose
+
+deafening :: Verbosity
+deafening = Verbose
+
+intToVerbosity :: Int -> Maybe Verbosity
+intToVerbosity 0 = Just Silent
+intToVerbosity 1 = Just Normal
+intToVerbosity 2 = Just Verbose
+intToVerbosity 3 = Just Deafening
+intToVerbosity _ = Nothing
+
+flagToVerbosity :: Maybe String -> Verbosity
+flagToVerbosity Nothing = verbose
+flagToVerbosity (Just s)
+ = case reads s of
+       [(i, "")] ->
+           case intToVerbosity i of
+               Just v -> v
+               Nothing -> error ("Bad verbosity " ++ show i)
+       _ -> error ("Can't parse verbosity " ++ s)
 
