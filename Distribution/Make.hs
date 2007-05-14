@@ -118,9 +118,8 @@ defaultMainNoRead pkg_descr = do
     args <- getArgs
     defaultMainHelper args $ \ _ -> return pkg_descr
 
--- XXX get_pkg_descr isn't used?!
 defaultMainHelper :: [String] -> (Verbosity -> IO PackageDescription) -> IO ()
-defaultMainHelper args get_pkg_descr
+defaultMainHelper args _get_pkg_descr
     = do (action, args) <- parseGlobalArgs defaultProgramConfiguration args
          case action of
             ConfigCmd flags -> do
