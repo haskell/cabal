@@ -33,7 +33,6 @@ import Distribution.Compat.Exception ( finally )
 import Distribution.Compat.FilePath (pathSeparator)
 import Distribution.Verbosity
 import Control.Monad		( when, unless )
-import System.Directory 	( doesFileExist, getCurrentDirectory, setCurrentDirectory )
 
   -- read the .cabal file
   -- 	- attempt to find the version of Cabal required
@@ -72,8 +71,8 @@ setupWrapper args mdir = inDir mdir $ do
     trySetupScript f on_fail = do
        b <- doesFileExist f
        if not b then on_fail else do
-         hasSetup <- do b <- doesFileExist "setup"
-                        if not b then return False else do
+         hasSetup <- do b' <- doesFileExist "setup"
+                        if not b' then return False else do
                           t1 <- getModificationTime f
                           t2 <- getModificationTime "setup"
                           return (t1 < t2)
