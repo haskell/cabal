@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
-import Distribution.PreProcess 	( ppCpp, PreProcessor, runSimplePreProcessor )
+import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo

@@ -76,7 +76,7 @@ import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage,
         satisfyDependency)
-import Distribution.Simple.Utils (die, warn, maybeExit, rawSystemStdout)
+import Distribution.Simple.Utils (die, warn, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
 import Distribution.Verbosity
@@ -89,7 +89,6 @@ import Distribution.Compat.FilePath (splitFileName, joinFileName,
                                   joinFileExt, exeExtension)
 import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
-import System.Exit		( ExitCode(..) )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable)

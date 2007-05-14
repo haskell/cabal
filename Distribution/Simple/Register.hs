@@ -85,8 +85,8 @@ import Distribution.Compat.Directory
         setPermissions, getPermissions, Permissions(executable)
        )
 
-import Distribution.Compat.FilePath (joinFileName, joinPaths, splitFileName,
-				     isAbsolutePath)
+import Distribution.Compat.FilePath (joinFileName, joinPaths,
+                                     isAbsolutePath)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
