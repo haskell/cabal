@@ -143,11 +143,16 @@ maybeExit cmd = do
   res <- cmd
   unless (res == ExitSuccess) $ exitWith res
 
+printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
+printRawCommandAndArgs verbosity path args
+ | verbosity >= deafening = print (path, args)
+ | verbosity >= verbose   = putStrLn $ unwords (path : args)
+ | otherwise              = return ()
+
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
-  when (verbosity >= verbose) $
-    putStrLn (path ++ concatMap (' ':) args)
+  printRawCommandAndArgs verbosity path args
   maybeExit $ rawSystem path args
 
 -- Exit with the same exitcode if the subcommand fails
@@ -161,8 +166,7 @@ rawSystemPathExit verbosity prog args = do
 -- Run a command and return its output
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
-  when (verbosity >= verbose) $
-    putStrLn (path ++ concatMap (' ':) args)
+  printRawCommandAndArgs verbosity path args
 
 #ifdef __GLASGOW_HASKELL__
   -- TODO Ideally we'd use runInteractiveProcess and not have to make any
