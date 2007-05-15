@@ -13,6 +13,7 @@
     <!ENTITY Greencard '<ulink url="http://www.haskell.org/greencard/"><command>greencard</command></ulink>'>
     <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/"><command>haddock</command></ulink>'>
     <!ENTITY Happy '<ulink url="http://www.haskell.org/happy/"><command>happy</command></ulink>'>
+    <!ENTITY HackageDB '<ulink url="http://hackage.haskell.org/">HackageDB</ulink>'>
   ]>
 
 <article>
@@ -1752,7 +1753,7 @@ runhaskell Setup.hs build
       <para>Build the interface documentation for a library using
         &Haddock;.</para>
 
-      <para>This command takes the following option:</para>
+      <para>This command takes the following options:</para>
 
       <variablelist>
         <varlistentry>
@@ -1765,6 +1766,25 @@ runhaskell Setup.hs build
             into a database for searching. This is
             equivalent to running &Haddock; with the <option>--hoogle</option> flag.
             </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--html-location</option>=<replaceable>url</replaceable></term>
+          <listitem>
+            <para>Specify a template for the location of HTML documentation
+              for pre-requisite packages.  The substitutions listed in
+              <xref linkend="simple-paths"/> are applied to the template
+              to obtain a location for each package, which will be used
+              by hyperlinks in the generated documentation.  For example,
+              the following command generates links pointing at &HackageDB;
+              pages:</para>
+            <screen>setup haddock --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'</screen>
+            <para>Here the argument is quoted to prevent substitution
+              by the shell.</para>
+            <para>If this option is omitted, the location for each package
+              is obtained using the package tool (e.g.
+              <command>ghc-pkg</command>).</para>
           </listitem>
         </varlistentry>
       </variablelist>
