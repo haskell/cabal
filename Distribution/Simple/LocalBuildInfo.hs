@@ -65,6 +65,7 @@ import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
 import Distribution.Setup (CopyDest(..))
+import Distribution.Version (showVersion)
 import Distribution.Compat.FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Data.Maybe (fromMaybe)
@@ -117,8 +118,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withOptimization :: Bool, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
-	splitObjs     :: Bool,	-- ^Use -split-objs with GHC, if available
-        haddockUsePackages   :: Bool   -- ^Auto-gen --use-package for haddock
+	splitObjs     :: Bool 	-- ^Use -split-objs with GHC, if available
 
   } deriving (Read, Show)
 
@@ -311,8 +311,8 @@ prefixRelPath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
   -> Maybe FilePath
 prefixRelPath pkg_descr lbi0 copydest ('$':'p':'r':'e':'f':'i':'x':s) = Just $
   case s of
-    (c:s') | isPathSeparator c -> substDir pkg_descr lbi s'
-    _                          -> substDir pkg_descr lbi s
+    (c:s') | isPathSeparator c -> substDir (package pkg_descr) lbi s'
+    _                          -> substDir (package pkg_descr) lbi s
   where
     lbi = case copydest of 
             CopyPrefix d -> lbi0{prefix=d}
@@ -323,12 +323,12 @@ absolutePath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 	-> FilePath
 absolutePath pkg_descr lbi copydest s =
   case copydest of
-    NoCopyDest   -> substDir pkg_descr lbi s
-    CopyPrefix d -> substDir pkg_descr lbi{prefix=d} s
-    CopyTo     p -> p `joinFileName` (dropAbsolutePrefix (substDir pkg_descr lbi s))
+    NoCopyDest   -> substDir (package pkg_descr) lbi s
+    CopyPrefix d -> substDir (package pkg_descr) lbi{prefix=d} s
+    CopyTo     p -> p `joinFileName` (dropAbsolutePrefix (substDir (package pkg_descr) lbi s))
 
-substDir :: PackageDescription -> LocalBuildInfo -> String -> String
-substDir pkg_descr lbi xs = loop xs
+substDir :: PackageIdentifier -> LocalBuildInfo -> String -> String
+substDir pkgId lbi xs = loop xs
  where
   loop "" = ""
   loop ('$':'p':'r':'e':'f':'i':'x':s) 
@@ -336,11 +336,11 @@ substDir pkg_descr lbi xs = loop xs
   loop ('$':'c':'o':'m':'p':'i':'l':'e':'r':s) 
 	= showCompilerId (compiler lbi) ++ loop s
   loop ('$':'p':'k':'g':'i':'d':s) 
-	= showPackageId (package pkg_descr) ++ loop s
+	= showPackageId pkgId ++ loop s
   loop ('$':'p':'k':'g':s) 
-	= pkgName (package pkg_descr) ++ loop s
+	= pkgName pkgId ++ loop s
   loop ('$':'v':'e':'r':'s':'i':'o':'n':s) 
-	= show (pkgVersion (package pkg_descr)) ++ loop s
+	= showVersion (pkgVersion pkgId) ++ loop s
   loop ('$':'$':s) = '$' : loop s
   loop (c:s) = c : loop s
 
