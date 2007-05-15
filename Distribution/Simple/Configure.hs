@@ -238,8 +238,7 @@ configure pkg_descr cfg
                               withOptimization=configOptimization cfg,
 			      withGHCiLib=configGHCiLib cfg,
 			      splitObjs=split_objs,
-                              userConf=configUser cfg,
-                              haddockUsePackages=configHaddockUsePackages cfg
+                              userConf=configUser cfg
                              }
 
         -- FIXME: maybe this should only be printed when verbose?

@@ -142,8 +142,7 @@ data ConfigFlags = ConfigFlags {
         configVerbose  :: Verbosity,            -- ^verbosity level
 	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
-	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
-        configHaddockUsePackages :: Bool  -- ^ auto-gen haddock --use-package
+	configSplitObjs :: Bool 	  -- ^Enable -split-objs with GHC
     }
     deriving Show
 
@@ -176,8 +175,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configVerbose  = normal,
 	configUser     = False,
 	configGHCiLib  = True,
-	configSplitObjs = False, -- takes longer, so turn off by default
-        configHaddockUsePackages = True
+	configSplitObjs = False -- takes longer, so turn off by default
     }
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
@@ -239,11 +237,13 @@ emptyRegisterFlags = RegisterFlags { regUser = MaybeUserNone,
                                      regVerbose = normal }
 
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
+                                 ,haddockHtmlLocation :: Maybe String
                                  ,haddockVerbose :: Verbosity}
     deriving Show
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = HaddockFlags {haddockHoogle = False
+                                 ,haddockHtmlLocation = Nothing
                                  ,haddockVerbose = normal}
 
 data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
@@ -287,7 +287,6 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | LibExecDir FilePath
 	  | DataDir FilePath
 	  | DataSubDir FilePath
-          | WithHaddockUsePackages | WithoutHaddockUsePackages
 
           | ProgramArgs String String   -- program name, arguments
           | WithProgram String FilePath -- program name, location
@@ -304,6 +303,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | Snapshot
           -- For haddock:
           | HaddockHoogle
+          | HaddockHtmlLocation String
           -- For clean:
           | SaveConfigure -- ^don't delete .setup-config during clean
           -- For makefile:
@@ -515,11 +515,7 @@ configureCmd progConf = Cmd {
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
-               "(default) dependencies must be satisfied from the global package database",
-           Option "" ["enable-haddock-use-packages"] (NoArg WithHaddockUsePackages)
-               "Automatically pass --use-library flags to haddock.",
-           Option "" ["disable-haddock-use-packages"] (NoArg WithoutHaddockUsePackages)
-               "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs."
+               "(default) dependencies must be satisfied from the global package database"
            ]
 {- 
    FIX: Instead of using ++ here, we might add extra arguments.  That
@@ -595,8 +591,6 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t GlobalFlag           = t { configUser     = False }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
-	updateCfg t WithHaddockUsePackages	 = t { configHaddockUsePackages = True }
-	updateCfg t WithoutHaddockUsePackages	 = t { configHaddockUsePackages = False }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
@@ -637,15 +631,17 @@ haddockCmd = Cmd {
         cmdHelp        = "Generate Haddock HTML code from Exposed-Modules.",
         cmdDescription = "Requires cpphs and haddock.",
         cmdOptions     = [cmd_help, cmd_verbose,
-                          Option "" ["hoogle"] (NoArg HaddockHoogle) "Generate a hoogle database"],
+                          Option "" ["hoogle"] (NoArg HaddockHoogle) "Generate a hoogle database",
+                          Option "" ["html-location"] (ReqArg HaddockHtmlLocation "URL") "Location of HTML documentation for pre-requisite packages"],
         cmdAction      = HaddockCmd
         }
 
 parseHaddockArgs :: HaddockFlags -> [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
 parseHaddockArgs  = parseArgs haddockCmd updateCfg
-  where updateCfg (HaddockFlags hoogle verbosity) fl = case fl of
-            HaddockHoogle -> HaddockFlags True verbosity
-            Verbose n     -> HaddockFlags hoogle n
+  where updateCfg hflags fl = case fl of
+            HaddockHoogle -> hflags{haddockHoogle=True}
+            HaddockHtmlLocation s -> hflags{haddockHtmlLocation=Just s}
+            Verbose n     -> hflags{haddockVerbose=n}
             _             -> error "Unexpected flag!"
 
 programaticaCmd :: Cmd a

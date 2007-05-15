@@ -90,13 +90,13 @@ import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuild
                                      haddockVersion)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
-                                            srcPref, haddockPref )
+                                            srcPref, haddockPref, substDir )
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath, findFile, warn)
 
-import Distribution.Simple.Utils (rawSystemPathExit)
+import Distribution.Simple.Utils (rawSystemPathExit, rawSystemStdout)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
@@ -105,7 +105,7 @@ import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 
 import Distribution.License
-import Control.Monad(when, unless)
+import Control.Monad(liftM, when, unless)
 import Data.List	( intersperse, unionBy )
 import System.IO.Error (try)
 import System.IO        ( hPutStrLn, stderr )
@@ -389,7 +389,7 @@ getModulePaths bi =
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
-haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
+haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
                       let haddockPath = programName haddockProgram
@@ -406,7 +406,6 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
     let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
-    let showDepPkgs = map showPackageId (packageDeps lbi)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
     have_new_flags <- fmap (> Version [0,8] []) (haddockVersion verbosity lbi)
     let ghcpkgFlags = if have_new_flags
@@ -415,6 +414,21 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
     let allowMissingHtmlFlags = if have_new_flags
                                 then ["--allow-missing-html"]
                                 else []
+
+    let pkgTool = compilerPkgTool (compiler lbi)
+    let getField pkgId f = do
+            let name = showPackageId pkgId
+            s <- rawSystemStdout verbose pkgTool ["field", name, f]
+            return $ case words s of
+                _:v:_ -> v
+                [] -> []
+    let makeReadInterface pkgId = do
+            interface <- getField pkgId "haddock-interfaces"
+            html <- case html_loc of
+                Nothing -> getField pkgId "haddock-html"
+                Just htmlTemplate -> return (substDir pkgId lbi htmlTemplate)
+            return $ "--read-interface=" ++ html ++ "," ++ interface
+    packageFlags <- mapM makeReadInterface (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -435,9 +449,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
                   "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
-                 ++ (if haddockUsePackages lbi
-                     then map ("--use-package=" ++) showDepPkgs
-                     else [])
+                 ++ packageFlags
                  ++ programArgs confHaddock
                  ++ (if verbosity >= deafening then ["--verbose"] else [])
                  ++ outFiles
@@ -459,9 +471,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle verbosity) = do
                   "--title=" ++ exeName exe]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
-                 ++ (if haddockUsePackages lbi
-                     then map ("--use-package=" ++) showDepPkgs
-                     else [])
+                 ++ packageFlags
                  ++ programArgs confHaddock
                  ++ (if verbosity >= deafening then ["--verbose"] else [])
                  ++ outFiles
