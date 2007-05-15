@@ -106,7 +106,9 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 
 import Distribution.License
 import Control.Monad(liftM, when, unless)
+import Data.Char	( isSpace )
 import Data.List	( intersperse, unionBy )
+import Data.Maybe	( catMaybes )
 import System.IO.Error (try)
 import System.IO        ( hPutStrLn, stderr )
 import System.Environment ( getProgName )
@@ -416,19 +418,22 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                                 else []
 
     let pkgTool = compilerPkgTool (compiler lbi)
+    let trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
     let getField pkgId f = do
             let name = showPackageId pkgId
             s <- rawSystemStdout verbose pkgTool ["field", name, f]
-            return $ case words s of
-                _:v:_ -> v
-                [] -> []
+            return $ trim $ dropWhile (not . isSpace) s
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
             html <- case html_loc of
                 Nothing -> getField pkgId "haddock-html"
                 Just htmlTemplate -> return (substDir pkgId lbi htmlTemplate)
-            return $ "--read-interface=" ++ html ++ "," ++ interface
-    packageFlags <- mapM makeReadInterface (packageDeps lbi)
+            return $ if null interface
+                then Nothing
+                else Just $ "--read-interface=" ++
+                            (if null html then "" else html ++ ",") ++
+                            interface
+    packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
