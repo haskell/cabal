@@ -51,15 +51,20 @@ module Distribution.Verbosity (
 data Verbosity = Silent | Normal | Verbose | Deafening
     deriving (Show, Eq, Ord)
 
+-- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity
 silent = Silent
 
+-- Print stuff we want to see by default
 normal :: Verbosity
 normal = Normal
 
+-- Be more verbose about what's going on
 verbose :: Verbosity
 verbose = Verbose
 
+-- Not only are we verbose ourselves (perhaps even noisier than when
+-- being "verbose"), but we tell everything we run to be verbose too
 deafening :: Verbosity
 deafening = Verbose
 
@@ -71,7 +76,7 @@ intToVerbosity 3 = Just Deafening
 intToVerbosity _ = Nothing
 
 flagToVerbosity :: Maybe String -> Verbosity
-flagToVerbosity Nothing = verbose
+flagToVerbosity Nothing = verbose -- A "-v" flag is equivalent to "-v2"
 flagToVerbosity (Just s)
  = case reads s of
        [(i, "")] ->
