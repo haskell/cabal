@@ -82,7 +82,7 @@ module Distribution.Simple.Utils (
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (bracket)
 
-#ifdef __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ >= 604
 import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
 #else
@@ -106,7 +106,7 @@ import System.Directory (getDirectoryContents, getCurrentDirectory
 import Distribution.Compat.Directory
            (copyFile, findExecutable, createDirectoryIfMissing,
             getDirectoryContentsWithoutSpecial)
-#ifdef __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ >= 604
 import Distribution.Compat.TempFile (openTempFile)
 #else
 import Distribution.Compat.TempFile (withTempFile)
@@ -168,7 +168,7 @@ rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
   printRawCommandAndArgs verbosity path args
 
-#ifdef __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ >= 604
   -- TODO Ideally we'd use runInteractiveProcess and not have to make any
   --      silly temp files, however it is not possible to only connect pipes
   --      to a subset of the process's stdin/out/err. We really cannot
