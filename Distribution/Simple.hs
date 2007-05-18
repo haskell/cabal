@@ -58,7 +58,7 @@ module Distribution.Simple (
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultMainWithHooksArgs,
-        defaultUserHooks, emptyUserHooks,
+        simpleUserHooks, defaultUserHooks, emptyUserHooks,
         defaultHookedPackageDesc
 #ifdef DEBUG        
         ,simpleHunitTests
