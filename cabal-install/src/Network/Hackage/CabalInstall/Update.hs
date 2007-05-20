@@ -22,7 +22,7 @@ import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
 import Distribution.PackageDescription (PackageDescription(..), readPackageDescription)
 import Distribution.Verbosity
-import System.FilePath ((</>), joinPath, addExtension)
+import System.FilePath ((</>), joinPath, addExtension, takeExtension)
 
 import Control.Monad (liftM)
 import Data.List (isSuffixOf)
@@ -39,7 +39,7 @@ update cfg =
               let packageDir = packagesDirectory cfg
                   cabalFiles = [ packageDir </> path
                                | path <- contents
-                               , ".cabal" `isSuffixOf` path ]
+                               , ".cabal" == takeExtension path ]
                   v = configVerbose cfg
                   v'= if v == verbose then normal else v
               packageDescriptions <-
