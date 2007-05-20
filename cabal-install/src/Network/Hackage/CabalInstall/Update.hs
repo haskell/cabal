@@ -25,6 +25,7 @@ import System.FilePath ((</>), joinPath, addExtension)
 
 import Control.Monad (liftM)
 import Data.List (isSuffixOf)
+import Data.Version (showVersion)
 
 -- | 'update' downloads the package list from all known servers
 update :: ConfigFlags -> IO ()
@@ -54,8 +55,9 @@ parsePkg server description =
             , infoURL      = pkgURL (package description) server
             }
 
+-- | Generate the URL of the tarball for a given package.
 pkgURL :: PackageIdentifier -> String -> String
-pkgURL identifier base = joinPath [base, pkgName identifier, showPackageId identifier] `addExtension` ".tar.gz"
+pkgURL pkg base = joinPath [base, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] `addExtension` ".tar.gz"
 
 concatMapM :: (Monad m) => [a] -> (a -> m [b]) -> m [b]
 concatMapM amb f = liftM concat (mapM f amb)

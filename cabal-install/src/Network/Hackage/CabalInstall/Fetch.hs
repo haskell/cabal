@@ -105,7 +105,8 @@ downloadIndex cfg serv
     where url = serv ++ "/" ++ "00-index.tar.gz"
           path = packagesDirectory cfg </> "00-index" <.> "tar.gz"
 
--- |Generate the full path to a given @PackageIdentifer@.
+-- |Generate the full path to the locally cached copy of
+-- the tarball for a given @PackageIdentifer@.
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
 packageFile cfg pkg = packagesDirectory cfg 
                       </> pkgName pkg
