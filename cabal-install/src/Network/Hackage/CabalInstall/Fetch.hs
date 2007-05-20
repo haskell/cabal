@@ -87,7 +87,8 @@ downloadFile path url
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
 downloadPackage cfg pkg url
-    = do mbError <- downloadFile path url
+    = do message (configOutputGen cfg) 2 $ "GET " ++ show url
+         mbError <- downloadFile path url
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
