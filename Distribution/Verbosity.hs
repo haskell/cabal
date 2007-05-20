@@ -69,7 +69,7 @@ verbose = Verbose
 -- Not only are we verbose ourselves (perhaps even noisier than when
 -- being "verbose"), but we tell everything we run to be verbose too
 deafening :: Verbosity
-deafening = Verbose
+deafening = Deafening
 
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just Silent
