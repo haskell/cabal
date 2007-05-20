@@ -26,6 +26,7 @@ import Network.Hackage.CabalInstall.Config
 import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Package (showPackageId)
+import Distribution.Verbosity
 import System.FilePath ((</>))
 
 import Text.Printf (printf)
@@ -36,9 +37,9 @@ import Data.Maybe (fromMaybe)
 {-|
   Structure with default responses to various events.
 -}
-defaultOutputGen :: Int -> IO OutputGen
-defaultOutputGen verbose
-    = do (outch,errch) <- do guard (verbose <= 1)
+defaultOutputGen :: Verbosity -> IO OutputGen
+defaultOutputGen verbosity
+    = do (outch,errch) <- do guard (verbosity <= normal)
                              nullOut <- openFile ("/"</>"dev"</>"null") AppendMode
                              nullErr <- openFile ("/"</>"dev"</>"null") AppendMode
                              return (Just nullOut, Just nullErr)
@@ -48,7 +49,7 @@ defaultOutputGen verbose
                 , pkgIsPresent   = printf "'%s' is present.\n" . showPackageId
                 , downloadingPkg = printf "Downloading '%s'...\n" . showPackageId
                 , executingCmd   = \cmd args
-                                 -> when (verbose > 0) $ printf "Executing: '%s %s'\n" cmd (unwords args)
+                                 -> when (verbosity > silent) $ printf "Executing: '%s %s'\n" cmd (unwords args)
                 , cmdFailed      = \cmd args errno
                                  -> error (printf "Command failed: '%s %s'. Errno: %d\n" cmd (unwords args) errno)
                 , buildingPkg    = printf "Building '%s'\n" . showPackageId
@@ -59,12 +60,12 @@ defaultOutputGen verbose
                 , noSetupScript  = const (error "Couldn't find a setup script in the tarball.")
                 , noCabalFile    = const (error "Couldn't find a .cabal file in the tarball")
                 , gettingPkgList = \serv ->
-                                   when (verbose > 0) (printf "Downloading package list from server '%s'\n" serv)
+                                   when (verbosity > silent) (printf "Downloading package list from server '%s'\n" serv)
                 , showPackageInfo = showPkgInfo
                 , showOtherPackageInfo = showOtherPkg
                 , cmdStdout      = outch
                 , cmdStderr      = errch 
-                , message        = \v s -> when (verbose >= v) (putStrLn s)
+                , message        = \v s -> when (verbosity >= v) (putStrLn s)
                 }
     where showOtherPkg mbPkg dep
               = do printf "  Package:     '%s'\n" (show $ showDependency dep)
@@ -123,9 +124,9 @@ mkConfigFlags cfg
                                            [localConfigDir, defaultConfigDir] )
          let cacheDir   = fromMaybe localCacheDir   (tempCacheDir cfg)
              pkgListDir = fromMaybe localPkgListDir (tempPkgListDir cfg)
-         when (tempVerbose cfg > 1) $ do printf "Using config dir: %s\n" confDir
-                                         printf "Using cache dir: %s\n" cacheDir
-                                         printf "Using pkglist dir: %s\n" pkgListDir
+         when (tempVerbose cfg > normal) $ do printf "Using config dir: %s\n" confDir
+                                              printf "Using cache dir: %s\n" cacheDir
+                                              printf "Using pkglist dir: %s\n" pkgListDir
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp

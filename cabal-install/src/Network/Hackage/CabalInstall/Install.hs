@@ -15,7 +15,8 @@ module Network.Hackage.CabalInstall.Install
     , installPkg -- :: ConfigFlags -> (PackageIdentifier,[String],String) -> IO ()
     ) where
 
-
+import Data.List  (elemIndex)
+import Data.Maybe (fromJust)
 import Debug.Trace
 import Control.Exception (bracket_)
 
@@ -28,6 +29,7 @@ import Network.Hackage.CabalInstall.TarUtils
 import Distribution.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Package (showPackageId, PackageIdentifier)
+import Distribution.Verbosity
 import System.FilePath ((</>), splitFileName)
 
 import Data.Maybe (fromMaybe, maybeToList)
@@ -66,10 +68,10 @@ mkPkgOps cfg cmd ops = verbosity ++
     "configure" -> user ++ prefix ++ ops
     "install"   -> user
     _ -> []
- where verbosity = ["--verbose=" ++ show (configVerbose cfg)]
+ where verbosity = ["--verbose=" ++ showForCabal (configVerbose cfg)]
        user = if configUserIns cfg then ["--user"] else []
        prefix = maybeToList (fmap ("--prefix=" ++) (configPrefix cfg))
-
+       showForCabal v = show$ fromJust$ elemIndex v [silent,normal,verbose,deafening]
 {-|
   Download, build and install a given package with some given flags.
 
@@ -101,12 +103,13 @@ installPkg cfg globalArgs (pkg,ops,location)
              setup cmd
                  = let cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
                        path = tmpDirPath </> showPackageId pkg
-                   in do message output 3 $ unwords ["setupWrapper", show (cmd:cmdOps), show path]
+                   in do message output deafening $ 
+                                 unwords ["setupWrapper", show (cmd:cmdOps), show path]
                          setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
                   (do copyFile pkgPath tmpPkgPath
-                      message output 3 (printf "Extracting %s..." tmpPkgPath)
+                      message output deafening (printf "Extracting %s..." tmpPkgPath)
                       extractTarFile tarProg tmpPkgPath
                       installUnpackedPkg cfg pkg tmpPkgPath setup
                       return ())
