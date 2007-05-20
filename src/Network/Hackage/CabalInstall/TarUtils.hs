@@ -17,6 +17,7 @@ module Network.Hackage.CabalInstall.TarUtils
     , extractTarFile
     ) where
 
+import Data.Char (isSpace)
 import System.FilePath
 import System.IO (hClose, hGetContents)
 import System.Process (runInteractiveProcess, runProcess, waitForProcess)
@@ -37,12 +38,12 @@ tarballGetFiles tarProg tarFile
          eCode <- waitForProcess handle
          case eCode of
            ExitFailure err -> error $ printf "Failed to get filelist from '%s': %s." tarFile (show err)
-           _ -> return (lines files)
+           _ -> return (map trim $ lines files)
     where args = ["--list"
                  ,"--gunzip"
                  ,"--file"
                  ,tarFile]
-
+          trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace  --slow'y
 {-|
 Find a file in a given directory.
 
