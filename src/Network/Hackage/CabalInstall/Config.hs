@@ -33,6 +33,7 @@ import System.IO.Unsafe
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
+import Distribution.Verbosity
 import System.FilePath ((</>))
 import System.Directory
 
@@ -97,7 +98,7 @@ getKnownPackages cfg
 -- |Write the list of known packages to the pkg.list file.
 writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
 writeKnownPackages cfg pkgs
-    = do message (configOutputGen cfg) 2 $
+    = do message (configOutputGen cfg) verbose $
            "creating package file " ++ pkgList cfg
          createDirectoryIfMissing True (configPkgListDir cfg)
          writeFile (pkgList cfg) (show pkgs)

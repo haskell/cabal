@@ -21,6 +21,7 @@ import Data.Maybe (fromMaybe)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 import Distribution.Setup (defaultCompilerFlavor, CompilerFlavor(..))
+import Distribution.Verbosity
 import Data.List (find)
 import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usageInfo, getOpt')
 import System.Exit (exitWith, ExitCode (..))
@@ -41,7 +42,7 @@ emptyTempFlags = TempFlags {
         tempServers     = [],
         tempRunHc       = Nothing,
         tempTarPath     = Nothing,
-        tempVerbose     = 1,
+        tempVerbose     = normal,
 --        tempUpgradeDeps = False,
         tempUserIns     = True,
         tempHelp        = False
@@ -49,9 +50,10 @@ emptyTempFlags = TempFlags {
 
 cmd_verbose :: OptDescr (TempFlags -> TempFlags)
 cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n")
-              "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v2)"
+              "Control verbosity (n is 0--3, normal verbosity level is 1, -v alone is equivalent to -v2)"
   where
-    verboseFlag mb_s t = t { tempVerbose = maybe 2 read mb_s }
+    verboseFlag mb_s t = t { tempVerbose = fromMaybe deafening $ 
+                                           maybe (Just verbose) (intToVerbosity . read) mb_s}
 
 globalOptions :: [OptDescr (TempFlags -> TempFlags)]
 globalOptions =

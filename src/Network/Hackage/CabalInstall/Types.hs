@@ -15,6 +15,7 @@ module Network.Hackage.CabalInstall.Types where
 import Distribution.Setup (CompilerFlavor(..),Compiler)
 import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
+import Distribution.Verbosity
 
 import System.IO (Handle)
 
@@ -48,7 +49,7 @@ data TempFlags = TempFlags {
         tempServers     :: [String],       -- ^Available Hackage servers.
         tempTarPath     :: Maybe FilePath,
         tempRunHc       :: Maybe FilePath,
-        tempVerbose     :: Int,            -- ^verbosity level
+        tempVerbose     :: Verbosity,            -- ^verbosity level
 --        tempUpgradeDeps :: Bool,
         tempUserIns     :: Bool,           -- ^--user-install flag
         tempHelp        :: Bool
@@ -64,7 +65,7 @@ data ConfigFlags = ConfigFlags {
         configTarPath     :: FilePath,
         configRunHc       :: FilePath,
         configOutputGen   :: OutputGen,
-        configVerbose     :: Int,
+        configVerbose     :: Verbosity,
 --        configUpgradeDeps :: Bool,
         configUserIns     :: Bool            -- ^--user-install flag
    }
@@ -96,7 +97,7 @@ data OutputGen
       , cmdStdout      :: Maybe Handle
       , cmdStderr      :: Maybe Handle
       , -- | Output a message.
-        message :: Int -- ^ minimum verbosity needed to output this message
+        message :: Verbosity -- ^ minimum verbosity needed to output this message
                 -> String -> IO ()
       }
 

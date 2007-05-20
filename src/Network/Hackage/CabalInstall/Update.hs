@@ -21,6 +21,7 @@ import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
 import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
 import Distribution.PackageDescription (PackageDescription(..), readPackageDescription)
+import Distribution.Verbosity
 import System.FilePath ((</>), joinPath, addExtension)
 
 import Control.Monad (liftM)
@@ -39,8 +40,10 @@ update cfg =
                   cabalFiles = [ packageDir </> path
                                | path <- contents
                                , ".cabal" `isSuffixOf` path ]
+                  v = configVerbose cfg
+                  v'= if v == verbose then normal else v
               packageDescriptions <-
-                  mapM (readPackageDescription (configVerbose cfg - 1)) cabalFiles
+                  mapM (readPackageDescription v') cabalFiles
               return $ map (parsePkg server) packageDescriptions
        writeKnownPackages cfg packages
     where servers = configServers cfg
