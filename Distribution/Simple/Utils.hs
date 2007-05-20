@@ -203,8 +203,8 @@ rawSystemStdout verbosity path args = do
 -- 
 -- > xargs (32*1024) (rawSystemPathExit verbosity) prog fixedArgs bigArgs
 --
-xargs :: Int -> (FilePath -> [String] -> IO ())
-      -> FilePath -> [String] -> [String] -> IO ()
+xargs :: Int -> (prog -> [String] -> IO ())
+      -> prog -> [String] -> [String] -> IO ()
 xargs maxSize rawSystemFun prog fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
