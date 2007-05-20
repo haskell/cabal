@@ -45,8 +45,11 @@ module Distribution.Verbosity (
   -- * Verbosity
   Verbosity,
   silent, normal, verbose, deafening,
-  intToVerbosity, flagToVerbosity
+  intToVerbosity, flagToVerbosity,
+  showForCabal, showForGHC
  ) where
+
+import Data.List (elemIndex)
 
 data Verbosity = Silent | Normal | Verbose | Deafening
     deriving (Show, Eq, Ord)
@@ -85,3 +88,6 @@ flagToVerbosity (Just s)
                Nothing -> error ("Bad verbosity " ++ show i)
        _ -> error ("Can't parse verbosity " ++ s)
 
+showForCabal, showForGHC :: Verbosity -> String
+showForCabal v | Just i <- elemIndex v [silent,normal,verbose,deafening] = show i
+showForGHC   v | Just i <- elemIndex v [silent,normal,verbose,deafening] = show i

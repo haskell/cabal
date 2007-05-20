@@ -80,7 +80,7 @@ setupWrapper args mdir = inDir mdir $ do
            rawSystemExit (verbosity flags)
              (compilerPath comp)
              (cabal_flag ++ 
-              ["--make", f, "-o", "setup", "-v"++show (verbosity flags)])
+              ["--make", f, "-o", "setup", "-v"++showForGHC (verbosity flags)])
          rawSystemExit (verbosity flags)
            ('.':pathSeparator:"setup")
            setup_args
