@@ -79,8 +79,8 @@ import Distribution.Program(ProgramConfiguration(..),
 import Data.List(find)
 import Distribution.Compat.Map (keys)
 import Distribution.GetOpt
-import Distribution.Compat.FilePath (platformPath)
 import Distribution.Verbosity
+import System.FilePath (normalise)
 import System.Exit
 import System.Environment
 
@@ -540,13 +540,13 @@ withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
                    ("give the path to " ++ name)
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
-reqPathArg constr = ReqArg (constr . platformPath) "PATH"
+reqPathArg constr = ReqArg (constr . normalise) "PATH"
 
 reqArgArg :: (FilePath -> a) -> ArgDescr a
-reqArgArg constr = ReqArg (constr . platformPath) "ARGS"
+reqArgArg constr = ReqArg (constr . normalise) "ARGS"
 
 reqDirArg :: (FilePath -> a) -> ArgDescr a
-reqDirArg constr = ReqArg (constr . platformPath) "DIR"
+reqDirArg constr = ReqArg (constr . normalise) "DIR"
 
 parseConfigureArgs :: ProgramConfiguration -> ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])

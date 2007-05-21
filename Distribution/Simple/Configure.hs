@@ -76,7 +76,7 @@ import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
 	BuildInfo(..), Executable(..), setupMessage,
         satisfyDependency)
-import Distribution.Simple.Utils (die, warn, rawSystemStdout)
+import Distribution.Simple.Utils (die, warn, rawSystemStdout, exeExtension)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
 import Distribution.Verbosity
@@ -85,8 +85,7 @@ import Data.List (intersperse, nub, isPrefixOf)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
-import Distribution.Compat.FilePath (splitFileName, joinFileName,
-                                  joinFileExt, exeExtension)
+import System.FilePath (takeDirectory, (</>), (<.>))
 import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
 import Control.Monad		( when, unless )
@@ -218,8 +217,8 @@ configure pkg_descr cfg
 				    return False
 
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
-			      buildDir="dist" `joinFileName` "build",
-			      scratchDir="dist" `joinFileName` "scratch",
+			      buildDir="dist" </> "build",
+			      scratchDir="dist" </> "scratch",
 			      bindir=my_bindir,
 			      libdir=my_libdir,
 			      libsubdir=my_libsubdir,
@@ -455,10 +454,10 @@ guessPkgToolFromHCPath :: Verbosity -> CompilerFlavor -> FilePath
                        -> IO FilePath
 guessPkgToolFromHCPath verbosity flavor path
   = do let pkgToolName     = compilerPkgToolName flavor
-           (dir,_)         = splitFileName path
+           dir             = takeDirectory path
            verSuffix       = reverse $ takeWhile (`elem ` "0123456789.-") . reverse $ path
-           guessNormal     = dir `joinFileName` pkgToolName `joinFileExt` exeExtension
-           guessVersioned  = dir `joinFileName` (pkgToolName ++ verSuffix) `joinFileExt` exeExtension 
+           guessNormal     = dir </> pkgToolName <.> exeExtension
+           guessVersioned  = dir </> (pkgToolName ++ verSuffix) <.> exeExtension 
            guesses | null verSuffix = [guessNormal]
                    | otherwise      = [guessVersioned, guessNormal]
        when (verbosity >= verbose) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir

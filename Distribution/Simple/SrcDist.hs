@@ -78,8 +78,8 @@ import Data.List (isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
-import Distribution.Compat.FilePath (joinFileName, splitFileName)
 import Distribution.Verbosity
+import System.FilePath ((</>), takeDirectory)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -127,7 +127,7 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
   setupMessage verbosity "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
-  let targetDir = tmpDir `joinFileName` (nameVersion pkg_descr)
+  let targetDir = tmpDir </> (nameVersion pkg_descr)
   createDirectoryIfMissing True targetDir
   -- maybe move the library files into place
   withLib pkg_descr () $ \ l ->
@@ -138,9 +138,10 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
     srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
     copyFileTo verbosity targetDir srcMainFile
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
-    let (dir, _) = splitFileName file
-    createDirectoryIfMissing True (targetDir `joinFileName` dir)
-    copyFileVerbose verbosity file (targetDir `joinFileName` file)
+    let dir = takeDirectory file
+    createDirectoryIfMissing True (targetDir </> dir)
+    copyFileVerbose verbosity file (targetDir </> file)
+
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
@@ -150,12 +151,12 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
   lhsExists <- doesFileExist "Setup.lhs"
   if hsExists then copyFileTo verbosity targetDir "Setup.hs"
     else if lhsExists then copyFileTo verbosity targetDir "Setup.lhs"
-    else writeFile (targetDir `joinFileName` "Setup.hs") $ unlines [
+    else writeFile (targetDir </> "Setup.hs") $ unlines [
                 "import Distribution.Simple",
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
   descFile <- getCurrentDirectory >>= findPackageDesc verbosity
-  let targetDescFile = targetDir `joinFileName` descFile
+  let targetDescFile = targetDir </> descFile
   -- We could just writePackageDescription targetDescFile pkg_descr,
   -- but that would lose comments and formatting.
   if snapshot then do
@@ -185,7 +186,7 @@ createArchive :: PackageDescription   -- ^info from cabal file
               -> IO FilePath
 
 createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
-  let tarBallFilePath = targetPref `joinFileName` tarBallName pkg_descr
+  let tarBallFilePath = targetPref </> tarBallName pkg_descr
   let tarDefault = "tar"
   tarProgram <- 
     case mb_lbi of
@@ -219,8 +220,8 @@ prepareDir verbosity inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModule
 
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileTo verbosity dir file = do
-  let targetFile = dir `joinFileName` file
-  createDirectoryIfMissing True (fst (splitFileName targetFile))
+  let targetFile = dir </> file
+  createDirectoryIfMissing True (takeDirectory targetFile)
   copyFileVerbose verbosity file targetFile
 
 ------------------------------------------------------------

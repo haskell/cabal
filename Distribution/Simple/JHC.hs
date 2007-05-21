@@ -55,9 +55,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToJHCFlag )
 import Distribution.Package  	( showPackageId )
-import Distribution.Simple.Utils( rawSystemExit, copyFileVerbose )
-import Distribution.Compat.FilePath
-				( joinFileName, exeExtension )
+import Distribution.Simple.Utils( rawSystemExit, copyFileVerbose, exeExtension )
+import System.FilePath          ( (</>) )
 import Distribution.Compat.Directory
 				( createDirectoryIfMissing )
 import Distribution.Verbosity
@@ -80,15 +79,15 @@ build pkg_descr lbi verbosity = do
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
       rawSystemExit verbosity jhcPath (["-c"] ++ args ++ libModules pkg_descr)
       let pkgid = showPackageId (package pkg_descr)
-          pfile = buildDir lbi `joinFileName` "jhc-pkg.conf"
-          hlfile= buildDir lbi `joinFileName` (pkgid ++ ".hl")
+          pfile = buildDir lbi </> "jhc-pkg.conf"
+          hlfile= buildDir lbi </> (pkgid ++ ".hl")
       writeFile pfile $ jhcPkgConf pkg_descr
       rawSystemExit verbosity jhcPath ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
       when (verbosity >= verbose)
            (putStrLn ("Building executable "++exeName exe))
       let exeBi = buildInfo exe
-      let out   = buildDir lbi `joinFileName` exeName exe
+      let out   = buildDir lbi </> exeName exe
       let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
       rawSystemExit verbosity jhcPath (["-o",out] ++ args ++ [modulePath exe])
 
@@ -117,11 +116,11 @@ installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library
 installLib verb dest build_dir pkg_descr _ = do
     let p = showPackageId (package pkg_descr)++".hl"
     createDirectoryIfMissing True dest
-    copyFileVerbose verb (joinFileName build_dir p) (joinFileName dest p)
+    copyFileVerbose verb (build_dir </> p) (dest </> p)
 
 installExe :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir _ exe = do
-    let out   = exeName exe `joinFileName` exeExtension
+    let out   = exeName exe </> exeExtension
     createDirectoryIfMissing True dest
-    copyFileVerbose verb (joinFileName build_dir out) (joinFileName dest out)
+    copyFileVerbose verb (build_dir </> out) (dest </> out)
 

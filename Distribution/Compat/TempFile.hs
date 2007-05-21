@@ -6,7 +6,7 @@ import System.IO (openFile, Handle, IOMode(ReadWriteMode))
 import System.Directory (doesFileExist, removeFile)
 import Control.Exception (finally,try)
 
-import Distribution.Compat.FilePath (joinFileName,joinFileExt)
+import System.FilePath ( (</>), (<.>) )
 
 #if (__GLASGOW_HASKELL__ || __HUGS__)
 import System.Posix.Internals (c_getpid)
@@ -32,7 +32,7 @@ openTempFile tmp_dir template
   where 
     findTempName x
       = do let filename = template ++ show x
-	       path = tmp_dir `joinFileName` filename
+	       path = tmp_dir </> filename
   	   b  <- doesFileExist path
 	   if b then findTempName (x+1)
 		else do hnd <- openFile path ReadWriteMode
@@ -53,8 +53,8 @@ withTempFile tmp_dir extn action
        findTempName x
   where
     findTempName x
-      = do let filename = ("tmp" ++ show x) `joinFileExt` extn
-               path = tmp_dir `joinFileName` filename
+      = do let filename = ("tmp" ++ show x) <.> extn
+               path = tmp_dir </> filename
            b  <- doesFileExist path
            if b then findTempName (x+1)
                 else action path `finally` try (removeFile path)

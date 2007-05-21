@@ -116,7 +116,7 @@ import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn)
 import Language.Haskell.Extension(Extension(..))
 
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.Compat.FilePath(joinFileExt)
+import System.FilePath((<.>))
 
 #ifdef DEBUG
 import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
@@ -542,8 +542,7 @@ autogenModuleName pkg_descr =
         fixchar c   = c
 
 haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr =
-   joinFileExt (pkgName (package pkg_descr)) "haddock"
+haddockName pkg_descr = pkgName (package pkg_descr) <.> "haddock"
 
 setupMessage :: Verbosity -> String -> PackageDescription -> IO ()
 setupMessage verbosity msg pkg_descr =

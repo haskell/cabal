@@ -24,7 +24,7 @@ import System.Directory
 #else /* to end of file... */
 
 import System.Environment	( getEnv )
-import Distribution.Compat.FilePath
+import System.FilePath
 import System.IO
 import Foreign
 import System.Directory
@@ -43,7 +43,7 @@ findExecutable binary = do
     search :: [FilePath] -> IO (Maybe FilePath)
     search [] = return Nothing
     search (d:ds) = do
-       let path = d `joinFileName` binary `joinFileExt` exeSuffix
+       let path = d </> binary <.> exeSuffix
        b <- doesFileExist path
        if b then return (Just path)
              else search ds
@@ -117,7 +117,7 @@ createDirectoryIfMissing parents file = do
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive startLoc = do
   cont <- getDirectoryContentsWithoutSpecial startLoc
-  mapM_ (rm . joinFileName startLoc) cont
+  mapM_ (rm . startLoc </>) cont
   removeDirectory startLoc
   where
     rm :: FilePath -> IO ()
