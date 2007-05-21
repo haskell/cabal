@@ -89,5 +89,7 @@ flagToVerbosity (Just s)
        _ -> error ("Can't parse verbosity " ++ s)
 
 showForCabal, showForGHC :: Verbosity -> String
-showForCabal v | Just i <- elemIndex v [silent,normal,verbose,deafening] = show i
-showForGHC   v | Just i <- elemIndex v [silent,normal,verbose,deafening] = show i
+showForCabal v = maybe (error "unknown verbosity") show $
+    elemIndex v [silent,normal,verbose,deafening]
+showForGHC   v = maybe (error "unknown verbosity") show $
+    elemIndex v [silent,normal,verbose,deafening]
