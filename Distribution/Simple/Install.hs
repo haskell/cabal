@@ -73,7 +73,7 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
 import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
-import Distribution.Compat.FilePath(splitFileName,joinFileName, isAbsolutePath)
+import System.FilePath(takeDirectory, (</>), isAbsolute)
 
 import Distribution.Verbosity
 
@@ -99,9 +99,9 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
     let dataPref = mkDataDir pkg_descr lbi copydest
     createDirectoryIfMissing True dataPref
     flip mapM_ (dataFiles pkg_descr) $ \ file -> do
-      let (dir, _) = splitFileName file
-      createDirectoryIfMissing True (dataPref `joinFileName` dir)
-      copyFileVerbose verbosity file (dataPref `joinFileName` file)
+      let dir = takeDirectory file
+      createDirectoryIfMissing True (dataPref </> dir)
+      copyFileVerbose verbosity file (dataPref </> file)
     when docExists $ do
       let targetDir = mkHaddockDir pkg_descr lbi copydest
       createDirectoryIfMissing True targetDir
@@ -140,16 +140,16 @@ installIncludeFiles verbosity PackageDescription{library=Just l} theLibdir
  = do
    createDirectoryIfMissing True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
-   sequence_ [ copyFileVerbose verbosity path (incdir `joinFileName` f)
+   sequence_ [ copyFileVerbose verbosity path (incdir </> f)
 	     | (f,path) <- incs ]
   where
-   relincdirs = filter (not.isAbsolutePath) (includeDirs lbi)
+   relincdirs = filter (not.isAbsolute) (includeDirs lbi)
    lbi = libBuildInfo l
    incdir = mkIncludeDir theLibdir
 
    findInc [] f = die ("can't find include file " ++ f)
    findInc (d:ds) f = do
-     let path = (d `joinFileName` f)
+     let path = (d </> f)
      b <- doesFileExist path
      if b then return (f,path) else findInc ds f
 installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"

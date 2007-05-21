@@ -56,9 +56,10 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit,
-                  xargs, die, dirOf, moduleToFilePath,
+                                  xargs, die, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
-                                  mkLibName, mkProfLibName, dotToSep )
+                                  mkLibName, mkProfLibName, dotToSep,
+                                  exeExtension, objExtension)
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Program	( rawSystemProgram, ranlibProgram,
 				  Program(..), ProgramConfiguration(..),
@@ -67,10 +68,6 @@ import Distribution.Program	( rawSystemProgram, ranlibProgram,
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToGHCFlag )
 import Distribution.Version	( Version(..) )
-import Distribution.Compat.FilePath
-                                ( joinFileName, exeExtension, joinFileExt,
-                                  splitFilePath, objExtension, joinPaths,
-                                  splitFileExt )
 import Distribution.Compat.Directory 
 				( createDirectoryIfMissing )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
@@ -83,11 +80,9 @@ import Control.Monad		( unless, when )
 import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
+import System.FilePath          ( (</>), (<.>), isAbsolute, takeExtension,
+                                  takeDirectory, splitDirectories, replaceExtension )
 import System.IO
-
-#ifdef mingw32_HOST_OS
-import Distribution.Compat.FilePath ( splitFileName )
-#endif
 
 -- System.IO used to export a different try, so we can't use try unqualified
 #ifndef __NHC__
@@ -157,7 +152,7 @@ build pkg_descr lbi verbosity = do
          when (verbosity >= verbose) (putStrLn "Building C Sources...")
          -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
          sequence_ [do let odir | versionBranch ghc_vers >= [6,4,1] = pref
-				| otherwise = pref `joinFileName` dirOf c
+				| otherwise = pref </> takeDirectory c
 				-- ghc 6.4.1 fixed a bug in -odir handling
 				-- for C compilations.
                        createDirectoryIfMissing True odir
@@ -170,8 +165,7 @@ build pkg_descr lbi verbosity = do
 
       -- link:
       when (verbosity > verbose) (putStrLn "cabal-linking...")
-      let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
-                  | (path, file, _) <- (map splitFilePath (cSources libBi)) ]
+      let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
           libName  = mkLibName pref (showPackageId (package pkg_descr))
           profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
 	  ghciLibName = mkGHCiLibName pref (showPackageId (package pkg_descr))
@@ -197,27 +191,27 @@ build pkg_descr lbi verbosity = do
                 ++ [libName]
             arObjArgs =
 		   hObjs
-                ++ map (pref `joinFileName`) cObjs
+                ++ map (pref </>) cObjs
                 ++ stubObjs
             arProfArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
                 ++ [profLibName]
             arProfObjArgs =
 		   hProfObjs
-                ++ map (pref `joinFileName`) cObjs
+                ++ map (pref </>) cObjs
                 ++ stubProfObjs
 	    ldArgs = ["-r"]
                 ++ ["-x"] -- FIXME: only some systems's ld support the "-x" flag
-	        ++ ["-o", ghciLibName `joinFileExt` "tmp"]
+	        ++ ["-o", ghciLibName <.> "tmp"]
             ldObjArgs =
 		   hObjs
-                ++ map (pref `joinFileName`) cObjs
+                ++ map (pref </>) cObjs
 		++ stubObjs
 
             runLd ld args = do
               exists <- doesFileExist ghciLibName
               rawSystemLd verbosity ld
                           (args ++ if exists then [ghciLibName] else [])
-              renameFile (ghciLibName `joinFileExt` "tmp") ghciLibName
+              renameFile (ghciLibName <.> "tmp") ghciLibName
 
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
             rawSystemLd = rawSystemExit
@@ -230,9 +224,9 @@ build pkg_descr lbi verbosity = do
         ld <- 
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
               let
-               (compilerDir, _) = splitFileName $ compilerPath (compiler lbi)
-               (baseDir, _)     = splitFileName compilerDir
-               binInstallLd     = baseDir `joinFileName` "gcc-lib\\ld.exe"
+               compilerDir  = takeDirectory $ compilerPath (compiler lbi)
+               baseDir      = takeDirectory compilerDir
+               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
 	      in do
               mb <- lookupProgram "ld" (withPrograms lbi)
 	      case fmap programLocation mb of
@@ -259,11 +253,11 @@ build pkg_descr lbi verbosity = do
                       (putStrLn $ "Building executable: " ++ exeName' ++ "...")
 
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
-                 let exeNameReal = exeName' `joinFileExt`
-                                   (if null $ snd $ splitFileExt exeName' then exeExtension else "")
+                 let exeNameReal = exeName' <.>
+                                   (if null $ takeExtension exeName' then exeExtension else "")
 
-		 let targetDir = pref `joinFileName` exeName'
-                 let exeDir = joinPaths targetDir (exeName' ++ "-tmp")
+		 let targetDir = pref </> exeName'
+                 let exeDir    = targetDir </> (exeName' ++ "-tmp")
                  createDirectoryIfMissing True targetDir
                  createDirectoryIfMissing True exeDir
                  -- put hi-boot files into place for mutually recursive modules
@@ -277,7 +271,7 @@ build pkg_descr lbi verbosity = do
                   sequence_ [do let cSrcODir |versionBranch (compilerVersion (compiler lbi))
                                                     >= [6,4,1] = exeDir
                                              | otherwise 
-                                                 = exeDir `joinFileName` (dirOf c)
+                                                 = exeDir </> takeDirectory c
                                 createDirectoryIfMissing True cSrcODir
 		                let cArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
 			                    ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
@@ -287,15 +281,14 @@ build pkg_descr lbi verbosity = do
                                     | c <- cSources exeBi]
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
 
-                 let cObjs = [ path `joinFileName` file `joinFileExt` objExtension
-                                   | (path, file, _) <- (map splitFilePath (cSources exeBi)) ]
+                 let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
                  let binArgs linkExe profExe =
                             pkg_conf
 			 ++ (if linkExe
-			        then ["-o", targetDir `joinFileName` exeNameReal]
+			        then ["-o", targetDir </> exeNameReal]
                                 else ["-c"])
                          ++ constructGHCCmdLine lbi exeBi exeDir verbosity
-                         ++ [exeDir `joinFileName` x | x <- cObjs]
+                         ++ [exeDir </> x | x <- cObjs]
                          ++ [srcMainFile]
 			 ++ ldOptions exeBi
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
@@ -324,16 +317,16 @@ getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
  	-> FilePath -> String -> IO [FilePath]
 getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext
   | splitObjs lbi = do
-	let dirs = [ pref `joinFileName` (dotToSep x ++ "_split") 
+	let dirs = [ pref </> (dotToSep x ++ "_split") 
 		   | x <- libModules pkg_descr ]
 	objss <- mapM getDirectoryContents dirs
-	let objs = [ dir `joinFileName` obj
+	let objs = [ dir </> obj
 		   | (objs',dir) <- zip objss dirs, obj <- objs',
-                     let (_,obj_ext) = splitFileExt obj,
-		     wanted_obj_ext == obj_ext ]
+                     let obj_ext = takeExtension obj,
+		     '.':wanted_obj_ext == obj_ext ]
 	return objs
   | otherwise  = 
-	return [ pref `joinFileName` (dotToSep x) `joinFileExt` wanted_obj_ext
+	return [ pref </> dotToSep x <.> wanted_obj_ext
                | x <- libModules pkg_descr ]
 
 
@@ -373,7 +366,7 @@ ghcOptions lbi bi odir
 mkGHCiLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
-mkGHCiLibName pref lib = pref `joinFileName` ("HS" ++ lib ++ ".o")
+mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
 
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
@@ -430,8 +423,8 @@ installExe :: Verbosity -- ^verbosity
 installExe verbosity pref buildPref pkg_descr
     = do createDirectoryIfMissing True pref
          withExe pkg_descr $ \ (Executable e _ _) -> do
-             let exeFileName = e `joinFileExt` exeExtension
-             copyFileVerbose verbosity (buildPref `joinFileName` e `joinFileName` exeFileName) (pref `joinFileName` exeFileName)
+             let exeFileName = e <.> exeExtension
+             copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> exeFileName)
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity -- ^verbosity

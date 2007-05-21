@@ -115,8 +115,7 @@ import System.Environment ( getProgName )
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive, copyFile)
-import Distribution.Compat.FilePath(joinFileName, joinPaths, joinFileExt,
-                                    splitFileName, splitFileExt, changeFileExt)
+import System.FilePath((</>), (<.>), splitFileName, splitExtension , replaceExtension)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -398,14 +397,14 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                       mHaddock <- lookupProgram haddockPath programConf
                       maybe (die "haddock command not found") return mHaddock
 
-    let tmpDir = joinPaths (buildDir lbi) "tmp"
+    let tmpDir = buildDir lbi </> "tmp"
     createDirectoryIfMissing True tmpDir
     createDirectoryIfMissing True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi verbosity pps
 
     setupMessage verbosity "Running Haddock for" pkg_descr
 
-    let replaceLitExts = map (joinFileName tmpDir . flip changeFileExt "hs")
+    let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
@@ -442,8 +441,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
         let outFiles = replaceLitExts inFiles
-        let haddockFile = joinFileName (haddockPref pkg_descr)
-                                       (haddockName pkg_descr)
+        let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbosity confHaddock
                 ([outputFlag,
@@ -463,7 +461,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
         removeFile prologName
     withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
-            exeTargetDir = haddockPref pkg_descr `joinFileName` exeName exe
+            exeTargetDir = haddockPref pkg_descr </> exeName exe
         createDirectoryIfMissing True exeTargetDir
         inFiles' <- getModulePaths bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
@@ -486,17 +484,17 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
   where
         mockPP inputArgs bi pref file
             = do let (filePref, fileName) = splitFileName file
-                 let targetDir = joinPaths pref filePref
-                 let targetFile = joinFileName targetDir fileName
-                 let (targetFileNoext, targetFileExt) = splitFileExt targetFile
+                 let targetDir  = pref </> filePref
+                 let targetFile = targetDir </> fileName
+                 let (targetFileNoext, targetFileExt) = splitExtension targetFile
                  createDirectoryIfMissing True targetDir
                  if (needsCpp pkg_descr)
                     then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
                            file targetFile verbosity
                     else copyFile file targetFile
-                 when (targetFileExt == "lhs") $ do
+                 when (targetFileExt == ".lhs") $ do
                        runSimplePreProcessor ppUnlit
-                         targetFile (joinFileExt targetFileNoext "hs") verbosity
+                         targetFile (targetFileNoext <.> "hs") verbosity
                        return ()
         needsCpp :: PackageDescription -> Bool
         needsCpp p = case library p of
@@ -533,7 +531,7 @@ clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -
 clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
-    try $ removeDirectoryRecursive (joinPaths distPref "doc")
+    try $ removeDirectoryRecursive (distPref </> "doc")
     try $ removeFile installedPkgConfigFile
     try $ unless saveConfigure (removeFile localBuildInfoFile)
     try $ removeFile regScriptLocation
@@ -558,7 +556,7 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
             withExe pkg_descr $ \ Executable{modulePath=exeSrcName
                                             ,buildInfo=bi} -> do
                 removeGHCModuleStubs bi (exeModules pkg_descr)
-                let (startN, _) = splitFileExt exeSrcName
+                let (startN, _) = splitExtension exeSrcName
                 try $ removeFile (startN ++ "_stub.h")
                 try $ removeFile (startN ++ "_stub.c")
         removeGHCModuleStubs :: BuildInfo -> [String] -> IO ()
@@ -567,7 +565,7 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
             mapM_ removeFile (concat s)
         -- JHC FIXME remove exe-sources
         cleanJHCExtras lbi = do
-            try $ removeFile (buildDir lbi `joinFileName` "jhc-pkg.conf")
+            try $ removeFile (buildDir lbi </> "jhc-pkg.conf")
             removePreprocessedPackage pkg_descr currentDir ["ho"]
         removeFileOrDirectory :: FilePath -> IO ()
         removeFileOrDirectory fname = do

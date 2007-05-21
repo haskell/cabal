@@ -57,17 +57,15 @@ import Distribution.PreProcess.Unlit
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils( rawSystemExit, die,
-				  dirOf, dotToSep, moduleToFilePath,
-				  smartCopySources, findFile )
+				  dotToSep, moduleToFilePath,
+				  smartCopySources, findFile, dllExtension )
 import Language.Haskell.Extension
 				( Extension(..) )
 import Distribution.Compat.Directory
 				( copyFile,createDirectoryIfMissing,
 				  removeDirectoryRecursive )
-import Distribution.Compat.FilePath
-				( joinFileName, splitFileExt, joinFileExt,
-                                  dllExtension, searchPathSeparator,
-                                  platformPath )
+import System.FilePath        	( (</>), takeExtension, (<.>),
+                                  searchPathSeparator, normalise, takeDirectory )
 import Distribution.Verbosity
 
 import Data.Char		( isSpace )
@@ -90,10 +88,10 @@ build pkg_descr lbi verbosity = do
     let pref = scratchDir lbi
     createDirectoryIfMissing True pref
     withLib pkg_descr () $ \ l -> do
-	copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
-		(pref `joinFileName` paths_modulename)
+	copyFile (autogenModulesDir lbi </> paths_modulename)
+		(pref </> paths_modulename)
 	compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l)
-    withExe pkg_descr $ compileExecutable (pref `joinFileName` "programs")
+    withExe pkg_descr $ compileExecutable (pref </> "programs")
   where
 	srcDir = buildDir lbi
 
@@ -103,11 +101,11 @@ build pkg_descr lbi verbosity = do
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
             let exeMods = otherModules bi
 	    srcMainFile <- findFile (hsSourceDirs bi) mainPath
-	    let exeDir = destDir `joinFileName` exeName exe
-	    let destMainFile = exeDir `joinFileName` hugsMainFilename exe
+	    let exeDir = destDir </> exeName exe
+	    let destMainFile = exeDir </> hugsMainFilename exe
 	    copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-	    let destPathsFile = exeDir `joinFileName` paths_modulename
-	    copyFile (autogenModulesDir lbi `joinFileName` paths_modulename)
+	    let destPathsFile = exeDir </> paths_modulename
+	    copyFile (autogenModulesDir lbi </> paths_modulename)
 		     destPathsFile
 	    compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
 	    compileFiles bi exeDir [destMainFile, destPathsFile]
@@ -128,9 +126,9 @@ build pkg_descr lbi verbosity = do
                   [] ->
                     die ("can't find source for module " ++ m)
                   srcFile:_ -> do
-                    let (_, ext) = splitFileExt srcFile
+                    let ext = takeExtension srcFile
                     copyModule useCpp bi srcFile
-                        (destDir `joinFileName` dotToSep m `joinFileExt` ext)
+                        (destDir </> dotToSep m <.> ext)
 	    -- Pass 2: compile foreign stubs in scratch directory
 	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
 			modu <- mods]
@@ -141,7 +139,7 @@ build pkg_descr lbi verbosity = do
 	-- Copy or cpp a file from the source directory to the build directory.
 	copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
 	copyModule cppAll bi srcFile destFile = do
-	    createDirectoryIfMissing True (dirOf destFile)
+	    createDirectoryIfMissing True (takeDirectory destFile)
 	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
@@ -194,7 +192,7 @@ build pkg_descr lbi verbosity = do
 	getCFiles :: FilePath -> IO [String]
 	getCFiles file = do
 	    inp <- readHaskellFile file
-	    return [platformPath cfile |
+	    return [normalise cfile |
 		"{-#" : "CFILES" : rest <-
 			map words $ lines $ stripComments True inp,
 		last rest == "#-}",
@@ -309,27 +307,27 @@ install
 install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
     try $ removeDirectoryRecursive libDir
     smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
-    let buildProgDir = buildPref `joinFileName` "programs"
+    let buildProgDir = buildPref </> "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissing True binDir
     withExe pkg_descr $ \ exe -> do
-        let theBuildDir = buildProgDir `joinFileName` exeName exe
-        let installDir = installProgDir `joinFileName` exeName exe
-        let targetDir = targetProgDir `joinFileName` exeName exe
+        let theBuildDir = buildProgDir </> exeName exe
+        let installDir = installProgDir </> exeName exe
+        let targetDir = targetProgDir </> exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbosity [theBuildDir] installDir
             ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes True False
-        let targetName = "\"" ++ (targetDir `joinFileName` hugsMainFilename exe) ++ "\""
+        let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-        let exeFile = binDir `joinFileName` exeName exe `joinFileExt` "bat"
+        let exeFile = binDir </> exeName exe <.> ".bat"
         let script = unlines [
                 "@echo off",
                 unwords ("runhugs" : hugsOptions ++ [targetName, "%*"])]
 #else
-        let exeFile = binDir `joinFileName` exeName exe
+        let exeFile = binDir </> exeName exe
         let script = unlines [
                 "#! /bin/sh",
                 unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
@@ -339,11 +337,11 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr
         setPermissions exeFile perms { executable = True, readable = True }
 
 hugsInstallSuffixes :: [String]
-hugsInstallSuffixes = ["hs", "lhs", dllExtension]
+hugsInstallSuffixes = [".hs", ".lhs", dllExtension]
 
 -- |Filename used by Hugs for the main module of an executable.
 -- This is a simple filename, so that Hugs will look for any auxiliary
 -- modules it uses relative to the directory it's in.
 hugsMainFilename :: Executable -> FilePath
-hugsMainFilename exe = "Main" `joinFileExt` ext
-  where (_, ext) = splitFileExt (modulePath exe)
+hugsMainFilename exe = "Main" <.> ext
+  where ext = takeExtension (modulePath exe)
