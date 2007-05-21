@@ -25,7 +25,7 @@ import Distribution.Verbosity
 import System.FilePath ((</>), joinPath, addExtension, takeExtension)
 
 import Control.Monad (liftM)
-import Data.List (isSuffixOf)
+import Data.List (intersperse, isSuffixOf)
 import Data.Version (showVersion)
 
 -- | 'update' downloads the package list from all known servers
@@ -60,7 +60,9 @@ parsePkg server description =
 
 -- | Generate the URL of the tarball for a given package.
 pkgURL :: PackageIdentifier -> String -> String
-pkgURL pkg base = joinPath [base, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] `addExtension` ".tar.gz"
+pkgURL pkg base = joinWith "/" [base, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
+                           ++ ".tar.gz"
+                      where joinWith tok = concat . intersperse tok
 
 concatMapM :: (Monad m) => [a] -> (a -> m [b]) -> m [b]
 concatMapM amb f = liftM concat (mapM f amb)
