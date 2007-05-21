@@ -17,6 +17,7 @@ module Network.Hackage.CabalInstall.Update
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo(..))
 import Network.Hackage.CabalInstall.Config (writeKnownPackages)
 import Network.Hackage.CabalInstall.TarUtils (extractTarFile, tarballGetFiles)
+import Network.Hackage.CabalInstall.Utils (isVerbose)
 import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
 import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
@@ -24,9 +25,11 @@ import Distribution.PackageDescription (PackageDescription(..), readPackageDescr
 import Distribution.Verbosity
 import System.FilePath ((</>), joinPath, addExtension, takeExtension)
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import Data.List (intersperse, isSuffixOf)
 import Data.Version (showVersion)
+
+import Text.Printf
 
 -- | 'update' downloads the package list from all known servers
 update :: ConfigFlags -> IO ()
@@ -36,6 +39,7 @@ update cfg =
               indexPath <- downloadIndex cfg server
               extractTarFile tarPath indexPath
               contents <- tarballGetFiles tarPath indexPath
+              when (isVerbose cfg) $ printf "Retrieved %d package descriptions\n" (length contents)
               let packageDir = packagesDirectory cfg
                   cabalFiles = [ packageDir </> path
                                | path <- contents
@@ -45,6 +49,7 @@ update cfg =
               packageDescriptions <-
                   mapM (readPackageDescription v') cabalFiles
               return $ map (parsePkg server) packageDescriptions
+       when (isVerbose cfg) $ printf "Processed %d package descriptions\n" (length packages)
        writeKnownPackages cfg packages
     where servers = configServers cfg
           output = configOutputGen cfg

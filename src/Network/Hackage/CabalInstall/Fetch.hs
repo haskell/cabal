@@ -38,6 +38,7 @@ import Network.Hackage.CabalInstall.Config (packagesDirectory)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
@@ -87,7 +88,7 @@ downloadFile path url
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
 downloadPackage cfg pkg url
-    = do message (configOutputGen cfg) 2 $ "GET " ++ show url
+    = do message (configOutputGen cfg) verbose $ "GET " ++ show url
          mbError <- downloadFile path url
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
