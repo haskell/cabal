@@ -59,13 +59,15 @@ module Distribution.Simple.Utils (
         mkLibName,
         mkProfLibName,
         currentDir,
-	dirOf,
         dotToSep,
 	findFile,
         defaultPackageDesc,
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
+        exeExtension,
+        objExtension,
+        dllExtension,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -97,9 +99,8 @@ import System.IO (hPutStrLn, stderr, hFlush, stdout)
 import System.IO.Error
 import System.Exit
 
-import Distribution.Compat.FilePath
-	(splitFileName, splitFileExt, joinFileName, joinFileExt, joinPaths,
-	pathSeparator,splitFilePath)
+import System.FilePath
+	(takeDirectory, takeExtension, (</>), (<.>), pathSeparator)
 import System.Directory (getDirectoryContents, getCurrentDirectory
 			, doesDirectoryExist, doesFileExist, removeFile)
 
@@ -250,10 +251,10 @@ moduleToFilePath2
     -> IO [(FilePath, FilePath)] -- ^locations and relative names
 moduleToFilePath2 locs mname possibleSuffixes
     = filterM exists $
-        [(loc, fname `joinFileExt` ext) | loc <- locs, ext <- possibleSuffixes]
+        [(loc, fname <.> ext) | loc <- locs, ext <- possibleSuffixes]
   where
     fname = dotToSep mname
-    exists (loc, relname) = doesFileExist (loc `joinFileName` relname)
+    exists (loc, relname) = doesFileExist (loc </> relname)
 
 -- |Get the possible file paths based on this module name.
 moduleToPossiblePaths :: FilePath -- ^search prefix
@@ -261,15 +262,15 @@ moduleToPossiblePaths :: FilePath -- ^search prefix
                       -> [String] -- ^possible suffixes
                       -> [FilePath]
 moduleToPossiblePaths searchPref s possibleSuffixes =
-  let fname = searchPref `joinFileName` (dotToSep s)
-  in [fname `joinFileExt` ext | ext <- possibleSuffixes]
+  let fname = searchPref </> (dotToSep s)
+  in [fname <.> ext | ext <- possibleSuffixes]
 
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
 findFile prefPathsIn locPath = do
   let prefPaths = nub prefPathsIn -- ignore dups
-  paths <- filterM doesFileExist [prefPath `joinFileName` locPath | prefPath <- prefPaths]
+  paths <- filterM doesFileExist [prefPath </> locPath | prefPath <- prefPaths]
   case nub paths of -- also ignore dups, though above nub should fix this.
     [path] -> return path
     []     -> die (locPath ++ " doesn't exist")
@@ -297,14 +298,14 @@ smartCopySources :: Verbosity -- ^verbosity
 smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
     = do createDirectoryIfMissing True targetDir
          allLocations <- mapM moduleToFPErr sources
-         let copies = [(srcDir `joinFileName` name,
+         let copies = [(srcDir </> name,
                         if preserveDirs 
-                          then targetDir `joinFileName` srcDir `joinFileName` name
-                          else targetDir `joinFileName` name) |
+                          then targetDir </> srcDir </> name
+                          else targetDir </> name) |
                        (srcDir, name) <- concat allLocations]
 	 -- Create parent directories for everything:
 	 mapM_ (createDirectoryIfMissing True) $ nub $
-             [fst (splitFileName targetFile) | (_, targetFile) <- copies]
+             [takeDirectory targetFile | (_, targetFile) <- copies]
 	 -- Put sources into place:
 	 sequence_ [copyFileVerbose verbosity srcFile destFile |
                     (srcFile, destFile) <- copies]
@@ -328,8 +329,8 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
     putStrLn ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   let aux src dest =
          let cp :: FilePath -> IO ()
-             cp f = let srcFile  = joinPaths src  f
-                        destFile = joinPaths dest f
+             cp f = let srcFile  = src  </> f
+                        destFile = dest </> f
                     in  do success <- try (copyFileVerbose verbosity srcFile destFile)
                            case success of
                               Left e  -> do isDir <- doesDirectoryExist srcFile
@@ -350,13 +351,10 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
 currentDir :: FilePath
 currentDir = "."
 
-dirOf :: FilePath -> FilePath
-dirOf f = (\ (x, _, _) -> x) $ (splitFilePath f)
-
 mkLibName :: FilePath -- ^file Prefix
           -> String   -- ^library name.
           -> String
-mkLibName pref lib = pref `joinFileName` ("libHS" ++ lib ++ ".a")
+mkLibName pref lib = pref </> ("libHS" ++ lib ++ ".a")
 
 mkProfLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
@@ -376,8 +374,10 @@ cabalExt = "cabal"
 buildInfoExt  :: String
 buildInfoExt = "buildinfo"
 
+-- > matchesDescFile "blah.Cabal"
+-- > not $ matchesDescFile "blag.bleg"
 matchesDescFile :: FilePath -> Bool
-matchesDescFile p = (snd $ splitFileExt p) == cabalExt
+matchesDescFile p = (takeExtension p) == '.':cabalExt
                     || p == oldDescFile
 
 noDesc :: IO a
@@ -435,11 +435,48 @@ findHookedPackageDesc
     -> IO (Maybe FilePath)	-- ^/dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc dir = do
     ns <- getDirectoryContents dir
-    case [dir `joinFileName`  n |
-		n <- ns, snd (splitFileExt n) == buildInfoExt] of
+    case [dir </>  n |
+		n <- ns, takeExtension n == '.':buildInfoExt] of
 	[] -> return Nothing
 	[f] -> return (Just f)
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
+
+-- ------------------------------------------------------------
+-- * Platform file extensions
+-- ------------------------------------------------------------ 
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
+#if __GLASGOW_HASKELL__ < 603
+#include "config.h"
+#else
+#include "ghcconfig.h"
+#endif
+#endif
+
+-- ToDo: This should be determined via autoconf (AC_EXEEXT)
+-- | Extension for executable files
+-- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
+exeExtension :: String
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+exeExtension = "exe"
+#else
+exeExtension = ""
+#endif
+
+-- ToDo: This should be determined via autoconf (AC_OBJEXT)
+-- | Extension for object files. For GHC and NHC the extension is @\"o\"@.
+-- Hugs uses either @\"o\"@ or @\"obj\"@ depending on the used C compiler.
+objExtension :: String
+objExtension = "o"
+
+-- | Extension for dynamically linked (or shared) libraries
+-- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
+dllExtension :: String
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+dllExtension = "dll"
+#else
+dllExtension = "so"
+#endif
+
 
 -- ------------------------------------------------------------
 -- * Testing
@@ -493,5 +530,5 @@ filesWithExtensions dir extension
     = do allFiles <- getDirectoryContents dir
          return $ filter hasExt allFiles
     where
-      hasExt f = snd (splitFileExt f) == extension
+      hasExt f = takeExtension f == '.':extension
 #endif

@@ -5,7 +5,7 @@ GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
 CC-Options: "-DCABAL_VERSION=1,1,7"
 Copyright: 2003-2006, Isaac Jones
 -- For ghc 6.2 you need to add 'unix' to Build-Depends:
-Build-Depends: base
+Build-Depends: base, filepath
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
@@ -51,8 +51,7 @@ Exposed-Modules:
         Distribution.Verbosity,
         Distribution.Version,
         Distribution.Compat.ReadP,
-        Language.Haskell.Extension,
-        Distribution.Compat.FilePath
+        Language.Haskell.Extension
 Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.Map,

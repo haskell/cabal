@@ -85,8 +85,7 @@ import Distribution.Compat.Directory
         setPermissions, getPermissions, Permissions(executable)
        )
 
-import Distribution.Compat.FilePath (joinFileName, joinPaths,
-                                     isAbsolutePath)
+import System.FilePath ((</>), isAbsolute)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
@@ -192,7 +191,7 @@ register pkg_descr lbi regFlags
         let the_libdir = mkLibDir pkg_descr lbi NoCopyDest
 	createDirectoryIfMissing True the_libdir
 	copyFileVerbose verbosity installedPkgConfigFile
-	    (the_libdir `joinFileName` "package.conf")
+	    (the_libdir </> "package.conf")
       JHC -> when (verbosity >= normal) $ putStrLn "registering for JHC (nothing to do)"
       NHC -> when (verbosity >= normal) $ putStrLn "registering nhc98 (nothing to do)"
       _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
@@ -253,15 +252,15 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
   let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
-	build_dir = pwd `joinFileName` buildDir lbi
+	build_dir = pwd </> buildDir lbi
 	the_libdir = mkLibDir pkg_descr lbi NoCopyDest
 	incdir = mkIncludeDir the_libdir
-	(absinc,relinc) = partition isAbsolutePath (includeDirs bi)
+	(absinc,relinc) = partition isAbsolute (includeDirs bi)
         haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
-        haddockFile = joinPaths haddockDir (haddockName pkg_descr)
+        haddockFile = haddockDir </> haddockName pkg_descr
         inplace_lbi = lbi { datadir = pwd, datasubdir = "dist" }
         haddockDirInplace = mkHaddockDir pkg_descr inplace_lbi NoCopyDest
-        haddockFileInplace = joinPaths haddockDirInplace (haddockName pkg_descr)
+        haddockFileInplace = haddockDirInplace </> haddockName pkg_descr
     in
     return emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
@@ -284,7 +283,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = absinc 
 				 ++ if inplace 
-					then map (pwd `joinFileName`) relinc
+					then map (pwd </>) relinc
 					else [incdir],
         IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,

@@ -35,7 +35,7 @@ import IO (try)
 import Control.Monad(unless)
 import Text.PrettyPrint.HughesPJ
 import System.Directory (doesFileExist, getPermissions, Permissions (..))
-import Distribution.Compat.FilePath (joinFileName)
+import System.FilePath ((</>))
 import Distribution.Compat.Directory (getHomeDirectory)
 
 -- |Where ghc versions < 6.3 keeps the --user files.
@@ -43,7 +43,7 @@ import Distribution.Compat.Directory (getHomeDirectory)
 
 localPackageConfig :: IO FilePath
 localPackageConfig = do u <- getHomeDirectory
-                        return $ (u `joinFileName` ".ghc-packages")
+                        return $ (u </> ".ghc-packages")
 
 -- |If the package file doesn't exist, we should try to create it.  If
 -- it already exists, do nothing and return true.  This does not take

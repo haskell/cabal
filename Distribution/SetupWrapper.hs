@@ -30,8 +30,8 @@ import Distribution.PackageDescription
 import System.Console.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
-import Distribution.Compat.FilePath (pathSeparator)
 import Distribution.Verbosity
+import System.FilePath (pathSeparator)
 import Control.Monad		( when, unless )
 
   -- read the .cabal file

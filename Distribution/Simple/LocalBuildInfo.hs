@@ -66,7 +66,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
 import Distribution.Setup (CopyDest(..))
 import Distribution.Version (showVersion)
-import Distribution.Compat.FilePath
+import System.FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Data.Maybe (fromMaybe)
 import Distribution.PackageDescription (hasLibs)
@@ -130,19 +130,19 @@ distPref :: FilePath
 distPref = "dist"
 
 srcPref :: FilePath
-srcPref = distPref `joinFileName` "src"
+srcPref = distPref </> "src"
 
 haddockPref :: PackageDescription -> FilePath
 haddockPref pkg_descr
-    = foldl1 joinPaths [distPref, "doc", "html", pkgName (package pkg_descr)]
+    = foldl1 (</>) [distPref, "doc", "html", pkgName (package pkg_descr)]
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
-autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
+autogenModulesDir lbi = buildDir lbi </> "autogen"
 
 -- |The place where install-includes are installed, relative to libdir
 mkIncludeDir :: FilePath -> FilePath
-mkIncludeDir = (`joinFileName` "include")
+mkIncludeDir = (</> "include")
 
 -- -----------------------------------------------------------------------------
 -- Default directories
@@ -214,15 +214,15 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
 #endif
 
 default_bindir :: FilePath
-default_bindir = "$prefix" `joinFileName`
+default_bindir = "$prefix" </>
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-	"Haskell" `joinFileName` "bin"
+	"Haskell" </> "bin"
 #else
 	"bin"
 #endif
 
 default_libdir :: Compiler -> FilePath
-default_libdir _ = "$prefix" `joinFileName`
+default_libdir _ = "$prefix" </>
 #if mingw32_HOST_OS || mingw32_TARGET_OS
                  "Haskell"
 #else
@@ -232,12 +232,12 @@ default_libdir _ = "$prefix" `joinFileName`
 default_libsubdir :: Compiler -> FilePath
 default_libsubdir hc =
   case compilerFlavor hc of
-	Hugs -> "hugs" `joinFileName` "packages" `joinFileName` "$pkg"
+	Hugs -> "hugs" </> "packages" </> "$pkg"
         JHC  -> "$compiler"
-	_    -> "$pkgid" `joinFileName` "$compiler"
+	_    -> "$pkgid" </> "$compiler"
 
 default_libexecdir :: FilePath
-default_libexecdir = "$prefix" `joinFileName`
+default_libexecdir = "$prefix" </>
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 	"$pkgid"
 #else
@@ -248,10 +248,10 @@ default_datadir :: PackageDescription -> IO FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 default_datadir pkg_descr
 	| hasLibs pkg_descr = getCommonFilesDir
-	| otherwise = return ("$prefix" `joinFileName` "Haskell")
+	| otherwise = return ("$prefix" </> "Haskell")
 #else
 default_datadir _
-	= return  ("$prefix" `joinFileName` "share")
+	= return  ("$prefix" </> "share")
 #endif
 
 default_datasubdir :: FilePath
@@ -267,11 +267,11 @@ mkBinDirRel pkg_descr lbi copydest =
 
 mkLibDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkLibDir pkg_descr lbi copydest = 
-  absolutePath  pkg_descr lbi copydest (libdir lbi `joinFileName` libsubdir lbi)
+  absolutePath  pkg_descr lbi copydest (libdir lbi </> libsubdir lbi)
 
 mkLibDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
 mkLibDirRel pkg_descr lbi copydest = 
-  prefixRelPath pkg_descr lbi copydest (libdir lbi `joinFileName` libsubdir lbi)
+  prefixRelPath pkg_descr lbi copydest (libdir lbi </> libsubdir lbi)
 
 mkLibexecDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkLibexecDir pkg_descr lbi copydest = 
@@ -283,15 +283,15 @@ mkLibexecDirRel pkg_descr lbi copydest =
 
 mkDataDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkDataDir pkg_descr lbi copydest = 
-  absolutePath  pkg_descr lbi copydest (datadir lbi `joinFileName` datasubdir lbi)
+  absolutePath  pkg_descr lbi copydest (datadir lbi </> datasubdir lbi)
 
 mkDataDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
 mkDataDirRel pkg_descr lbi copydest = 
-  prefixRelPath pkg_descr lbi copydest (datadir lbi `joinFileName` datasubdir lbi)
+  prefixRelPath pkg_descr lbi copydest (datadir lbi </> datasubdir lbi)
 
 mkHaddockDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkHaddockDir pkg_descr lbi copydest =
-  foldl1 joinPaths [mkDataDir pkg_descr lbi copydest,
+  foldl1 (</>) [mkDataDir pkg_descr lbi copydest,
                     "doc", "html", pkgName (package pkg_descr)]
 
 
@@ -300,12 +300,12 @@ mkHaddockDir pkg_descr lbi copydest =
 mkProgDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
 mkProgDir pkg_descr lbi copydest = 
   absolutePath pkg_descr lbi copydest
-    (libdir lbi `joinFileName` "hugs" `joinFileName` "programs")
+    (libdir lbi </> "hugs" </> "programs")
 
 mkProgDirRel :: PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath
 mkProgDirRel pkg_descr lbi copydest =
   prefixRelPath pkg_descr lbi copydest
-    (libdir lbi `joinFileName` "hugs" `joinFileName` "programs")
+    (libdir lbi </> "hugs" </> "programs")
 
 prefixRelPath :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
   -> Maybe FilePath
@@ -325,7 +325,18 @@ absolutePath pkg_descr lbi copydest s =
   case copydest of
     NoCopyDest   -> substDir (package pkg_descr) lbi s
     CopyPrefix d -> substDir (package pkg_descr) lbi{prefix=d} s
-    CopyTo     p -> p `joinFileName` (dropAbsolutePrefix (substDir (package pkg_descr) lbi s))
+    CopyTo     p -> p </> (dropAbsolutePrefix (substDir (package pkg_descr) lbi s))
+ where 
+   -- | If the function is applied to an absolute path then it returns a local path droping
+   -- the absolute prefix in the path. Under Windows the prefix is \"\\\", \"c:\" or \"c:\\\". Under
+   -- Unix the prefix is always \"\/\".
+   dropAbsolutePrefix :: FilePath -> FilePath
+   dropAbsolutePrefix (c:cs) | isPathSeparator c = cs
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+   dropAbsolutePrefix (_:':':c:cs) | isPathSeparator c = cs  -- path with drive letter
+   dropAbsolutePrefix (_:':':cs)                       = cs
+#endif
+   dropAbsolutePrefix cs = cs
 
 substDir :: PackageIdentifier -> LocalBuildInfo -> String -> String
 substDir pkgId lbi xs = loop xs

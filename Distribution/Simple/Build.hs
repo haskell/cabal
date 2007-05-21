@@ -68,12 +68,11 @@ import Distribution.Simple.Utils( die )
 
 import Distribution.Compat.Directory
 				( createDirectoryIfMissing )
-import Distribution.Compat.FilePath
-				( joinFileName, pathSeparator )
+import System.FilePath          ( (</>), pathSeparator )
 
 import Data.Maybe		( maybeToList, fromJust )
 import Control.Monad 		( unless, when )
-import System.Directory		( getModificationTime, doesFileExist)
+import System.Directory		( getModificationTime, doesFileExist )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -149,7 +148,7 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
 
 -- The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
-autogenModulesDir lbi = buildDir lbi `joinFileName` "autogen"
+autogenModulesDir lbi = buildDir lbi </> "autogen"
 
 buildPathsModule :: PackageDescription -> LocalBuildInfo -> IO ()
 buildPathsModule pkg_descr lbi =
@@ -246,7 +245,7 @@ buildPathsModule pkg_descr lbi =
 
   	paths_modulename = autogenModuleName pkg_descr
 	paths_filename = paths_modulename ++ ".hs"
-	paths_filepath = autogenModulesDir lbi `joinFileName` paths_filename
+	paths_filepath = autogenModulesDir lbi </> paths_filename
 
 	isHugs = compilerFlavor (compiler lbi) == Hugs
         get_prefix_stuff

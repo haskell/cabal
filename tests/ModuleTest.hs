@@ -61,7 +61,7 @@ import qualified Distribution.Simple.Install as D.S.I (hunitTests)
 import qualified Distribution.Simple.Build as D.S.B (hunitTests)
 import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
 import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
-import Distribution.Compat.FilePath(joinFileName)
+import System.FilePath( (</>) )
 import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildInfoFile)
 import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
 
@@ -159,20 +159,20 @@ tests currDir comp compConf compVersion = [
 -- executableWithC
          TestLabel ("package exeWithC: " ++ compIdent) $ TestCase $
          do let targetDir = ",tmp"
-            setCurrentDirectory (testdir `joinFileName` "exeWithC")
+            setCurrentDirectory (testdir </> "exeWithC")
             testPrelude
             assertConfigure targetDir
             assertClean
             assertConfigure targetDir
             assertBuild
             assertCopy
-            assertCmd (targetDir `joinFileName` "bin/tt" ++ " > "
-                    ++ targetDir `joinFileName` "out")
+            assertCmd (targetDir </> "bin/tt" ++ " > "
+                    ++ targetDir </> "out")
                       "exeWithC failed"
 -- A
         ,TestLabel ("package A: " ++ compIdent) $ TestCase $
          do let targetDir = ",tmp"
-            setCurrentDirectory (testdir `joinFileName` "A")
+            setCurrentDirectory (testdir </> "A")
             testPrelude
             assertConfigure targetDir
             assertHaddock
@@ -227,7 +227,7 @@ tests currDir comp compConf compVersion = [
                   assertCmd' compCmd "unregister -v0 --user" "unregister failed")
 -- HUnit
         ,TestLabel ("testing the HUnit package" ++ compIdent) $ TestCase $
-         do setCurrentDirectory $ (testdir `joinFileName` "HUnit-1.0")
+         do setCurrentDirectory $ (testdir </> "HUnit-1.0")
             GHC.maybeCreateLocalPackageConfig
             system "make -s clean"
             system "make -s"
@@ -270,7 +270,7 @@ tests currDir comp compConf compVersion = [
 
 -- twoMains
         ,TestLabel ("package twoMains: building " ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "twoMains")
+         do setCurrentDirectory (testdir </> "twoMains")
             testPrelude
             assertConfigure ",tmp"
             assertCmd' compCmd "haddock" "setup haddock returned error code."
@@ -285,7 +285,7 @@ tests currDir comp compConf compVersion = [
             -- no register, since there's no library
 -- buildinfo
         ,TestLabel ("buildinfo with multiple executables " ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "buildInfo")
+         do setCurrentDirectory (testdir </> "buildInfo")
             testPrelude
             assertConfigure ",tmp"
             assertHaddock
@@ -299,7 +299,7 @@ tests currDir comp compConf compVersion = [
 -- mutually recursive modules
         ,TestLabel ("package recursive: building " ++ compIdent) $ TestCase $
            when (comp == GHC) (do
-            setCurrentDirectory (testdir `joinFileName` "recursive")
+            setCurrentDirectory (testdir </> "recursive")
             testPrelude
             assertConfigure ",tmp"
             assertBuild
@@ -315,7 +315,7 @@ tests currDir comp compConf compVersion = [
               assertBool "recursive build didn't create binary")
 -- linking in ffi stubs
         ,TestLabel ("package ffi: " ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "ffi-package")
+         do setCurrentDirectory (testdir </> "ffi-package")
             testPrelude
             assertConfigure "/tmp"
             assertBuild
@@ -325,14 +325,14 @@ tests currDir comp compConf compVersion = [
             doesFileExist "src/TestFFI_stub.c" >>=
                 assertEqual "FFI-generated stub not cleaned." False
             -- now build something that depends on it
-            setCurrentDirectory (".." `joinFileName` "ffi-bin")
+            setCurrentDirectory (".." </> "ffi-bin")
             testPrelude
             assertConfigure ",tmp"
             assertBuild
             assertCopy
 -- depOnLib
         ,TestLabel ("package depOnLib: (executable depending on its lib)" ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "depOnLib")
+         do setCurrentDirectory (testdir </> "depOnLib")
             testPrelude
             assertConfigure ",tmp"
             assertHaddock
@@ -343,7 +343,7 @@ tests currDir comp compConf compVersion = [
             when (comp == GHC) (do
                                 doesFileExist "dist/build/mainForA/mainForA" >>=
                                   assertBool "build did not create the executable: mainForA"
-                                doesFileExist ("dist/build/" `joinFileName` "libHStest-1.0.a")
+                                doesFileExist ("dist/build/" </> "libHStest-1.0.a")
                                   >>= assertBool "library doesn't exist"
                                 doesFileExist (",tmp/bin/mainForA")
                                   >>= assertBool "installed bin doesn't exist"
@@ -351,7 +351,7 @@ tests currDir comp compConf compVersion = [
                                   >>= assertBool "installed lib doesn't exist")
 -- wash2hs
         ,TestLabel ("testing the wash2hs package" ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "wash2hs")
+         do setCurrentDirectory (testdir </> "wash2hs")
             testPrelude
             assertCmdFail (compCmd ++ " configure -v0 --someUnknownFlag 2> err")
                           "wash2hs configure with unknown flag"
@@ -368,7 +368,7 @@ tests currDir comp compConf compVersion = [
             -- no unregister, because it has no libs!
 -- withHooks
         ,TestLabel ("package withHooks: " ++ compIdent) $ TestCase $
-         do setCurrentDirectory (testdir `joinFileName` "withHooks")
+         do setCurrentDirectory (testdir </> "withHooks")
             testPrelude
             assertCmd' compCmd ("configure -v0 --prefix=,tmp --woohoo " ++ compFlag)
               "configure returned error code"
@@ -388,7 +388,7 @@ tests currDir comp compConf compVersion = [
                      doesFileExist "dist/build/D.o" >>=
                        assertBool "D.gc did not get compiled to D.o this is an overriding test"
                      doesFileExist (",tmp/lib/withHooks-1.0/ghc-" ++ compVerStr
-                                 ++ "/" `joinFileName` "libHSwithHooks-1.0.a")
+                                 ++ "/" </> "libHSwithHooks-1.0.a")
                        >>= assertBool "library doesn't exist")
 
             doesFileExist ",tmp/bin/withHooks" >>=
@@ -399,7 +399,7 @@ tests currDir comp compConf compVersion = [
 -- HSQL
 {-         ,TestLabel ("package HSQL (make-based): " ++ show compIdent) $
          TestCase $ unless (compFlag == "--hugs") $ -- FIX: won't compile w/ hugs
-         do setCurrentDirectory $ (testdir `joinFileName` "HSQL")
+         do setCurrentDirectory $ (testdir </> "HSQL")
             system "make distclean"
             system "rm -rf /tmp/lib/HSQL"
             when (comp == GHC)
@@ -413,7 +413,7 @@ tests currDir comp compConf compVersion = [
                  (doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
                    assertBool "libHSsql.a doesn't exist. copy failed.")-}
       ]
-    where testdir = currDir `joinFileName` "tests"
+    where testdir = currDir </> "tests"
           compStr = show comp
           compVerStr = concat . intersperse "." . map show . versionBranch $ compVersion
           compCmd = command comp
@@ -443,7 +443,7 @@ tests currDir comp compConf compVersion = [
                  case compConf of
                   Hugs -> checkTargetDir (pref ++ "/lib/hugs/packages/test/") [".hs", ".lhs"]
                   GHC  -> do checkTargetDir ghcTargetDir [".hi"]
-                             doesFileExist (ghcTargetDir `joinFileName` "libHStest-1.0.a")
+                             doesFileExist (ghcTargetDir </> "libHStest-1.0.a")
                                >>= assertBool "library doesn't exist"
                   _ -> error ("Unhandled compiler: " ++ show compConf)
           dumpScriptFlag = "--gen-script"

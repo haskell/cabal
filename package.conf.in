@@ -44,7 +44,6 @@ hidden-modules:
 	Distribution.Compat.Map,
 	Distribution.Compat.Exception,
 	Distribution.Compat.RawSystem,
-	Distribution.Compat.FilePath,
 	Distribution.Compat.Directory
 
 import-dirs:	IMPORT_DIR

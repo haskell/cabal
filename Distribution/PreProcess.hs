@@ -72,8 +72,8 @@ import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
-import Distribution.Compat.FilePath
-	(splitFileExt, joinFileName, joinFileExt, dirName)
+import System.FilePath
+	(splitExtension, (</>), (<.>), takeDirectory)
 import Distribution.Compat.Directory ( createDirectoryIfMissing )
 
 -- |The interface to a preprocessor, which may be implemented using an
@@ -137,8 +137,8 @@ mkSimplePreProcessor :: (FilePath -> FilePath -> Verbosity -> IO ())
 mkSimplePreProcessor simplePP
   (inBaseDir, inRelativeFile)
   (outBaseDir, outRelativeFile) verbosity = simplePP inFile outFile verbosity
-  where inFile  = inBaseDir  `joinFileName` inRelativeFile
-        outFile = outBaseDir `joinFileName` outRelativeFile
+  where inFile  = inBaseDir  </> inRelativeFile
+        outFile = outBaseDir </> outRelativeFile
 
 runSimplePreProcessor :: PreProcessor -> FilePath -> FilePath -> Verbosity
                       -> IO ()
@@ -204,10 +204,10 @@ preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
 	          _  -> return ()
         -- found a pre-processable file in one of the source dirs
         ((psrcLoc, psrcRelFile):_) -> do
-            let (srcStem, ext) = splitFileExt psrcRelFile
-                psrcFile = psrcLoc `joinFileName` psrcRelFile
+            let (srcStem, ext) = splitExtension psrcRelFile
+                psrcFile = psrcLoc </> psrcRelFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
-	                       (lookup ext handlers)
+	                       (lookup (tailNotNull ext) handlers)
             -- Currently we put platform independent generated .hs files back
             -- into the source dirs and put platform dependent ones into the
             -- build dir. Really they should all go in the build dir, or at
@@ -227,12 +227,16 @@ preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
                               btime <- getModificationTime ppsrcFile
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)
-	    when recomp $ do
-              let destDir = destLoc `joinFileName` dirName srcStem
+            when recomp $ do
+              let destDir = destLoc </> dirName srcStem
               createDirectoryIfMissing True destDir
               runPreProcessor pp
                  (psrcLoc, psrcRelFile)
-                 (destLoc, srcStem `joinFileExt` "hs") verbosity
+                 (destLoc, srcStem <.> "hs") verbosity
+
+      where dirName = takeDirectory
+            tailNotNull [] = []
+            tailNotNull x  = tail x
 
 removePreprocessedPackage :: PackageDescription
                           -> FilePath -- ^root of source tree (where to look for hsSources)
@@ -241,10 +245,10 @@ removePreprocessedPackage :: PackageDescription
 removePreprocessedPackage  pkg_descr r suff
     = do withLib pkg_descr () (\lib -> do
                      let bi = libBuildInfo lib
-                     removePreprocessed (map (joinFileName r) (hsSourceDirs bi)) (libModules pkg_descr) suff)
+                     removePreprocessed (map (r </>) (hsSourceDirs bi)) (libModules pkg_descr) suff)
          withExe pkg_descr (\theExe -> do
                      let bi = buildInfo theExe
-                     removePreprocessed (map (joinFileName r) (hsSourceDirs bi)) (otherModules bi) suff)
+                     removePreprocessed (map (r </>) (hsSourceDirs bi)) (otherModules bi) suff)
 
 -- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
 removePreprocessed :: [FilePath] -- ^search Location
@@ -373,7 +377,7 @@ ppC2hs bi lbi = maybe (ppNone "c2hs") pp (withC2hs lbi)
             ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
             ++ ["--output-dir=" ++ outBaseDir,
                 "--output=" ++ outRelativeFile,
-                inBaseDir `joinFileName` inRelativeFile]
+                inBaseDir </> inRelativeFile]
       }
 
 cppOptions :: BuildInfo -> LocalBuildInfo -> [String]

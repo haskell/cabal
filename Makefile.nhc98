@@ -23,7 +23,6 @@ SRCS          = \
 	Distribution/Version.hs \
 	Language/Haskell/Extension.hs \
  \
-	Distribution/Compat/FilePath.hs \
 	Distribution/GetOpt.hs \
 	Distribution/Compat/Map.hs \
 	Distribution/Compat/Directory.hs \
