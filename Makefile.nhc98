@@ -1,7 +1,7 @@
 # Hey Emacs, this is a -*- makefile -*- !
 
 THISPKG       = Cabal
-SEARCH        = -package base
+SEARCH        = -package base -package filepath
 EXTRA_H_FLAGS = -K4M 
 EXTRA_HBC_FLAGS = -H80M -A4M
 
