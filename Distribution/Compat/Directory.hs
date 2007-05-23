@@ -34,11 +34,12 @@ import Control.Monad (when, unless)
 import System.Posix (getFileStatus,setFileMode,fileMode,accessTime,
 		     modificationTime,setFileTimes)
 #endif
+import Data.List        ( scanl1 )
 
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary = do
   path <- getEnv "PATH"
-  search (parseSearchPath path)
+  search (splitSearchPath path)
   where
     search :: [FilePath] -> IO (Maybe FilePath)
     search [] = return Nothing
@@ -111,13 +112,17 @@ createDirectoryIfMissing parents file = do
   case (b,parents, file) of 
     (_,     _, "") -> return ()
     (True,  _,  _) -> return ()
-    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) (tail (pathParents file))
+    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) (pathParents file)
     (_, False,  _) -> createDirectory file
+
+pathParents = scanl1 (</>) . splitDirectories
+  -- > scanl1 (</>) (splitDirectories "/a/b/c")
+  -- ["/","/a","/a/b","/a/b/c"]
 
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive startLoc = do
   cont <- getDirectoryContentsWithoutSpecial startLoc
-  mapM_ (rm . startLoc </>) cont
+  mapM_ (rm . (startLoc </>)) cont
   removeDirectory startLoc
   where
     rm :: FilePath -> IO ()
