@@ -1,0 +1,140 @@
+# -----------------------------------------------------------------------------
+# Makefile template starts here.
+
+GHC_OPTS += -i$(odir)
+
+# For adding options on the command-line
+GHC_OPTS += $(EXTRA_HC_OPTS)
+
+WAY_p_OPTS = -prof
+
+ifneq "$(way)" ""
+way_ := $(way)_
+_way := _$(way)
+GHC_OPTS += $(WAY_$(way)_OPTS)
+GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(osuf)
+endif
+osuf  = $(way_)o
+hisuf = $(way_)hi
+
+HS_OBJS = $(patsubst %,$(odir)/%.$(osuf),$(subst .,/,$(modules)))
+HS_IFS  = $(patsubst %,$(odir)/%.$(hisuf),$(subst .,/,$(modules)))
+C_OBJS  = $(patsubst %.c,$(odir)/%.$(osuf),$(C_SRCS))
+
+LIB = $(odir)/libHS$(package)$(_way).a
+
+STUBOBJS = $(wildcard $(patsubst %.$(osuf), %_stub.$(osuf), $(HS_OBJS)))
+
+all :: .depend $(LIB)
+
+.depend : $(MAKEFILE)
+	$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)
+	for dir in $(sort $(foreach mod,$(HS_OBJS) $(C_OBJS),$(dir $(mod)))); do \
+		if test ! -d $$dir; then mkdir -p $$dir; fi \
+	done
+
+include .depend
+
+ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
+SPLITOBJS = $(wildcard $(patsubst %.$(osuf), %_split/*.$(osuf), $(HS_OBJS)))
+else
+SPLITOBJS = $(HS_OBJS)
+endif
+
+$(LIB) : $(HS_OBJS) $(C_OBJS)
+	echo $(SPLITOBJS) $(STUBOBJS) $(C_OBJS) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+
+ifneq "$(GHCI_LIB)" ""
+ifeq "$(way)" ""
+all ::  $(GHCI_LIB)
+
+$(GHCI_LIB) : $(HS_OBJS) $(C_OBJS)
+	@$(RM) $@
+	$(LD) -r -x -o $@ $(EXTRA_LD_OPTS) $(HS_OBJS) $(STUBOBJS) $(C_OBJS)
+endif
+endif
+
+# suffix rules
+
+ifneq "$(odir)" ""
+odir_ = $(odir)/
+else
+odir_ =
+endif
+
+$(odir_)%.$(osuf) : $(srcdir)/%.hs
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+$(odir_)%.$(osuf) : $(srcdir)/%.lhs	 
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+# The .hs files might be in $(odir) if they were preprocessed
+$(odir_)%.$(osuf) : $(odir_)%.hs
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+$(odir_)%.$(osuf) : $(odir_)%.lhs
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+$(odir_)%.$(osuf) : $(srcdir)/%.c
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+
+$(odir_)%.$(osuf) : $(srcdir)/%.$(way_)s
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+
+$(odir_)%.$(osuf) : $(srcdir)/%.S
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+
+$(odir_)%.$(way_)s : $(srcdir)/%.c
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -S $< -o $@
+
+$(odir_)%.$(osuf)-boot : $(srcdir)/%.hs-boot
+	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot
+
+$(odir_)%.$(osuf)-boot : $(srcdir)/%.lhs-boot
+	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot
+
+%.$(hisuf) : %.$(osuf)
+	@if [ ! -f $@ ] ; then \
+	    echo Panic! $< exists, but $@ does not.; \
+	    exit 1; \
+	else exit 0 ; \
+	fi
+
+%.$(way_)hi-boot : %.$(osuf)-boot
+	@if [ ! -f $@ ] ; then \
+	    echo Panic! $< exists, but $@ does not.; \
+	    exit 1; \
+	else exit 0 ; \
+	fi
+
+$(odir_)%.$(hisuf) : %.$(way_)hc
+	@if [ ! -f $@ ] ; then \
+	    echo Panic! $< exists, but $@ does not.; \
+	    exit 1; \
+	else exit 0 ; \
+	fi
+
+show:
+	@echo '$(VALUE)="$($(VALUE))"'
+
+clean ::
+	$(RM) $(HS_OBJS) $(STUBOBJS) $(C_OBJS) $(LIB) $(GHCI_LIB) $(HS_IFS) .depend
+	$(RM) -rf $(wildcard $(patsubst %.$(osuf), %_split, $(HS_OBJS)))
+
+ifneq "$(strip $(WAYS))" ""
+ifeq "$(way)" ""
+all clean ::
+# Don't rely on -e working, instead we check exit return codes from sub-makes.
+	@case '${MFLAGS}' in *-[ik]*) x_on_err=0;; *-r*[ik]*) x_on_err=0;; *) x_on_err=1;; esac; \
+	for i in $(WAYS) ; do \
+	  echo "== $(MAKE) way=$$i -f $(MAKEFILE) $@;"; \
+	  $(MAKE) way=$$i -f $(MAKEFILE) --no-print-directory $(MFLAGS) $@ ; \
+	  if [ $$? -eq 0 ] ; then true; else exit $$x_on_err; fi; \
+	done
+	@echo "== Finished recursively making \`$@' for ways: $(WAYS) ..."
+endif
+endif
