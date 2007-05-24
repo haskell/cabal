@@ -36,13 +36,12 @@ all :: .depend $(LIB)
 include .depend
 
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
-SPLITOBJS = $(wildcard $(patsubst %.$(osuf), %_split/*.$(osuf), $(HS_OBJS)))
-else
-SPLITOBJS = $(HS_OBJS)
-endif
-
 $(LIB) : $(HS_OBJS) $(C_OBJS)
-	echo $(SPLITOBJS) $(STUBOBJS) $(C_OBJS) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+	(echo $(STUBOBJS) $(C_OBJS); find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+else
+$(LIB) : $(HS_OBJS) $(C_OBJS)
+	echo $(STUBOBJS) $(C_OBJS) $(HS_OBJS) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+endif
 
 ifneq "$(GHCI_LIB)" ""
 ifeq "$(way)" ""
