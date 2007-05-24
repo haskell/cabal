@@ -47,6 +47,7 @@ module Distribution.Simple.GHC (
 	build, makefile, installLib, installExe
  ) where
 
+import Distribution.Simple.GHCMakefile
 import Distribution.Setup       ( MakefileFlags(..) )
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
@@ -134,7 +135,6 @@ build pkg_descr lbi verbosity = do
           ghcArgs =
                  pkg_conf
               ++ ["-package-name", packageId ]
-	      ++ (if splitObjs lbi then ["-split-objs"] else [])
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -150,18 +150,11 @@ build pkg_descr lbi verbosity = do
       -- build any C sources
       unless (null (cSources libBi)) $ do
          when (verbosity >= verbose) (putStrLn "Building C Sources...")
-         -- FIX: similar 'versionBranch' logic duplicated below. refactor for code sharing
-         sequence_ [do let odir | versionBranch ghc_vers >= [6,4,1] = pref
-				| otherwise = pref </> takeDirectory c
-				-- ghc 6.4.1 fixed a bug in -odir handling
-				-- for C compilations.
+         sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref 
+                                                            filename verbosity
                        createDirectoryIfMissing True odir
-		       let cArgs = ["-I" ++ dir | dir <- includeDirs libBi]
-			       ++ ["-optc" ++ opt | opt <- ccOptions libBi]
-			       ++ ["-odir", odir, "-hidir", pref, "-c"]
-			       ++ (if verbosity >= deafening then ["-v"] else [])
-                       rawSystemExit verbosity ghcPath (cArgs ++ [c])
-                                   | c <- cSources libBi]
+                       rawSystemExit verbosity ghcPath args
+                   | filename <- cSources libBi]
 
       -- link:
       when (verbosity > verbose) (putStrLn "cabal-linking...")
@@ -209,6 +202,8 @@ build pkg_descr lbi verbosity = do
 
             runLd ld args = do
               exists <- doesFileExist ghciLibName
+                -- SDM: we always remove ghciLibName above, so isn't this
+                -- always False?  What is this stuff for anyway?
               rawSystemLd verbosity ld
                           (args ++ if exists then [ghciLibName] else [])
               renameFile (ghciLibName <.> "tmp") ghciLibName
@@ -221,28 +216,16 @@ build pkg_descr lbi verbosity = do
              --TODO: discover this at configure time on unix
             maxCommandLineSize = 30 * 1024
 #endif
-        ld <- 
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-              let
-               compilerDir  = takeDirectory $ compilerPath (compiler lbi)
-               baseDir      = takeDirectory compilerDir
-               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
-	      in do
-              mb <- lookupProgram "ld" (withPrograms lbi)
-	      case fmap programLocation mb of
-	       Just (UserSpecified s) -> return s
-		     -- assume we're using an installed copy of GHC..
-	       _ -> return binInstallLd
-#else
-            return "ld"
-#endif
+        ld <- findLdProgram lbi
         mbAr <- lookupProgram "ar" (withPrograms lbi) 
-	let arProg = case fmap programLocation mbAr of { Just (UserSpecified x) -> x ; _ -> "ar" }
+        arProg <- case mbAr of
+                        Nothing -> die "no 'ar' program configured"
+                        Just p  -> return p
         ifVanillaLib False $ xargs maxCommandLineSize
-          (rawSystemPathExit verbosity) arProg arArgs arObjArgs
+          (rawSystemProgram verbosity) arProg arArgs arObjArgs
 
         ifProfLib $ xargs maxCommandLineSize
-          (rawSystemPathExit verbosity) arProg arProfArgs arProfObjArgs
+          (rawSystemProgram verbosity) arProg arProfArgs arProfObjArgs
 
         ifGHCiLib $ xargs maxCommandLineSize
           runLd ld ldArgs ldObjArgs
@@ -268,17 +251,12 @@ build pkg_descr lbi verbosity = do
                  -- build executables
                  unless (null (cSources exeBi)) $ do
                   when (verbosity >= verbose) (putStrLn "Building C Sources.")
-                  sequence_ [do let cSrcODir |versionBranch (compilerVersion (compiler lbi))
-                                                    >= [6,4,1] = exeDir
-                                             | otherwise 
-                                                 = exeDir </> takeDirectory c
-                                createDirectoryIfMissing True cSrcODir
-		                let cArgs = ["-I" ++ dir | dir <- includeDirs exeBi]
-			                    ++ ["-optc" ++ opt | opt <- ccOptions exeBi]
-			                    ++ ["-odir", cSrcODir, "-hidir", pref, "-c"]
-			                    ++ (if verbosity >= deafening then ["-v"] else [])
-                                rawSystemExit verbosity ghcPath (cArgs ++ [c])
-                                    | c <- cSources exeBi]
+                  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
+                                                         pref filename verbosity
+                                createDirectoryIfMissing True odir
+                                rawSystemExit verbosity ghcPath args
+                            | filename <- cSources exeBi]
+
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
 
                  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
@@ -349,6 +327,7 @@ ghcOptions lbi bi odir
      =  (if compilerVersion (compiler lbi) > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
+     ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ autogenModulesDir lbi]
      ++ ["-i" ++ buildDir lbi]
@@ -363,10 +342,48 @@ ghcOptions lbi bi odir
      ++ hcOptions GHC (options bi)
      ++ snd (extensionsToGHCFlag (extensions bi))
 
+constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath
+                   -> FilePath -> Verbosity -> (FilePath,[String])
+constructCcCmdLine lbi bi pref filename verbosity
+  =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
+              | otherwise = pref </> takeDirectory filename
+			-- ghc 6.4.1 fixed a bug in -odir handling
+			-- for C compilations.
+     in 
+        (odir,
+         ghcCcOptions bi odir
+         ++ (if verbosity > deafening then ["-v"] else [])
+         ++ ["-c",filename])
+         
+
+ghcCcOptions :: BuildInfo -> FilePath -> [String]
+ghcCcOptions bi odir
+     =  ["-I" ++ dir | dir <- includeDirs bi]
+     ++ ["-optc" ++ opt | opt <- ccOptions bi]
+     ++ ["-odir", odir]
+
 mkGHCiLibName :: FilePath -- ^file Prefix
               -> String   -- ^library name.
               -> String
 mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
+
+
+findLdProgram :: LocalBuildInfo -> IO FilePath
+findLdProgram lbi = 
+#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+   let
+    compilerDir = takeDirectory $ compilerPath (compiler lbi)
+    baseDir     = takeDirectory compilerDir
+    binInstallLd     = baseDir </> "gcc-lib" </> "ld.exe"
+   in do
+   mb <- lookupProgram "ld" (withPrograms lbi)
+   case fmap programLocation mb of
+    Just (UserSpecified s) -> return s
+          -- assume we're using an installed copy of GHC..
+    _ -> return binInstallLd
+#else
+    return "ld"
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
@@ -388,20 +405,28 @@ makefile pkg_descr lbi flags = do
       packageId | versionBranch ghc_vers >= [6,4]
                                 = showPackageId (package pkg_descr)
                  | otherwise = pkgName (package pkg_descr)
+  mbAr <- lookupProgram "ar" (withPrograms lbi) 
+  let arProg = mbAr `programOrElse` "ar"
+  ld <- findLdProgram lbi
+  let builddir = buildDir lbi
   let decls = [
         ("modules", unwords (exposedModules lib ++ otherModules bi)),
         ("GHC", compilerPath (compiler lbi)),
         ("WAYS", if withProfLib lbi then "p" else ""),
-        ("odir", buildDir lbi),
+        ("odir", builddir),
         ("srcdir", case hsSourceDirs bi of
                         [one] -> one
                         _     -> error "makefile: can't cope with multiple hs-source-dirs yet, sorry"),
         ("package", packageId),
         ("GHC_OPTS", unwords ( 
                            ["-package-name", packageId ]
-	                ++ (if splitObjs lbi then ["-split-objs"] else [])
                         ++ ghcOptions lbi bi (buildDir lbi))),
-        ("MAKEFILE", file)
+        ("MAKEFILE", file),
+        ("C_SRCS", unwords (cSources bi)),
+        ("GHC_CC_OPTS", unwords (ghcCcOptions bi (buildDir lbi))),
+        ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
+        ("AR", arProg),
+        ("LD", ld)
         ]
   hPutStrLn h (unlines (map (\(a,b)-> a ++ " = " ++ munge b) decls))
   hPutStrLn h makefileTemplate
@@ -475,115 +500,12 @@ foundProg Nothing = Nothing
 foundProg (Just Program{programLocation=EmptyLocation}) = Nothing
 foundProg x = x
 
--- -----------------------------------------------------------------------------
--- Makefile template
-
-makefileTemplate :: String
-makefileTemplate =
- "GHC_OPTS += -i$(odir)\n"++
- "\n"++
- "# For adding options on the command-line\n"++
- "GHC_OPTS += $(EXTRA_HC_OPTS)\n"++
- "\n"++
- "WAY_p_OPTS = -prof\n"++
- "\n"++
- "ifneq \"$(way)\" \"\"\n"++
- "way_ := $(way)_\n"++
- "_way := _$(way)\n"++
- "GHC_OPTS += $(WAY_$(way)_OPTS)\n"++
- "GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(way_)o\n"++
- "endif\n"++
- "\n"++
- "OBJS = $(patsubst %,$(odir)/%.$(way_)o,$(subst .,/,$(modules)))\n"++
- "\n"++
- "all :: .depend $(OBJS)\n"++
- "\n"++
- ".depend : $(MAKEFILE)\n"++
- "\t$(GHC) -M -optdep-f -optdep.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)\n"++
- "\tfor dir in $(sort $(foreach mod,$(OBJS),$(dir $(mod)))); do \\\n"++
- "\t\tif test ! -d $$dir; then mkdir -p $$dir; fi \\\n"++
- "\tdone\n"++
- "\n"++
- "include .depend\n"++
- "\n"++
- "# suffix rules\n"++
- "\n"++
- "ifneq \"$(odir)\" \"\"\n"++
- "odir_ = $(odir)/\n"++
- "else\n"++
- "odir_ =\n"++
- "endif\n"++
- "\n"++
- "$(odir_)%.$(way_)o : $(srcdir)/%.hs\n"++
- "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
- "\n"++
- "$(odir_)%.$(way_)o : $(srcdir)/%.lhs\t \n"++
- "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi\n"++
- "\n"++
- "$(odir_)%.$(way_)o : $(srcdir)/%.c\n"++
- "\t@$(RM) $@\n"++
- "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
- "\n"++
- "$(odir_)%.$(way_)o : $(srcdir)/%.$(way_)s\n"++
- "\t@$(RM) $@\n"++
- "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
- "\n"++
- "$(odir_)%.$(way_)o : $(srcdir)/%.S\n"++
- "\t@$(RM) $@\n"++
- "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@\n"++
- "\n"++
- "$(odir_)%.$(way_)s : $(srcdir)/%.c\n"++
- "\t@$(RM) $@\n"++
- "\t$(GHC) $(GHC_CC_OPTS) -S $< -o $@\n"++
- "\n"++
- "$(odir_)%.$(way_)o-boot : $(srcdir)/%.hs-boot\n"++
- "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
- "\n"++
- "$(odir_)%.$(way_)o-boot : $(srcdir)/%.lhs-boot\n"++
- "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot\n"++
- "\n"++
- "%.$(way_)hi : %.$(way_)o\n"++
- "\t@if [ ! -f $@ ] ; then \\\n"++
- "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
- "\t    exit 1; \\\n"++
- "\telse exit 0 ; \\\n"++
- "\tfi\n"++
- "\n"++
- "%.$(way_)hi-boot : %.$(way_)o-boot\n"++
- "\t@if [ ! -f $@ ] ; then \\\n"++
- "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
- "\t    exit 1; \\\n"++
- "\telse exit 0 ; \\\n"++
- "\tfi\n"++
- "\n"++
- "$(odir_)%.$(way_)hi : %.$(way_)hc\n"++
- "\t@if [ ! -f $@ ] ; then \\\n"++
- "\t    echo Panic! $< exists, but $@ does not.; \\\n"++
- "\t    exit 1; \\\n"++
- "\telse exit 0 ; \\\n"++
- "\tfi\n"++
- "\n"++
- "show:\n"++
- "\t@echo '$(VALUE)=\"$($(VALUE))\"'\n"++
- "\n"++
- "\n"++
- "ifneq \"$(strip $(WAYS))\" \"\"\n"++
- "ifeq \"$(way)\" \"\"\n"++
- "all ::\n"++
- "# Don't rely on -e working, instead we check exit return codes from sub-makes.\n"++
- "\t@case '${MFLAGS}' in *-[ik]*) x_on_err=0;; *-r*[ik]*) x_on_err=0;; *) x_on_err=1;; esac; \\\n"++
- "\tfor i in $(WAYS) ; do \\\n"++
- "\t  echo \"== $(MAKE) way=$$i -f $(MAKEFILE) $@;\"; \\\n"++
- "\t  $(MAKE) way=$$i -f $(MAKEFILE) --no-print-directory $(MFLAGS) $@ ; \\\n"++
- "\t  if [ $$? -eq 0 ] ; then true; else exit $$x_on_err; fi; \\\n"++
- "\tdone\n"++
- "\t@echo \"== Finished recursively making \\`$@' for ways: $(WAYS) ...\"\n"++
- "endif\n"++
- "endif\n"++
- "\n"++
- "# We could consider adding this: the idea would be to have 'make' do\n"++
- "# everything that 'setup build' does.\n"++
- "# ifeq \"$(way)\" \"\"\n"++
- "# all ::\n"++
- "# \t./Setup build\n"++
- "# endif\n"
+programOrElse :: Maybe Program -> FilePath -> FilePath
+mb_prog `programOrElse` q =
+  case mb_prog of
+    Nothing -> q
+    Just Program{programLocation=l} ->
+        case l of
+          UserSpecified x -> x
+          FoundOnSystem x -> x
+          EmptyLocation   -> q
