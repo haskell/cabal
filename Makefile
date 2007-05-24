@@ -1,10 +1,5 @@
-TOP=..
 
 CABALVERSION=1.1.7
-
-ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
-# ----------------------------------------------------------------------------
-# Standalone Makefile:
 
 KIND=rc
 #KIND=latest
@@ -188,33 +183,3 @@ release: dist
 	scp -r $(TMPDISTLOC)/release www.haskell.org:/home/haskell/cabal/release/cabal-$(CABALVERSION)
 	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
 
-else # boilerplate.mk exists
-# ----------------------------------------------------------------------------
-# GHC build tree Makefile:
-
-include $(TOP)/mk/boilerplate.mk
-
-SUBDIRS = doc #cabal-setup
-
-ALL_DIRS = \
-	Distribution \
-	Distribution/Simple \
-	Distribution/PreProcess \
-	Distribution/Compat \
-	Language/Haskell
-
-EXCLUDED_SRCS	= DefaultSetup.lhs Setup.lhs
-
-PACKAGE		= Cabal
-VERSION		= $(CABALVERSION)
-
-PACKAGE_DEPS	= base
-
-SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries (Cabal package)"
-
-comma = ,
-SRC_HC_OPTS   += -cpp -DCABAL_VERSION=$(subst .,$(comma),$(CABALVERSION))
-
-include $(TOP)/mk/target.mk
-
-endif
