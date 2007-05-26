@@ -377,8 +377,8 @@ rawSystemPipe scriptName _ pipeFrom path args = do
   setPermissions scriptName p{executable=True}
 #endif
   where escapeForShell [] = []
-        escapeForShell (c@'\'':cs) = c : c : escapeForShell cs
-        escapeForShell (c     :cs) = c     : escapeForShell cs
+        escapeForShell ('\'':cs) = "'\\''" ++ escapeForShell cs
+        escapeForShell (c   :cs) = c        : escapeForShell cs
 
 -- ------------------------------------------------------------
 -- * Testing
