@@ -177,11 +177,13 @@ buildPathsModule pkg_descr lbi =
 	foreign_imports++
 	"import Data.Version"++
 	"\n"++
+	"\nversion :: Version"++
 	"\nversion = " ++ show (pkgVersion (package pkg_descr))++
 	"\n"
 
        body
 	| absolute =
+	  "\nbindir, libdir, datadir, libexecdir :: FilePath\n"++
 	  "\nbindir     = " ++ show flat_bindir ++
 	  "\nlibdir     = " ++ show flat_libdir ++
 	  "\ndatadir    = " ++ show flat_datadir ++
@@ -198,8 +200,8 @@ buildPathsModule pkg_descr lbi =
 	| otherwise =
 	  "\nprefix        = " ++ show (prefix lbi) ++
 	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
-	  "\n"++
-	  "\ngetBinDir :: IO FilePath\n"++
+	  "\n\n"++
+	  "getBinDir :: IO FilePath\n"++
 	  "getBinDir = getPrefixDirRel bindirrel\n\n"++
 	  "getLibDir :: IO FilePath\n"++
 	  "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
