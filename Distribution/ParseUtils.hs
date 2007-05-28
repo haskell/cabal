@@ -133,6 +133,9 @@ liftField get set (FieldDescr name showF parseF)
 	    a <- parseF lineNo str (get b)
 	    return (set a b))
 
+-- Parser combinator for simple fields.  Takes a field name, a pretty printer,
+-- a parser function, an accessor, and a modifier, returns a package
+-- FieldDescr over the compoid structure.
 simpleField :: String -> (a -> Doc) -> (ReadP a a)
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 simpleField name showF readF get set
