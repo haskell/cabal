@@ -56,7 +56,7 @@ module Distribution.InstalledPackageInfo (
 
 import Distribution.ParseUtils (
 	FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
-	LineNo,	simpleField, listField, parseLicenseQ,
+	Field(F), simpleField, listField, parseLicenseQ,
 	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
@@ -156,12 +156,12 @@ parseInstalledPackageInfo inp = do
 
 parseBasicStanza :: [FieldDescr a]
 		    -> a
-		    -> (LineNo, String, String)
+		    -> Field
 		    -> ParseResult a
-parseBasicStanza ((FieldDescr name _ set):fields) pkg (lineNo, f, val)
+parseBasicStanza ((FieldDescr name _ set):fields) pkg (F lineNo f val)
   | name == f = set lineNo val pkg
-  | otherwise = parseBasicStanza fields pkg (lineNo, f, val)
-parseBasicStanza [] pkg (_, _, _) = return pkg
+  | otherwise = parseBasicStanza fields pkg (F lineNo f val)
+parseBasicStanza [] pkg _ = return pkg
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
