@@ -89,8 +89,8 @@ import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
 #else
 import System.Cmd (system)
-import System.IO (hClose)
 #endif
+import System.IO (hClose)
 
 import Control.Monad(when, filterM, unless)
 import Data.List (nub, unfoldr)
@@ -177,7 +177,8 @@ rawSystemStdout verbosity path args = do
   --      and stderr simultaniously to avoid deadlock, and using threads like
   --      that would not be portable to Hugs for example.
   bracket (openTempFile "." "tmp")
-          (\(tmpName, _tmpHandle) -> removeFile tmpName)
+          -- We need to close tmpHandle or the file removal fails on Windows
+          (\(tmpName, tmpHandle) -> hClose tmpHandle >> removeFile tmpName)
          $ \(tmpName, tmpHandle) -> do
     cmdHandle <- runProcess path args Nothing Nothing
                    Nothing (Just tmpHandle) Nothing
