@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ParseUtils
@@ -46,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
 	runP, ParseResult(..),
-	Field,
+	Field(..),
 	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
@@ -165,42 +166,168 @@ optsField name flavor get set =
            | f == f'   = (f, opts ++ opts') : rest
            | otherwise = (f',opts') : update f opts rest
 
+------------------------------------------------------------------------------
+
 trimTrailingSpaces :: String -> String
 trimTrailingSpaces = reverse . dropWhile isSpace . reverse
 
-type Field  = (LineNo,String,String)
+
+dropSpaces :: String -> String
+dropSpaces = dropWhile isSpace
+
+data Field  = F LineNo String String
+            | Section String String [Field]
+            | IfBlock String [Field] [Field]
+              deriving (Show
+                       ,Eq)   -- for testing
+
+--   sectionname ::= "library" | "executable"
+sectionNames :: [String]
+sectionNames = ["library", "executable:"]
 
 -- |Split a file into "Field: value" groups
 readFields :: String -> ParseResult [Field]
-readFields = mkStanza . merge . filter validLine . zip [1..] . map trimTrailingSpaces . lines
-  where validLine (_,s) = case dropWhile isSpace s of
+readFields = mkStanza 
+           -- . merge 
+           . filter validLine 
+           . zip [1..] 
+           . map trimTrailingSpaces . lines
+  where validLine (_,s) = case dropSpaces s of
                             '-':'-':_ -> False      -- Comment
                             []        -> False      -- blank line
                             _         -> True
 
-merge :: [(a, [Char])] -> [(a, [Char])]
-merge ((n,x):ys) = (n, x++concat (map (get_continuation . snd) rest)):merge ys'
-  where (rest, ys') = span (is_continuation . snd) ys
-        is_continuation (c:_) = isSpace c
-        is_continuation []    = False
-        get_continuation s = '\n':strip_dot (dropWhile isSpace s)
-        strip_dot "." = ""
-        strip_dot s   = s
-merge []         = []
-
 mkStanza :: [(Int,String)] -> ParseResult [Field]
-mkStanza []          = return []
-mkStanza ((n,'#':xs):ys) | not (isSpace (head xs)) = do
-  ss <- mkStanza ys
-  return ((n, '#':dir, dropWhile isSpace val) : ss)
+mkStanza lines = parseLines lines []
+  where 
+    parseLines [] fs = return (reverse fs)
+    parseLines ls fs = do (f, ls') <- getField ls
+                          parseLines ls' $ maybe fs (:fs) f
+
+-- parses:
+--
+--   field ::= '#' directive value '\n'
+--           | [<indent>] fieldname ':' space* fieldvalue
+--           | "if" space cond
+--           | sectionname section
+--
+getField :: [(Int,String)] -> ParseResult (Maybe Field,[(Int,String)])
+getField [] = return (Nothing, [])
+getField ((n,[]):lines) = return (Nothing,lines)
+getField ((n,'#':xs):lines) | not (isSpace (head xs)) = do
+  return (Just $ F n ('#':dir) (dropSpaces val), lines)
   where (dir,val) = break isSpace xs
-mkStanza ((n,xs):ys) =
-  case break (==':') xs of
-    (fld0, ':':val) -> do
-       let fld = map toLower fld0
-       ss <- mkStanza ys
-       return ((n, fld, dropWhile isSpace val):ss)
-    (_, _)       -> syntaxError n "Invalid syntax (no colon after field name)"
+getField ((lineno,line0):lines) =
+    let (spaces,line) = span isSpace line0
+        indent = length spaces in 
+    case break (`elem` " :{") line of
+      (fld0, ':':val0) -> do  -- regular field
+        let fld = map toLower fld0
+            (val, lines') = getFieldValue indent (dropWhile isSpace val0) lines
+        return (Just $ F lineno fld val, lines')
+      (blkName, ' ':rest) 
+        | map toLower blkName == "if"             -> getIf (lineno,rest) lines 
+        | map toLower blkName `elem` sectionNames -> getSection blkName (lineno,rest) lines
+        | otherwise -> syntaxError lineno $
+            "Missing colon after field label or invalid section name"
+      (blkName, '{':rest) 
+        | map toLower blkName `elem` sectionNames -> 
+            getSection blkName (lineno,'{':rest) lines
+      ("","") -> return (Nothing,lines)
+      (_,_) -> syntaxError lineno $
+        "Unrecognized field format: '" ++ line ++ "'"
+          
+
+
+-- parses:
+--
+--   cond ::= (any - '}')* block [ space* "else" block ]
+--
+getIf :: (Int,String) -> [(Int,String)] -> ParseResult (Maybe Field,[(Int,String)])
+getIf (n,rest) lines = do
+    (cond, ifBlock, lines') <- 
+        case break (=='{') (dropSpaces rest) of
+          (cond, '{':cs) -> 
+            do (b,ls) <- getBlock (n,'{':cs) lines
+               return (cond, b, ls)
+          (cond, _) -> -- condition spans more than one line
+            syntaxError n "Multi-line conditions currently not supported."
+    (elseBlock, lines'') <- tryElseBlock lines'
+    return (Just $ IfBlock cond ifBlock elseBlock, lines'') 
+  where 
+    tryElseBlock [] = return ([], [])
+    tryElseBlock ((n,l):ls) = 
+        if all isSpace l then return ([],ls) 
+        else case (splitAt 4 . dropSpaces) l of
+          (kw, rest) -> 
+              if kw == "else" then 
+                  getBlock (n,dropSpaces rest) ls
+              else syntaxError n "Only 'else' may appear after an if-Block"
+          
+-- parses:
+-- 
+--   block ::= space* '{' space* '\n'
+--             field*
+--             space* '}' space* '\n'
+--   
+getBlock :: (Int,String) -> [(Int,String)] -> ParseResult ([Field],[(Int,String)])
+getBlock (n,rest) lines = do
+    lines' <- checkBlockStart (n,dropSpaces rest) lines
+    munchTillEndOfBlock lines' []
+  where
+    checkBlockStart (n,'{':cs) ls = 
+        if all isSpace cs then return ls
+        else syntaxError n "Invalid characters after '{'"
+    checkBlockStart (_,[]) ((n,l):ls) = 
+        checkBlockStart (n,dropSpaces l) ls
+    checkBlockStart (n,_) _ = syntaxError n "'{' expected"
+                         
+    munchTillEndOfBlock [] _ = syntaxError (-1) "missing '}' at end of file"
+    munchTillEndOfBlock lines@((n,l):ls) fs =
+        case break (=='}') l of
+          (spaces, '}':rest) ->   
+              if all isSpace spaces
+              then return ( reverse fs
+                          , (n, rest):ls) 
+              else syntaxError n "'}' must be first character on the line"
+          _ -> do (f,ls') <- getField lines
+                  munchTillEndOfBlock ls' $ maybe fs (:fs) f
+
+-- parses:
+--
+--   section ::= space* [ blocklabel ] space* block
+--   
+getSection :: String -> (Int,String) -> [(Int,String)] 
+           -> ParseResult (Maybe Field,[(Int,String)])
+getSection sectName (n,l) lines = 
+    case break (=='{') (dropSpaces l) of
+      (sectLabel, '{':rest) -> 
+          do (b,lines') <- getBlock (n,'{':rest) lines 
+             return (Just $ Section sectName sectLabel b, lines')
+
+-- Get the field value of a field at given indentation      
+getFieldValue :: Int -> String -> [(Int,String)] 
+              -> (String,[(Int,String)])
+getFieldValue indent val lines = 
+    ( val' ++ rest 
+    , lines')
+  where
+    val' = dropWhile isSpace val
+    rest = (if val' == "" then tail else id) $
+             -- don't include initial newline if it would be the first
+             -- character
+             concatMap (getContinuation . snd) valrest
+                
+    (valrest,lines') = span (isContinuation indent . snd) lines
+    -- the continuation of a field value is everything that is indented
+    -- relative to the field's label
+    isContinuation indent line = 
+        length (takeWhile isSpace line) > indent && not (all isSpace line)
+    getContinuation line = '\n':stripDot (dropWhile isSpace line)
+    stripDot "." = ""
+    stripDot s   = s
+
+------------------------------------------------------------------------------
 
 -- |parse a module name
 parseModuleNameQ :: ReadP r String
@@ -303,3 +430,131 @@ showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
 showFreeText s = vcat [text (if null l then "." else l) | l <- lines s]
+
+------------------------------------------------------------------------------
+-- TESTING
+
+#ifdef DEBUG
+test_readFields = case readFields testFile of
+                    ParseOk _ x -> x == expectedResult
+                    _ -> False
+  where 
+    testFile = unlines $
+          [ "Cabal-version: 3"
+          , ""
+          , "Description: This is a test file   "
+          , "  with a description longer than two lines.  "
+          , "if os(windows) {"
+          , "  License:  You may not use this software"
+          , "    ."
+          , "    If you do use this software you will be seeked and destroyed."
+          , "}"
+          , "if os(linux) {"
+          , "  Main-is:  foo1  "
+          , "}"
+          , ""
+          , "if os(vista) {"
+          , "  executable RootKit {"
+          , "    Main-is: DRMManager.hs"
+          , "  }"
+          , "} else {"
+          , "  executable VistaRemoteAccess {"
+          , "    Main-is: VCtrl"
+          , "}}"
+          , ""
+          , "executable Foo-bar {"
+          , "  Main-is: Foo.hs"
+          , "}"
+          ]
+    expectedResult = 
+          [ F 1 "cabal-version" "3"
+          , F 3 "description" 
+                  "This is a test file\nwith a description longer than two lines."
+          , IfBlock "os(windows) " 
+              [ F 6 "license" 
+                      "You may not use this software\n\nIf you do use this software you will be seeked and destroyed."
+              ]
+              []
+          , IfBlock "os(linux) " 
+              [ F 11 "main-is" "foo1" ] 
+              [ ]
+          , IfBlock "os(vista) " 
+              [ Section "executable" "RootKit " 
+                [ F 16 "main-is" "DRMManager.hs"]
+              ] 
+              [ Section "executable" "VistaRemoteAccess "
+                 [F 20 "main-is" "VCtrl"]
+              ]
+          , Section "executable" "Foo-bar " 
+              [F 24 "main-is" "Foo.hs"]
+          ]
+
+test_readFieldsCompat' = case test_readFieldsCompat of
+                           ParseOk _ fs -> mapM_ (putStrLn . show) fs
+                           x -> putStrLn $ "Failed: " ++ show x
+test_readFieldsCompat = readFields testPkgDesc
+  where 
+    testPkgDesc = unlines [
+        "-- Required",
+        "Name: Cabal",
+        "Version: 0.1.1.1.1-rain",
+        "License: LGPL",
+        "License-File: foo",
+        "Copyright: Free Text String",
+        "Cabal-version: >1.1.1",
+        "-- Optional - may be in source?",
+        "Author: Happy Haskell Hacker",
+        "Homepage: http://www.haskell.org/foo",
+        "Package-url: http://www.haskell.org/foo",
+        "Synopsis: a nice package!",
+        "Description: a really nice package!",
+        "Category: tools",
+        "buildable: True",
+        "CC-OPTIONS: -g -o",
+        "LD-OPTIONS: -BStatic -dn",
+        "Frameworks: foo",
+        "Tested-with: GHC",
+        "Stability: Free Text String",
+        "Build-Depends: haskell-src, HUnit>=1.0.0-rain",
+        "Other-Modules: Distribution.Package, Distribution.Version,",
+        "                Distribution.Simple.GHCPackageConfig",
+        "Other-files: file1, file2",
+        "Extra-Tmp-Files:    file1, file2",
+        "C-Sources: not/even/rain.c, such/small/hands",
+        "HS-Source-Dirs: src, src2",
+        "Exposed-Modules: Distribution.Void, Foo.Bar",
+        "Extensions: OverlappingInstances, TypeSynonymInstances",
+        "Extra-Libraries: libfoo, bar, bang",
+        "Extra-Lib-Dirs: \"/usr/local/libs\"",
+        "Include-Dirs: your/slightest, look/will",
+        "Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
+        "Install-Includes: /easily/unclose, /me, \"funky, path\\\\name\"",
+        "GHC-Options: -fTH -fglasgow-exts",
+        "Hugs-Options: +TH",
+        "Nhc-Options: ",
+        "Jhc-Options: ",
+        "",
+        "-- Next is an executable",
+        "Executable: somescript",
+        "Main-is: SomeFile.hs",
+        "Other-Modules: Foo1, Util, Main",
+        "HS-Source-Dir: scripts",
+        "Extensions: OverlappingInstances",
+        "GHC-Options: ",
+        "Hugs-Options: ",
+        "Nhc-Options: ",
+        "Jhc-Options: "
+        ]
+{-
+test' = do h <- openFile "../Cabal.cabal" ReadMode
+           s <- hGetContents h
+           let r = readFields s
+           case r of
+             ParseOk _ fs -> mapM_ (putStrLn . show) fs
+             x -> putStrLn $ "Failed: " ++ show x
+           putStrLn "==================="
+           mapM_ (putStrLn . show) $
+                 merge . zip [1..] . lines $ s
+           hClose h
+-}
+#endif                     

@@ -592,7 +592,7 @@ parseDescription str = do
   pkg <- parseFields basic_field_descrs emptyPackageDescription st
   foldM parseExtraStanza pkg sts
   where
-        parseExtraStanza pkg st@((_lineNo, "executable",_eName):_) = do
+        parseExtraStanza pkg st@((F _lineNo "executable" _eName):_) = do
 		exe <- parseFields executableFieldDescrs emptyExecutable st
 		return pkg{executables= executables pkg ++ [exe]}
         parseExtraStanza _ x = error ("This shouldn't happen!" ++ show x)
@@ -608,24 +608,24 @@ stanzas (f:fields) = (f:this) : stanzas rest
   where (this, rest) = break isStanzaHeader fields
 
 isStanzaHeader :: Field -> Bool
-isStanzaHeader (_,f,_) = f == "executable"
+isStanzaHeader (F _ f _) = f == "executable"
 
 parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a
 parseFields descrs ini fields = foldM (parseField descrs) ini fields
 
 parseField :: [FieldDescr a] -> a -> Field -> ParseResult a
-parseField ((FieldDescr name _ parse):fields) a (lineNo, f, val)
+parseField ((FieldDescr name _ parse):fields) a (F lineNo f val)
   | name == f = parse lineNo val a
-  | otherwise = parseField fields a (lineNo, f, val)
+  | otherwise = parseField fields a (F lineNo f val)
 -- ignore "x-" extension fields without a warning
-parseField [] a (_, 'x':'-':_, _) = return a
-parseField [] a (_, f, _) = do
+parseField [] a (F _ ('x':'-':_) _) = return a
+parseField [] a (F _ f _) = do
           warning $ "Unknown field '" ++ f ++ "'"
           return a
 
 -- Handle deprecated fields
 deprecField :: Field -> ParseResult Field
-deprecField (line,fld,val) = do
+deprecField (F line fld val) = do
   fld' <- case fld of
 	     "hs-source-dir"
 		-> do warning "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs."
@@ -634,9 +634,9 @@ deprecField (line,fld,val) = do
 		-> do warning "The field \"other-files\" is deprecated, please use extra-source-files."
 		      return "extra-source-files"
 	     _ -> return fld
-  return (line,fld',val)
+  return (F line fld' val)
 
-
+   
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   fields <- readFields inp
@@ -646,12 +646,12 @@ parseHookedBuildInfo inp = do
   return (mLib, biExes)
   where
     parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
-    parseLib (bi@((_, inFieldName, _):_))
+    parseLib (bi@((F _ inFieldName _):_))
         | map toLower inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
 
     parseExe :: [Field] -> ParseResult (String, BuildInfo)
-    parseExe ((lineNo, inFieldName, mName):bi)
+    parseExe ((F lineNo inFieldName mName):bi)
         | map toLower inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
