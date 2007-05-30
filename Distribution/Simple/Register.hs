@@ -151,8 +151,7 @@ register pkg_descr lbi regFlags
 	let instConf = if inplace then inplacePkgConfigFile 
 				  else installedPkgConfigFile
 
-        instConfExists <- doesFileExist instConf
-        when (not instConfExists && not genScript) $ do
+        unless genScript $ do
           when (verbosity >= verbose) $
             putStrLn ("create " ++ instConf)
           writeInstalledConfig pkg_descr lbi inplace
