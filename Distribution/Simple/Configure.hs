@@ -50,6 +50,7 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
+                                      hscolourVersion,
                                       haddockVersion,
 #ifdef DEBUG
                                       hunitTests
@@ -431,6 +432,21 @@ configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
                    _   -> fail ("parsing version: "++ver++" failed.")
     _        -> fail ("reading version string: "++show str++" failed.")
 configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
+
+hscolourVersion :: Verbosity -> LocalBuildInfo -> IO Version
+hscolourVersion verbosity lbi = fmap getVer verString
+ where
+   -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
+   verString = do hscolourProg <-
+                    fmap (fromMaybe noHscolour) $
+                    lookupProgram "hscolour" (withPrograms lbi)
+                  rawSystemStdout verbosity
+                     (progLocPath (programLocation hscolourProg)) ["-version"]
+   getVer    = head . pCheck . readP_to_S parseVersion . (!! 1) . words
+   noHscolour = error "hscolourVersion: cannot find hscolour"
+   progLocPath EmptyLocation        = noHscolour
+   progLocPath (UserSpecified path) = path
+   progLocPath (FoundOnSystem path) = path
 
 haddockVersion :: Verbosity -> LocalBuildInfo -> IO Version
 haddockVersion verbosity lbi = fmap getVer verString

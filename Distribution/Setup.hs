@@ -47,10 +47,8 @@ module Distribution.Setup (--parseArgs,
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), emptyCopyFlags,
 			   InstallFlags(..), emptyInstallFlags,
-                           HaddockFlags(..), emptyHaddockFlags,
-                           BuildFlags(..), emptyBuildFlags,
-                           CleanFlags(..), emptyCleanFlags,
-                           PFEFlags(..),
+                           HaddockFlags(..), emptyHaddockFlags, emptyCleanFlags,
+                           BuildFlags(..), CleanFlags(..), PFEFlags(..),
                            MakefileFlags(..), emptyMakefileFlags,
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
@@ -62,7 +60,7 @@ module Distribution.Setup (--parseArgs,
                            parseGlobalArgs, defaultCompilerFlavor,
                            parseConfigureArgs, parseBuildArgs, parseCleanArgs,
                            parseMakefileArgs,
-                           parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
+                           parseHscolourArgs, parseHaddockArgs, parseProgramaticaArgs, parseTestArgs,
                            parseInstallArgs, parseSDistArgs, parseRegisterArgs,
                            parseUnregisterArgs, parseCopyArgs,
                            reqPathArg, reqDirArg
@@ -93,6 +91,7 @@ data Action = ConfigCmd ConfigFlags   -- config
             | BuildCmd                -- build
             | CleanCmd                -- clean
             | CopyCmd CopyDest        -- copy (--destdir flag)
+            | HscolourCmd             -- hscolour
             | HaddockCmd              -- haddock
             | ProgramaticaCmd         -- pfesetup
             | InstallCmd              -- install (install-prefix)
@@ -240,14 +239,30 @@ emptyRegisterFlags = RegisterFlags { regUser = MaybeUserNone,
                                      regWithHcPkg = Nothing,
                                      regVerbose = normal }
 
+data HscolourFlags = HscolourFlags {hscolourCSS :: Maybe FilePath
+                                   ,hscolourExecutables :: Bool
+                                   ,hscolourVerbose :: Verbosity}
+    deriving Show
+
+emptyHscolourFlags :: HscolourFlags
+emptyHscolourFlags = HscolourFlags {hscolourCSS = Nothing
+                                   ,hscolourExecutables = False
+                                   ,hscolourVerbose = normal}
+
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
                                  ,haddockHtmlLocation :: Maybe String
+                                 ,haddockExecutables :: Bool
+                                 ,haddockHscolour :: Bool
+                                 ,haddockHscolourCss :: Maybe FilePath
                                  ,haddockVerbose :: Verbosity}
     deriving Show
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = HaddockFlags {haddockHoogle = False
                                  ,haddockHtmlLocation = Nothing
+                                 ,haddockExecutables = False
+                                 ,haddockHscolour = False
+                                 ,haddockHscolourCss = Nothing
                                  ,haddockVerbose = normal}
 
 data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
@@ -312,8 +327,13 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DestDir FilePath
           -- For sdist:
           | Snapshot
+          -- For hscolour:
+          | HscolourCss FilePath
+          | HscolourExecutables
           -- For haddock:
           | HaddockHoogle
+          | HaddockExecutables
+          | HaddockHscolour (Maybe FilePath)
           | HaddockHtmlLocation String
           -- For clean:
           | SaveConfigure -- ^don't delete dist\/setup-config during clean
@@ -408,7 +428,8 @@ data Cmd a = Cmd {
 commandList :: ProgramConfiguration -> [Cmd a]
 commandList progConf = [(configureCmd progConf), buildCmd, makefileCmd,
                         cleanCmd, installCmd,
-                        copyCmd, sdistCmd, testCmd, haddockCmd, programaticaCmd,
+                        copyCmd, sdistCmd, testCmd,
+                        haddockCmd, hscolourCmd, programaticaCmd,
                         registerCmd, unregisterCmd]
 
 lookupCommand :: String -> [Cmd a] -> Maybe (Cmd a)
@@ -558,6 +579,9 @@ withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . normalise) "PATH"
 
+optPathArg :: (Maybe FilePath -> a) -> ArgDescr a
+optPathArg constr = OptArg (constr . fmap normalise) "PATH"
+
 reqArgArg :: (FilePath -> a) -> ArgDescr a
 reqArgArg constr = ReqArg (constr . normalise) "ARGS"
 
@@ -651,24 +675,55 @@ parseMakefileArgs = parseArgs makefileCmd updateCfg
                 MakefileFile f -> mflags{makefileFile=Just f}
                 _              -> error "Unexpected flag!"
 
+hscolourCmd :: Cmd a
+hscolourCmd = Cmd {
+        cmdName        = "hscolour",
+        cmdHelp        = "Generate HsColour colourised code, in HTML format.",
+        cmdDescription = "Requires hscolour.\n",
+        cmdOptions     = [cmd_help, cmd_verbose,
+                          Option "" ["executables"] (NoArg HscolourExecutables)
+                            "Run hscolour for Executables targets",
+                          Option "" ["css"] (reqPathArg HscolourCss)
+                            "Use a cascading style sheet"],
+        cmdAction      = HscolourCmd
+        }
+
+parseHscolourArgs :: HscolourFlags -> [String] -> [OptDescr a] -> IO (HscolourFlags, [a], [String])
+parseHscolourArgs  = parseArgs hscolourCmd updateCfg
+  where updateCfg (HscolourFlags css doExe verbosity) fl = case fl of
+            HscolourCss c       -> HscolourFlags (Just c) doExe verbosity
+            HscolourExecutables -> HscolourFlags css      True  verbosity
+            Verbose n           -> HscolourFlags css      doExe n
+            _                   -> error "Unexpected flag!"
+
 haddockCmd :: Cmd a
 haddockCmd = Cmd {
         cmdName        = "haddock",
-        cmdHelp        = "Generate Haddock HTML code from Exposed-Modules.",
-        cmdDescription = "Requires cpphs and haddock.",
-        cmdOptions     = [cmd_help, cmd_verbose,
-                          Option "" ["hoogle"] (NoArg HaddockHoogle) "Generate a hoogle database",
-                          Option "" ["html-location"] (ReqArg HaddockHtmlLocation "URL") "Location of HTML documentation for pre-requisite packages"],
+        cmdHelp        = "Generate Haddock HTML documentation.",
+        cmdDescription = "Requires cpphs and haddock.\n",
+        cmdOptions     =
+         [cmd_help, cmd_verbose,
+          Option "" ["hoogle"] (NoArg HaddockHoogle)
+            "Generate a hoogle database",
+          Option "" ["html-location"] (ReqArg HaddockHtmlLocation "URL")
+            "Location of HTML documentation for pre-requisite packages",
+          Option "" ["executables"] (NoArg HaddockExecutables)
+            "Run haddock for Executables targets",
+          Option "" ["hscolour"] (optPathArg HaddockHscolour)
+            "Also run hscolour (using PATH as the stylesheet, if any)"],
         cmdAction      = HaddockCmd
         }
 
 parseHaddockArgs :: HaddockFlags -> [String] -> [OptDescr a] -> IO (HaddockFlags, [a], [String])
 parseHaddockArgs  = parseArgs haddockCmd updateCfg
   where updateCfg hflags fl = case fl of
-            HaddockHoogle -> hflags{haddockHoogle=True}
+            HaddockHoogle         -> hflags{haddockHoogle = True}
             HaddockHtmlLocation s -> hflags{haddockHtmlLocation=Just s}
-            Verbose n     -> hflags{haddockVerbose=n}
-            _             -> error "Unexpected flag!"
+            HaddockExecutables    -> hflags{haddockExecutables = True}
+            HaddockHscolour h     -> hflags{haddockHscolour = True
+                                           ,haddockHscolourCss = h}
+            Verbose n             -> hflags{haddockVerbose = n}
+            _                     -> error "Unexpected flag!"
 
 programaticaCmd :: Cmd a
 programaticaCmd = Cmd {
