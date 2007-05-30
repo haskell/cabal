@@ -70,7 +70,7 @@ import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
 import Distribution.Program(lookupProgram, Program(..), ProgramConfiguration(..),
-                            haddockProgram, rawSystemProgram, defaultProgramConfiguration,
+                            hscolourProgram, haddockProgram, rawSystemProgram, defaultProgramConfiguration,
                             pfesetupProgram, updateProgram,  rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes, ppCpp',
                                 ppUnlit, removePreprocessedPackage,
@@ -87,10 +87,10 @@ import Distribution.Simple.Register	( register, unregister,
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
                                      configure, writePersistBuildConfig, localBuildInfoFile,
-                                     haddockVersion)
+                                     hscolourVersion, haddockVersion)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
-                                            srcPref, haddockPref, substDir )
+                                            srcPref, hscolourPref, haddockPref, substDir )
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir,
                                   createDirectoryIfMissingVerbose,
@@ -109,14 +109,15 @@ import Distribution.License
 import Control.Monad(liftM, when, unless)
 import Data.Char	( isSpace )
 import Data.List	( intersperse, unionBy )
-import Data.Maybe	( catMaybes )
+import Data.Maybe       ( isJust, catMaybes )
 import System.IO.Error (try)
 import System.IO        ( hPutStrLn, stderr )
 import System.Environment ( getProgName )
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
-import System.FilePath((</>), (<.>), splitFileName, splitExtension , replaceExtension)
+import System.FilePath((</>), (<.>), splitFileName, splitExtension,
+                       replaceExtension, takeExtension)
 
 #ifdef DEBUG
 import HUnit (Test)
@@ -208,11 +209,18 @@ data UserHooks = UserHooks
       -- |Hook to run after unregister command
      postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
+      -- |Hook to run before hscolour command.  Second arg indicates verbosity level.
+     preHscolour  :: Args -> HscolourFlags -> IO HookedBuildInfo,
+     -- |Over-ride this hook to get different behavior during hscolour.
+     hscolourHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HscolourFlags -> IO (),
+      -- |Hook to run after hscolour command.  Second arg indicates verbosity level.
+     postHscolour :: Args -> HscolourFlags -> PackageDescription -> LocalBuildInfo -> IO (),
+
       -- |Hook to run before haddock command.  Second arg indicates verbosity level.
      preHaddock  :: Args -> HaddockFlags -> IO HookedBuildInfo,
-      -- |Hook to run after haddock command.  Second arg indicates verbosity level.
      -- |Over-ride this hook to get different behavior during haddock.
      haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
+      -- |Hook to run after haddock command.  Second arg indicates verbosity level.
      postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
       -- |Hook to run before pfe command.  Second arg indicates verbosity level.
@@ -321,6 +329,11 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                 command (parseMakefileArgs emptyMakefileFlags) makefileVerbose
                         preMakefile makefileHook postMakefile
                         getPersistBuildConfig
+
+            HscolourCmd ->
+                command (parseHscolourArgs emptyHscolourFlags) hscolourVerbose
+                        preHscolour hscolourHook postHscolour
+                        getPersistBuildConfig
         
             HaddockCmd -> 
                 command (parseHaddockArgs emptyHaddockFlags) haddockVerbose
@@ -391,7 +404,11 @@ getModulePaths lbi bi =
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
-haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
+haddock pkg_descr lbi hooks
+        (HaddockFlags hoogle html_loc doExes hsColour css verbosity) = do
+    when hsColour $ hscolour pkg_descr lbi hooks $
+             HscolourFlags css doExes verbosity
+
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
                       let haddockPath = programName haddockProgram
@@ -413,9 +430,16 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
     let ghcpkgFlags = if have_new_flags
                       then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
                       else []
+    let verboseFlags = if verbosity > deafening then ["--verbose"] else []
     let allowMissingHtmlFlags = if have_new_flags
                                 then ["--allow-missing-html"]
                                 else []
+    when (hsColour && not have_new_flags) $
+         die "haddock --hscolour requires Haddock version > 0.8"
+    let linkToHscolour = if hsColour
+            then ["--source-module=src/%{FILE///-}.html"
+                 ,"--source-entity=src/%{FILE///-}.html#(line%{LINE})"]
+            else []
 
     let pkgTool = compilerPkgTool (compiler lbi)
     let trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -453,14 +477,16 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                   "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
+                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
-                 ++ (if verbosity >= deafening then ["--verbose"] else [])
+                 ++ verboseFlags
                  ++ outFiles
                  ++ map ("--hide=" ++) (otherModules bi)
                 )
         removeFile prologName
-    withExe pkg_descr $ \exe -> do
+
+    withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
             exeTargetDir = haddockPref pkg_descr </> exeName exe
         createDirectoryIfMissingVerbose verbosity True exeTargetDir
@@ -475,9 +501,10 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                   "--title=" ++ exeName exe]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
+                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
-                 ++ (if verbosity >= deafening then ["--verbose"] else [])
+                 ++ verboseFlags
                  ++ outFiles
                 )
 
@@ -489,7 +516,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                  let targetFile = targetDir </> fileName
                  let (targetFileNoext, targetFileExt) = splitExtension targetFile
                  createDirectoryIfMissingVerbose verbosity True targetDir
-                 if (needsCpp pkg_descr)
+                 if needsCpp bi
                     then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
                            file targetFile verbosity
                     else copyFile file targetFile
@@ -497,10 +524,58 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                        runSimplePreProcessor ppUnlit
                          targetFile (targetFileNoext <.> "hs") verbosity
                        return ()
-        needsCpp :: PackageDescription -> Bool
-        needsCpp p = case library p of
-          Nothing  -> False
-          Just lib -> CPP `elem` extensions (libBuildInfo lib)
+        needsCpp :: BuildInfo -> Bool
+        needsCpp bi = CPP `elem` extensions bi
+
+-- --------------------------------------------------------------------------
+-- hscolour support
+
+hscolour :: PackageDescription -> LocalBuildInfo -> UserHooks -> HscolourFlags -> IO ()
+hscolour pkg_descr lbi hooks (HscolourFlags stylesheet doExes verbosity) = do
+    let pps = allSuffixHandlers hooks
+    confHscolour <- do let programConf = withPrograms lbi
+                       let hscolourPath = programName hscolourProgram
+                       mHscol <- lookupProgram hscolourPath programConf
+                       maybe (die "HsColour command not found") return mHscol
+
+    haveLines <- fmap (>= Version [1,8] []) (hscolourVersion verbosity lbi)
+    unless haveLines $ die "hscolour version >= 1.8 required"
+
+    createDirectoryIfMissing True $ hscolourPref pkg_descr
+    preprocessSources pkg_descr lbi verbosity pps
+
+    setupMessage verbosity "Running hscolour for" pkg_descr
+    let replaceDot = map (\c -> if c == '.' then '-' else c)
+
+    withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
+        let bi = libBuildInfo lib
+        let modules = exposedModules lib ++ otherModules bi
+        inFiles <- getModulePaths bi modules
+        flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
+            let outputDir = hscolourPref pkg_descr </> "src"
+            let outFile = outputDir </> replaceDot mo <.>
+                          takeExtension inFile <.> "html"
+            createDirectoryIfMissing True outputDir
+            copyCSS outputDir
+            rawSystemProgram verbosity confHscolour
+                     ["-css", "-anchor", "-o" ++ outFile, inFile]
+
+    withExe pkg_descr $ \exe -> when doExes $ do
+        let bi = buildInfo exe
+        let modules = "Main" : otherModules bi
+        let outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
+        createDirectoryIfMissing True outputDir
+        copyCSS outputDir
+        srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
+        inFiles <- liftM (srcMainPath :) $ getModulePaths bi (otherModules bi)
+        flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
+            let outFile = outputDir </> replaceDot mo <.>
+                          takeExtension inFile <.> "html"
+            rawSystemProgram verbosity confHscolour
+                     ["-css", "-anchor", "-o" ++ outFile, inFile]
+  where copyCSS dir = case stylesheet of
+                      Nothing -> return ()
+                      Just s -> copyFile s (dir </> "hscolour.css")
 
 
 -- --------------------------------------------------------------------------
@@ -629,9 +704,12 @@ emptyUserHooks
        prePFE    = rn,
        pfeHook   = ru,
        postPFE   = ru,
-       preHaddock  = rn,
-       haddockHook = ru,
-       postHaddock = ru
+       preHscolour  = rn,
+       hscolourHook = ru,
+       postHscolour = ru,
+       preHaddock   = rn,
+       haddockHook  = ru,
+       postHaddock  = ru
       }
     where rn  args _   = no_extra_flags args >> return emptyHookedBuildInfo
           ru _ _ _ _ = return ()
@@ -649,6 +727,7 @@ simpleUserHooks =
        sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
        pfeHook   = pfe,
        cleanHook = clean,
+       hscolourHook = hscolour,
        haddockHook = haddock,
        regHook   = defaultRegHook,
        unregHook = \p l _ f -> unregister p l f
@@ -680,6 +759,7 @@ autoconfUserHooks
        preClean  = readHook cleanVerbose,
        preCopy   = readHook copyVerbose,
        preInst   = readHook installVerbose,
+       preHscolour = readHook hscolourVerbose,
        preHaddock  = readHook haddockVerbose,
        preReg    = readHook regVerbose,
        preUnreg  = readHook regVerbose
