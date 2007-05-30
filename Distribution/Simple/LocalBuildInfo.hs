@@ -56,7 +56,7 @@ module Distribution.Simple.LocalBuildInfo (
 	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
-	distPref, srcPref, haddockPref, autogenModulesDir, mkIncludeDir
+	distPref, srcPref, hscolourPref, haddockPref, autogenModulesDir, mkIncludeDir
   ) where
 
 
@@ -131,6 +131,9 @@ distPref = "dist"
 
 srcPref :: FilePath
 srcPref = distPref </> "src"
+
+hscolourPref :: PackageDescription -> FilePath
+hscolourPref = haddockPref
 
 haddockPref :: PackageDescription -> FilePath
 haddockPref pkg_descr

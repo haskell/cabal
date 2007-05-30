@@ -54,6 +54,7 @@ module Distribution.Program(
                            , hsc2hsProgram
                            , c2hsProgram
                            , cpphsProgram
+                           , hscolourProgram
                            , haddockProgram
                            , greencardProgram
                            , ldProgram
@@ -102,7 +103,8 @@ instance Read ProgramConfiguration where
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
-                              [ haddockProgram
+                              [ hscolourProgram
+                              , haddockProgram
                               , pfesetupProgram
                               , ranlibProgram
                               , simpleProgram "runghc"
@@ -178,6 +180,9 @@ c2hsProgram = simpleProgram "c2hs"
 
 cpphsProgram :: Program
 cpphsProgram = simpleProgram "cpphs"
+
+hscolourProgram :: Program
+hscolourProgram = (simpleProgram "hscolour"){ programBinName = "HsColour" }
 
 haddockProgram :: Program
 haddockProgram = simpleProgram "haddock"

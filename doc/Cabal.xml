@@ -12,6 +12,7 @@
     <!ENTITY Cpphs '<ulink url="http://www.haskell.org/cpphs/"><command>cpphs</command></ulink>'>
     <!ENTITY Greencard '<ulink url="http://www.haskell.org/greencard/"><command>greencard</command></ulink>'>
     <!ENTITY Haddock '<ulink url="http://www.haskell.org/haddock/"><command>haddock</command></ulink>'>
+    <!ENTITY HsColour '<ulink url="http://www.cs.york.ac.uk/fp/darcs/hscolour/"><command>HsColour</command></ulink>'>
     <!ENTITY Happy '<ulink url="http://www.haskell.org/happy/"><command>happy</command></ulink>'>
     <!ENTITY HackageDB '<ulink url="http://hackage.haskell.org/">HackageDB</ulink>'>
   ]>
@@ -1320,6 +1321,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>--with-hscolour</option>=<replaceable>path</replaceable></term>
+	    <listitem>
+	      <para>Specify the path to &HsColour;.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>--with-haddock</option>=<replaceable>path</replaceable></term>
 	    <listitem>
 	      <para>Specify the path to &Haddock;.</para>
@@ -1796,8 +1804,9 @@ runhaskell Setup.hs build
 
     <sect2 id="setup-haddock">
       <title>setup haddock</title>
-      <para>Build the interface documentation for a library using
-        &Haddock;.</para>
+      <para>Build the documentation for the package using &Haddock;.  By
+      default, only the documentation for the exposed modules is generated
+      (see <xref linkend="setup-haddock-executables"/>).</para>
 
       <para>This command takes the following options:</para>
 
@@ -1831,6 +1840,64 @@ runhaskell Setup.hs build
             <para>If this option is omitted, the location for each package
               is obtained using the package tool (e.g.
               <command>ghc-pkg</command>).</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry id="setup-haddock-executables">
+          <term><option>--executables</option></term>
+          <listitem>
+            <para>Also run &Haddock; for the modules of all the executable
+            programs.  By default &Haddock; is run only on the exported
+            modules.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--hscolour</option>=[<replaceable>path</replaceable>]</term>
+          <listitem>
+            <para>Generate &Haddock; documentation integrated with &HsColour;.
+            First, &HsColour; is run to generate colourised code.  The
+            optional argument <replaceable>path</replaceable> denotes a CSS
+            file, which is passed to &HsColour; as in</para>
+            <screen>
+runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
+            <para>Then &Haddock; is run to generate HTML documentation.  Each
+            entity shown in the documentation is linked to its definition in
+            the colourised code.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </sect2>
+
+    <sect2 id="setup-hscolour">
+      <title>setup hscolour</title>
+      <para>Produce colourised code in HTML format using &HsColour;.
+      Colourised code for exported modules is put in
+      <filename>dist/doc/html/<replaceable>pkgid</replaceable>/src</filename>.</para>
+
+      <para>This command takes the following options:</para>
+
+      <variablelist>
+        <varlistentry>
+          <term><option>--executables</option></term>
+          <listitem>
+            <para>Also run &HsColour; on the sources of all executable
+            programs.  Colourised code is put in
+            <filename>dist/doc/html/<replaceable>pkgid</replaceable>/<replaceable>executable</replaceable>/src</filename>.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--css</option>=<replaceable>path</replaceable></term>
+          <listitem>
+            <para>Copy the CSS file from <replaceable>path</replaceable> to
+            <filename>dist/doc/html/<replaceable>pkgid</replaceable>/src/hscolour.css</filename>
+            for exported modules, or to
+            <filename>dist/doc/html/<replaceable>pkgid</replaceable>/<replaceable>executable</replaceable>/src/hscolour.css</filename>
+            for executable programs.  The CSS file defines the actual colours
+            used to colourise code.  Note that the
+            <filename>hscolour.css</filename> file is required for the code
+            to be actually colourised.</para>
           </listitem>
         </varlistentry>
       </variablelist>
