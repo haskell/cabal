@@ -421,7 +421,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
     let getField pkgId f = do
             let name = showPackageId pkgId
             s <- rawSystemStdout verbosity pkgTool ["field", name, f]
-            return $ trim $ dropWhile (not . isSpace) s
+            return $ trim $ dropWhile (not . isSpace) $ head $ lines s
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
             html <- case html_loc of
