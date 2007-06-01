@@ -61,4 +61,6 @@ Other-Modules:
         Distribution.Compat.Exception,
         Distribution.Compat.RawSystem,
         Distribution.Compat.TempFile
+Extra-Source-Files:
+        mkGHCMakefile.sh Distribution/Simple/GHCMakefile.in
 Extensions: CPP
