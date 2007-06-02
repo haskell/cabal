@@ -64,7 +64,7 @@ module Distribution.Simple.Register (
 #endif
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir, mkHaddockDir,
-					   mkIncludeDir)
+					   mkIncludeDir, distPref)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
@@ -233,11 +233,11 @@ removeInstalledConfig = do
   try (removeFile installedPkgConfigFile) >> return ()
   try (removeFile inplacePkgConfigFile) >> return ()
 
-installedPkgConfigFile :: String
-installedPkgConfigFile = ".installed-pkg-config"
+installedPkgConfigFile :: FilePath
+installedPkgConfigFile = distPref </> "installed-pkg-config"
 
-inplacePkgConfigFile :: String
-inplacePkgConfigFile = ".inplace-pkg-config"
+inplacePkgConfigFile :: FilePath
+inplacePkgConfigFile = distPref </> "inplace-pkg-config"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
@@ -258,7 +258,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
         haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
         haddockFile = haddockDir </> haddockName pkg_descr
-        inplace_lbi = lbi { datadir = pwd, datasubdir = "dist" }
+        inplace_lbi = lbi { datadir = pwd, datasubdir = distPref }
         haddockDirInplace = mkHaddockDir pkg_descr inplace_lbi NoCopyDest
         haddockFileInplace = haddockDirInplace </> haddockName pkg_descr
     in

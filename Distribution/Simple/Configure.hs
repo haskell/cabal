@@ -9,7 +9,7 @@
 -- Portability :  portable
 --
 -- Explanation: Perform the \"@.\/setup configure@\" action.
--- Outputs the @.setup-config@ file.
+-- Outputs the @dist\/setup-config@ file.
 
 {- All rights reserved.
 
@@ -90,7 +90,7 @@ import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
-import Distribution.Compat.Directory (findExecutable)
+import Distribution.Compat.Directory (findExecutable, createDirectoryIfMissing)
 import Prelude hiding (catch)
 
 #ifdef mingw32_HOST_OS
@@ -128,18 +128,19 @@ maybeGetPersistBuildConfig = do
 -- 'localBuildInfoFile'.
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
+  createDirectoryIfMissing False distPref
   writeFile localBuildInfoFile (show lbi)
 
--- |@.setup-config@
+-- |@dist\/setup-config@
 localBuildInfoFile :: FilePath
-localBuildInfoFile = "./.setup-config"
+localBuildInfoFile = distPref </> "setup-config"
 
 -- -----------------------------------------------------------------------------
 -- * Configuration
 -- -----------------------------------------------------------------------------
 
--- |Perform the \"@.\/setup configure@\" action.
--- Outputs the @.setup-config@ file.
+-- |Perform the \"@setup configure@\" action.
+-- Outputs the @dist\/setup-config@ file.
 configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
 configure pkg_descr cfg
   = do
@@ -217,8 +218,8 @@ configure pkg_descr cfg
 				    return False
 
 	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
-			      buildDir="dist" </> "build",
-			      scratchDir="dist" </> "scratch",
+			      buildDir=distPref </> "build",
+			      scratchDir=distPref </> "scratch",
 			      bindir=my_bindir,
 			      libdir=my_libdir,
 			      libsubdir=my_libsubdir,
