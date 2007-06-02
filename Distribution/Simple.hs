@@ -381,10 +381,10 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
            post_hook hooks args flags pkg_descr localbuildinfo
 
 
-getModulePaths :: BuildInfo -> [String] -> IO [FilePath]
-getModulePaths bi =
+getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
+getModulePaths lbi bi =
    fmap concat .
-      mapM (flip (moduleToFilePath (hsSourceDirs bi)) ["hs", "lhs"])
+      mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
 
 -- --------------------------------------------------------------------------
 -- Haddock support
@@ -436,7 +436,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
-        inFiles <- getModulePaths bi (exposedModules lib ++ otherModules bi)
+        inFiles <- getModulePaths lbi bi (exposedModules lib ++ otherModules bi)
         mockAll bi inFiles
         let prologName = showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
@@ -463,7 +463,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
         let bi = buildInfo exe
             exeTargetDir = haddockPref pkg_descr </> exeName exe
         createDirectoryIfMissing True exeTargetDir
-        inFiles' <- getModulePaths bi (otherModules bi)
+        inFiles' <- getModulePaths lbi bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         let inFiles = srcMainPath : inFiles'
         mockAll bi inFiles
@@ -515,7 +515,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
         preprocessSources pkg_descr lbi verbosity pps
-        inFiles <- getModulePaths bi mods
+        inFiles <- getModulePaths lbi bi mods
         let verbFlags = if verbosity >= deafening then ["-v"] else []
         rawSystemProgramConf verbosity
                              (programName pfesetupProgram)
