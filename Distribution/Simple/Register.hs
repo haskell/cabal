@@ -76,12 +76,13 @@ import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Simple.Utils (rawSystemExit, copyFileVerbose, die)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
+                                  rawSystemExit, copyFileVerbose, die)
 import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 import Distribution.Compat.Directory
-       (createDirectoryIfMissing,removeDirectoryRecursive,
+       (removeDirectoryRecursive,
         setPermissions, getPermissions, Permissions(executable)
        )
 
@@ -188,7 +189,7 @@ register pkg_descr lbi regFlags
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
         let the_libdir = mkLibDir pkg_descr lbi NoCopyDest
-	createDirectoryIfMissing True the_libdir
+	createDirectoryIfMissingVerbose verbosity True the_libdir
 	copyFileVerbose verbosity installedPkgConfigFile
 	    (the_libdir </> "package.conf")
       JHC -> when (verbosity >= normal) $ putStrLn "registering for JHC (nothing to do)"

@@ -62,7 +62,8 @@ import Distribution.PackageDescription
          withLib, withExe, setupMessage)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch))
-import Distribution.Simple.Utils (smartCopySources, die, findPackageDesc,
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
+                                  smartCopySources, die, findPackageDesc,
                                   findFile, copyFileVerbose, rawSystemPathExit)
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes)
@@ -77,7 +78,7 @@ import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
-         getCurrentDirectory, createDirectoryIfMissing, removeDirectoryRecursive)
+         getCurrentDirectory, removeDirectoryRecursive)
 import Distribution.Verbosity
 import System.FilePath ((</>), takeDirectory)
 
@@ -128,7 +129,7 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir </> (nameVersion pkg_descr)
-  createDirectoryIfMissing True targetDir
+  createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
   withLib pkg_descr () $ \ l ->
     prepareDir verbosity targetDir pps (exposedModules l) (libBuildInfo l)
@@ -139,7 +140,7 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
     copyFileTo verbosity targetDir srcMainFile
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
     let dir = takeDirectory file
-    createDirectoryIfMissing True (targetDir </> dir)
+    createDirectoryIfMissingVerbose verbosity True (targetDir </> dir)
     copyFileVerbose verbosity file (targetDir </> file)
 
   when (not (null (licenseFile pkg_descr))) $
@@ -221,7 +222,7 @@ prepareDir verbosity inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModule
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileTo verbosity dir file = do
   let targetFile = dir </> file
-  createDirectoryIfMissing True (takeDirectory targetFile)
+  createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
   copyFileVerbose verbosity file targetFile
 
 ------------------------------------------------------------
