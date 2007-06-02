@@ -64,10 +64,8 @@ import Distribution.Simple.LocalBuildInfo
 				  mkLibexecDir, mkLibexecDirRel, mkProgDirRel )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
-import Distribution.Simple.Utils( die )
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die )
 
-import Distribution.Compat.Directory
-				( createDirectoryIfMissing )
 import System.FilePath          ( (</>), pathSeparator )
 
 import Data.Maybe		( maybeToList, fromJust )
@@ -139,10 +137,10 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
     let name = showPackageId (package pkg_descr)
     die ("Package " ++ name ++ " can't be built on this system.")
 
-  createDirectoryIfMissing True (buildDir lbi)
+  createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
 
   -- construct and write the Paths_<pkg>.hs file
-  createDirectoryIfMissing True (autogenModulesDir lbi)
+  createDirectoryIfMissingVerbose verbosity True (autogenModulesDir lbi)
   buildPathsModule pkg_descr lbi
 
   preprocessSources pkg_descr lbi verbosity suffixes

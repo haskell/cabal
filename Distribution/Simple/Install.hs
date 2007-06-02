@@ -63,7 +63,7 @@ import Distribution.PackageDescription (
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir,
         mkHaddockDir, mkIncludeDir, haddockPref)
-import Distribution.Simple.Utils(copyFileVerbose, die, copyDirectoryRecursiveVerbose)
+import Distribution.Simple.Utils(createDirectoryIfMissingVerbose, copyFileVerbose, die, copyDirectoryRecursiveVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
@@ -72,7 +72,7 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad(when)
-import Distribution.Compat.Directory(createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
+import Distribution.Compat.Directory(doesDirectoryExist, doesFileExist)
 import System.FilePath(takeDirectory, (</>), isAbsolute)
 
 import Distribution.Verbosity
@@ -97,14 +97,14 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
                   " does exist: " ++ show docExists))
   when (dataFilesExist || docExists) $ do
     let dataPref = mkDataDir pkg_descr lbi copydest
-    createDirectoryIfMissing True dataPref
+    createDirectoryIfMissingVerbose verbosity True dataPref
     flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
-      createDirectoryIfMissing True (dataPref </> dir)
+      createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
       copyFileVerbose verbosity file (dataPref </> file)
     when docExists $ do
       let targetDir = mkHaddockDir pkg_descr lbi copydest
-      createDirectoryIfMissing True targetDir
+      createDirectoryIfMissingVerbose verbosity True targetDir
       copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
       -- setPermissionsRecursive [Read] targetDir
   let buildPref = buildDir lbi
@@ -138,7 +138,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
 installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installIncludeFiles verbosity PackageDescription{library=Just l} theLibdir
  = do
-   createDirectoryIfMissing True incdir
+   createDirectoryIfMissingVerbose verbosity True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
    sequence_ [ copyFileVerbose verbosity path (incdir </> f)
 	     | (f,path) <- incs ]

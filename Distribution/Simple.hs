@@ -93,6 +93,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref,
                                             srcPref, haddockPref, substDir )
 import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir,
+                                  createDirectoryIfMissingVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
                                   moduleToFilePath, findFile, warn)
 
@@ -114,7 +115,7 @@ import System.IO        ( hPutStrLn, stderr )
 import System.Environment ( getProgName )
 import Distribution.GetOpt
 
-import Distribution.Compat.Directory(createDirectoryIfMissing,removeDirectoryRecursive, copyFile)
+import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension , replaceExtension)
 
 #ifdef DEBUG
@@ -398,8 +399,8 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                       maybe (die "haddock command not found") return mHaddock
 
     let tmpDir = buildDir lbi </> "tmp"
-    createDirectoryIfMissing True tmpDir
-    createDirectoryIfMissing True $ haddockPref pkg_descr
+    createDirectoryIfMissingVerbose verbosity True tmpDir
+    createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi verbosity pps
 
     setupMessage verbosity "Running Haddock for" pkg_descr
@@ -462,7 +463,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
     withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
             exeTargetDir = haddockPref pkg_descr </> exeName exe
-        createDirectoryIfMissing True exeTargetDir
+        createDirectoryIfMissingVerbose verbosity True exeTargetDir
         inFiles' <- getModulePaths lbi bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         let inFiles = srcMainPath : inFiles'
@@ -487,7 +488,7 @@ haddock pkg_descr lbi hooks (HaddockFlags hoogle html_loc verbosity) = do
                  let targetDir  = pref </> filePref
                  let targetFile = targetDir </> fileName
                  let (targetFileNoext, targetFileExt) = splitExtension targetFile
-                 createDirectoryIfMissing True targetDir
+                 createDirectoryIfMissingVerbose verbosity True targetDir
                  if (needsCpp pkg_descr)
                     then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
                            file targetFile verbosity

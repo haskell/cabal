@@ -55,10 +55,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToJHCFlag )
 import Distribution.Package  	( showPackageId )
-import Distribution.Simple.Utils( rawSystemExit, copyFileVerbose, exeExtension )
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
+                                  rawSystemExit, copyFileVerbose,
+                                  exeExtension )
 import System.FilePath          ( (</>) )
-import Distribution.Compat.Directory
-				( createDirectoryIfMissing )
 import Distribution.Verbosity
 
 import Control.Monad		( when )
@@ -115,12 +115,12 @@ jhcPkgConf pd =
 installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
 installLib verb dest build_dir pkg_descr _ = do
     let p = showPackageId (package pkg_descr)++".hl"
-    createDirectoryIfMissing True dest
+    createDirectoryIfMissingVerbose verb True dest
     copyFileVerbose verb (build_dir </> p) (dest </> p)
 
 installExe :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir _ exe = do
     let out   = exeName exe </> exeExtension
-    createDirectoryIfMissing True dest
+    createDirectoryIfMissingVerbose verb True dest
     copyFileVerbose verb (build_dir </> out) (dest </> out)
 
