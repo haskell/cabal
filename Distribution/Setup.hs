@@ -305,7 +305,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | HaddockHoogle
           | HaddockHtmlLocation String
           -- For clean:
-          | SaveConfigure -- ^don't delete .setup-config during clean
+          | SaveConfigure -- ^don't delete dist\/setup-config during clean
           -- For makefile:
           | MakefileFile FilePath
           -- For everyone:
@@ -663,7 +663,7 @@ cleanCmd = Cmd {
         cmdDescription = "Removes .hi, .o, preprocessed sources, etc.\n", -- Multi-line!
         cmdOptions     = [cmd_help, cmd_verbose,
            Option "s" ["save-configure"] (NoArg SaveConfigure)
-               "Do not remove the configuration file (.setup-config) during cleaning.  Saves need to reconfigure."],
+               "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."],
         cmdAction      = CleanCmd
         }
 
