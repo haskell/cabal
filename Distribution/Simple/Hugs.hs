@@ -56,14 +56,14 @@ import Distribution.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
-import Distribution.Simple.Utils( rawSystemExit, die,
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
+                                  rawSystemExit, die,
 				  dotToSep, moduleToFilePath,
 				  smartCopySources, findFile, dllExtension )
 import Language.Haskell.Extension
 				( Extension(..) )
 import Distribution.Compat.Directory
-				( copyFile,createDirectoryIfMissing,
-				  removeDirectoryRecursive )
+				( copyFile, removeDirectoryRecursive )
 import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.Verbosity
@@ -86,7 +86,7 @@ import System.Directory		( Permissions(..), getPermissions,
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
     let pref = scratchDir lbi
-    createDirectoryIfMissing True pref
+    createDirectoryIfMissingVerbose verbosity True pref
     withLib pkg_descr () $ \ l -> do
 	copyFile (autogenModulesDir lbi </> paths_modulename)
 		(pref </> paths_modulename)
@@ -139,7 +139,7 @@ build pkg_descr lbi verbosity = do
 	-- Copy or cpp a file from the source directory to the build directory.
 	copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
 	copyModule cppAll bi srcFile destFile = do
-	    createDirectoryIfMissing True (takeDirectory destFile)
+	    createDirectoryIfMissingVerbose verbosity True (takeDirectory destFile)
 	    (exts, opts, _) <- getOptionsFromSource srcFile
 	    let ghcOpts = hcOptions GHC opts
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
@@ -309,7 +309,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr
     smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
     let buildProgDir = buildPref </> "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
-        createDirectoryIfMissing True binDir
+        createDirectoryIfMissingVerbose verbosity True binDir
     withExe pkg_descr $ \ exe -> do
         let theBuildDir = buildProgDir </> exeName exe
         let installDir = installProgDir </> exeName exe

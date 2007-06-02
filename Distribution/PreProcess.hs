@@ -63,7 +63,8 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (rawSystemExit, die, dieWithLocation,
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
+                                  rawSystemExit, die, dieWithLocation,
                                   moduleToFilePath, moduleToFilePath2)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
@@ -74,7 +75,6 @@ import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
 import System.FilePath
 	(splitExtension, (</>), (<.>), takeDirectory)
-import Distribution.Compat.Directory ( createDirectoryIfMissing )
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -229,7 +229,7 @@ preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
 	                      return (btime < ptime)
             when recomp $ do
               let destDir = destLoc </> dirName srcStem
-              createDirectoryIfMissing True destDir
+              createDirectoryIfMissingVerbose verbosity True destDir
               runPreProcessor pp
                  (psrcLoc, psrcRelFile)
                  (destLoc, srcStem <.> "hs") verbosity

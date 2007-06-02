@@ -56,7 +56,8 @@ import Distribution.PackageDescription
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
-import Distribution.Simple.Utils( rawSystemExit, rawSystemPathExit,
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
+                                  rawSystemExit, rawSystemPathExit,
                                   xargs, die, moduleToFilePath,
 				  smartCopySources, findFile, copyFileVerbose,
                                   mkLibName, mkProfLibName, dotToSep,
@@ -69,8 +70,6 @@ import Distribution.Program	( rawSystemProgram, ranlibProgram,
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToGHCFlag )
 import Distribution.Version	( Version(..) )
-import Distribution.Compat.Directory 
-				( createDirectoryIfMissing )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
@@ -123,7 +122,7 @@ build pkg_descr lbi verbosity = do
 	  forceVanillaLib = TemplateHaskell `elem` extensions libBi
 	  -- TH always needs vanilla libs, even when building for profiling
 
-      createDirectoryIfMissing True libTargetDir
+      createDirectoryIfMissingVerbose verbosity True libTargetDir
       -- put hi-boot files into place for mutually recurive modules
       smartCopySources verbosity (hsSourceDirs libBi)
                        libTargetDir (libModules pkg_descr) ["hi-boot"] False False
@@ -152,7 +151,7 @@ build pkg_descr lbi verbosity = do
          when (verbosity >= verbose) (putStrLn "Building C Sources...")
          sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref 
                                                             filename verbosity
-                       createDirectoryIfMissing True odir
+                       createDirectoryIfMissingVerbose verbosity True odir
                        rawSystemExit verbosity ghcPath args
                    | filename <- cSources libBi]
 
@@ -241,8 +240,8 @@ build pkg_descr lbi verbosity = do
 
 		 let targetDir = pref </> exeName'
                  let exeDir    = targetDir </> (exeName' ++ "-tmp")
-                 createDirectoryIfMissing True targetDir
-                 createDirectoryIfMissing True exeDir
+                 createDirectoryIfMissingVerbose verbosity True targetDir
+                 createDirectoryIfMissingVerbose verbosity True exeDir
                  -- put hi-boot files into place for mutually recursive modules
                  -- FIX: what about exeName.hi-boot?
                  smartCopySources verbosity (hsSourceDirs exeBi)
@@ -253,7 +252,7 @@ build pkg_descr lbi verbosity = do
                   when (verbosity >= verbose) (putStrLn "Building C Sources.")
                   sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
                                                          pref filename verbosity
-                                createDirectoryIfMissing True odir
+                                createDirectoryIfMissingVerbose verbosity True odir
                                 rawSystemExit verbosity ghcPath args
                             | filename <- cSources exeBi]
 
@@ -446,7 +445,7 @@ installExe :: Verbosity -- ^verbosity
            -> PackageDescription
            -> IO ()
 installExe verbosity pref buildPref pkg_descr
-    = do createDirectoryIfMissing True pref
+    = do createDirectoryIfMissingVerbose verbosity True pref
          withExe pkg_descr $ \ (Executable e _ _) -> do
              let exeFileName = e <.> exeExtension
              copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> exeFileName)

@@ -52,6 +52,7 @@ module Distribution.Simple.Utils (
         matchesDescFile,
 	rawSystemPathExit,
         smartCopySources,
+        createDirectoryIfMissingVerbose,
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
         moduleToFilePath,
@@ -297,7 +298,7 @@ smartCopySources :: Verbosity -- ^verbosity
             -> Bool     -- ^Preserve directory structure
             -> IO ()
 smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
-    = do createDirectoryIfMissing True targetDir
+    = do createDirectoryIfMissingVerbose verbosity True targetDir
          allLocations <- mapM moduleToFPErr sources
          let copies = [(srcDir </> name,
                         if preserveDirs 
@@ -305,7 +306,7 @@ smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone p
                           else targetDir </> name) |
                        (srcDir, name) <- concat allLocations]
 	 -- Create parent directories for everything:
-	 mapM_ (createDirectoryIfMissing True) $ nub $
+	 mapM_ (createDirectoryIfMissingVerbose verbosity True) $ nub $
              [takeDirectory targetFile | (_, targetFile) <- copies]
 	 -- Put sources into place:
 	 sequence_ [copyFileVerbose verbosity srcFile destFile |
@@ -316,6 +317,13 @@ smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone p
                             (die ("Error: Could not find module: " ++ m
                                        ++ " with any suffix: " ++ (show searchSuffixes)))
                    return p
+
+createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
+createDirectoryIfMissingVerbose verbosity parentsToo dir = do
+  when (verbosity >= verbose) $
+    let msgParents = if parentsToo then " (and its parents)" else ""
+    in putStrLn ("Creating " ++ dir ++ msgParents)
+  createDirectoryIfMissing parentsToo dir
 
 copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileVerbose verbosity src dest = do
@@ -339,7 +347,7 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
                                             unless isDir $ ioError e
                                             aux srcFile destFile
                               Right _ -> return ()
-         in  do createDirectoryIfMissing False dest
+         in  do createDirectoryIfMissingVerbose verbosity False dest
                 getDirectoryContentsWithoutSpecial src >>= mapM_ cp
    in aux srcDir destDir
 
