@@ -81,8 +81,8 @@ import Control.Monad		( unless, when )
 import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
-import System.FilePath          ( (</>), (<.>), isAbsolute, takeExtension,
-                                  takeDirectory, splitDirectories, replaceExtension )
+import System.FilePath          ( (</>), (<.>), takeExtension,
+                                  takeDirectory, replaceExtension )
 import System.IO
 
 -- System.IO used to export a different try, so we can't use try unqualified
