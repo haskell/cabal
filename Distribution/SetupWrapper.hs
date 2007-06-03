@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.SetupWrapper
@@ -118,15 +117,21 @@ data Flags
     verbosity      :: Verbosity
   }
 
+defaultFlags :: Flags
 defaultFlags = Flags {
   withCompiler = Nothing,
   withHcPkg    = Nothing,
   verbosity      = normal
  }
 
+setWithCompiler :: Maybe FilePath -> Flags -> Flags
 setWithCompiler f flags = flags{ withCompiler=f }
-setWithHcPkg    f flags = flags{ withHcPkg=f }
-setVerbosity      v flags = flags{ verbosity=v }
+
+setWithHcPkg :: Maybe FilePath -> Flags -> Flags
+setWithHcPkg f flags = flags{ withHcPkg=f }
+
+setVerbosity :: Verbosity -> Flags -> Flags
+setVerbosity v flags = flags{ verbosity=v }
 
 opts :: [OptDescr (Flags -> Flags)]
 opts = [
@@ -137,10 +142,8 @@ opts = [
 	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   ]
 
-noSetupScript = error "noSetupScript"
-
 configCabalFlag :: Flags -> VersionRange -> Compiler -> IO [String]
-configCabalFlag flags AnyVersion _ = return []
+configCabalFlag _flags AnyVersion _ = return []
 configCabalFlag flags range comp = do
   ipkgs <-  getInstalledPackages comp True (verbosity flags)
 	-- user packages are *allowed* here, no portability problem
