@@ -47,8 +47,10 @@ module Distribution.Setup (--parseArgs,
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), emptyCopyFlags,
 			   InstallFlags(..), emptyInstallFlags,
-                           HaddockFlags(..), emptyHaddockFlags, emptyCleanFlags,
-                           BuildFlags(..), CleanFlags(..), PFEFlags(..),
+                           HaddockFlags(..), emptyHaddockFlags,
+                           BuildFlags(..), emptyBuildFlags,
+                           CleanFlags(..), emptyCleanFlags,
+                           PFEFlags(..),
                            MakefileFlags(..), emptyMakefileFlags,
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
@@ -123,6 +125,7 @@ data ConfigFlags = ConfigFlags {
         configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
+        configConfigureArgs :: [String],  -- ^Extra arguments to @configure@
         configOptimization :: Bool,       -- ^Enable optimization.
         configPrefix   :: Maybe FilePath,
 		-- ^installation prefix
@@ -162,6 +165,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configVanillaLib  = True,
         configProfLib  = False,
         configProfExe  = False,
+        configConfigureArgs = [],
         configOptimization = True,
         configCpphs    = Nothing,
         configGreencard= Nothing,
@@ -252,16 +256,20 @@ data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
 emptyCleanFlags :: CleanFlags
 emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = normal}
 
--- Following only have verbosity flags, but for consistency and
--- extensibility we make them into a type.
-data BuildFlags   = BuildFlags   {buildVerbose   :: Verbosity}
+data BuildFlags   = BuildFlags   {buildVerbose   :: Verbosity
+                                 ,buildCompilerOptions :: [(CompilerFlavor, String)]}
     deriving Show
 
+emptyBuildFlags :: BuildFlags
+emptyBuildFlags = BuildFlags {buildVerbose = normal, buildCompilerOptions = []}
+
 data MakefileFlags = MakefileFlags {makefileVerbose :: Verbosity,
+                                    makefileCompilerOptions :: [(CompilerFlavor, String)],
                                     makefileFile :: Maybe FilePath}
     deriving Show
 emptyMakefileFlags :: MakefileFlags
 emptyMakefileFlags = MakefileFlags {makefileVerbose = normal,
+                                    makefileCompilerOptions = [],
                                     makefileFile = Nothing}
 
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Verbosity}
@@ -279,6 +287,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithOptimization | WithoutOptimization
 	  | WithGHCiLib | WithoutGHCiLib
 	  | WithSplitObjs | WithoutSplitObjs
+          | ConfigureOption String
 
 	  | Prefix FilePath
 	  | BinDir FilePath
@@ -291,6 +300,8 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | ProgramArgs String String   -- program name, arguments
           | WithProgram String FilePath -- program name, location
 
+          -- For build:
+          | GHCOption String
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -344,7 +355,8 @@ configureArgs flags
         optFlag "bindir" configBinDir ++
         optFlag "libdir" configLibDir ++
         optFlag "libexecdir" configLibExecDir ++
-        optFlag "datadir" configDataDir
+        optFlag "datadir" configDataDir ++
+        configConfigureArgs flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
                         (_, Just hc_path)  -> ["--with-hc=" ++ hc_path]
@@ -512,6 +524,7 @@ configureCmd progConf = Cmd {
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
 	   Option "" ["disable-split-objs"] (NoArg WithoutSplitObjs)
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
+           Option "" ["configure-option"] (ReqArg ConfigureOption "ARG") "Extra option for configure",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -591,27 +604,36 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t GlobalFlag           = t { configUser     = False }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
+	updateCfg t (ConfigureOption s)	 = t { configConfigureArgs = configConfigureArgs t ++ [s] }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
+
+cmd_ghc_option :: OptDescr (Flag a)
+cmd_ghc_option = Option "" ["ghc-option"] (ReqArg GHCOption "ARG") "Extra option for GHC"
 
 buildCmd :: Cmd a
 buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose],
+        cmdOptions     = [cmd_help, cmd_verbose, cmd_ghc_option],
         cmdAction      = BuildCmd
         }
 
-parseBuildArgs :: [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
-parseBuildArgs = parseNoArgs buildCmd BuildFlags
+parseBuildArgs :: BuildFlags -> [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
+parseBuildArgs = parseArgs buildCmd updateArgs
+  where updateArgs bflags fl =
+           case fl of
+                Verbose n      -> bflags{buildVerbose=n}
+                GHCOption s    -> bflags{buildCompilerOptions=buildCompilerOptions bflags ++ [(GHC,s)] }
+                _              -> error "Unexpected flag!"
 
 makefileCmd :: Cmd a
 makefileCmd = Cmd {
         cmdName        = "makefile",
         cmdHelp        = "Perform any necessary makefileing.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = [cmd_help, cmd_verbose, cmd_ghc_option,
            Option "f" ["file"] (reqPathArg MakefileFile)
                "Filename to use (default: Makefile)."],
         cmdAction      = MakefileCmd
@@ -622,6 +644,7 @@ parseMakefileArgs = parseArgs makefileCmd updateCfg
   where updateCfg mflags fl =
            case fl of
                 Verbose n      -> mflags{makefileVerbose=n}
+                GHCOption s    -> mflags{makefileCompilerOptions=makefileCompilerOptions mflags ++ [(GHC,s)] }
                 MakefileFile f -> mflags{makefileFile=Just f}
                 _              -> error "Unexpected flag!"
 
