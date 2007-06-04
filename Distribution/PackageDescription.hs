@@ -70,6 +70,7 @@ module Distribution.PackageDescription (
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
+        mapBuildInfo,
 
         -- ** Supplementary build information
         HookedBuildInfo,
@@ -404,6 +405,16 @@ emptyBuildInfo = BuildInfo {
                       options           = [],
                       ghcProfOptions       = []
                      }
+
+-- | Modify all the 'BuildInfo's in a package description.
+mapBuildInfo :: (BuildInfo -> BuildInfo) ->
+                PackageDescription -> PackageDescription
+mapBuildInfo f pkg = pkg {
+    library = liftM mapLibBuildInfo (library pkg),
+    executables = map mapExeBuildInfo (executables pkg) }
+  where
+    mapLibBuildInfo lib = lib { libBuildInfo = f (libBuildInfo lib) }
+    mapExeBuildInfo exe = exe { buildInfo = f (buildInfo exe) }
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 

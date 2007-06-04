@@ -53,7 +53,7 @@ import Distribution.Compiler	( Compiler(..), CompilerFlavor(..) )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
 				  setupMessage, Executable(..), Library(..), 
-                                  autogenModuleName )
+                                  autogenModuleName, mapBuildInfo )
 import Distribution.Package 	( PackageIdentifier(..), showPackageId )
 import Distribution.Setup	( CopyDest(..), BuildFlags(..), 
                                   MakefileFlags(..) )
@@ -94,7 +94,10 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> BuildFlags -- ^Flags that the user passed to build
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
-build pkg_descr lbi (BuildFlags verbosity) suffixes = do
+build orig_pkg_descr lbi flags suffixes = do
+  let verbosity = buildVerbose flags
+  let addOptions bi = bi { options = options bi ++ [(comp, [opt]) | (comp, opt) <- buildCompilerOptions flags] }
+  let pkg_descr = mapBuildInfo addOptions orig_pkg_descr
   initialBuildSteps pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
@@ -109,8 +112,10 @@ makefile :: PackageDescription  -- ^mostly information from the .cabal file
          -> MakefileFlags -- ^Flags that the user passed to makefile
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
-makefile pkg_descr lbi flags suffixes = do
+makefile orig_pkg_descr lbi flags suffixes = do
   let verb = makefileVerbose flags
+  let addOptions bi = bi { options = options bi ++ [(comp, [opt]) | (comp, opt) <- makefileCompilerOptions flags] }
+  let pkg_descr = mapBuildInfo addOptions orig_pkg_descr
   initialBuildSteps pkg_descr lbi verb suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")

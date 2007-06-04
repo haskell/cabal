@@ -1682,6 +1682,17 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		library or programs will be slower.</para>
 	    </listitem>
 	  </varlistentry>
+
+	  <varlistentry>
+            <term><option>--configure-option</option>=<replaceable>str</replaceable></term>
+            <listitem>
+              <para>An extra option to an external
+                <filename>configure</filename> script,
+                if one is used (see <xref linkend="system-dependent"/>).
+                There can be several of these options.</para>
+            </listitem>
+	  </varlistentry>
+
 	</variablelist>
 
 	<para>In the simple build infrastructure, an additional option
@@ -1704,16 +1715,30 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <title>setup build</title>
       <para>Perform any preprocessing or compilation needed to make this
         package ready for installation.</para>
+
+      <para>This command takes the following option:</para>
+
+      <variablelist>
+        <varlistentry>
+          <term><option>--ghc-option</option>=<replaceable>str</replaceable></term>
+          <listitem>
+            <para>An extra option to GHC, added after those specified in
+              the package description.  There can be several of these
+              options.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+
     </sect2>
 
     <sect2 id="setup-makefile">
       <title>setup makefile</title>
-      <para>Generate a Makefile that may be used to compile the
-      Haskell modules to object code.  This command is currently only
-      supported when building libraries, and only if the compiler is
-      GHC.</para>
+      <para>Generate a <filename>Makefile</filename> that may be used
+      to compile the Haskell modules to object code.
+      This command is currently only supported when building libraries,
+      and only if the compiler is GHC.</para>
 
-      <para>The makefile replaces part of the work done by
+      <para>The makefile command replaces part of the work done by
       <literal>setup build</literal>.  The sequence of commands would
       typeically be:
 <programlisting>
@@ -1745,6 +1770,27 @@ runhaskell Setup.hs build
         </listitem>
       </itemizedlist>
       </para>
+
+      <para>This command takes the following options:</para>
+
+      <variablelist>
+        <varlistentry>
+	  <term><option>--file</option>=<replaceable>filename</replaceable> or
+            <option>-f</option> <replaceable>filename</replaceable></term>
+          <listitem>
+            <para>Specify the output file (default <filename>Makefile</filename>).</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term><option>--ghc-option</option>=<replaceable>str</replaceable></term>
+          <listitem>
+            <para>An extra option to GHC, added after those specified in
+              the package description.  There can be several of these
+              options.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
 
     </sect2>
 

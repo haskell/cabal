@@ -165,7 +165,8 @@ defaultMainHelper args _get_pkg_descr
                           _ -> do putStrLn "Haddock Failed."
                                   exitWith retVal'
 
-            BuildCmd -> basicCommand "Build" "make" (parseBuildArgs args [])
+            BuildCmd -> basicCommand "Build" "make"
+                                     (parseBuildArgs emptyBuildFlags args [])
 
             MakefileCmd -> exitWith ExitSuccess -- presumably nothing to do
 
