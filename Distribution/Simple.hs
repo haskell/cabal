@@ -312,7 +312,7 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                 postConf hooks args flags' pkg_descr localbuildinfo
 
             BuildCmd -> 
-                command parseBuildArgs buildVerbose
+                command (parseBuildArgs emptyBuildFlags) buildVerbose
                         preBuild buildHook postBuild
                         getPersistBuildConfig
         
