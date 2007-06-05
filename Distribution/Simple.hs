@@ -687,12 +687,11 @@ autoconfUserHooks
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
               = do let verbosity = configVerbose flags
-                       args' = configureArgs flags ++ args
+                   no_extra_flags args
                    confExists <- doesFileExist "configure"
-                   if confExists then
-                       rawSystemPathExit verbosity "sh" ("configure" : args')
-                     else
-                       no_extra_flags args
+                   when confExists $
+                       rawSystemPathExit verbosity "sh" $
+                           "configure" : configureArgs flags
 
           readHook :: (a -> Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
