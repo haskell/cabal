@@ -184,7 +184,7 @@ rawSystemStdout verbosity path args = do
     cmdHandle <- runProcess path args Nothing Nothing
                    Nothing (Just tmpHandle) Nothing
     res <- waitForProcess cmdHandle
-    unless (res == ExitSuccess) $ exitWith res
+    checkResult res
     output <- readFile tmpName
     evaluate (length output)
     return output
@@ -192,10 +192,15 @@ rawSystemStdout verbosity path args = do
   withTempFile "." "" $ \tmpName -> do
     let quote name = "'" ++ name ++ "'"
     res <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
-    unless (res == ExitSuccess) $ exitWith res
+    checkResult res
     output <- readFile tmpName
     length output `seq` return output
 #endif
+  where 
+    checkResult ExitSuccess     = return ()
+    checkResult (ExitFailure n) = 
+        die ("executing external program failed (exit " ++ show n ++ ") : "
+             ++ unwords (path : args))
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
