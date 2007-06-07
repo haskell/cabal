@@ -441,8 +441,11 @@ printCmdHelp cmd opts = do pname <- getProgName
                            putStr (cmdDescription cmd)
 
 getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
-getCmdOpt cmd opts s = let (a,_,c,d) = getOpt' Permute (cmdOptions cmd ++ liftCustomOpts opts) s
-                         in (a,c,d)
+getCmdOpt cmd opts s = (flags, other_opts, errs++errs')
+  where
+    (flags, nonopts, other_opts, errs) =
+      getOpt' RequireOrder (cmdOptions cmd ++ liftCustomOpts opts) s
+    errs' = ["unexpected argument: " ++ nonopt | nonopt <- nonopts]
 
 -- We don't want to use elem, because that imposes Eq a
 hasHelpFlag :: [Flag a] -> Bool
