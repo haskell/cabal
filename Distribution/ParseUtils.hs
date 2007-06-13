@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
 	runP, ParseResult(..),
-	Field(..),
+	Field(..), fName, lineNo,
 	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseOptVersion,
@@ -182,11 +182,18 @@ trimTrailingSpaces = reverse . dropWhile isSpace . reverse
 dropSpaces :: String -> String
 dropSpaces = dropWhile isSpace
 
-data Field  = F LineNo String String
-            | Section String String [Field]
-            | IfBlock String [Field] [Field]
-              deriving (Show
-                       ,Eq)   -- for testing
+data Field = F LineNo String String
+           | Section LineNo String String [Field]
+           | IfBlock LineNo String [Field] [Field]
+             deriving (Show
+                      ,Eq)   -- for testing
+
+lineNo :: Field -> LineNo
+lineNo (F n _ _) = n
+lineNo (Section n _ _ _) = n
+lineNo (IfBlock n _ _ _) = n
+
+fName (F _ n _) = n
 
 --   sectionname ::= "library" | "executable"
 sectionNames :: [String]
@@ -260,7 +267,7 @@ getIf (n,rest) lines = do
           (cond, _) -> -- condition spans more than one line
             syntaxError n "Multi-line conditions currently not supported."
     (elseBlock, lines'') <- tryElseBlock lines'
-    return (Just $ IfBlock cond ifBlock elseBlock, lines'') 
+    return (Just $ IfBlock n cond ifBlock elseBlock, lines'') 
   where 
     tryElseBlock [] = return ([], [])
     tryElseBlock ((n,l):ls) = 
@@ -310,7 +317,7 @@ getSection sectName (n,l) lines =
     case break (=='{') (dropSpaces l) of
       (sectLabel, '{':rest) -> 
           do (b,lines') <- getBlock (n,'{':rest) lines 
-             return (Just $ Section sectName sectLabel b, lines')
+             return (Just $ Section n sectName (trimTrailingSpaces sectLabel) b, lines')
 
 -- Get the field value of a field at given indentation      
 getFieldValue :: Int -> String -> [(Int,String)] 
@@ -477,22 +484,22 @@ test_readFields = case readFields testFile of
           [ F 1 "cabal-version" "3"
           , F 3 "description" 
                   "This is a test file\nwith a description longer than two lines."
-          , IfBlock "os(windows) " 
+          , IfBlock 5 "os(windows) " 
               [ F 6 "license" 
                       "You may not use this software\n\nIf you do use this software you will be seeked and destroyed."
               ]
               []
-          , IfBlock "os(linux) " 
+          , IfBlock 10 "os(linux) " 
               [ F 11 "main-is" "foo1" ] 
               [ ]
-          , IfBlock "os(vista) " 
-              [ Section "executable" "RootKit " 
+          , IfBlock 14 "os(vista) " 
+              [ Section 15 "executable" "RootKit " 
                 [ F 16 "main-is" "DRMManager.hs"]
               ] 
-              [ Section "executable" "VistaRemoteAccess "
+              [ Section 19 "executable" "VistaRemoteAccess "
                  [F 20 "main-is" "VCtrl"]
               ]
-          , Section "executable" "Foo-bar " 
+          , Section 23 "executable" "Foo-bar " 
               [F 24 "main-is" "Foo.hs"]
           ]
 
