@@ -43,39 +43,55 @@ module Distribution.Configuration where
 
 import Distribution.ParseUtils
 import Distribution.Compat.ReadP as ReadP 
+import Distribution.Version
 
 import Data.Char ( isAlphaNum, toLower )
 
-data FlagValue = FLUnknown | FlTrue | FlFalse
+data FlagValue = FlUnknown | FlTrue | FlFalse
                deriving (Eq, Show)
 
 data Flag = MkFlag
     { flagName        :: String
     , flagDescription :: String
     , flagDefault     :: FlagValue
-    }
+    } deriving Show
 
-data Condition = OS String
-               | Arch String
-               | Flag String
-               | Lit Bool
-               | CNot Condition
-               | COr Condition Condition
-               | CAnd Condition Condition
+data ConfVar = OS OSName
+             | Arch ArchName
+             | Flag String
+             -- | Depend [Dependency]
                deriving Show
 
--- | Simplify the condition and return its free flag-variables.
-simplifyCondition :: Condition 
-                  -> String -- ^ Arch identifier
-                  -> String -- ^ OS identifier
-                  -> (Condition, [String])
-simplifyCondition cond arch os = fv . walk $ cond
+data Condition c = Var c
+                 | Lit Bool
+                 | CNot (Condition c)
+                 | COr (Condition c) (Condition c)
+                 | CAnd (Condition c) (Condition c)
+                   deriving Show
+
+-- | The name of an operating system.  Abstract, so we can implement dedicated
+--   operations on them if needed.
+data OSName = MkOSName String 
+              deriving (Show, Eq)
+
+mkOSName :: String -> OSName
+mkOSName = MkOSName
+
+-- | The name of an architecture.  Abstract.
+data ArchName = MkArchName String
+                deriving (Show, Eq)
+
+mkArchName :: String -> ArchName
+mkArchName = MkArchName
+
+-- | Simplify the condition and return its free variables.
+simplifyCondition :: Condition c
+                  -> (c -> Maybe Bool)   -- ^ (partial) variable assignment
+                  -> (Condition c, [c])
+simplifyCondition cond i = fv . walk $ cond
   where
-    -- reduce arch(..) and os(..) to boolean and simplify tree
     walk c = case c of
-      OS name -> if os == name then Lit True else Lit False
-      Arch a  -> if a == arch then Lit True else Lit False
-      Flag f  -> Flag f
+      Var v   -> maybe (Var v) Lit (i v)
       Lit b   -> Lit b
       CNot c  -> case walk c of
                    Lit True -> Lit False
@@ -93,18 +109,43 @@ simplifyCondition cond arch os = fv . walk $ cond
                     (_, Lit False) -> Lit False
                     (c', Lit True) -> c'
                     (c',d')        -> CAnd c' d'
-    -- gather free flags
+    -- gather free vars
     fv c = (c, fv' c)
     fv' c = case c of
-      Flag f     -> [f]
+      Var v     -> [v]
       Lit b      -> []
       CNot c'    -> fv' c'
       COr c1 c2  -> fv' c1 ++ fv' c2
       CAnd c1 c2 -> fv' c1 ++ fv' c2
 
+simplifyWithSysParams :: Condition ConfVar -> ArchName -> OSName -> 
+                         (Condition ConfVar, [String])
+simplifyWithSysParams cond arch os = (cond', flags)
+  where
+    (cond', fvs) = simplifyCondition cond interp 
+    interp (OS name)   = Just $ name == os
+    interp (Arch name) = Just $ name == arch
+    interp _           = Nothing
+    flags = [ fname | Flag fname <- fvs ]
 
+-- XXX: Add instances and check
+--
+-- prop_sC_idempotent cond a o = cond' == cond''
+--   where
+--     cond'  = simplifyCondition cond a o
+--     cond'' = simplifyCondition cond' a o
+--
+-- prop_sC_noLits cond a o = isLit res || not (hasLits res)
+--   where
+--     res = simplifyCondition cond a o
+--     hasLits (Lit _) = True
+--     hasLits (CNot c) = hasLits c
+--     hasLits (COr l r) = hasLits l || hasLits r
+--     hasLits (CAnd l r) = hasLits l || hasLits r
+--     hasLits _ = False
+--
 
-parseCondition :: ReadP r Condition
+parseCondition :: ReadP r (Condition ConfVar)
 parseCondition = condOr
   where
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
@@ -113,26 +154,56 @@ parseCondition = condOr
                       +++ archCond +++ flagCond)
     parens   = between (char '(' >> sp) (sp >> char ')' >> sp)
     notCond  = char '!' >> sp >> cond >>= return . CNot
-    osCond   = string "os" >> sp >> parens osIdent >>= return . OS
-    archCond = string "arch" >> sp >> parens archIdent >>= return . Arch 
-    flagCond = string "flag" >> sp >> parens flagIdent >>= return . Flag 
+    osCond   = string "os" >> sp >> parens osIdent >>= return . Var. OS 
+    archCond = string "arch" >> sp >> parens archIdent >>= return . Var . Arch 
+    flagCond = string "flag" >> sp >> parens flagIdent >>= return . Var . Flag 
     ident    = munch1 isIdentChar >>= return . map toLower
     lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
                ((string "false" <++ string "False") >> return (Lit False))
-    archIdent     = ident
-    osIdent       = ident
+    archIdent     = ident >>= return . mkArchName
+    osIdent       = ident >>= return . mkOSName
     flagIdent     = ident
     isIdentChar c = isAlphaNum c || (c `elem` "_-")
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
 
+
+data CondTree v c a = CondLeaf [c] [a]
+                    | Cond (Condition v) 
+                           ([c], [a], CondTree v c a)
+                           ([c], [a], CondTree v c a)
+                    deriving Show
+
+{-
+-- | A @Conditional@ guards a value of type @a@ with a condition.  The idea is
+--   that the value is only accessible if the condition can be satisfied.
+data Conditional c a = MkCond 
+    { condCondition  :: Condition c
+    , condValue      :: a
+    } deriving Show
+
+getValue :: Conditional c a
+         -> (c -> Bool) -- ^ Truth assignment for all the values.  (Must be
+                        --   defined for all free variables.)
+         -> Maybe a
+getValue c i = case eval c of
+                 (Lit True, _) -> Just $ condValue c
+                 _             -> Nothing
+  where
+    eval c = simplifyCondition (condCondition c) (Just . i)
+-}
+
 ------------------------------------------------------------------------------
 -- Testing
 
-test_simplifyCondition = simplifyCondition tstCond "ia32" "darwin"
+test_simplify = simplifyWithSysParams tstCond i386 darwin
   where 
-    tstCond = COr (CAnd (Arch "ppc") (OS "darwin"))
-                  (CAnd (Flag "debug") (OS "darwin"))
+    tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
+                  (CAnd (Var (Flag "debug")) (Var (OS darwin)))
+    [ppc,i386] = map (mkArchName) ["ppc","i386"]
+    [darwin,windows] = map (mkOSName) ["darwin","windows"]
+
+
 
 test_parseCondition = map (runP 1 "test" parseCondition) testConditions
   where
