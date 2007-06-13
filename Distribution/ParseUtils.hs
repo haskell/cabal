@@ -190,7 +190,7 @@ data Field  = F LineNo String String
 
 --   sectionname ::= "library" | "executable"
 sectionNames :: [String]
-sectionNames = ["library", "executable:"]
+sectionNames = ["library", "executable", "flag"]
 
 -- |Split a file into "Field: value" groups
 readFields :: String -> ParseResult [Field]
