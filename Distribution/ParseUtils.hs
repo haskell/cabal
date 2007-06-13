@@ -116,17 +116,24 @@ syntaxError n s = ParseFailed $ FromString s (Just n)
 warning :: String -> ParseResult ()
 warning s = ParseOk [s] ()
 
+-- | Field descriptor.  The parameter @a@ parameterizes over where the field's
+--   value is stored in.
 data FieldDescr a 
   = FieldDescr 
       { fieldName     :: String
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
+        -- ^ @fieldSet n str x@ Parses the field value from the given input
+        -- string @str@ and stores the result in @x@ if the parse was
+        -- successful.  Otherwise, reports an error on line number @n@.
       }
 
 field :: String -> (a -> Doc) -> (ReadP a a) -> FieldDescr a
 field name showF readF = 
   FieldDescr name showF (\lineNo val _st -> runP lineNo name readF val)
 
+-- Lift a field descriptor storing into an 'a' to a field descriptor storing
+-- into a 'b'.
 liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
 liftField get set (FieldDescr name showF parseF)
  = FieldDescr name (\b -> showF (get b))
