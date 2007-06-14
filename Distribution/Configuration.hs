@@ -42,10 +42,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Configuration where
 
 import Distribution.ParseUtils
-import Distribution.Compat.ReadP as ReadP 
+import Distribution.Compat.ReadP as ReadP hiding ( char )
+import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Version
 
+import Text.PrettyPrint.HughesPJ
+
 import Data.Char ( isAlphaNum, toLower )
+import Control.Monad ( msum )
 
 data FlagValue = FlUnknown | FlTrue | FlFalse
                deriving (Eq, Show)
@@ -54,32 +58,51 @@ data Flag = MkFlag
     { flagName        :: String
     , flagDescription :: String
     , flagDefault     :: FlagValue
-    } deriving Show
+    }
+
+instance Show Flag where show (MkFlag n _ _) = n
 
 data ConfVar = OS OSName
              | Arch ArchName
              | Flag String
              -- | Depend [Dependency]
-               deriving Show
+             
+instance Show ConfVar where
+    show (OS n) = "os(" ++ show n ++ ")"
+    show (Arch n) = "arch(" ++ show n ++ ")"
+    show (Flag f) = "flag(" ++ f ++ ")"
 
 data Condition c = Var c
                  | Lit Bool
                  | CNot (Condition c)
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
-                   deriving Show
+                   
+instance Show c => Show (Condition c) where
+    show c = render $ ppCond c
+      
+ppCond (Var x) = text (show x)
+ppCond (Lit b) = text (show b)
+ppCond (CNot c) = char '!' <> parens (ppCond c)
+ppCond (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
+ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
 
 -- | The name of an operating system.  Abstract, so we can implement dedicated
 --   operations on them if needed.
 data OSName = MkOSName String 
-              deriving (Show, Eq)
+              deriving (Eq)
+
+instance Show OSName where show (MkOSName n) = n
 
 mkOSName :: String -> OSName
 mkOSName = MkOSName
 
 -- | The name of an architecture.  Abstract.
 data ArchName = MkArchName String
-                deriving (Show, Eq)
+                deriving (Eq)
+
+instance Show ArchName where show (MkArchName n) = n
+
 
 mkArchName :: String -> ArchName
 mkArchName = MkArchName
@@ -152,8 +175,8 @@ parseCondition = condOr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
     cond     = sp >> (lit +++ parens condOr +++ notCond +++ osCond 
                       +++ archCond +++ flagCond)
-    parens   = between (char '(' >> sp) (sp >> char ')' >> sp)
-    notCond  = char '!' >> sp >> cond >>= return . CNot
+    parens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
+    notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> parens osIdent >>= return . Var. OS 
     archCond = string "arch" >> sp >> parens archIdent >>= return . Var . Arch 
     flagCond = string "flag" >> sp >> parens flagIdent >>= return . Var . Flag 
@@ -168,12 +191,64 @@ parseCondition = condOr
     sp            = skipSpaces
 
 
-data CondTree v c a = CondLeaf [c] [a]
+data CondTree v c a = CondLeaf [c] (a -> a)
                     | Cond (Condition v) 
-                           ([c], [a], CondTree v c a)
-                           ([c], [a], CondTree v c a)
-                    deriving Show
+                           ([c], a -> a, CondTree v c a)
+                           ([c], a -> a, CondTree v c a)
+                    --deriving Show
+instance (Show c, Show v) => Show (CondTree v c a) where
+    show c = render $ pp c []
+      where 
+        pp (CondLeaf ds _) ds' = deps (ds' ++ ds)
+        pp (Cond c (d1s, _, ct1) (d2s, _, ct2)) ds' =
+            ((text "if" <+> ppCond c <> colon) $$ 
+             nest 2 (pp ct1 (d1s ++ ds')))
+            $+$
+            (text "else:" $$ nest 2 (pp ct2 (d2s ++ ds')))
+        deps ds = text "build-depends:" <+> 
+                  (fsep $ punctuate (char ',') $ map (text . show) ds)
+             
 
+evalCond :: (v -> Maybe Bool) -> CondTree v d a -> ([d], a -> a)
+evalCond f (CondLeaf ds fs) = (ds, fs)
+evalCond f (Cond cnd y n) = 
+    case simplifyCondition cnd f of
+      (Lit b, _) -> let (ds', fs', cnd') = if b then y else n 
+                        (ds, fs) = evalCond f cnd' 
+                    in (ds' ++ ds, fs' . fs)
+      x -> error $ "Environment not defined for all free vars" 
+
+satisfyFlags :: [(String,[Bool])] -> OSName -> ArchName 
+             -> CondTree ConfVar d a -> ([d] -> Bool) -> a 
+             -> Maybe (a, [d], [(String, Bool)])
+satisfyFlags dom os arch tree depsOk init = try dom [] 
+  where 
+    try [] env = let (deps, mod) = evalCond (f env) tree in
+                 if depsOk deps 
+                 then Just (mod init, deps, env)
+                 else Nothing
+    try ((n, vals):rest) env = 
+        msum $ map (\v -> try rest ((n, v):env)) vals
+
+    f _ (OS o)     = Just $ o == os
+    f _ (Arch a)   = Just $ a == arch
+    f env (Flag n) = lookup n env
+
+
+test_satisfyFlags = satisfyFlags dom os arch tstTree check []
+  where 
+    dom = [("a",[True,False]),("b",[False,True]),("c",[True,False])]
+    os = MkOSName "house"
+    arch = MkArchName "i386"
+    
+    check xs = all (`elem` avail) xs
+    avail = [1,5,4,0,42]
+
+tstTree = Cond (CNot (Var (Flag "a"))) ([1], (1:), t1) ([2], (2:), t2)
+  where
+    t1 = Cond (CAnd (Var (Flag "b")) (Var (Flag "c"))) 
+              ([3], (3:), t2) ([4], (4:), t2)
+    t2 = CondLeaf [0,42] (0:)
 {-
 -- | A @Conditional@ guards a value of type @a@ with a condition.  The idea is
 --   that the value is only accessible if the condition can be satisfied.
