@@ -368,8 +368,8 @@ mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
 
 
 findLdProgram :: LocalBuildInfo -> IO FilePath
-findLdProgram lbi = 
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
+findLdProgram lbi =
    let
     compilerDir = takeDirectory $ compilerPath (compiler lbi)
     baseDir     = takeDirectory compilerDir
@@ -381,6 +381,7 @@ findLdProgram lbi =
           -- assume we're using an installed copy of GHC..
     _ -> return binInstallLd
 #else
+findLdProgram _ =
     return "ld"
 #endif
 
