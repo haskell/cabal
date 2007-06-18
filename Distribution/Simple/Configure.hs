@@ -102,16 +102,20 @@ import Distribution.PackageDescription (hasLibs)
 import HUnit
 #endif
 
--- internal function
-tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
-tryGetPersistBuildConfig = do
-  e <- doesFileExist localBuildInfoFile
-  let dieMsg = "error reading " ++ localBuildInfoFile ++ "; run \"setup configure\" command?\n"
+tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
+tryGetConfigStateFile filename = do
+  e <- doesFileExist filename
+  let dieMsg = "error reading " ++ filename ++ 
+               "; run \"setup configure\" command?\n"
   if (not e) then return $ Left dieMsg else do 
-    str <- readFile localBuildInfoFile
+    str <- readFile filename
     case reads str of
       [(bi,_)] -> return $ Right bi
       _        -> return $ Left  dieMsg
+
+-- internal function
+tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
+tryGetPersistBuildConfig = tryGetConfigStateFile localBuildInfoFile
 
 -- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.
 getPersistBuildConfig :: IO LocalBuildInfo
@@ -135,6 +139,22 @@ writePersistBuildConfig lbi = do
 -- |@dist\/setup-config@
 localBuildInfoFile :: FilePath
 localBuildInfoFile = distPref </> "setup-config"
+
+
+configuredPkgDescr :: FilePath
+configuredPkgDescr = "./.configured.cabal"
+
+
+writeConfiguredPkgDescr :: PackageDescription -> IO ()
+writeConfiguredPkgDescr pd = do
+  writeFile configuredPkgDescr (show pd)
+
+tryGetConfiguredPkgDescr :: IO (Either String PackageDescription)
+tryGetConfiguredPkgDescr = tryGetConfigStateFile configuredPkgDescr
+  
+getConfiguredPkgDescr :: IO PackageDescription
+getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
+  
 
 -- -----------------------------------------------------------------------------
 -- * Configuration
