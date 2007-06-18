@@ -51,13 +51,10 @@ import Text.PrettyPrint.HughesPJ
 import Data.Char ( isAlphaNum, toLower )
 import Control.Monad ( msum )
 
-data FlagValue = FlUnknown | FlTrue | FlFalse
-               deriving (Eq, Show)
-
 data Flag = MkFlag
     { flagName        :: String
     , flagDescription :: String
-    , flagDefault     :: FlagValue
+    , flagDefault     :: Bool
     }
 
 instance Show Flag where show (MkFlag n _ _) = n
@@ -197,16 +194,16 @@ data CondTree v c a = CondLeaf [c] (a -> a)
                            ([c], a -> a, CondTree v c a)
                     --deriving Show
 instance (Show c, Show v) => Show (CondTree v c a) where
-    show c = render $ pp c []
-      where 
-        pp (CondLeaf ds _) ds' = deps (ds' ++ ds)
-        pp (Cond c (d1s, _, ct1) (d2s, _, ct2)) ds' =
+    show c = render $ ppCondTree c (text . show) []
+      
+ppCondTree (CondLeaf ds _) ppD ds' = 
+    text "build-depends:" <+> 
+      (fsep $ punctuate (char ',') $ map ppD (ds' ++ ds))
+ppCondTree (Cond c (d1s, _, ct1) (d2s, _, ct2)) ppD ds' =
             ((text "if" <+> ppCond c <> colon) $$ 
-             nest 2 (pp ct1 (d1s ++ ds')))
+             nest 2 (ppCondTree ct1 ppD (d1s ++ ds')))
             $+$
-            (text "else:" $$ nest 2 (pp ct2 (d2s ++ ds')))
-        deps ds = text "build-depends:" <+> 
-                  (fsep $ punctuate (char ',') $ map (text . show) ds)
+            (text "else:" $$ nest 2 (ppCondTree ct2 ppD (d2s ++ ds')))
              
 
 evalCond :: (v -> Maybe Bool) -> CondTree v d a -> ([d], a -> a)
