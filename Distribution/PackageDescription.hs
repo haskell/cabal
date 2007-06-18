@@ -100,8 +100,8 @@ module Distribution.PackageDescription (
 import Control.Monad(liftM, foldM, when)
 import Control.Monad.State
 import Data.Char
-import Data.Maybe(fromMaybe, isNothing, catMaybes, listToMaybe)
-import Data.List (nub,maximumBy)
+import Data.Maybe(fromMaybe, isNothing, isJust, catMaybes, listToMaybe)
+import Data.List (nub, maximumBy, unfoldr)
 import Text.PrettyPrint.HughesPJ as Pretty
 import System.Directory(doesFileExist)
 import qualified System.Info
@@ -197,6 +197,67 @@ emptyPackageDescription
                       extraSrcFiles = [],
                       extraTmpFiles = []
                      }
+
+data PreparedPackageDescription = 
+    PreparedPackageDescription {
+        packageDescription :: PackageDescription,
+        packageFlags       :: [Flag],
+        condLibrary        :: Maybe (CondTree ConfVar Dependency Library),
+        condExecutables    :: [(String, CondTree ConfVar Dependency Executable)]
+      }
+    --deriving (Show)
+
+instance Show PreparedPackageDescription where
+    show (PreparedPackageDescription pkg flags mlib exes) =
+        showPackageDescription pkg ++ "\n" ++
+        (render $ vcat $ map ppFlag flags) ++ "\n" ++
+        render (maybe empty (\l -> text "Library:" $+$ 
+                                   nest 2 (ppCondTree l showDependency [])) mlib)
+        ++ "\n" ++
+        (render $ vcat $ 
+            map (\(n,ct) -> (text ("Executable: " ++ n) $+$ 
+                             nest 2 (ppCondTree ct showDependency []))) exes)
+      where
+        ppFlag (MkFlag name desc dflt) =
+            (text ("Flag: " ++ name) <> colon) $+$ 
+            nest 2 
+              ((if (null desc) then empty else 
+                   text ("Description: " ++ desc)) $+$
+              text ("Default: " ++ show dflt))
+         
+
+finalizePackageDescription :: [(String,Bool)] -> [PackageIdentifier] 
+                           -> OSName -> ArchName 
+                           -> PreparedPackageDescription
+                           -> Maybe PackageDescription
+finalizePackageDescription userflags pkgs os arch 
+        (PreparedPackageDescription pkg flags mlib0 exes) =
+    do (mlib, deps, flagVals) <- resolveFlags mlib0
+       let exes = finalizeExes flagVals
+       return $ pkg { library = mlib                            
+                    , executables = exes
+                    , buildDepends = deps
+                    }
+  where
+    resolveFlags Nothing = return (Nothing, [], flagDefaults)
+    resolveFlags (Just ct) = do 
+        (l, ds, as) <- satisfyFlags flagChoices os arch ct check nullLibrary
+        return (Just (libFillInDefaults l), ds, as)
+    flagChoices = map (\(MkFlag n _ d) -> (n, d2c n d)) flags
+    d2c n b = maybe [b, not b] (\x -> [x]) $ lookup n userflags
+    flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices 
+    check = all (isJust . satisfyDependency pkgs)
+
+                             
+
+    finalizeExes fvs = 
+        map (\(n, ct) -> exeFillInDefaults $
+                 (snd (evalCond lu ct)) (nullExecutable { exeName = n }))
+            exes
+      where lu (OS o) = Just $ o == os
+            lu (Arch a) = Just $ a == arch
+            lu (Flag f) = lookup f fvs
+
 
 -- | The type of build system used by this package.
 data BuildType
@@ -297,6 +358,8 @@ data Library = Library {
 emptyLibrary :: Library
 emptyLibrary = Library [] emptyBuildInfo
 
+nullLibrary = Library [] nullBuildInfo
+
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = maybe False (buildable . libBuildInfo) (library p)
@@ -326,6 +389,23 @@ libFieldDescrs = map biToLib binfoFieldDescrs
      ]
   where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
 
+unionLibrary :: Library -> Library -> Library
+unionLibrary l1 l2 =
+    l1 { exposedModules = combine exposedModules
+       , libBuildInfo = unionBuildInfo (libBuildInfo l1) (libBuildInfo l2)
+       }
+  where combine f = f l1 ++ f l2
+
+-- This is in fact rather a hack.  The original version just overrode the
+-- default values, however, when adding conditions we had to switch to a
+-- modifier-based approach.  There, nothing is ever overwritten, but only
+-- joined together.
+--
+-- This is the cleanest way i could think of, that doesn't require
+-- changing all field parsing functions to return modifiers instead.
+libFillInDefaults lib@(Library { libBuildInfo = bi }) = 
+    lib { libBuildInfo = biFillInDefaults bi }
+
 -- ---------------------------------------------------------------------------
 -- The Executable type
 
@@ -342,6 +422,13 @@ emptyExecutable = Executable {
                       modulePath = "",
                       buildInfo = emptyBuildInfo
                      }
+
+nullExecutable = emptyExecutable { buildInfo = nullBuildInfo }
+
+-- note comment at libFillInDefaults
+exeFillInDefaults exe@(Executable { buildInfo = bi }) = 
+    exe { buildInfo = biFillInDefaults bi }
+
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.
@@ -368,6 +455,19 @@ executableFieldDescrs =
   ++ map biToExe binfoFieldDescrs
   where biToExe = liftField buildInfo (\bi exe -> exe{buildInfo=bi})
 
+unionExecutable :: Executable -> Executable -> Executable
+unionExecutable e1 e2 =
+    e1 { exeName = combine exeName
+       , modulePath = combine modulePath
+       , buildInfo = unionBuildInfo (buildInfo e1) (buildInfo e2)
+       }
+  where combine f = case (f e1, f e2) of
+                      ("","") -> ""
+                      ("", x) -> x
+                      (x, "") -> x
+                      (x, y) -> error $ "Ambiguous values for executable field: '"
+                                  ++ x ++ "' and '" ++ y ++ "'"
+  
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
@@ -391,14 +491,14 @@ data BuildInfo = BuildInfo {
     }
     deriving (Show,Read,Eq)
 
-emptyBuildInfo :: BuildInfo
-emptyBuildInfo = BuildInfo {
+nullBuildInfo :: BuildInfo
+nullBuildInfo = BuildInfo {
                       buildable         = True,
                       ccOptions         = [],
                       ldOptions         = [],
                       frameworks        = [],
                       cSources          = [],
-                      hsSourceDirs      = [currentDir],
+                      hsSourceDirs      = [],
                       otherModules      = [],
                       extensions        = [],
                       extraLibs         = [],
@@ -407,18 +507,8 @@ emptyBuildInfo = BuildInfo {
                       includes          = [],
                       installIncludes   = [],
                       options           = [],
-                      ghcProfOptions       = []
+                      ghcProfOptions    = []
                      }
-
--- | Modify all the 'BuildInfo's in a package description.
-mapBuildInfo :: (BuildInfo -> BuildInfo) ->
-                PackageDescription -> PackageDescription
-mapBuildInfo f pkg = pkg {
-    library = liftM mapLibBuildInfo (library pkg),
-    executables = map mapExeBuildInfo (executables pkg) }
-  where
-    mapLibBuildInfo lib = lib { libBuildInfo = f (libBuildInfo lib) }
-    mapExeBuildInfo exe = exe { buildInfo = f (buildInfo exe) }
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
@@ -478,6 +568,18 @@ binfoFieldDescrs =
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})
  ]
+
+------------------------------------------------------------------------------
+
+flagFieldDescrs :: [FieldDescr Flag]
+flagFieldDescrs =
+    [ simpleField "description"
+        showFreeText     (munch (const True))
+        flagDescription  (\val fl -> fl{ flagDescription = val })
+    , simpleField "default"
+        (text . show)    parseReadS
+        flagDefault      (\val fl -> fl{ flagDefault = val })
+    ]
 
 -- ------------------------------------------------------------
 -- * Utils
@@ -601,7 +703,7 @@ parseDescription str = do
 		exe <- parseFields executableFieldDescrs emptyExecutable st
 		return pkg{executables= executables pkg ++ [exe]}
         parseExtraStanza _ x = error ("This shouldn't happen!" ++ show x)
-{-
+
 mapSimpleFields :: (Field -> ParseResult Field) -> [Field] 
                 -> ParseResult [Field]
 mapSimpleFields f fs = mapM walk fs
@@ -615,7 +717,7 @@ mapSimpleFields f fs = mapM walk fs
       fs1' <-  mapM walk fs1
       return (Section ln n l fs1')
 -- prop_isMapM fs = mapSimpleFields return fs == return fs
--}      
+      
 {-
 detectCabalFormat :: [Field] -> ParseResult [Field]
 detectCabalFormat fs = 
@@ -629,11 +731,13 @@ detectCabalFormat fs =
     isSimpleField _         = False
 -}
 
+depFieldNames = ["build-depends"]
+
 headerFieldNames :: [String]
-headerFieldNames = filter (\n -> not (n `elem` ["build-depends"])) 
+headerFieldNames = filter (\n -> not (n `elem` depFieldNames)) 
                    . map fieldName $ pkgDescrFieldDescrs
 
-libFieldNames = map fieldName libFieldDescrs ++ buildInfoNames ++ ["build-depends"]
+libFieldNames = map fieldName libFieldDescrs ++ buildInfoNames ++ depFieldNames
 
 exeFieldNames = map fieldName executableFieldDescrs ++ buildInfoNames
 
@@ -648,14 +752,11 @@ data CabalFile = MkCabalFile
     , flags        :: [Flag]
     , exeFields    :: [(String,CondTree ConfVar Dependency Field)]
     , libFields    :: CondTree ConfVar Dependency Field
-    } deriving Show
+    } -- deriving Show
 
 data Config = MkConfig [PackageIdentifier] OSName ArchName
-
-preParseDescription :: CabalFile -> ParseResult PreparedPackageDescription
-preParseDescription (MkCabalFile hdrs flags exes lib) = undefined
   
-
+{-
 findDescription :: Config -> CabalFile -> ParseResult PackageDescription
 findDescription (MkConfig pkgs os arch) 
                 (MkCabalFile hdrs flags exes lib) = do
@@ -694,29 +795,46 @@ findDescription (MkConfig pkgs os arch)
           Nothing -> Nothing
       where 
         (deps, fs) = evalCond env lib 
-
-    evalCond env (CondLeaf ds fs) = (ds, fs)
-    evalCond env (Cond cnd y n) = 
-        case simplifyCondition cnd (f env) of
-          (Lit b, _) -> let (ds', fs', cnd') = if b then y else n 
-                            (ds, fs) = evalCond env cnd' 
-                        in (ds' ++ ds, fs' ++ fs)
-          x -> error $ "This should not have happened, consider it a bug." 
-                 ++ show cnd ++ " / " ++ show x ++ " / " ++ show env
-
-    f _ (OS o)     = Just $ o == os
-    f _ (Arch a)   = Just $ a == arch
-    f env (Flag n) = lookup n env
+-}
 
 type PM a = StateT [Field] ParseResult a
 
-stanzas' :: [Field] -> ParseResult CabalFile
-stanzas' fields = flip evalStateT fields $ do
-    hfs <- getHeader []
-    (flags, Just lib, exes) <- getBody
-    warnIfRest
-    return (MkCabalFile hfs flags exes lib)
+parseDescription' :: [Field] -> ParseResult PreparedPackageDescription
+parseDescription' fields0 = do
+    fields <- mapSimpleFields deprecField fields1
+    flip evalStateT fields $ do
+      hfs <- getHeader []
+      pkg <- lift $ parseFields pkgDescrFieldDescrs emptyPackageDescription hfs
+      (flags, mlib, exes) <- getBody
+      warnIfRest
+      return (PreparedPackageDescription pkg flags mlib exes)
+
   where
+    fields1 = squeezeIntoShape fields0
+
+    -- "sectionize" an old-style Cabal file
+    squeezeIntoShape fs
+        | all isSimpleField fs = 
+            let (hdr0, exes0) = break ((=="executable") . fName) fs
+                (hdr, libfs)  = partition (not . (`elem` libFieldNames) . fName) hdr0
+                exes = unfoldr toExe exes0
+                toExe [] = Nothing
+                toExe (F l e n : r) 
+                 | e == "executable" = 
+                     let (efs, r') = break ((=="executable") . fName) r
+                     in Just (Section l "executable" n efs, r')
+                 | otherwise = error "OMG! The world is ending! Call Buffy!"
+            in hdr 
+               ++ 
+               if null libfs then [] 
+               else [Section (lineNo (head libfs)) "library" "" libfs]
+               ++
+               exes
+        | otherwise = fs
+
+    isSimpleField (F _ _ _) = True
+    isSimpleField _ = False
+
     peekField :: PM (Maybe Field) 
     peekField = get >>= return . listToMaybe
     skipField = modify tail
@@ -728,9 +846,8 @@ stanzas' fields = flip evalStateT fields $ do
         fs -> lift $ warning "Ignoring trailing declarations."  -- add line no.
 
     getHeader fs = peekField >>= \mf -> case mf of
-        Just f@(F l n v) | n `elem` headerFieldNames ->
-            skipField >> getHeader (f:fs)
-        _ -> return (reverse fs)  -- check for required fields
+        Just f@(F l n v) -> skipField >> getHeader (f:fs)
+        _ -> return (reverse fs)  -- XXX: check for required fields
       
     getBody = do
       mf <- peekField
@@ -738,7 +855,7 @@ stanzas' fields = flip evalStateT fields $ do
         Just f@(F l n v) 
           | n `elem` libFieldNames -> compatParse f -- old-style format
           | n == "executable" -> compatParse f
-          | otherwise -> error "???" -- XXX
+          | otherwise -> error $ "???" ++ show f -- XXX
         Just f@(Section l sn sl fs) 
           | sn == "flag"    -> do 
               flags <- getFlags [] 
@@ -756,18 +873,22 @@ stanzas' fields = flip evalStateT fields $ do
     getFlags acc = peekField >>= \mf -> case mf of
         Just (Section l sn sl fs) 
           | sn == "flag" -> do
-              skipField >> getFlags (MkFlag (map toLower sl) "" FlUnknown : acc)
+              fl <- lift $ parseFields
+                      flagFieldDescrs 
+                      (MkFlag (map toLower sl) "" True)
+                      fs 
+              skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
               
     getLibOrExe cond = peekField >>= \mf -> case mf of
         Just (Section l sn sl fs)
           | sn == "executable" -> do
-              flds <- collectFields exeFieldNames fs
+              flds <- collectFields parseExeFields fs
               skipField
               (lib, exes) <- getLibOrExe cond
               return (lib, exes ++ [(sl, flds)])
           | sn == "library" -> do
-              flds <- collectFields libFieldNames fs
+              flds <- collectFields parseLibFields fs
               skipField
               (lib, exes) <- getLibOrExe cond
               return (maybe (Just flds)
@@ -780,14 +901,14 @@ stanzas' fields = flip evalStateT fields $ do
 
     -- extracts all fields in a block, possibly add dependencies to the
     -- guard condition
-    collectFields :: [String] -> [Field]
-                  -> PM (CondTree ConfVar Dependency Field)
-    collectFields names allflds = do
-        (ifs, ds, fs) <- collect names allflds
-        processIfs names ifs (CondLeaf ds fs)
+    collectFields :: ([Field] -> PM (a -> a)) -> [Field] 
+                  -> PM (CondTree ConfVar Dependency a)
+    collectFields parser allflds = do
+        (ifs, ds, fs) <- collect allflds
+        mod <- parser fs
+        processIfs parser ifs (CondLeaf ds mod)
 
-    collect names allflds = do
-        checkFieldsOk simplflds names
+    collect allflds = do
         deps <- liftM concat . mapM parseDep $ deps0 
         return (ifflds, deps, flds)
       where
@@ -797,23 +918,35 @@ stanzas' fields = flip evalStateT fields $ do
         isConstraint (F _ n v) = n == "build-depends"
         isConstraint _ = False
 
-    checkFieldsOk fields names = do
-      let (ok, other) = partition ((`elem` names) . fName) fields
-      when (not (null other)) $
-        lift $ syntaxError (lineNo (head other)) 
-          ("Field not allowed in this section: " ++ fName (head other))
-
-        -- "wraps" the current cond with a node with two edges, representing
-        -- the then- and else-branch, respectively.  
+    -- "wraps" the current cond with a node with two edges, representing
+    -- the then- and else-branch, respectively.  
     processIfs _ [] c = return c
-    processIfs names (IfBlock l cs b1 b2 : other) c = do
+    processIfs parser (IfBlock l cs b1 b2 : other) c = do
         cnd <- lift $ runP l "if" parseCondition cs
-        (ifs1, d1, f1) <- collect names b1
-        if1 <- processIfs names ifs1 c
-        (ifs2, d2, f2) <- collect names b2
-        if2 <- processIfs names ifs2 c
-        processIfs names other (Cond cnd (d1, f1, if1) (d2, f2, if2))
+        (ifs1, d1, f1) <- collect b1
+        mod1 <- parser f1
+        if1 <- processIfs parser ifs1 c
+        (ifs2, d2, f2) <- collect b2
+        mod2 <- parser f2
+        if2 <- processIfs parser ifs2 c
+        processIfs parser other (Cond cnd (d1, mod1, if1) (d2, mod2, if2))
 
+--     checkFieldsOk fields names = do
+--       let (ok, other) = partition ((`elem` names) . fName) fields
+--       when (not (null other)) $
+--         lift $ syntaxError (lineNo (head other)) 
+--           ("Field not allowed in this section: " ++ fName (head other))
+
+    parseLibFields = mkMod libFieldDescrs nullLibrary unionLibrary 
+
+    parseExeFields = mkMod executableFieldDescrs nullExecutable unionExecutable 
+
+    -- Make a modifier on 'a' out of FieldDescr a
+    mkMod descrs init union flds = do
+      a <- lift $ parseFields descrs init flds
+      return (union a)
+
+    -- XXX: extract to some more appropriate position
     parseDep (F l f v) = lift $ runP l f (parseCommaList parseDependency) v 
 
     compatParse _ = error "to be implemented"
@@ -1219,7 +1352,8 @@ test_stanzas' = readFields testFile >>= stanzas'
 --                    _ -> return ()
 
 testFile = unlines $
-          [ "Cabal-version: >= 1.7"
+          [ "Name: dwim"
+          , "Cabal-version: >= 1.7"
           , ""
           , "Description: This is a test file   "
           , "  with a description longer than two lines.  "
@@ -1231,9 +1365,11 @@ testFile = unlines $
           , ""
           , "library {"
           , "  build-depends: blub"
+          , "  exposed-modules: DWIM.Main, DWIM"
           , "  if os(win32) && flag(debug) {"
           , "    build-depends: hunit"
           , "    ghc-options: -DDEBUG"
+          , "    exposed-modules: DWIM.Internal"
           , "    if !flag(debug) {"
           , "      build-depends: impossible"
           , "    }"
@@ -1245,7 +1381,36 @@ testFile = unlines $
           , "}"
           ]
 
-test_findDescription = readFields testFile >>= stanzas' >>= return . findDescription tstCfg
-  where tstCfg = MkConfig pkgs (MkOSName "win32") (MkArchName "amd64")
-        pkgs = [ PackageIdentifier "blub" (Version [1,0] []) ] 
-            --   , PackageIdentifier "hunit" (Version [1,1] []) ]
+
+test_compatParsing = 
+    let ParseOk ws (p, pold) = do 
+          fs <- readFields testPkgDesc 
+          ppd <- parseDescription' fs
+          let Just pd = finalizePackageDescription [] pkgs os arch ppd
+          pdold <- parseDescription testPkgDesc
+          return (pd, pdold)
+    in do putStrLn $ unlines $ map show ws
+          putStrLn "==========="
+          putStrLn $ showPackageDescription p
+          putStrLn "==========="
+          putStrLn $ showPackageDescription testPkgDescAnswer
+          putStrLn "==========="
+          putStrLn $ showPackageDescription pold
+          putStrLn $ show (p == pold)
+  where
+    pkgs = [ PackageIdentifier "haskell-src" (Version [1,0] []) 
+           , PackageIdentifier "HUnit" (Version [1,1] ["rain"]) 
+           ]
+    os = (MkOSName "win32")
+    arch = (MkArchName "amd64")
+
+test_finalizePD = 
+    let ParseOk _ ppd = readFields testFile >>= parseDescription'
+        Just pd = finalizePackageDescription [("debug",True)] pkgs os arch ppd
+    in  putStrLn $ showPackageDescription pd
+  where
+    pkgs = [ PackageIdentifier "blub" (Version [1,0] []) 
+           , PackageIdentifier "hunit" (Version [1,1] []) 
+           ]
+    os = (MkOSName "win32")
+    arch = (MkArchName "amd64")

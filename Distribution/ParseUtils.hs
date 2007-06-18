@@ -327,10 +327,12 @@ getFieldValue indent val lines =
     , lines')
   where
     val' = dropWhile isSpace val
-    rest = (if val' == "" then tail else id) $
+    rest = (if val' == "" then safeTail else id) $
              -- don't include initial newline if it would be the first
              -- character
              concatMap (getContinuation . snd) valrest
+    safeTail (_:xs) = xs
+    safeTail [] = []
                 
     (valrest,lines') = span (isContinuation indent . snd) lines
     -- the continuation of a field value is everything that is indented
