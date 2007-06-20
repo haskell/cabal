@@ -123,6 +123,8 @@ show:
 clean ::
 	$(RM) $(HS_OBJS) $(STUBOBJS) $(C_OBJS) $(LIB) $(GHCI_LIB) $(HS_IFS) .depend
 	$(RM) -rf $(wildcard $(patsubst %.$(osuf), %_split, $(HS_OBJS)))
+	$(RM) $(wildcard $(patsubst %.$(osuf), %.o-boot, $(HS_OBJS)))
+	$(RM) $(wildcard $(patsubst %.$(osuf), %.hi-boot, $(HS_OBJS)))
 
 ifneq "$(strip $(WAYS))" ""
 ifeq "$(way)" ""
