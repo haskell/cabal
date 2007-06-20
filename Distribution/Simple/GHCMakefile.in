@@ -25,6 +25,11 @@ LIB = $(odir)/libHS$(package)$(_way).a
 
 STUBOBJS = $(wildcard $(patsubst %.$(osuf), %_stub.$(osuf), $(HS_OBJS)))
 
+# Optionally include local customizations:
+-include Makefile.local
+
+# Rules follow:
+
 all :: .depend $(LIB)
 
 .depend : $(MAKEFILE)
