@@ -435,6 +435,8 @@ makefile pkg_descr lbi flags = do
  where
   munge "" = ""
   munge ('#':s) = '\\':'#':munge s
+  munge ('\\':s) = '/':munge s
+	-- for Windows, we want to use forward slashes in our pathnames in the Makefile
   munge (c:s) = c : munge s
 
 -- -----------------------------------------------------------------------------
