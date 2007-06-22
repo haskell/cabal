@@ -23,12 +23,14 @@ C_OBJS  = $(patsubst %.c,$(odir)/%.$(osuf),$(C_SRCS))
 
 LIB = $(odir)/libHS$(package)$(_way).a
 
-STUBOBJS = $(wildcard $(patsubst %.$(osuf), %_stub.$(osuf), $(HS_OBJS)))
-
 # Optionally include local customizations:
 -include Makefile.local
 
 # Rules follow:
+
+MKSTUBOBJS = find $(odir) -name '*_stub.o' -print
+# HACK ^^^ we tried to use $(wildcard), but apparently it fails due to 
+# make using cached directory contents, or something.
 
 all :: .depend $(LIB)
 
@@ -42,10 +44,10 @@ include .depend
 
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
 $(LIB) : $(HS_OBJS) $(C_OBJS)
-	(echo $(STUBOBJS) $(C_OBJS); find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+	(echo $(C_OBJS) `$(MKSTUBOBJS)`; find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
 else
 $(LIB) : $(HS_OBJS) $(C_OBJS)
-	echo $(STUBOBJS) $(C_OBJS) $(HS_OBJS) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+	echo $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
 endif
 
 ifneq "$(GHCI_LIB)" ""
@@ -54,7 +56,7 @@ all ::  $(GHCI_LIB)
 
 $(GHCI_LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
-	$(LD) -r -x -o $@ $(EXTRA_LD_OPTS) $(HS_OBJS) $(STUBOBJS) $(C_OBJS)
+	$(LD) -r -x -o $@ $(EXTRA_LD_OPTS) $(HS_OBJS) `$(MKSTUBOBJS)` $(C_OBJS)
 endif
 endif
 
@@ -126,10 +128,11 @@ show:
 	@echo '$(VALUE)="$($(VALUE))"'
 
 clean ::
-	$(RM) $(HS_OBJS) $(STUBOBJS) $(C_OBJS) $(LIB) $(GHCI_LIB) $(HS_IFS) .depend
+	$(RM) $(HS_OBJS) $(C_OBJS) $(LIB) $(GHCI_LIB) $(HS_IFS) .depend
 	$(RM) -rf $(wildcard $(patsubst %.$(osuf), %_split, $(HS_OBJS)))
 	$(RM) $(wildcard $(patsubst %.$(osuf), %.o-boot, $(HS_OBJS)))
 	$(RM) $(wildcard $(patsubst %.$(osuf), %.hi-boot, $(HS_OBJS)))
+	$(RM) $(wildcard $(patsubst %.$(osuf), %_stub.o, $(HS_OBJS)))
 
 ifneq "$(strip $(WAYS))" ""
 ifeq "$(way)" ""
@@ -144,3 +147,4 @@ all clean ::
 	@echo "== Finished recursively making \`$@' for ways: $(WAYS) ..."
 endif
 endif
+
