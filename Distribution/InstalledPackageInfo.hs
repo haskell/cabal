@@ -162,6 +162,8 @@ parseBasicStanza ((FieldDescr name _ set):fields) pkg (F lineNo f val)
   | name == f = set lineNo val pkg
   | otherwise = parseBasicStanza fields pkg (F lineNo f val)
 parseBasicStanza [] pkg _ = return pkg
+parseBasicStanza _ _ _ = 
+    error "parseBasicStanza must be called with a simple field."
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
