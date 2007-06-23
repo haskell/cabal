@@ -95,14 +95,14 @@ instance Monad ParseResult where
 	fail s = ParseFailed (FromString s Nothing)
 
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
-runP lineNo fieldname p s =
+runP line fieldname p s =
   case [ x | (x,"") <- results ] of
     [a] -> ParseOk [] a
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
              [a] -> ParseOk [] a
-             []  -> ParseFailed (NoParse fieldname lineNo)
-             _   -> ParseFailed (AmbigousParse fieldname lineNo)
-    _   -> ParseFailed (AmbigousParse fieldname lineNo)
+             []  -> ParseFailed (NoParse fieldname line)
+             _   -> ParseFailed (AmbigousParse fieldname line)
+    _   -> ParseFailed (AmbigousParse fieldname line)
   where results = readP_to_S p s
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
@@ -130,15 +130,15 @@ data FieldDescr a
 
 field :: String -> (a -> Doc) -> (ReadP a a) -> FieldDescr a
 field name showF readF = 
-  FieldDescr name showF (\lineNo val _st -> runP lineNo name readF val)
+  FieldDescr name showF (\line val _st -> runP line name readF val)
 
 -- Lift a field descriptor storing into an 'a' to a field descriptor storing
 -- into a 'b'.
 liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
 liftField get set (FieldDescr name showF parseF)
  = FieldDescr name (\b -> showF (get b))
-	(\lineNo str b -> do
-	    a <- parseF lineNo str (get b)
+	(\line str b -> do
+	    a <- parseF line str (get b)
 	    return (set a b))
 
 -- Parser combinator for simple fields.  Takes a field name, a pretty printer,
@@ -193,7 +193,10 @@ lineNo (F n _ _) = n
 lineNo (Section n _ _ _) = n
 lineNo (IfBlock n _ _ _) = n
 
+fName :: Field -> String
 fName (F _ n _) = n
+fName (Section _ n _ _) = n
+fName _ = undefined
 
 --   sectionname ::= "library" | "executable"
 sectionNames :: [String]
@@ -212,7 +215,7 @@ readFields = mkStanza
                             _         -> True
 
 mkStanza :: [(Int,String)] -> ParseResult [Field]
-mkStanza lines = parseLines lines []
+mkStanza lines0 = parseLines lines0 []
   where 
     parseLines [] fs = return (reverse fs)
     parseLines ls fs = do (f, ls') <- getField ls
@@ -227,27 +230,28 @@ mkStanza lines = parseLines lines []
 --
 getField :: [(Int,String)] -> ParseResult (Maybe Field,[(Int,String)])
 getField [] = return (Nothing, [])
-getField ((n,[]):lines) = return (Nothing,lines)
-getField ((n,'#':xs):lines) | not (isSpace (head xs)) = do
-  return (Just $ F n ('#':dir) (dropSpaces val), lines)
+getField ((_,[]):ls) = return (Nothing,ls)
+getField ((n,'#':xs):ls) | not (isSpace (head xs)) = do
+  return (Just $ F n ('#':dir) (dropSpaces val), ls)
   where (dir,val) = break isSpace xs
-getField ((lineno,line0):lines) =
+getField ((lineno,line0):lines0) =
     let (spaces,line) = span isSpace line0
         indent = length spaces in 
     case break (`elem` " :{") line of
       (fld0, ':':val0) -> do  -- regular field
         let fld = map toLower fld0
-            (val, lines') = getFieldValue indent (dropWhile isSpace val0) lines
+            (val, lines') = getFieldValue indent (dropWhile isSpace val0) lines0
         return (Just $ F lineno fld val, lines')
       (blkName, ' ':rest) 
-        | map toLower blkName == "if"             -> getIf (lineno,rest) lines 
-        | map toLower blkName `elem` sectionNames -> getSection blkName (lineno,rest) lines
+        | map toLower blkName == "if"             -> getIf (lineno,rest) lines0
+        | map toLower blkName `elem` sectionNames -> 
+            getSection (map toLower blkName) (lineno,rest) lines0
         | otherwise -> syntaxError lineno $
             "Missing colon after field label or invalid section name"
       (blkName, '{':rest) 
         | map toLower blkName `elem` sectionNames -> 
-            getSection blkName (lineno,'{':rest) lines
-      ("","") -> return (Nothing,lines)
+            getSection (map toLower blkName) (lineno,'{':rest) lines0
+      ("","") -> return (Nothing,lines0)
       (_,_) -> syntaxError lineno $
         "Unrecognized field format: '" ++ line ++ "'"
           
@@ -258,25 +262,25 @@ getField ((lineno,line0):lines) =
 --   cond ::= (any - '}')* block [ space* "else" block ]
 --
 getIf :: (Int,String) -> [(Int,String)] -> ParseResult (Maybe Field,[(Int,String)])
-getIf (n,rest) lines = do
+getIf (n,rest) ls = do
     (cond, ifBlock, lines') <- 
         case break (=='{') (dropSpaces rest) of
           (cond, '{':cs) -> 
-            do (b,ls) <- getBlock (n,'{':cs) lines
-               return (cond, b, ls)
-          (cond, _) -> -- condition spans more than one line
+            do (b,ls') <- getBlock (n,'{':cs) ls
+               return (cond, b, ls')
+          (_, _) -> -- condition spans more than one line
             syntaxError n "Multi-line conditions currently not supported."
     (elseBlock, lines'') <- tryElseBlock lines'
     return (Just $ IfBlock n cond ifBlock elseBlock, lines'') 
   where 
     tryElseBlock [] = return ([], [])
-    tryElseBlock ((n,l):ls) = 
-        if all isSpace l then return ([],ls) 
+    tryElseBlock ((m,l):ls') = 
+        if all isSpace l then return ([],ls') 
         else case (splitAt 4 . dropSpaces) l of
-          (kw, rest) -> 
+          (kw, rst) -> 
               if kw == "else" then 
-                  getBlock (n,dropSpaces rest) ls
-              else syntaxError n "Only 'else' may appear after an if-Block"
+                  getBlock (m,dropSpaces rst) ls'
+              else syntaxError m "Only 'else' may appear after an if-Block"
           
 -- parses:
 -- 
@@ -285,8 +289,8 @@ getIf (n,rest) lines = do
 --             space* '}' space* '\n'
 --   
 getBlock :: (Int,String) -> [(Int,String)] -> ParseResult ([Field],[(Int,String)])
-getBlock (n,rest) lines = do
-    lines' <- checkBlockStart (n,dropSpaces rest) lines
+getBlock (lnum,rest) lines0 = do
+    lines' <- checkBlockStart (lnum,dropSpaces rest) lines0
     munchTillEndOfBlock lines' []
   where
     checkBlockStart (n,'{':cs) ls = 
@@ -297,14 +301,14 @@ getBlock (n,rest) lines = do
     checkBlockStart (n,_) _ = syntaxError n "'{' expected"
                          
     munchTillEndOfBlock [] _ = syntaxError (-1) "missing '}' at end of file"
-    munchTillEndOfBlock lines@((n,l):ls) fs =
+    munchTillEndOfBlock lines1@((n,l):ls) fs =
         case break (=='}') l of
-          (spaces, '}':rest) ->   
+          (spaces, '}':rst) ->   
               if all isSpace spaces
               then return ( reverse fs
-                          , (n, rest):ls) 
+                          , (n, rst):ls) 
               else syntaxError n "'}' must be first character on the line"
-          _ -> do (f,ls') <- getField lines
+          _ -> do (f,ls') <- getField lines1
                   munchTillEndOfBlock ls' $ maybe fs (:fs) f
 
 -- parses:
@@ -313,16 +317,17 @@ getBlock (n,rest) lines = do
 --   
 getSection :: String -> (Int,String) -> [(Int,String)] 
            -> ParseResult (Maybe Field,[(Int,String)])
-getSection sectName (n,l) lines = 
+getSection sectName (n,l) lines0 = 
     case break (=='{') (dropSpaces l) of
       (sectLabel, '{':rest) -> 
-          do (b,lines') <- getBlock (n,'{':rest) lines 
+          do (b,lines') <- getBlock (n,'{':rest) lines0 
              return (Just $ Section n sectName (trimTrailingSpaces sectLabel) b, lines')
+      (_,_) -> error "getSection got a line without a '{'.  Consider this a bug."
 
 -- Get the field value of a field at given indentation      
 getFieldValue :: Int -> String -> [(Int,String)] 
               -> (String,[(Int,String)])
-getFieldValue indent val lines = 
+getFieldValue indent val lines0 = 
     ( val' ++ rest 
     , lines')
   where
@@ -334,11 +339,11 @@ getFieldValue indent val lines =
     safeTail (_:xs) = xs
     safeTail [] = []
                 
-    (valrest,lines') = span (isContinuation indent . snd) lines
+    (valrest,lines') = span (isContinuation indent . snd) lines0
     -- the continuation of a field value is everything that is indented
     -- relative to the field's label
-    isContinuation indent line = 
-        length (takeWhile isSpace line) > indent && not (all isSpace line)
+    isContinuation ind line = 
+        length (takeWhile isSpace line) > ind && not (all isSpace line)
     getContinuation line = '\n':stripDot (dropWhile isSpace line)
     stripDot "." = ""
     stripDot s   = s
@@ -451,7 +456,9 @@ showFreeText s = vcat [text (if null l then "." else l) | l <- lines s]
 -- TESTING
 
 #ifdef DEBUG
-test_readFields = case readFields testFile of
+test_readFields = case 
+                    readFields testFile 
+                  of
                     ParseOk _ x -> x == expectedResult
                     _ -> False
   where 
@@ -573,4 +580,5 @@ test' = do h <- openFile "../Cabal.cabal" ReadMode
                  merge . zip [1..] . lines $ s
            hClose h
 -}
-#endif                     
+-- 
+#endif
