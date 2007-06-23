@@ -87,7 +87,7 @@ import Distribution.Simple.Register	( register, unregister,
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
                                      configure, writePersistBuildConfig, localBuildInfoFile,
-                                     hscolourVersion, haddockVersion)
+                                     haddockVersion)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
                                             srcPref, hscolourPref, haddockPref, substDir )
@@ -95,14 +95,14 @@ import Distribution.Simple.Install(install)
 import Distribution.Simple.Utils (die, currentDir,
                                   createDirectoryIfMissingVerbose,
                                   defaultPackageDesc, defaultHookedPackageDesc,
-                                  moduleToFilePath, findFile, warn)
+                                  moduleToFilePath, findFile)
 
 import Distribution.Simple.Utils (rawSystemPathExit, rawSystemStdout)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs)
-import System.Exit(ExitCode(..), exitWith)
+--import System.Exit(ExitCode(..), exitWith)
 import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 
 import Distribution.License
@@ -111,8 +111,6 @@ import Data.Char	( isSpace )
 import Data.List	( intersperse, unionBy )
 import Data.Maybe       ( isJust, catMaybes )
 import System.IO.Error (try)
-import System.IO        ( hPutStrLn, stderr )
-import System.Environment ( getProgName )
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
@@ -145,7 +143,9 @@ data UserHooks = UserHooks
       -- |Hook to run before configure command
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during configure.
-     confHook :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo,
+     confHook :: ( Either PreparedPackageDescription PackageDescription
+                 , HookedBuildInfo)
+              -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription),
       -- |Hook to run after configure command
      postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
@@ -160,7 +160,7 @@ data UserHooks = UserHooks
       -- |Hook to run before makefile command.  Second arg indicates verbosity level.
      preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
 
-     -- |Over-ride this hook to gbet different behavior during makefile.
+     -- |Over-ride this hook to get different behavior during makefile.
      makefileHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> MakefileFlags -> IO (),
       -- |Hook to run after makefile command.  Second arg indicates verbosity level.
      postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO (),
@@ -267,19 +267,19 @@ defaultMain__ margs mhooks mdescr = do
    let hooks = maybe simpleUserHooks id mhooks
    let prog_conf = allPrograms hooks
    (action, args') <- parseGlobalArgs prog_conf args
-   let get_pkg_descr verbosity = 
-	 case mdescr of
-		Just pkg_descr -> return pkg_descr
-		Nothing -> do
-			    maybeDesc <- readDesc hooks
-			    case maybeDesc of
-				Nothing -> defaultPkgDescr
-				Just p  -> return p
-        where
-	  defaultPkgDescr = do
-		 pkg_descr_file <- defaultPackageDesc verbosity
-         	 readPackageDescription verbosity pkg_descr_file
-   defaultMainWorker get_pkg_descr action args' hooks prog_conf
+   -- let get_pkg_descr verbosity = case mdescr of
+--         Just pkg_descr -> return pkg_descr
+--         Nothing -> do
+--           maybeDesc <- readDesc hooks
+--           case maybeDesc of
+-- 	    Nothing -> defaultPkgDescr
+-- 	    Just p  -> return p
+--          where
+--            defaultPkgDescr = do
+--              -- FIXME: add compat mode or flag to enable configs
+--              pkg_descr_file <- defaultPackageDesc verbosity 
+--              readPackageDescription verbosity pkg_descr_file
+   defaultMainWorker mdescr action args' hooks prog_conf
 
 -- | Combine the programs in the given hooks with the programs built
 -- into cabal.
@@ -300,25 +300,45 @@ allSuffixHandlers hooks
       overridesPP = unionBy (\x y -> fst x == fst y)
 
 -- | Helper function for /defaultMain/
-defaultMainWorker :: (Verbosity -> IO PackageDescription)
+defaultMainWorker :: (Maybe PackageDescription)
                   -> Action
                   -> [String]
                   -> UserHooks
                   -> ProgramConfiguration
                   -> IO ()
-defaultMainWorker get_pkg_descr action all_args hooks prog_conf
+defaultMainWorker mdescr action all_args hooks prog_conf
     = do case action of
             ConfigCmd flags -> do
                 (flags', optFns, args) <-
 			parseConfigureArgs prog_conf flags all_args [scratchDirOpt]
                 pbi <- preConf hooks args flags'
-                pkg_descr0 <- get_pkg_descr (configVerbose flags')
-                let pkg_descr = updatePackageDescription pbi pkg_descr0
-                (warns, ers) <- sanityCheckPackage pkg_descr
-                errorOut (configVerbose flags') warns ers
-		localbuildinfo <- confHook hooks pkg_descr flags'
-		writePersistBuildConfig (foldr id localbuildinfo optFns)
+
+                pkg_descr0 <- maybe (confPkgDescr flags') (return . Right) mdescr
+
+                --    get_pkg_descr (configVerbose flags')
+                --let pkg_descr = updatePackageDescription pbi pkg_descr0
+                let epkg_descr = (pkg_descr0, pbi)
+
+                --(warns, ers) <- sanityCheckPackage pkg_descr
+                --errorOut (configVerbose flags') warns ers
+
+		(localbuildinfo, pkg_descr) <- confHook hooks epkg_descr flags'
+		
+                writePersistBuildConfig (foldr id localbuildinfo optFns)
+                writeConfiguredPkgDescr pkg_descr
+                
                 postConf hooks args flags' pkg_descr localbuildinfo
+              where
+                confPkgDescr :: ConfigFlags -> IO (Either PreparedPackageDescription
+                                                          PackageDescription)
+                confPkgDescr cfgflags = do
+                  mdescr' <- readDesc hooks
+                  case mdescr' of
+                    Just descr -> return $ Right descr
+                    Nothing -> do
+                      pdfile <- defaultPackageDesc (configVerbose cfgflags)
+                      ppd <- readPackageDescription (configVerbose cfgflags) pdfile
+                      return (Left ppd)
 
             BuildCmd -> 
                 command (parseBuildArgs emptyBuildFlags) buildVerbose
@@ -366,9 +386,9 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
                         maybeGetPersistBuildConfig
 
             TestCmd -> do
-                (verbosity,_, args) <- parseTestArgs all_args []
+                (_verbosity,_, args) <- parseTestArgs all_args []
                 localbuildinfo <- getPersistBuildConfig
-                pkg_descr <- get_pkg_descr verbosity
+                pkg_descr <- getConfiguredPkgDescr   -- get_pkg_descr verbose
                 runTests hooks args False pkg_descr localbuildinfo
 
             RegisterCmd  -> do
@@ -383,12 +403,13 @@ defaultMainWorker get_pkg_descr action all_args hooks prog_conf
 
             HelpCmd -> return () -- this is handled elsewhere
         where
-        command parse_args get_verbosity
+        command parse_args _get_verbosity
                 pre_hook cmd_hook post_hook
                 get_build_config = do
            (flags, _, args) <- parse_args all_args []
            pbi <- pre_hook hooks args flags
-           pkg_descr0 <- get_pkg_descr (get_verbosity flags)
+           pkg_descr0 <- getConfiguredPkgDescr
+           --pkg_descr0 <- get_pkg_descr (get_verbose flags)
            let pkg_descr = updatePackageDescription pbi pkg_descr0
            localbuildinfo <- get_build_config
            cmd_hook hooks pkg_descr localbuildinfo hooks flags
@@ -468,7 +489,7 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                 else Just $ "--read-interface=" ++
                             (if null html then "" else html ++ ",") ++
                             interface
-    packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
+    pkgFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -488,8 +509,6 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                   "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
-		 ++ cssFileFlag
-                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
@@ -513,7 +532,6 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                   "--title=" ++ exeName exe]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
-                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
@@ -830,17 +848,6 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
 -- * Utils
 -- ------------------------------------------------------------
 
--- |Output warnings and errors. Exit if any errors.
-errorOut :: Verbosity -- ^Verbosity
-         -> [String]  -- ^Warnings
-         -> [String]  -- ^errors
-         -> IO ()
-errorOut verbosity warnings errors = do
-  mapM_ (warn verbosity) warnings
-  when (not (null errors)) $ do
-    pname <- getProgName
-    mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
-    exitWith (ExitFailure 1)
 
 -- ------------------------------------------------------------
 -- * Testing
