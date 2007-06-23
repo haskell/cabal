@@ -80,6 +80,7 @@ import Distribution.Simple.Utils (die)
 import Distribution.Program(ProgramConfiguration(..),
                             userSpecifyPath, userSpecifyArgs)
 import Data.List(find)
+import Data.Char( toLower )
 import Distribution.Compat.Map (keys)
 import Distribution.GetOpt
 import Distribution.Verbosity
@@ -148,7 +149,8 @@ data ConfigFlags = ConfigFlags {
 	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
-        configHaddockUsePackages :: Bool  -- ^ auto-gen haddock --use-package
+        configHaddockUsePackages :: Bool,  -- ^ auto-gen haddock --use-package
+        configConfigurationsFlags :: [(String, Bool)]
     }
     deriving Show
 
@@ -183,7 +185,8 @@ emptyConfigFlags progConf = ConfigFlags {
 	configUser     = False,
 	configGHCiLib  = True,
 	configSplitObjs = False, -- takes longer, so turn off by default
-        configHaddockUsePackages = True
+        configHaddockUsePackages = True,
+        configConfigurationsFlags = []
     }
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
@@ -319,6 +322,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DataDir FilePath
 	  | DataSubDir FilePath
           | WithHaddockUsePackages | WithoutHaddockUsePackages
+          | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
           | WithProgram String FilePath -- program name, location
@@ -566,8 +570,10 @@ configureCmd progConf = Cmd {
            Option "" ["enable-haddock-use-packages"] (NoArg WithHaddockUsePackages)
                "Automatically pass --use-library flags to haddock.",
            Option "" ["disable-haddock-use-packages"] (NoArg WithoutHaddockUsePackages)
-               "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs."
-           ]
+               "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs.",
+           Option "f" ["flags"] (reqFlagsArgs ConfigurationsFlags)
+               "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."       
+]
 {- 
    FIX: Instead of using ++ here, we might add extra arguments.  That
    way, we can condense the help out put to something like
@@ -604,8 +610,8 @@ reqFlagsArgs constr = ReqArg (constr . flagList) "FLAGS"
 
 flagList :: String -> [(String, Bool)]
 flagList = map tagWithValue . words
-  where tagWithValue ('-':name) = (name, False)
-        tagWithValue name       = (name, True)
+  where tagWithValue ('-':name) = (map toLower name, False)
+        tagWithValue name       = (map toLower name, True)
 
 parseConfigureArgs :: ProgramConfiguration -> ConfigFlags -> [String] -> [OptDescr a] ->
                       IO (ConfigFlags, [a], [String])
@@ -650,8 +656,10 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t GlobalFlag           = t { configUser     = False }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
-	updateCfg t WithHaddockUsePackages	 = t { configHaddockUsePackages = True }
-	updateCfg t WithoutHaddockUsePackages	 = t { configHaddockUsePackages = False }
+	updateCfg t WithHaddockUsePackages    = t { configHaddockUsePackages = True }
+	updateCfg t WithoutHaddockUsePackages = t { configHaddockUsePackages = False }
+        updateCfg t (ConfigurationsFlags fs)  = t { configConfigurationsFlags =
+                                                        fs ++ configConfigurationsFlags t }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
