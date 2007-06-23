@@ -69,7 +69,7 @@ import qualified Distribution.Simple.GHCPackageConfig
     as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 import Distribution.Simple.Configure (configCompiler)
-
+import Distribution.Verbosity ( silent )
 -- base
 import Data.List (intersperse)
 import Control.Monad(when)
@@ -484,7 +484,7 @@ main = do putStrLn "compile successful"
               compilers = [GHC] --, Hugs]
           globalTests <-
             flip mapM compilers $ \compilerFlavour -> do
-              compiler <- configCompiler (Just compilerFlavour) Nothing Nothing 0
+              compiler <- configCompiler (Just compilerFlavour) Nothing Nothing silent
               let version = compilerVersion compiler
               runTestTT' $ TestList (testList compilerFlavour version)
           putStrLn "-------------"

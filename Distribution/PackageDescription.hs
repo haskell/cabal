@@ -1309,8 +1309,11 @@ testPkgDescAnswer =
                         options = [(GHC,[]),(Hugs,[]),(NHC,[]),(JHC,[])]
                       })]
   }
-
+-- #ifdef DEBUG
+-}
 hunitTests :: [Test]
+hunitTests = []
+{-
 hunitTests = [
               TestLabel "license parsers" $ TestCase $
                  sequence_ [assertParseOk ("license " ++ show lVal) lVal
@@ -1414,10 +1417,10 @@ assertParseOk mes expected actual
            (case actual of
              ParseOk _ v -> v == expected
              _         -> False)
-
+-}
 test :: IO Counts
 test = runTestTT (TestList hunitTests)
-
+{-
 ------------------------------------------------------------------------------
 
 test_stanzas' = readFields testFile >>= parseDescription'
