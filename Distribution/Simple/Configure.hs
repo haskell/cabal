@@ -237,7 +237,7 @@ configure (pkg_descr0, pbi) cfg
 	removeInstalledConfig
 
 	-- installation directories
-	defPrefix <- defalt_prefix
+	defPrefix <- default_prefix
 	defDataDir <- default_datadir pkg_descr
         let 
 		pref = fromMaybe defPrefix (configPrefix cfg)
