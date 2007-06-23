@@ -1,7 +1,8 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Configuration
--- Copyright   :  Thomas Schilling 2007
+-- Copyright   :  Thomas Schilling, 2007
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -39,18 +40,29 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Configuration where
+module Distribution.Configuration (
+    Flag(..),
+    ConfVar(..),
+    Condition(..), parseCondition, simplifyCondition,
+    CondTree(..), ppCondTree, evalCond,
+    satisfyFlags, DepTestRslt(..)
+  ) where
 
-import Distribution.ParseUtils
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
-import Distribution.Version
 
 import Text.PrettyPrint.HughesPJ
 
 import Data.Char ( isAlphaNum, toLower )
-import Control.Monad ( msum )
 
+#ifdef DEBUG
+import Distribution.ParseUtils
+#endif
+
+------------------------------------------------------------------------------
+
+-- | A flag can represent a feature to be included, or a way of linking
+--   a target against its dependencies, or in fact whatever you can think of.
 data Flag = MkFlag
     { flagName        :: String
     , flagDescription :: String
@@ -59,16 +71,17 @@ data Flag = MkFlag
 
 instance Show Flag where show (MkFlag n _ _) = n
 
-data ConfVar = OS OSName
-             | Arch ArchName
+-- | A @ConfVar@ represents the variable type used. 
+data ConfVar = OS String 
+             | Arch String 
              | Flag String
-             -- | Depend [Dependency]
              
 instance Show ConfVar where
-    show (OS n) = "os(" ++ show n ++ ")"
-    show (Arch n) = "arch(" ++ show n ++ ")"
+    show (OS n) = "os(" ++ n ++ ")"
+    show (Arch n) = "arch(" ++ n ++ ")"
     show (Flag f) = "flag(" ++ f ++ ")"
 
+-- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
                  | Lit Bool
                  | CNot (Condition c)
@@ -77,32 +90,15 @@ data Condition c = Var c
                    
 instance Show c => Show (Condition c) where
     show c = render $ ppCond c
-      
+
+-- | Pretty print a @Condition@.
+ppCond :: Show c => Condition c -> Doc
 ppCond (Var x) = text (show x)
 ppCond (Lit b) = text (show b)
 ppCond (CNot c) = char '!' <> parens (ppCond c)
 ppCond (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
 ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
 
--- | The name of an operating system.  Abstract, so we can implement dedicated
---   operations on them if needed.
-data OSName = MkOSName String 
-              deriving (Eq)
-
-instance Show OSName where show (MkOSName n) = n
-
-mkOSName :: String -> OSName
-mkOSName = MkOSName
-
--- | The name of an architecture.  Abstract.
-data ArchName = MkArchName String
-                deriving (Eq)
-
-instance Show ArchName where show (MkArchName n) = n
-
-
-mkArchName :: String -> ArchName
-mkArchName = MkArchName
 
 -- | Simplify the condition and return its free variables.
 simplifyCondition :: Condition c
@@ -110,7 +106,7 @@ simplifyCondition :: Condition c
                   -> (Condition c, [c])
 simplifyCondition cond i = fv . walk $ cond
   where
-    walk c = case c of
+    walk cnd = case cnd of
       Var v   -> maybe (Var v) Lit (i v)
       Lit b   -> Lit b
       CNot c  -> case walk c of
@@ -119,9 +115,9 @@ simplifyCondition cond i = fv . walk $ cond
                    c' -> CNot c'
       COr c d -> case (walk c, walk d) of
                    (Lit False, d') -> d'
-                   (Lit True, d')  -> Lit True
+                   (Lit True, _)   -> Lit True
                    (c', Lit False) -> c'
-                   (c', Lit True)  -> Lit True
+                   (_, Lit True)   -> Lit True
                    (c',d')         -> COr c' d'
       CAnd c d -> case (walk c, walk d) of
                     (Lit False, _) -> Lit False
@@ -133,12 +129,14 @@ simplifyCondition cond i = fv . walk $ cond
     fv c = (c, fv' c)
     fv' c = case c of
       Var v     -> [v]
-      Lit b      -> []
+      Lit _      -> []
       CNot c'    -> fv' c'
       COr c1 c2  -> fv' c1 ++ fv' c2
       CAnd c1 c2 -> fv' c1 ++ fv' c2
 
-simplifyWithSysParams :: Condition ConfVar -> ArchName -> OSName -> 
+-- | Simplify a configuration condition using the os and arch names.  Returns
+--   the names of all the flags occurring in the condition.
+simplifyWithSysParams :: Condition ConfVar -> String -> String -> 
                          (Condition ConfVar, [String])
 simplifyWithSysParams cond arch os = (cond', flags)
   where
@@ -165,29 +163,57 @@ simplifyWithSysParams cond arch os = (cond', flags)
 --     hasLits _ = False
 --
 
+-- | Parse a configuration condition from a string.
 parseCondition :: ReadP r (Condition ConfVar)
 parseCondition = condOr
   where
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
-    cond     = sp >> (lit +++ parens condOr +++ notCond +++ osCond 
+    cond     = sp >> (lit +++ inparens condOr +++ notCond +++ osCond 
                       +++ archCond +++ flagCond)
-    parens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
+    inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
-    osCond   = string "os" >> sp >> parens osIdent >>= return . Var. OS 
-    archCond = string "arch" >> sp >> parens archIdent >>= return . Var . Arch 
-    flagCond = string "flag" >> sp >> parens flagIdent >>= return . Var . Flag 
+    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var. OS 
+    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch 
+    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag 
     ident    = munch1 isIdentChar >>= return . map toLower
     lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
                ((string "false" <++ string "False") >> return (Lit False))
-    archIdent     = ident >>= return . mkArchName
-    osIdent       = ident >>= return . mkOSName
+    archIdent     = ident >>= return 
+    osIdent       = ident >>= return 
     flagIdent     = ident
     isIdentChar c = isAlphaNum c || (c `elem` "_-")
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
 
 
+-- | A CondTree is the internal (normalized) representation of a specification
+-- with (optional) conditional statements in it.  To get to the final value,
+-- a sequence of conditions has to be evaluated completely, which then specifies
+-- which path to take, until we reach a leaf.  
+-- 
+-- Each path is annotated with a number of constraints, which must be
+-- fulfilled and a modifier, describing which information to add to the final
+-- value.  We record constraints and data separately, to allow possible
+-- optimizations later on.
+--
+-- Although the a CondTree is a tree, it can be constructed in a way to
+-- preserve maximum sharing.  For example, in the following, the specification
+-- on the left can be represented using the graph depicted on the right.
+--
+-- > if C1 {                                   C1
+-- >   constraints: A,B                   A,B /  \
+-- >   if C2 {                               /    \
+-- >     constraints: D                     C2     \
+-- >     data: 42                        D /  \ E   \
+-- >   } else {                       42  /    | 3   |
+-- >     constraints: E                  |     |     |
+-- >     data: 3                          \    |    /
+-- >   }                                   \   |   /
+-- > }                                      \  |  /
+-- > constraint: F                           v v v
+-- > data: 1                                 F ; 1
+-- 
 data CondTree v c a = CondLeaf [c] (a -> a)
                     | Cond (Condition v) 
                            ([c], a -> a, CondTree v c a)
@@ -196,6 +222,10 @@ data CondTree v c a = CondLeaf [c] (a -> a)
 instance (Show c, Show v) => Show (CondTree v c a) where
     show c = render $ ppCondTree c (text . show) []
       
+-- Pretty print a cond tree.  The printed tree will be normalized to have all
+-- it's data in the nodes, which results in a fair amount of duplication.  So,
+-- ya be warned.
+ppCondTree :: (Show v) => CondTree v c a -> (c -> Doc) -> [c] -> Doc
 ppCondTree (CondLeaf ds _) ppD ds' = 
     text "build-depends:" <+> 
       (fsep $ punctuate (char ',') $ map ppD (ds' ++ ds))
@@ -205,47 +235,114 @@ ppCondTree (Cond c (d1s, _, ct1) (d2s, _, ct2)) ppD ds' =
             $+$
             (text "else:" $$ nest 2 (ppCondTree ct2 ppD (d2s ++ ds')))
              
-
+-- | Completely evaluate a CondTree with the given variable assignment.  The
+--   environment must be defined for all free variables in all the conditions.
 evalCond :: (v -> Maybe Bool) -> CondTree v d a -> ([d], a -> a)
-evalCond f (CondLeaf ds fs) = (ds, fs)
+evalCond _ (CondLeaf ds fs) = (ds, fs)
 evalCond f (Cond cnd y n) = 
     case simplifyCondition cnd f of
       (Lit b, _) -> let (ds', fs', cnd') = if b then y else n 
                         (ds, fs) = evalCond f cnd' 
                     in (ds' ++ ds, fs' . fs)
-      x -> error $ "Environment not defined for all free vars" 
+      _ -> error $ "Environment not defined for all free vars" 
 
-satisfyFlags :: [(String,[Bool])] -> OSName -> ArchName 
-             -> CondTree ConfVar d a -> ([d] -> Bool) -> a 
-             -> Maybe (a, [d], [(String, Bool)])
-satisfyFlags dom os arch tree depsOk init = try dom [] 
+data DepTestRslt d = DepOk | MissingDeps [d] -- result of dependency test
+data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
+
+-- | Search Condition graph for a combination that satisfies certain
+-- dependencies.  Returns either the missing dependencies, or a tuple
+-- containing the resulting data, the associated dependencies, and the chosen
+-- flag assignments.
+--
+-- In case of failure, the _smallest_ number of of missing dependencies is
+-- returned.
+--
+-- XXX: The current algorithm is rather naive.  A better approach would be to:
+--
+-- * Rule out possible paths, by taking a look at the associated dependencies.
+--
+-- * Infer the required values for the conditions of these paths, and
+--   calculate the required domains for the variables used in these
+--   conditions.  Then picking a flag assignment would be linear (I guess).
+--
+-- This would require some sort of SAT solving, though, thus it's not
+-- implemented unless we really need it.
+--   
+satisfyFlags :: [(String,[Bool])] 
+                -- ^ Domain for each flag name, will be tested in order.
+             -> String  -- ^ OS name, as returned System.Info.os
+             -> String  -- ^ arch name, as returned System.Info.arch
+             -> CondTree ConfVar d a    
+             -> ([d] -> DepTestRslt d)  -- ^ Dependency test function.
+             -> a                       -- ^ Empty result value.
+             -> (Either [d] -- missing dependencies
+                 (a, [d], [(String, Bool)]))
+satisfyFlags dom os arch tree depsOk ini = 
+    case try dom [] of
+      Right r -> Right r
+      Left dbt -> Left $ findShortest dbt
   where 
-    try [] env = let (deps, mod) = evalCond (f env) tree in
-                 if depsOk deps 
-                 then Just (mod init, deps, env)
-                 else Nothing
+    -- @try@ recursively tries all possible flag assignments in the domain and
+    -- either succeeds or returns a binary tree with the missing dependencies
+    -- encountered in each run.  Since the tree is constructed lazily, we
+    -- avoid some computation overhead in the successful case.
+    try [] env = let (deps, dmod) = evalCond (f env) tree in
+                 case depsOk deps of
+                   DepOk -> Right (dmod ini, deps, env)
+                   MissingDeps ds -> Left (BTN ds)
     try ((n, vals):rest) env = 
-        msum $ map (\v -> try rest ((n, v):env)) vals
+        tryAll $ map (\v -> try rest ((n, v):env)) vals
+
+    tryAll = foldr mp mz
+
+    -- special kind of `mplus' for our local purposes
+    mp (Left xs)   (Left ys)   = (Left (BTB xs ys))
+    mp (Left _)    m@(Right _) = m
+    mp m@(Right _) _           = m
+
+    -- `mzero'
+    mz = Left (BTN [])
 
     f _ (OS o)     = Just $ o == os
     f _ (Arch a)   = Just $ a == arch
     f env (Flag n) = lookup n env
 
+    findShortest (BTN x) = x
+    findShortest (BTB lt rt) = 
+        let l = findShortest lt
+            r = findShortest rt
+        in case (l,r) of
+             ([], xs) -> xs  -- [] is too short
+             (xs, []) -> xs
+             ([x], _) -> [x] -- single elem is optimum
+             (_, [x]) -> [x]
+             (xs, ys) -> if lazyLengthCmp xs ys
+                         then xs else ys 
+    -- lazy variant of @\xs ys -> length xs <= length ys@
+    lazyLengthCmp [] _ = True
+    lazyLengthCmp _ [] = False
+    lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
 
+------------------------------------------------------------------------------
+-- Testing
+
+#ifdef DEBUG
 test_satisfyFlags = satisfyFlags dom os arch tstTree check []
   where 
     dom = [("a",[True,False]),("b",[False,True]),("c",[True,False])]
-    os = MkOSName "house"
-    arch = MkArchName "i386"
+    os = "house"
+    arch = "i386"
     
-    check xs = all (`elem` avail) xs
+    check xs = if all (`elem` avail) xs 
+               then DepOk 
+               else (MissingDeps (filter (not . (`elem` avail)) xs))
     avail = [1,5,4,0,42]
 
 tstTree = Cond (CNot (Var (Flag "a"))) ([1], (1:), t1) ([2], (2:), t2)
   where
     t1 = Cond (CAnd (Var (Flag "b")) (Var (Flag "c"))) 
               ([3], (3:), t2) ([4], (4:), t2)
-    t2 = CondLeaf [0,42] (0:)
+    t2 = CondLeaf [0,7,42] (0:)
 {-
 -- | A @Conditional@ guards a value of type @a@ with a condition.  The idea is
 --   that the value is only accessible if the condition can be satisfied.
@@ -272,8 +369,8 @@ test_simplify = simplifyWithSysParams tstCond i386 darwin
   where 
     tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
                   (CAnd (Var (Flag "debug")) (Var (OS darwin)))
-    [ppc,i386] = map (mkArchName) ["ppc","i386"]
-    [darwin,windows] = map (mkOSName) ["darwin","windows"]
+    [ppc,i386] = ["ppc","i386"]
+    [darwin,windows] = ["darwin","windows"]
 
 
 
@@ -293,3 +390,5 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
                      , "flag( foo_bar )"
                      , "flag( foo_O_-_O_bar )"
                      ]
+
+#endif
