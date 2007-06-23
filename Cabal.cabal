@@ -31,6 +31,7 @@ Exposed-Modules:
         Distribution.Program,
         Distribution.Package,
         Distribution.PackageDescription,
+	Distribution.Configuration,
         Distribution.ParseUtils,
         Distribution.PreProcess,
         Distribution.PreProcess.Unlit,
