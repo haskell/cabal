@@ -45,6 +45,9 @@ module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
+                                      writeConfiguredPkgDescr,
+                                      configuredPkgDescrFile,
+                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
                                       findProgram,
                                       getInstalledPackages,
@@ -75,20 +78,32 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
+        PreparedPackageDescription(..),
+        finalizePackageDescription,
+        HookedBuildInfo, sanityCheckPackage, updatePackageDescription,
 	BuildInfo(..), Executable(..), setupMessage,
         satisfyDependency)
 import Distribution.Simple.Utils (die, warn, rawSystemStdout, exeExtension)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     parseVersion, showVersion, showVersionRange)
+--import Distribution.Configuration ( mkOSName, mkArchName )
 import Distribution.Verbosity
+import Distribution.ParseUtils ( showDependency )
+
+import Text.PrettyPrint.HughesPJ ( comma, punctuate, render, nest, sep )
 
 import Data.List (intersperse, nub, isPrefixOf)
 import Data.Char (isSpace)
 import Data.Maybe(fromMaybe)
 import System.Directory
+import System.Environment ( getProgName )
+import System.IO        ( hPutStrLn, stderr )
 import System.FilePath (takeDirectory, (</>), (<.>))
 import Distribution.Program(Program(..), ProgramLocation(..),
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
+import System.Exit(ExitCode(..), exitWith)
+--import System.Exit		( ExitCode(..) )
+import qualified System.Info    ( os, arch )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (findExecutable, createDirectoryIfMissing)
@@ -141,16 +156,16 @@ localBuildInfoFile :: FilePath
 localBuildInfoFile = distPref </> "setup-config"
 
 
-configuredPkgDescr :: FilePath
-configuredPkgDescr = "./.configured.cabal"
+configuredPkgDescrFile :: FilePath
+configuredPkgDescrFile = "./.configured_cabal"
 
 
 writeConfiguredPkgDescr :: PackageDescription -> IO ()
 writeConfiguredPkgDescr pd = do
-  writeFile configuredPkgDescr (show pd)
+  writeFile configuredPkgDescrFile (show pd)
 
 tryGetConfiguredPkgDescr :: IO (Either String PackageDescription)
-tryGetConfiguredPkgDescr = tryGetConfigStateFile configuredPkgDescr
+tryGetConfiguredPkgDescr = tryGetConfigStateFile configuredPkgDescrFile
   
 getConfiguredPkgDescr :: IO PackageDescription
 getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
@@ -160,23 +175,55 @@ getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
 -- * Configuration
 -- -----------------------------------------------------------------------------
 
--- |Perform the \"@setup configure@\" action.
--- Outputs the @dist\/setup-config@ file.
-configure :: PackageDescription -> ConfigFlags -> IO LocalBuildInfo
-configure pkg_descr cfg
+-- |Perform the \"@.\/setup configure@\" action.
+-- Returns the @.setup-config@ file.
+configure :: ( Either PreparedPackageDescription PackageDescription
+             , HookedBuildInfo) 
+          -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription)
+configure (pkg_descr0, pbi) cfg
   = do
 	-- detect compiler
 	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
 
         -- FIXME: currently only GHC has hc-pkg
-        ipkgs <- case f' of
+        mipkgs <- case f' of
                       GHC | ver >= Version [6,3] [] ->
-                        getInstalledPackagesAux comp cfg
+                        getInstalledPackagesAux comp cfg >>= return . Just
                       JHC ->
-                        getInstalledPackagesJHC comp cfg
-                      _ -> do
-                        return $ map setDepByVersion (buildDepends pkg_descr)
-	setupMessage (configVerbose cfg) "Configuring" pkg_descr
+                        getInstalledPackagesJHC comp cfg >>= return . Just
+                      _ -> 
+                        return Nothing  
+                        -- return $ map setDepByVersion (buildDepends pkg_descr)
+                        
+	setupMessage (configVerbose cfg) "Configuring" 
+                     (either packageDescription id pkg_descr0)
+        
+        (pkg_descr, flags) <- case pkg_descr0 of
+            Left ppd -> 
+                case finalizePackageDescription 
+                       (configConfigurationsFlags cfg)
+                       mipkgs
+                       System.Info.os
+                       System.Info.arch
+                       ppd
+                of Right r -> return r
+                   Left missing -> 
+                       die $ "At least the following dependencies are missing:\n"
+                         ++ (render . nest 4 . sep . punctuate comma $ 
+                             map showDependency missing)
+            Right pd -> return (pd,[])
+              
+
+        when (not (null flags)) $
+          message $ "Flags chosen: " ++ (concat . intersperse ", " .
+                      map (\(n,b) -> n ++ "=" ++ show b) $ flags)
+
+        (warns, ers) <- sanityCheckPackage $
+                          updatePackageDescription pbi pkg_descr
+        
+        errorOut (configVerbose cfg) warns ers
+
+        let ipkgs = fromMaybe (map setDepByVersion (buildDepends pkg_descr)) mipkgs 
 
         dep_pkgs <- case f' of
                       GHC | ver >= Version [6,3] [] -> do
@@ -190,7 +237,7 @@ configure pkg_descr cfg
 	removeInstalledConfig
 
 	-- installation directories
-	defPrefix <- default_prefix
+	defPrefix <- defalt_prefix
 	defDataDir <- default_datadir pkg_descr
         let 
 		pref = fromMaybe defPrefix (configPrefix cfg)
@@ -284,7 +331,7 @@ configure pkg_descr cfg
         reportProgram "cpphs"     cpphs
         reportProgram "greencard" greencard
 
-	return lbi
+	return (lbi, pkg_descr)
 
 messageDir :: PackageDescription -> LocalBuildInfo -> String
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)
@@ -513,6 +560,20 @@ doesAnyFileExist (file:files) = do exists <- doesFileExist file
 
 message :: String -> IO ()
 message s = putStrLn $ "configure: " ++ s
+
+
+-- |Output warnings and errors. Exit if any errors.
+errorOut :: Verbosity -- ^Verbosity
+         -> [String]  -- ^Warnings
+         -> [String]  -- ^errors
+         -> IO ()
+errorOut verbosity warnings errors = do
+  mapM_ (warn verbosity) warnings
+  when (not (null errors)) $ do
+    pname <- getProgName
+    mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
+    exitWith (ExitFailure 1)
+
 
 -- -----------------------------------------------------------------------------
 -- Tests
