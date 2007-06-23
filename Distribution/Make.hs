@@ -110,13 +110,14 @@ defaultMain = getArgs >>= defaultMainArgs
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs args =
     defaultMainHelper args $ \ verbosity ->
-    defaultPackageDesc verbosity >>=
-        readPackageDescription verbosity
+        error "Package Descripion was promised not be used here"
+    --defaultPackageDesc verbosity >>=
+    --    readPackageDescription verbosity 
 
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr = do
     args <- getArgs
-    defaultMainHelper args $ \ _ -> return pkg_descr
+    defaultMainHelper args $ \ _ -> return pkg_descr 
 
 defaultMainHelper :: [String] -> (Verbosity -> IO PackageDescription) -> IO ()
 defaultMainHelper globalArgs _get_pkg_descr
