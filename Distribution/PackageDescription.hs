@@ -1197,6 +1197,8 @@ hasMods pkg_descr =
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
+-- disabled for now
+{-
 testPkgDesc :: String
 testPkgDesc = unlines [
         "-- Required",
@@ -1451,7 +1453,7 @@ testFile = unlines $
           , "  Main-is: Foo.hs"
           , "}"
           ]
-
+-}
 {-
 test_compatParsing = 
     let ParseOk ws (p, pold) = do 
