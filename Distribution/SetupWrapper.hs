@@ -25,6 +25,7 @@ import Distribution.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
 				  PackageDescription(..),
+                                  PreparedPackageDescription(..),
                                   BuildType(..), cabalVersion )
 import System.Console.GetOpt
 import System.Directory
@@ -60,11 +61,11 @@ setupWrapper args mdir = inDir mdir $ do
   let setup_args = unrec_opts ++ non_opts
 
   pkg_descr_file <- defaultPackageDesc (verbosity flags)
-  pkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
+  ppkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
 
   comp <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
           normal
-  cabal_flag <- configCabalFlag flags (descCabalVersion pkg_descr) comp
+  cabal_flag <- configCabalFlag flags (descCabalVersion (packageDescription ppkg_descr)) comp
 
   let
     trySetupScript f on_fail = do
@@ -84,9 +85,9 @@ setupWrapper args mdir = inDir mdir $ do
            ('.':pathSeparator:"setup")
            setup_args
 
-  case lookup (buildType pkg_descr) buildTypes of
+  case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
     Just (mainAction, mainText) ->
-      if withinRange cabalVersion (descCabalVersion pkg_descr)
+      if withinRange cabalVersion (descCabalVersion (packageDescription ppkg_descr))
 	then mainAction setup_args -- current version is OK, so no need
 				   -- to compile a special Setup.hs.
 	else do writeFile ".Setup.hs" mainText
