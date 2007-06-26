@@ -30,7 +30,7 @@ RM = rm -f
 
 # Rules follow:
 
-MKSTUBOBJS = find $(odir) -name '*_stub.o' -print
+MKSTUBOBJS = find $(odir) -name "*_stub.$(osuf)" -print
 # HACK ^^^ we tried to use $(wildcard), but apparently it fails due to 
 # make using cached directory contents, or something.
 
