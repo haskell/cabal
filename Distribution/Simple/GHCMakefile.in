@@ -23,6 +23,8 @@ C_OBJS  = $(patsubst %.c,$(odir)/%.$(osuf),$(C_SRCS))
 
 LIB = $(odir)/libHS$(package)$(_way).a
 
+RM = rm -f
+
 # Optionally include local customizations:
 -include Makefile.local
 
@@ -44,9 +46,11 @@ include .depend
 
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
 $(LIB) : $(HS_OBJS) $(C_OBJS)
+	@$(RM) $@
 	(echo $(C_OBJS) `$(MKSTUBOBJS)`; find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
 else
 $(LIB) : $(HS_OBJS) $(C_OBJS)
+	@$(RM) $@
 	echo $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
 endif
 
