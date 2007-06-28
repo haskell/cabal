@@ -886,19 +886,36 @@ parseDescription' fields0 = do
     sectionizeFields fs
         | all isSimpleField fs = 
             let (hdr0, exes0) = break ((=="executable") . fName) fs
-                (hdr, libfs)  = partition (not . (`elem` libFieldNames) . fName) hdr0
+                (hdr, libfs0) = partition (not . (`elem` libFieldNames) . fName) hdr0
+
+                -- XXX: In traditional cabal files, dependencies are global.
+                -- However, we now have library dependencies and
+                -- per-executable dependencies, of which only the library
+                -- dependencies are used for flag resolution.
+                --
+                -- The right solution would be to add global dependencies to
+                -- each non-empty section and resolve dependencies for each.
+                -- The workaround, for now, is to allow library sections that
+                -- only consist of dependency specifications.
+                --
+                (deps, libfs1) = partition ((`elem` constraintFieldNames) . fName) libfs0
+                libfs = if null libfs1 && not (null deps)
+                       -- mark library as not buildable 
+                        then [F (lineNo (head deps)) "buildable" "False"]
+                        else libfs1
+
                 exes = unfoldr toExe exes0
                 toExe [] = Nothing
                 toExe (F l e n : r) 
                  | e == "executable" = 
                      let (efs, r') = break ((=="executable") . fName) r
-                     in Just (Section l "executable" n efs, r')
+                     in Just (Section l "executable" n (deps ++ efs), r')
                 toExe l = error $ "unexpeced input to 'toExe'.  Consider it a bug."
                             ++ "input was: " ++ show l
             in hdr 
                ++ 
-               if null libfs then [] 
-               else [Section (lineNo (head libfs)) "library" "" libfs]
+               (if null libfs then [] 
+               else [Section (lineNo (head libfs)) "library" "" (deps ++ libfs)])
                ++
                exes
         | otherwise = fs
@@ -1173,7 +1190,7 @@ checkMissingFields pkg_descr =
 sanityCheckLib :: Maybe Library -> Maybe String
 sanityCheckLib ml =
    ml >>= (\l ->
-      toMaybe (null $ exposedModules l)
+      toMaybe (buildable (libBuildInfo l) && null (exposedModules l))
               ("Non-empty library, but empty exposed modules list. " ++
                "Cabal may not build this library correctly"))
 
