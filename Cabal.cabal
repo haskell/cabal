@@ -3,10 +3,8 @@ Version: 1.1.7
 --FIXME: we need a CPP-Options field
 GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
 CC-Options: "-DCABAL_VERSION=1,1,7"
-nhc-Options: -K4M
+nhc98-Options: -K4M
 Copyright: 2003-2006, Isaac Jones
--- For ghc 6.2 you need to add 'unix' to Build-Depends:
-Build-Depends: base, filepath, pretty, directory, old-time, process
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
@@ -22,7 +20,27 @@ Description:
         for distributing, organizing, and cataloging Haskell libraries
         and tools.
 Category: Distribution
-Exposed-Modules:
+
+
+Flag small_base {
+  Description: Choose the new smaller, split-up base package.
+}
+
+
+Library {
+  if flag(small_base) {
+    -- For ghc 6.2 you need to add 'unix' to Build-Depends:
+    Build-Depends: base, filepath, pretty, directory, old-time, process
+  } else {
+    Build-Depends: base, filepath
+  }
+
+  --FIXME: we need a CPP-Options field
+  GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
+  CC-Options: "-DCABAL_VERSION=1,1,7"
+  nhc98-Options: -K4M
+
+  Exposed-Modules:
         Distribution.Compiler,
         Distribution.Extension,
         Distribution.InstalledPackageInfo,
@@ -31,7 +49,7 @@ Exposed-Modules:
         Distribution.Program,
         Distribution.Package,
         Distribution.PackageDescription,
-	Distribution.Configuration,
+        Distribution.Configuration,
         Distribution.ParseUtils,
         Distribution.PreProcess,
         Distribution.PreProcess.Unlit,
@@ -55,13 +73,17 @@ Exposed-Modules:
         Distribution.Version,
         Distribution.Compat.ReadP,
         Language.Haskell.Extension
-Other-Modules:
+
+  Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.Map,
         Distribution.Compat.Directory,
         Distribution.Compat.Exception,
         Distribution.Compat.RawSystem,
         Distribution.Compat.TempFile
-Extra-Source-Files:
+
+  Extra-Source-Files:
         mkGHCMakefile.sh Distribution/Simple/GHCMakefile.in
-Extensions: CPP
+
+  Extensions: CPP
+}

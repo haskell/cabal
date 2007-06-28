@@ -3,7 +3,7 @@ CABALVERSION=1.1.7
 
 KIND=rc
 #KIND=latest
-GHCFLAGS= --make -cpp -Wall
+GHCFLAGS= --make -cpp -Wall -DCABAL_VERSION=1,1,7
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =
