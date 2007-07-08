@@ -74,6 +74,7 @@ data Extension
   | EmptyDataDecls
   | CPP
 
+  | KindSignatures
   | BangPatterns
   | TypeSynonymInstances
   | TemplateHaskell
