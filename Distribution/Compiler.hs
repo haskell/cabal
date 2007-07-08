@@ -123,6 +123,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag CPP                          = Right "-cpp"
 
     extensionToGHCFlag BangPatterns                 = Right "-fbang-patterns"
+    extensionToGHCFlag KindSignatures               = Right "-fglasgow-exts"
     extensionToGHCFlag RecursiveDo                  = Right "-fglasgow-exts"
     extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
     extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
