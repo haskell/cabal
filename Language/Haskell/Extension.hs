@@ -90,4 +90,5 @@ data Extension
   | ExtensibleRecords
   | RestrictedTypeSynonyms
   | HereDocuments
+  | MagicHash
   deriving (Show, Read, Eq)
