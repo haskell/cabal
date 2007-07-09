@@ -114,7 +114,6 @@ extensionsToGHCFlag l
     extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
     extensionToGHCFlag UndecidableInstances         = Right "-fallow-undecidable-instances"
     extensionToGHCFlag IncoherentInstances          = Right "-fallow-incoherent-instances"
-    extensionToGHCFlag ContextStack                 = Right "-fcontext-stack"
     extensionToGHCFlag Arrows                       = Right "-farrows"
     extensionToGHCFlag Generics                     = Right "-fgenerics"
     extensionToGHCFlag NoImplicitPrelude            = Right "-fno-implicit-prelude"
