@@ -79,7 +79,6 @@ data Extension
   | TypeSynonymInstances
   | TemplateHaskell
   | ForeignFunctionInterface
-  | ContextStack
   | Arrows
   | Generics
   | NoImplicitPrelude
