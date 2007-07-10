@@ -16,7 +16,25 @@ Build-depends: base, mtl, network, regex-compat,
                Cabal>=1.1.7,
                HTTP >= 3000.0 && < 3000.1
 data-files: serv.list
+Extra-Source-Files: copyright README
 
 Executable: cabal-install
 Main-Is: CabalInstall.hs
 Hs-Source-Dirs: src
+Other-Modules:
+    Network.Hackage.CabalInstall.BuildDep
+    Network.Hackage.CabalInstall.Clean
+    Network.Hackage.CabalInstall.Config
+    Network.Hackage.CabalInstall.Configure
+    Network.Hackage.CabalInstall.Dependency
+    Network.Hackage.CabalInstall.Fetch
+    Network.Hackage.CabalInstall.Info
+    Network.Hackage.CabalInstall.Install
+    Network.Hackage.CabalInstall.List
+    Network.Hackage.CabalInstall.Main
+    Network.Hackage.CabalInstall.Setup
+    Network.Hackage.CabalInstall.TarUtils
+    Network.Hackage.CabalInstall.Types
+    Network.Hackage.CabalInstall.Update
+    Network.Hackage.CabalInstall.Utils
+    Network.Hackage.Version
