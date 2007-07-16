@@ -105,6 +105,9 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
+        localPkgDescr :: PackageDescription,
+                -- ^ The resolved package description, that does not contain
+                -- any conditionals.
         withPrograms  :: ProgramConfiguration, -- location and args for all programs
         userConf      :: Bool,           -- ^Was this package configured with --user?
         withHappy     :: Maybe FilePath, -- ^Might be the location of the Happy executable.
