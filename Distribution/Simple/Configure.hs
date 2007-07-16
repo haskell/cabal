@@ -157,7 +157,7 @@ localBuildInfoFile = distPref </> "setup-config"
 
 
 configuredPkgDescrFile :: FilePath
-configuredPkgDescrFile = "./.configured_cabal"
+configuredPkgDescrFile = distPref </> "configured_cabal"
 
 
 writeConfiguredPkgDescr :: PackageDescription -> IO ()
