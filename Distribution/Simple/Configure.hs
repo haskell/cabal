@@ -295,6 +295,7 @@ configure (pkg_descr0, pbi) cfg
 			      datadir=my_datadir,
 			      datasubdir=my_datasubdir,
                               packageDeps=dep_pkgs,
+                              localPkgDescr=pkg_descr,
                               withPrograms=newConfig,
                               withHappy=happy, withAlex=alex,
                               withHsc2hs=hsc2hs, withC2hs=c2hs,
