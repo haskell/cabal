@@ -78,7 +78,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId,
 			     parsePackageId)
 import Distribution.PackageDescription(
  	PackageDescription(..), Library(..),
-        PreparedPackageDescription(..),
+        GenericPackageDescription(..),
         finalizePackageDescription,
         HookedBuildInfo, sanityCheckPackage, updatePackageDescription,
 	BuildInfo(..), Executable(..), setupMessage,
@@ -177,7 +177,7 @@ getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
 
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
-configure :: ( Either PreparedPackageDescription PackageDescription
+configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
           -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription)
 configure (pkg_descr0, pbi) cfg

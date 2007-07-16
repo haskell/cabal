@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.PackageDescription (
         -- * Package descriptions
         PackageDescription(..),
-        PreparedPackageDescription(..),
+        GenericPackageDescription(..),
         finalizePackageDescription,
         emptyPackageDescription,
         readPackageDescription,
@@ -198,8 +198,8 @@ emptyPackageDescription
                       extraTmpFiles = []
                      }
 
-data PreparedPackageDescription = 
-    PreparedPackageDescription {
+data GenericPackageDescription = 
+    GenericPackageDescription {
         packageDescription :: PackageDescription,
         packageFlags       :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar Dependency Library),
@@ -208,8 +208,8 @@ data PreparedPackageDescription =
     --deriving (Show)
 
 -- XXX: I think we really want a PPrint or Pretty or ShowPretty class.
-instance Show PreparedPackageDescription where
-    show (PreparedPackageDescription pkg flgs mlib exes) =
+instance Show GenericPackageDescription where
+    show (GenericPackageDescription pkg flgs mlib exes) =
         showPackageDescription pkg ++ "\n" ++
         (render $ vcat $ map ppFlag flgs) ++ "\n" ++
         render (maybe empty (\l -> text "Library:" $+$ 
@@ -229,11 +229,11 @@ instance Show PreparedPackageDescription where
 
 finalizePackageDescription :: [(String,Bool)] -> Maybe [PackageIdentifier] 
                            -> String -> String
-                           -> PreparedPackageDescription
+                           -> GenericPackageDescription
                            -> Either [Dependency]
                                      (PackageDescription, [(String,Bool)])
 finalizePackageDescription userflags mpkgs os arch 
-        (PreparedPackageDescription pkg flags mlib0 exes) =
+        (GenericPackageDescription pkg flags mlib0 exes) =
     case resolveFlags mlib0 of 
       Right (mlib, deps, flagVals) ->
         let exes' = finalizeExes flagVals in
@@ -726,7 +726,7 @@ readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 -- |Parse the given package file.
 -- readPackageDescription :: Int -> FilePath -> IO PackageDescription
 -- readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
-readPackageDescription :: Verbosity -> FilePath -> IO PreparedPackageDescription
+readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription verbosity = 
     readAndParseFile verbosity (\s -> readFields s >>= parseDescription') 
 {-
@@ -860,7 +860,7 @@ skipField :: PM ()
 skipField = modify tail
 
 -- | Parses the pre-parsed list of fields into a prepared package description.
-parseDescription' :: [Field] -> ParseResult PreparedPackageDescription
+parseDescription' :: [Field] -> ParseResult GenericPackageDescription
 parseDescription' fields0 = do
     let sf = sectionizeFields fields0
     fields <- mapSimpleFields deprecField sf
@@ -870,7 +870,7 @@ parseDescription' fields0 = do
       pkg <- lift $ parseFields pkgDescrFieldDescrs emptyPackageDescription hfs
       (flags, mlib, exes) <- getBody
       warnIfRest
-      return (PreparedPackageDescription pkg flags mlib exes)
+      return (GenericPackageDescription pkg flags mlib exes)
 
   where
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
