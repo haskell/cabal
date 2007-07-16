@@ -143,7 +143,7 @@ data UserHooks = UserHooks
       -- |Hook to run before configure command
      preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
      -- |Over-ride this hook to get different behavior during configure.
-     confHook :: ( Either PreparedPackageDescription PackageDescription
+     confHook :: ( Either GenericPackageDescription PackageDescription
                  , HookedBuildInfo)
               -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription),
       -- |Hook to run after configure command
@@ -329,7 +329,7 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                 
                 postConf hooks args flags' pkg_descr localbuildinfo
               where
-                confPkgDescr :: ConfigFlags -> IO (Either PreparedPackageDescription
+                confPkgDescr :: ConfigFlags -> IO (Either GenericPackageDescription
                                                           PackageDescription)
                 confPkgDescr cfgflags = do
                   mdescr' <- readDesc hooks
