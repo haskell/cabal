@@ -24,6 +24,7 @@ import Distribution.Simple.Configure
 import Distribution.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
+                                  packageDescription,
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
 import System.Console.GetOpt
