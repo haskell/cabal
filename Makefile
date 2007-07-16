@@ -183,3 +183,11 @@ release: dist
 	scp -r $(TMPDISTLOC)/release www.haskell.org:/home/haskell/cabal/release/cabal-$(CABALVERSION)
 	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
 
+# dirs that contain source files that should be tagged.  Be careful to
+# about using "."
+TAGSSRCDIRS = Distribution Language
+
+# create ctags/etags files.
+tags::
+	find $(TAGSSRCDIRS) -name \*.\*hs | xargs hasktags
+
