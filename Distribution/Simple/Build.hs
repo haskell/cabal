@@ -143,7 +143,7 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
   createDirectoryIfMissingVerbose verbosity True (autogenModulesDir lbi)
   buildPathsModule pkg_descr lbi
 
-  preprocessSources pkg_descr lbi verbosity suffixes
+  preprocessSources pkg_descr lbi False verbosity suffixes
 
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs
