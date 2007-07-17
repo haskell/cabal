@@ -154,17 +154,18 @@ type PPSuffixHandler
 -- a Haskell source file for each module.
 preprocessSources :: PackageDescription
                   -> LocalBuildInfo
+                  -> Bool               -- ^ Build for SDist
                   -> Verbosity          -- ^ verbosity
                   -> [PPSuffixHandler]  -- ^ preprocessors to try
                   -> IO ()
 
-preprocessSources pkg_descr lbi verbosity handlers = do
+preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     withLib pkg_descr () $ \ lib -> do
         setupMessage verbosity "Preprocessing library" pkg_descr
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
-        sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) modu
-                                     verbosity builtinSuffixes biHandlers
+        sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) forSDist 
+                                     modu verbosity builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
         setupMessage verbosity "Preprocessing executables for" pkg_descr
@@ -173,7 +174,7 @@ preprocessSources pkg_descr lbi verbosity handlers = do
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
                                   ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
-                                     (buildDir lbi)
+                                     (buildDir lbi) forSDist
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
   where hc = compilerFlavor (compiler lbi)
@@ -187,12 +188,13 @@ preprocessSources pkg_descr lbi verbosity handlers = do
 preprocessModule
     :: [FilePath]               -- ^source directories
     -> FilePath                 -- ^build directory
+    -> Bool                     -- ^preprocess for sdist
     -> String                   -- ^module name
     -> Verbosity                -- ^verbosity
     -> [String]                 -- ^builtin suffixes
     -> [(String, PreProcessor)] -- ^possible preprocessors
     -> IO ()
-preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
+preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
     psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
@@ -208,31 +210,30 @@ preprocessModule searchLoc buildLoc modu verbosity builtinSuffixes handlers = do
                 psrcFile = psrcLoc </> psrcRelFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
 	                       (lookup (tailNotNull ext) handlers)
-            -- Currently we put platform independent generated .hs files back
-            -- into the source dirs and put platform dependent ones into the
-            -- build dir. Really they should all go in the build dir, or at
-            -- least not in the source dirs (which should be considred
-            -- read-only), however for the moment we have no other way of
-            -- tracking which files should be included in the source
-            -- distribution tarball. Hopefully we can fix that soon.
-            let destLoc = if platformIndependent pp
-                            then psrcLoc
-                            else buildLoc
-            -- look for existing pre-processed source file in the dest dir to
-            -- see if we really have to re-run the preprocessor.
-	    ppsrcFiles <- moduleToFilePath [destLoc] modu builtinSuffixes
-	    recomp <- case ppsrcFiles of
+            -- Preprocessing files for 'sdist' is different from preprocessing
+            -- for 'build'.  When preprocessing for sdist we preprocess to
+            -- avoid that the user has to have the preprocessors available.
+            -- As, ATM, we don't have a way to specify which files are to be
+            -- preprocessed and which not, so for sdist we only process
+            -- platform independent files and put them into the 'buildLoc'
+            -- (which we assume is set to the temp. directory that will become
+            -- the tarball).
+            when (not forSDist || forSDist && platformIndependent pp) $ do
+              -- look for existing pre-processed source file in the dest dir to
+              -- see if we really have to re-run the preprocessor.
+	      ppsrcFiles <- moduleToFilePath [buildLoc] modu builtinSuffixes
+	      recomp <- case ppsrcFiles of
 	                  [] -> return True
 	                  (ppsrcFile:_) -> do
                               btime <- getModificationTime ppsrcFile
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)
-            when recomp $ do
-              let destDir = destLoc </> dirName srcStem
-              createDirectoryIfMissingVerbose verbosity True destDir
-              runPreProcessor pp
-                 (psrcLoc, psrcRelFile)
-                 (destLoc, srcStem <.> "hs") verbosity
+              when recomp $ do
+                let destDir = buildLoc </> dirName srcStem
+                createDirectoryIfMissingVerbose verbosity True destDir
+                runPreProcessor pp
+                   (psrcLoc, psrcRelFile)
+                   (buildLoc, srcStem <.> "hs") verbosity
 
       where dirName = takeDirectory
             tailNotNull [] = []
