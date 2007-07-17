@@ -443,7 +443,7 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
     let tmpDir = buildDir lbi </> "tmp"
     createDirectoryIfMissingVerbose verbosity True tmpDir
     createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
-    preprocessSources pkg_descr lbi verbosity pps
+    preprocessSources pkg_descr lbi False verbosity pps
 
     setupMessage verbosity "Running Haddock for" pkg_descr
 
@@ -618,7 +618,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
         lbi <- getPersistBuildConfig
         let bi = libBuildInfo lib
         let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
-        preprocessSources pkg_descr lbi verbosity pps
+        preprocessSources pkg_descr lbi False verbosity pps
         inFiles <- getModulePaths lbi bi mods
         let verbFlags = if verbosity >= deafening then ["-v"] else []
         rawSystemProgramConf verbosity
