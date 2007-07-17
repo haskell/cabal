@@ -187,6 +187,32 @@ parseCondition = condOr
     sp            = skipSpaces
 
 
+------------------------------------------------------------------------------
+
+data CondTree' v c a = CondNode 
+    { condTreeData        :: a
+    , condTreeConstraints :: [c]
+    , condTreeComponents  :: [( Condition v
+                              , CondTree' v c a
+                              , Maybe (CondTree' v c a))]
+    }
+
+
+
+ppCondTree' :: Show v => CondTree' v c a -> (c -> Doc) -> Doc
+ppCondTree' (CondNode dat cs ifs) ppD =
+    (text "depends: " <+>
+      (fsep $ punctuate (char ',') $ map ppD cs))
+    $+$
+    (vcat $ map ppIf ifs)
+  where 
+    ppIf (c,thenTree,mElseTree) = 
+        ((text "if" <+> ppCond c <> colon) $$
+          nest 2 (ppCondTree' thenTree ppD))
+        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree' t ppD))
+                   mElseTree)
+
+
 -- | A CondTree is the internal (normalized) representation of a specification
 -- with (optional) conditional statements in it.  To get to the final value,
 -- a sequence of conditions has to be evaluated completely, which then specifies
@@ -390,5 +416,21 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
                      , "flag( foo_bar )"
                      , "flag( foo_O_-_O_bar )"
                      ]
+
+test_ppCondTree' = render $ ppCondTree' tstTree (text . show)
+  where
+    tstTree :: CondTree' ConfVar Int String
+    tstTree = CondNode "A" [0] 
+              [ (CNot (Var (Flag "a")), 
+                 CondNode "B" [1] [],
+                 Nothing)
+              , (CAnd (Var (Flag "b")) (Var (Flag "c")),
+                CondNode "C" [2] [],
+                Just $ CondNode "D" [3] 
+                         [ (Lit True,
+                           CondNode "E" [4] [],
+                           Just $ CondNode "F" [5] []) ])
+                ]
+
 
 #endif
