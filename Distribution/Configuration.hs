@@ -44,8 +44,10 @@ module Distribution.Configuration (
     Flag(..),
     ConfVar(..),
     Condition(..), parseCondition, simplifyCondition,
-    CondTree(..), ppCondTree, evalCond,
-    satisfyFlags, DepTestRslt(..)
+    CondTree(..), ppCondTree, mapTreeData,
+    --satisfyFlags, 
+    resolveWithFlags,
+    DepTestRslt(..)
   ) where
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
@@ -54,8 +56,11 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Text.PrettyPrint.HughesPJ
 
 import Data.Char ( isAlphaNum, toLower )
+import Data.Maybe ( catMaybes )
+import Data.Monoid
 
 #ifdef DEBUG
+import Data.List ( (\\) )
 import Distribution.ParseUtils
 #endif
 
@@ -75,7 +80,8 @@ instance Show Flag where show (MkFlag n _ _) = n
 data ConfVar = OS String 
              | Arch String 
              | Flag String
-             
+               deriving Eq
+
 instance Show ConfVar where
     show (OS n) = "os(" ++ n ++ ")"
     show (Arch n) = "arch(" ++ n ++ ")"
@@ -136,9 +142,9 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: Condition ConfVar -> String -> String -> 
+simplifyWithSysParams :: String -> String -> Condition ConfVar ->  
                          (Condition ConfVar, [String])
-simplifyWithSysParams cond arch os = (cond', flags)
+simplifyWithSysParams os arch cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
     interp (OS name)   = Just $ name == os
@@ -189,101 +195,72 @@ parseCondition = condOr
 
 ------------------------------------------------------------------------------
 
-data CondTree' v c a = CondNode 
+data CondTree v c a = CondNode 
     { condTreeData        :: a
-    , condTreeConstraints :: [c]
+    , condTreeConstraints :: c
     , condTreeComponents  :: [( Condition v
-                              , CondTree' v c a
-                              , Maybe (CondTree' v c a))]
+                              , CondTree v c a
+                              , Maybe (CondTree v c a))]
     }
 
+mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w) 
+            -> CondTree v c a -> CondTree w d b
+mapCondTree fa fc fcnd (CondNode a c ifs) =
+    CondNode (fa a) (fc c) (map g ifs)
+  where
+    g (cnd, t, me) = (fcnd cnd, mapCondTree fa fc fcnd t,
+                           fmap (mapCondTree fa fc fcnd) me)
 
+mapTreeConstrs :: (c -> d) -> CondTree v c a -> CondTree v d a
+mapTreeConstrs f = mapCondTree id f id
 
-ppCondTree' :: Show v => CondTree' v c a -> (c -> Doc) -> Doc
-ppCondTree' (CondNode dat cs ifs) ppD =
+mapTreeConds :: (Condition v -> Condition w) -> CondTree v c a -> CondTree w c a
+mapTreeConds f = mapCondTree id id f
+
+mapTreeData :: (a -> b) -> CondTree v c a -> CondTree v c b
+mapTreeData f = mapCondTree f id id
+
+instance (Show v, Show c) => Show (CondTree v c a) where
+    show t = render $ ppCondTree t (text . show)
+
+ppCondTree :: Show v => CondTree v c a -> (c -> Doc) -> Doc
+ppCondTree (CondNode _dat cs ifs) ppD =
     (text "depends: " <+>
-      (fsep $ punctuate (char ',') $ map ppD cs))
+      ppD cs)
     $+$
     (vcat $ map ppIf ifs)
   where 
     ppIf (c,thenTree,mElseTree) = 
         ((text "if" <+> ppCond c <> colon) $$
-          nest 2 (ppCondTree' thenTree ppD))
-        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree' t ppD))
+          nest 2 (ppCondTree thenTree ppD))
+        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t ppD))
                    mElseTree)
 
+ 
+-- | Result of dependency test. Isomorphic to @Maybe d@ but renamed for
+--   clarity.
+data DepTestRslt d = DepOk | MissingDeps d 
 
--- | A CondTree is the internal (normalized) representation of a specification
--- with (optional) conditional statements in it.  To get to the final value,
--- a sequence of conditions has to be evaluated completely, which then specifies
--- which path to take, until we reach a leaf.  
--- 
--- Each path is annotated with a number of constraints, which must be
--- fulfilled and a modifier, describing which information to add to the final
--- value.  We record constraints and data separately, to allow possible
--- optimizations later on.
---
--- Although the a CondTree is a tree, it can be constructed in a way to
--- preserve maximum sharing.  For example, in the following, the specification
--- on the left can be represented using the graph depicted on the right.
---
--- > if C1 {                                   C1
--- >   constraints: A,B                   A,B /  \
--- >   if C2 {                               /    \
--- >     constraints: D                     C2     \
--- >     data: 42                        D /  \ E   \
--- >   } else {                       42  /    | 3   |
--- >     constraints: E                  |     |     |
--- >     data: 3                          \    |    /
--- >   }                                   \   |   /
--- > }                                      \  |  /
--- > constraint: F                           v v v
--- > data: 1                                 F ; 1
--- 
-data CondTree v c a = CondLeaf [c] (a -> a)
-                    | Cond (Condition v) 
-                           ([c], a -> a, CondTree v c a)
-                           ([c], a -> a, CondTree v c a)
-                    --deriving Show
-instance (Show c, Show v) => Show (CondTree v c a) where
-    show c = render $ ppCondTree c (text . show) []
-      
--- Pretty print a cond tree.  The printed tree will be normalized to have all
--- it's data in the nodes, which results in a fair amount of duplication.  So,
--- ya be warned.
-ppCondTree :: (Show v) => CondTree v c a -> (c -> Doc) -> [c] -> Doc
-ppCondTree (CondLeaf ds _) ppD ds' = 
-    text "build-depends:" <+> 
-      (fsep $ punctuate (char ',') $ map ppD (ds' ++ ds))
-ppCondTree (Cond c (d1s, _, ct1) (d2s, _, ct2)) ppD ds' =
-            ((text "if" <+> ppCond c <> colon) $$ 
-             nest 2 (ppCondTree ct1 ppD (d1s ++ ds')))
-            $+$
-            (text "else:" $$ nest 2 (ppCondTree ct2 ppD (d2s ++ ds')))
-             
--- | Completely evaluate a CondTree with the given variable assignment.  The
---   environment must be defined for all free variables in all the conditions.
-evalCond :: (v -> Maybe Bool) -> CondTree v d a -> ([d], a -> a)
-evalCond _ (CondLeaf ds fs) = (ds, fs)
-evalCond f (Cond cnd y n) = 
-    case simplifyCondition cnd f of
-      (Lit b, _) -> let (ds', fs', cnd') = if b then y else n 
-                        (ds, fs) = evalCond f cnd' 
-                    in (ds' ++ ds, fs' . fs)
-      _ -> error $ "Environment not defined for all free vars" 
+instance Monoid d => Monoid (DepTestRslt d) where
+    mempty = DepOk
+    mappend DepOk x = x
+    mappend x DepOk = x
+    mappend (MissingDeps d) (MissingDeps d') = MissingDeps (d `mappend` d')
 
-data DepTestRslt d = DepOk | MissingDeps [d] -- result of dependency test
+
 data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 
--- | Search Condition graph for a combination that satisfies certain
--- dependencies.  Returns either the missing dependencies, or a tuple
--- containing the resulting data, the associated dependencies, and the chosen
--- flag assignments.
+
+-- | Try to find a flag assignment that satisfies the constaints of all trees.
+--
+-- Returns either the missing dependencies, or a tuple containing the
+-- resulting data, the associated dependencies, and the chosen flag
+-- assignments.
 --
 -- In case of failure, the _smallest_ number of of missing dependencies is
--- returned.
+-- returned. [XXX: Could also be specified with a function argument.]
 --
--- XXX: The current algorithm is rather naive.  A better approach would be to:
+-- [XXX: The current algorithm is rather naive.  A better approach would be to:
 --
 -- * Rule out possible paths, by taking a look at the associated dependencies.
 --
@@ -292,36 +269,44 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 --   conditions.  Then picking a flag assignment would be linear (I guess).
 --
 -- This would require some sort of SAT solving, though, thus it's not
--- implemented unless we really need it.
+-- implemented unless we really need it.]
 --   
-satisfyFlags :: [(String,[Bool])] 
-                -- ^ Domain for each flag name, will be tested in order.
-             -> String  -- ^ OS name, as returned System.Info.os
-             -> String  -- ^ arch name, as returned System.Info.arch
-             -> CondTree ConfVar d a    
-             -> ([d] -> DepTestRslt d)  -- ^ Dependency test function.
-             -> a                       -- ^ Empty result value.
-             -> (Either [d] -- missing dependencies
-                 (a, [d], [(String, Bool)]))
-satisfyFlags dom os arch tree depsOk ini = 
+resolveWithFlags :: Monoid a =>
+     [(String,[Bool])] 
+        -- ^ Domain for each flag name, will be tested in order.
+  -> String  -- ^ OS name, as returned by System.Info.os
+  -> String  -- ^ arch name, as returned by System.Info.arch
+  -> [CondTree ConfVar [d] a]    
+  -> ([d] -> DepTestRslt [d])  -- ^ Dependency test function.
+  -> (Either [d] -- missing dependencies
+       ([a], [d], [(String, Bool)]))
+resolveWithFlags dom os arch trees checkDeps =
     case try dom [] of
       Right r -> Right r
       Left dbt -> Left $ findShortest dbt
   where 
+    -- Check dependencies only once; might avoid some duplicate efforts.
+    preCheckedTrees = map ( mapTreeConstrs (\d -> (checkDeps d,d))
+                          . mapTreeConds (fst . simplifyWithSysParams os arch) )
+                        trees
+
     -- @try@ recursively tries all possible flag assignments in the domain and
     -- either succeeds or returns a binary tree with the missing dependencies
     -- encountered in each run.  Since the tree is constructed lazily, we
     -- avoid some computation overhead in the successful case.
-    try [] env = let (deps, dmod) = evalCond (f env) tree in
-                 case depsOk deps of
-                   DepOk -> Right (dmod ini, deps, env)
-                   MissingDeps ds -> Left (BTN ds)
-    try ((n, vals):rest) env = 
-        tryAll $ map (\v -> try rest ((n, v):env)) vals
+    try [] flags = 
+        let (depss, as) = unzip 
+                         . map (simplifyCondTree (env flags)) 
+                         $ preCheckedTrees
+        in case mconcat depss of
+             (DepOk, ds) -> Right (as, ds, flags)
+             (MissingDeps mds, _) -> Left (BTN mds)
+    try ((n, vals):rest) flags = 
+        tryAll $ map (\v -> try rest ((n, v):flags)) vals
 
     tryAll = foldr mp mz
 
-    -- special kind of `mplus' for our local purposes
+    -- special version of `mplus' for our local purposes
     mp (Left xs)   (Left ys)   = (Left (BTB xs ys))
     mp (Left _)    m@(Right _) = m
     mp m@(Right _) _           = m
@@ -329,10 +314,12 @@ satisfyFlags dom os arch tree depsOk ini =
     -- `mzero'
     mz = Left (BTN [])
 
-    f _ (OS o)     = Just $ o == os
-    f _ (Arch a)   = Just $ a == arch
-    f env (Flag n) = lookup n env
+    env _ (OS o)     = Just $ o == os
+    env _ (Arch a)   = Just $ a == arch
+    env flags (Flag n) = lookup n flags
 
+    -- for the error case we inspect our lazy tree of missing dependencies and
+    -- pick the shortest list of missing dependencies
     findShortest (BTN x) = x
     findShortest (BTB lt rt) = 
         let l = findShortest lt
@@ -349,47 +336,27 @@ satisfyFlags dom os arch tree depsOk ini =
     lazyLengthCmp _ [] = False
     lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
 
+
+
+simplifyCondTree :: (Monoid a, Monoid d) =>
+                    (v -> Maybe Bool) 
+                 -> CondTree v d a 
+                 -> (d, a)
+simplifyCondTree env (CondNode a d ifs) =
+    foldr mappend (d, a) $ catMaybes $ map simplifyIf ifs
+  where
+    simplifyIf (cnd, t, me) = 
+        case simplifyCondition cnd env of
+          (Lit True, _) -> Just $ simplifyCondTree env t
+          (Lit False, _) -> fmap (simplifyCondTree env) me
+          _ -> error $ "Environment not defined for all free vars" 
+
+
+
 ------------------------------------------------------------------------------
 -- Testing
 
 #ifdef DEBUG
-test_satisfyFlags = satisfyFlags dom os arch tstTree check []
-  where 
-    dom = [("a",[True,False]),("b",[False,True]),("c",[True,False])]
-    os = "house"
-    arch = "i386"
-    
-    check xs = if all (`elem` avail) xs 
-               then DepOk 
-               else (MissingDeps (filter (not . (`elem` avail)) xs))
-    avail = [1,5,4,0,42]
-
-tstTree = Cond (CNot (Var (Flag "a"))) ([1], (1:), t1) ([2], (2:), t2)
-  where
-    t1 = Cond (CAnd (Var (Flag "b")) (Var (Flag "c"))) 
-              ([3], (3:), t2) ([4], (4:), t2)
-    t2 = CondLeaf [0,7,42] (0:)
-{-
--- | A @Conditional@ guards a value of type @a@ with a condition.  The idea is
---   that the value is only accessible if the condition can be satisfied.
-data Conditional c a = MkCond 
-    { condCondition  :: Condition c
-    , condValue      :: a
-    } deriving Show
-
-getValue :: Conditional c a
-         -> (c -> Bool) -- ^ Truth assignment for all the values.  (Must be
-                        --   defined for all free variables.)
-         -> Maybe a
-getValue c i = case eval c of
-                 (Lit True, _) -> Just $ condValue c
-                 _             -> Nothing
-  where
-    eval c = simplifyCondition (condCondition c) (Just . i)
--}
-
-------------------------------------------------------------------------------
--- Testing
 
 test_simplify = simplifyWithSysParams tstCond i386 darwin
   where 
@@ -417,10 +384,10 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
                      , "flag( foo_O_-_O_bar )"
                      ]
 
-test_ppCondTree' = render $ ppCondTree' tstTree (text . show)
-  where
-    tstTree :: CondTree' ConfVar Int String
-    tstTree = CondNode "A" [0] 
+test_ppCondTree = render $ ppCondTree tstTree (text . show)
+  
+tstTree :: CondTree ConfVar [Int] String
+tstTree = CondNode "A" [0] 
               [ (CNot (Var (Flag "a")), 
                  CondNode "B" [1] [],
                  Nothing)
@@ -432,5 +399,17 @@ test_ppCondTree' = render $ ppCondTree' tstTree (text . show)
                            Just $ CondNode "F" [5] []) ])
                 ]
 
+test_simpCondTree = simplifyCondTree (flip lookup flags) tstTree
+  where
+    flags = [(Flag "a",False), (Flag "b",False), (Flag "c", True)] 
+
+test_resolveWithFlags = resolveWithFlags dom "os" "arch" [tstTree] check
+  where
+    dom = [("a", [False,True]), ("b", [True,False]), ("c", [True,False])]
+    check ds = let missing = ds \\ avail in
+               case missing of
+                 [] -> DepOk
+                 _ -> MissingDeps missing
+    avail = [0,1,3,4]
 
 #endif
