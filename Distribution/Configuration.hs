@@ -364,6 +364,20 @@ ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
 
 #ifdef DEBUG
 
+tstTree :: CondTree ConfVar [Int] String
+tstTree = CondNode "A" [0] 
+              [ (CNot (Var (Flag "a")), 
+                 CondNode "B" [1] [],
+                 Nothing)
+              , (CAnd (Var (Flag "b")) (Var (Flag "c")),
+                CondNode "C" [2] [],
+                Just $ CondNode "D" [3] 
+                         [ (Lit True,
+                           CondNode "E" [4] [],
+                           Just $ CondNode "F" [5] []) ])
+                ]
+
+
 test_simplify = simplifyWithSysParams tstCond i386 darwin
   where 
     tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
@@ -392,18 +406,6 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
 
 test_ppCondTree = render $ ppCondTree tstTree (text . show)
   
-tstTree :: CondTree ConfVar [Int] String
-tstTree = CondNode "A" [0] 
-              [ (CNot (Var (Flag "a")), 
-                 CondNode "B" [1] [],
-                 Nothing)
-              , (CAnd (Var (Flag "b")) (Var (Flag "c")),
-                CondNode "C" [2] [],
-                Just $ CondNode "D" [3] 
-                         [ (Lit True,
-                           CondNode "E" [4] [],
-                           Just $ CondNode "F" [5] []) ])
-                ]
 
 test_simpCondTree = simplifyCondTree (flip lookup flags) tstTree
   where
