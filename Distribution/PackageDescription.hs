@@ -250,7 +250,7 @@ finalizePackageDescription userflags mpkgs os arch
       Right ((mlib, exes'), deps, flagVals) ->
         Right ( pkg { library = mlib                            
                     , executables = exes'
-                    , buildDepends = deps
+                    , buildDepends = nub deps
                     }
               , flagVals )
       Left missing -> Left missing
