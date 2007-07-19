@@ -46,7 +46,7 @@ module Distribution.Configuration (
     Condition(..), parseCondition, simplifyCondition,
     CondTree(..), ppCondTree, mapTreeData,
     --satisfyFlags, 
-    resolveWithFlags,
+    resolveWithFlags, ignoreConditions,
     DepTestRslt(..)
   ) where
 
@@ -56,7 +56,7 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Text.PrettyPrint.HughesPJ
 
 import Data.Char ( isAlphaNum, toLower )
-import Data.Maybe ( catMaybes )
+import Data.Maybe ( catMaybes, maybeToList )
 import Data.Monoid
 
 #ifdef DEBUG
@@ -351,7 +351,13 @@ simplifyCondTree env (CondNode a d ifs) =
           (Lit False, _) -> fmap (simplifyCondTree env) me
           _ -> error $ "Environment not defined for all free vars" 
 
-
+-- | Flatten a CondTree.  This will resolve the CondTree by taking all
+--  possible paths into account.  Note that since branches represent exclusive
+--  choices this may not result in a "sane" result.
+ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
+ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
+  where f (_, t, me) = ignoreConditions t 
+                       : maybeToList (fmap ignoreConditions me)
 
 ------------------------------------------------------------------------------
 -- Testing
