@@ -101,7 +101,7 @@ module Distribution.PackageDescription (
 
 import Control.Monad(liftM, foldM, when)
 import Data.Char
-import Data.Maybe(isNothing, isJust, catMaybes, listToMaybe)
+import Data.Maybe(isNothing, isJust, catMaybes, listToMaybe, maybeToList)
 import Data.List (nub, maximumBy, unfoldr, partition)
 import Text.PrettyPrint.HughesPJ as Pretty
 import System.Directory(doesFileExist)
@@ -122,6 +122,7 @@ import Language.Haskell.Extension(Extension(..))
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import System.FilePath((<.>))
 
+import Data.Monoid
 
 #ifdef DEBUG
 import Data.List ( sortBy )
@@ -202,8 +203,8 @@ data GenericPackageDescription =
     GenericPackageDescription {
         packageDescription :: PackageDescription,
         packageFlags       :: [Flag],
-        condLibrary        :: Maybe (CondTree ConfVar Dependency Library),
-        condExecutables    :: [(String, CondTree ConfVar Dependency Executable)]
+        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
       }
     --deriving (Show)
 
@@ -213,11 +214,11 @@ instance Show GenericPackageDescription where
         showPackageDescription pkg ++ "\n" ++
         (render $ vcat $ map ppFlag flgs) ++ "\n" ++
         render (maybe empty (\l -> text "Library:" $+$ 
-                                   nest 2 (ppCondTree l showDependency [])) mlib)
+                                   nest 2 (ppCondTree l showDeps)) mlib)
         ++ "\n" ++
         (render $ vcat $ 
             map (\(n,ct) -> (text ("Executable: " ++ n) $+$ 
-                             nest 2 (ppCondTree ct showDependency []))) exes)
+                             nest 2 (ppCondTree ct showDeps))) exes)
       where
         ppFlag (MkFlag name desc dflt) =
             (text ("Flag: " ++ name) <> colon) $+$ 
@@ -225,7 +226,18 @@ instance Show GenericPackageDescription where
               ((if (null desc) then empty else 
                    text ("Description: " ++ desc)) $+$
               text ("Default: " ++ show dflt))
+        showDeps = fsep . punctuate comma . map showDependency
          
+
+data PDTagged = Lib Library | Exe String Executable | PDNull
+
+instance Monoid PDTagged where
+    mempty = PDNull
+    PDNull `mappend` x = x
+    x `mappend` PDNull = x
+    Lib l `mappend` Lib l' = Lib (l `mappend` l')
+    Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
+    _ `mappend` _ = bug "Cannot combine incompatible tags"
 
 finalizePackageDescription :: [(String,Bool)] -> Maybe [PackageIdentifier] 
                            -> String -> String
@@ -233,10 +245,9 @@ finalizePackageDescription :: [(String,Bool)] -> Maybe [PackageIdentifier]
                            -> Either [Dependency]
                                      (PackageDescription, [(String,Bool)])
 finalizePackageDescription userflags mpkgs os arch 
-        (GenericPackageDescription pkg flags mlib0 exes) =
-    case resolveFlags mlib0 of 
-      Right (mlib, deps, flagVals) ->
-        let exes' = finalizeExes flagVals in
+        (GenericPackageDescription pkg flags mlib0 exes0) =
+    case resolveFlags of 
+      Right ((mlib, exes'), deps, flagVals) ->
         Right ( pkg { library = mlib                            
                     , executables = exes'
                     , buildDepends = deps
@@ -244,15 +255,31 @@ finalizePackageDescription userflags mpkgs os arch
               , flagVals )
       Left missing -> Left missing
   where
-    resolveFlags Nothing = Right (Nothing, [], flagDefaults)
-    resolveFlags (Just ct) =
-        case satisfyFlags flagChoices os arch ct check nullLibrary of
-          Right (l, ds, as) -> Right (Just (libFillInDefaults l), ds, as)
+    -- Combine lib and exes into one list of @CondTree@s with tagged data
+    condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
+                ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
+
+    untagRslts = foldr untag (Nothing, [])
+      where
+        untag (Lib _) (Just _, _) = bug "Only one library expected"
+        untag (Lib l) (Nothing, exes) = (Just l, exes)
+        untag (Exe n e) (mlib, exes)
+         | any ((== n) . fst) exes = bug "Exe with same name found"
+         | otherwise = (mlib, exes ++ [(n, e)])
+        untag PDNull x = x  -- actually this should not happen, but let's be liberal
+
+    resolveFlags =
+        case resolveWithFlags flagChoices os arch condTrees check of
+          Right (as, ds, fs) ->
+              let (mlib, exes) = untagRslts as in
+              Right ( (fmap libFillInDefaults mlib,
+                       map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes),
+                     ds, fs)
           Left missing      -> Left missing
 
     flagChoices  = map (\(MkFlag n _ d) -> (n, d2c n d)) flags
     d2c n b      = maybe [b, not b] (\x -> [x]) $ lookup n userflags
-    flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices 
+    --flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices 
     check ds     = if all satisfyDep ds
                    then DepOk
                    else MissingDeps $ filter (not . satisfyDep) ds
@@ -262,13 +289,13 @@ finalizePackageDescription userflags mpkgs os arch
                          (\pkgs -> isJust . satisfyDependency pkgs) 
                          mpkgs
 
-    finalizeExes fvs = 
-        map (\(n, ct) -> exeFillInDefaults $
-                 (snd (evalCond lu ct)) (nullExecutable { exeName = n }))
-            exes
-      where lu (OS o) = Just $ o == os
-            lu (Arch a) = Just $ a == arch
-            lu (Flag f) = lookup f fvs
+--    finalizeExes fvs = undefined
+--         map (\(n, ct) -> exeFillInDefaults $
+--                  (snd (evalCond lu ct)) (nullExecutable { exeName = n }))
+--             exes
+--       where lu (OS o) = Just $ o == os
+--             lu (Arch a) = Just $ a == arch
+--             lu (Flag f) = lookup f fvs
 
 
 -- | The type of build system used by this package.
@@ -367,6 +394,10 @@ data Library = Library {
     }
     deriving (Show, Eq, Read)
 
+instance Monoid Library where
+    mempty = nullLibrary
+    mappend = unionLibrary
+
 emptyLibrary :: Library
 emptyLibrary = Library [] emptyBuildInfo
 
@@ -429,6 +460,10 @@ data Executable = Executable {
         buildInfo  :: BuildInfo
     }
     deriving (Show, Read, Eq)
+
+instance Monoid Executable where
+    mempty = nullExecutable
+    mappend = unionExecutable
 
 emptyExecutable :: Executable
 emptyExecutable = Executable {
@@ -789,8 +824,7 @@ constraintFieldNames = ["build-depends"]
 parseConstraint :: Field -> ParseResult [Dependency]
 parseConstraint (F l n v) 
     | n == "build-depends" = runP l n (parseCommaList parseDependency) v 
-parseConstraint f = error $ "Constraint was expected.  Report as a bug."
-                      ++ "got: " ++ show f
+parseConstraint f = bug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 {-
 headerFieldNames :: [String]
@@ -910,8 +944,7 @@ parseDescription' fields0 = do
                  | e == "executable" = 
                      let (efs, r') = break ((=="executable") . fName) r
                      in Just (Section l "executable" n (deps ++ efs), r')
-                toExe l = error $ "unexpeced input to 'toExe'.  Consider it a bug."
-                            ++ "input was: " ++ show l
+                toExe _ = bug "unexpeced input to 'toExe'"
             in hdr 
                ++ 
                (if null libfs then [] 
@@ -997,54 +1030,32 @@ parseDescription' fields0 = do
 
     -- extracts all fields in a block, possibly add dependencies to the
     -- guard condition
-    collectFields :: ([Field] -> PM (a -> a)) -> [Field] 
-                  -> PM (CondTree ConfVar Dependency a)
+    collectFields :: ([Field] -> PM a) -> [Field] 
+                  -> PM (CondTree ConfVar [Dependency] a)
     collectFields parser allflds = do
-        (ifs, ds, fs) <- collect allflds
-        fmod <- parser fs
-        processIfs parser ifs (CondLeaf ds fmod)
-
-    collect allflds = do
-        deps <- liftM concat . mapM (lift . parseConstraint) $ deps0 
-        return (ifflds, deps, flds)
+        a <- parser dataFlds
+        deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
+        ifs <- mapM processIfs condFlds
+        return (CondNode a deps ifs)
       where
-        (deps0,flds) = partition isConstraint simplflds
-        simplflds = [ F l n v | F l n v <- allflds ]
-        ifflds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
+        (depFlds, dataFlds) = partition isConstraint simplFlds
+        simplFlds = [ F l n v | F l n v <- allflds ]
+        condFlds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
         isConstraint (F _ n _) = n `elem` constraintFieldNames
         isConstraint _ = False
+        processIfs (IfBlock l c t e) = do
+            cnd <- lift $ runP l "if" parseCondition c
+            t' <- collectFields parser t
+            e' <- case e of
+                   [] -> return Nothing
+                   es -> do fs <- collectFields parser es
+                            return (Just fs)
+            return (cnd, t', e')
+        processIfs _ = bug "processIfs called with wrong field type"
 
-    -- "wraps" the current cond with a node with two edges, representing
-    -- the then- and else-branch, respectively.  
-    processIfs _ [] c = return c
-    processIfs parser (IfBlock l cs b1 b2 : other) c = do
-        cnd <- lift $ runP l "if" parseCondition cs
+    parseLibFields = lift . parseFields libFieldDescrs nullLibrary 
 
-        (ifs1, d1, f1) <- collect b1
-        mod1 <- parser f1
-        if1 <- processIfs parser ifs1 c
-
-        (ifs2, d2, f2) <- collect b2
-        mod2 <- parser f2
-        if2 <- processIfs parser ifs2 c
-
-        processIfs parser other (Cond cnd (d1, mod1, if1) (d2, mod2, if2))
-    processIfs _ l _ = error $ "List of if-blocks expected.  Consider this a bug. "
-                        ++ "got: " ++ show l
-
-    parseLibFields = mkMod libFieldDescrs nullLibrary unionLibrary 
-
-    parseExeFields = mkMod executableFieldDescrs nullExecutable unionExecutable 
-
-    -- Make a modifier on 'a' out of FieldDescr a
-    --
-    --  'ini' is the empty result,
-    --  'union is a function to join two partial results
-    --
-    mkMod descrs ini union flds = do
-      a <- lift $ parseFields descrs ini flds
-      return (union a)
-
+    parseExeFields = lift . parseFields executableFieldDescrs nullExecutable
 
     errEOF = lift $ syntaxError (-1) "Unexpected end of file"
 
@@ -1208,6 +1219,7 @@ hasMods pkg_descr =
    null (executables pkg_descr) &&
       maybe True (null . exposedModules) (library pkg_descr)
 
+bug msg = error $ msg ++ ". Consider this a bug."
 
 
 -- ------------------------------------------------------------
