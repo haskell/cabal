@@ -1449,7 +1449,7 @@ assertParseOk mes expected actual
 -}
 test :: IO Counts
 test = runTestTT (TestList hunitTests)
-{-
+#endif
 ------------------------------------------------------------------------------
 
 test_stanzas' = readFields testFile >>= parseDescription'
@@ -1467,6 +1467,8 @@ testFile = unlines $
           , "  Description: Enable debug information"
           , "  Default: False" 
           , "}"
+          , "flag build_wibble {"
+          , "}"
           , ""
           , "library {"
           , "  build-depends: blub"
@@ -1483,9 +1485,24 @@ testFile = unlines $
           , ""
           , "executable foo-bar {"
           , "  Main-is: Foo.hs"
+          , "  Build-depends: blab"
+          , "}"
+          , "executable wobble {"
+          , "  Main-is: Wobble.hs"
+          , "  if flag(debug) {"
+          , "    Build-depends: hunit"
+          , "  }"
+          , "}"
+          , "executable wibble {"
+          , "  Main-is: Wibble.hs"
+          , "  if flag(build_wibble) {"
+          , "    Build-depends: wiblib >= 0.42"
+          , "  } else {"
+          , "    buildable: False"
+          , "  }"
           , "}"
           ]
--}
+
 {-
 test_compatParsing = 
     let ParseOk ws (p, pold) = do 
@@ -1508,18 +1525,18 @@ test_compatParsing =
            ]
     os = (MkOSName "win32")
     arch = (MkArchName "amd64")
-
+-}
 test_finalizePD = 
-    let ParseOk _ ppd = readFields testFile >>= parseDescription'
-        Right (pd,_) = finalizePackageDescription [("debug",True)] (Just pkgs) os arch ppd
-    in  putStrLn $ showPackageDescription pd
+    let ParseOk _ ppd = readFields testFile >>= parseDescription' in
+    case finalizePackageDescription [("debug",True)] (Just pkgs) os arch ppd of
+      Right (pd,fs) -> do putStrLn $ showPackageDescription pd
+                          print fs
+      Left missing -> putStrLn $ "missing: " ++ show missing
   where
     pkgs = [ PackageIdentifier "blub" (Version [1,0] []) 
            , PackageIdentifier "hunit" (Version [1,1] []) 
+           , PackageIdentifier "blab" (Version [0,1] []) 
            ]
-    os = (MkOSName "win32")
-    arch = (MkArchName "amd64")
--}
-
-#endif
+    os = "win32"
+    arch = "amd64"
 
