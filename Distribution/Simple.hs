@@ -426,7 +426,9 @@ haddock pkg_descr lbi hooks
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
     let outputFlag  = if hoogle then "--hoogle" else "--html"
-    have_new_flags <- fmap (> Version [0,8] []) (haddockVersion verbosity lbi)
+    version <- haddockVersion verbosity lbi
+    let have_src_hyperlink_flags = version >= Version [0,8] []
+        have_new_flags           = version >  Version [0,8] []
     let ghcpkgFlags = if have_new_flags
                       then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
                       else []
@@ -434,11 +436,11 @@ haddock pkg_descr lbi hooks
     let allowMissingHtmlFlags = if have_new_flags
                                 then ["--allow-missing-html"]
                                 else []
-    when (hsColour && not have_new_flags) $
-         die "haddock --hscolour requires Haddock version > 0.8"
+    when (hsColour && not have_src_hyperlink_flags) $
+         die "haddock --hscolour requires Haddock version 0.8 or later"
     let linkToHscolour = if hsColour
-            then ["--source-module=src/%{FILE///-}.html"
-                 ,"--source-entity=src/%{FILE///-}.html#(line%{LINE})"]
+            then ["--source-module=src/%{MODULE/./-}.html"
+                 ,"--source-entity=src/%{MODULE/./-}.html#%{NAME}"]
             else []
 
     let pkgTool = compilerPkgTool (compiler lbi)
@@ -541,7 +543,7 @@ hscolour pkg_descr lbi hooks (HscolourFlags stylesheet doExes verbosity) = do
     haveLines <- fmap (>= Version [1,8] []) (hscolourVersion verbosity lbi)
     unless haveLines $ die "hscolour version >= 1.8 required"
 
-    createDirectoryIfMissing True $ hscolourPref pkg_descr
+    createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
     preprocessSources pkg_descr lbi verbosity pps
 
     setupMessage verbosity "Running hscolour for" pkg_descr
@@ -550,12 +552,11 @@ hscolour pkg_descr lbi hooks (HscolourFlags stylesheet doExes verbosity) = do
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
         let bi = libBuildInfo lib
         let modules = exposedModules lib ++ otherModules bi
-        inFiles <- getModulePaths bi modules
+        inFiles <- getModulePaths lbi bi modules
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
             let outputDir = hscolourPref pkg_descr </> "src"
-            let outFile = outputDir </> replaceDot mo <.>
-                          takeExtension inFile <.> "html"
-            createDirectoryIfMissing True outputDir
+            let outFile = outputDir </> replaceDot mo <.> "html"
+            createDirectoryIfMissingVerbose verbosity True outputDir
             copyCSS outputDir
             rawSystemProgram verbosity confHscolour
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
@@ -564,13 +565,12 @@ hscolour pkg_descr lbi hooks (HscolourFlags stylesheet doExes verbosity) = do
         let bi = buildInfo exe
         let modules = "Main" : otherModules bi
         let outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
-        createDirectoryIfMissing True outputDir
+        createDirectoryIfMissingVerbose verbosity True outputDir
         copyCSS outputDir
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
-        inFiles <- liftM (srcMainPath :) $ getModulePaths bi (otherModules bi)
+        inFiles <- liftM (srcMainPath :) $ getModulePaths lbi bi (otherModules bi)
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
-            let outFile = outputDir </> replaceDot mo <.>
-                          takeExtension inFile <.> "html"
+            let outFile = outputDir </> replaceDot mo <.> "html"
             rawSystemProgram verbosity confHscolour
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
   where copyCSS dir = case stylesheet of
