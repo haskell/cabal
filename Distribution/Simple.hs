@@ -404,10 +404,14 @@ getModulePaths lbi bi =
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
-haddock pkg_descr lbi hooks
-        (HaddockFlags hoogle html_loc doExes hsColour css verbosity) = do
+haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
+      haddockExecutables = doExes,
+      haddockHscolour = hsColour,
+      haddockHscolourCss = hsColourCss,
+      haddockVerbose = verbosity
+    } = do
     when hsColour $ hscolour pkg_descr lbi hooks $
-             HscolourFlags css doExes verbosity
+             HscolourFlags hsColourCss doExes verbosity
 
     let pps = allSuffixHandlers hooks
     confHaddock <- do let programConf = withPrograms lbi
@@ -425,13 +429,18 @@ haddock pkg_descr lbi hooks
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg     = showPackageId (package pkg_descr)
-    let outputFlag  = if hoogle then "--hoogle" else "--html"
+    let outputFlag = if haddockHoogle haddockFlags
+                     then "--hoogle"
+                     else "--html"
     version <- haddockVersion verbosity lbi
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
     let ghcpkgFlags = if have_new_flags
                       then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
                       else []
+    let cssFileFlag = case haddockCss haddockFlags of
+                        Nothing -> []
+                        Just cssFile -> ["--css=" ++ cssFile]
     let verboseFlags = if verbosity > deafening then ["--verbose"] else []
     let allowMissingHtmlFlags = if have_new_flags
                                 then ["--allow-missing-html"]
@@ -451,7 +460,7 @@ haddock pkg_descr lbi hooks
             return $ trim $ dropWhile (not . isSpace) $ head $ lines s
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
-            html <- case html_loc of
+            html <- case haddockHtmlLocation haddockFlags of
                 Nothing -> getField pkgId "haddock-html"
                 Just htmlTemplate -> return (substDir pkgId lbi htmlTemplate)
             return $ if null interface
@@ -479,6 +488,7 @@ haddock pkg_descr lbi hooks
                   "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
+		 ++ cssFileFlag
                  ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
