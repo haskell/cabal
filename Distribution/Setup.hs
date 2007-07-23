@@ -255,6 +255,7 @@ emptyHscolourFlags = HscolourFlags {hscolourCSS = Nothing
 data HaddockFlags = HaddockFlags {haddockHoogle :: Bool
                                  ,haddockHtmlLocation :: Maybe String
                                  ,haddockExecutables :: Bool
+                                 ,haddockCss :: Maybe FilePath
                                  ,haddockHscolour :: Bool
                                  ,haddockHscolourCss :: Maybe FilePath
                                  ,haddockVerbose :: Verbosity}
@@ -264,6 +265,7 @@ emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = HaddockFlags {haddockHoogle = False
                                  ,haddockHtmlLocation = Nothing
                                  ,haddockExecutables = False
+                                 ,haddockCss = Nothing
                                  ,haddockHscolour = False
                                  ,haddockHscolourCss = Nothing
                                  ,haddockVerbose = normal}
@@ -336,7 +338,9 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           -- For haddock:
           | HaddockHoogle
           | HaddockExecutables
-          | HaddockHscolour (Maybe FilePath)
+          | HaddockCss FilePath
+          | HaddockHscolour
+          | HaddockHscolourCss FilePath
           | HaddockHtmlLocation String
           -- For clean:
           | SaveConfigure -- ^don't delete dist\/setup-config during clean
@@ -712,8 +716,12 @@ haddockCmd = Cmd {
             "Location of HTML documentation for pre-requisite packages",
           Option "" ["executables"] (NoArg HaddockExecutables)
             "Run haddock for Executables targets",
-          Option "" ["hscolour"] (optPathArg HaddockHscolour)
-            "Also run hscolour (using PATH as the stylesheet, if any)"],
+          Option "" ["css"] (reqPathArg HaddockCss)
+            "Use PATH as the haddock stylesheet",
+          Option "" ["hyperlink-source"] (NoArg HaddockHscolour)
+            "Hyperlink the documentation to the source code (using HsColour)",
+          Option "" ["hscolour-css"] (reqPathArg HaddockHscolourCss)
+            "Use PATH as the HsColour stylesheet"],
         cmdAction      = HaddockCmd
         }
 
@@ -723,8 +731,9 @@ parseHaddockArgs  = parseArgs haddockCmd updateCfg
             HaddockHoogle         -> hflags{haddockHoogle = True}
             HaddockHtmlLocation s -> hflags{haddockHtmlLocation=Just s}
             HaddockExecutables    -> hflags{haddockExecutables = True}
-            HaddockHscolour h     -> hflags{haddockHscolour = True
-                                           ,haddockHscolourCss = h}
+            HaddockCss h          -> hflags{haddockCss = Just h}
+            HaddockHscolour       -> hflags{haddockHscolour = True}
+            HaddockHscolourCss h  -> hflags{haddockHscolourCss = Just h}
             Verbose n             -> hflags{haddockVerbose = n}
             _                     -> error "Unexpected flag!"
 
