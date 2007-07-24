@@ -119,21 +119,21 @@ defaultMainNoRead pkg_descr = do
     defaultMainHelper args $ \ _ -> return pkg_descr
 
 defaultMainHelper :: [String] -> (Verbosity -> IO PackageDescription) -> IO ()
-defaultMainHelper args _get_pkg_descr
-    = do (action, args) <- parseGlobalArgs defaultProgramConfiguration args
+defaultMainHelper globalArgs _get_pkg_descr
+    = do (action, args) <- parseGlobalArgs defaultProgramConfiguration globalArgs
          case action of
             ConfigCmd flags -> do
-                (flags, _, args) <- parseConfigureArgs defaultProgramConfiguration flags args []
+                (configFlags, _, extraArgs) <- parseConfigureArgs defaultProgramConfiguration flags args []
                 retVal <- exec $ unwords $
-                  "./configure" : configureArgs flags ++ args
+                  "./configure" : configureArgs configFlags ++ extraArgs
                 if (retVal == ExitSuccess)
                   then putStrLn "Configure Succeeded."
                   else putStrLn "Configure failed."
                 exitWith retVal
 
             CopyCmd copydest0 -> do
-                ((CopyFlags copydest _), _, args) <- parseCopyArgs (CopyFlags copydest0 normal) args []
-                no_extra_flags args
+                ((CopyFlags copydest _), _, extraArgs) <- parseCopyArgs (CopyFlags copydest0 normal) args []
+                no_extra_flags extraArgs
 		let cmd = case copydest of 
 				NoCopyDest      -> "install"
 				CopyTo path     -> "copy destdir=" ++ path
@@ -142,8 +142,8 @@ defaultMainHelper args _get_pkg_descr
                 maybeExit $ system $ ("make " ++ cmd)
 
             InstallCmd -> do
-                ((InstallFlags _ _), _, args) <- parseInstallArgs emptyInstallFlags args []
-                no_extra_flags args
+                ((InstallFlags _ _), _, extraArgs) <- parseInstallArgs emptyInstallFlags args []
+                no_extra_flags extraArgs
                 maybeExit $ system $ "make install"
                 retVal <- exec "make register"
                 if (retVal == ExitSuccess)
@@ -152,8 +152,8 @@ defaultMainHelper args _get_pkg_descr
                 exitWith retVal
 
             HaddockCmd -> do 
-                (_, _, args) <- parseHaddockArgs emptyHaddockFlags args []
-                no_extra_flags args
+                (_, _, extraArgs) <- parseHaddockArgs emptyHaddockFlags args []
+                no_extra_flags extraArgs
                 retVal <- exec "make docs"
                 case retVal of
                  ExitSuccess -> do putStrLn "Haddock Succeeded"
