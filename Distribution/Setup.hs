@@ -586,9 +586,6 @@ withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . normalise) "PATH"
 
-optPathArg :: (Maybe FilePath -> a) -> ArgDescr a
-optPathArg constr = OptArg (constr . fmap normalise) "PATH"
-
 reqArgArg :: (FilePath -> a) -> ArgDescr a
 reqArgArg constr = ReqArg (constr . normalise) "ARGS"
 
