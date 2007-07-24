@@ -3,7 +3,7 @@ Version: 1.1.7
 --FIXME: we need a CPP-Options field
 GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
 CC-Options: "-DCABAL_VERSION=1,1,7"
-nhc98-Options: -K4M
+nhc-Options: -K4M
 Copyright: 2003-2006, Isaac Jones
 -- For ghc 6.2 you need to add 'unix' to Build-Depends:
 Build-Depends: base, filepath, pretty, directory, old-time, process
