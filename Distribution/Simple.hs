@@ -117,7 +117,7 @@ import Distribution.GetOpt
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
-                       replaceExtension, takeExtension)
+                       replaceExtension)
 
 #ifdef DEBUG
 import HUnit (Test)
