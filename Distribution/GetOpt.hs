@@ -52,7 +52,7 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-#if __GLASGOW_HASKELL__ >= 604 || !__GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ >= 606 || !__GLASGOW_HASKELL__
 
 import System.Console.GetOpt
 
