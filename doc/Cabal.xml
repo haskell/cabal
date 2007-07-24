@@ -1852,20 +1852,38 @@ runhaskell Setup.hs build
           </listitem>
         </varlistentry>
 
+        <varlistentry id="setup-haddock-css">
+	  <term><option>--css</option>=<replaceable>path</replaceable></term>
+	  <listitem>
+	    <para>The argument <replaceable>path</replaceable> denotes a CSS
+	    file, which is passed to &Haddock; and used to set the style of
+	    the generated documentation. This is only needed to override the
+	    default style that &Haddock; uses.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
         <varlistentry>
-          <term><option>--hscolour</option>=[<replaceable>path</replaceable>]</term>
+          <term><option>--hyperlink-source</option></term>
           <listitem>
             <para>Generate &Haddock; documentation integrated with &HsColour;.
-            First, &HsColour; is run to generate colourised code.  The
-            optional argument <replaceable>path</replaceable> denotes a CSS
-            file, which is passed to &HsColour; as in</para>
-            <screen>
-runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
-            <para>Then &Haddock; is run to generate HTML documentation.  Each
+            First, &HsColour; is run to generate colourised code.
+            Then &Haddock; is run to generate HTML documentation.  Each
             entity shown in the documentation is linked to its definition in
             the colourised code.</para>
           </listitem>
         </varlistentry>
+
+	<varlistentry>
+	  <term><option>--hscolour-css</option>=<replaceable>path</replaceable></term>
+	  <listitem>
+	    <para>The argument <replaceable>path</replaceable> denotes a CSS
+            file, which is passed to &HsColour; as in</para>
+            <screen>
+runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
+	  </listitem>
+	</varlistentry>
+
       </variablelist>
     </sect2>
 
