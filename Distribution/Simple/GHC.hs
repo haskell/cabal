@@ -250,8 +250,8 @@ build pkg_descr lbi verbosity = do
                  -- build executables
                  unless (null (cSources exeBi)) $ do
                   when (verbosity >= verbose) (putStrLn "Building C Sources.")
-                  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
-                                                         pref filename verbosity
+		  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
+                                                         exeDir filename verbosity
                                 createDirectoryIfMissingVerbose verbosity True odir
                                 rawSystemExit verbosity ghcPath args
                             | filename <- cSources exeBi]
