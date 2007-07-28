@@ -213,7 +213,7 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
             -- Preprocessing files for 'sdist' is different from preprocessing
             -- for 'build'.  When preprocessing for sdist we preprocess to
             -- avoid that the user has to have the preprocessors available.
-            -- As, ATM, we don't have a way to specify which files are to be
+            -- ATM, we don't have a way to specify which files are to be
             -- preprocessed and which not, so for sdist we only process
             -- platform independent files and put them into the 'buildLoc'
             -- (which we assume is set to the temp. directory that will become
