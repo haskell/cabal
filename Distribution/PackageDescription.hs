@@ -239,11 +239,15 @@ instance Monoid PDTagged where
     Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
     _ `mappend` _ = bug "Cannot combine incompatible tags"
 
-finalizePackageDescription :: [(String,Bool)] -> Maybe [PackageIdentifier] 
-                           -> String -> String
-                           -> GenericPackageDescription
-                           -> Either [Dependency]
-                                     (PackageDescription, [(String,Bool)])
+finalizePackageDescription 
+  :: [(String,Bool)]  -- ^ Explicitly specified flag assignments
+  -> Maybe [PackageIdentifier] -- ^ Available dependencies
+  -> String -- ^ OS-name
+  -> String -- ^ Arch-name
+  -> GenericPackageDescription
+  -> Either [Dependency]  -- ^ Missing dependencies
+      ( PackageDescription -- ^ Resolved package description
+      , [(String,Bool)])   -- ^ Flag assignments chosen
 finalizePackageDescription userflags mpkgs os arch 
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of 
