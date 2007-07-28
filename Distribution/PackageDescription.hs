@@ -1474,7 +1474,6 @@ assertParseOk mes expected actual
 -}
 test :: IO Counts
 test = runTestTT (TestList hunitTests)
-#endif
 ------------------------------------------------------------------------------
 
 test_stanzas' = readFields testFile >>= parseDescription'
@@ -1520,6 +1519,7 @@ testFile = unlines $
           , "}"
           , "executable wibble {"
           , "  Main-is: Wibble.hs"
+          , "  hs-source-dirs: wib-stuff"
           , "  if flag(build_wibble) {"
           , "    Build-depends: wiblib >= 0.42"
           , "  } else {"
@@ -1553,15 +1553,20 @@ test_compatParsing =
 -}
 test_finalizePD = 
     let ParseOk _ ppd = readFields testFile >>= parseDescription' in
-    case finalizePackageDescription [("debug",True)] (Just pkgs) os arch ppd of
-      Right (pd,fs) -> do putStrLn $ showPackageDescription pd
-                          print fs
-      Left missing -> putStrLn $ "missing: " ++ show missing
+    do case finalizePackageDescription [("debug",True)] (Just pkgs) os arch ppd of
+         Right (pd,fs) -> do putStrLn $ showPackageDescription pd
+                             print fs
+         Left missing -> putStrLn $ "missing: " ++ show missing
+       putStrLn $ showPackageDescription $ 
+                flattenPackageDescription ppd
   where
     pkgs = [ PackageIdentifier "blub" (Version [1,0] []) 
-           , PackageIdentifier "hunit" (Version [1,1] []) 
+           --, PackageIdentifier "hunit" (Version [1,1] []) 
            , PackageIdentifier "blab" (Version [0,1] []) 
            ]
     os = "win32"
     arch = "amd64"
+
+
+#endif
 
