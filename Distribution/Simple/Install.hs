@@ -78,7 +78,7 @@ import System.FilePath(takeDirectory, (</>), isAbsolute)
 import Distribution.Verbosity
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 #endif
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"

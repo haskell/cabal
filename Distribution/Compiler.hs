@@ -60,7 +60,7 @@ import Language.Haskell.Extension (Extension(..))
 import Data.List (nub)
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 #endif
 
 -- ------------------------------------------------------------

@@ -116,7 +116,7 @@ import Distribution.Compat.TempFile (withTempFile)
 import Distribution.Verbosity
 
 #ifdef DEBUG
-import HUnit ((~:), (~=?), Test(..), assertEqual)
+import Test.HUnit ((~:), (~=?), Test(..), assertEqual)
 #endif
 
 -- ------------------------------------------------------------------------------- Utils for setup
