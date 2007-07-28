@@ -127,7 +127,7 @@ import Data.Monoid
 
 #ifdef DEBUG
 import Data.List ( sortBy )
-import HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
+import Test.HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
 #endif
 
 -- We only get our own version number when we're building with ourselves

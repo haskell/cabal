@@ -83,7 +83,7 @@ import Distribution.Verbosity
 import System.FilePath ((</>), takeDirectory)
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 #endif
 
 #ifdef __NHC__

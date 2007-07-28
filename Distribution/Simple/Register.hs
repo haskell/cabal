@@ -96,7 +96,7 @@ import Data.Maybe (isNothing, fromJust)
 import Data.List (partition)
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 #endif
 
 regScriptLocation :: FilePath

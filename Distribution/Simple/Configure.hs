@@ -112,7 +112,7 @@ import Distribution.PackageDescription (hasLibs)
 #endif
 
 #ifdef DEBUG
-import HUnit
+import Test.HUnit
 #endif
 
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
