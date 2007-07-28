@@ -660,6 +660,8 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
     try $ unless saveConfigure (removeFile localBuildInfoFile)
     try $ removeFile regScriptLocation
     try $ removeFile unregScriptLocation
+    -- XXX: This is actually no longer necessary, but we keep it, so that
+    -- clean works correctly on packages built with an older version of Cabal
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
