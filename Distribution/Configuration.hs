@@ -378,7 +378,7 @@ tstTree = CondNode "A" [0]
                 ]
 
 
-test_simplify = simplifyWithSysParams tstCond i386 darwin
+test_simplify = simplifyWithSysParams i386 darwin tstCond 
   where 
     tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
                   (CAnd (Var (Flag "debug")) (Var (OS darwin)))
@@ -419,5 +419,7 @@ test_resolveWithFlags = resolveWithFlags dom "os" "arch" [tstTree] check
                  [] -> DepOk
                  _ -> MissingDeps missing
     avail = [0,1,3,4]
+
+test_ignoreConditions = ignoreConditions tstTree
 
 #endif
