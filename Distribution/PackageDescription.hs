@@ -293,13 +293,34 @@ finalizePackageDescription userflags mpkgs os arch
                          (\pkgs -> isJust . satisfyDependency pkgs) 
                          mpkgs
 
---    finalizeExes fvs = undefined
---         map (\(n, ct) -> exeFillInDefaults $
---                  (snd (evalCond lu ct)) (nullExecutable { exeName = n }))
---             exes
---       where lu (OS o) = Just $ o == os
---             lu (Arch a) = Just $ a == arch
---             lu (Flag f) = lookup f fvs
+
+-- | Flatten a generic package description by ignoring all conditions and just
+-- join the field descriptors into on package description.  Note, however,
+-- that this may lead to inconsistent field values, since all values are
+-- joined into one field, which may not be possible in the original package
+-- description, due to the use of exclusive choices (if ... else ...).
+--
+-- XXX: One particularly tricky case is defaulting.  In the original package
+-- description, e.g., the source dirctory might either be the default or a
+-- certain, explicitly set path.  Since defaults are filled in only after the
+-- package has been resolved and when no explicit value has been set, the
+-- default path will be missing from the package description returned by this
+-- function.
+flattenPackageDescription :: GenericPackageDescription -> PackageDescription
+flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0) =
+    pkg { library = mlib
+        , executables = reverse exes
+        , buildDepends = nub $ ldeps ++ reverse edeps
+        }
+  where
+    (mlib, ldeps) = case mlib0 of
+        Just lib -> let (l,ds) = ignoreConditions lib in 
+                    (Just (libFillInDefaults l), ds)
+        Nothing -> (Nothing, [])
+    (exes, edeps) = foldr flattenExe ([],[]) exes0
+    flattenExe (n, t) (es, ds) = 
+        let (e, ds') = ignoreConditions t in
+        ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds ) 
 
 
 -- | The type of build system used by this package.
