@@ -45,6 +45,7 @@ module Distribution.PackageDescription (
         PackageDescription(..),
         GenericPackageDescription(..),
         finalizePackageDescription,
+        flattenPackageDescription,
         emptyPackageDescription,
         readPackageDescription,
         writePackageDescription,
