@@ -142,8 +142,8 @@ liftField get set (FieldDescr name showF parseF)
 	    return (set a b))
 
 -- Parser combinator for simple fields.  Takes a field name, a pretty printer,
--- a parser function, an accessor, and a modifier, returns a package
--- FieldDescr over the compoid structure.
+-- a parser function, an accessor, and a setter, returns a FieldDescr over the
+-- compoid structure.
 simpleField :: String -> (a -> Doc) -> (ReadP a a)
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 simpleField name showF readF get set
@@ -182,11 +182,31 @@ trimTrailingSpaces = reverse . dropWhile isSpace . reverse
 dropSpaces :: String -> String
 dropSpaces = dropWhile isSpace
 
-data Field = F LineNo String String
-           | Section LineNo String String [Field]
-           | IfBlock LineNo String [Field] [Field]
-             deriving (Show
-                      ,Eq)   -- for testing
+-- The data type for our three syntactic categories 
+data Field 
+    = F LineNo String String
+      -- ^ A regular @<property>: <value>@ field
+    | Section LineNo String String [Field]
+      -- ^ A section with a name and possible parameter.  The syntactic
+      -- structure is:
+      -- 
+      -- @
+      --   <sectionname> <arg> {
+      --     <field>*
+      --   }
+      -- @
+    | IfBlock LineNo String [Field] [Field]
+      -- ^ A conditional block with an optional else branch:
+      --
+      -- @
+      --  if <condition> {
+      --    <field>*
+      --  } else {
+      --    <field>*
+      --  }
+      -- $
+      deriving (Show
+               ,Eq)   -- for testing
 
 lineNo :: Field -> LineNo
 lineNo (F n _ _) = n
