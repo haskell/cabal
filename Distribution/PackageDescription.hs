@@ -257,7 +257,7 @@ finalizePackageDescription userflags mpkgs os arch
                     , buildDepends = nub deps
                     }
               , flagVals )
-      Left missing -> Left missing
+      Left missing -> Left $ nub missing
   where
     -- Combine lib and exes into one list of @CondTree@s with tagged data
     condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
