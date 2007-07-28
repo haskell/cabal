@@ -81,7 +81,7 @@ import Distribution.PackageDescription (hasLibs)
 import Distribution.Verbosity
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 #endif
 
 -- -----------------------------------------------------------------------------

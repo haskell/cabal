@@ -118,7 +118,7 @@ import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        replaceExtension)
 
 #ifdef DEBUG
-import HUnit (Test)
+import Test.HUnit (Test)
 import Distribution.Version hiding (hunitTests)
 #else
 import Distribution.Version

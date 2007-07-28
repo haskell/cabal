@@ -72,7 +72,7 @@ import Control.Monad    ( liftM )
 import Distribution.Compat.ReadP
 
 #ifdef DEBUG
-import HUnit
+import Test.HUnit
 #endif
 
 -- -----------------------------------------------------------------------------

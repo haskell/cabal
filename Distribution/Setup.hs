@@ -72,7 +72,7 @@ module Distribution.Setup (--parseArgs,
 
 -- Misc:
 #ifdef DEBUG
-import HUnit (Test(..))
+import Test.HUnit (Test(..))
 #endif
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
