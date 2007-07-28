@@ -66,7 +66,7 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   smartCopySources, die, findPackageDesc,
                                   findFile, copyFileVerbose, rawSystemPathExit)
 import Distribution.Setup (SDistFlags(..))
-import Distribution.PreProcess (PPSuffixHandler, ppSuffixes)
+import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
 
@@ -107,7 +107,7 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbosity) tmpDir targetPref pp
           | snapshot  = updatePackage (updatePkgVersion
                           (updateVersionBranch (++ [date]))) pkg_descr_orig
           | otherwise = pkg_descr_orig
-    prepareTree pkg_descr verbosity snapshot tmpDir pps date
+    prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date
     createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
     return ()
   where
@@ -118,13 +118,14 @@ sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbosity) tmpDir targetPref pp
 -- |Prepare a directory tree of source files.
 prepareTree :: PackageDescription -- ^info from the cabal file
             -> Verbosity          -- ^verbosity
+            -> Maybe LocalBuildInfo
             -> Bool               -- ^snapshot
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> Int                -- ^date
             -> IO FilePath
 
-prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
+prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   setupMessage verbosity "Building source dist for" pkg_descr
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
@@ -147,6 +148,15 @@ prepareTree pkg_descr verbosity snapshot tmpDir pps date = do
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     copyFileTo verbosity targetDir fpath
+
+  -- we have some preprocessors specified, try to generate those files
+  when (not (null pps)) $
+    case mb_lbi of
+      Just lbi -> preprocessSources pkg_descr (lbi { buildDir = targetDir }) 
+                                    True verbosity pps
+      Nothing -> putStrLn $ 
+          "Warning: Cannot run preprocessors.  Run 'configure' command first."
+
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
   lhsExists <- doesFileExist "Setup.lhs"
