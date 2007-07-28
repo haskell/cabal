@@ -203,7 +203,7 @@ emptyPackageDescription
 data GenericPackageDescription = 
     GenericPackageDescription {
         packageDescription :: PackageDescription,
-        packageFlags       :: [Flag],
+        genPackageFlags       :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
       }
