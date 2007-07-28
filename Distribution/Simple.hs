@@ -87,7 +87,7 @@ import Distribution.Simple.Register	( register, unregister,
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
                                      configure, writePersistBuildConfig, localBuildInfoFile,
-                                     haddockVersion)
+                                     hscolourVersion, haddockVersion)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, 
                                             srcPref, hscolourPref, haddockPref, substDir )
@@ -509,7 +509,7 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                 else Just $ "--read-interface=" ++
                             (if null html then "" else html ++ ",") ++
                             interface
-    pkgFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
+    packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -529,6 +529,8 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                   "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
+		 ++ cssFileFlag
+                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
@@ -552,6 +554,7 @@ haddock pkg_descr lbi hooks haddockFlags@HaddockFlags {
                   "--title=" ++ exeName exe]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
+                 ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
@@ -592,7 +595,7 @@ hscolour pkg_descr lbi hooks (HscolourFlags stylesheet doExes verbosity) = do
     unless haveLines $ die "hscolour version >= 1.8 required"
 
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
-    preprocessSources pkg_descr lbi verbosity pps
+    preprocessSources pkg_descr lbi False verbosity pps
 
     setupMessage verbosity "Running hscolour for" pkg_descr
     let replaceDot = map (\c -> if c == '.' then '-' else c)
