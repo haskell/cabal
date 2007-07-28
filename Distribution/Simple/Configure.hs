@@ -45,9 +45,7 @@ module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
-                                      writeConfiguredPkgDescr,
-                                      configuredPkgDescrFile,
-                                      getConfiguredPkgDescr,
+--                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
                                       findProgram,
                                       getInstalledPackages,
@@ -156,21 +154,6 @@ localBuildInfoFile :: FilePath
 localBuildInfoFile = distPref </> "setup-config"
 
 
-configuredPkgDescrFile :: FilePath
-configuredPkgDescrFile = distPref </> "configured_cabal"
-
-
-writeConfiguredPkgDescr :: PackageDescription -> IO ()
-writeConfiguredPkgDescr pd = do
-  writeFile configuredPkgDescrFile (show pd)
-
-tryGetConfiguredPkgDescr :: IO (Either String PackageDescription)
-tryGetConfiguredPkgDescr = tryGetConfigStateFile configuredPkgDescrFile
-  
-getConfiguredPkgDescr :: IO PackageDescription
-getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
-  
-
 -- -----------------------------------------------------------------------------
 -- * Configuration
 -- -----------------------------------------------------------------------------
@@ -179,7 +162,7 @@ getConfiguredPkgDescr = tryGetConfiguredPkgDescr >>= either die return
 -- Returns the @.setup-config@ file.
 configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
-          -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription)
+          -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
   = do
 	-- detect compiler
@@ -332,7 +315,7 @@ configure (pkg_descr0, pbi) cfg
         reportProgram "cpphs"     cpphs
         reportProgram "greencard" greencard
 
-	return (lbi, pkg_descr)
+	return lbi
 
 messageDir :: PackageDescription -> LocalBuildInfo -> String
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)

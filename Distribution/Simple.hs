@@ -145,7 +145,7 @@ data UserHooks = UserHooks
      -- |Over-ride this hook to get different behavior during configure.
      confHook :: ( Either GenericPackageDescription PackageDescription
                  , HookedBuildInfo)
-              -> ConfigFlags -> IO (LocalBuildInfo, PackageDescription),
+              -> ConfigFlags -> IO LocalBuildInfo,
       -- |Hook to run after configure command
      postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
@@ -322,11 +322,11 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                 --(warns, ers) <- sanityCheckPackage pkg_descr
                 --errorOut (configVerbose flags') warns ers
 
-		(localbuildinfo, pkg_descr) <- confHook hooks epkg_descr flags'
-		
+		localbuildinfo <- confHook hooks epkg_descr flags'
+
                 writePersistBuildConfig (foldr id localbuildinfo optFns)
-                writeConfiguredPkgDescr pkg_descr
                 
+		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags' pkg_descr localbuildinfo
               where
                 confPkgDescr :: ConfigFlags -> IO (Either GenericPackageDescription
@@ -366,9 +366,18 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                         getPersistBuildConfig
 
             CleanCmd -> do
-                command (parseCleanArgs emptyCleanFlags) cleanVerbose
-                        preClean cleanHook postClean
-                        maybeGetPersistBuildConfig
+                (flags, _, args) <- parseCleanArgs emptyCleanFlags all_args []
+
+                pbi <- preClean hooks args flags
+
+                mlbi <- maybeGetPersistBuildConfig
+                pdfile <- defaultPackageDesc (cleanVerbose flags)
+                ppd <- readPackageDescription (cleanVerbose flags) pdfile
+                let pkg_descr0 = flattenPackageDescription ppd
+                let pkg_descr = updatePackageDescription pbi pkg_descr0
+
+                cleanHook hooks pkg_descr mlbi hooks flags
+                postClean hooks args flags pkg_descr mlbi
 
             CopyCmd mprefix -> do
                 command (parseCopyArgs (emptyCopyFlags mprefix)) copyVerbose
@@ -381,14 +390,23 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                         getPersistBuildConfig
 
             SDistCmd -> do
-                command parseSDistArgs sDistVerbose
-                        preSDist sDistHook postSDist
-                        maybeGetPersistBuildConfig
+                (flags, _, args) <- parseSDistArgs all_args []
+
+                pbi <- preSDist hooks args flags
+
+                mlbi <- maybeGetPersistBuildConfig
+                pdfile <- defaultPackageDesc (sDistVerbose flags)
+                ppd <- readPackageDescription (sDistVerbose flags) pdfile
+                let pkg_descr0 = flattenPackageDescription ppd
+                let pkg_descr = updatePackageDescription pbi pkg_descr0
+
+                sDistHook hooks pkg_descr mlbi hooks flags
+                postSDist hooks args flags pkg_descr mlbi
 
             TestCmd -> do
                 (_verbosity,_, args) <- parseTestArgs all_args []
                 localbuildinfo <- getPersistBuildConfig
-                pkg_descr <- getConfiguredPkgDescr   -- get_pkg_descr verbose
+                let pkg_descr = localPkgDescr localbuildinfo
                 runTests hooks args False pkg_descr localbuildinfo
 
             RegisterCmd  -> do
@@ -408,10 +426,12 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                 get_build_config = do
            (flags, _, args) <- parse_args all_args []
            pbi <- pre_hook hooks args flags
-           pkg_descr0 <- getConfiguredPkgDescr
+           localbuildinfo <- get_build_config
+           let pkg_descr0 = localPkgDescr localbuildinfo
            --pkg_descr0 <- get_pkg_descr (get_verbose flags)
            let pkg_descr = updatePackageDescription pbi pkg_descr0
-           localbuildinfo <- get_build_config
+           -- XXX: should we write the modified package descr back to the
+           -- localbuildinfo?
            cmd_hook hooks pkg_descr localbuildinfo hooks flags
            post_hook hooks args flags pkg_descr localbuildinfo
 
