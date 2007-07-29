@@ -660,6 +660,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
 	updateCfg t WithoutHaddockUsePackages = t { configHaddockUsePackages = False }
         updateCfg t (ConfigurationsFlags fs)  = t { configConfigurationsFlags =
                                                         fs ++ configConfigurationsFlags t }
+        updateCfg t (ConfigureOption o) = t { configConfigureArgs = o : configConfigureArgs t }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
