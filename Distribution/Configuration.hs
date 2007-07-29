@@ -260,7 +260,7 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 -- In case of failure, the _smallest_ number of of missing dependencies is
 -- returned. [XXX: Could also be specified with a function argument.]
 --
--- [XXX: The current algorithm is rather naive.  A better approach would be to:
+-- XXX: The current algorithm is rather naive.  A better approach would be to:
 --
 -- * Rule out possible paths, by taking a look at the associated dependencies.
 --
@@ -269,7 +269,7 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 --   conditions.  Then picking a flag assignment would be linear (I guess).
 --
 -- This would require some sort of SAT solving, though, thus it's not
--- implemented unless we really need it.]
+-- implemented unless we really need it.
 --   
 resolveWithFlags :: Monoid a =>
      [(String,[Bool])] 

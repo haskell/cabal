@@ -204,7 +204,7 @@ data Field
       --  } else {
       --    <field>*
       --  }
-      -- $
+      -- @
       deriving (Show
                ,Eq)   -- for testing
 

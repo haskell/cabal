@@ -246,9 +246,9 @@ finalizePackageDescription
   -> String -- ^ OS-name
   -> String -- ^ Arch-name
   -> GenericPackageDescription
-  -> Either [Dependency]  -- ^ Missing dependencies
-      ( PackageDescription -- ^ Resolved package description
-      , [(String,Bool)])   -- ^ Flag assignments chosen
+  -> Either [Dependency]  -- Missing dependencies
+      ( PackageDescription -- Resolved package description
+      , [(String,Bool)])   -- Flag assignments chosen
 finalizePackageDescription userflags mpkgs os arch 
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of 
