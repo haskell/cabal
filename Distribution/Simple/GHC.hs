@@ -350,14 +350,15 @@ constructCcCmdLine lbi bi pref filename verbosity
 			-- for C compilations.
      in 
         (odir,
-         ghcCcOptions bi odir
+         ghcCcOptions lbi bi odir
          ++ (if verbosity > deafening then ["-v"] else [])
          ++ ["-c",filename])
          
 
-ghcCcOptions :: BuildInfo -> FilePath -> [String]
-ghcCcOptions bi odir
+ghcCcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
+ghcCcOptions lbi bi odir
      =  ["-I" ++ dir | dir <- includeDirs bi]
+     ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ ["-odir", odir]
 
@@ -423,7 +424,7 @@ makefile pkg_descr lbi flags = do
                         ++ ghcOptions lbi bi (buildDir lbi))),
         ("MAKEFILE", file),
         ("C_SRCS", unwords (cSources bi)),
-        ("GHC_CC_OPTS", unwords (ghcCcOptions bi (buildDir lbi))),
+        ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
         ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
         ("AR", arProg),
         ("LD", ld)
