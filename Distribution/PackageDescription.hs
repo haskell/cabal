@@ -778,7 +778,7 @@ readAndParseFile verbosity parser fpath = do
         let (line, message) = locatedErrorMsg e
         dieWithLocation fpath line message
     ParseOk ws x -> do
-        mapM_ (warn verbosity) ws
+        mapM_ (warn verbosity) (reverse ws)
         return x
 
 readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
