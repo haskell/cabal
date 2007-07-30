@@ -1,9 +1,6 @@
 Name: Cabal
 Version: 1.1.7
 --FIXME: we need a CPP-Options field
-GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
-CC-Options: "-DCABAL_VERSION=1,1,7"
-nhc-Options: -K4M
 Copyright: 2003-2006, Isaac Jones
 License: BSD3
 License-File: LICENSE
@@ -20,6 +17,9 @@ Description:
         for distributing, organizing, and cataloging Haskell libraries
         and tools.
 Category: Distribution
+
+Extra-Source-Files:
+        mkGHCMakefile.sh Distribution/Simple/GHCMakefile.in
 
 
 Flag small_base {
@@ -38,7 +38,7 @@ Library {
   --FIXME: we need a CPP-Options field
   GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
   CC-Options: "-DCABAL_VERSION=1,1,7"
-  nhc98-Options: -K4M
+  nhc-Options: -K4M
 
   Exposed-Modules:
         Distribution.Compiler,
@@ -82,8 +82,6 @@ Library {
         Distribution.Compat.RawSystem,
         Distribution.Compat.TempFile
 
-  Extra-Source-Files:
-        mkGHCMakefile.sh Distribution/Simple/GHCMakefile.in
 
   Extensions: CPP
 }
