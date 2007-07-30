@@ -1089,17 +1089,25 @@ parseDescription' fields0 = do
 
 
 parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a
-parseFields descrs ini fields = foldM (parseField descrs) ini fields
+parseFields descrs ini fields = 
+    do (a, unknowns) <- foldM (parseField descrs) (ini, []) fields
+       when (not (null unknowns)) $ do
+         warning $ render $ 
+           text "Unknown fields:" <+> commaSep (reverse unknowns) $+$
+           text "Fields allowed in this section:" $$ 
+             nest 4 (commaSep $ map fieldName descrs)
+       return a
+  where
+    commaSep = fsep . punctuate comma . map text
 
-parseField :: [FieldDescr a] -> a -> Field -> ParseResult a
-parseField ((FieldDescr name _ parse):fields) a (F line f val)
-  | name == f = parse line val a
-  | otherwise = parseField fields a (F line f val)
+parseField :: [FieldDescr a] -> (a,[String]) -> Field -> ParseResult (a, [String])
+parseField ((FieldDescr name _ parse):fields) (a, us) (F line f val)
+  | name == f = parse line val a >>= \a' -> return (a',us)
+  | otherwise = parseField fields (a,us) (F line f val)
 -- ignore "x-" extension fields without a warning
-parseField [] a (F _ ('x':'-':_) _) = return a
-parseField [] a (F _ f _) = do
-          warning $ "Unknown field '" ++ f ++ "'"
-          return a
+parseField [] (a,us) (F _ ('x':'-':_) _) = return (a, us)
+parseField [] (a,us) (F _ f _) = do
+          return (a, f:us)
 parseField _ _ _ = error "'parseField' called on a non-field.  This is a bug."
 
 
