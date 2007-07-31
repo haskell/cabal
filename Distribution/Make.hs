@@ -89,7 +89,7 @@ import Distribution.Program(defaultProgramConfiguration)
 import Distribution.PackageDescription
 import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
 
-import Distribution.Simple.Utils (die, maybeExit, defaultPackageDesc)
+import Distribution.Simple.Utils (die, maybeExit)
 
 import Distribution.License (License(..))
 import Distribution.Version (Version(..))
@@ -109,7 +109,7 @@ defaultMain = getArgs >>= defaultMainArgs
 
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs args =
-    defaultMainHelper args $ \ verbosity ->
+    defaultMainHelper args $ \ _verbosity ->
         error "Package Descripion was promised not be used here"
     --defaultPackageDesc verbosity >>=
     --    readPackageDescription verbosity 

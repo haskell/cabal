@@ -1256,6 +1256,7 @@ hasMods pkg_descr =
    null (executables pkg_descr) &&
       maybe True (null . exposedModules) (library pkg_descr)
 
+bug :: String -> a
 bug msg = error $ msg ++ ". Consider this a bug."
 
 
