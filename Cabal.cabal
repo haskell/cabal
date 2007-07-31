@@ -61,6 +61,7 @@ Library {
         Distribution.Simple.GHC,
         Distribution.Simple.GHCMakefile,
         Distribution.Simple.GHCPackageConfig,
+        Distribution.Simple.Haddock,
         Distribution.Simple.Hugs,
         Distribution.Simple.Install,
         Distribution.Simple.JHC,
