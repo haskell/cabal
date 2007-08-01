@@ -38,7 +38,6 @@ module Distribution.Program(
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
-                           , lookupProgram' --TODO eliminate one of these
                            , lookupPrograms
                            , rawSystemProgram
                            , rawSystemProgramConf
