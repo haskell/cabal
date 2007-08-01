@@ -57,26 +57,25 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
 
 
 import Distribution.Simple.Configure (haddockVersion)
-import Distribution.PreProcess.Unlit(unlit)
+import Distribution.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  rawSystemExit, die, dieWithLocation,
+                                  rawSystemExit, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Program (rawSystemProgramConf,
-                             rawSystemProgram, lookupProgram')
+import Distribution.Program (rawSystemProgramConf)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
+
 import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
-import System.FilePath
-	(splitExtension, (</>), (<.>), takeDirectory)
+import System.FilePath (splitExtension, (</>), (<.>), takeDirectory)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -296,45 +295,46 @@ ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp' inputArgs bi lbi =
-  case lookupProgram' "cpphs" (withPrograms lbi) of
-     Just cpphs -> PreProcessor {
-                     platformIndependent = False,
-                     runPreProcessor = mkSimplePreProcessor (use_cpphs cpphs)
-                   }
-     Nothing | compilerFlavor hc == GHC
-                -> PreProcessor {
-                     platformIndependent = False,
-                     runPreProcessor = mkSimplePreProcessor use_ghc
-                   }
-     _otherwise -> ppNone "cpphs (or GHC)"
-  where 
-	hc = compiler lbi
+ppCpp' extraArgs bi lbi =
+  case compilerFlavor (compiler lbi) of
+    GHC -> ppGhcCpp (cppArgs ++ extraArgs) bi lbi
+    _   -> ppCpphs  (cppArgs ++ extraArgs) bi lbi
 
-	use_cpphs cpphs inFile outFile verbosity
-	  = rawSystemProgram verbosity cpphs cpphsArgs
-	  where cpphsArgs = ("-O" ++ outFile) : inFile : "--noline" : "--strip"
-				 : extraArgs
-
-        extraArgs = sysDefines ++ cppOptions bi lbi ++ inputArgs
-
+  where cppArgs = sysDefines ++ cppOptions bi lbi
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
         locations = ["BUILD", "HOST"]
 
-	use_ghc inFile outFile verbosity
-	  = do p_p <- use_optP_P verbosity lbi
-               rawSystemExit verbosity (compilerPath hc) 
-                   (["-E", "-cpp"] ++
-                    -- This is a bit of an ugly hack. We're going to
-                    -- unlit the file ourselves later on if appropriate,
-                    -- so we need GHC not to unlit it now or it'll get
-                    -- double-unlitted. In the future we might switch to
-                    -- using cpphs --unlit instead.
-                    ["-x", "hs"] ++
-                    (if p_p then ["-optP-P"] else []) ++
-                    ["-o", outFile, inFile] ++ extraArgs)
+ppGhcCpp :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppGhcCpp extraArgs _bi lbi =
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
+      p_p <- use_optP_P verbosity lbi
+      rawSystemExit verbosity (compilerPath (compiler lbi)) $
+          ["-E", "-cpp"]
+          -- This is a bit of an ugly hack. We're going to
+          -- unlit the file ourselves later on if appropriate,
+          -- so we need GHC not to unlit it now or it'll get
+          -- double-unlitted. In the future we might switch to
+          -- using cpphs --unlit instead.
+       ++ ["-x", "hs"]
+       ++ (if p_p then ["-optP-P"] else [])
+       ++ ["-o", outFile, inFile]
+       ++ extraArgs
+  }
+
+ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpphs extraArgs _bi lbi =
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+      rawSystemProgramConf verbosity "cpphs" (withPrograms lbi) $
+          ("-O" ++ outFile) : inFile
+        : "--noline" : "--strip"
+        : extraArgs
+  }
 
 -- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
 -- pragmas are necessary for correct links when we preprocess.  So use
@@ -417,16 +417,8 @@ standardPP lbi progName args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity progName (withPrograms lbi) (args ++ ["-o", outFile, inFile])
-  }
-
-ppNone :: String -> PreProcessor
-ppNone name = 
-  PreProcessor {
-    platformIndependent = False,
-    runPreProcessor = mkSimplePreProcessor $ \inFile _ _ ->
-      dieWithLocation inFile Nothing $
-        "no " ++ name ++ " preprocessor available"
+      rawSystemProgramConf verbosity progName (withPrograms lbi)
+        (args ++ ["-o", outFile, inFile])
   }
 
 -- |Convenience function; get the suffixes of these preprocessors.
