@@ -32,6 +32,7 @@ module Distribution.Program(
                            , withProgramFlag
                            , programOptsFlag
                            , programOptsField
+                           , programPath
                            , defaultProgramConfiguration
                            , updateProgram
                            , maybeUpdateProgram
@@ -146,6 +147,17 @@ programOptsFlag Program{programName=n} = n ++ "-options"
 --  eg. haddock-options: -s http:\/\/foo
 programOptsField :: Program -> String
 programOptsField = programOptsFlag
+
+-- |The full path of a configured program.
+--
+-- * This is a partial function, it is not defined for programs with an
+-- EmptyLocation.
+programPath :: Program -> FilePath
+programPath program =
+  case programLocation program of
+    UserSpecified p -> p
+    FoundOnSystem p -> p
+    EmptyLocation -> error "programPath EmptyLocation"
 
 -- ------------------------------------------------------------
 -- * cabal programs
