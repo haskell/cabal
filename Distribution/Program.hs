@@ -38,6 +38,7 @@ module Distribution.Program(
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
+                           , lookupProgram' --TODO eliminate one of these
                            , lookupPrograms
                            , rawSystemProgram
                            , rawSystemProgramConf
@@ -50,6 +51,7 @@ module Distribution.Program(
                            , hugsProgram
                            , ranlibProgram
                            , arProgram
+                           , happyProgram
                            , alexProgram
                            , hsc2hsProgram
                            , c2hsProgram
@@ -110,6 +112,12 @@ defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration = progListToFM 
                               [ hscolourProgram
                               , haddockProgram
+                              , happyProgram
+                              , alexProgram
+                              , hsc2hsProgram
+                              , c2hsProgram
+                              , cpphsProgram
+                              , greencardProgram
                               , pfesetupProgram
                               , ranlibProgram
                               , simpleProgram "runghc"
@@ -123,16 +131,7 @@ defaultProgramConfiguration = progListToFM
                               , ghcPkgProgram
                               , nhcProgram
                               , hugsProgram
-                              , alexProgram
-                              , hsc2hsProgram
-                              , c2hsProgram
-                              , cpphsProgram
-                              , haddockProgram
-                              , greencardProgram
-                              , ldProgram
                               , cppProgram
-                              , pfesetupProgram
-                              , ranlib, ar
                               ]-}
 
 -- |The flag for giving a path to this program.  eg. --with-alex=\/usr\/bin\/alex
@@ -167,6 +166,9 @@ jhcProgram = simpleProgram "jhc"
 
 hugsProgram :: Program
 hugsProgram = simpleProgram "hugs"
+
+happyProgram :: Program
+happyProgram = simpleProgram "happy"
 
 alexProgram :: Program
 alexProgram = simpleProgram "alex"
@@ -314,7 +316,6 @@ rawSystemProgramConf verbosity progName programConf extraArgs
 -- * Internal helpers
 -- ------------------------------------------------------------
 
--- Export?
 lookupProgram' :: String -> ProgramConfiguration -> Maybe Program
 lookupProgram' s (ProgramConfiguration conf) = Map.lookup s conf
 
