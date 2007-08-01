@@ -360,6 +360,17 @@ ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
                        : maybeToList (fmap ignoreConditions me)
 
 ------------------------------------------------------------------------------
+-- compatibility
+
+#if __GLASGOW_HASKELL__ <= 602
+-- This instance wasn't present in Data.Monoid in GHC 6.2
+instance (Monoid a, Monoid b) => Monoid (a,b) where
+	mempty = (mempty, mempty)
+	(a1,b1) `mappend` (a2,b2) =
+		(a1 `mappend` a2, b1 `mappend` b2)
+#endif
+
+------------------------------------------------------------------------------
 -- Testing
 
 #ifdef DEBUG
