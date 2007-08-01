@@ -70,7 +70,7 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
+import Distribution.Compiler(CompilerFlavor(..), Compiler(..), compilerPath,
 			     compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
@@ -97,7 +97,7 @@ import System.Directory
 import System.Environment ( getProgName )
 import System.IO        ( hPutStrLn, stderr )
 import System.FilePath (takeDirectory, (</>), (<.>))
-import Distribution.Program(Program(..), ProgramLocation(..),
+import Distribution.Program(Program(..), ProgramLocation(..), programPath,
                             lookupProgram, lookupPrograms, maybeUpdateProgram)
 import System.Exit(ExitCode(..), exitWith)
 --import System.Exit		( ExitCode(..) )
@@ -291,10 +291,10 @@ configure (pkg_descr0, pbi) cfg
         messageDir pkg_descr lbi "Private binaries" mkLibexecDir mkLibexecDirRel
         messageDir pkg_descr lbi "Data files" mkDataDir mkDataDirRel
         
-        message $ "Using compiler: " ++ p'
+        message $ "Using compiler: " ++ programPath p'
         message $ "Compiler flavor: " ++ (show f')
         message $ "Compiler version: " ++ showVersion ver
-        message $ "Using package tool: " ++ pkg
+        message $ "Using package tool: " ++ programPath pkg
 
         mapM_ (uncurry reportProgram) foundPrograms
 
@@ -375,7 +375,7 @@ getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesJHC comp cfg = do
    let verbosity = configVerbose cfg
    when (verbosity >= normal) $ message "Reading installed packages..."
-   str <- rawSystemStdout verbosity (compilerPkgTool comp) ["--list-libraries"]
+   str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
@@ -387,7 +387,7 @@ getInstalledPackages :: Compiler -> Bool -> Verbosity -> IO [PackageIdentifier]
 getInstalledPackages comp user verbosity = do
    when (verbosity >= normal) $ message "Reading installed packages..."
    let user_flag = if user then "--user" else "--global"
-   str <- rawSystemStdout verbosity (compilerPkgTool comp) [user_flag, "list"]
+   str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) [user_flag, "list"]
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
        str1 = unlines (filter keep_line (lines str))
        str2 = filter (`notElem` ",(){}") str1
@@ -405,42 +405,49 @@ configCompilerAux cfg = configCompiler (configHcFlavor cfg)
                                        (configHcPkg cfg)
                                        (configVerbose cfg)
 
+-- TODO: refactor this into the Compiler abstraction
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> Verbosity -> IO Compiler
 configCompiler hcFlavor hcPath hcPkg verbosity
   = do let flavor = case hcFlavor of
                       Just f  -> f
                       Nothing -> error "Unknown compiler"
-       comp <- 
+       compLocation <-
 	 case hcPath of
 	   Just path -> do absolute <- doesFileExist path
                            if absolute
-                             then return path
+                             then return (UserSpecified path)
                              else findCompiler verbosity path
 	   Nothing   -> findCompiler verbosity (compilerBinaryName flavor)
+       let comp = Program (compilerName flavor) "unknown" [] compLocation
 
        ver <- configCompilerVersion flavor comp verbosity
 
-       pkgtool <-
+       pkgtoolLocation <-
 	 case hcPkg of
-	   Just path -> return path
+	   Just path -> return (UserSpecified path)
 	   Nothing   -> guessPkgToolFromHCPath verbosity flavor comp
+       let pkgtool = Program (compilerPkgToolName flavor) "unknown" [] pkgtoolLocation
 
-       return (Compiler{compilerFlavor=flavor,
-			compilerVersion=ver,
-			compilerPath=comp,
-			compilerPkgTool=pkgtool})
+       return Compiler {
+           compilerFlavor  = flavor,
+           compilerVersion = ver,
+           compilerProg    = comp,
+           compilerPkgTool = pkgtool
+         }
 
-findCompiler :: Verbosity -> String -> IO FilePath
+-- TODO: refactor this into the Compiler abstraction
+findCompiler :: Verbosity -> String -> IO ProgramLocation
 findCompiler verbosity prog = do
   when (verbosity >= verbose) $ message $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of
    Nothing   -> die ("Cannot find compiler for " ++ prog)
    Just path -> do when (verbosity >= verbose) $ message ("found " ++ prog ++ " at "++ path)
-                   return path
+                   return (FoundOnSystem path)
    -- ToDo: check that compiler works?
 
+-- TODO: refactor this into the Compiler abstraction
 compilerPkgToolName :: CompilerFlavor -> String
 compilerPkgToolName GHC  = "ghc-pkg"
 compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
@@ -448,14 +455,23 @@ compilerPkgToolName Hugs = "hugs"
 compilerPkgToolName JHC  = "jhc"
 compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
-configCompilerVersion :: CompilerFlavor -> FilePath -> Verbosity -> IO Version
+-- TODO: refactor this into the Compiler abstraction
+compilerName :: CompilerFlavor -> String
+compilerName GHC  = "ghc"
+compilerName NHC  = "nhc98"
+compilerName Hugs = "hugs"
+compilerName JHC  = "jhc"
+compilerName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
+
+-- TODO: refactor this into the Compiler abstraction
+configCompilerVersion :: CompilerFlavor -> Program -> Verbosity -> IO Version
 configCompilerVersion GHC compilerP verbosity = do
-  str <- rawSystemStdout verbosity compilerP ["--numeric-version"]
+  str <- rawSystemStdout verbosity (programPath compilerP) ["--numeric-version"]
   case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
-    _   -> die ("cannot determine version of " ++ compilerP ++ ":\n  "++ str)
+    _   -> die ("cannot determine version of " ++ programName compilerP ++ ":\n  "++ str)
 configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
-  str <- rawSystemStdout verbosity compilerP ["--version"]
+  str <- rawSystemStdout verbosity (programPath compilerP) ["--version"]
   case words str of
     (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of
                    [v] -> return v
@@ -497,10 +513,10 @@ haddockVersion verbosity lbi = fmap getVer verString
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
-guessPkgToolFromHCPath :: Verbosity -> CompilerFlavor -> FilePath
-                       -> IO FilePath
-guessPkgToolFromHCPath verbosity flavor path
+guessPkgToolFromHCPath :: Verbosity -> CompilerFlavor -> Program -> IO ProgramLocation
+guessPkgToolFromHCPath verbosity flavor prog
   = do let pkgToolName     = compilerPkgToolName flavor
+           path            = programPath prog
            dir             = takeDirectory path
            verSuffix       = reverse $ takeWhile (`elem ` "0123456789.-") . reverse $ path
            guessNormal     = dir </> pkgToolName <.> exeExtension
@@ -512,7 +528,7 @@ guessPkgToolFromHCPath verbosity flavor path
        case file of
          Nothing -> die ("Cannot find package tool: " ++ pkgToolName)
          Just pkgtool -> do when (verbosity >= verbose) $ message $ "found package tool in " ++ pkgtool
-                            return pkgtool
+                            return (FoundOnSystem pkgtool)
 
 doesAnyFileExist :: [FilePath] -> IO (Maybe FilePath)
 doesAnyFileExist []           = return Nothing
