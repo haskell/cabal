@@ -110,12 +110,6 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- any conditionals.
         withPrograms  :: ProgramConfiguration, -- location and args for all programs
         userConf      :: Bool,           -- ^Was this package configured with --user?
-        withHappy     :: Maybe FilePath, -- ^Might be the location of the Happy executable.
-        withAlex      :: Maybe FilePath, -- ^Might be the location of the Alex executable.
-        withHsc2hs    :: Maybe FilePath, -- ^Might be the location of the Hsc2hs executable.
-        withC2hs      :: Maybe FilePath, -- ^Might be the location of the C2hs executable.
-        withCpphs     :: Maybe FilePath, -- ^Might be the location of the Cpphs executable.
-        withGreencard :: Maybe FilePath, -- ^Might be the location of the GreenCard executable.
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.

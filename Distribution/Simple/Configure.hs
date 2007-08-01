@@ -249,13 +249,6 @@ configure (pkg_descr0, pbi) cfg
 
         foundPrograms <- lookupPrograms (configPrograms cfg)
 
-        happy     <- findProgram "happy"     (configHappy cfg)
-        alex      <- findProgram "alex"      (configAlex cfg)
-        hsc2hs    <- findProgram "hsc2hs"    (configHsc2hs cfg)
-        c2hs      <- findProgram "c2hs"      (configC2hs cfg)
-        cpphs     <- findProgram "cpphs"     (configCpphs cfg)
-        greencard <- findProgram "greencard" (configGreencard cfg)
-
         let newConfig = foldr (\(_, p) c -> maybeUpdateProgram p c) 
                               (configPrograms cfg) foundPrograms
 
@@ -281,10 +274,6 @@ configure (pkg_descr0, pbi) cfg
                               packageDeps=dep_pkgs,
                               localPkgDescr=pkg_descr,
                               withPrograms=newConfig,
-                              withHappy=happy, withAlex=alex,
-                              withHsc2hs=hsc2hs, withC2hs=c2hs,
-                              withCpphs=cpphs,
-                              withGreencard=greencard,
                               withVanillaLib=configVanillaLib cfg,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
@@ -307,14 +296,7 @@ configure (pkg_descr0, pbi) cfg
         message $ "Compiler version: " ++ showVersion ver
         message $ "Using package tool: " ++ pkg
 
-        mapM (\(s,p) -> reportProgram' s p) foundPrograms
-
-        reportProgram "happy"     happy
-        reportProgram "alex"      alex
-        reportProgram "hsc2hs"    hsc2hs
-        reportProgram "c2hs"      c2hs
-        reportProgram "cpphs"     cpphs
-        reportProgram "greencard" greencard
+        mapM_ (uncurry reportProgram) foundPrograms
 
 	return lbi
 
@@ -360,21 +342,17 @@ findProgram
 findProgram name Nothing = findExecutable name
 findProgram _ p = return p
 
-reportProgram :: String -> Maybe FilePath -> IO ()
-reportProgram name Nothing = message ("No " ++ name ++ " found")
-reportProgram name (Just p) = message ("Using " ++ name ++ ": " ++ p)
-
-reportProgram' :: String -> Maybe Program -> IO ()
-reportProgram' _ (Just Program{ programName=name
+reportProgram :: String -> Maybe Program -> IO ()
+reportProgram _ (Just Program{ programName=name
                               , programLocation=EmptyLocation})
                   = message ("No " ++ name ++ " found")
-reportProgram' _ (Just Program{ programName=name
+reportProgram _ (Just Program{ programName=name
                               , programLocation=FoundOnSystem p})
                   = message ("Using " ++ name ++ " found on system at: " ++ p)
-reportProgram' _ (Just Program{ programName=name
+reportProgram _ (Just Program{ programName=name
                               , programLocation=UserSpecified p})
                   = message ("Using " ++ name ++ " given by user at: " ++ p)
-reportProgram' name Nothing = message ("No " ++ name ++ " found")
+reportProgram name Nothing = message ("No " ++ name ++ " found")
 
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"

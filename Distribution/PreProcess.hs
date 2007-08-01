@@ -66,6 +66,8 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   rawSystemExit, die, dieWithLocation,
                                   moduleToFilePath, moduleToFilePath2)
+import Distribution.Program (rawSystemProgramConf,
+                             rawSystemProgram, lookupProgram')
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 import Control.Monad (when, unless)
@@ -271,18 +273,13 @@ removePreprocessed searchLocs mods suffixesIn
 -- ------------------------------------------------------------
 
 ppGreenCard :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppGreenCard = ppGreenCard' []
-
-ppGreenCard' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppGreenCard' inputArgs _ lbi
-    = maybe (ppNone "greencard") pp (withGreencard lbi)
-    where pp greencard =
-            PreProcessor {
-              platformIndependent = False,
-              runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-                rawSystemExit verbosity greencard
-                    (["-tffi", "-o" ++ outFile, inFile] ++ inputArgs)
-            }
+ppGreenCard _ lbi
+    = PreProcessor {
+        platformIndependent = False,
+        runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+          rawSystemProgramConf verbosity "greencard" (withPrograms lbi)
+              (["-tffi", "-o" ++ outFile, inFile])
+      }
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
@@ -300,12 +297,12 @@ ppCpp = ppCpp' []
 
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpp' inputArgs bi lbi =
-  case withCpphs lbi of
-     Just path  -> PreProcessor {
+  case lookupProgram' "cpphs" (withPrograms lbi) of
+     Just cpphs -> PreProcessor {
                      platformIndependent = False,
-                     runPreProcessor = mkSimplePreProcessor (use_cpphs path)
+                     runPreProcessor = mkSimplePreProcessor (use_cpphs cpphs)
                    }
-     Nothing | compilerFlavor hc == GHC 
+     Nothing | compilerFlavor hc == GHC
                 -> PreProcessor {
                      platformIndependent = False,
                      runPreProcessor = mkSimplePreProcessor use_ghc
@@ -315,7 +312,7 @@ ppCpp' inputArgs bi lbi =
 	hc = compiler lbi
 
 	use_cpphs cpphs inFile outFile verbosity
-	  = rawSystemExit verbosity cpphs cpphsArgs
+	  = rawSystemProgram verbosity cpphs cpphsArgs
 	  where cpphsArgs = ("-O" ++ outFile) : inFile : "--noline" : "--strip"
 				 : extraArgs
 
@@ -347,9 +344,8 @@ use_optP_P verbosity lbi
  = fmap (< Version [0,8] []) (haddockVersion verbosity lbi)
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHsc2hs bi lbi
-    = maybe (ppNone "hsc2hs") pp (withHsc2hs lbi)
-  where pp n = standardPP n flags
+ppHsc2hs bi lbi = pp
+  where pp = standardPP lbi "hsc2hs" flags
         flags = hcDefines (compiler lbi)
              ++ map ("--cflag=" ++) (getCcFlags bi)
              ++ map ("--lflag=" ++) (getLdFlags bi)
@@ -366,14 +362,12 @@ getLdFlags bi = map ("-L" ++) (extraLibDirs bi)
              ++ ldOptions bi
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppC2hs bi lbi = maybe (ppNone "c2hs") pp (withC2hs lbi)
-  where
-    pp name =
-      PreProcessor {
+ppC2hs bi lbi
+    = PreProcessor {
         platformIndependent = False,
         runPreProcessor = \(inBaseDir, inRelativeFile)
                            (outBaseDir, outRelativeFile) verbosity ->
-          rawSystemExit verbosity name $
+          rawSystemProgramConf verbosity "c2hs" (withPrograms lbi) $
                ["--include=" ++ dir | dir <- hsSourceDirs bi ]
             ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
             ++ ["--output-dir=" ++ outBaseDir,
@@ -405,27 +399,25 @@ versionInt (Version { versionBranch = n1:n2:_ })
   = show n1 ++ take 2 ('0' : show n2)
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHappy _ lbi
-    = maybe (ppNone "happy") pp (withHappy lbi)
-  where pp n = (standardPP n (hcFlags hc)) { platformIndependent = True }
+ppHappy _ lbi = pp { platformIndependent = True }
+  where pp = standardPP lbi "happy" (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
 
 ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppAlex _ lbi
-    = maybe (ppNone "alex") pp (withAlex lbi)
-  where pp n = (standardPP n (hcFlags hc)) { platformIndependent = True }
+ppAlex _ lbi = pp { platformIndependent = True }
+  where pp = standardPP lbi "alex" (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-g"]
 	hcFlags _ = []
 
-standardPP :: String -> [String] -> PreProcessor
-standardPP eName args =
+standardPP :: LocalBuildInfo -> String -> [String] -> PreProcessor
+standardPP lbi progName args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemExit verbosity eName (args ++ ["-o", outFile, inFile])
+      rawSystemProgramConf verbosity progName (withPrograms lbi) (args ++ ["-o", outFile, inFile])
   }
 
 ppNone :: String -> PreProcessor
