@@ -281,7 +281,7 @@ rawSystemProgram :: Verbosity -- ^Verbosity
 rawSystemProgram verbosity (Program { programLocation=(UserSpecified p)
                                     , programArgs=args
                                     }) extraArgs
-    = rawSystemExit verbosity p (extraArgs ++ args)
+    = rawSystemExit verbosity p (args ++ extraArgs)
 
 rawSystemProgram verbosity (Program { programLocation=(FoundOnSystem p)
                                     , programArgs=args
