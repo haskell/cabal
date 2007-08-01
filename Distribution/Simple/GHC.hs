@@ -63,10 +63,10 @@ import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
                                   mkLibName, mkProfLibName, dotToSep,
                                   exeExtension, objExtension)
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
-import Distribution.Program	( rawSystemProgram, ranlibProgram,
+import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  Program(..), ProgramConfiguration(..),
 				  ProgramLocation(..),
-				  lookupProgram, arProgram )
+				  lookupProgram, arProgram, ranlibProgram )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToGHCFlag )
 import Distribution.Version	( Version(..) )
@@ -179,6 +179,8 @@ build pkg_descr lbi verbosity = do
         Try.try (removeFile libName) -- first remove library if it exists
         Try.try (removeFile profLibName) -- first remove library if it exists
 	Try.try (removeFile ghciLibName) -- first remove library if it exists
+
+        ld <- findLdProgram lbi
         let arArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
                 ++ [libName]
             arObjArgs =
@@ -199,13 +201,15 @@ build pkg_descr lbi verbosity = do
                 ++ map (pref </>) cObjs
 		++ stubObjs
 
-            runLd ld args = do
+            runLd args = do
               exists <- doesFileExist ghciLibName
                 -- SDM: we always remove ghciLibName above, so isn't this
                 -- always False?  What is this stuff for anyway?
               rawSystemLd verbosity ld
                           (args ++ if exists then [ghciLibName] else [])
               renameFile (ghciLibName <.> "tmp") ghciLibName
+
+            runAr = rawSystemProgramConf verbosity "ar" (withPrograms lbi)
 
 #if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
             rawSystemLd = rawSystemExit
@@ -215,19 +219,15 @@ build pkg_descr lbi verbosity = do
              --TODO: discover this at configure time on unix
             maxCommandLineSize = 30 * 1024
 #endif
-        ld <- findLdProgram lbi
-        mbAr <- lookupProgram "ar" (withPrograms lbi) 
-        arProg <- case mbAr of
-                        Nothing -> die "no 'ar' program configured"
-                        Just p  -> return p
+
         ifVanillaLib False $ xargs maxCommandLineSize
-          (rawSystemProgram verbosity) arProg arArgs arObjArgs
+          runAr arArgs arObjArgs
 
         ifProfLib $ xargs maxCommandLineSize
-          (rawSystemProgram verbosity) arProg arProfArgs arProfObjArgs
+          runAr arProfArgs arProfObjArgs
 
         ifGHCiLib $ xargs maxCommandLineSize
-          runLd ld ldArgs ldObjArgs
+          runLd ldArgs ldObjArgs
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
