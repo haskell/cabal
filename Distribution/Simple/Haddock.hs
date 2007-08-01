@@ -49,7 +49,7 @@ module Distribution.Simple.Haddock (
 -- local
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
-import Distribution.Program(lookupProgram, Program(..),
+import Distribution.Program(lookupProgram, Program(..), programPath,
                             hscolourProgram, haddockProgram, rawSystemProgram)
 import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
@@ -117,7 +117,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
     let ghcpkgFlags = if have_new_flags
-                      then ["--ghc-pkg=" ++ compilerPkgTool (compiler lbi)]
+                      then ["--ghc-pkg=" ++ programPath (compilerPkgTool (compiler lbi))]
                       else []
     let cssFileFlag = case haddockCss haddockFlags of
                         Nothing -> []
@@ -137,7 +137,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
     let getField pkgId f = do
             let name = showPackageId pkgId
-            s <- rawSystemStdout verbosity pkgTool ["field", name, f]
+            s <- rawSystemStdout verbosity (programPath pkgTool) ["field", name, f]
             return $ trim $ dropWhile (not . isSpace) $ head $ lines s
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"

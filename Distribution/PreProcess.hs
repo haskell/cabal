@@ -63,10 +63,9 @@ import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  rawSystemExit, die,
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Program (rawSystemProgramConf)
+import Distribution.Program (rawSystemProgramConf, rawSystemProgram)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 
@@ -312,7 +311,7 @@ ppGhcCpp extraArgs _bi lbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       p_p <- use_optP_P verbosity lbi
-      rawSystemExit verbosity (compilerPath (compiler lbi)) $
+      rawSystemProgram verbosity (compilerProg (compiler lbi)) $
           ["-E", "-cpp"]
           -- This is a bit of an ugly hack. We're going to
           -- unlit the file ourselves later on if appropriate,

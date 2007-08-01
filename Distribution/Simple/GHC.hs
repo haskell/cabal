@@ -68,7 +68,7 @@ import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  ProgramLocation(..),
 				  lookupProgram, arProgram, ranlibProgram )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
-				  extensionsToGHCFlag )
+				  extensionsToGHCFlag, compilerPath )
 import Distribution.Version	( Version(..) )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
@@ -99,7 +99,7 @@ import IO as Try
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let pref = buildDir lbi
-  let ghcPath = compilerPath (compiler lbi)
+      ghcProg = compilerProg (compiler lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
@@ -143,8 +143,8 @@ build pkg_descr lbi verbosity = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do ifVanillaLib forceVanillaLib (rawSystemExit verbosity ghcPath ghcArgs)
-           ifProfLib (rawSystemExit verbosity ghcPath ghcArgsProf)
+        do ifVanillaLib forceVanillaLib (rawSystemProgram verbosity ghcProg ghcArgs)
+           ifProfLib (rawSystemProgram verbosity ghcProg ghcArgsProf)
 
       -- build any C sources
       unless (null (cSources libBi)) $ do
@@ -152,7 +152,7 @@ build pkg_descr lbi verbosity = do
          sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref 
                                                             filename verbosity
                        createDirectoryIfMissingVerbose verbosity True odir
-                       rawSystemExit verbosity ghcPath args
+                       rawSystemProgram verbosity ghcProg args
                    | filename <- cSources libBi]
 
       -- link:
@@ -253,7 +253,7 @@ build pkg_descr lbi verbosity = do
 		  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
                                                          exeDir filename verbosity
                                 createDirectoryIfMissingVerbose verbosity True odir
-                                rawSystemExit verbosity ghcPath args
+                                rawSystemProgram verbosity ghcProg args
                             | filename <- cSources exeBi]
 
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
@@ -283,9 +283,9 @@ build pkg_descr lbi verbosity = do
 		 -- run at compile time needs to be the vanilla ABI so it can
 		 -- be loaded up and run by the compiler.
 		 when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
-		    (rawSystemExit verbosity ghcPath (binArgs False False))
+		    (rawSystemProgram verbosity ghcProg (binArgs False False))
 
-		 rawSystemExit verbosity ghcPath (binArgs True (withProfExe lbi))
+		 rawSystemProgram verbosity ghcProg (binArgs True (withProfExe lbi))
 
 
 -- when using -split-objs, we need to search for object files in the

@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Compiler (
         -- * Haskell implementations
 	CompilerFlavor(..), Compiler(..), showCompilerId,
-	compilerBinaryName,
+	compilerBinaryName, compilerPath, compilerPkgToolPath,
         -- * Support for language extensions
         Opt,
         extensionsToFlags,
@@ -56,6 +56,7 @@ module Distribution.Compiler (
 
 import Distribution.Version (Version(..), showVersion)
 import Language.Haskell.Extension (Extension(..))
+import Distribution.Program
 
 import Data.List (nub)
 
@@ -71,11 +72,13 @@ data CompilerFlavor
   = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
               deriving (Show, Read, Eq, Ord)
 
-data Compiler = Compiler {compilerFlavor:: CompilerFlavor,
-			  compilerVersion :: Version,
-                          compilerPath  :: FilePath,
-                          compilerPkgTool :: FilePath}
-                deriving (Show, Read, Eq)
+data Compiler = Compiler {
+        compilerFlavor  :: CompilerFlavor,
+        compilerVersion :: Version,
+        compilerProg    :: Program,
+        compilerPkgTool :: Program
+    }
+    deriving (Show, Read)
 
 showCompilerId :: Compiler -> String
 showCompilerId (Compiler f (Version [] _) _ _) = compilerBinaryName f
@@ -87,6 +90,12 @@ compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
 compilerBinaryName Hugs = "ffihugs"
 compilerBinaryName JHC  = "jhc"
 compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
+
+compilerPath :: Compiler -> FilePath
+compilerPath = programPath . compilerProg
+
+compilerPkgToolPath :: Compiler -> FilePath
+compilerPkgToolPath = programPath . compilerPkgTool
 
 -- ------------------------------------------------------------
 -- * Extensions

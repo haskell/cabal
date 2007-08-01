@@ -54,10 +54,10 @@ import Distribution.Simple.LocalBuildInfo
 				  autogenModulesDir )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToJHCFlag )
+import Distribution.Program     ( rawSystemProgram )
 import Distribution.Package  	( showPackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  rawSystemExit, copyFileVerbose,
-                                  exeExtension )
+                                  copyFileVerbose, exeExtension )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 
@@ -72,24 +72,24 @@ import Data.List		( nub, intersperse )
 -- Currently C source files are not supported.
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
-  let jhcPath = compilerPath (compiler lbi)
+  let jhcProg = compilerProg (compiler lbi)
   withLib pkg_descr () $ \lib -> do
       when (verbosity >= verbose) (putStrLn "Building library...")
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
-      rawSystemExit verbosity jhcPath (["-c"] ++ args ++ libModules pkg_descr)
+      rawSystemProgram verbosity jhcProg (["-c"] ++ args ++ libModules pkg_descr)
       let pkgid = showPackageId (package pkg_descr)
           pfile = buildDir lbi </> "jhc-pkg.conf"
           hlfile= buildDir lbi </> (pkgid ++ ".hl")
       writeFile pfile $ jhcPkgConf pkg_descr
-      rawSystemExit verbosity jhcPath ["--build-hl="++pfile, "-o", hlfile]
+      rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
       when (verbosity >= verbose)
            (putStrLn ("Building executable "++exeName exe))
       let exeBi = buildInfo exe
       let out   = buildDir lbi </> exeName exe
       let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
-      rawSystemExit verbosity jhcPath (["-o",out] ++ args ++ [modulePath exe])
+      rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [String]
 constructJHCCmdLine lbi bi _odir verbosity =
