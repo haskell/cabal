@@ -51,13 +51,13 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
+import Distribution.Program     ( rawSystemProgram )
 import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
-import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  rawSystemExit, die,
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die,
 				  dotToSep, moduleToFilePath,
 				  smartCopySources, findFile, dllExtension )
 import Language.Haskell.Extension
@@ -178,9 +178,9 @@ build pkg_descr lbi verbosity = do
                     ldOptions bi ++
                     ["-l" ++ lib | lib <- extraLibs bi] ++
                     concat [["-framework", f] | f <- frameworks bi]
-            rawSystemExit verbosity ffihugs (hugsArgs ++ file : cArgs)
+            rawSystemProgram verbosity ffihugs (hugsArgs ++ file : cArgs)
 
-	ffihugs = compilerPath (compiler lbi)
+	ffihugs = compilerProg (compiler lbi)
 
 	includeOpts :: [String] -> [String]
 	includeOpts [] = []

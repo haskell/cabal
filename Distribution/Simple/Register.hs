@@ -65,7 +65,8 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir, mkHaddockDir,
 					   mkIncludeDir, distPref)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerPkgToolPath)
+import Distribution.Program (Program(..), ProgramLocation(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
@@ -129,12 +130,13 @@ register pkg_descr lbi regFlags
         verbosity = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
+        hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
     setupMessage (regVerbose regFlags)
                  (if genScript
                   then ("Writing registration script: " ++ regScriptLocation ++ " for")
                   else "Registering")
                  pkg_descr
-    case compilerFlavor (compiler lbi) of
+    case compilerFlavor hc of
       GHC -> do 
 	config_flags <-
 	   if user
@@ -176,9 +178,7 @@ register pkg_descr lbi regFlags
 	let allFlags = register_flags
                        ++ config_flags
                        ++ if ghc_63_plus && genScript then ["-"] else []
-        let pkgTool = case regWithHcPkg regFlags of
-			 Just f  -> f
-			 Nothing -> compilerPkgTool (compiler lbi)
+        let pkgTool = compilerPkgToolPath hc
 
         if genScript
          then do cfg <- showInstalledConfig pkg_descr lbi inplace
@@ -307,7 +307,8 @@ unregister pkg_descr lbi regFlags = do
       genScript = regGenScript regFlags
       verbosity = regVerbose regFlags
       user = regUser regFlags `userOverride` userConf lbi
-  case compilerFlavor (compiler lbi) of
+      hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
+  case compilerFlavor hc of
     GHC -> do
 	config_flags <-
 	   if user
@@ -322,9 +323,7 @@ unregister pkg_descr lbi regFlags = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",showPackageId (package pkg_descr)]
                         else ["--remove-package="++(pkgName $ package pkg_descr)]
-        let pkgTool = case regWithHcPkg regFlags of
-			 Just f  -> f
-			 Nothing -> compilerPkgTool (compiler lbi)
+        let pkgTool = compilerPkgToolPath hc
 	rawSystemEmit unregScriptLocation genScript verbosity pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
@@ -335,6 +334,16 @@ unregister pkg_descr lbi regFlags = do
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
+
+updateCompilerPkgTool :: Maybe FilePath -> Compiler -> Compiler
+updateCompilerPkgTool Nothing comp = comp
+updateCompilerPkgTool (Just hcPkgPath) comp =
+  comp {
+    compilerPkgTool = (compilerPkgTool comp) {
+      programLocation = UserSpecified hcPkgPath
+    }
+  }
+
 
 -- |Like rawSystemExit, but optionally emits to a script instead of
 -- exiting. FIX: chmod +x?
