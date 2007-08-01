@@ -49,9 +49,9 @@ import Distribution.PackageDescription
 				  Library(..), libModules, hcOptions)
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
-import Distribution.Simple.Utils( rawSystemExit )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToNHCFlag )
+import Distribution.Program     ( rawSystemProgram )
 import Distribution.Verbosity
 
 -- |FIX: For now, the target must contain a main module.  Not used
@@ -63,7 +63,7 @@ build pkg_descr lbi verbosity =
               . extensionsToNHCFlag
               . maybe [] (extensions . libBuildInfo)
               . library ) pkg_descr in
-  rawSystemExit verbosity (compilerPath (compiler lbi))
+  rawSystemProgram verbosity (compilerProg (compiler lbi))
                 (["-hc=nhc98"]
                 ++ flags
                 ++ maybe [] (hcOptions NHC . options . libBuildInfo)
