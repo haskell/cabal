@@ -81,12 +81,17 @@ data Program
 
 -- |Similar to Maybe, but tells us whether it's specifed by user or
 -- not.  This includes not just the path, but the program as well.
-data ProgramLocation = EmptyLocation -- ^Like Nothing
-                     | UserSpecified FilePath -- ^The user gave the path to this program, eg. --ghc-path=\/usr\/bin\/ghc-6.6
-                     | FoundOnSystem FilePath -- ^The location of the program, as located by searching PATH.
+data ProgramLocation 
+    = EmptyLocation -- ^Like Nothing
+    | UserSpecified FilePath 
+      -- ^The user gave the path to this program,
+      -- eg. --ghc-path=\/usr\/bin\/ghc-6.6
+    | FoundOnSystem FilePath 
+      -- ^The location of the program, as located by searching PATH.
       deriving (Read, Show)
 
--- |The configuration is a collection of 'Program's.  It's a mapping from the name of the program (eg. ghc) to the Program.
+-- |The configuration is a collection of 'Program's.  It's a mapping from the
+--  name of the program (eg. ghc) to the Program.
 data ProgramConfiguration = ProgramConfiguration (Map.Map String Program)
 
 -- Read & Show instances are based on listToFM
