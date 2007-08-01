@@ -296,19 +296,10 @@ rawSystemProgram :: Verbosity -- ^Verbosity
                  -> Program   -- ^The program to run
                  -> [String]  -- ^Any /extra/ arguments to add
                  -> IO ()
-rawSystemProgram verbosity (Program { programLocation=(UserSpecified p)
-                                    , programArgs=args
-                                    }) extraArgs
-    = rawSystemExit verbosity p (args ++ extraArgs)
-
-rawSystemProgram verbosity (Program { programLocation=(FoundOnSystem p)
-                                    , programArgs=args
-                                    }) extraArgs
-    = rawSystemExit verbosity p (args ++ extraArgs)
-
-rawSystemProgram _ (Program { programLocation=EmptyLocation
-                            , programName=n}) _
-    = die ("Error: Could not find location for program: " ++ n)
+rawSystemProgram _ prog@(Program { programLocation = EmptyLocation }) _
+  = die ("Error: Could not find location for program: " ++ programName prog)
+rawSystemProgram verbosity prog extraArgs
+  = rawSystemExit verbosity (programPath prog) (programArgs prog ++ extraArgs)
 
 rawSystemProgramConf :: Verbosity            -- ^verbosity
                      -> String               -- ^The name of the program to run
