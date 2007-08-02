@@ -470,7 +470,7 @@ configCompilerVersion GHC compilerP verbosity = do
   str <- rawSystemStdout verbosity (programPath compilerP) ["--numeric-version"]
   case pCheck (readP_to_S parseVersion str) of
     [v] -> return v
-    _   -> die ("cannot determine version of " ++ programName compilerP ++ ":\n  "++ str)
+    _   -> die ("cannot determine version of " ++ programName compilerP ++ ":\n"++ show str)
 configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
   str <- rawSystemStdout verbosity (programPath compilerP) ["--version"]
   case words str of

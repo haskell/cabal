@@ -208,7 +208,7 @@ findProgramAndVersion verbosity name maybePath versionArg selectVersion = do
   str <- rawSystemStdout verbosity (programPath prog) [versionArg]
   case readVersion (selectVersion str) of
     Just v -> return prog { programVersion = Just v }
-    _      -> die ("cannot determine version of " ++ name ++ " :\n  " ++ str)
+    _      -> die ("cannot determine version of " ++ name ++ " :\n" ++ show str)
 
 -- ------------------------------------------------------------
 -- * cabal programs
