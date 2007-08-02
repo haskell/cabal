@@ -98,7 +98,8 @@ import System.Environment ( getProgName )
 import System.IO        ( hPutStrLn, stderr )
 import System.FilePath (takeDirectory, (</>), (<.>))
 import Distribution.Program(Program(..), ProgramLocation(..), programPath,
-                            lookupProgram, lookupPrograms, maybeUpdateProgram)
+                            lookupProgram, lookupPrograms,
+                            maybeUpdateProgram, simpleProgramAt)
 import System.Exit(ExitCode(..), exitWith)
 --import System.Exit		( ExitCode(..) )
 import qualified System.Info    ( os, arch )
@@ -419,7 +420,7 @@ configCompiler hcFlavor hcPath hcPkg verbosity
                              then return (UserSpecified path)
                              else findCompiler verbosity path
 	   Nothing   -> findCompiler verbosity (compilerBinaryName flavor)
-       let comp = Program (compilerName flavor) "unknown" [] compLocation
+       let comp = simpleProgramAt (compilerName flavor) compLocation
 
        ver <- configCompilerVersion flavor comp verbosity
 
@@ -427,7 +428,7 @@ configCompiler hcFlavor hcPath hcPkg verbosity
 	 case hcPkg of
 	   Just path -> return (UserSpecified path)
 	   Nothing   -> guessPkgToolFromHCPath verbosity flavor comp
-       let pkgtool = Program (compilerPkgToolName flavor) "unknown" [] pkgtoolLocation
+       let pkgtool = simpleProgramAt (compilerPkgToolName flavor) pkgtoolLocation
 
        return Compiler {
            compilerFlavor  = flavor,

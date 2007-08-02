@@ -33,6 +33,8 @@ module Distribution.Program(
                            , programOptsFlag
                            , programOptsField
                            , programPath
+                           , findProgram
+                           , findProgramAndVersion
                            , defaultProgramConfiguration
                            , updateProgram
                            , maybeUpdateProgram
@@ -43,6 +45,7 @@ module Distribution.Program(
                            , rawSystemProgram
                            , rawSystemProgramConf
                            , simpleProgram
+                           , simpleProgramAt
                              -- * Programs that Cabal knows about
                            , ghcProgram
                            , ghcPkgProgram
@@ -65,9 +68,12 @@ module Distribution.Program(
                            ) where
 
 import qualified Distribution.Compat.Map as Map
-import Distribution.Compat.Directory(findExecutable)
-import Distribution.Simple.Utils (die, rawSystemExit)
+import Distribution.Compat.Directory (findExecutable)
+import Distribution.Simple.Utils (die, rawSystemExit, rawSystemStdout)
+import Distribution.Version (Version, readVersion)
 import Distribution.Verbosity
+import System.Directory (doesFileExist)
+import Control.Monad (when)
 
 -- |Represents a program which cabal may call.
 data Program
@@ -75,6 +81,8 @@ data Program
                programName :: String
                 -- |The name of this program's binary, eg. ghc-6.4
               ,programBinName :: String
+                -- |The version of this program, if it is known
+              ,programVersion :: Maybe Version
                 -- |Default command-line args for this program
               ,programArgs :: [String]
                 -- |Location of the program.  eg. \/usr\/bin\/ghc-6.4
@@ -158,6 +166,49 @@ programPath program =
     UserSpecified p -> p
     FoundOnSystem p -> p
     EmptyLocation -> error "programPath EmptyLocation"
+
+-- | Look for a program. It can accept either an absolute path or the name of
+-- a program binary, in which case we will look for the program on the path.
+--
+findProgram :: Verbosity -> String -> Maybe FilePath -> IO Program
+findProgram verbosity prog maybePath = do
+  location <- case maybePath of
+    Nothing   -> searchPath verbosity prog
+    Just path -> do
+      absolute <- doesFileExist path
+      if absolute
+        then return (UserSpecified path)
+        else searchPath verbosity path
+  return (simpleProgramAt prog location)
+
+searchPath :: Verbosity -> FilePath -> IO ProgramLocation
+searchPath verbosity prog = do
+  when (verbosity >= verbose) $
+      putStrLn $ "searching for " ++ prog ++ " in path."
+  res <- findExecutable prog
+  case res of
+    Nothing   -> die ("Cannot find " ++ prog ++ " on the path") 
+    Just path -> do when (verbosity >= verbose) $
+                      putStrLn ("found " ++ prog ++ " at "++ path)
+                    return (FoundOnSystem path)
+
+-- | Look for a program and try to find it's version number. It can accept
+-- either an absolute path or the name of a program binary, in which case we
+-- will look for the program on the path.
+--
+findProgramAndVersion :: Verbosity
+                      -> String             -- ^ program binary name
+                      -> Maybe FilePath     -- ^ possible location
+                      -> String             -- ^ version args
+                      -> (String -> String) -- ^ function to select version
+                                            --   number from program output
+                      -> IO Program
+findProgramAndVersion verbosity name maybePath versionArg selectVersion = do
+  prog <- findProgram verbosity name maybePath
+  str <- rawSystemStdout verbosity (programPath prog) [versionArg]
+  case readVersion (selectVersion str) of
+    Just v -> return prog { programVersion = Just v }
+    _      -> die ("cannot determine version of " ++ name ++ " :\n  " ++ str)
 
 -- ------------------------------------------------------------
 -- * cabal programs
@@ -267,7 +318,7 @@ userSpecifyPath :: String   -- ^Program name
 userSpecifyPath name path conf'@(ProgramConfiguration conf)
     = case Map.lookup name conf of
        Just p  -> updateProgram p{programLocation=UserSpecified path} conf'
-       Nothing -> updateProgram (Program name name [] (UserSpecified path))
+       Nothing -> updateProgram (simpleProgramAt name (UserSpecified path))
                                 conf'
 
 -- |User-specify the arguments for this program.  Basically override
@@ -280,14 +331,14 @@ userSpecifyArgs :: String -- ^Program name
 userSpecifyArgs name args conf'@(ProgramConfiguration conf)
     = case Map.lookup name conf of
        Just p  -> updateProgram p{programArgs=(words args)} conf'
-       Nothing -> updateProgram (Program name name (words args) EmptyLocation) conf'
+       Nothing -> updateProgram (Program name name Nothing (words args) EmptyLocation) conf'
 
--- |Update this program's entry in the configuration.  No changes if
--- you pass in Nothing.
+-- |Update this program's entry in the configuration.
 updateProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
 updateProgram p@Program{programName=n} (ProgramConfiguration conf)
     = ProgramConfiguration $ Map.insert n p conf
 
+-- |Same as updateProgram but no changes if you pass in Nothing.
 maybeUpdateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
 maybeUpdateProgram m c = maybe c (\p -> updateProgram p c) m
 
@@ -330,4 +381,7 @@ progListToFM progs = foldl
                      progs
 
 simpleProgram :: String -> Program
-simpleProgram s = Program s s [] EmptyLocation
+simpleProgram s = simpleProgramAt s EmptyLocation
+
+simpleProgramAt :: String -> ProgramLocation -> Program
+simpleProgramAt s l = Program s s Nothing [] l
