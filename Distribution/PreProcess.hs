@@ -383,14 +383,14 @@ cppOptions bi lbi
             [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
 
 hcDefines :: Compiler -> [String]
-hcDefines compiler =
-  case compilerFlavor compiler of
+hcDefines comp =
+  case compilerFlavor comp of
     GHC  -> ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
     JHC  -> ["-D__JHC__=" ++ versionInt version]
     NHC  -> ["-D__NHC__=" ++ versionInt version]
     Hugs -> ["-D__HUGS__"]
     _    -> []
-  where version = compilerVersion compiler
+  where version = compilerVersion comp
 
 -- TODO: move this into the compiler abstraction
 -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all the other
