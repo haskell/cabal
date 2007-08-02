@@ -41,6 +41,7 @@ module Distribution.Program(
                            , userSpecifyPath
                            , userSpecifyArgs
                            , lookupProgram
+                           , lookupProgram' --TODO eliminate this export
                            , lookupPrograms
                            , rawSystemProgram
                            , rawSystemProgramConf
