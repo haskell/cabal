@@ -65,7 +65,8 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir, mkHaddockDir,
 					   mkIncludeDir, distPref)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerPkgToolPath)
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..),
+                              compilerPkgToolPath, compilerVersion)
 import Distribution.Program (Program(..), ProgramLocation(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
