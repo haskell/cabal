@@ -119,12 +119,6 @@ data ConfigFlags = ConfigFlags {
         configHcFlavor :: Maybe CompilerFlavor, -- ^The \"flavor\" of the compiler, sugh as GHC or Hugs.
         configHcPath   :: Maybe FilePath, -- ^given compiler location
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
-        configHappy    :: Maybe FilePath, -- ^Happy path
-        configAlex     :: Maybe FilePath, -- ^Alex path
-        configHsc2hs   :: Maybe FilePath, -- ^Hsc2hs path
-        configC2hs     :: Maybe FilePath, -- ^C2hs path
-        configCpphs    :: Maybe FilePath, -- ^Cpphs path
-        configGreencard:: Maybe FilePath, -- ^GreenCard path
         configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
@@ -162,18 +156,11 @@ emptyConfigFlags progConf = ConfigFlags {
         configHcFlavor = defaultCompilerFlavor,
         configHcPath   = Nothing,
         configHcPkg    = Nothing,
---        configHaddock  = EmptyLocation,
-        configHappy    = Nothing,
-        configAlex     = Nothing,
-        configHsc2hs   = Nothing,
-        configC2hs     = Nothing,
         configVanillaLib  = True,
         configProfLib  = False,
         configProfExe  = False,
         configConfigureArgs = [],
         configOptimization = True,
-        configCpphs    = Nothing,
-        configGreencard= Nothing,
         configPrefix   = Nothing,
 	configBinDir   = Nothing,
 	configLibDir   = Nothing,
@@ -303,9 +290,6 @@ data PFEFlags     = PFEFlags     {pfeVerbose     :: Verbosity}
 -- | All the possible flags
 data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithCompiler FilePath | WithHcPkg FilePath
-          | WithHappy FilePath | WithAlex FilePath
-          | WithHsc2hs FilePath | WithC2hs FilePath | WithCpphs FilePath
-          | WithGreencard FilePath
           | WithVanillaLib | WithoutVanillaLib
           | WithProfLib | WithoutProfLib
           | WithProfExe | WithoutProfExe
@@ -526,18 +510,6 @@ configureCmd progConf = Cmd {
 		"installation directory for read-only data",
 	   Option "" ["datasubdir"] (reqDirArg DataSubDir)
 		"subdirectory of datadir in which data files are installed",
-           Option "" ["with-happy"] (reqPathArg WithHappy)
-               "give the path to happy",
-           Option "" ["with-alex"] (reqPathArg WithAlex)
-               "give the path to alex",
-           Option "" ["with-hsc2hs"] (reqPathArg WithHsc2hs)
-               "give the path to hsc2hs",
-           Option "" ["with-c2hs"] (reqPathArg WithC2hs)
-               "give the path to c2hs",
-           Option "" ["with-cpphs"] (reqPathArg WithCpphs)
-               "give the path to cpphs",
-           Option "" ["with-greencard"] (reqPathArg WithGreencard)
-               "give the path to greencard",
            Option "" ["enable-library-vanilla"] (NoArg WithVanillaLib)
                "Enable vanilla libraries",
            Option "" ["disable-library-vanilla"] (NoArg WithoutVanillaLib)
@@ -622,12 +594,6 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
-        updateCfg t (WithHappy path)     = t { configHappy    = Just path }
-        updateCfg t (WithAlex path)      = t { configAlex     = Just path }
-        updateCfg t (WithHsc2hs path)    = t { configHsc2hs   = Just path }
-        updateCfg t (WithC2hs path)      = t { configC2hs     = Just path }
-        updateCfg t (WithCpphs path)     = t { configCpphs    = Just path }
-        updateCfg t (WithGreencard path) = t { configGreencard= Just path }
         updateCfg t (ProgramArgs name args) = t { configPrograms = (userSpecifyArgs
                                                                  name
                                                                  args (configPrograms t))}
