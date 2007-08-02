@@ -52,6 +52,9 @@ module Distribution.Configuration (
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
+import Distribution.Version 
+    ( Version(..), VersionRange(..), withinRange
+    , showVersionRange, parseVersionRange )
 
 import Text.PrettyPrint.HughesPJ
 
@@ -80,12 +83,14 @@ instance Show Flag where show (MkFlag n _ _) = n
 data ConfVar = OS String 
              | Arch String 
              | Flag String
+             | Impl String VersionRange
                deriving Eq
 
 instance Show ConfVar where
     show (OS n) = "os(" ++ n ++ ")"
     show (Arch n) = "arch(" ++ n ++ ")"
     show (Flag f) = "flag(" ++ f ++ ")"
+    show (Impl c v) = "flag(" ++ c ++ " " ++ showVersionRange v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
@@ -142,13 +147,14 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: String -> String -> Condition ConfVar ->  
+simplifyWithSysParams :: String -> String -> (String, Version) -> Condition ConfVar ->  
                          (Condition ConfVar, [String])
-simplifyWithSysParams os arch cond = (cond', flags)
+simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
     interp (OS name)   = Just $ name == os
     interp (Arch name) = Just $ name == arch
+    interp (Impl i vr) = Just $ impl == i && implVer `withinRange` vr
     interp _           = Nothing
     flags = [ fname | Flag fname <- fvs ]
 
@@ -176,12 +182,13 @@ parseCondition = condOr
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
     cond     = sp >> (lit +++ inparens condOr +++ notCond +++ osCond 
-                      +++ archCond +++ flagCond)
+                      +++ archCond +++ flagCond +++ implCond )
     inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var. OS 
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch 
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag 
+    implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
     ident    = munch1 isIdentChar >>= return . map toLower
     lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
                ((string "false" <++ string "False") >> return (Lit False))
@@ -191,7 +198,9 @@ parseCondition = condOr
     isIdentChar c = isAlphaNum c || (c `elem` "_-")
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
-
+    implIdent     = do i <- ident
+                       vr <- sp >> option AnyVersion parseVersionRange
+                       return $ Impl i vr
 
 ------------------------------------------------------------------------------
 
@@ -276,18 +285,19 @@ resolveWithFlags :: Monoid a =>
         -- ^ Domain for each flag name, will be tested in order.
   -> String  -- ^ OS name, as returned by System.Info.os
   -> String  -- ^ arch name, as returned by System.Info.arch
+  -> (String, Version) -- ^ Compiler name + version
   -> [CondTree ConfVar [d] a]    
   -> ([d] -> DepTestRslt [d])  -- ^ Dependency test function.
   -> (Either [d] -- missing dependencies
        ([a], [d], [(String, Bool)]))
-resolveWithFlags dom os arch trees checkDeps =
+resolveWithFlags dom os arch impl trees checkDeps =
     case try dom [] of
       Right r -> Right r
       Left dbt -> Left $ findShortest dbt
   where 
     -- Check dependencies only once; might avoid some duplicate efforts.
     preCheckedTrees = map ( mapTreeConstrs (\d -> (checkDeps d,d))
-                          . mapTreeConds (fst . simplifyWithSysParams os arch) )
+                          . mapTreeConds (fst . simplifyWithSysParams os arch impl) )
                         trees
 
     -- @try@ recursively tries all possible flag assignments in the domain and
@@ -389,7 +399,7 @@ tstTree = CondNode "A" [0]
                 ]
 
 
-test_simplify = simplifyWithSysParams i386 darwin tstCond 
+test_simplify = simplifyWithSysParams i386 darwin ("ghc",Version [6,6] []) tstCond 
   where 
     tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
                   (CAnd (Var (Flag "debug")) (Var (OS darwin)))
@@ -413,6 +423,8 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
                      , "true && !(false || os(plan9))"
                      , "flag( foo_bar )"
                      , "flag( foo_O_-_O_bar )"
+                     , "impl ( ghc )"
+                     , "impl( ghc >= 6.6.1 )"
                      ]
 
 test_ppCondTree = render $ ppCondTree tstTree (text . show)
@@ -422,7 +434,7 @@ test_simpCondTree = simplifyCondTree (flip lookup flags) tstTree
   where
     flags = [(Flag "a",False), (Flag "b",False), (Flag "c", True)] 
 
-test_resolveWithFlags = resolveWithFlags dom "os" "arch" [tstTree] check
+test_resolveWithFlags = resolveWithFlags dom "os" "arch" ("ghc",Version [6,6] []) [tstTree] check
   where
     dom = [("a", [False,True]), ("b", [True,False]), ("c", [True,False])]
     check ds = let missing = ds \\ avail in
