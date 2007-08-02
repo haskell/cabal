@@ -56,7 +56,6 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
     where
 
 
-import Distribution.Simple.Configure (haddockVersion)
 import Distribution.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
@@ -65,7 +64,8 @@ import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Program (rawSystemProgramConf, rawSystemProgram)
+import Distribution.Program (Program(..), lookupProgram', rawSystemProgramConf,
+                             rawSystemProgram)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 
@@ -309,8 +309,7 @@ ppGhcCpp :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGhcCpp extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
-      p_p <- use_optP_P verbosity lbi
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       rawSystemProgram verbosity (compilerProg (compiler lbi)) $
           ["-E", "-cpp"]
           -- This is a bit of an ugly hack. We're going to
@@ -319,7 +318,7 @@ ppGhcCpp extraArgs _bi lbi =
           -- double-unlitted. In the future we might switch to
           -- using cpphs --unlit instead.
        ++ ["-x", "hs"]
-       ++ (if p_p then ["-optP-P"] else [])
+       ++ (if use_optP_P lbi then ["-optP-P"] else [])
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
@@ -338,9 +337,12 @@ ppCpphs extraArgs _bi lbi =
 -- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
 -- pragmas are necessary for correct links when we preprocess.  So use
 -- -optP-P only if the Haddock version is prior to 0.8.
-use_optP_P :: Verbosity -> LocalBuildInfo -> IO Bool
-use_optP_P verbosity lbi
- = fmap (< Version [0,8] []) (haddockVersion verbosity lbi)
+use_optP_P :: LocalBuildInfo -> Bool
+use_optP_P lbi
+ = case lookupProgram' "haddock" (withPrograms lbi) of
+     Just (Program { programVersion = Just version })
+       | version >= Version [0,8] [] -> False
+     _                               -> True
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi = pp

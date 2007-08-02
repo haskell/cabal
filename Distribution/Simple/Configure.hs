@@ -51,8 +51,6 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
-                                      hscolourVersion,
-                                      haddockVersion,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -98,8 +96,10 @@ import System.Environment ( getProgName )
 import System.IO        ( hPutStrLn, stderr )
 import System.FilePath (takeDirectory, (</>), (<.>))
 import Distribution.Program(Program(..), ProgramLocation(..), programPath,
-                            lookupProgram, lookupPrograms,
-                            maybeUpdateProgram, simpleProgramAt)
+                            ProgramConfiguration(..),
+			    lookupProgram, lookupPrograms,
+			    updateProgram, maybeUpdateProgram,
+                            findProgramAndVersion, simpleProgramAt)
 import System.Exit(ExitCode(..), exitWith)
 --import System.Exit		( ExitCode(..) )
 import qualified System.Info    ( os, arch )
@@ -253,6 +253,10 @@ configure (pkg_descr0, pbi) cfg
         let newConfig = foldr (\(_, p) c -> maybeUpdateProgram p c) 
                               (configPrograms cfg) foundPrograms
 
+        -- TODO: get version checking integrated into the Program abstraction
+        newConfig'  <- findHaddockVersion  (configVerbose cfg) newConfig
+        newConfig'' <- findHscolourVersion (configVerbose cfg) newConfig'
+
 	split_objs <- 
 	   if not (configSplitObjs cfg)
 		then return False
@@ -274,7 +278,7 @@ configure (pkg_descr0, pbi) cfg
 			      datasubdir=my_datasubdir,
                               packageDeps=dep_pkgs,
                               localPkgDescr=pkg_descr,
-                              withPrograms=newConfig,
+                              withPrograms=newConfig'',
                               withVanillaLib=configVanillaLib cfg,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
@@ -480,36 +484,36 @@ configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
     _        -> fail ("reading version string: "++show str++" failed.")
 configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
 
-hscolourVersion :: Verbosity -> LocalBuildInfo -> IO Version
-hscolourVersion verbosity lbi = fmap getVer verString
- where
-   -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
-   verString = do hscolourProg <-
-                    fmap (fromMaybe noHscolour) $
-                    lookupProgram "hscolour" (withPrograms lbi)
-                  rawSystemStdout verbosity
-                     (progLocPath (programLocation hscolourProg)) ["-version"]
-   getVer    = head . pCheck . readP_to_S parseVersion . (!! 1) . words
-   noHscolour = error "hscolourVersion: cannot find hscolour"
-   progLocPath EmptyLocation        = noHscolour
-   progLocPath (UserSpecified path) = path
-   progLocPath (FoundOnSystem path) = path
+findHscolourVersion :: Verbosity -> ProgramConfiguration -> IO ProgramConfiguration
+findHscolourVersion verbosity conf = do
+   mHsColour <- lookupProgram "hscolour" conf
+   case mHsColour of
+     Nothing -> return conf
+     Just Program { programLocation = EmptyLocation } -> return conf
+     Just prog -> do
+       -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
+       prog' <- findProgramAndVersion verbosity (programBinName prog)
+                  (Just $ programPath prog) "-version" $ \str ->
+                  case words str of
+                    (_:ver:_) -> ver
+                    _         -> ""
+       return (updateProgram prog' { programName = "hscolour" } conf)
 
-haddockVersion :: Verbosity -> LocalBuildInfo -> IO Version
-haddockVersion verbosity lbi = fmap getVer verString
- where
-   -- Invoking "haddock --version" gives a string like
-   -- "Haddock version 0.8, (c) Simon Marlow 2006" 
-   verString = do haddockProg <-
-                    fmap (fromMaybe noHaddock) $
-                    lookupProgram "haddock" (withPrograms lbi)
-                  rawSystemStdout verbosity
-                    (progLocPath (programLocation haddockProg)) ["--version"]
-   getVer    = head . pCheck . readP_to_S parseVersion . init . (!! 2) . words
-   noHaddock = error "haddockVersion: cannot find haddock"
-   progLocPath EmptyLocation        = noHaddock
-   progLocPath (UserSpecified path) = path
-   progLocPath (FoundOnSystem path) = path
+findHaddockVersion :: Verbosity -> ProgramConfiguration -> IO ProgramConfiguration
+findHaddockVersion verbosity conf = do
+   mHaddock <- lookupProgram "haddock" conf
+   case mHaddock of
+     Nothing -> return conf
+     Just Program { programLocation = EmptyLocation } -> return conf
+     Just prog -> do
+       -- Invoking "haddock --version" gives a string like
+       -- "Haddock version 0.8, (c) Simon Marlow 2006"
+       prog' <- findProgramAndVersion verbosity (programBinName prog)
+                  (Just $ programPath prog) "--version" $ \str ->
+                  case words str of
+                    (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
+                    _           -> ""
+       return (updateProgram prog' conf)
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
