@@ -91,7 +91,7 @@ import Distribution.ParseUtils ( showDependency )
 import Text.PrettyPrint.HughesPJ ( comma, punctuate, render, nest, sep )
 
 import Data.List (intersperse, nub, isPrefixOf)
-import Data.Char (isSpace)
+import Data.Char (isSpace, toLower)
 import Data.Maybe(fromMaybe)
 import System.Directory
 import System.Environment ( getProgName )
@@ -188,6 +188,7 @@ configure (pkg_descr0, pbi) cfg
                        mipkgs
                        System.Info.os
                        System.Info.arch
+                       (map toLower (show f'),ver)
                        ppd
                 of Right r -> return r
                    Left missing -> 
