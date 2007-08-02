@@ -47,7 +47,6 @@ module Distribution.Simple.Configure (configure,
                                       maybeGetPersistBuildConfig,
 --                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
-                                      findProgram,
                                       getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
@@ -337,15 +336,6 @@ setDepByVersion (Dependency s (ThisVersion v)) = PackageIdentifier s v
 -- otherwise, just set it to empty
 setDepByVersion (Dependency s _) = PackageIdentifier s (Version [] [])
 
-
--- |Return the explicit path if given, otherwise look for the program
--- name in the path.
-findProgram
-    :: String              -- ^ program name
-    -> Maybe FilePath      -- ^ optional explicit path
-    -> IO (Maybe FilePath)
-findProgram name Nothing = findExecutable name
-findProgram _ p = return p
 
 reportProgram :: String -> Maybe Program -> IO ()
 reportProgram _ (Just Program{ programName=name
