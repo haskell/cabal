@@ -121,7 +121,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                                 then ["--allow-missing-html"]
                                 else []
     when (hsColour && not have_src_hyperlink_flags) $
-         die "haddock --hscolour requires Haddock version 0.8 or later"
+         die "haddock --hyperlink-source requires Haddock version 0.8 or later"
     let linkToHscolour = if hsColour
             then ["--source-module=src/%{MODULE/./-}.html"
                  ,"--source-entity=src/%{MODULE/./-}.html#%{NAME}"]
