@@ -55,8 +55,6 @@ import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Setup
 
-import Distribution.Simple.Configure(hscolourVersion, haddockVersion)
-
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref, haddockPref, substDir )
 import Distribution.Simple.Utils (die, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
@@ -69,7 +67,7 @@ import System.Directory(removeFile)
 
 import Control.Monad(liftM, when, unless)
 import Data.Char	( isSpace )
-import Data.Maybe       ( isJust, catMaybes )
+import Data.Maybe       ( isJust, fromMaybe, catMaybes )
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
@@ -113,7 +111,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let outputFlag = if haddockHoogle haddockFlags
                      then "--hoogle"
                      else "--html"
-    version <- haddockVersion verbosity lbi
+    let version = fromMaybe (error "could not find haddock version")
+                    (programVersion confHaddock)
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
     let ghcpkgFlags = if have_new_flags
@@ -246,7 +245,9 @@ hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
                        mHscol <- lookupProgram hscolourPath programConf
                        maybe (die "HsColour command not found") return mHscol
 
-    haveLines <- fmap (>= Version [1,8] []) (hscolourVersion verbosity lbi)
+    let version = fromMaybe (error "could not find hscolour version")
+                    (programVersion confHscolour)
+        haveLines = version >= Version [1,8] []
     unless haveLines $ die "hscolour version >= 1.8 required"
 
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
