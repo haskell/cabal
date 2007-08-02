@@ -53,10 +53,18 @@ module Distribution.Simple.LocalBuildInfo (
 	default_libexecdir,
 	default_datadir,
 	default_datasubdir,
-	mkLibDir, mkLibDirRel, mkBinDir, mkBinDirRel, mkLibexecDir, mkLibexecDirRel, mkDataDir, mkDataDirRel, mkHaddockDir, mkProgDirRel, mkProgDir,
+	mkLibDir, mkLibDirRel,
+	mkBinDir, mkBinDirRel,
+	mkLibexecDir, mkLibexecDirRel,
+	mkDataDir, mkDataDirRel,
+	mkHaddockDir,
+	mkProgDirRel, mkProgDir,
 	absolutePath, prefixRelPath,
 	substDir,
-	distPref, srcPref, hscolourPref, haddockPref, autogenModulesDir, mkIncludeDir
+	distPref, srcPref,
+	hscolourPref, haddockPref,
+	autogenModulesDir,
+	mkIncludeDir
   ) where
 
 
