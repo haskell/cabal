@@ -60,7 +60,7 @@ import Distribution.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
@@ -383,16 +383,18 @@ cppOptions bi lbi
             [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
 
 hcDefines :: Compiler -> [String]
-hcDefines Compiler { compilerFlavor=GHC, compilerVersion=version }
-  = ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
-hcDefines Compiler { compilerFlavor=JHC, compilerVersion=version }
-  = ["-D__JHC__=" ++ versionInt version]
-hcDefines Compiler { compilerFlavor=NHC, compilerVersion=version }
-  = ["-D__NHC__=" ++ versionInt version]
-hcDefines Compiler { compilerFlavor=Hugs }
-  = ["-D__HUGS__"]
-hcDefines _ = []
+hcDefines compiler =
+  case compilerFlavor compiler of
+    GHC  -> ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
+    JHC  -> ["-D__JHC__=" ++ versionInt version]
+    NHC  -> ["-D__NHC__=" ++ versionInt version]
+    Hugs -> ["-D__HUGS__"]
+    _    -> []
+  where version = compilerVersion compiler
 
+-- TODO: move this into the compiler abstraction
+-- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all the other
+-- compilers. Check if that's really what they want.
 versionInt :: Version -> String
 versionInt (Version { versionBranch = [] }) = "1"
 versionInt (Version { versionBranch = [n] }) = show n
