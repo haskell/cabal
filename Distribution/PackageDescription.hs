@@ -245,11 +245,12 @@ finalizePackageDescription
   -> Maybe [PackageIdentifier] -- ^ Available dependencies
   -> String -- ^ OS-name
   -> String -- ^ Arch-name
+  -> (String, Version) -- ^ Compiler + Version
   -> GenericPackageDescription
-  -> Either [Dependency]  -- Missing dependencies
-      ( PackageDescription -- Resolved package description
-      , [(String,Bool)])   -- Flag assignments chosen
-finalizePackageDescription userflags mpkgs os arch 
+  -> Either [Dependency]  -- ^ Missing dependencies
+      ( PackageDescription -- ^ Resolved package description
+      , [(String,Bool)])   -- ^ Flag assignments chosen
+finalizePackageDescription userflags mpkgs os arch impl 
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of 
       Right ((mlib, exes'), deps, flagVals) ->
@@ -274,7 +275,7 @@ finalizePackageDescription userflags mpkgs os arch
         untag PDNull x = x  -- actually this should not happen, but let's be liberal
 
     resolveFlags =
-        case resolveWithFlags flagChoices os arch condTrees check of
+        case resolveWithFlags flagChoices os arch impl condTrees check of
           Right (as, ds, fs) ->
               let (mlib, exes) = untagRslts as in
               Right ( (fmap libFillInDefaults mlib,
@@ -1566,7 +1567,7 @@ test_compatParsing =
 -}
 test_finalizePD = 
     let ParseOk _ ppd = readFields testFile >>= parseDescription' in
-    do case finalizePackageDescription [("debug",True)] (Just pkgs) os arch ppd of
+    do case finalizePackageDescription [("debug",True)] (Just pkgs) os arch impl ppd of
          Right (pd,fs) -> do putStrLn $ showPackageDescription pd
                              print fs
          Left missing -> putStrLn $ "missing: " ++ show missing
@@ -1579,6 +1580,7 @@ test_finalizePD =
            ]
     os = "win32"
     arch = "amd64"
+    impl = ("ghc", Version [6,6] [])
 
 
 #endif
