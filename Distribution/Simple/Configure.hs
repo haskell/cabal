@@ -70,7 +70,7 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.Compiler(CompilerFlavor(..), Compiler(..), compilerPath,
+import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
 			     compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
