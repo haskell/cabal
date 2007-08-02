@@ -45,6 +45,7 @@ module Distribution.Version (
   -- * Package versions
   Version(..),
   showVersion,
+  readVersion,
   parseVersion,
 
   -- * Version ranges
@@ -68,6 +69,8 @@ import Data.Version	( Version(..), showVersion, parseVersion )
 #endif
 
 import Control.Monad    ( liftM )
+import Data.Char	( isSpace )
+import Data.Maybe	( listToMaybe )
 
 import Distribution.Compat.ReadP
 
@@ -191,6 +194,10 @@ parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
                   return Version{versionBranch=branch, versionTags=tags}
 
 #endif
+
+readVersion :: String -> Maybe Version
+readVersion str =
+  listToMaybe [ r | (r,s) <- readP_to_S parseVersion str, all isSpace s ]
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
