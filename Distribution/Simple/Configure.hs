@@ -67,8 +67,8 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
-			     compilerBinaryName, extensionsToFlags)
+import Distribution.Compiler(CompilerFlavor(..),
+			     Compiler(..), compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
 import Distribution.PackageDescription(
@@ -166,7 +166,8 @@ configure :: ( Either GenericPackageDescription PackageDescription
 configure (pkg_descr0, pbi) cfg
   = do
 	-- detect compiler
-	comp@(Compiler f' ver p' pkg) <- configCompilerAux cfg
+	comp@(Compiler f' (PackageIdentifier _ ver) p' pkg) <- configCompilerAux cfg
+        -- TODO clean this up ^^^
 
         -- FIXME: currently only GHC has hc-pkg
         mipkgs <- case f' of
@@ -426,7 +427,7 @@ configCompiler hcFlavor hcPath hcPkg verbosity
 
        return Compiler {
            compilerFlavor  = flavor,
-           compilerVersion = ver,
+           compilerId      = PackageIdentifier (compilerName flavor) ver,
            compilerProg    = comp,
            compilerPkgTool = pkgtool
          }

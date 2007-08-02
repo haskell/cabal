@@ -67,8 +67,9 @@ import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  Program(..), ProgramConfiguration(..),
 				  ProgramLocation(..),
 				  lookupProgram, arProgram, ranlibProgram )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
-				  extensionsToGHCFlag, compilerPath )
+import Distribution.Compiler 	( CompilerFlavor(..),
+				  Compiler(..), extensionsToGHCFlag,
+                                  compilerPath, compilerVersion )
 import Distribution.Version	( Version(..) )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,

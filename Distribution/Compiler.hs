@@ -42,8 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Compiler (
         -- * Haskell implementations
-	CompilerFlavor(..), Compiler(..), showCompilerId,
-	compilerBinaryName, compilerPath, compilerPkgToolPath,
+	CompilerFlavor(..), Compiler(..),
+        showCompilerId, compilerVersion,
+	compilerBinaryName,
+	compilerPath, compilerPkgToolPath,
         -- * Support for language extensions
         Opt,
         extensionsToFlags,
@@ -55,6 +57,7 @@ module Distribution.Compiler (
   ) where
 
 import Distribution.Version (Version(..), showVersion)
+import Distribution.Package (PackageIdentifier(..))
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Program
 
@@ -74,15 +77,18 @@ data CompilerFlavor
 
 data Compiler = Compiler {
         compilerFlavor  :: CompilerFlavor,
-        compilerVersion :: Version,
+        compilerId      :: PackageIdentifier,
         compilerProg    :: Program,
         compilerPkgTool :: Program
     }
     deriving (Show, Read)
 
 showCompilerId :: Compiler -> String
-showCompilerId (Compiler f (Version [] _) _ _) = compilerBinaryName f
-showCompilerId (Compiler f v _ _) = compilerBinaryName f ++ '-': showVersion v
+showCompilerId (Compiler f (PackageIdentifier _ (Version [] _)) _ _) = compilerBinaryName f
+showCompilerId (Compiler f (PackageIdentifier _ v) _ _) = compilerBinaryName f ++ '-': showVersion v
+
+compilerVersion :: Compiler -> Version
+compilerVersion = pkgVersion . compilerId
 
 compilerBinaryName :: CompilerFlavor -> String
 compilerBinaryName GHC  = "ghc"
