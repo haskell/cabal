@@ -81,7 +81,7 @@ import System.Cmd(system)
 import System.Exit(ExitCode(..))
 import System.Environment (getArgs)
 
-import HUnit(runTestTT, Test(..), Counts(..), assertBool,
+import Test.HUnit(runTestTT, Test(..), Counts(..), assertBool,
              assertEqual, Assertion, showCounts)
 
 
