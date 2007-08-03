@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- #hide
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
-	runP, ParseResult(..),
+	runP, ParseResult(..), catchParseError, parseFail,
 	Field(..), fName, lineNo,
 	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
@@ -78,6 +78,7 @@ type LineNo = Int
 
 data PError = AmbigousParse String LineNo
             | NoParse String LineNo
+            | TabsError LineNo
             | FromString String (Maybe LineNo)
         deriving Show
 
@@ -94,6 +95,14 @@ instance Monad ParseResult where
 			       ParseOk ws' x' -> ParseOk (ws'++ws) x'
 	fail s = ParseFailed (FromString s Nothing)
 
+catchParseError :: ParseResult a -> (PError -> ParseResult a)
+                -> ParseResult a
+p@(ParseOk _ _) `catchParseError` _ = p
+ParseFailed e `catchParseError` k   = k e
+
+parseFail :: PError -> ParseResult a
+parseFail = ParseFailed
+
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
 runP line fieldname p s =
   case [ x | (x,"") <- results ] of
@@ -108,10 +117,14 @@ runP line fieldname p s =
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'")
 locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed: ")
+locatedErrorMsg (TabsError n)       = (Just n, "Tab used as indentation.")
 locatedErrorMsg (FromString s n)    = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
 syntaxError n s = ParseFailed $ FromString s (Just n)
+
+tabsError :: LineNo -> ParseResult a
+tabsError ln = ParseFailed $ TabsError ln
 
 warning :: String -> ParseResult ()
 warning s = ParseOk [s] ()
@@ -255,14 +268,15 @@ getField ((n,'#':xs):ls) | not (isSpace (head xs)) = do
   return (Just $ F n ('#':dir) (dropSpaces val), ls)
   where (dir,val) = break isSpace xs
 getField ((lineno,line0):lines0) =
-    let (spaces,line) = span isSpace line0
-        indent = length spaces in 
+    let (spaces,line) = span (==' ') line0
+        indent = length spaces in
     case break (`elem` " :{") line of
+      ('\t':_,_) -> tabsError lineno
       (fld0, ':':val0) -> do  -- regular field
-        let fld = map toLower fld0
-            (val, lines') = getFieldValue indent (dropWhile isSpace val0) lines0
-        return (Just $ F lineno fld val, lines')
-      (blkName, ' ':rest) 
+          let fld = map toLower fld0
+          (val, lines') <- getFieldValue indent (dropWhile isSpace val0) lines0
+          return (Just $ F lineno fld val, lines')
+      (blkName, ' ':rest)
         | map toLower blkName == "if"             -> getIf (lineno,rest) lines0
         | map toLower blkName `elem` sectionNames -> 
             getSection (map toLower blkName) (lineno,rest) lines0
@@ -344,26 +358,36 @@ getSection sectName (n,l) lines0 =
              return (Just $ Section n sectName (trimTrailingSpaces sectLabel) b, lines')
       (_,_) -> error "getSection got a line without a '{'.  Consider this a bug."
 
--- Get the field value of a field at given indentation      
-getFieldValue :: Int -> String -> [(Int,String)] 
-              -> (String,[(Int,String)])
-getFieldValue indent val lines0 = 
-    ( val' ++ rest 
-    , lines')
+-- Get the field value of a field at given indentation
+getFieldValue :: Int -> String -> [(Int,String)]
+              -> ParseResult (String,[(Int,String)])
+getFieldValue indent val lines0 = do
+    (valrest, lines') <- getValRest lines0
+    let v = val' ++ rest valrest
+    return ( v
+           , lines')
   where
     val' = dropWhile isSpace val
-    rest = (if val' == "" then safeTail else id) $
-             -- don't include initial newline if it would be the first
-             -- character
-             concatMap (getContinuation . snd) valrest
+    rest valrest =
+        -- don't include initial newline if it would be the first
+        -- character
+        (if val' == "" then safeTail else id) $
+           concatMap (getContinuation) valrest
     safeTail (_:xs) = xs
     safeTail [] = []
-                
-    (valrest,lines') = span (isContinuation indent . snd) lines0
+
     -- the continuation of a field value is everything that is indented
     -- relative to the field's label
-    isContinuation ind line = 
-        length (takeWhile isSpace line) > ind && not (all isSpace line)
+    getValRest [] = return ([],[])
+    getValRest lls@((n,l):ls) =
+        let (ind, v') = span isSpace l in
+        case () of
+         _ | indent > 0 && '\t' `elem` ind   -> tabsError n
+           | length ind <= indent || null v' -> return ([], lls)
+           | otherwise ->
+               do (valrest, lines') <- getValRest ls
+                  return (v':valrest, lines')
+
     getContinuation line = '\n':stripDot (dropWhile isSpace line)
     stripDot "." = ""
     stripDot s   = s
