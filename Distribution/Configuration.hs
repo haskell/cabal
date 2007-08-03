@@ -90,7 +90,7 @@ instance Show ConfVar where
     show (OS n) = "os(" ++ n ++ ")"
     show (Arch n) = "arch(" ++ n ++ ")"
     show (Flag f) = "flag(" ++ f ++ ")"
-    show (Impl c v) = "flag(" ++ c ++ " " ++ showVersionRange v ++ ")"
+    show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
