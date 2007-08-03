@@ -44,7 +44,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-	build, makefile, installLib, installExe
+	configure, build, makefile, installLib, installExe
  ) where
 
 import Distribution.Simple.GHCMakefile
@@ -65,8 +65,10 @@ import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  Program(..), ProgramConfiguration(..),
-				  ProgramLocation(..),
-				  lookupProgram, arProgram, ranlibProgram )
+				  ProgramLocation(..), programPath,
+				  findProgram, findProgramAndVersion,
+				  simpleProgramAt, lookupProgram,
+ 				  arProgram, ranlibProgram )
 import Distribution.Compiler 	( CompilerFlavor(..),
 				  Compiler(..), extensionsToGHCFlag,
                                   compilerPath, compilerVersion )
@@ -82,7 +84,7 @@ import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension )
+                                  takeDirectory, replaceExtension, splitExtension )
 import System.IO
 
 -- System.IO used to export a different try, so we can't use try unqualified
@@ -91,6 +93,63 @@ import Control.Exception as Try
 #else
 import IO as Try
 #endif
+
+-- -----------------------------------------------------------------------------
+-- Configuring
+
+configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
+configure hcPath hcPkgPath verbosity = do
+  
+  -- find ghc and version number
+  ghcProg <- findProgramAndVersion verbosity "ghc" hcPath "--numeric-version" id
+
+  -- find ghc-pkg
+  ghcPkgProg <- case hcPkgPath of
+                      Just _  -> findProgram verbosity "ghc" hcPkgPath
+                      Nothing -> guessGhcPkgFromGhcPath verbosity ghcProg
+  -- TODO: santity check: the versions of ghc-pkg and ghc should be the same.
+  
+  let Just version = programVersion ghcProg
+  return Compiler {
+        compilerFlavor  = GHC,
+        compilerId      = PackageIdentifier "ghc" version,
+        compilerProg    = ghcProg,
+        compilerPkgTool = ghcPkgProg
+    }
+
+-- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
+-- corresponding ghc-pkg, we try looking for both a versioned and unversioned
+-- ghc-pkg in the same dir, that is:
+--
+-- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
+-- > /usr/local/bin/ghc-pkg(.exe)
+--
+guessGhcPkgFromGhcPath :: Verbosity -> Program -> IO Program
+guessGhcPkgFromGhcPath verbosity ghcProg
+  = do let path            = programPath ghcProg
+           dir             = takeDirectory path
+           versionSuffix   = takeVersionSuffix (dropExeExtension path)
+           guessNormal     = dir </> "ghc-pkg" <.> exeExtension
+           guessVersioned  = dir </> ("ghc-pkg" ++ versionSuffix) <.> exeExtension 
+           guesses | null versionSuffix = [guessNormal]
+                   | otherwise          = [guessVersioned, guessNormal]
+       when (verbosity >= verbose) $
+         putStrLn $ "looking for package tool: ghc-pkg near compiler in " ++ dir
+       exists <- mapM doesFileExist guesses
+       case [ file | (file, True) <- zip guesses exists ] of
+         [] -> die "Cannot find package tool: ghc-pkg"
+         (pkgtool:_) -> do when (verbosity >= verbose) $
+                             putStrLn $ "found package tool in " ++ pkgtool
+                           return (simpleProgramAt "ghc-pkg" (FoundOnSystem pkgtool))
+
+  where takeVersionSuffix :: FilePath -> String
+        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") . reverse
+
+        dropExeExtension :: FilePath -> FilePath
+        dropExeExtension filepath =
+          case splitExtension filepath of
+            (filepath', extension) | extension == exeExtension -> filepath'
+                                   | otherwise                 -> filepath
 
 -- -----------------------------------------------------------------------------
 -- Building
