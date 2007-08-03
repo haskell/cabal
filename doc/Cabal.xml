@@ -126,19 +126,23 @@
       <para>The HUnit package contains a file <filename>HUnit.cabal</filename>
         containing:</para>
       <programlisting>
-Name:           HUnit
-Version:        1.1
-License:        BSD3
-Author:         Dean Herington
-Homepage:       http://hunit.sourceforge.net/
-Category:       Testing
-Build-Type:     Simple
-Build-Depends:  base
-Synopsis:       Unit testing framework for Haskell
-Exposed-modules:
-        Test.HUnit, Test.HUnit.Base, Test.HUnit.Lang,
-        Test.HUnit.Terminal, Test.HUnit.Text
-Extensions:     CPP</programlisting>
+Name:		HUnit
+Version:	1.1.1
+Cabal-Version:  >= 1.2
+License:	BSD3
+License-File:	LICENSE
+Author:		Dean Herington
+Homepage:	http://hunit.sourceforge.net/
+Category:	Testing
+Synopsis:	A unit testing framework for Haskell
+
+Library {
+  Build-Depends:	base
+  Exposed-modules:
+    Test.HUnit.Base, Test.HUnit.Lang, Test.HUnit.Terminal,
+    Test.HUnit.Text, Test.HUnit
+  Extensions:	CPP
+}</programlisting>
       <para>and the following <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
@@ -150,20 +154,24 @@ main = defaultMain</programlisting>
       <programlisting>
 Name:           TestPackage
 Version:        0.0
+Cabal-Version:  >= 1.2
 License:        BSD3
 Author:         Angela Author
 Synopsis:       Small package with two programs
 Build-Type:     Simple
-Build-Depends:  HUnit
 
-Executable:     program1
-Main-Is:        Main.hs
-Hs-Source-Dirs: prog1
+Executable program1 {
+  Build-Depends:  HUnit
+  Main-Is:        Main.hs
+  Hs-Source-Dirs: prog1
+}
 
-Executable:     program2
-Main-Is:        Main.hs
-Hs-Source-Dirs: prog2
-Other-Modules:  Utils</programlisting>
+Executable program2 {
+  Main-Is:        Main.hs
+  Build-Depends:  HUnit
+  Hs-Source-Dirs: prog2
+  Other-Modules:  Utils
+}</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -172,22 +180,28 @@ Other-Modules:  Utils</programlisting>
       <programlisting>
 Name:            TestPackage
 Version:         0.0
+Cabal-Version:   >= 1.2
 License:         BSD3
 Author:          Angela Author
 Synopsis:        Package with library and two programs
 Build-Type:      Simple
-Build-Depends:   HUnit
-Exposed-Modules: A, B, C
 
-Executable:      program1
-Main-Is:         Main.hs
-Hs-Source-Dirs:  prog1
-Other-Modules:   A, B
+Library {
+  Build-Depends:   HUnit
+  Exposed-Modules: A, B, C
+}
 
-Executable:      program2
-Main-Is:         Main.hs
-Hs-Source-Dirs:  prog2
-Other-Modules:   A, C, Utils</programlisting>
+Executable program1 {
+  Main-Is:         Main.hs
+  Hs-Source-Dirs:  prog1
+  Other-Modules:   A, B
+}
+
+Executable program2 {
+  Main-Is:         Main.hs
+  Hs-Source-Dirs:  prog2
+  Other-Modules:   A, C, Utils
+}</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.
       Note that any library modules required (directly or indirectly)
       by an executable must be listed again.</para>
@@ -217,37 +231,60 @@ Other-Modules:   A, C, Utils</programlisting>
         on Cabal packages require this.</para>
 
       <para>In the package description file, lines beginning with
-        <quote><literal>--</literal></quote> are treated as comments
-        and ignored.</para>
+      <quote><literal>--</literal></quote> are treated as comments
+      and ignored.</para>
 
-      <para>This file should contain one or more
-        <firstterm>stanzas</firstterm> separated by blank lines:</para>
+      <para>This file should contain of a number global property
+      descriptions and several sections.</para>
+
       <itemizedlist>
-        <listitem>
-          <para>The first stanza describes the package as a whole
-            (see <xref linkend="general-fields"/>), as well as an optional
-            library (see <xref linkend="library"/>) and relevant build
-            information (see <xref linkend="buildinfo"/>).</para>
-        </listitem>
-        <listitem>
-          <para>Each subsequent stanza (if any) describes an executable
-            program (see <xref linkend="executable"/>) and relevant
-            build information (see <xref linkend="buildinfo"/>).</para>
+	<listitem>
+	  <para>The global properties describe the package as a whole,
+	  such as name, license, author, etc.  (see <xref
+	  linkend="general-fields"/>).</para>
+	</listitem>
+	<listitem>
+	  <para>Optionally, a number of <firstterm>configuration
+	  flags</firstterm> can be declared.  These can be used to
+	  enable or disable certain features of a package. (see <xref
+	  linkend="configurations"/>).</para>
+	</listitem>
+	<listitem>
+	  <para>The (optional) library section specifies the library
+	  properties (see <xref linkend="library"/>) and relevant build
+	  information (see <xref linkend="buildinfo"/>).</para>
+	</listitem>
+	<listitem>
+	  <para>Following is an arbitrary number of executable sections
+	  which describe an executable program and (see <xref
+	  linkend="executable"/>) relevant build information (see <xref
+	  linkend="buildinfo"/>).</para>
 	</listitem>
       </itemizedlist>
 
-      <para>Each stanza consists of a number of field/value pairs, with a
-        syntax like mail message headers.</para>
+      <para>Each section consists of a number of property descriptions
+      in the form of field/value pairs, with a syntax roughly like mail
+      message headers.</para>
       <itemizedlist>
 	<listitem>
-          <para>case is not significant in field names,
-            but is significant in field values</para>
+          <para>Case is not significant in field names,
+            but is significant in field values.</para>
 	</listitem>
 	<listitem>
-          <para>to continue a field value, indent the next line</para>
+          <para>To continue a field value, indent the next line
+          relative to the field name.</para>
 	</listitem>
 	<listitem>
-          <para>to get a blank line in a field value, use an indented
+          <para>Field names may be indented, but all field values in
+          the same section must use the same indentation.</para>
+	</listitem>
+	<listitem>
+          <para>Tabs are <emphasis>not</emphasis> allowed as
+          indentation characters due to a missing standard
+          interpretation of tab width.</para>
+	</listitem>
+	<listitem>
+          <para>To get a blank line in a field value, use an indented
             <quote><literal>.</literal></quote></para>
 	</listitem>
       </itemizedlist>
@@ -332,8 +369,8 @@ Other-Modules:   A, C, Utils</programlisting>
       <sect3 id="general-fields">
         <title>Package properties</title>
 
-        <para>These fields may occur in the first stanza, and describe
-          the package as a whole:</para>
+        <para>These fields may occur in the first top-level properties
+        section and describe the package as a whole:</para>
 
         <variablelist>
           <varlistentry>
@@ -365,12 +402,18 @@ Other-Modules:   A, C, Utils</programlisting>
             </term>
             <listitem>
               <para>The version of Cabal required for this package.
-                Use <emphasis>only</emphasis> if this package requires
-                a particular version of Cabal, since unfortunately
-                early versions of Cabal do not recognize this field.
-                List the field early in your <literal>.cabal</literal>
-                file so that it will appear as a syntax error before
-                any others.</para>
+              Since, with Cabal version 1.2 the syntax of package
+              descriptions has changed, this is now a required field.
+              List the field early in your <literal>.cabal</literal>
+              file so that it will appear as a syntax error before any
+              others, since old versions of Cabal unfortunately do not
+              recognize this field.</para>
+	      <para>For compatibility, files written in the old syntax
+	      are still recognized.  Thus if you don't require
+	      features introduced with or after Cabal version 1.2, you
+	      may write your package description file using the old
+	      syntax.  Please consult the user's guide of that Cabal
+	      version for a description of that syntax.</para>
             </listitem>
           </varlistentry>
 
@@ -535,20 +578,6 @@ Other-Modules:   A, C, Utils</programlisting>
 
           <varlistentry>
             <term>
-              <literal>build-depends:</literal>
-              <replaceable>package list</replaceable>
-            </term>
-            <listitem>
-              <para>A list of packages, possibly annotated with versions,
-                needed to build this one,
-                e.g. <literal>foo > 1.2, bar</literal>.
-                If no version constraint is specified, any version is
-                assumed to be acceptable.</para>
-            </listitem>
-          </varlistentry>
-
-          <varlistentry>
-            <term>
               <literal>data-files:</literal>
               <replaceable>filename list</replaceable>
             </term>
@@ -594,8 +623,8 @@ Other-Modules:   A, C, Utils</programlisting>
       <sect3 id="library">
         <title>Library</title>
 
-        <para>If the package contains a library, the first stanza should
-          also contain the following field:</para>
+        <para>The library section should contain the following
+        field:</para>
 
         <variablelist>
           <varlistentry>
@@ -608,31 +637,41 @@ Other-Modules:   A, C, Utils</programlisting>
               <para>A list of modules added by this package.</para>
             </listitem>
           </varlistentry>
+	  <varlistentry>
+            <term>
+              <literal>build-depends:</literal>
+              <replaceable>package list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of packages, possibly annotated with versions,
+                needed to build this one,
+                e.g. <literal>foo > 1.2, bar</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable.</para>
+            </listitem>
+          </varlistentry>
+
+
         </variablelist>
 
-        <para>The first stanza may also contain build information fields
-          (see <xref linkend="buildinfo"/>) relating to the library.</para>
+        <para>The library section may also contain build information fields
+          (see <xref linkend="buildinfo"/>).</para>
       </sect3>
 
       <sect3 id="executable">
         <title>Executables</title>
 
-        <para>Subsequent stanzas (if present) describe executable programs
-          contained in the package, using the following fields, as well as
-          build information fields (see <xref linkend="buildinfo"/>).</para>
+        <para>Executable sections (if present) describe executable
+        programs contained in the package and must have an argument
+        after the section label, which defines the name of the
+        executable.  This is a freeform argument but may not contain
+        spaces.</para>
+
+        <para>The executable may be described using the following
+        fields, as well as build information fields (see <xref
+        linkend="buildinfo"/>).</para>
 
         <variablelist>
-          <varlistentry>
-            <term>
-              <literal>executable:</literal>
-              <replaceable>freeform</replaceable>
-              (required)
-            </term>
-            <listitem>
-              <para>The name of the executable program.</para>
-            </listitem>
-          </varlistentry>
-
           <varlistentry>
             <term>
               <literal>main-is:</literal> <replaceable>filename</replaceable>
@@ -644,20 +683,32 @@ Other-Modules:   A, C, Utils</programlisting>
                 directories listed in <literal>hs-source-dirs</literal>.</para>
             </listitem>
           </varlistentry>
+	  <varlistentry>
+            <term>
+              <literal>build-depends:</literal>
+              <replaceable>package list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of packages, possibly annotated with versions,
+                needed to build this executable,
+                e.g. <literal>foo > 1.2, bar</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable.</para>
+            </listitem>
+          </varlistentry>
         </variablelist>
 
-        <para>These stanzas may also contain build information fields
-          (see <xref linkend="buildinfo"/>) relating to the executable.</para>
       </sect3>
 
       <sect3 id="buildinfo">
         <title>Build information</title>
 
-        <para>The following fields may be optionally present
-          in any stanza, and give information for the building
-          of the corresponding library or executable.  See also
-          <xref linkend="system-dependent"/> for a way to supply
-          system-dependent values for these fields.</para>
+        <para>The following fields may be optionally present in a
+        library or executable section, and give information for the
+        building of the corresponding library or executable.  See also
+        <xref linkend="system-dependent"/> and <xref linkend="configurations"/>
+        for a way to supply system-dependent values for these
+        fields.</para>
 
         <variablelist>
           <varlistentry>
@@ -913,6 +964,268 @@ Other-Modules:   A, C, Utils</programlisting>
             </listitem>
           </varlistentry>
         </variablelist>
+      </sect3>
+
+      <sect3 id="configurations">
+	<title>Configurations</title>
+	<para>Library and executable sections may include conditional
+	blocks, which test for various system parameters and
+	configuration flags.  The flags mechanism is rather generic,
+	but most of the time a flag represents certain feature, that
+	can be switched on or off by the package user.</para>
+	<para>Here is an example package description file using
+	configurations:</para>
+	<example id="package-with-configurations-example">
+	  <title>A package containing a library and executable programs</title>
+
+	<programlisting>Name: Test1
+Version: 0.0.1
+Cabal-Version: >= 1.1.7
+License: BSD3
+Author:  Jane Doe
+Synopsis: Test package to test configurations
+Category: Example
+
+Flag Debug {
+  Description: Enable debug support
+  Default:     False
+}
+
+Flag WebFrontend {
+  Description: Include API for web frontend.
+  -- defaults to True
+}
+
+Library {
+  Build-Depends:   base
+  Exposed-Modules: Testing.Test1
+  Extensions:      CPP
+
+
+  if flag(debug) {
+    GHC-Options: -DDEBUG
+    if !os(win32) {
+      CC-Options: "-DDEBUG"
+    } else {
+      CC-Options: "-DNDEBUG"
+    }
+  }
+
+  if flag(webfrontend) {
+    Build-Depends: cgi > 0.42
+    Exposed-Modules: Testing.WebStuff
+  }
+}
+
+Executable test1 {
+  Main-is: T1.hs
+  Other-Modules: Testing.Test1
+  Build-Depends: base
+
+  if flag(debug) {
+    CC-Options: "-DDEBUG"
+    GHC-Options: -DDEBUG
+  }
+}</programlisting>
+	</example>
+	<sect4>
+	 <title>Configuration Flags</title>
+	 <para>A flag section takes the flag name as an argument and
+	 may contain the following fields.</para>
+	 <variablelist>
+          <varlistentry>
+            <term>
+              <literal>description:</literal>
+              <replaceable>freeform</replaceable>
+            </term>
+            <listitem>
+              <para>The description of this flag.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <literal>default:</literal>
+              <replaceable>Boolean</replaceable>
+	      (default: <literal>True</literal>)
+            </term>
+            <listitem>
+              <para>The default value of this flag.</para>
+	      <para>Note that this value may be overridden in several
+	      ways (see <xref linkend="flag-control"/>).  The
+	      rationale for having flags default to True is that users
+	      usually want new features as soon as they are available.
+	      Flags representing features that are not (yet)
+	      recommended for most users (such as experimental
+	      features or debugging support) should therefore
+	      explicitly override the default to False.</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+	</sect4>
+	<sect4 id="conditionals">
+	  <title>Conditional Blocks</title>
+	  <para>Conditional blocks may appear anywhere inside a
+	  library or executable section.  They have to follow rather
+	  strict formatting rules.</para>
+	  <para>Conditional blocks must always be of the shape
+	  <literallayout>
+	    <literal>if </literal><replaceable>condition</replaceable><literal> {</literal>
+	    <replaceable>  property-descriptions-or-conditionals*</replaceable>
+	    <literal>}</literal>
+	    </literallayout> or
+	    <literallayout>
+	      <literal>if </literal><replaceable>condition</replaceable><literal> {</literal>
+	      <replaceable>  property-descriptions-or-conditionals*</replaceable>
+	      <literal>} else {</literal>
+	      <replaceable>  property-descriptions-or-conditionals*</replaceable>
+	      <literal>}</literal>
+	  </literallayout></para>
+
+	  <para>Note that the condition and the opening brace have to
+	  be all on the same line.  Similar for the closing brace and
+	  a possible <literal>else</literal> part.  In particular, it
+	  is <emphasis>not</emphasis> possible to have multiple
+	  closing braces on one line or to have the
+	  <literal>else</literal> followed directly by an
+	  <literal>if</literal>.</para>
+	  <para>Properties inside an if block must be indented at
+	  least as much as the opening <literal>if</literal>
+	  (preferably more).</para>
+
+	</sect4>
+	<sect4 id="conditions">
+	  <title>Conditions</title>
+	  <para>Conditions can be formed using boolean tests and the
+	  boolean operators <literal>||</literal> (disjunction /
+	  logical "or"), <literal>&amp;&amp;</literal> (conjunction /
+	  logical "and"), or <literal>!</literal> (negation / logical
+	  "not").  The unary <literal>!</literal> takes highest
+	  precedence, <literal>||</literal> takes lowest.  Precedence
+	  levels may be overridden through the use of parentheses.
+	  For example, <literal>os(darwin) &amp;&amp; !arch(i386) || os(freebsd)</literal>
+          is equivalent to <literal>(os(darwin) &amp;&amp; !(arch(i386))) || os(freebsd)</literal>.
+	  </para>
+	  <para>The following tests are currently supported.</para>
+	  <variablelist>
+	    <varlistentry>
+	      <term>
+		<literal>os(</literal>
+		<replaceable>name</replaceable>
+		<literal>)</literal>
+	      </term>
+            <listitem>
+              <para>Tests if the current operating system is
+              <replaceable>name</replaceable>.  The argument is tested
+              against the result of calling
+              <literal>System.Info.os</literal> on the target system.
+              If both are the same, this test evaluates to true,
+              otherwise false.</para>
+            </listitem>
+          </varlistentry>
+	    <varlistentry>
+	      <term>
+		<literal>arch(</literal>
+		<replaceable>name</replaceable>
+		<literal>)</literal>
+	      </term>
+            <listitem>
+              <para>Tests if the current architecture is
+              <replaceable>name</replaceable>.  The argument is tested
+              against the result of calling
+              <literal>System.Info.arch</literal> on the target system.
+              If both are the same, this test evaluates to true,
+              otherwise false.</para>
+            </listitem>
+          </varlistentry>
+	  <varlistentry>
+	      <term>
+		<literal>impl(</literal>
+		<replaceable>compiler</replaceable>
+		<literal>)</literal>
+	      </term>
+            <listitem>
+              <para>Tests for the configured compiler.  An optional
+              version constraint may be specified (for example
+              <literal>impl(ghc >= 6.6.1)</literal>).  If the
+              configured compiler is of the right type and matches the
+              version constraint, then this evaluates to true,
+              otherwise false.</para>
+            </listitem>
+          </varlistentry>
+	  <varlistentry>
+	      <term>
+		<literal>flag(</literal>
+		<replaceable>name</replaceable>
+		<literal>)</literal>
+	      </term>
+            <listitem>
+              <para>Evaluates to the current assignment of the flag of
+              the given name.  Flag names are case insensitive.
+              Testing for flags that have not been introduced with a
+              flag section is an error.</para>
+            </listitem>
+          </varlistentry>
+	  <varlistentry>
+	      <term>
+		<literal>true</literal>
+	      </term>
+            <listitem>
+              <para>Always evaluates to true.</para>
+            </listitem>
+          </varlistentry>
+	  <varlistentry>
+	      <term>
+		<literal>false</literal>
+	      </term>
+            <listitem>
+              <para>Always evaluates to false.</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+
+	</sect4>
+	<sect4 id="prop-combine">
+	  <title>Conditional Resolution</title>
+	  <para>During the configuration phase, a flag assignment is
+	  chosen (see <xref linkend="flag-control"/>), all
+	  conditionals are evaluated, and the package description is
+	  combined into a flat package descriptions.  If property
+	  descriptions occur both inside a conditional and outside
+	  are combined, using the following rules.</para>
+	  <itemizedlist>
+	    <listitem>
+	      <para>Boolean fields are combined using conjunction
+	      (logical "and").</para>
+	    </listitem>
+	    <listitem>
+	      <para>List fields are combined by appending the inner
+	      items to the outer items, for example
+	      <programlisting>Extensions: CPP
+if impl(ghc) || impl(hugs) {
+  Extensions: MultiParamTypeClasses
+}</programlisting>
+	    when compiled using Hugs or GHC will be combined to
+	    <programlisting>Extensions: CPP MultiParamTypeClasses</programlisting>
+	    </para>
+	    <para>Similarly, if two conditional sections appear at the
+	    same nesting level, properties specified in the latter
+	    will come after properties specified in the former.</para>
+	    </listitem>
+	    <listitem>
+	      <para>All other fields must not be specified in ambiguous ways.  For example
+	      <programlisting>Main-is: Main.hs
+if flag(useothermain) {
+  Main-is: OtherMain.hs
+}</programlisting>
+	      will lead to an error.  Instead use
+	      <programlisting>if flag(useothermain) {
+  Main-is: OtherMain.hs
+} else {
+  Main-is: Main.hs
+}</programlisting></para>
+	    </listitem>
+	  </itemizedlist>
+	</sect4>
       </sect3>
     </sect2>
 
@@ -1316,7 +1629,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		The package tool must be compatible with the compiler
 		specified by <option>--with-compiler</option>.
 		If this option is omitted, the default value is determined
-		from the compiler selected.</para>  
+		from the compiler selected.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1611,6 +1924,71 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    package.</para>
 	</sect4>
       </sect3>
+
+      <sect3 id="flag-control">
+	<title>Controlling Flag Assignments</title>
+	<para>If a package descriptions specifies configuration flags
+	(see <xref linkend="configurations"/>) the package user can
+	control these in several ways.  If none of the options below
+	are given, Cabal will try to find a flag assignment in the
+	following way.</para>
+	<itemizedlist>
+	  <listitem>
+	    <para>For each flag specified, it will assign its default
+	    value, evaluate all conditions with this flag assignment,
+	    and check if all dependencies can be satisfied.  If this
+	    check succeeded, the package will be configured with those
+	    flag assignments.</para>
+	  </listitem>
+	  <listitem>
+	    <para>If dependencies were missing, the last flag (as by
+	    the order in which the flags were introduced in the
+	    package description) is tried with its alternative value
+	    and so on.  This continues until either an assignment is
+	    found where all dependencies can be satisfied, or all
+	    possible flag assignments have been tried.</para>
+	  </listitem>
+	</itemizedlist>
+	<para>If no suitable flag assignment could be found, the
+	configuration phase will fail and a list of missing
+	dependencies will be printed.  Note that this resolution
+	process is exponential in the worst case (i.e., in the case
+	where dependencies cannot be satisfied).  There are some
+	optimizations applied internally, but the overall complexity
+	remains unchanged.</para>
+
+	<para>Flag assignments can be controlled with the following
+	command line options.</para>
+	<variablelist>
+	  <varlistentry>
+	    <term><option>-f</option><replaceable>flagname</replaceable> or
+	    <option>-f</option><literal>-</literal><replaceable>flagname</replaceable></term>
+	    <listitem>
+	      <para>Force the specified flag to
+	      <literal>true</literal> or <literal>false</literal> (if
+	      preceded with a <literal>-</literal>). Later
+	      specifications for the same flags will override earlier,
+	      i.e., specifying <literal>-fdebug -f-debug</literal> is
+	      equivalent to <literal>-f-debug</literal></para>
+	    </listitem>
+	  </varlistentry>
+	  <varlistentry>
+	    <term><option>--flags</option>=<replaceable>flagspecs</replaceable></term>
+	    <listitem>
+	      <para>Same as <option>-f</option>, but allows specifying
+	      multiple flag assignments at once.  The parameter is a
+	      space-separated list of flag names (to force a flag to
+	      <literal>true</literal>), optionally preceded by a
+	      <literal>-</literal> (to force a flag to
+	      <literal>false</literal>). For example,
+	      <literal>--flags="debug -feature1 feature2"</literal> is
+	      equivalent to <literal>-fdebug -f-feature1
+	      -ffeature2</literal>.</para>
+	    </listitem>
+	  </varlistentry>
+	</variablelist>
+      </sect3>
+
 
       <sect3 id="setup-configure-misc">
 	<title>Miscellaneous options</title>
@@ -2026,7 +2404,7 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
             <para>This flag does not create a build-tree-local package
             database.  It still registers the package in one of the
             user or global databases.</para>
-	    
+
 	    <para>However, there are some caveats.  It only works with
 	    GHC (currently).  It only works if your package doesn't
 	    depend on having any supplemental files installed - plain
