@@ -67,8 +67,9 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.Compiler(CompilerFlavor(..),
-			     Compiler(..), compilerBinaryName, extensionsToFlags)
+import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
+			     compilerVersion, compilerPath, compilerPkgToolPath,
+			     compilerBinaryName, extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
 import Distribution.PackageDescription(
@@ -166,12 +167,13 @@ configure :: ( Either GenericPackageDescription PackageDescription
 configure (pkg_descr0, pbi) cfg
   = do
 	-- detect compiler
-	comp@(Compiler f' (PackageIdentifier _ ver) p' pkg) <- configCompilerAux cfg
-        -- TODO clean this up ^^^
+	comp <- configCompilerAux cfg
+        let version = compilerVersion comp
+            flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
-        mipkgs <- case f' of
-                      GHC | ver >= Version [6,3] [] ->
+        mipkgs <- case flavor of
+                      GHC | version >= Version [6,3] [] ->
                         getInstalledPackagesAux comp cfg >>= return . Just
                       JHC ->
                         getInstalledPackagesJHC comp cfg >>= return . Just
@@ -189,7 +191,7 @@ configure (pkg_descr0, pbi) cfg
                        mipkgs
                        System.Info.os
                        System.Info.arch
-                       (map toLower (show f'),ver)
+                       (map toLower (show flavor),version)
                        ppd
                 of Right r -> return r
                    Left missing -> 
@@ -210,8 +212,8 @@ configure (pkg_descr0, pbi) cfg
 
         let ipkgs = fromMaybe (map setDepByVersion (buildDepends pkg_descr)) mipkgs 
 
-        dep_pkgs <- case f' of
-                      GHC | ver >= Version [6,3] [] -> do
+        dep_pkgs <- case flavor of
+                      GHC | version >= Version [6,3] [] -> do
 	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
                       JHC                           -> do
 	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
@@ -243,9 +245,9 @@ configure (pkg_descr0, pbi) cfg
         let lib = library pkg_descr
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
-        let exts = fst $ extensionsToFlags f' extlist
+        let exts = fst $ extensionsToFlags flavor extlist
         unless (null exts) $ warn (configVerbose cfg) $ -- Just warn, FIXME: Should this be an error?
-            show f' ++ " does not support the following extensions:\n " ++
+            show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
         foundPrograms <- lookupPrograms (configPrograms cfg)
@@ -260,8 +262,8 @@ configure (pkg_descr0, pbi) cfg
 	split_objs <- 
 	   if not (configSplitObjs cfg)
 		then return False
-		else case f' of
-			    GHC | ver >= Version [6,5] [] -> return True
+		else case flavor of
+			    GHC | version >= Version [6,5] [] -> return True
 	    		    _ -> do warn (configVerbose cfg)
                                          ("this compiler does not support " ++
 					  "--enable-split-objs; ignoring")
@@ -296,10 +298,10 @@ configure (pkg_descr0, pbi) cfg
         messageDir pkg_descr lbi "Private binaries" mkLibexecDir mkLibexecDirRel
         messageDir pkg_descr lbi "Data files" mkDataDir mkDataDirRel
         
-        message $ "Using compiler: " ++ programPath p'
-        message $ "Compiler flavor: " ++ (show f')
-        message $ "Compiler version: " ++ showVersion ver
-        message $ "Using package tool: " ++ programPath pkg
+        message $ "Using compiler: " ++ compilerPath comp
+        message $ "Compiler flavor: " ++ show flavor
+        message $ "Compiler version: " ++ showVersion version
+        message $ "Using package tool: " ++ compilerPkgToolPath comp
 
         mapM_ (uncurry reportProgram) foundPrograms
 
