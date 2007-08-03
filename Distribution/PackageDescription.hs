@@ -947,7 +947,8 @@ parseDescription file = do
     oldSyntax flds = all isSimpleField flds
     reportTabsError tabs =
         syntaxError (fst (head tabs)) $
-          "Tabs used for indentation at (line,column): " ++ show tabs
+          "Do not use tabs for indentation (use spaces instead)\n"
+          ++ "  Tabs were used at (line,column): " ++ show tabs
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
     --
     --  * all global fields at the beginning, followed by
