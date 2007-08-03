@@ -42,7 +42,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hugs (
-	build, install
+	configure, build, install
  ) where
 
 import Distribution.PackageDescription
@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
-import Distribution.Program     ( rawSystemProgram )
+import Distribution.Program     ( rawSystemProgram, findProgram )
 import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
 				( unlit )
@@ -67,6 +67,7 @@ import Distribution.Compat.Directory
 import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.Verbosity
+import Distribution.Package	( PackageIdentifier(..) )
 
 import Data.Char		( isSpace )
 import Data.Maybe		( mapMaybe )
@@ -79,8 +80,30 @@ import IO			( try )
 import Data.List		( nub, sort, isSuffixOf )
 import System.Directory		( Permissions(..), getPermissions,
 				  setPermissions )
+import Data.Version
+
 
 -- -----------------------------------------------------------------------------
+-- Configuring
+
+configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
+configure hcPath _hcPkgPath verbosity = do
+
+  -- find ffihugs
+  ffihugsProg <- findProgram verbosity "ffihugs" hcPath
+
+  -- find hugs
+  hugsProg <- findProgram verbosity "hugs" hcPath
+
+  return Compiler {
+        compilerFlavor  = Hugs,
+        compilerId      = PackageIdentifier "hugs" (Version [] []),
+        compilerProg    = ffihugsProg,
+        compilerPkgTool = hugsProg
+    }
+
+-- -----------------------------------------------------------------------------
+-- Building
 
 -- |Building a package for Hugs.
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
