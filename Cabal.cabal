@@ -67,7 +67,7 @@ Library {
         Distribution.Simple.LocalBuildInfo,
         Distribution.Simple.NHC,
         Distribution.Simple.Register,
-	Distribution.Simple.SetupWrapper,
+        Distribution.Simple.SetupWrapper,
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
         Distribution.Verbosity,
