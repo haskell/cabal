@@ -13,7 +13,7 @@
 -- setup actions directly.  Otherwise it builds the setup script and
 -- runs it with the given arguments.
 
-module Distribution.SetupWrapper (setupWrapper) where
+module Distribution.Simple.SetupWrapper (setupWrapper) where
 
 import qualified Distribution.Make as Make
 import Distribution.Simple
