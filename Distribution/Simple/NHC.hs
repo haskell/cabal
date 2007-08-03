@@ -40,7 +40,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.NHC
-  ( build
+  ( configure
+  , build
 {-, install -}
   ) where
 
@@ -51,8 +52,34 @@ import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToNHCFlag )
-import Distribution.Program     ( rawSystemProgram )
+import Distribution.Program     ( Program(..), rawSystemProgram,
+                                  findProgramAndVersion )
 import Distribution.Verbosity
+
+
+-- -----------------------------------------------------------------------------
+-- Configuring
+
+configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
+configure hcPath _hcPkgPath verbosity = do
+
+  -- find hmake
+  -- TODO: why are we checking the version of hmake rather than nhc?
+  hmakeProg <- findProgramAndVersion verbosity "hmake" hcPath "--version" $ \str ->
+               case words str of
+                 (_:ver:_) -> ver
+                 _         -> ""
+
+  let Just version = programVersion hmakeProg
+  return Compiler {
+        compilerFlavor  = NHC,
+        compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
+        compilerProg    = hmakeProg,
+        compilerPkgTool = hmakeProg
+    }
+
+-- -----------------------------------------------------------------------------
+-- Building
 
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.

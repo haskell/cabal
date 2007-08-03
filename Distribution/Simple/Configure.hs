@@ -79,12 +79,17 @@ import Distribution.PackageDescription(
         HookedBuildInfo, sanityCheckPackage, updatePackageDescription,
 	BuildInfo(..), Executable(..), setupMessage,
         satisfyDependency)
-import Distribution.Simple.Utils (die, warn, rawSystemStdout, exeExtension)
+import Distribution.Simple.Utils (die, warn, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
-			     parseVersion, showVersion, showVersionRange)
+			     showVersion, showVersionRange)
 --import Distribution.Configuration ( mkOSName, mkArchName )
 import Distribution.Verbosity
 import Distribution.ParseUtils ( showDependency )
+
+import qualified Distribution.Simple.GHC  as GHC
+import qualified Distribution.Simple.JHC  as JHC
+import qualified Distribution.Simple.NHC  as NHC
+import qualified Distribution.Simple.Hugs as Hugs
 
 import Text.PrettyPrint.HughesPJ ( comma, punctuate, render, nest, sep )
 
@@ -94,18 +99,18 @@ import Data.Maybe(fromMaybe)
 import System.Directory
 import System.Environment ( getProgName )
 import System.IO        ( hPutStrLn, stderr )
-import System.FilePath (takeDirectory, (</>), (<.>))
+import System.FilePath ((</>))
 import Distribution.Program(Program(..), ProgramLocation(..), programPath,
                             ProgramConfiguration(..),
 			    lookupProgram, lookupPrograms,
 			    updateProgram, maybeUpdateProgram,
-                            findProgramAndVersion, simpleProgramAt)
+                            findProgramAndVersion)
 import System.Exit(ExitCode(..), exitWith)
 --import System.Exit		( ExitCode(..) )
 import qualified System.Info    ( os, arch )
 import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
-import Distribution.Compat.Directory (findExecutable, createDirectoryIfMissing)
+import Distribution.Compat.Directory (createDirectoryIfMissing)
 import Prelude hiding (catch)
 
 #ifdef mingw32_HOST_OS
@@ -403,79 +408,16 @@ configCompilerAux cfg = configCompiler (configHcFlavor cfg)
                                        (configHcPkg cfg)
                                        (configVerbose cfg)
 
--- TODO: refactor this into the Compiler abstraction
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> Verbosity -> IO Compiler
-configCompiler hcFlavor hcPath hcPkg verbosity
-  = do let flavor = case hcFlavor of
-                      Just f  -> f
-                      Nothing -> error "Unknown compiler"
-       compLocation <-
-	 case hcPath of
-	   Just path -> do absolute <- doesFileExist path
-                           if absolute
-                             then return (UserSpecified path)
-                             else findCompiler verbosity path
-	   Nothing   -> findCompiler verbosity (compilerBinaryName flavor)
-       let comp = simpleProgramAt (compilerName flavor) compLocation
-
-       ver <- configCompilerVersion flavor comp verbosity
-
-       pkgtoolLocation <-
-	 case hcPkg of
-	   Just path -> return (UserSpecified path)
-	   Nothing   -> guessPkgToolFromHCPath verbosity flavor comp
-       let pkgtool = simpleProgramAt (compilerPkgToolName flavor) pkgtoolLocation
-
-       return Compiler {
-           compilerFlavor  = flavor,
-           compilerId      = PackageIdentifier (compilerName flavor) ver,
-           compilerProg    = comp,
-           compilerPkgTool = pkgtool
-         }
-
--- TODO: refactor this into the Compiler abstraction
-findCompiler :: Verbosity -> String -> IO ProgramLocation
-findCompiler verbosity prog = do
-  when (verbosity >= verbose) $ message $ "searching for " ++ prog ++ " in path."
-  res <- findExecutable prog
-  case res of
-   Nothing   -> die ("Cannot find compiler for " ++ prog)
-   Just path -> do when (verbosity >= verbose) $ message ("found " ++ prog ++ " at "++ path)
-                   return (FoundOnSystem path)
-   -- ToDo: check that compiler works?
-
--- TODO: refactor this into the Compiler abstraction
-compilerPkgToolName :: CompilerFlavor -> String
-compilerPkgToolName GHC  = "ghc-pkg"
-compilerPkgToolName NHC  = "hmake" -- FIX: nhc98-pkg Does not yet exist
-compilerPkgToolName Hugs = "hugs"
-compilerPkgToolName JHC  = "jhc"
-compilerPkgToolName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
-
--- TODO: refactor this into the Compiler abstraction
-compilerName :: CompilerFlavor -> String
-compilerName GHC  = "ghc"
-compilerName NHC  = "nhc98"
-compilerName Hugs = "hugs"
-compilerName JHC  = "jhc"
-compilerName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
-
--- TODO: refactor this into the Compiler abstraction
-configCompilerVersion :: CompilerFlavor -> Program -> Verbosity -> IO Version
-configCompilerVersion GHC compilerP verbosity = do
-  str <- rawSystemStdout verbosity (programPath compilerP) ["--numeric-version"]
-  case pCheck (readP_to_S parseVersion str) of
-    [v] -> return v
-    _   -> die ("cannot determine version of " ++ programName compilerP ++ ":\n"++ show str)
-configCompilerVersion comp compilerP verbosity | comp `elem` [JHC,NHC] = do
-  str <- rawSystemStdout verbosity (programPath compilerP) ["--version"]
-  case words str of
-    (_:ver:_) -> case pCheck $ readP_to_S parseVersion ver of
-                   [v] -> return v
-                   _   -> fail ("parsing version: "++ver++" failed.")
-    _        -> fail ("reading version string: "++show str++" failed.")
-configCompilerVersion _ _ _ = return Version{ versionBranch=[],versionTags=[] }
+configCompiler Nothing _ _ _ = die "Unknown compiler"
+configCompiler (Just hcFlavor) hcPath hcPkg verbosity
+  = case hcFlavor of
+      GHC  -> GHC.configure  hcPath hcPkg verbosity
+      JHC  -> JHC.configure  hcPath hcPkg verbosity
+      Hugs -> Hugs.configure hcPath hcPkg verbosity
+      NHC  -> NHC.configure  hcPath hcPkg verbosity
+      _    -> die "Unknown compiler"
 
 findHscolourVersion :: Verbosity -> ProgramConfiguration -> IO ProgramConfiguration
 findHscolourVersion verbosity conf = do
@@ -510,30 +452,6 @@ findHaddockVersion verbosity conf = do
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
-
-guessPkgToolFromHCPath :: Verbosity -> CompilerFlavor -> Program -> IO ProgramLocation
-guessPkgToolFromHCPath verbosity flavor prog
-  = do let pkgToolName     = compilerPkgToolName flavor
-           path            = programPath prog
-           dir             = takeDirectory path
-           verSuffix       = reverse $ takeWhile (`elem ` "0123456789.-") . reverse $ path
-           guessNormal     = dir </> pkgToolName <.> exeExtension
-           guessVersioned  = dir </> (pkgToolName ++ verSuffix) <.> exeExtension 
-           guesses | null verSuffix = [guessNormal]
-                   | otherwise      = [guessVersioned, guessNormal]
-       when (verbosity >= verbose) $ message $ "looking for package tool: " ++ pkgToolName ++ " near compiler in " ++ dir
-       file <- doesAnyFileExist guesses
-       case file of
-         Nothing -> die ("Cannot find package tool: " ++ pkgToolName)
-         Just pkgtool -> do when (verbosity >= verbose) $ message $ "found package tool in " ++ pkgtool
-                            return (FoundOnSystem pkgtool)
-
-doesAnyFileExist :: [FilePath] -> IO (Maybe FilePath)
-doesAnyFileExist []           = return Nothing
-doesAnyFileExist (file:files) = do exists <- doesFileExist file
-                                   if exists
-                                     then return $ Just file
-                                     else doesAnyFileExist files
 
 message :: String -> IO ()
 message s = putStrLn $ "configure: " ++ s

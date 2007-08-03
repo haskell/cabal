@@ -41,7 +41,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.JHC (
-	build, installLib, installExe
+	configure, build, installLib, installExe
  ) where
 
 import Distribution.PackageDescription
@@ -54,8 +54,9 @@ import Distribution.Simple.LocalBuildInfo
 				  autogenModulesDir )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
 				  extensionsToJHCFlag )
-import Distribution.Program     ( rawSystemProgram )
-import Distribution.Package  	( showPackageId )
+import Distribution.Program     ( Program(..), rawSystemProgram,
+                                  findProgramAndVersion )
+import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
                                   copyFileVerbose, exeExtension )
 import System.FilePath          ( (</>) )
@@ -64,6 +65,26 @@ import Distribution.Verbosity
 import Control.Monad		( when )
 import Data.List		( nub, intersperse )
 
+
+-- -----------------------------------------------------------------------------
+-- Configuring
+
+configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
+configure hcPath _hcPkgPath verbosity = do
+
+  -- find jhc
+  jhcProg <- findProgramAndVersion verbosity "jhc" hcPath "--version" $ \str ->
+               case words str of
+                 (_:ver:_) -> ver
+                 _         -> ""
+
+  let Just version = programVersion jhcProg
+  return Compiler {
+        compilerFlavor  = JHC,
+        compilerId      = PackageIdentifier "jhc" version,
+        compilerProg    = jhcProg,
+        compilerPkgTool = jhcProg
+    }
 
 -- -----------------------------------------------------------------------------
 -- Building
