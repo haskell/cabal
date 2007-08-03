@@ -63,8 +63,11 @@ haddock: setup
 clean-doc:
 	cd doc && $(MAKE) clean
 
-doc: haddock
+users-guide: 
 	docbook2html doc/Cabal.xml --output doc/users-guide
+
+doc: haddock users-guide
+docs: doc
 
 clean: clean-cabal clean-hunit clean-test clean-doc
 
