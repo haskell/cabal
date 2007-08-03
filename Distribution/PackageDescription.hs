@@ -789,8 +789,8 @@ readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 -- readPackageDescription :: Int -> FilePath -> IO PackageDescription
 -- readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readPackageDescription verbosity = 
-    readAndParseFile verbosity (\s -> readFields s >>= parseDescription') 
+readPackageDescription verbosity =
+    readAndParseFile verbosity parseDescription
 {-
 parseDescription :: String -> ParseResult PackageDescription
 parseDescription str = do 
@@ -921,8 +921,18 @@ skipField :: PM ()
 skipField = modify tail
 
 -- | Parses the pre-parsed list of fields into a prepared package description.
-parseDescription' :: [Field] -> ParseResult GenericPackageDescription
-parseDescription' fields0 = do
+parseDescription :: String -> ParseResult GenericPackageDescription
+parseDescription file = do
+    let tabs = findIndentTabs file
+
+    fields0 <- readFields file `catchParseError` \err ->
+                 case err of
+                   TabsError _ -> reportTabsError tabs
+                   _ -> parseFail err
+
+    when (not (oldSyntax fields0) && not (null tabs)) $
+      reportTabsError tabs
+
     let sf = sectionizeFields fields0
     fields <- mapSimpleFields deprecField sf
 
@@ -934,6 +944,10 @@ parseDescription' fields0 = do
       return (GenericPackageDescription pkg flags mlib exes)
 
   where
+    oldSyntax flds = all isSimpleField flds
+    reportTabsError tabs =
+        syntaxError (fst (head tabs)) $
+          "Tabs used for indentation at (line,column): " ++ show tabs
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
     --
     --  * all global fields at the beginning, followed by
@@ -945,7 +959,7 @@ parseDescription' fields0 = do
     -- in a library section and wraps all executable stanzas in an executable
     -- section.
     sectionizeFields fs
-        | all isSimpleField fs = 
+        | oldSyntax fs =
             let (hdr0, exes0) = break ((=="executable") . fName) fs
                 (hdr, libfs0) = partition (not . (`elem` libFieldNames) . fName) hdr0
 
@@ -1192,6 +1206,24 @@ ppFields pkg' ((FieldDescr name getter _):flds) =
 
 ppField :: String -> Doc -> Doc
 ppField name fielddoc = text name <> colon <+> fielddoc
+
+-- replace all tabs used as indentation with whitespace, also return where
+-- tabs were found
+findIndentTabs :: String -> [(Int,Int)]
+findIndentTabs = concatMap checkLine
+               . zip [1..]
+               . lines
+    where
+      checkLine (lineno, l) =
+          let (indent, _content) = span isSpace l
+              tabCols = map fst . filter ((== '\t') . snd) . zip [0..]
+              addLineNo = map (\col -> (lineno,col))
+          in addLineNo (tabCols indent)
+
+#ifdef DEBUG
+test_findIndentTabs = findIndentTabs $ unlines $
+    [ "foo", "  bar", " \t baz", "\t  biz\t", "\t\t \t mib" ]
+#endif
 
 -- ------------------------------------------------------------
 -- * Sanity Checking
@@ -1490,7 +1522,7 @@ test :: IO Counts
 test = runTestTT (TestList hunitTests)
 ------------------------------------------------------------------------------
 
-test_stanzas' = readFields testFile >>= parseDescription'
+test_stanzas' = parseDescription testFile
 --                    ParseOk _ x -> putStrLn $ show x
 --                    _ -> return ()
 
@@ -1565,9 +1597,11 @@ test_compatParsing =
     os = (MkOSName "win32")
     arch = (MkArchName "amd64")
 -}
-test_finalizePD = 
-    let ParseOk _ ppd = readFields testFile >>= parseDescription' in
-    do case finalizePackageDescription [("debug",True)] (Just pkgs) os arch impl ppd of
+test_finalizePD =
+    case parseDescription testFile of
+      ParseFailed err -> print err
+      ParseOk _ ppd -> do
+       case finalizePackageDescription [("debug",True)] (Just pkgs) os arch impl ppd of
          Right (pd,fs) -> do putStrLn $ showPackageDescription pd
                              print fs
          Left missing -> putStrLn $ "missing: " ++ show missing
