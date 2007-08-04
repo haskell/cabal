@@ -69,7 +69,7 @@ import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
 import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
 			     compilerVersion, compilerPath, compilerPkgToolPath,
-			     compilerBinaryName, extensionsToFlags)
+			     extensionsToFlags)
 import Distribution.Package (PackageIdentifier(..), showPackageId, 
 			     parsePackageId)
 import Distribution.PackageDescription(
