@@ -1245,14 +1245,12 @@ sanityCheckPackage pkg_descr
                         "No executables and no library found. Nothing to do."
           noModules = checkSanity (hasMods pkg_descr)
                       "No exposed modules or executables in this package."
-          allRights = checkSanity (license pkg_descr == AllRightsReserved)
-                      "Package is copyright All Rights Reserved"
           noLicenseFile = checkSanity (null $ licenseFile pkg_descr)
                           "No license-file field."
           goodCabal = let v = (descCabalVersion pkg_descr)
                           in checkSanity (not $ cabalVersion  `withinRange` v)
                                  ("This package requires Cabal version: " ++ (showVersionRange v) ++ ".")
-         in return $ ( catMaybes [nothingToDo, noModules, allRights, noLicenseFile],
+         in return $ ( catMaybes [nothingToDo, noModules, noLicenseFile],
                        catMaybes (libSane:goodCabal: checkMissingFields pkg_descr
 			  ++ map sanityCheckExe (executables pkg_descr)) )
 
