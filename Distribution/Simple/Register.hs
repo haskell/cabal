@@ -131,7 +131,7 @@ register pkg_descr lbi regFlags
 	inplace = regInPlace regFlags
     setupMessage (regVerbose regFlags)
                  (if genScript
-                  then ("Writing registration script: " ++ regScriptLocation)
+                  then ("Writing registration script: " ++ regScriptLocation ++ " for")
                   else "Registering")
                  pkg_descr
     case compilerFlavor (compiler lbi) of
