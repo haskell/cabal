@@ -172,6 +172,9 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ map ("--hide=" ++) (otherModules bi)
                 )
         removeFile prologName
+        when (verbosity >= normal) $
+          putStrLn $ "Documentation created: "
+                  ++ (haddockPref pkg_descr </> "index.html")
 
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
@@ -194,6 +197,9 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ verboseFlags
                  ++ outFiles
                 )
+        when (verbosity >= normal) $
+          putStrLn $ "Documentation created: "
+                  ++ (exeTargetDir </> "index.html")
 
     removeDirectoryRecursive tmpDir
   where
