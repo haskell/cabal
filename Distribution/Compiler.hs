@@ -100,50 +100,112 @@ compilerPkgToolPath = programPath . compilerPkgTool
 
 -- |For the given compiler, return the unsupported extensions, and the
 -- flags for the supported extensions.
-extensionsToFlags :: CompilerFlavor -> [ Extension ] -> ([Extension], [Opt])
-extensionsToFlags GHC exts = extensionsToGHCFlag exts
-extensionsToFlags Hugs exts = extensionsToHugsFlag exts
-extensionsToFlags NHC exts = extensionsToNHCFlag exts
-extensionsToFlags JHC exts = extensionsToJHCFlag exts
-extensionsToFlags _ exts = (exts, [])
+extensionsToFlags :: CompilerFlavor -> Version -> [ Extension ]
+                  -> ([Extension], [Opt])
+extensionsToFlags GHC  v exts = extensionsToGHCFlag  v exts
+extensionsToFlags Hugs _ exts = extensionsToHugsFlag   exts
+extensionsToFlags NHC  _ exts = extensionsToNHCFlag    exts
+extensionsToFlags JHC  _ exts = extensionsToJHCFlag    exts
+extensionsToFlags _    _ exts = (exts, [])
 
 -- |GHC: Return the unsupported extensions, and the flags for the supported extensions
-extensionsToGHCFlag :: [ Extension ] -> ([Extension], [Opt])
-extensionsToGHCFlag l
+extensionsToGHCFlag :: Version -> [ Extension ] -> ([Extension], [Opt])
+extensionsToGHCFlag v l
     = splitEither $ nub $ map extensionToGHCFlag l
     where
+    v6_7 = Version { versionBranch = [6, 7], versionTags = [] }
     extensionToGHCFlag :: Extension -> Either Extension String
-    extensionToGHCFlag OverlappingInstances         = Right "-fallow-overlapping-instances"
-    extensionToGHCFlag TypeSynonymInstances         = Right "-fglasgow-exts"
-    extensionToGHCFlag TemplateHaskell              = Right "-fth"
-    extensionToGHCFlag ForeignFunctionInterface     = Right "-fffi"
-    extensionToGHCFlag NoMonomorphismRestriction    = Right "-fno-monomorphism-restriction"
-    extensionToGHCFlag UndecidableInstances         = Right "-fallow-undecidable-instances"
-    extensionToGHCFlag IncoherentInstances          = Right "-fallow-incoherent-instances"
-    extensionToGHCFlag Arrows                       = Right "-farrows"
-    extensionToGHCFlag Generics                     = Right "-fgenerics"
-    extensionToGHCFlag NoImplicitPrelude            = Right "-fno-implicit-prelude"
-    extensionToGHCFlag ImplicitParams               = Right "-fimplicit-params"
-    extensionToGHCFlag CPP                          = Right "-cpp"
+    extensionToGHCFlag OverlappingInstances
+     | v >= v6_7 = Right "-XOverlappingInstances"
+     | otherwise = Right "-fallow-overlapping-instances"
+    extensionToGHCFlag TypeSynonymInstances
+     | v >= v6_7 = Right "-XTypeSynonymInstances"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag TemplateHaskell
+     | v >= v6_7 = Right "-XTemplateHaskell"
+     | otherwise = Right "-fth"
+    extensionToGHCFlag ForeignFunctionInterface
+     | v >= v6_7 = Right "-XForeignFunctionInterface"
+     | otherwise = Right "-fffi"
+    extensionToGHCFlag NoMonomorphismRestriction
+     | v >= v6_7 = Right "-XNoMonomorphismRestriction"
+     | otherwise = Right "-fno-monomorphism-restriction"
+    extensionToGHCFlag UndecidableInstances
+     | v >= v6_7 = Right "-XUndecidableInstances"
+     | otherwise = Right "-fallow-undecidable-instances"
+    extensionToGHCFlag IncoherentInstances
+     | v >= v6_7 = Right "-XIncoherentInstances"
+     | otherwise = Right "-fallow-incoherent-instances"
+    extensionToGHCFlag Arrows
+     | v >= v6_7 = Right "-XArrows"
+     | otherwise = Right "-farrows"
+    extensionToGHCFlag Generics
+     | v >= v6_7 = Right "-XGenerics"
+     | otherwise = Right "-fgenerics"
+    extensionToGHCFlag NoImplicitPrelude
+     | v >= v6_7 = Right "-XNoImplicitPrelude"
+     | otherwise = Right "-fno-implicit-prelude"
+    extensionToGHCFlag ImplicitParams
+     | v >= v6_7 = Right "-XImplicitParams"
+     | otherwise = Right "-fimplicit-params"
+    extensionToGHCFlag CPP
+     | v >= v6_7 = Right "-XCPP"
+     | otherwise = Right "-cpp"
 
-    extensionToGHCFlag BangPatterns                 = Right "-fbang-patterns"
-    extensionToGHCFlag KindSignatures               = Right "-fglasgow-exts"
-    extensionToGHCFlag RecursiveDo                  = Right "-fglasgow-exts"
-    extensionToGHCFlag ParallelListComp             = Right "-fglasgow-exts"
-    extensionToGHCFlag MultiParamTypeClasses        = Right "-fglasgow-exts"
-    extensionToGHCFlag FunctionalDependencies       = Right "-fglasgow-exts"
-    extensionToGHCFlag Rank2Types                   = Right "-fglasgow-exts"
-    extensionToGHCFlag RankNTypes                   = Right "-fglasgow-exts"
-    extensionToGHCFlag PolymorphicComponents        = Right "-fglasgow-exts"
-    extensionToGHCFlag ExistentialQuantification    = Right "-fglasgow-exts"
-    extensionToGHCFlag ScopedTypeVariables          = Right "-fglasgow-exts"
-    extensionToGHCFlag FlexibleContexts             = Right "-fglasgow-exts"
-    extensionToGHCFlag FlexibleInstances            = Right "-fglasgow-exts"
-    extensionToGHCFlag EmptyDataDecls               = Right "-fglasgow-exts"
-    extensionToGHCFlag PatternGuards                = Right "-fglasgow-exts"
-    extensionToGHCFlag GeneralizedNewtypeDeriving   = Right "-fglasgow-exts"
-    extensionToGHCFlag MagicHash                    = Right "-fglasgow-exts"
-    extensionToGHCFlag TypeFamilies                 = Right "-XTypeFamilies"
+    extensionToGHCFlag BangPatterns
+     | v >= v6_7 = Right "-XBangPatterns"
+     | otherwise = Right "-fbang-patterns"
+    extensionToGHCFlag KindSignatures
+     | v >= v6_7 = Right "-XKindSignatures"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag RecursiveDo
+     | v >= v6_7 = Right "-XRecursiveDo"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag ParallelListComp
+     | v >= v6_7 = Right "-XParallelListComp"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag MultiParamTypeClasses
+     | v >= v6_7 = Right "-XMultiParamTypeClasses"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag FunctionalDependencies
+     | v >= v6_7 = Right "-XFunctionalDependencies"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag Rank2Types
+     | v >= v6_7 = Right "-XRank2Types"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag RankNTypes
+     | v >= v6_7 = Right "-XRankNTypes"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag PolymorphicComponents
+     | v >= v6_7 = Right "-XPolymorphicComponents"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag ExistentialQuantification
+     | v >= v6_7 = Right "-XExistentialQuantification"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag ScopedTypeVariables
+     | v >= v6_7 = Right "-XScopedTypeVariables"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag FlexibleContexts
+     | v >= v6_7 = Right "-XFlexibleContexts"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag FlexibleInstances
+     | v >= v6_7 = Right "-XFlexibleInstances"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag EmptyDataDecls
+     | v >= v6_7 = Right "-XEmptyDataDecls"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag PatternGuards
+     | v >= v6_7 = Right "-XPatternGuards"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag GeneralizedNewtypeDeriving
+     | v >= v6_7 = Right "-XGeneralizedNewtypeDeriving"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag MagicHash
+     | v >= v6_7 = Right "-XMagicHash"
+     | otherwise = Right "-fglasgow-exts"
+    extensionToGHCFlag e@TypeFamilies
+     | v >= v6_7 = Right "-XTypeFamilies"
+     | otherwise = Left e
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
