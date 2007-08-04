@@ -250,7 +250,7 @@ configure (pkg_descr0, pbi) cfg
         let lib = library pkg_descr
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
-        let exts = fst $ extensionsToFlags flavor extlist
+        let exts = fst $ extensionsToFlags flavor version extlist
         unless (null exts) $ warn (configVerbose cfg) $ -- Just warn, FIXME: Should this be an error?
             show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
