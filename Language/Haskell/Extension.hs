@@ -90,4 +90,5 @@ data Extension
   | RestrictedTypeSynonyms
   | HereDocuments
   | MagicHash
+  | TypeFamilies
   deriving (Show, Read, Eq)

@@ -143,6 +143,7 @@ extensionsToGHCFlag l
     extensionToGHCFlag PatternGuards                = Right "-fglasgow-exts"
     extensionToGHCFlag GeneralizedNewtypeDeriving   = Right "-fglasgow-exts"
     extensionToGHCFlag MagicHash                    = Right "-fglasgow-exts"
+    extensionToGHCFlag TypeFamilies                 = Right "-XTypeFamilies"
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
