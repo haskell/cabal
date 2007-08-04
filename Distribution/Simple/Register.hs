@@ -299,8 +299,9 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
 	IPI.haddockInterfaces = [if inplace then haddockFileInplace
-                                        else haddockFile],
-	IPI.haddockHTMLs      = [haddockDir]
+                                            else haddockFile],
+	IPI.haddockHTMLs      = [if inplace then haddockDirInplace
+                                            else haddockDir]
         }
 
 -- -----------------------------------------------------------------------------
