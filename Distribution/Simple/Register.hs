@@ -47,9 +47,7 @@ module Distribution.Simple.Register (
 	unregister,
         writeInstalledConfig,
 	removeInstalledConfig,
-        installedPkgConfigFile,
-        regScriptLocation,
-        unregScriptLocation,
+        removeRegScripts,
 #ifdef DEBUG
         hunitTests
 #endif
@@ -231,8 +229,15 @@ showInstalledConfig pkg_descr lbi inplace
 
 removeInstalledConfig :: IO ()
 removeInstalledConfig = do
-  try (removeFile installedPkgConfigFile) >> return ()
-  try (removeFile inplacePkgConfigFile) >> return ()
+  try $ removeFile installedPkgConfigFile
+  try $ removeFile inplacePkgConfigFile
+  return ()
+
+removeRegScripts :: IO ()
+removeRegScripts = do
+  try $ removeFile regScriptLocation
+  try $ removeFile unregScriptLocation
+  return ()
 
 installedPkgConfigFile :: FilePath
 installedPkgConfigFile = distPref </> "installed-pkg-config"
