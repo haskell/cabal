@@ -134,7 +134,7 @@ register pkg_descr lbi regFlags
         hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
     setupMessage (regVerbose regFlags)
                  (if genScript
-                  then ("Writing registration script: " ++ regScriptLocation)
+                  then ("Writing registration script: " ++ regScriptLocation ++ " for")
                   else "Registering")
                  pkg_descr
     case compilerFlavor hc of
