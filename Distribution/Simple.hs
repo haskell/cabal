@@ -80,12 +80,12 @@ import Distribution.Setup
 import Distribution.Simple.Build	( build, makefile )
 import Distribution.Simple.SrcDist	( sdist )
 import Distribution.Simple.Register	( register, unregister,
-                                          writeInstalledConfig, installedPkgConfigFile,
-                                          regScriptLocation, unregScriptLocation
+                                          writeInstalledConfig,
+                                          removeRegScripts
                                         )
 
 import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
-                                     configure, writePersistBuildConfig, localBuildInfoFile)
+                                     configure, writePersistBuildConfig)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPref)
 import Distribution.Simple.Install (install)
@@ -107,7 +107,7 @@ import System.IO.Error (try)
 import Distribution.GetOpt
 
 import Distribution.Compat.Directory(removeDirectoryRecursive)
-import System.FilePath((</>), splitExtension)
+import System.FilePath((</>))
 
 #ifdef DEBUG
 import Test.HUnit (Test)
@@ -463,40 +463,36 @@ clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -
 clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
     let pps = allSuffixHandlers hooks
     putStrLn "cleaning..."
-    try $ removeDirectoryRecursive (distPref </> "doc")
-    try $ removeFile installedPkgConfigFile
-    try $ unless saveConfigure (removeFile localBuildInfoFile)
-    try $ removeFile regScriptLocation
-    try $ removeFile unregScriptLocation
+
+    maybeConfig <- if saveConfigure then maybeGetPersistBuildConfig
+                                    else return Nothing
+
+    -- remove the whole dist/ directory rather than tracking exactly what files
+    -- we created in there.
+    try $ removeDirectoryRecursive distPref
+
+    -- these live in the top level dir so must be removed separately
+    removeRegScripts
+
     -- XXX: This is actually no longer necessary, but we keep it, so that
     -- clean works correctly on packages built with an older version of Cabal
     removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
+
+    -- Any extra files the user wants to remove
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
+    -- FIXME: put all JHC's generated files under dist/ so they get cleaned
     case maybeLbi of
       Nothing  -> return ()
       Just lbi -> do
-        try $ removeDirectoryRecursive (buildDir lbi)
         case compilerFlavor (compiler lbi) of
-          GHC -> cleanGHCExtras lbi
           JHC -> cleanJHCExtras lbi
           _   -> return ()
+
+    -- If the user wanted to save the config, write it back
+    maybe (return ()) writePersistBuildConfig maybeConfig
+
   where
-        cleanGHCExtras _ = do
-            -- remove source stubs for library
-            withLib pkg_descr () $ \ Library{libBuildInfo=bi} ->
-                removeGHCModuleStubs bi (libModules pkg_descr)
-            -- remove source stubs for executables
-            withExe pkg_descr $ \ Executable{modulePath=exeSrcName
-                                            ,buildInfo=bi} -> do
-                removeGHCModuleStubs bi (exeModules pkg_descr)
-                let (startN, _) = splitExtension exeSrcName
-                try $ removeFile (startN ++ "_stub.h")
-                try $ removeFile (startN ++ "_stub.c")
-        removeGHCModuleStubs :: BuildInfo -> [String] -> IO ()
-        removeGHCModuleStubs (BuildInfo{hsSourceDirs=dirs}) mods = do
-            s <- mapM (\x -> moduleToFilePath dirs (x ++"_stub") ["h", "c"]) mods
-            mapM_ removeFile (concat s)
         -- JHC FIXME remove exe-sources
         cleanJHCExtras lbi = do
             try $ removeFile (buildDir lbi </> "jhc-pkg.conf")
