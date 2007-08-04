@@ -44,7 +44,6 @@ module Distribution.Compiler (
         -- * Haskell implementations
 	CompilerFlavor(..), Compiler(..),
         showCompilerId, compilerVersion,
-	compilerBinaryName,
 	compilerPath, compilerPkgToolPath,
         -- * Support for language extensions
         Opt,
@@ -56,8 +55,8 @@ module Distribution.Compiler (
 #endif
   ) where
 
-import Distribution.Version (Version(..), showVersion)
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Version (Version(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Program
 
@@ -84,18 +83,10 @@ data Compiler = Compiler {
     deriving (Show, Read)
 
 showCompilerId :: Compiler -> String
-showCompilerId (Compiler f (PackageIdentifier _ (Version [] _)) _ _) = compilerBinaryName f
-showCompilerId (Compiler f (PackageIdentifier _ v) _ _) = compilerBinaryName f ++ '-': showVersion v
+showCompilerId = showPackageId . compilerId
 
 compilerVersion :: Compiler -> Version
 compilerVersion = pkgVersion . compilerId
-
-compilerBinaryName :: CompilerFlavor -> String
-compilerBinaryName GHC  = "ghc"
-compilerBinaryName NHC  = "hmake" -- FIX: uses hmake for now
-compilerBinaryName Hugs = "ffihugs"
-compilerBinaryName JHC  = "jhc"
-compilerBinaryName cmp  = error $ "Unsupported compiler: " ++ (show cmp)
 
 compilerPath :: Compiler -> FilePath
 compilerPath = programPath . compilerProg
