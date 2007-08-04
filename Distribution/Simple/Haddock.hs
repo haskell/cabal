@@ -80,6 +80,12 @@ import Distribution.Version
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
+haddock pkg_descr _ _ haddockFlags
+  | not (hasLibs pkg_descr) && not (haddockExecutables haddockFlags) = do
+      when (haddockVerbose haddockFlags >= normal) $
+        putStrLn $ "No documentation was generated as this package does not contain a library.\n"
+                ++ "Perhaps you want to use the haddock command with the --executables flag."
+
 haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
       haddockExecutables = doExes,
       haddockHscolour = hsColour,
