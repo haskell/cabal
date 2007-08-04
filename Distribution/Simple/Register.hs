@@ -86,13 +86,13 @@ import Distribution.Compat.Directory
         setPermissions, getPermissions, Permissions(executable)
        )
 
-import System.FilePath ((</>), isAbsolute)
+import System.FilePath ((</>), (<.>), isAbsolute)
 
 import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
 import System.IO.Error (try)
 
 import Control.Monad (when, unless)
-import Data.Maybe (isNothing, fromJust)
+import Data.Maybe (isNothing, fromJust, fromMaybe)
 import Data.List (partition)
 
 #ifdef DEBUG
@@ -126,15 +126,21 @@ register pkg_descr lbi regFlags
   | otherwise = do
     let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
         genScript = regGenScript regFlags
+        genPkgConf = regGenPkgConf regFlags
+        genPkgConfigDefault = showPackageId (package pkg_descr) <.> "conf"
+        genPkgConfigFile = fromMaybe genPkgConfigDefault
+                                     (regPkgConfFile regFlags)
         verbosity = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
         hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
-    setupMessage (regVerbose regFlags)
-                 (if genScript
-                  then ("Writing registration script: " ++ regScriptLocation ++ " for")
-                  else "Registering")
-                 pkg_descr
+        message | genPkgConf = "Writing package registration file: "
+                            ++ genPkgConfigFile ++ " for"
+                | genScript = "Writing registration script: "
+                           ++ regScriptLocation ++ " for"
+                | otherwise = "Registering"
+    setupMessage (regVerbose regFlags) message pkg_descr
+
     case compilerFlavor hc of
       GHC -> do 
 	config_flags <-
@@ -150,13 +156,14 @@ register pkg_descr lbi regFlags
 			  return ["--config-file=" ++ localConf]
 		else return []
 
-	let instConf = if inplace then inplacePkgConfigFile 
-				  else installedPkgConfigFile
+	let instConf | genPkgConf = genPkgConfigFile
+                     | inplace    = inplacePkgConfigFile
+		     | otherwise  = installedPkgConfigFile
 
-        unless genScript $ do
+        when (genPkgConf || not genScript) $ do
           when (verbosity >= verbose) $
             putStrLn ("create " ++ instConf)
-          writeInstalledConfig pkg_descr lbi inplace
+          writeInstalledConfig pkg_descr lbi inplace (Just instConf)
 
 	let register_flags
 		| ghc_63_plus = "update":
@@ -179,11 +186,13 @@ register pkg_descr lbi regFlags
                        ++ if ghc_63_plus && genScript then ["-"] else []
         let pkgTool = compilerPkgToolPath hc
 
-        if genScript
-         then do cfg <- showInstalledConfig pkg_descr lbi inplace
+        case () of
+          _ | genPkgConf -> return ()
+            | genScript ->
+              do cfg <- showInstalledConfig pkg_descr lbi inplace
                  rawSystemPipe regScriptLocation verbosity cfg
                            pkgTool allFlags
-         else rawSystemExit verbosity pkgTool allFlags
+          _ -> rawSystemExit verbosity pkgTool allFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
@@ -205,11 +214,14 @@ userPkgConfErr local_conf =
 
 -- |Register doesn't drop the register info file, it must be done in a
 -- separate step.
-writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool -> IO ()
-writeInstalledConfig pkg_descr lbi inplace = do
+writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
+                     -> Maybe FilePath -> IO ()
+writeInstalledConfig pkg_descr lbi inplace instConfOverride = do
   pkg_config <- showInstalledConfig pkg_descr lbi inplace
-  writeFile (if inplace then inplacePkgConfigFile else installedPkgConfigFile)
-	    (pkg_config ++ "\n")
+  let instConfDefault | inplace   = inplacePkgConfigFile
+                      | otherwise = installedPkgConfigFile
+      instConf = fromMaybe instConfDefault instConfOverride
+  writeFile instConf (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
 showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool

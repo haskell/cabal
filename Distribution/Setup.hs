@@ -221,6 +221,8 @@ data SDistFlags = SDistFlags {sDistSnapshot :: Bool
 -- in-place, verbosity)
 data RegisterFlags = RegisterFlags { regUser :: MaybeUserFlag
                                    , regGenScript :: Bool
+                                   , regGenPkgConf :: Bool
+                                   , regPkgConfFile :: Maybe FilePath
                                    , regInPlace :: Bool
                                    , regWithHcPkg :: Maybe FilePath
                                    , regVerbose :: Verbosity }
@@ -230,6 +232,8 @@ data RegisterFlags = RegisterFlags { regUser :: MaybeUserFlag
 emptyRegisterFlags :: RegisterFlags
 emptyRegisterFlags = RegisterFlags { regUser = MaybeUserNone,
                                      regGenScript = False,
+                                     regGenPkgConf = False,
+                                     regPkgConfFile = Nothing,
                                      regInPlace = False,
                                      regWithHcPkg = Nothing,
                                      regVerbose = normal }
@@ -317,6 +321,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | UserFlag | GlobalFlag
           -- for register & unregister
           | GenScriptFlag
+          | GetPkgConfFlag (Maybe FilePath)
 	  | InPlaceFlag
           -- For copy:
           | InstPrefix FilePath
@@ -850,7 +855,9 @@ registerCmd = Cmd {
            Option "" ["inplace"] (NoArg InPlaceFlag)
                "register the package in the build location, so it can be used without being installed",
            Option "" ["gen-script"] (NoArg GenScriptFlag)
-               "Instead of performing the register command, generate a script to register later",
+               "instead of registering, generate a script to register later",
+           Option "" ["gen-pkg-config"] (OptArg GetPkgConfFlag "PKG")
+               "instead of registering, generate a package registration file",
 	   cmd_with_hc_pkg
            ],
         cmdAction      = RegisterCmd
@@ -866,6 +873,11 @@ registerUpdateCfg reg fl = case fl of
             GlobalFlag      -> reg { regUser=MaybeUserGlobal }
             Verbose n       -> reg { regVerbose=n }
             GenScriptFlag   -> reg { regGenScript=True }
+            GetPkgConfFlag
+              Nothing       -> reg { regGenPkgConf=True }
+            GetPkgConfFlag
+              (Just f)      -> reg { regGenPkgConf=True,
+                                     regPkgConfFile=Just f }
             InPlaceFlag     -> reg { regInPlace=True }
             WithHcPkg f     -> reg { regWithHcPkg=Just f }
             _               -> error $ "Unexpected flag!"

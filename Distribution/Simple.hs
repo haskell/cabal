@@ -652,14 +652,14 @@ defaultBuildHook :: PackageDescription -> LocalBuildInfo
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
-      writeInstalledConfig pkg_descr localbuildinfo False
+      writeInstalledConfig pkg_descr localbuildinfo False Nothing
 
 defaultMakefileHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> MakefileFlags -> IO ()
 defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
   makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
-      writeInstalledConfig pkg_descr localbuildinfo False
+      writeInstalledConfig pkg_descr localbuildinfo False Nothing
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> RegisterFlags -> IO ()
