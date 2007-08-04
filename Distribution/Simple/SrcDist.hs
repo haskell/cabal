@@ -214,7 +214,8 @@ createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
       -- XXX this should be done back where tmpDir is made, not here
       `finally` removeDirectoryRecursive tmpDir
-  putStrLn $ "Source tarball created: " ++ tarBallFilePath
+  when (verbosity >= normal) $
+    putStrLn $ "Source tarball created: " ++ tarBallFilePath
   return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo
