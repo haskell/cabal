@@ -383,7 +383,7 @@ constructGHCCmdLine lbi bi odir verbosity =
 
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
-     =  (if compilerVersion (compiler lbi) > Version [6,4] []
+     =  (if version > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
      ++ (if splitObjs lbi then ["-split-objs"] else [])
@@ -399,7 +399,8 @@ ghcOptions lbi bi odir
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])
      ++ hcOptions GHC (options bi)
-     ++ snd (extensionsToGHCFlag (extensions bi))
+     ++ snd (extensionsToGHCFlag version (extensions bi))
+    where version = compilerVersion (compiler lbi)
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath
                    -> FilePath -> Verbosity -> (FilePath,[String])
