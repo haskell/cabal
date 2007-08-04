@@ -74,7 +74,7 @@ import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
-import System.FilePath (splitExtension, (</>), (<.>), takeDirectory)
+import System.FilePath (splitExtension, (</>), (<.>), takeDirectory, normalise)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -137,8 +137,8 @@ mkSimplePreProcessor :: (FilePath -> FilePath -> Verbosity -> IO ())
 mkSimplePreProcessor simplePP
   (inBaseDir, inRelativeFile)
   (outBaseDir, outRelativeFile) verbosity = simplePP inFile outFile verbosity
-  where inFile  = inBaseDir  </> inRelativeFile
-        outFile = outBaseDir </> outRelativeFile
+  where inFile  = normalise (inBaseDir  </> inRelativeFile)
+        outFile = normalise (outBaseDir </> outRelativeFile)
 
 runSimplePreProcessor :: PreProcessor -> FilePath -> FilePath -> Verbosity
                       -> IO ()
