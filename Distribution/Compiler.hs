@@ -206,6 +206,9 @@ extensionsToGHCFlag v l
     extensionToGHCFlag e@TypeFamilies
      | v >= v6_7 = Right "-XTypeFamilies"
      | otherwise = Left e
+    extensionToGHCFlag e@StandaloneDeriving
+     | v >= v6_7 = Right "-XStandaloneDeriving"
+     | otherwise = Left e
 
     extensionToGHCFlag e@ExtensibleRecords          = Left e
     extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e

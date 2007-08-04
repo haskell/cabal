@@ -91,4 +91,5 @@ data Extension
   | HereDocuments
   | MagicHash
   | TypeFamilies
+  | StandaloneDeriving
   deriving (Show, Read, Eq)
