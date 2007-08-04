@@ -109,7 +109,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
-    let showPkg     = showPackageId (package pkg_descr)
+    let showPkg    = showPackageId (package pkg_descr)
     let outputFlag = if haddockHoogle haddockFlags
                      then "--hoogle"
                      else "--html"
@@ -156,14 +156,18 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
         inFiles <- getModulePaths lbi bi (exposedModules lib ++ otherModules bi)
         mockAll bi inFiles
         let prologName = showPkg ++ "-haddock-prolog.txt"
-        writeFile prologName (description pkg_descr ++ "\n")
+            prolog | null (description pkg_descr) = synopsis pkg_descr
+                   | otherwise                    = description pkg_descr
+            subtitle | null (synopsis pkg_descr) = ""
+                     | otherwise                 = ": " ++ synopsis pkg_descr
+        writeFile prologName (prolog ++ "\n")
         let outFiles = replaceLitExts inFiles
         let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbosity confHaddock
                 ([outputFlag,
                   "--odir=" ++ haddockPref pkg_descr,
-                  "--title=" ++ showPkg ++ ": " ++ synopsis pkg_descr,
+                  "--title=" ++ showPkg ++ subtitle,
                   "--package=" ++ showPkg,
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
@@ -190,11 +194,16 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         let inFiles = srcMainPath : inFiles'
         mockAll bi inFiles
+        let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
+            prolog | null (description pkg_descr) = synopsis pkg_descr
+                   | otherwise                    = description pkg_descr
+        writeFile prologName (prolog ++ "\n")
         let outFiles = replaceLitExts inFiles
         rawSystemProgram verbosity confHaddock
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
-                  "--title=" ++ exeName exe]
+                  "--title=" ++ exeName exe,
+                  "--prologue=" ++ prologName]
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
                  ++ linkToHscolour
@@ -203,6 +212,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ verboseFlags
                  ++ outFiles
                 )
+        removeFile prologName
         when (verbosity >= normal) $
           putStrLn $ "Documentation created: "
                   ++ (exeTargetDir </> "index.html")
