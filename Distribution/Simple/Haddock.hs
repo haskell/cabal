@@ -55,7 +55,8 @@ import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Setup
 
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref, haddockPref, substDir )
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
+                                            haddockPref, distPref, substDir )
 import Distribution.Simple.Utils (die, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
 
@@ -148,7 +149,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
         let bi = libBuildInfo lib
         inFiles <- getModulePaths lbi bi (exposedModules lib ++ otherModules bi)
         mockAll bi inFiles
-        let prologName = showPkg ++ "-haddock-prolog.txt"
+        let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
         writeFile prologName (description pkg_descr ++ "\n")
         let outFiles = replaceLitExts inFiles
         let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
