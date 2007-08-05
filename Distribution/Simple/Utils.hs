@@ -84,6 +84,7 @@ module Distribution.Simple.Utils (
 
 import Distribution.Compat.RawSystem (rawSystem)
 import Distribution.Compat.Exception (bracket)
+import Distribution.System
 
 #if __GLASGOW_HASKELL__ >= 604
 import Control.Exception (evaluate)
@@ -470,11 +471,9 @@ findHookedPackageDesc dir = do
 -- | Extension for executable files
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: String
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-exeExtension = "exe"
-#else
-exeExtension = ""
-#endif
+exeExtension = case os of
+                   Windows _ -> "exe"
+                   _         -> ""
 
 -- ToDo: This should be determined via autoconf (AC_OBJEXT)
 -- | Extension for object files. For GHC and NHC the extension is @\"o\"@.
@@ -485,12 +484,9 @@ objExtension = "o"
 -- | Extension for dynamically linked (or shared) libraries
 -- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
 dllExtension :: String
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-dllExtension = "dll"
-#else
-dllExtension = "so"
-#endif
-
+dllExtension = case os of
+                   Windows _ -> "dll"
+                   _         -> "so"
 
 -- ------------------------------------------------------------
 -- * Testing

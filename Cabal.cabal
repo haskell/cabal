@@ -70,6 +70,7 @@ Library {
         Distribution.Simple.SetupWrapper,
         Distribution.Simple.SrcDist,
         Distribution.Simple.Utils,
+        Distribution.System,
         Distribution.Verbosity,
         Distribution.Version,
         Distribution.Compat.ReadP,

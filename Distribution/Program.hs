@@ -71,6 +71,7 @@ module Distribution.Program(
 import qualified Distribution.Compat.Map as Map
 import Distribution.Compat.Directory (findExecutable)
 import Distribution.Simple.Utils (die, rawSystemExit, rawSystemStdout)
+import Distribution.System
 import Distribution.Version (Version, readVersion)
 import Distribution.Verbosity
 import System.Directory (doesFileExist)
@@ -261,11 +262,11 @@ greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-ldProgram = Program "ld" "ld" [] (FoundOnSystem "<what-your-hs-compiler-shipped-with>")
-#else
-ldProgram = simpleProgram "ld"
-#endif
+ldProgram = case os of
+                Windows MingW ->
+                    Program "ld" "ld" Nothing []
+                        (FoundOnSystem "<what-your-hs-compiler-shipped-with>")
+                _ -> simpleProgram "ld"
 
 tarProgram :: Program
 tarProgram = simpleProgram "tar"
