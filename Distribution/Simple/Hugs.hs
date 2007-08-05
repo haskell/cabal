@@ -66,6 +66,7 @@ import Distribution.Compat.Directory
 				( copyFile, removeDirectoryRecursive )
 import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
+import Distribution.System
 import Distribution.Verbosity
 import Distribution.Package	( PackageIdentifier(..) )
 
@@ -343,17 +344,18 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-        let exeFile = binDir </> exeName exe <.> ".bat"
-        let script = unlines [
-                "@echo off",
-                unwords ("runhugs" : hugsOptions ++ [targetName, "%*"])]
-#else
-        let exeFile = binDir </> exeName exe
-        let script = unlines [
-                "#! /bin/sh",
-                unwords ("runhugs" : hugsOptions ++ [targetName, "\"$@\""])]
-#endif
+        let exeFile = case os of
+                          Windows _ -> binDir </> exeName exe <.> ".bat"
+                          _         -> binDir </> exeName exe
+        let script = case os of
+                         Windows _ ->
+                             let args = hugsOptions ++ [targetName, "%*"]
+                             in unlines ["@echo off",
+                                         unwords ("runhugs" : args)]
+                         _ ->
+                             let args = hugsOptions ++ [targetName, "\"$@\""]
+                             in unlines ["#! /bin/sh",
+                                         unwords ("runhugs" : args)]
         writeFile exeFile script
         perms <- getPermissions exeFile
         setPermissions exeFile perms { executable = True, readable = True }
