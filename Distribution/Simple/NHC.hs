@@ -75,7 +75,10 @@ configure hcPath _hcPkgPath verbosity = do
         compilerFlavor  = NHC,
         compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
         compilerProg    = hmakeProg,
-        compilerPkgTool = hmakeProg
+        compilerPkgTool = hmakeProg,
+        compilerLanguagesKnown = False,
+        compilerLanguages
+         = error "Don't have a flag to find out what languages nhc supports"
     }
 
 -- -----------------------------------------------------------------------------
