@@ -80,10 +80,13 @@ configure hcPath _hcPkgPath verbosity = do
 
   let Just version = programVersion jhcProg
   return Compiler {
-        compilerFlavor  = JHC,
-        compilerId      = PackageIdentifier "jhc" version,
-        compilerProg    = jhcProg,
-        compilerPkgTool = jhcProg
+        compilerFlavor         = JHC,
+        compilerId             = PackageIdentifier "jhc" version,
+        compilerProg           = jhcProg,
+        compilerPkgTool        = jhcProg,
+        compilerLanguagesKnown = False,
+        compilerLanguages
+         = error "Don't have a flag to find out what languages JHC supports"
     }
 
 -- -----------------------------------------------------------------------------

@@ -97,10 +97,13 @@ configure hcPath _hcPkgPath verbosity = do
   hugsProg <- findProgram verbosity "hugs" hcPath
 
   return Compiler {
-        compilerFlavor  = Hugs,
-        compilerId      = PackageIdentifier "hugs" (Version [] []),
-        compilerProg    = ffihugsProg,
-        compilerPkgTool = hugsProg
+        compilerFlavor         = Hugs,
+        compilerId             = PackageIdentifier "hugs" (Version [] []),
+        compilerProg           = ffihugsProg,
+        compilerPkgTool        = hugsProg,
+        compilerLanguagesKnown = False,
+        compilerLanguages
+         = error "Don't have a flag to find out what languages hugs supports"
     }
 
 -- -----------------------------------------------------------------------------

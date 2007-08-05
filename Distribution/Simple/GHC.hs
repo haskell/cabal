@@ -56,12 +56,7 @@ import Distribution.PackageDescription
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
-import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  rawSystemExit, rawSystemPathExit,
-                                  xargs, die, moduleToFilePath,
-				  smartCopySources, findFile, copyFileVerbose,
-                                  mkLibName, mkProfLibName, dotToSep,
-                                  exeExtension, objExtension)
+import Distribution.Simple.Utils
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  Program(..), ProgramConfiguration(..),
@@ -69,9 +64,7 @@ import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
 				  findProgram, findProgramAndVersion,
 				  simpleProgramAt, lookupProgram,
  				  arProgram, ranlibProgram )
-import Distribution.Compiler 	( CompilerFlavor(..),
-				  Compiler(..), extensionsToGHCFlag,
-                                  compilerPath, compilerVersion )
+import Distribution.Compiler
 import Distribution.Version	( Version(..) )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
@@ -81,6 +74,7 @@ import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
+import Data.Char
 import Data.List		( nub )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
@@ -100,7 +94,7 @@ import IO as Try
 
 configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
 configure hcPath hcPkgPath verbosity = do
-  
+
   -- find ghc and version number
   ghcProg <- findProgramAndVersion verbosity "ghc" hcPath "--numeric-version" id
 
@@ -109,13 +103,23 @@ configure hcPath hcPkgPath verbosity = do
                       Just _  -> findProgram verbosity "ghc" hcPkgPath
                       Nothing -> guessGhcPkgFromGhcPath verbosity ghcProg
   -- TODO: santity check: the versions of ghc-pkg and ghc should be the same.
-  
+
   let Just version = programVersion ghcProg
+      isSep c = isSpace c || (c == ',')
+  (languagesKnown, languages)
+      <- if version >= Version [6,7] []
+         then do ls <- rawSystemStdout verbosity
+                                       (programPath ghcProg)
+                                       ["--supported-languages"]
+                 return (True, breaks isSep ls)
+         else return (False, error "Don't have a flag to find out what languages GHC supports")
   return Compiler {
-        compilerFlavor  = GHC,
-        compilerId      = PackageIdentifier "ghc" version,
-        compilerProg    = ghcProg,
-        compilerPkgTool = ghcPkgProg
+        compilerFlavor         = GHC,
+        compilerId             = PackageIdentifier "ghc" version,
+        compilerProg           = ghcProg,
+        compilerPkgTool        = ghcPkgProg,
+        compilerLanguagesKnown = languagesKnown,
+        compilerLanguages      = languages
     }
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
@@ -381,7 +385,7 @@ constructGHCCmdLine lbi bi odir verbosity =
 
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
-     =  (if version > Version [6,4] []
+     =  (if compilerVersion c > Version [6,4] []
             then ["-hide-all-packages"]
             else [])
      ++ (if splitObjs lbi then ["-split-objs"] else [])
@@ -397,8 +401,8 @@ ghcOptions lbi bi odir
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])
      ++ hcOptions GHC (options bi)
-     ++ snd (extensionsToGHCFlag version (extensions bi))
-    where version = compilerVersion (compiler lbi)
+     ++ snd (extensionsToFlags c (extensions bi))
+    where c = compiler lbi
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath
                    -> FilePath -> Verbosity -> (FilePath,[String])
