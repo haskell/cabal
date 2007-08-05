@@ -73,6 +73,7 @@ import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Compiler (Compiler(..), CompilerFlavor(..), showCompilerId)
 import Distribution.Setup (CopyDest(..))
+import Distribution.System
 import Distribution.Version (showVersion)
 import System.FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
@@ -222,35 +223,29 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
 #endif
 
 default_bindir :: FilePath
-default_bindir = "$prefix" </>
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-	"Haskell" </> "bin"
-#else
-	"bin"
-#endif
+default_bindir = "$prefix" </> path
+    where path = case os of
+                     Windows _ -> "Haskell" </> "bin"
+                     _         -> "bin"
 
 default_libdir :: Compiler -> FilePath
-default_libdir _ = "$prefix" </>
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-                 "Haskell"
-#else
-                 "lib"
-#endif
+default_libdir _ = "$prefix" </> path
+    where path = case os of
+                     Windows _ -> "Haskell"
+                     _         -> "lib"
 
 default_libsubdir :: Compiler -> FilePath
 default_libsubdir hc =
   case compilerFlavor hc of
-	Hugs -> "hugs" </> "packages" </> "$pkg"
+        Hugs -> "hugs" </> "packages" </> "$pkg"
         JHC  -> "$compiler"
-	_    -> "$pkgid" </> "$compiler"
+        _    -> "$pkgid" </> "$compiler"
 
 default_libexecdir :: FilePath
-default_libexecdir = "$prefix" </>
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-	"$pkgid"
-#else
-	"libexec"
-#endif
+default_libexecdir = "$prefix" </> path
+    where path = case os of
+                     Windows _ -> "$pkgid"
+                     _         -> "libexec"
 
 default_datadir :: PackageDescription -> IO FilePath
 #if mingw32_HOST_OS || mingw32_TARGET_OS
@@ -333,18 +328,7 @@ absolutePath pkg_descr lbi copydest s =
   case copydest of
     NoCopyDest   -> substDir (package pkg_descr) lbi s
     CopyPrefix d -> substDir (package pkg_descr) lbi{prefix=d} s
-    CopyTo     p -> p </> (dropAbsolutePrefix (substDir (package pkg_descr) lbi s))
- where 
-   -- | If the function is applied to an absolute path then it returns a local path droping
-   -- the absolute prefix in the path. Under Windows the prefix is \"\\\", \"c:\" or \"c:\\\". Under
-   -- Unix the prefix is always \"\/\".
-   dropAbsolutePrefix :: FilePath -> FilePath
-   dropAbsolutePrefix (c:cs) | isPathSeparator c = cs
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-   dropAbsolutePrefix (_:':':c:cs) | isPathSeparator c = cs  -- path with drive letter
-   dropAbsolutePrefix (_:':':cs)                       = cs
-#endif
-   dropAbsolutePrefix cs = cs
+    CopyTo     p -> p </> (dropDrive (substDir (package pkg_descr) lbi s))
 
 substDir :: PackageIdentifier -> LocalBuildInfo -> String -> String
 substDir pkgId lbi xs = loop xs

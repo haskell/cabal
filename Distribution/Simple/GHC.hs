@@ -76,6 +76,7 @@ import Distribution.Version	( Version(..) )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
+import Distribution.System
 import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
 
@@ -271,14 +272,11 @@ build pkg_descr lbi verbosity = do
 
             runAr = rawSystemProgramConf verbosity "ar" (withPrograms lbi)
 
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-            rawSystemLd = rawSystemExit
-            maxCommandLineSize = 30 * 1024
-#else
-            rawSystemLd = rawSystemPathExit
+            rawSystemLd = case os of
+                              Windows MingW -> rawSystemExit
+                              _             -> rawSystemPathExit
              --TODO: discover this at configure time on unix
             maxCommandLineSize = 30 * 1024
-#endif
 
         ifVanillaLib False $ xargs maxCommandLineSize
           runAr arArgs arObjArgs
@@ -430,22 +428,18 @@ mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
 
 
 findLdProgram :: LocalBuildInfo -> IO FilePath
-#if defined(mingw32_TARGET_OS) || defined(mingw32_HOST_OS)
-findLdProgram lbi =
-   let
-    compilerDir = takeDirectory $ compilerPath (compiler lbi)
-    baseDir     = takeDirectory compilerDir
-    binInstallLd     = baseDir </> "gcc-lib" </> "ld.exe"
-   in do
-   mb <- lookupProgram "ld" (withPrograms lbi)
-   case fmap programLocation mb of
-    Just (UserSpecified s) -> return s
-          -- assume we're using an installed copy of GHC..
-    _ -> return binInstallLd
-#else
-findLdProgram _ =
-    return "ld"
-#endif
+findLdProgram lbi
+ = case os of
+       Windows MingW ->
+           do let compilerDir = takeDirectory $ compilerPath (compiler lbi)
+                  baseDir     = takeDirectory compilerDir
+                  binInstallLd     = baseDir </> "gcc-lib" </> "ld.exe"
+              mb <- lookupProgram "ld" (withPrograms lbi)
+              case fmap programLocation mb of
+                  Just (UserSpecified s) -> return s
+                  -- assume we're using an installed copy of GHC..
+                  _ -> return binInstallLd
+       _ -> return "ld"
 
 -- -----------------------------------------------------------------------------
 -- Building a Makefile

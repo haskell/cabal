@@ -67,6 +67,7 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Register (removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
+import Distribution.System
 import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
 			     compilerVersion, compilerPath, compilerPkgToolPath,
 			     extensionsToFlags)
@@ -78,7 +79,7 @@ import Distribution.PackageDescription(
         finalizePackageDescription,
         HookedBuildInfo, sanityCheckPackage, updatePackageDescription,
 	BuildInfo(..), Executable(..), setupMessage,
-        satisfyDependency)
+        satisfyDependency, hasLibs)
 import Distribution.Simple.Utils (die, warn, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     showVersion, showVersionRange)
@@ -112,10 +113,6 @@ import Control.Monad		( when, unless )
 import Distribution.Compat.ReadP
 import Distribution.Compat.Directory (createDirectoryIfMissing)
 import Prelude hiding (catch)
-
-#ifdef mingw32_HOST_OS
-import Distribution.PackageDescription (hasLibs)
-#endif
 
 #ifdef DEBUG
 import Test.HUnit
@@ -316,23 +313,15 @@ messageDir :: PackageDescription -> LocalBuildInfo -> String
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)
 	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath)
 	-> IO ()
-messageDir pkg_descr lbi name mkDir
-#if mingw32_HOST_OS
-                                    mkDirRel
-#else
-                                    _
-#endif
+messageDir pkg_descr lbi name mkDir mkDirRel
  = message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
   where
-#if mingw32_HOST_OS
-    rel_note
-      | not (hasLibs pkg_descr) &&
-        mkDirRel pkg_descr lbi NoCopyDest == Nothing
-                  = "  (fixed location)"
-      | otherwise = ""
-#else
-    rel_note      = ""
-#endif
+    rel_note = case os of
+                   Windows MingW
+                    | not (hasLibs pkg_descr) &&
+                      mkDirRel pkg_descr lbi NoCopyDest == Nothing
+                     -> "  (fixed location)"
+                   _ -> ""
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.

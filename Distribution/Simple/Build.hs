@@ -65,6 +65,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die )
+import Distribution.System
 
 import System.FilePath          ( (</>), pathSeparator )
 
@@ -242,11 +243,14 @@ buildPathsModule pkg_descr lbi =
 	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
 
-#if mingw32_HOST_OS
-	absolute = hasLibs pkg_descr || flat_bindirrel == Nothing
-#else
-	absolute = hasLibs pkg_descr || flat_progdirrel == Nothing || not isHugs
-#endif
+        absolute = case os of
+                       Windows MingW ->
+                           hasLibs pkg_descr ||
+                           flat_bindirrel == Nothing
+                       _ ->
+                           hasLibs pkg_descr ||
+                           flat_progdirrel == Nothing ||
+                           not isHugs
 
   	paths_modulename = autogenModuleName pkg_descr
 	paths_filename = paths_modulename ++ ".hs"
@@ -319,18 +323,14 @@ filename_stuff =
   "      _                            -> path1\n"++
   "\n"++
   "pathSeparator :: Char\n"++
-#if mingw32_HOST_OS
-  "pathSeparator = '\\\\'\n"++
-#else
-  "pathSeparator = '/'\n"++
-#endif
+  (case os of
+       Windows _ -> "pathSeparator = '\\\\'\n"
+       _         -> "pathSeparator = '/'\n") ++
   "\n"++
   "isPathSeparator :: Char -> Bool\n"++
-#if mingw32_HOST_OS
-  "isPathSeparator c = c == '/' || c == '\\\\'\n"
-#else
-  "isPathSeparator c = c == '/'\n"
-#endif
+  (case os of
+       Windows _ -> "isPathSeparator c = c == '/' || c == '\\\\'\n"
+       _         -> "isPathSeparator c = c == '/'\n")
 
 -- ------------------------------------------------------------
 -- * Testing
