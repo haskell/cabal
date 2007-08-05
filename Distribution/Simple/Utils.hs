@@ -42,10 +42,11 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
-	die,
-	dieWithLocation,
-	warn,
-	rawSystemExit,
+        die,
+        dieWithLocation,
+        warn,
+        breaks,
+        rawSystemExit,
         rawSystemStdout,
         maybeExit,
         xargs,
@@ -138,6 +139,17 @@ warn verbosity msg = do
   hFlush stdout
   pname <- getProgName
   when (verbosity >= normal) $ hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
+
+-- -----------------------------------------------------------------------------
+-- Helper functions
+
+breaks :: (a -> Bool) -> [a] -> [[a]]
+breaks _ [] = []
+breaks f xs = case span f xs of
+                  (_, xs') ->
+                      case break f xs' of
+                          (v, xs'') ->
+                              v : breaks f xs''
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
