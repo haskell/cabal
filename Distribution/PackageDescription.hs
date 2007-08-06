@@ -1035,7 +1035,8 @@ parseDescription file = do
               return ([], lib, exes)
           | otherwise -> 
               lift $ syntaxError l $ "Unknown section type: " ++ sn
-        Nothing -> errEOF
+        Nothing -> do lift $ warning "No library or executable specified"
+                      return ([], Nothing, [])
         Just f -> lift $ syntaxError (lineNo f) $ 
                "Construct not supported at this position: " ++ show f
     
