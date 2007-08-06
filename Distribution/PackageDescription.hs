@@ -111,7 +111,8 @@ import Distribution.ParseUtils
 import Distribution.Package(PackageIdentifier(..),showPackageId,
                             parsePackageName)
 import Distribution.Version(Version(..), VersionRange(..), withinRange,
-                            showVersion, parseVersion, showVersionRange, parseVersionRange)
+                            showVersion, parseVersion, showVersionRange,
+                            parseVersionRange, isAnyVersion)
 import Distribution.License(License(..))
 import Distribution.Version(Dependency(..))
 import Distribution.Verbosity
@@ -942,6 +943,8 @@ parseDescription file = do
       pkg <- lift $ parseFields pkgDescrFieldDescrs emptyPackageDescription hfs
       (flags, mlib, exes) <- getBody
       warnIfRest
+      when (not (oldSyntax fields0)) $
+        maybeWarnCabalVersion pkg
       return (GenericPackageDescription pkg flags mlib exes)
 
   where
@@ -950,6 +953,12 @@ parseDescription file = do
         syntaxError (fst (head tabs)) $
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
+    maybeWarnCabalVersion pkg =
+        when (isAnyVersion (descCabalVersion pkg)) $
+          lift $ warning $
+            "A package using section syntax should require\n" 
+            ++ "\"Cabal-Version: >= 1.2\" or equivalent."
+
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
     --
     --  * all global fields at the beginning, followed by
