@@ -55,6 +55,7 @@ module Distribution.Version (
   withinRange,
   showVersionRange,
   parseVersionRange,
+  isAnyVersion,
 
   -- * Dependencies
   Dependency(..),
@@ -214,6 +215,10 @@ data VersionRange
   | UnionVersionRanges      VersionRange VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
+
+isAnyVersion :: VersionRange -> Bool
+isAnyVersion AnyVersion = True
+isAnyVersion _ = False
 
 orLaterVersion :: Version -> VersionRange
 orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
