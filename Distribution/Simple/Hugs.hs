@@ -50,7 +50,7 @@ import Distribution.PackageDescription
 				  withLib,
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..) )
+import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
 import Distribution.Program     ( rawSystemProgram, findProgram )
 import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
@@ -101,10 +101,33 @@ configure hcPath _hcPkgPath verbosity = do
         compilerId             = PackageIdentifier "hugs" (Version [] []),
         compilerProg           = ffihugsProg,
         compilerPkgTool        = hugsProg,
-        compilerLanguagesKnown = False,
-        compilerLanguages
-         = error "Don't have a flag to find out what languages hugs supports"
+        compilerExtensions     = hugsLanguageExtensions
     }
+
+-- | The flags for the supported extensions
+hugsLanguageExtensions :: [(Extension, Flag)]
+hugsLanguageExtensions =
+    [(OverlappingInstances       , "+o")
+    ,(IncoherentInstances        , "+oO")
+    ,(HereDocuments              , "+H")
+    ,(TypeSynonymInstances       , "-98")
+    ,(RecursiveDo                , "-98")
+    ,(ParallelListComp           , "-98")
+    ,(MultiParamTypeClasses      , "-98")
+    ,(FunctionalDependencies     , "-98")
+    ,(Rank2Types                 , "-98")
+    ,(PolymorphicComponents      , "-98")
+    ,(ExistentialQuantification  , "-98")
+    ,(ScopedTypeVariables        , "-98")
+    ,(ImplicitParams             , "-98")
+    ,(ExtensibleRecords          , "-98")
+    ,(RestrictedTypeSynonyms     , "-98")
+    ,(FlexibleContexts           , "-98")
+    ,(FlexibleInstances          , "-98")
+    ,(ForeignFunctionInterface   , "")
+    ,(EmptyDataDecls             , "")
+    ,(CPP                        , "")
+    ]
 
 -- -----------------------------------------------------------------------------
 -- Building
