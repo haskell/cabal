@@ -50,8 +50,9 @@ import Distribution.PackageDescription
 				  Library(..), libModules, hcOptions)
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
-				  extensionsToNHCFlag )
+import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
+                                  extensionsToFlags )
+import Language.Haskell.Extension (Extension(..))
 import Distribution.Program     ( Program(..), rawSystemProgram,
                                   findProgramAndVersion )
 import Distribution.Verbosity
@@ -76,10 +77,20 @@ configure hcPath _hcPkgPath verbosity = do
         compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
         compilerProg    = hmakeProg,
         compilerPkgTool = hmakeProg,
-        compilerLanguagesKnown = False,
-        compilerLanguages
-         = error "Don't have a flag to find out what languages nhc supports"
+        compilerExtensions = nhcLanguageExtensions
     }
+
+-- | The flags for the supported extensions
+nhcLanguageExtensions :: [(Extension, Flag)]
+nhcLanguageExtensions =
+      -- NHC doesn't enforce the monomorphism restriction at all.
+    [(NoMonomorphismRestriction, "")
+    ,(ForeignFunctionInterface,  "")
+    ,(ExistentialQuantification, "")
+    ,(EmptyDataDecls,            "")
+    ,(NamedFieldPuns,            "-puns")
+    ,(CPP,                       "-cpp")
+    ]
 
 -- -----------------------------------------------------------------------------
 -- Building
@@ -89,8 +100,7 @@ configure hcPath _hcPkgPath verbosity = do
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity =
   -- Unsupported extensions have already been checked by configure
-  let flags = ( snd
-              . extensionsToNHCFlag
+  let flags = ( extensionsToFlags (compiler lbi)
               . maybe [] (extensions . libBuildInfo)
               . library ) pkg_descr in
   rawSystemProgram verbosity (compilerProg (compiler lbi))
