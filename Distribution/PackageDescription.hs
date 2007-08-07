@@ -1301,9 +1301,9 @@ bug msg = error $ msg ++ ". Consider this a bug."
 -- ------------------------------------------------------------
 #ifdef DEBUG
 -- disabled for now
-{-
-testPkgDesc :: String
-testPkgDesc = unlines [
+
+compatTestPkgDesc :: String
+compatTestPkgDesc = unlines [
         "-- Required",
         "Name: Cabal",
         "Version: 0.1.1.1.1-rain",
@@ -1355,114 +1355,132 @@ testPkgDesc = unlines [
         "Jhc-Options: "
         ]
 
-testPkgDescAnswer :: PackageDescription
-testPkgDescAnswer = 
- PackageDescription {package = PackageIdentifier {pkgName = "Cabal",
-                                                 pkgVersion = Version {versionBranch = [0,1,1,1,1],
-                                                 versionTags = ["rain"]}},
-                    license = LGPL,
-                    licenseFile = "foo",
-                    copyright = "Free Text String",
-                    author  = "Happy Haskell Hacker",
-                    homepage = "http://www.haskell.org/foo",
-                    pkgUrl   = "http://www.haskell.org/foo",
-                    synopsis = "a nice package!",
-                    description = "a really nice package!",
-                    category = "tools",
-                    descCabalVersion=LaterVersion (Version [1,1,1] []),
-                    buildType=Custom,
-                    buildDepends = [Dependency "haskell-src" AnyVersion,
-                                     Dependency "HUnit"
-                                     (UnionVersionRanges (ThisVersion (Version [1,0,0] ["rain"]))
-                                      (LaterVersion (Version [1,0,0] ["rain"])))],
-                    testedWith=[(GHC, AnyVersion)],
-                    maintainer = "",
-                    stability = "Free Text String",
-                    extraTmpFiles=["file1", "file2"],
-                    extraSrcFiles=["file1", "file2"],
-                    dataFiles=[],
+compatTestPkgDescAnswer :: PackageDescription
+compatTestPkgDescAnswer = 
+    PackageDescription 
+    { package = PackageIdentifier 
+                { pkgName = "Cabal",
+                  pkgVersion = Version {versionBranch = [0,1,1,1,1],
+                                        versionTags = ["rain"]}},
+      license = LGPL,
+      licenseFile = "foo",
+      copyright = "Free Text String",
+      author  = "Happy Haskell Hacker",
+      homepage = "http://www.haskell.org/foo",
+      pkgUrl   = "http://www.haskell.org/foo",
+      synopsis = "a nice package!",
+      description = "a really nice package!",
+      category = "tools",
+      descCabalVersion = LaterVersion (Version [1,1,1] []),
+      buildType = Custom,
+      buildDepends = [Dependency "haskell-src" AnyVersion,
+                      Dependency "HUnit"
+                        (UnionVersionRanges 
+                         (ThisVersion (Version [1,0,0] ["rain"]))
+                         (LaterVersion (Version [1,0,0] ["rain"])))],
+      testedWith = [(GHC, AnyVersion)],
+      maintainer = "",
+      stability = "Free Text String",
+      extraTmpFiles = ["file1", "file2"],
+      extraSrcFiles = ["file1", "file2"],
+      dataFiles = [],
 
-                    library = Just $ Library {
-                        exposedModules = ["Distribution.Void", "Foo.Bar"],
-                        libBuildInfo=BuildInfo {
-                           buildable = True,
-                           ccOptions = ["-g", "-o"],
-                           ldOptions = ["-BStatic", "-dn"],
-                           frameworks = ["foo"],
-                           cSources = ["not/even/rain.c", "such/small/hands"],
-                           hsSourceDirs = ["src", "src2"],
-                           otherModules = ["Distribution.Package",
-                                           "Distribution.Version",
-                                           "Distribution.Simple.GHCPackageConfig"],
-                           extensions = [OverlappingInstances, TypeSynonymInstances],
-                           extraLibs = ["libfoo", "bar", "bang"],
-                           extraLibDirs = ["/usr/local/libs"],
-                           includeDirs = ["your/slightest", "look/will"],
-                           includes = ["/easily/unclose", "/me", "funky, path\\name"],
-                           installIncludes = ["/easily/unclose", "/me", "funky, path\\name"],
-                           ghcProfOptions = [],
-                           options = [(GHC,["-fTH","-fglasgow-exts"]),(Hugs,["+TH"]),(NHC,[]),(JHC,[])]
-                    }},
-                    executables = [Executable "somescript" 
-                       "SomeFile.hs" (
-                      emptyBuildInfo{
-                        otherModules=["Foo1","Util","Main"],
-                        hsSourceDirs = ["scripts"],
-                        extensions = [OverlappingInstances],
-                        options = [(GHC,[]),(Hugs,[]),(NHC,[]),(JHC,[])]
+      library = Just $ Library {
+          exposedModules = ["Distribution.Void", "Foo.Bar"],
+          libBuildInfo = BuildInfo {
+              buildable = True,
+              ccOptions = ["-g", "-o"],
+              ldOptions = ["-BStatic", "-dn"],
+              frameworks = ["foo"],
+              cSources = ["not/even/rain.c", "such/small/hands"],
+              hsSourceDirs = ["src", "src2"],
+              otherModules = ["Distribution.Package",
+                              "Distribution.Version",
+                              "Distribution.Simple.GHCPackageConfig"],
+              extensions = [OverlappingInstances, TypeSynonymInstances],
+              extraLibs = ["libfoo", "bar", "bang"],
+              extraLibDirs = ["/usr/local/libs"],
+              includeDirs = ["your/slightest", "look/will"],
+              includes = ["/easily/unclose", "/me", "funky, path\\name"],
+              installIncludes = ["/easily/unclose", "/me", "funky, path\\name"],
+              ghcProfOptions = [],
+              options = [(GHC,["-fTH","-fglasgow-exts"])
+                        ,(Hugs,["+TH"]),(NHC,[]),(JHC,[])]
+         }},
+
+      executables = [Executable "somescript" 
+                     "SomeFile.hs" (emptyBuildInfo {
+                         otherModules=["Foo1","Util","Main"],
+                         hsSourceDirs = ["scripts"],
+                         extensions = [OverlappingInstances],
+                         options = [(GHC,[]),(Hugs,[]),(NHC,[]),(JHC,[])]
                       })]
   }
--- #ifdef DEBUG
--}
+
+-- Parse an old style package description.  Assumes no flags etc. being used.
+compatParseDescription :: String -> ParseResult PackageDescription
+compatParseDescription descr = do
+    gpd <- parseDescription descr
+    case finalizePackageDescription [] Nothing "" "" ("",Version [] []) gpd of
+      Left _ -> syntaxError (-1) "finalize failed"
+      Right (pd,_) -> return pd
+
 hunitTests :: [Test]
-hunitTests = []
-{-
-hunitTests = [
-              TestLabel "license parsers" $ TestCase $
-                 sequence_ [assertParseOk ("license " ++ show lVal) lVal
-                                        (runP 1 "license" parseLicenseQ (show lVal))
-                           | lVal <- [GPL,LGPL,BSD3,BSD4]],
+hunitTests = 
+    [ TestLabel "license parsers" $ TestCase $
+      sequence_ [ assertParseOk ("license " ++ show lVal) lVal
+                    (runP 1 "license" parseLicenseQ (show lVal))
+                | lVal <- [GPL,LGPL,BSD3,BSD4] ]
 
-              TestLabel "Required fields" $ TestCase $
-                 do assertParseOk "some fields"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0] ["asdf"]))}
-                       (parseDescription "Name: foo\nVersion: 0.0-asdf")
+    , TestLabel "Required fields" $ TestCase $
+      do assertParseOk "some fields"
+           emptyPackageDescription {
+             package = (PackageIdentifier "foo"
+                        (Version [0,0] ["asdf"])) }
+           (compatParseDescription "Name: foo\nVersion: 0.0-asdf")
 
-                    assertParseOk "more fields foo"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0]["asdf"])),
-                                               license=GPL}
-                       (parseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
+         assertParseOk "more fields foo"
+           emptyPackageDescription {
+             package = (PackageIdentifier "foo"
+                        (Version [0,0] ["asdf"])),
+             license = GPL }
+           (compatParseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
 
-                    assertParseOk "required fields for foo"
-                       emptyPackageDescription{package=(PackageIdentifier "foo"
-                                                        (Version [0,0]["asdf"])),
-                                        license=GPL, copyright="2004 isaac jones"}
-                       (parseDescription "Name: foo\nVersion:0.0-asdf\nCopyright: 2004 isaac jones\nLicense: GPL"),
+         assertParseOk "required fields for foo"
+           emptyPackageDescription { 
+             package = (PackageIdentifier "foo"
+                        (Version [0,0] ["asdf"])),
+             license = GPL, copyright="2004 isaac jones" }
+           (compatParseDescription $ "Name: foo\nVersion:0.0-asdf\n" 
+               ++ "Copyright: 2004 isaac jones\nLicense: GPL")
                                           
-             TestCase $ assertParseOk "no library" Nothing
-                        (library `liftM` parseDescription "Name: foo\nVersion: 1\nLicense: GPL\nMaintainer: someone\n\nExecutable: script\nMain-is: SomeFile.hs\n"),
+    , TestCase $ assertParseOk "no library" Nothing
+        (library `liftM` (compatParseDescription $ 
+           "Name: foo\nVersion: 1\nLicense: GPL\n" ++
+           "Maintainer: someone\n\nExecutable: script\n" ++ 
+           "Main-is: SomeFile.hs\n"))
 
-             TestLabel "Package description" $ TestCase $ 
-                assertParseOk "entire package description" testPkgDescAnswer
-                                               (parseDescription testPkgDesc),
-             TestLabel "Package description pretty" $ TestCase $ 
-                case parseDescription testPkgDesc of
-                 ParseFailed _ -> assertBool "can't parse description" False
-                 ParseOk _ d -> case parseDescription $ showPackageDescription d of
-                                ParseFailed _ ->
-                                    assertBool "can't parse description after pretty print!" False
-                                ParseOk _ d' -> 
-                                    assertBool ("parse . show . parse not identity."
-                                                ++"   Incorrect fields:\n"
-                                                ++ (unlines $ comparePackageDescriptions d d'))
-                                               (d == d'),
-            TestLabel "Sanity checker" $ TestCase $ do
-              (warns, ers) <- sanityCheckPackage emptyPackageDescription
-              assertEqual "Wrong number of errors"   2 (length ers)
-              assertEqual "Wrong number of warnings" 4 (length warns)
-            ]
+    , TestLabel "Package description" $ TestCase $ 
+        assertParseOk "entire package description" 
+                      compatTestPkgDescAnswer
+                      (compatParseDescription compatTestPkgDesc)
+    , TestLabel "Package description pretty" $ TestCase $ 
+      case compatParseDescription compatTestPkgDesc of
+        ParseFailed _ -> assertBool "can't parse description" False
+        ParseOk _ d -> 
+            case compatParseDescription $ showPackageDescription d of
+              ParseFailed _ ->
+                assertBool "can't parse description after pretty print!" False
+              ParseOk _ d' -> 
+                assertBool ("parse . show . parse not identity."
+                            ++"   Incorrect fields:\n"
+                            ++ (unlines $ comparePackageDescriptions d d'))
+                (d == d')
+    , TestLabel "Sanity checker" $ TestCase $ do
+        (warns, ers) <- sanityCheckPackage emptyPackageDescription
+        assertEqual "Wrong number of errors"   2 (length ers)
+        assertEqual "Wrong number of warnings" 3 (length warns)
+    ]
 
 -- |Compare two package descriptions and see which fields aren't the same.
 comparePackageDescriptions :: PackageDescription
@@ -1520,7 +1538,7 @@ assertParseOk mes expected actual
            (case actual of
              ParseOk _ v -> v == expected
              _         -> False)
--}
+
 test :: IO Counts
 test = runTestTT (TestList hunitTests)
 ------------------------------------------------------------------------------
