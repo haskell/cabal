@@ -922,16 +922,24 @@ peekField = get >>= return . listToMaybe
 skipField :: PM ()
 skipField = modify tail
 
--- | Parses the pre-parsed list of fields into a prepared package description.
+-- | Parses the given file into a 'GenericPackageDescription'.
+--
+-- In Cabal 1.2 the syntax for package descriptions was changed to a format
+-- with sections and possibly indented property descriptions.  
 parseDescription :: String -> ParseResult GenericPackageDescription
 parseDescription file = do
     let tabs = findIndentTabs file
 
     fields0 <- readFields file `catchParseError` \err ->
                  case err of
+                   -- In case of a TabsError report them all at once.
                    TabsError _ -> reportTabsError tabs
                    _ -> parseFail err
 
+    -- Parsing might have been successful, but if the new syntax was used with
+    -- tabs we can't be quite sure the parse was correct.  (It is possible to
+    -- allow tabs in non-indented fields, but that would be inconsistent so we
+    -- disallow tabs as indentation alltogether.)
     when (not (oldSyntax fields0) && not (null tabs)) $
       reportTabsError tabs
 
