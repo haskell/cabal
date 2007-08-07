@@ -52,8 +52,9 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), 
 				  autogenModulesDir )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..),
-				  extensionsToJHCFlag )
+import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
+                                  extensionsToFlags )
+import Language.Haskell.Extension (Extension(..))
 import Distribution.Program     ( Program(..), rawSystemProgram,
                                   findProgramAndVersion )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
@@ -84,10 +85,17 @@ configure hcPath _hcPkgPath verbosity = do
         compilerId             = PackageIdentifier "jhc" version,
         compilerProg           = jhcProg,
         compilerPkgTool        = jhcProg,
-        compilerLanguagesKnown = False,
-        compilerLanguages
-         = error "Don't have a flag to find out what languages JHC supports"
+        compilerExtensions     = jhcLanguageExtensions
     }
+
+-- | The flags for the supported extensions
+jhcLanguageExtensions :: [(Extension, Flag)]
+jhcLanguageExtensions =
+    [(TypeSynonymInstances       , "")
+    ,(ForeignFunctionInterface   , "")
+    ,(NoImplicitPrelude          , "--noprelude")
+    ,(CPP                        , "-fcpp")
+    ]
 
 -- -----------------------------------------------------------------------------
 -- Building
@@ -118,7 +126,7 @@ build pkg_descr lbi verbosity = do
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [String]
 constructJHCCmdLine lbi bi _odir verbosity =
         (if verbosity >= deafening then ["-v"] else [])
-     ++ snd (extensionsToJHCFlag (extensions bi))
+     ++ extensionsToFlags (compiler lbi) (extensions bi)
      ++ hcOptions JHC (options bi)
      ++ ["--noauto","-i-"]
      ++ ["-i", autogenModulesDir lbi]

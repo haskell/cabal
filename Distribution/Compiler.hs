@@ -45,13 +45,13 @@ module Distribution.Compiler (
 	CompilerFlavor(..), Compiler(..),
         showCompilerId, compilerVersion,
 	compilerPath, compilerPkgToolPath,
+
         -- * Support for language extensions
-        Opt,
+        Flag,
         extensionsToFlags,
-        extensionsToGHCFlag, extensionsToHugsFlag,
-        extensionsToNHCFlag, extensionsToJHCFlag,
+        unsupportedExtensions
 #ifdef DEBUG
-        hunitTests
+        ,hunitTests
 #endif
   ) where
 
@@ -61,6 +61,7 @@ import Language.Haskell.Extension (Extension(..))
 import Distribution.Program
 
 import Data.List (nub)
+import Data.Maybe (catMaybes, isNothing)
 
 #ifdef DEBUG
 import Test.HUnit (Test)
@@ -79,10 +80,7 @@ data Compiler = Compiler {
         compilerId              :: PackageIdentifier,
         compilerProg            :: Program,
         compilerPkgTool         :: Program,
-        -- compilerLanguages is non-_|_ iff compilerLanguagesKnown.
-        -- Hopefully this will soon be never.
-        compilerLanguagesKnown  :: Bool,
-        compilerLanguages       :: [String]
+	compilerExtensions      :: [(Extension, Flag)]
     }
     deriving (Show, Read)
 
@@ -102,134 +100,20 @@ compilerPkgToolPath = programPath . compilerPkgTool
 -- * Extensions
 -- ------------------------------------------------------------
 
--- |For the given compiler, return the unsupported extensions, and the
--- flags for the supported extensions.
-extensionsToFlags :: Compiler -> [ Extension ]
-                  -> ([Extension], [Opt])
-extensionsToFlags c exts
- | compilerLanguagesKnown c
-    = splitEither $ nub $ map (extensionToFlag (compilerLanguages c)) exts
- | otherwise = case compilerFlavor c of
-                   GHC  -> extensionsToGHCFlag  exts
-                   Hugs -> extensionsToHugsFlag exts
-                   NHC  -> extensionsToNHCFlag  exts
-                   JHC  -> extensionsToJHCFlag  exts
-                   _    -> (exts, [])
+-- |For the given compiler, return the flags for the supported extensions.
+unsupportedExtensions :: Compiler -> [Extension] -> [Extension]
+unsupportedExtensions comp exts =
+  [ ext | ext <- exts
+        , isNothing $ lookup ext (compilerExtensions comp) ]
 
-extensionToFlag :: [String] -> Extension -> Either Extension Opt
-extensionToFlag xs e = let s = show e
-                       in if s `elem` (xs ++ map ("No" ++) xs)
-                          then Right ("-X" ++ s)
-                          else Left e
+type Flag = String
 
--- |GHC: Return the unsupported extensions, and the flags for the
--- supported extensions
-extensionsToGHCFlag :: [ Extension ] -> ([Extension], [Opt])
-extensionsToGHCFlag l
-    = splitEither $ nub $ map extensionToGHCFlag l
-    where
-    extensionToGHCFlag :: Extension -> Either Extension String
-    extensionToGHCFlag OverlappingInstances
-        = Right "-fallow-overlapping-instances"
-    extensionToGHCFlag TypeSynonymInstances       = Right "-fglasgow-exts"
-    extensionToGHCFlag TemplateHaskell            = Right "-fth"
-    extensionToGHCFlag ForeignFunctionInterface   = Right "-fffi"
-    extensionToGHCFlag NoMonomorphismRestriction
-        = Right "-fno-monomorphism-restriction"
-    extensionToGHCFlag UndecidableInstances
-        = Right "-fallow-undecidable-instances"
-    extensionToGHCFlag IncoherentInstances
-        = Right "-fallow-incoherent-instances"
-    extensionToGHCFlag Arrows                     = Right "-farrows"
-    extensionToGHCFlag Generics                   = Right "-fgenerics"
-    extensionToGHCFlag NoImplicitPrelude
-        = Right "-fno-implicit-prelude"
-    extensionToGHCFlag ImplicitParams             = Right "-fimplicit-params"
-    extensionToGHCFlag CPP                        = Right "-cpp"
-    extensionToGHCFlag BangPatterns               = Right "-fbang-patterns"
-    extensionToGHCFlag KindSignatures             = Right "-fglasgow-exts"
-    extensionToGHCFlag RecursiveDo                = Right "-fglasgow-exts"
-    extensionToGHCFlag ParallelListComp           = Right "-fglasgow-exts"
-    extensionToGHCFlag MultiParamTypeClasses      = Right "-fglasgow-exts"
-    extensionToGHCFlag FunctionalDependencies     = Right "-fglasgow-exts"
-    extensionToGHCFlag Rank2Types                 = Right "-fglasgow-exts"
-    extensionToGHCFlag RankNTypes                 = Right "-fglasgow-exts"
-    extensionToGHCFlag PolymorphicComponents      = Right "-fglasgow-exts"
-    extensionToGHCFlag ExistentialQuantification  = Right "-fglasgow-exts"
-    extensionToGHCFlag ScopedTypeVariables        = Right "-fglasgow-exts"
-    extensionToGHCFlag FlexibleContexts           = Right "-fglasgow-exts"
-    extensionToGHCFlag FlexibleInstances          = Right "-fglasgow-exts"
-    extensionToGHCFlag EmptyDataDecls             = Right "-fglasgow-exts"
-    extensionToGHCFlag PatternGuards              = Right "-fglasgow-exts"
-    extensionToGHCFlag GeneralizedNewtypeDeriving = Right "-fglasgow-exts"
-    extensionToGHCFlag MagicHash                  = Right "-fglasgow-exts"
-
-    extensionToGHCFlag e@ExtensibleRecords          = Left e
-    extensionToGHCFlag e@RestrictedTypeSynonyms     = Left e
-    extensionToGHCFlag e@HereDocuments              = Left e
-    extensionToGHCFlag e@NamedFieldPuns             = Left e
-    extensionToGHCFlag e@TypeFamilies               = Left e
-    extensionToGHCFlag e@StandaloneDeriving         = Left e
-
--- |NHC: Return the unsupported extensions, and the flags for the
--- supported extensions
-extensionsToNHCFlag :: [ Extension ] -> ([Extension], [Opt])
-extensionsToNHCFlag l
-    = splitEither $ nub $ map extensionToNHCFlag l
-      where
-      -- NHC doesn't enforce the monomorphism restriction at all.
-      extensionToNHCFlag NoMonomorphismRestriction = Right ""
-      extensionToNHCFlag ForeignFunctionInterface  = Right ""
-      extensionToNHCFlag ExistentialQuantification = Right ""
-      extensionToNHCFlag EmptyDataDecls            = Right ""
-      extensionToNHCFlag NamedFieldPuns            = Right "-puns"
-      extensionToNHCFlag CPP                       = Right "-cpp"
-      extensionToNHCFlag e                         = Left e
-
--- |JHC: Return the unsupported extensions, and the flags for the
--- supported extensions
-extensionsToJHCFlag :: [ Extension ] -> ([Extension], [Opt])
-extensionsToJHCFlag l = (es, filter (not . null) rs)
-      where
-      (es,rs) = splitEither $ nub $ map extensionToJHCFlag l
-      extensionToJHCFlag TypeSynonymInstances       = Right ""
-      extensionToJHCFlag ForeignFunctionInterface   = Right ""
-      extensionToJHCFlag NoImplicitPrelude          = Right "--noprelude"
-      extensionToJHCFlag CPP                        = Right "-fcpp"
-      extensionToJHCFlag e                          = Left e
-
--- |Hugs: Return the unsupported extensions, and the flags for the
--- supported extensions
-extensionsToHugsFlag :: [ Extension ] -> ([Extension], [Opt])
-extensionsToHugsFlag l
-    = splitEither $ nub $ map extensionToHugsFlag l
-      where
-      extensionToHugsFlag OverlappingInstances       = Right "+o"
-      extensionToHugsFlag IncoherentInstances        = Right "+oO"
-      extensionToHugsFlag HereDocuments              = Right "+H"
-      extensionToHugsFlag TypeSynonymInstances       = Right "-98"
-      extensionToHugsFlag RecursiveDo                = Right "-98"
-      extensionToHugsFlag ParallelListComp           = Right "-98"
-      extensionToHugsFlag MultiParamTypeClasses      = Right "-98"
-      extensionToHugsFlag FunctionalDependencies     = Right "-98"
-      extensionToHugsFlag Rank2Types                 = Right "-98"
-      extensionToHugsFlag PolymorphicComponents      = Right "-98"
-      extensionToHugsFlag ExistentialQuantification  = Right "-98"
-      extensionToHugsFlag ScopedTypeVariables        = Right "-98"
-      extensionToHugsFlag ImplicitParams             = Right "-98"
-      extensionToHugsFlag ExtensibleRecords          = Right "-98"
-      extensionToHugsFlag RestrictedTypeSynonyms     = Right "-98"
-      extensionToHugsFlag FlexibleContexts           = Right "-98"
-      extensionToHugsFlag FlexibleInstances          = Right "-98"
-      extensionToHugsFlag ForeignFunctionInterface   = Right ""
-      extensionToHugsFlag EmptyDataDecls             = Right ""
-      extensionToHugsFlag CPP                        = Right ""
-      extensionToHugsFlag e                          = Left e
-
-splitEither :: [Either a b] -> ([a], [b])
-splitEither l = ([a | Left a <- l], [b | Right b <- l])
-
-type Opt = String
+-- |For the given compiler, return the flags for the supported extensions.
+extensionsToFlags :: Compiler -> [Extension] -> [Flag]
+extensionsToFlags comp exts =
+  nub $ catMaybes
+  [ lookup ext (compilerExtensions comp)
+  | ext <- exts ]
 
 -- ------------------------------------------------------------
 -- * Testing

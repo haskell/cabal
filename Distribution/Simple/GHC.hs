@@ -76,6 +76,7 @@ import Language.Haskell.Extension (Extension(..))
 import Control.Monad		( unless, when )
 import Data.Char
 import Data.List		( nub )
+import Data.Maybe		( listToMaybe, catMaybes )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
@@ -106,20 +107,20 @@ configure hcPath hcPkgPath verbosity = do
 
   let Just version = programVersion ghcProg
       isSep c = isSpace c || (c == ',')
-  (languagesKnown, languages)
-      <- if version >= Version [6,7] []
-         then do ls <- rawSystemStdout verbosity
-                                       (programPath ghcProg)
-                                       ["--supported-languages"]
-                 return (True, breaks isSep ls)
-         else return (False, error "Don't have a flag to find out what languages GHC supports")
+  languageExtensions <-
+    if version >= Version [6,7] []
+      then do exts <- rawSystemStdout verbosity (programPath ghcProg)
+                        ["--supported-languages"]
+              return $ catMaybes
+                     [ listToMaybe (reads extStr ++ reads ("No" ++ extStr))
+                     | extStr <- breaks isSep exts ]
+      else return oldLanguageExtensions
   return Compiler {
         compilerFlavor         = GHC,
         compilerId             = PackageIdentifier "ghc" version,
         compilerProg           = ghcProg,
         compilerPkgTool        = ghcPkgProg,
-        compilerLanguagesKnown = languagesKnown,
-        compilerLanguages      = languages
+        compilerExtensions     = languageExtensions
     }
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
@@ -155,6 +156,42 @@ guessGhcPkgFromGhcPath verbosity ghcProg
           case splitExtension filepath of
             (filepath', extension) | extension == exeExtension -> filepath'
                                    | otherwise                 -> filepath
+
+-- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
+oldLanguageExtensions :: [(Extension, Flag)]
+oldLanguageExtensions =
+    [(OverlappingInstances       , "-fallow-overlapping-instances")
+    ,(TypeSynonymInstances       , "-fglasgow-exts")
+    ,(TemplateHaskell            , "-fth")
+    ,(ForeignFunctionInterface   , "-fffi")
+    ,(NoMonomorphismRestriction  , "-fno-monomorphism-restriction")
+    ,(UndecidableInstances       , "-fallow-undecidable-instances")
+    ,(IncoherentInstances        , "-fallow-incoherent-instances")
+    ,(Arrows                     , "-farrows")
+    ,(Generics                   , "-fgenerics")
+    ,(NoImplicitPrelude          , "-fno-implicit-prelude")
+    ,(ImplicitParams             , "-fimplicit-params")
+    ,(CPP                        , "-cpp")
+    ,(BangPatterns               , "-fbang-patterns")
+    ,(KindSignatures             , fglasgowExts)
+    ,(RecursiveDo                , fglasgowExts)
+    ,(ParallelListComp           , fglasgowExts)
+    ,(MultiParamTypeClasses      , fglasgowExts)
+    ,(FunctionalDependencies     , fglasgowExts)
+    ,(Rank2Types                 , fglasgowExts)
+    ,(RankNTypes                 , fglasgowExts)
+    ,(PolymorphicComponents      , fglasgowExts)
+    ,(ExistentialQuantification  , fglasgowExts)
+    ,(ScopedTypeVariables        , fglasgowExts)
+    ,(FlexibleContexts           , fglasgowExts)
+    ,(FlexibleInstances          , fglasgowExts)
+    ,(EmptyDataDecls             , fglasgowExts)
+    ,(PatternGuards              , fglasgowExts)
+    ,(GeneralizedNewtypeDeriving , fglasgowExts)
+    ,(MagicHash                  , fglasgowExts)
+    ]
+    where
+      fglasgowExts = "-fglasgow-exts"
 
 -- -----------------------------------------------------------------------------
 -- Building
@@ -401,7 +438,7 @@ ghcOptions lbi bi odir
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])
      ++ hcOptions GHC (options bi)
-     ++ snd (extensionsToFlags c (extensions bi))
+     ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath
