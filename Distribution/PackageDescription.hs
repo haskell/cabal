@@ -1063,7 +1063,7 @@ parseDescription file = do
         _ -> return (reverse acc)
               
     getLibOrExe cond = peekField >>= \mf -> case mf of
-        Just (Section _ sn sl fs)
+        Just (Section l sn sl fs)
           | sn == "executable" -> do
               flds <- collectFields parseExeFields fs
               skipField
@@ -1077,9 +1077,9 @@ parseDescription file = do
                             (const (error "Multiple libraries specified"))
                             lib
                      , exes)
+        Just x -> lift $ syntaxError (lineNo x) $ 
+                     "Library or Executable section expected."
         Nothing -> return (Nothing, [])
-        _ -> lift $ syntaxError (-42) "Unexpected directive"
-             -- XXX : fix line number
 
     -- extracts all fields in a block, possibly add dependencies to the
     -- guard condition
