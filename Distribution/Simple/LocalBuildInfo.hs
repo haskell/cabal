@@ -330,6 +330,21 @@ absolutePath pkg_descr lbi copydest s =
     CopyPrefix d -> substDir (package pkg_descr) lbi{prefix=d} s
     CopyTo     p -> p </> (dropDrive (substDir (package pkg_descr) lbi s))
 
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 606
+   -- Compat: this function only appears in FilePath > 1.0
+   -- (which at the time of writing is unreleased)
+   where
+     dropDrive :: FilePath -> FilePath
+     dropDrive (c:cs) | isPathSeparator c = cs
+     dropDrive (_:':':c:cs) | isWindows
+                           && isPathSeparator c = cs  -- path with drive letter
+     dropDrive (_:':':cs)   | isWindows         = cs
+     dropDrive cs = cs
+     isWindows = case os of
+       Windows _ -> True
+       _         -> False
+#endif
+
 substDir :: PackageIdentifier -> LocalBuildInfo -> String -> String
 substDir pkgId lbi xs = loop xs
  where
