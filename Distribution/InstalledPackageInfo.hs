@@ -61,7 +61,6 @@ import Distribution.ParseUtils (
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
 import Distribution.License 	( License(..) )
-import Distribution.Compiler 	( Opt )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
 				  parsePackageId )
 import Distribution.Version	( Version(..), showVersion )
@@ -98,9 +97,9 @@ data InstalledPackageInfo
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [PackageIdentifier],
-        hugsOptions	  :: [Opt],
-        ccOptions	  :: [Opt],
-        ldOptions	  :: [Opt],
+        hugsOptions	  :: [String],
+        ccOptions	  :: [String],
+        ldOptions	  :: [String],
         frameworkDirs     :: [FilePath],
         frameworks	  :: [String],
 	haddockInterfaces :: [FilePath],
