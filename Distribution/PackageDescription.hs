@@ -1071,7 +1071,7 @@ parseDescription file = do
         _ -> return (reverse acc)
               
     getLibOrExe cond = peekField >>= \mf -> case mf of
-        Just (Section l sn sl fs)
+        Just (Section _ sn sl fs)
           | sn == "executable" -> do
               flds <- collectFields parseExeFields fs
               skipField
@@ -1117,10 +1117,6 @@ parseDescription file = do
     parseLibFields = lift . parseFields libFieldDescrs nullLibrary 
 
     parseExeFields = lift . parseFields executableFieldDescrs nullExecutable
-
-    errEOF = lift $ syntaxError (-1) "Unexpected end of file"
-
-
 
 
 parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a
