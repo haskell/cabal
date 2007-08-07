@@ -471,13 +471,6 @@ findHookedPackageDesc dir = do
 -- ------------------------------------------------------------
 -- * Platform file extensions
 -- ------------------------------------------------------------ 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
-#if __GLASGOW_HASKELL__ < 603
-#include "config.h"
-#else
-#include "ghcconfig.h"
-#endif
-#endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
 -- | Extension for executable files
@@ -509,36 +502,19 @@ hunitTests :: [Test]
 hunitTests
     = let suffixes = ["hs", "lhs"]
           in [TestCase $
-#if mingw32_HOST_OS || mingw32_TARGET_OS
        do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
           mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
           assertEqual "existing not found failed"
-                   ["Distribution\\Simple\\Build.hs"] mp1
+                   ["Distribution" </> "Simple" </> "Build.hs"] mp1
           assertEqual "not existing not nothing failed" [] mp2,
 
         "moduleToPossiblePaths 1" ~: "failed" ~:
-             ["Foo\\Bar\\Bang.hs","Foo\\Bar\\Bang.lhs"]
+             ["Foo" </> "Bar" </> "Bang.hs","Foo" </> "Bar" </> "Bang.lhs"]
                 ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
         "moduleToPossiblePaths2 " ~: "failed" ~:
               (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
         TestCase (do files <- filesWithExtensions "." "cabal"
                      assertEqual "filesWithExtensions" "Cabal.cabal" (head files))
-#else
-       do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
-          mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
-          assertEqual "existing not found failed"
-                   ["Distribution/Simple/Build.hs"] mp1
-          assertEqual "not existing not nothing failed" [] mp2,
-
-        "moduleToPossiblePaths 1" ~: "failed" ~:
-             ["Foo/Bar/Bang.hs","Foo/Bar/Bang.lhs"]
-                ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
-        "moduleToPossiblePaths2 " ~: "failed" ~:
-              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
-
-        TestCase (do files <- filesWithExtensions "." "cabal"
-                     assertEqual "filesWithExtensions" "Cabal.cabal" (head files))
-#endif
           ]
 
 -- |Might want to make this more generic some day, with regexps
