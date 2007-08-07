@@ -871,7 +871,7 @@ libFieldNames = map fieldName libFieldDescrs
 
 buildInfoNames :: [String]
 buildInfoNames = map fieldName binfoFieldDescrs
-
+                ++ map fst deprecatedFieldsBuildInfo
 
 
 {-
@@ -1140,18 +1140,25 @@ parseField [] (a,us) (F l f _) = do
           return (a, ((l,f):us))
 parseField _ _ _ = error "'parseField' called on a non-field.  This is a bug."
 
+deprecatedFields :: [(String,String)]
+deprecatedFields = 
+    deprecatedFieldsPkgDescr ++ deprecatedFieldsBuildInfo
+
+deprecatedFieldsPkgDescr :: [(String,String)]
+deprecatedFieldsPkgDescr = [ ("other-files", "extra-source-files") ]
+
+deprecatedFieldsBuildInfo :: [(String,String)]
+deprecatedFieldsBuildInfo = [ ("hs-source-dir","hs-source-dirs") ]
 
 -- Handle deprecated fields
 deprecField :: Field -> ParseResult Field
 deprecField (F line fld val) = do
-  fld' <- case fld of
-	     "hs-source-dir"
-		-> do warning "The field \"hs-source-dir\" is deprecated, please use hs-source-dirs."
-		      return "hs-source-dirs"
-	     "other-files"
-		-> do warning "The field \"other-files\" is deprecated, please use extra-source-files."
-		      return "extra-source-files"
-	     _ -> return fld
+  fld' <- case lookup fld deprecatedFields of
+            Nothing -> return fld
+            Just newName -> do
+              warning $ "The field \"" ++ fld
+                      ++ "\" is deprecated, please use \"" ++ newName ++ "\""
+              return newName
   return (F line fld' val)
 deprecField _ = error "'deprecField' called on a non-field.  This is a bug."
 
@@ -1468,6 +1475,14 @@ hunitTests =
            "Name: foo\nVersion: 1\nLicense: GPL\n" ++
            "Maintainer: someone\n\nExecutable: script\n" ++ 
            "Main-is: SomeFile.hs\n"))
+
+    , TestCase $ assertParseOk "translate deprecated fields"
+        emptyPackageDescription {
+             extraSrcFiles = ["foo.c", "bar.ml"],
+             library = Just $ emptyLibrary {
+               libBuildInfo = emptyBuildInfo { hsSourceDirs = ["foo","bar"] }}}
+        (compatParseDescription $ 
+           "hs-source-dir: foo bar\nother-files: foo.c bar.ml")
 
     , TestLabel "Package description" $ TestCase $ 
         assertParseOk "entire package description" 
