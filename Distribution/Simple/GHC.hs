@@ -76,7 +76,6 @@ import Language.Haskell.Extension (Extension(..))
 import Control.Monad		( unless, when )
 import Data.Char
 import Data.List		( nub )
-import Data.Maybe		( listToMaybe, catMaybes )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
@@ -111,9 +110,9 @@ configure hcPath hcPkgPath verbosity = do
     if version >= Version [6,7] []
       then do exts <- rawSystemStdout verbosity (programPath ghcProg)
                         ["--supported-languages"]
-              return $ catMaybes
-                     [ listToMaybe (reads extStr ++ reads ("No" ++ extStr))
-                     | extStr <- breaks isSep exts ]
+              return [ (ext, "-X" ++ show ext)
+                     | extStr <- breaks isSep exts
+                     , (ext, "") <- reads extStr ++ reads ("No" ++ extStr) ]
       else return oldLanguageExtensions
   return Compiler {
         compilerFlavor         = GHC,
