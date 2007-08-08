@@ -111,7 +111,7 @@ type Flag = String
 -- |For the given compiler, return the flags for the supported extensions.
 extensionsToFlags :: Compiler -> [Extension] -> [Flag]
 extensionsToFlags comp exts =
-  nub $ catMaybes
+  nub $ filter (not . null) $ catMaybes
   [ lookup ext (compilerExtensions comp)
   | ext <- exts ]
 
