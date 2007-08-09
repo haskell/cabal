@@ -47,8 +47,10 @@ module Distribution.Simple.Haddock (
   ) where
 
 -- local
+import Distribution.Compat.ReadP(readP_to_S)
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
+import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
 import Distribution.Program(lookupProgram, Program(..), programPath,
                             hscolourProgram, haddockProgram, rawSystemProgram)
 import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
@@ -57,7 +59,7 @@ import Distribution.Setup
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
                                             haddockPref, distPref, substDir )
-import Distribution.Simple.Utils (die, createDirectoryIfMissingVerbose,
+import Distribution.Simple.Utils (die, warn, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
 
 import Distribution.Simple.Utils (rawSystemStdout)
@@ -66,8 +68,7 @@ import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile)
 
-import Control.Monad(liftM, when, unless)
-import Data.Char	( isSpace )
+import Control.Monad(liftM, when, unless, join)
 import Data.Maybe       ( isJust, fromMaybe, catMaybes )
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
@@ -134,11 +135,16 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
             else []
 
     let pkgTool = compilerPkgTool (compiler lbi)
-    let trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
     let getField pkgId f = do
             let name = showPackageId pkgId
             s <- rawSystemStdout verbosity (programPath pkgTool) ["field", name, f]
-            return $ trim $ dropWhile (not . isSpace) $ head $ lines s
+            case readFields s of
+                (ParseOk _ ((F _ _ fieldVal):_)) ->
+                    return . join . join . take 1 . map fst . filter (null . snd)
+                        . readP_to_S (parseCommaList parseFilePathQ) $ fieldVal
+                _ -> do
+                    warn verbosity $ "Unrecognised output from haddock: " ++ s
+                    return []
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
             html <- case haddockHtmlLocation haddockFlags of
