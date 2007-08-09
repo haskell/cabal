@@ -81,7 +81,7 @@ import IO			( try )
 import Data.List		( nub, sort, isSuffixOf )
 import System.Directory		( Permissions(..), getPermissions,
 				  setPermissions )
-import Data.Version
+import Distribution.Version
 
 
 -- -----------------------------------------------------------------------------
