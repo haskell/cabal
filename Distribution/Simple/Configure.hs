@@ -64,10 +64,15 @@ module Distribution.Simple.Configure (configure,
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Register (removeInstalledConfig)
+import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..), distPref,
+                        default_prefix, default_datadir, default_bindir,
+                        default_libsubdir, default_libexecdir, default_libdir,
+                        default_datasubdir, mkLibDirRel, mkLibexecDir,
+                        mkDataDirRel, mkBinDir, mkLibDir, mkDataDir,
+                        mkBinDirRel, mkLibexecDirRel)
+import Distribution.Simple.Register(removeInstalledConfig)
 import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.System
+import Distribution.System(os, OS(..), Windows(..))
 import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
 			     compilerVersion, compilerPath, compilerPkgToolPath,
 			     unsupportedExtensions)
@@ -84,7 +89,7 @@ import Distribution.Simple.Utils (die, warn, rawSystemStdout)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
 			     showVersion, showVersionRange)
 --import Distribution.Configuration ( mkOSName, mkArchName )
-import Distribution.Verbosity
+import Distribution.Verbosity(Verbosity, normal)
 import Distribution.ParseUtils ( showDependency )
 
 import qualified Distribution.Simple.GHC  as GHC
@@ -97,7 +102,7 @@ import Text.PrettyPrint.HughesPJ ( comma, punctuate, render, nest, sep )
 import Data.List (intersperse, nub, isPrefixOf)
 import Data.Char (isSpace, toLower)
 import Data.Maybe(fromMaybe)
-import System.Directory
+import System.Directory(doesFileExist)
 import System.Environment ( getProgName )
 import System.IO        ( hPutStrLn, stderr )
 import System.FilePath ((</>))
@@ -107,10 +112,9 @@ import Distribution.Program(Program(..), ProgramLocation(..), programPath,
 			    updateProgram, maybeUpdateProgram,
                             findProgramAndVersion)
 import System.Exit(ExitCode(..), exitWith)
---import System.Exit		( ExitCode(..) )
 import qualified System.Info    ( os, arch )
 import Control.Monad		( when, unless )
-import Distribution.Compat.ReadP
+import Distribution.Compat.ReadP(readP_to_S, many, skipSpaces)
 import Distribution.Compat.Directory (createDirectoryIfMissing)
 import Prelude hiding (catch)
 
