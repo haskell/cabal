@@ -64,58 +64,73 @@ module Distribution.Simple.Configure (configure,
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo(LocalBuildInfo(..), distPref,
-                        default_prefix, default_datadir, default_bindir,
-                        default_libsubdir, default_libexecdir, default_libdir,
-                        default_datasubdir, mkLibDirRel, mkLibexecDir,
-                        mkDataDirRel, mkBinDir, mkLibDir, mkDataDir,
-                        mkBinDirRel, mkLibexecDirRel)
-import Distribution.Simple.Register(removeInstalledConfig)
-import Distribution.Setup(ConfigFlags(..), CopyDest(..))
-import Distribution.System(os, OS(..), Windows(..))
-import Distribution.Compiler(CompilerFlavor(..), Compiler(..),
-			     compilerVersion, compilerPath, compilerPkgToolPath,
-			     unsupportedExtensions)
-import Distribution.Package (PackageIdentifier(..), showPackageId, 
-			     parsePackageId)
-import Distribution.PackageDescription(
- 	PackageDescription(..), Library(..),
-        GenericPackageDescription(..),
-        finalizePackageDescription,
-        HookedBuildInfo, sanityCheckPackage, updatePackageDescription,
-	BuildInfo(..), Executable(..), setupMessage,
-        satisfyDependency, hasLibs)
-import Distribution.Simple.Utils (die, warn, rawSystemStdout)
-import Distribution.Version (Version(..), Dependency(..), VersionRange(ThisVersion),
-			     showVersion, showVersionRange)
---import Distribution.Configuration ( mkOSName, mkArchName )
-import Distribution.Verbosity(Verbosity, normal)
-import Distribution.ParseUtils ( showDependency )
+import Distribution.Compat.Directory
+    ( createDirectoryIfMissing )
+import Distribution.Compat.ReadP
+    ( readP_to_S, many, skipSpaces )
+import Distribution.Compiler
+    ( CompilerFlavor(..), Compiler(..), compilerVersion, compilerPath
+    , compilerPkgToolPath, unsupportedExtensions )
+import Distribution.Package
+    ( PackageIdentifier(..), showPackageId,  parsePackageId )
+import Distribution.PackageDescription
+    ( PackageDescription(..), Library(..), GenericPackageDescription(..)
+    , BuildInfo(..), Executable(..), finalizePackageDescription
+    , HookedBuildInfo, sanityCheckPackage, updatePackageDescription
+    , setupMessage, satisfyDependency, hasLibs )
+import Distribution.ParseUtils
+    ( showDependency )
+import Distribution.Program
+    ( Program(..), ProgramLocation(..), ProgramConfiguration(..), programPath
+    , lookupProgram, lookupPrograms, updateProgram, maybeUpdateProgram
+    , findProgramAndVersion )
+import Distribution.Setup
+    ( ConfigFlags(..), CopyDest(..) )
+import Distribution.Simple.LocalBuildInfo
+    ( LocalBuildInfo(..), distPref, default_prefix, default_datadir
+    , default_bindir, default_libsubdir, default_libexecdir, default_libdir
+    , default_datasubdir, mkLibDirRel, mkLibexecDir, mkDataDirRel, mkBinDir
+    , mkLibDir, mkDataDir, mkBinDirRel, mkLibexecDirRel)
+import Distribution.Simple.Utils
+    ( die, warn, rawSystemStdout )
+import Distribution.Simple.Register
+    ( removeInstalledConfig )
+import Distribution.System
+    ( os, OS(..), Windows(..) )
+import Distribution.Version
+    ( Version(..), Dependency(..), VersionRange(ThisVersion), showVersion
+    , showVersionRange )
+import Distribution.Verbosity
+    ( Verbosity, normal )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
-import Text.PrettyPrint.HughesPJ ( comma, punctuate, render, nest, sep )
-
-import Data.List (intersperse, nub, isPrefixOf)
-import Data.Char (isSpace, toLower)
-import Data.Maybe(fromMaybe)
-import System.Directory(doesFileExist)
-import System.Environment ( getProgName )
-import System.IO        ( hPutStrLn, stderr )
-import System.FilePath ((</>))
-import Distribution.Program(Program(..), ProgramLocation(..), programPath,
-                            ProgramConfiguration(..),
-			    lookupProgram, lookupPrograms,
-			    updateProgram, maybeUpdateProgram,
-                            findProgramAndVersion)
-import System.Exit(ExitCode(..), exitWith)
-import qualified System.Info    ( os, arch )
-import Control.Monad		( when, unless )
-import Distribution.Compat.ReadP(readP_to_S, many, skipSpaces)
-import Distribution.Compat.Directory (createDirectoryIfMissing)
+import Control.Monad
+    ( when, unless )
+import Data.Char
+    ( isSpace, toLower )
+import Data.List
+    ( intersperse, nub, isPrefixOf )
+import Data.Maybe
+    ( fromMaybe )
+import System.Directory
+    ( doesFileExist )
+import System.Environment
+    ( getProgName )
+import System.Exit
+    ( ExitCode(..), exitWith )
+import System.FilePath
+    ( (</>) )
+import qualified System.Info
+    ( os, arch )
+import System.IO
+    ( hPutStrLn, stderr )
+import Text.PrettyPrint.HughesPJ
+    ( comma, punctuate, render, nest, sep )
+    
 import Prelude hiding (catch)
 
 #ifdef DEBUG
