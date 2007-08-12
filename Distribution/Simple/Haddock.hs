@@ -143,7 +143,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                     return . join . join . take 1 . map fst . filter (null . snd)
                         . readP_to_S (parseCommaList parseFilePathQ) $ fieldVal
                 _ -> do
-                    warn verbosity $ "Unrecognised output from haddock: " ++ s
+                    warn verbosity $ "Unrecognised output from ghc-pkg field "
+		                  ++ name ++ " " ++ f ++ ": " ++ s
                     return []
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
