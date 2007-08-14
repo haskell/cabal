@@ -202,7 +202,7 @@ buildPathsModule pkg_descr lbi =
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
 	  "getDataFileName name = return (datadir ++ "++path_sep++" ++ name)\n"
 	| otherwise =
-	  "\nprefix        = " ++ flat_prefix ++
+	  "\nprefix        = " ++ show flat_prefix ++
 	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
 	  "\n\n"++
 	  "getBinDir :: IO FilePath\n"++
