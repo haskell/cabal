@@ -185,6 +185,9 @@ defaultMainHelper globalArgs _get_pkg_descr
                                         (parseProgramaticaArgs args [])
 
             HelpCmd -> exitWith ExitSuccess -- this is handled elsewhere
+            
+            _ -> do putStrLn "Command not implemented for makefiles."
+                    exitWith (ExitFailure 1)
 
 -- |convinience function for repetitions above
 basicCommand :: String  -- ^Command name
