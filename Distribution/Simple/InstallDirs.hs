@@ -456,12 +456,13 @@ getWindowsCommonFilesDir = do
    Just s  -> return s
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
-shGetFolderPath id =
+shGetFolderPath :: CInt -> IO (Maybe FilePath)
+shGetFolderPath n =
 # if __HUGS__
   return Nothing
 # else
   allocaBytes long_path_size $ \pPath -> do
-     r <- c_SHGetFolderPath nullPtr id nullPtr 0 pPath
+     r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath
      if (r /= 0)
 	then return Nothing
 	else do s <- peekCString pPath; return (Just s)
@@ -469,8 +470,9 @@ shGetFolderPath id =
     long_path_size      = 1024
 # endif
 
-csidl_PROGRAM_FILES = 0x0026 :: CInt
-csidl_PROGRAM_FILES_COMMON = 0x002b :: CInt
+csidl_PROGRAM_FILES, csidl_PROGRAM_FILES_COMMON :: CInt
+csidl_PROGRAM_FILES = 0x0026
+csidl_PROGRAM_FILES_COMMON = 0x002b
 
 foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
             c_SHGetFolderPath :: Ptr ()
