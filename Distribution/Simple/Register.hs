@@ -61,8 +61,10 @@ module Distribution.Simple.Register (
 #endif
 #endif
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), mkLibDir, mkHaddockDir,
-					   mkIncludeDir, distPref)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
+                                           InstallDirs(..), haddockdir,
+                                           InstallDirTemplates(..),
+					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..),
                               compilerPkgToolPath, compilerVersion)
 import Distribution.Program (Program(..), ProgramLocation(..))
@@ -189,10 +191,10 @@ register pkg_descr lbi regFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
-        let the_libdir = mkLibDir pkg_descr lbi NoCopyDest
-	createDirectoryIfMissingVerbose verbosity True the_libdir
+        let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+	createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
 	copyFileVerbose verbosity installedPkgConfigFile
-	    (the_libdir </> "package.conf")
+	    (libdir installDirs </> "package.conf")
       JHC -> when (verbosity >= normal) $ putStrLn "registering for JHC (nothing to do)"
       NHC -> when (verbosity >= normal) $ putStrLn "registering nhc98 (nothing to do)"
       _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
@@ -264,14 +266,18 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
 	build_dir = pwd </> buildDir lbi
-	the_libdir = mkLibDir pkg_descr lbi NoCopyDest
-	incdir = mkIncludeDir the_libdir
+        installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        inplaceDirs = absoluteInstallDirs pkg_descr lbi {
+                        installDirTemplates = (installDirTemplates lbi) {
+                          dataDirTemplate    = toPathTemplate pwd,
+                          dataSubdirTemplate = toPathTemplate distPref
+                        }
+                      } NoCopyDest
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
-        haddockDir = mkHaddockDir pkg_descr lbi NoCopyDest
-        haddockFile = haddockDir </> haddockName pkg_descr
-        inplace_lbi = lbi { datadir = pwd, datasubdir = distPref }
-        haddockDirInplace = mkHaddockDir pkg_descr inplace_lbi NoCopyDest
-        haddockFileInplace = haddockDirInplace </> haddockName pkg_descr
+        haddockDir  | inplace   = haddockdir installDirs pkg_descr
+                    | otherwise = haddockdir inplaceDirs pkg_descr
+        libraryDir  | inplace   = build_dir
+                    | otherwise = libdir installDirs
     in
     return emptyInstalledPackageInfo{
         IPI.package           = package pkg_descr,
@@ -287,15 +293,13 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.exposed           = True,
 	IPI.exposedModules    = exposedModules lib,
 	IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [if inplace then build_dir else the_libdir],
-        IPI.libraryDirs       = (if inplace then build_dir else the_libdir)
-				: extraLibDirs bi,
+        IPI.importDirs        = [libraryDir],
+        IPI.libraryDirs       = libraryDir : extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
-        IPI.includeDirs       = absinc 
-				 ++ if inplace 
-					then map (pwd </>) relinc
-					else [incdir],
+        IPI.includeDirs       = absinc ++ if inplace
+                                            then map (pwd </>) relinc
+                                            else [includedir installDirs],
         IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
@@ -303,10 +307,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.ldOptions         = ldOptions bi,
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
-	IPI.haddockInterfaces = [if inplace then haddockFileInplace
-                                            else haddockFile],
-	IPI.haddockHTMLs      = [if inplace then haddockDirInplace
-                                            else haddockDir]
+	IPI.haddockInterfaces = [haddockDir </> haddockName pkg_descr],
+	IPI.haddockHTMLs      = [haddockDir]
         }
 
 -- -----------------------------------------------------------------------------
@@ -320,6 +322,7 @@ unregister pkg_descr lbi regFlags = do
       verbosity = regVerbose regFlags
       user = regUser regFlags `userOverride` userConf lbi
       hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
+      installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
   case compilerFlavor hc of
     GHC -> do
 	config_flags <-
@@ -339,10 +342,10 @@ unregister pkg_descr lbi regFlags = do
 	rawSystemEmit unregScriptLocation genScript verbosity pkgTool
 	    (removeCmd++config_flags)
     Hugs -> do
-        try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
+        try $ removeDirectoryRecursive (libdir installDirs)
 	return ()
     NHC -> do
-        try $ removeDirectoryRecursive (mkLibDir pkg_descr lbi NoCopyDest)
+        try $ removeDirectoryRecursive (libdir installDirs)
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")

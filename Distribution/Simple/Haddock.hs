@@ -56,9 +56,13 @@ import Distribution.Program(lookupProgram, Program(..), programPath,
 import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Setup
-
+import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
+                                        PathTemplateVariable(..),
+                                        toPathTemplate, fromPathTemplate,
+                                        substPathTemplate,
+                                        initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
-                                            haddockPref, distPref, substDir )
+                                            haddockPref, distPref )
 import Distribution.Simple.Utils (die, warn, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
 
@@ -117,8 +121,10 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                     (programVersion confHaddock)
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
+    let comp = compiler lbi
+        pkgTool = compilerPkgTool comp
     let ghcpkgFlags = if have_new_flags
-                      then ["--ghc-pkg=" ++ programPath (compilerPkgTool (compiler lbi))]
+                      then ["--ghc-pkg=" ++ programPath pkgTool]
                       else []
     let cssFileFlag = case haddockCss haddockFlags of
                         Nothing -> []
@@ -134,7 +140,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ,"--source-entity=src/%{MODULE/./-}.html#%{NAME}"]
             else []
 
-    let pkgTool = compilerPkgTool (compiler lbi)
     let getField pkgId f = do
             let name = showPackageId pkgId
             s <- rawSystemStdout verbosity (programPath pkgTool) ["field", name, f]
@@ -150,7 +155,14 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
             interface <- getField pkgId "haddock-interfaces"
             html <- case haddockHtmlLocation haddockFlags of
                 Nothing -> getField pkgId "haddock-html"
-                Just htmlTemplate -> return (substDir pkgId lbi htmlTemplate)
+                Just htmlStrTemplate ->
+                  let env0 = initialPathTemplateEnv pkgId (compilerId comp)
+                      prefixSubst = prefixDirTemplate (installDirTemplates lbi)
+                      env = (PrefixVar, prefixSubst) : env0
+                      expandTemplateVars = fromPathTemplate
+                                         . substPathTemplate env
+                                         . toPathTemplate
+                   in return (expandTemplateVars htmlStrTemplate)
             return $ if null interface
                 then Nothing
                 else Just $ "--read-interface=" ++
