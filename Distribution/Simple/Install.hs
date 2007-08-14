@@ -57,13 +57,15 @@ module Distribution.Simple.Install (
 #endif
 #endif
 
+import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
 	setupMessage, hasLibs, withLib, withExe )
 import Distribution.Simple.LocalBuildInfo (
-        LocalBuildInfo(..), mkLibDir, mkBinDir, mkDataDir, mkProgDir,
-        mkHaddockDir, mkIncludeDir, haddockPref)
-import Distribution.Simple.Utils(createDirectoryIfMissingVerbose, copyFileVerbose, die, copyDirectoryRecursiveVerbose)
+        LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs, haddockPref)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
+                                  copyFileVerbose, die,
+                                  copyDirectoryRecursiveVerbose)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Setup (CopyFlags(..), CopyDest(..))
 
@@ -90,31 +92,36 @@ install :: PackageDescription -- ^information from the .cabal file
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
 install pkg_descr lbi (CopyFlags copydest verbosity) = do
+  let InstallDirs {
+         libdir     = libPref,
+         bindir     = binPref,
+         datadir    = dataPref,
+         progdir    = progPref,
+         htmldir    = htmlPref,
+         includedir = incPref
+      } = absoluteInstallDirs pkg_descr lbi copydest
   let dataFilesExist = not (null (dataFiles pkg_descr))
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
   when (verbosity >= verbose)
        (putStrLn ("directory " ++ haddockPref pkg_descr ++
                   " does exist: " ++ show docExists))
   when (dataFilesExist || docExists) $ do
-    let dataPref = mkDataDir pkg_descr lbi copydest
     createDirectoryIfMissingVerbose verbosity True dataPref
     flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
       copyFileVerbose verbosity file (dataPref </> file)
     when docExists $ do
-      let targetDir = mkHaddockDir pkg_descr lbi copydest
+      let targetDir = htmlPref </> pkgName (package pkg_descr)
       createDirectoryIfMissingVerbose verbosity True targetDir
       copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
       -- setPermissionsRecursive [Read] targetDir
   let buildPref = buildDir lbi
-  let libPref = mkLibDir pkg_descr lbi copydest
-  let binPref = mkBinDir pkg_descr lbi copydest
   setupMessage verbosity ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
-  when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr libPref
+  when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr incPref
 
   case compilerFlavor (compiler lbi) of
      GHC  -> do when (hasLibs pkg_descr)
@@ -125,8 +132,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref pkg_descr
      Hugs -> do
-       let progPref = mkProgDir pkg_descr lbi copydest
-       let targetProgPref = mkProgDir pkg_descr lbi NoCopyDest
+       let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref pkg_descr
      NHC  -> die ("installing with nhc98 is not yet implemented")
@@ -136,7 +142,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
 
 -- | Install the files listed in install-includes
 installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbosity PackageDescription{library=Just l} theLibdir
+installIncludeFiles verbosity PackageDescription{library=Just l} incdir
  = do
    createDirectoryIfMissingVerbose verbosity True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
@@ -145,7 +151,6 @@ installIncludeFiles verbosity PackageDescription{library=Just l} theLibdir
   where
    relincdirs = filter (not.isAbsolute) (includeDirs lbi)
    lbi = libBuildInfo l
-   incdir = mkIncludeDir theLibdir
 
    findInc [] f = die ("can't find include file " ++ f)
    findInc (d:ds) f = do

@@ -63,6 +63,7 @@ Library {
         Distribution.Simple.Haddock,
         Distribution.Simple.Hugs,
         Distribution.Simple.Install,
+        Distribution.Simple.InstallDirs,
         Distribution.Simple.JHC,
         Distribution.Simple.LocalBuildInfo,
         Distribution.Simple.NHC,

@@ -59,9 +59,9 @@ import Distribution.Setup	( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..) )
 import Distribution.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), mkBinDir, mkBinDirRel,
-				  mkLibDir, mkLibDirRel, mkDataDir,mkDataDirRel,
-				  mkLibexecDir, mkLibexecDirRel, mkProgDirRel )
+				( LocalBuildInfo(..),
+                                  InstallDirs(..), absoluteInstallDirs,
+                                  prefixRelativeInstallDirs )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die )
@@ -69,7 +69,7 @@ import Distribution.System
 
 import System.FilePath          ( (</>), pathSeparator )
 
-import Data.Maybe		( maybeToList, fromJust )
+import Data.Maybe		( maybeToList, fromJust, isNothing )
 import Control.Monad 		( unless, when )
 import System.Directory		( getModificationTime, doesFileExist )
 
@@ -202,7 +202,7 @@ buildPathsModule pkg_descr lbi =
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
 	  "getDataFileName name = return (datadir ++ "++path_sep++" ++ name)\n"
 	| otherwise =
-	  "\nprefix        = " ++ show (prefix lbi) ++
+	  "\nprefix        = " ++ flat_prefix ++
 	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
 	  "\n\n"++
 	  "getBinDir :: IO FilePath\n"++
@@ -230,27 +230,35 @@ buildPathsModule pkg_descr lbi =
 	   then writeFile paths_filepath (header++body)
 	   else return ()
  where
-	flat_bindir        = mkBinDir pkg_descr lbi NoCopyDest
-	flat_bindirrel     = mkBinDirRel pkg_descr lbi NoCopyDest
-	flat_libdir        = mkLibDir pkg_descr lbi NoCopyDest
-	flat_libdirrel     = mkLibDirRel pkg_descr lbi NoCopyDest
-	flat_datadir       = mkDataDir pkg_descr lbi NoCopyDest
-	flat_datadirrel    = mkDataDirRel pkg_descr lbi NoCopyDest
-	flat_libexecdir    = mkLibexecDir pkg_descr lbi NoCopyDest
-	flat_libexecdirrel = mkLibexecDirRel pkg_descr lbi NoCopyDest
-	flat_progdirrel    = mkProgDirRel pkg_descr lbi NoCopyDest
+	InstallDirs {
+          prefix     = flat_prefix,
+          bindir     = flat_bindir,
+          libdir     = flat_libdir,
+          datadir    = flat_datadir,
+          libexecdir = flat_libexecdir
+        } = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        InstallDirs {
+          bindir     = flat_bindirrel,
+          libdir     = flat_libdirrel,
+          datadir    = flat_datadirrel,
+          libexecdir = flat_libexecdirrel,
+          progdir    = flat_progdirrel
+        } = prefixRelativeInstallDirs pkg_descr lbi
 	
 	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
 
-        absolute = case os of
-                       Windows MingW ->
-                           hasLibs pkg_descr ||
-                           flat_bindirrel == Nothing
-                       _ ->
-                           hasLibs pkg_descr ||
-                           flat_progdirrel == Nothing ||
-                           not isHugs
+        -- In several cases we cannot make relocatable installations
+        absolute =
+             hasLibs pkg_descr        -- we can only make progs relocatable
+          || isNothing flat_bindirrel -- if the bin dir is an absolute path
+          || not (supportsRelocatableProgs (compilerFlavor (compiler lbi)))
+
+        supportsRelocatableProgs Hugs = True
+        supportsRelocatableProgs GHC  = case os of
+                           Windows _ -> True
+                           _         -> False
+        supportsRelocatableProgs _    = False
 
   	paths_modulename = autogenModuleName pkg_descr
 	paths_filename = paths_modulename ++ ".hs"

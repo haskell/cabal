@@ -24,7 +24,8 @@ module Distribution.Simple.GHCPackageConfig (
 
 import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),mkLibDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), absoluteInstallDirs)
+import Distribution.Simple.InstallDirs (InstallDirs(..))
 import Distribution.Setup (CopyDest(..))
 
 #ifndef __NHC__
@@ -82,19 +83,21 @@ canWriteLocalPackageConfig = checkPermission writable
 mkGHCPackageConfig :: PackageDescription -> LocalBuildInfo -> GHCPackageConfig
 mkGHCPackageConfig pkg_descr lbi
   = defaultGHCPackageConfig {
-	name	        = pkg_name,
+	name	        = pkgName pkg,
 	auto	        = True,
-	import_dirs     = [mkLibDir pkg_descr lbi NoCopyDest],
-	library_dirs    = (mkLibDir pkg_descr lbi NoCopyDest: 
-			   maybe [] (extraLibDirs . libBuildInfo) (library pkg_descr)),
+	import_dirs     = [libdir installDirs],
+	library_dirs    = libdir installDirs
+                        : maybe [] (extraLibDirs . libBuildInfo) lib,
 	hs_libraries    = ["HS"++(showPackageId (package pkg_descr))],
-	extra_libraries = maybe [] (extraLibs . libBuildInfo)  (library pkg_descr),
-	include_dirs    = maybe [] (includeDirs . libBuildInfo) (library pkg_descr),
-	c_includes      = maybe [] (includes . libBuildInfo) (library pkg_descr),
+	extra_libraries = maybe [] (extraLibs   . libBuildInfo) lib,
+	include_dirs    = maybe [] (includeDirs . libBuildInfo) lib,
+	c_includes      = maybe [] (includes    . libBuildInfo) lib,
 	package_deps    = map pkgName (packageDeps lbi)
     }
  where
-   pkg_name = pkgName (package pkg_descr)
+   pkg = package pkg_descr
+   lib = library pkg_descr
+   installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
 
 data GHCPackageConfig
    = GHCPackage {

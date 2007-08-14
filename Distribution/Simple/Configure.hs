@@ -86,11 +86,12 @@ import Distribution.Program
     , findProgramAndVersion )
 import Distribution.Setup
     ( ConfigFlags(..), CopyDest(..) )
+import Distribution.Simple.InstallDirs
+    ( InstallDirs(..), InstallDirTemplates(..), defaultInstallDirs
+    , toPathTemplate )
 import Distribution.Simple.LocalBuildInfo
-    ( LocalBuildInfo(..), distPref, default_prefix, default_datadir
-    , default_bindir, default_libsubdir, default_libexecdir, default_libdir
-    , default_datasubdir, mkLibDirRel, mkLibexecDir, mkDataDirRel, mkBinDir
-    , mkLibDir, mkDataDir, mkBinDirRel, mkLibexecDirRel)
+    ( LocalBuildInfo(..), distPref, absoluteInstallDirs
+    , prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
     ( die, warn, rawSystemStdout )
 import Distribution.Simple.Register
@@ -115,7 +116,7 @@ import Data.Char
 import Data.List
     ( intersperse, nub, isPrefixOf )
 import Data.Maybe
-    ( fromMaybe )
+    ( fromMaybe, isNothing )
 import System.Directory
     ( doesFileExist )
 import System.Environment
@@ -245,22 +246,20 @@ configure (pkg_descr0, pbi) cfg
 	removeInstalledConfig
 
 	-- installation directories
-	defPrefix <- default_prefix
-	defDataDir <- default_datadir pkg_descr
-        let 
-		pref = fromMaybe defPrefix (configPrefix cfg)
-		my_bindir = fromMaybe default_bindir 
-				  (configBinDir cfg)
-		my_libdir = fromMaybe (default_libdir comp)
-				  (configLibDir cfg)
-		my_libsubdir = fromMaybe (default_libsubdir comp)
-				  (configLibSubDir cfg)
-		my_libexecdir = fromMaybe default_libexecdir
-				  (configLibExecDir cfg)
-		my_datadir = fromMaybe defDataDir
-				  (configDataDir cfg)
-		my_datasubdir = fromMaybe default_datasubdir
-				  (configDataSubDir cfg)
+	defaultDirs <- defaultInstallDirs flavor (hasLibs pkg_descr)
+	let maybeDefault confField dirField =
+	      maybe (dirField defaultDirs) toPathTemplate (confField cfg)
+	    installDirs = defaultDirs {
+	        prefixDirTemplate  = maybeDefault configPrefix     prefixDirTemplate,
+		binDirTemplate     = maybeDefault configBinDir     binDirTemplate,
+		libDirTemplate     = maybeDefault configLibDir     libDirTemplate,
+		libSubdirTemplate  = maybeDefault configLibSubDir  libSubdirTemplate,
+		libexecDirTemplate = maybeDefault configLibExecDir libexecDirTemplate,
+		dataDirTemplate    = maybeDefault configDataDir    dataDirTemplate,
+		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate
+--              docDirTemplate     =
+--              htmlDirTemplate    =
+	      }
 
         -- check extensions
         let lib = library pkg_descr
@@ -290,15 +289,11 @@ configure (pkg_descr0, pbi) cfg
 					  "--enable-split-objs; ignoring")
 				    return False
 
-	let lbi = LocalBuildInfo{prefix=pref, compiler=comp,
+	let lbi = LocalBuildInfo{
+                              installDirTemplates = installDirs,
+                              compiler=comp,
 			      buildDir=distPref </> "build",
 			      scratchDir=distPref </> "scratch",
-			      bindir=my_bindir,
-			      libdir=my_libdir,
-			      libsubdir=my_libsubdir,
-			      libexecdir=my_libexecdir,
-			      datadir=my_datadir,
-			      datasubdir=my_datasubdir,
                               packageDeps=dep_pkgs,
                               localPkgDescr=pkg_descr,
                               withPrograms=newConfig'',
@@ -311,13 +306,17 @@ configure (pkg_descr0, pbi) cfg
                               userConf=configUser cfg
                              }
 
-        -- FIXME: maybe this should only be printed when verbose?
-        message $ "Using install prefix: " ++ pref
+        let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+            relative = prefixRelativeInstallDirs pkg_descr lbi
 
-        messageDir pkg_descr lbi "Binaries" mkBinDir mkBinDirRel
-        messageDir pkg_descr lbi "Libraries" mkLibDir mkLibDirRel
-        messageDir pkg_descr lbi "Private binaries" mkLibexecDir mkLibexecDirRel
-        messageDir pkg_descr lbi "Data files" mkDataDir mkDataDirRel
+        -- FIXME: maybe this should only be printed when verbose?
+        message $ "Using install prefix: " ++ prefix dirs
+
+        messageDir "Binaries"         pkg_descr (bindir dirs)    (bindir relative)
+        messageDir "Libraries"        pkg_descr (libdir dirs)    (libdir relative)
+        messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
+        messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
+        messageDir "documentation"    pkg_descr (docdir dirs)    (docdir relative)
         
         message $ "Using compiler: " ++ compilerPath comp
         message $ "Compiler flavor: " ++ show flavor
@@ -328,19 +327,14 @@ configure (pkg_descr0, pbi) cfg
 
 	return lbi
 
-messageDir :: PackageDescription -> LocalBuildInfo -> String
-	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath)
-	-> (PackageDescription -> LocalBuildInfo -> CopyDest -> Maybe FilePath)
-	-> IO ()
-messageDir pkg_descr lbi name mkDir mkDirRel
- = message (name ++ " installed in: " ++ mkDir pkg_descr lbi NoCopyDest ++ rel_note)
+messageDir :: String -> PackageDescription -> FilePath -> Maybe FilePath -> IO ()
+messageDir name pkg_descr dir isPrefixRelative
+ = message (name ++ " installed in: " ++ dir ++ rel_note)
   where
     rel_note = case os of
-                   Windows MingW
-                    | not (hasLibs pkg_descr) &&
-                      mkDirRel pkg_descr lbi NoCopyDest == Nothing
-                     -> "  (fixed location)"
-                   _ -> ""
+      Windows MingW | not (hasLibs pkg_descr)
+                   && isNothing isPrefixRelative -> "  (fixed location)"
+      _                                          -> ""
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
