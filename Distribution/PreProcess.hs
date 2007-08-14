@@ -310,18 +310,20 @@ ppGhcCpp extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgram verbosity (compilerProg (compiler lbi)) $
+      rawSystemProgram verbosity ghcProg $
           ["-E", "-cpp"]
           -- This is a bit of an ugly hack. We're going to
           -- unlit the file ourselves later on if appropriate,
           -- so we need GHC not to unlit it now or it'll get
           -- double-unlitted. In the future we might switch to
           -- using cpphs --unlit instead.
-       ++ ["-x", "hs"]
+       ++ (if ghcVersion >= Version [6,6] [] then ["-x", "hs"] else [])
        ++ (if use_optP_P lbi then ["-optP-P"] else [])
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
+  where ghcProg = compilerProg (compiler lbi)
+        Just ghcVersion = programVersion ghcProg
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpphs extraArgs _bi lbi =
