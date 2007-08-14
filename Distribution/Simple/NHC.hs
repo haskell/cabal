@@ -53,8 +53,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
                                   extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Program     ( Program(..), rawSystemProgram,
-                                  findProgramAndVersion )
+import Distribution.Program     ( rawSystemProgram, findProgramAndVersion )
 import Distribution.Verbosity
 
 
@@ -71,7 +70,6 @@ configure hcPath _hcPkgPath verbosity = do
                  (_:ver:_) -> ver
                  _         -> ""
 
-  let Just version = programVersion hmakeProg
   return Compiler {
         compilerFlavor  = NHC,
         compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
