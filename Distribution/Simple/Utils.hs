@@ -83,9 +83,35 @@ module Distribution.Simple.Utils (
 #endif
 #endif
 
-import Distribution.Compat.RawSystem (rawSystem)
-import Distribution.Compat.Exception (bracket)
+import Control.Monad
+    ( when, filterM, unless )
+import Data.List
+    ( nub, unfoldr )
+
+import System.Directory
+    ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
+    , doesFileExist, removeFile )
+import System.Environment
+    ( getProgName )
+import System.Exit
+    ( exitWith, ExitCode(..) )
+import System.FilePath
+    ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
+import System.IO
+    ( hPutStrLn, stderr, hFlush, stdout )
+import System.IO.Error
+    ( try )
+
+import Distribution.Compat.Directory
+    ( copyFile, findExecutable, createDirectoryIfMissing
+    , getDirectoryContentsWithoutSpecial)
+import Distribution.Compat.RawSystem
+    ( rawSystem )
+import Distribution.Compat.Exception
+    ( bracket )
 import Distribution.System
+    ( OS(..), os )
+
 
 #if __GLASGOW_HASKELL__ >= 604
 import Control.Exception (evaluate)
@@ -95,21 +121,6 @@ import System.Cmd (system)
 #endif
 import System.IO (hClose)
 
-import Control.Monad(when, filterM, unless)
-import Data.List (nub, unfoldr)
-import System.Environment (getProgName)
-import System.IO (hPutStrLn, stderr, hFlush, stdout)
-import System.IO.Error
-import System.Exit
-
-import System.FilePath
-	(takeDirectory, takeExtension, (</>), (<.>), pathSeparator)
-import System.Directory (getDirectoryContents, getCurrentDirectory
-			, doesDirectoryExist, doesFileExist, removeFile)
-
-import Distribution.Compat.Directory
-           (copyFile, findExecutable, createDirectoryIfMissing,
-            getDirectoryContentsWithoutSpecial)
 #if __GLASGOW_HASKELL__ >= 604
 import Distribution.Compat.TempFile (openTempFile)
 #else
