@@ -138,6 +138,8 @@ data ConfigFlags = ConfigFlags {
 		-- ^installation dir for read-only arch-independent data,
 	configDataSubDir :: Maybe FilePath,
 		-- ^subdirectory of datadir in which data files are installed
+	configDocDir   :: Maybe FilePath,
+		-- ^installation dir for documentation
 
         configVerbose  :: Verbosity,            -- ^verbosity level
 	configUser     :: Bool,		  -- ^ the --user flag?
@@ -168,6 +170,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configLibExecDir = Nothing,
 	configDataDir  = Nothing,
 	configDataSubDir = Nothing,
+	configDocDir = Nothing,
         configVerbose  = normal,
 	configUser     = False,
 	configGHCiLib  = True,
@@ -309,6 +312,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | LibExecDir FilePath
 	  | DataDir FilePath
 	  | DataSubDir FilePath
+	  | DocDir FilePath
           | WithHaddockUsePackages | WithoutHaddockUsePackages
           | ConfigurationsFlags [(String, Bool)]
 
@@ -379,6 +383,7 @@ configureArgs flags
         optFlag "libdir" configLibDir ++
         optFlag "libexecdir" configLibExecDir ++
         optFlag "datadir" configDataDir ++
+	optFlag "docdir" configDocDir ++
         configConfigureArgs flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
@@ -515,6 +520,8 @@ configureCmd progConf = Cmd {
 		"installation directory for read-only data",
 	   Option "" ["datasubdir"] (reqDirArg DataSubDir)
 		"subdirectory of datadir in which data files are installed",
+	   Option "" ["docdir"] (reqDirArg DocDir)
+		"installation directory for documentation",
            Option "" ["enable-library-vanilla"] (NoArg WithVanillaLib)
                "Enable vanilla libraries",
            Option "" ["disable-library-vanilla"] (NoArg WithoutVanillaLib)
@@ -622,6 +629,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (LibExecDir path)    = t { configLibExecDir = Just path }
         updateCfg t (DataDir path)       = t { configDataDir  = Just path }
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
+	updateCfg t (DocDir path)       = t { configDocDir  = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configUser     = True }
         updateCfg t GlobalFlag           = t { configUser     = False }
