@@ -53,7 +53,7 @@ import qualified Distribution.Make ()
 import qualified Distribution.Package as D.P ()
 import qualified Distribution.PackageDescription as D.PD (hunitTests)
 import qualified Distribution.Setup as D.Setup (hunitTests)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Version (Version(..))
 
 import qualified Distribution.Simple as D.S (simpleHunitTests)
