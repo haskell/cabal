@@ -256,9 +256,9 @@ configure (pkg_descr0, pbi) cfg
 		libSubdirTemplate  = maybeDefault configLibSubDir  libSubdirTemplate,
 		libexecDirTemplate = maybeDefault configLibExecDir libexecDirTemplate,
 		dataDirTemplate    = maybeDefault configDataDir    dataDirTemplate,
-		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate
---              docDirTemplate     =
---              htmlDirTemplate    =
+		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate,
+		docDirTemplate     = maybeDefault configDocDir     docDirTemplate
+--		htmlDirTemplate    =
 	      }
 
         -- check extensions
@@ -316,7 +316,7 @@ configure (pkg_descr0, pbi) cfg
         messageDir "Libraries"        pkg_descr (libdir dirs)    (libdir relative)
         messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
         messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
-        messageDir "documentation"    pkg_descr (docdir dirs)    (docdir relative)
+        messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
         
         message $ "Using compiler: " ++ compilerPath comp
         message $ "Compiler flavor: " ++ show flavor
