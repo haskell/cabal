@@ -49,7 +49,7 @@ module Distribution.Simple.Register (
 	removeInstalledConfig,
         removeRegScripts,
 #ifdef DEBUG
-        hunitTests
+        hunitTests, installedPkgConfigFile
 #endif
   ) where
 
