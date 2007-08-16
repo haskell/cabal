@@ -79,17 +79,21 @@ data Flag = MkFlag
 
 instance Show Flag where show (MkFlag n _ _) = n
 
+-- | A @ConfFlag@ represents an user-defined flag
+data ConfFlag = ConfFlag String
+    deriving Eq
+
 -- | A @ConfVar@ represents the variable type used. 
 data ConfVar = OS String 
              | Arch String 
-             | Flag String
+             | Flag ConfFlag
              | Impl String VersionRange
                deriving Eq
 
 instance Show ConfVar where
     show (OS n) = "os(" ++ n ++ ")"
     show (Arch n) = "arch(" ++ n ++ ")"
-    show (Flag f) = "flag(" ++ f ++ ")"
+    show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
     show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
@@ -113,12 +117,12 @@ ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
 
 -- | Simplify the condition and return its free variables.
 simplifyCondition :: Condition c
-                  -> (c -> Maybe Bool)   -- ^ (partial) variable assignment
-                  -> (Condition c, [c])
+                  -> (c -> Either d Bool)   -- ^ (partial) variable assignment
+                  -> (Condition d, [d])
 simplifyCondition cond i = fv . walk $ cond
   where
     walk cnd = case cnd of
-      Var v   -> maybe (Var v) Lit (i v)
+      Var v   -> either Var Lit (i v)
       Lit b   -> Lit b
       CNot c  -> case walk c of
                    Lit True -> Lit False
@@ -148,15 +152,15 @@ simplifyCondition cond i = fv . walk $ cond
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
 simplifyWithSysParams :: String -> String -> (String, Version) -> Condition ConfVar ->  
-                         (Condition ConfVar, [String])
+                         (Condition ConfFlag, [String])
 simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
-    interp (OS name)   = Just $ name == os
-    interp (Arch name) = Just $ name == arch
-    interp (Impl i vr) = Just $ impl == i && implVer `withinRange` vr
-    interp _           = Nothing
-    flags = [ fname | Flag fname <- fvs ]
+    interp (OS name)   = Right $ name == os
+    interp (Arch name) = Right $ name == arch
+    interp (Impl i vr) = Right $ impl == i && implVer `withinRange` vr
+    interp (Flag  f)   = Left f
+    flags = [ fname | ConfFlag fname <- fvs ]
 
 -- XXX: Add instances and check
 --
@@ -187,7 +191,7 @@ parseCondition = condOr
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var. OS 
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch 
-    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag 
+    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
     ident    = munch1 isIdentChar >>= return . map toLower
     lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
@@ -324,9 +328,7 @@ resolveWithFlags dom os arch impl trees checkDeps =
     -- `mzero'
     mz = Left (BTN [])
 
-    env _ (OS o)     = Just $ o == os
-    env _ (Arch a)   = Just $ a == arch
-    env flags (Flag n) = lookup n flags
+    env flags flag@(ConfFlag n) = maybe (Left flag) Right . lookup n $ flags 
 
     -- for the error case we inspect our lazy tree of missing dependencies and
     -- pick the shortest list of missing dependencies
@@ -349,7 +351,7 @@ resolveWithFlags dom os arch impl trees checkDeps =
 
 
 simplifyCondTree :: (Monoid a, Monoid d) =>
-                    (v -> Maybe Bool) 
+                    (v -> Either v Bool) 
                  -> CondTree v d a 
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
@@ -387,10 +389,10 @@ instance (Monoid a, Monoid b) => Monoid (a,b) where
 
 tstTree :: CondTree ConfVar [Int] String
 tstTree = CondNode "A" [0] 
-              [ (CNot (Var (Flag "a")), 
+              [ (CNot (Var (Flag (ConfFlag "a"))), 
                  CondNode "B" [1] [],
                  Nothing)
-              , (CAnd (Var (Flag "b")) (Var (Flag "c")),
+              , (CAnd (Var (Flag (ConfFlag "b"))) (Var (Flag (ConfFlag "c"))),
                 CondNode "C" [2] [],
                 Just $ CondNode "D" [3] 
                          [ (Lit True,
@@ -402,7 +404,7 @@ tstTree = CondNode "A" [0]
 test_simplify = simplifyWithSysParams i386 darwin ("ghc",Version [6,6] []) tstCond 
   where 
     tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
-                  (CAnd (Var (Flag "debug")) (Var (OS darwin)))
+                  (CAnd (Var (Flag (ConfFlag "debug"))) (Var (OS darwin)))
     [ppc,i386] = ["ppc","i386"]
     [darwin,windows] = ["darwin","windows"]
 
@@ -430,9 +432,11 @@ test_parseCondition = map (runP 1 "test" parseCondition) testConditions
 test_ppCondTree = render $ ppCondTree tstTree (text . show)
   
 
-test_simpCondTree = simplifyCondTree (flip lookup flags) tstTree
+test_simpCondTree = simplifyCondTree env tstTree
   where
-    flags = [(Flag "a",False), (Flag "b",False), (Flag "c", True)] 
+    env x = maybe (Left x) Right (lookup x flags)
+    flags = [(mkFlag "a",False), (mkFlag "b",False), (mkFlag "c", True)] 
+    mkFlag = Flag . ConfFlag
 
 test_resolveWithFlags = resolveWithFlags dom "os" "arch" ("ghc",Version [6,6] []) [tstTree] check
   where
