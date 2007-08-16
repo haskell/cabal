@@ -166,7 +166,7 @@ defaultInstallDirs comp hasLibs = do
                    | otherwise -> "$prefix" </> "Haskell"
         _other    -> "$prefix" </> "share"
       dataSubdir   = "$pkgid"
-      docDir       = "$datadir" </> "$datasubdir" </> "doc"
+      docDir       = "$datadir" </> "doc" </> "$pkgid"
       htmlDir      = "$docdir"  </> "html"
   return InstallDirTemplates {
       prefixDirTemplate  = toPathTemplate prefixDir,
