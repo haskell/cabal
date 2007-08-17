@@ -149,5 +149,5 @@ configCabalFlag _flags AnyVersion _ = return []
 configCabalFlag flags range comp = do
   ipkgs <-  getInstalledPackages comp True (verbosity flags)
 	-- user packages are *allowed* here, no portability problem
-  cabal_pkgid <- configDependency ipkgs (Dependency "Cabal" range)
+  cabal_pkgid <- configDependency (verbosity flags) ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
