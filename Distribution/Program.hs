@@ -23,219 +23,485 @@
 -- hook user the ability to get the above flags and such so that they
 -- don't have to write all the PATH logic inside Setup.lhs.
 
-module Distribution.Program(
-                           -- * Program-Related types
-                             Program(..)
-                           , ProgramLocation(..)
-                           , ProgramConfiguration(..)
-                           -- * Helper functions
-                           , withProgramFlag
-                           , programOptsFlag
-                           , programOptsField
-                           , programPath
-                           , findProgram
-                           , findProgramAndVersion
-                           , defaultProgramConfiguration
-                           , updateProgram
-                           , maybeUpdateProgram
-                           , userSpecifyPath
-                           , userSpecifyArgs
-                           , lookupProgram
-                           , lookupProgram' --TODO eliminate this export
-                           , lookupPrograms
-                           , rawSystemProgram
-                           , rawSystemProgramConf
-                           , simpleProgram
-                           , simpleProgramAt
-                             -- * Programs that Cabal knows about
-                           , ghcProgram
-                           , ghcPkgProgram
-                           , nhcProgram
-                           , jhcProgram
-                           , hugsProgram
-                           , ranlibProgram
-                           , arProgram
-                           , happyProgram
-                           , alexProgram
-                           , hsc2hsProgram
-                           , c2hsProgram
-                           , cpphsProgram
-                           , hscolourProgram
-                           , haddockProgram
-                           , greencardProgram
-                           , ldProgram
-                           , cppProgram
-                           , pfesetupProgram
-                           ) where
+module Distribution.Program (
+    -- * Program and functions for constructing them
+      Program(..)
+    , simpleProgram
+    , searchPath
+    , findProgramVersion
+
+    -- * Configured program and related functions
+    , ConfiguredProgram(..)
+    , programPath
+    , ProgArg
+    , ProgramLocation(..)
+    , rawSystemProgram
+
+    -- * The collection of unconfigured and configured progams
+    , builtinPrograms
+
+    -- * The collection of configured programs we can run
+    , ProgramConfiguration
+    , emptyProgramConfiguration
+    , defaultProgramConfiguration
+    , addKnownProgram
+    , knownPrograms
+    , userSpecifyPath
+    , userMaybeSpecifyPath
+    , userSpecifyArgs
+    , lookupProgram
+    , updateProgram
+    , configureAllKnownPrograms
+    , requireProgram
+    , rawSystemProgramConf
+
+    -- * Programs that Cabal knows about
+    , ghcProgram
+    , ghcPkgProgram
+    , nhcProgram
+    , hmakeProgram
+    , jhcProgram
+    , hugsProgram
+    , ffihugsProgram
+    , ranlibProgram
+    , arProgram
+    , happyProgram
+    , alexProgram
+    , hsc2hsProgram
+    , c2hsProgram
+    , cpphsProgram
+    , hscolourProgram
+    , haddockProgram
+    , greencardProgram
+    , ldProgram
+    , tarProgram
+    , cppProgram
+    , pfesetupProgram
+    ) where
 
 import qualified Distribution.Compat.Map as Map
 import Distribution.Compat.Directory (findExecutable)
 import Distribution.Simple.Utils (die, rawSystemExit, rawSystemStdout)
-import Distribution.System
-import Distribution.Version (Version, readVersion)
+import Distribution.Version (Version, readVersion, showVersion,
+                             VersionRange(..), withinRange, showVersionRange)
 import Distribution.Verbosity
 import System.Directory (doesFileExist)
-import Control.Monad (when)
+import Control.Monad (when, join, foldM)
+import Control.Exception as Exception (catch)
 
--- |Represents a program which cabal may call.
-data Program
-    = Program { -- |The simple name of the program, eg. ghc
-               programName :: String
-                -- |The name of this program's binary, eg. ghc-6.4
-              ,programBinName :: String
-                -- |The version of this program, if it is known
-              ,programVersion :: Maybe Version
-                -- |Default command-line args for this program
-              ,programArgs :: [String]
-                -- |Location of the program.  eg. \/usr\/bin\/ghc-6.4
-              ,programLocation :: ProgramLocation
-              } deriving (Read, Show)
+-- | Represents a program which can be configured.
+data Program = Program {
+        -- | The simple name of the program, eg. ghc
+        programName :: String,
+        
+        -- | A function to search for the program if it's location was not
+        -- specified by the user. Usually this will just be a 
+        programFindLocation :: Verbosity -> IO (Maybe FilePath),
+        
+        -- | Try to find the version of the program. For many programs this is
+        -- not possible or is not necessary so it's ok to return Nothing.
+        programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+    }
 
--- |Similar to Maybe, but tells us whether it's specifed by user or
+type ProgArg = String
+
+data ConfiguredProgram = ConfiguredProgram {
+        -- | Just the name again
+        programId :: String,
+        
+        -- | The version of this program, if it is known.
+        programVersion :: Maybe Version,
+
+        -- | Default command-line args for this program.
+        -- These flags will appear first on the command line, so they can be
+        -- overridden by subsequent flags.
+        programArgs :: [ProgArg],
+
+        -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
+        programLocation :: ProgramLocation    
+    } deriving (Read, Show)
+
+-- | Where a program was found. Also tells us whether it's specifed by user or
 -- not.  This includes not just the path, but the program as well.
-data ProgramLocation 
-    = EmptyLocation -- ^Like Nothing
-    | UserSpecified FilePath 
+data ProgramLocation
+    = UserSpecified { locationPath :: FilePath }
       -- ^The user gave the path to this program,
       -- eg. --ghc-path=\/usr\/bin\/ghc-6.6
-    | FoundOnSystem FilePath 
+    | FoundOnSystem { locationPath :: FilePath }
       -- ^The location of the program, as located by searching PATH.
       deriving (Read, Show)
 
--- |The configuration is a collection of 'Program's.  It's a mapping from the
---  name of the program (eg. ghc) to the Program.
-data ProgramConfiguration = ProgramConfiguration (Map.Map String Program)
+-- ------------------------------------------------------------
+-- * Programs functions
+-- ------------------------------------------------------------
 
--- Read & Show instances are based on listToFM
+-- | The full path of a configured program.
+programPath :: ConfiguredProgram -> FilePath
+programPath = locationPath . programLocation
 
-instance Show ProgramConfiguration where
-  show (ProgramConfiguration s) = show $ Map.toAscList s
-
-instance Read ProgramConfiguration where
-  readsPrec p s = [(ProgramConfiguration $ Map.fromList $ s', r)
-                       | (s', r) <- readsPrec p s ]
-
--- |The default list of programs and their arguments.  These programs
--- are typically used internally to Cabal.
-
-defaultProgramConfiguration :: ProgramConfiguration
-defaultProgramConfiguration = progListToFM 
-                              [ hscolourProgram
-                              , haddockProgram
-                              , happyProgram
-                              , alexProgram
-                              , hsc2hsProgram
-                              , c2hsProgram
-                              , cpphsProgram
-                              , greencardProgram
-                              , pfesetupProgram
-                              , ranlibProgram
-                              , simpleProgram "runghc"
-                              , simpleProgram "runhugs"
-                              , arProgram
-			      , ldProgram
-			      , tarProgram
-			      ]
--- haddock is currently the only one that really works.
-{-                              [ ghcProgram
-                              , ghcPkgProgram
-                              , nhcProgram
-                              , hugsProgram
-                              , cppProgram
-                              ]-}
-
--- |The flag for giving a path to this program.  eg. --with-alex=\/usr\/bin\/alex
-withProgramFlag :: Program -> String
-withProgramFlag Program{programName=n} = "with-" ++ n
-
--- |The flag for giving args for this program.
---  eg. --haddock-options=-s http:\/\/foo
-programOptsFlag :: Program -> String
-programOptsFlag Program{programName=n} = n ++ "-options"
-
--- |The foo.cabal field for  giving args for this program.
---  eg. haddock-options: -s http:\/\/foo
-programOptsField :: Program -> String
-programOptsField = programOptsFlag
-
--- |The full path of a configured program.
+-- | Make a simple named program.
 --
--- * This is a partial function, it is not defined for programs with an
--- EmptyLocation.
-programPath :: Program -> FilePath
-programPath program =
-  case programLocation program of
-    UserSpecified p -> p
-    FoundOnSystem p -> p
-    EmptyLocation -> error "programPath EmptyLocation"
-
--- | Look for a program. It can accept either an absolute path or the name of
--- a program binary, in which case we will look for the program on the path.
+-- By default we'll just search for it in the path and not try to find the
+-- version name. You can override these behaviours if necessary, eg:
 --
-findProgram :: Verbosity -> String -> Maybe FilePath -> IO Program
-findProgram verbosity prog maybePath = do
-  location <- case maybePath of
-    Nothing   -> searchPath verbosity prog
-    Just path -> do
-      absolute <- doesFileExist path
-      if absolute
-        then return (UserSpecified path)
-        else searchPath verbosity path
-  return (simpleProgramAt prog location)
+-- > simpleProgram "foo" { programFindLocation = ... , programFindVersion ... }
+--
+simpleProgram :: String -> Program
+simpleProgram name = 
+  Program name (searchPath name) (\_ _ -> return Nothing)
 
-searchPath :: Verbosity -> FilePath -> IO ProgramLocation
-searchPath verbosity prog = do
-  when (verbosity >= verbose) $
+-- | Look for a program on the path.
+searchPath :: FilePath -> Verbosity -> IO (Maybe FilePath)
+searchPath prog verbosity = do
+  when (verbosity >= deafening) $
       putStrLn $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
-  case res of
-    Nothing   -> die ("Cannot find " ++ prog ++ " on the path") 
-    Just path -> do when (verbosity >= verbose) $
-                      putStrLn ("found " ++ prog ++ " at "++ path)
-                    return (FoundOnSystem path)
+  when (verbosity >= deafening) $ case res of
+      Nothing   -> putStrLn ("Cannot find " ++ prog ++ " on the path")
+      Just path -> putStrLn ("found " ++ prog ++ " at "++ path)
+  return res
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we
 -- will look for the program on the path.
 --
-findProgramAndVersion :: Verbosity
-                      -> String             -- ^ program binary name
-                      -> Maybe FilePath     -- ^ possible location
-                      -> String             -- ^ version args
-                      -> (String -> String) -- ^ function to select version
-                                            --   number from program output
-                      -> IO Program
-findProgramAndVersion verbosity name maybePath versionArg selectVersion = do
-  prog <- findProgram verbosity name maybePath
-  str <- rawSystemStdout verbosity (programPath prog) [versionArg]
-  case readVersion (selectVersion str) of
-    Just v -> return prog { programVersion = Just v }
-    _      -> die ("cannot determine version of " ++ name ++ " :\n" ++ show str)
+findProgramVersion :: ProgArg            -- ^ version args
+                   -> (String -> String) -- ^ function to select version
+                                         --   number from program output
+                   -> Verbosity
+                   -> FilePath           -- ^ location
+                   -> IO (Maybe Version)
+findProgramVersion versionArg selectVersion verbosity path = do
+  str <- rawSystemStdout verbosity path [versionArg]
+         `Exception.catch` \_ -> return ""
+  let version = readVersion (selectVersion str)
+  case version of
+      Nothing -> when (verbosity >= normal) $
+                   putStrLn $ "cannot determine version of " ++ path ++ " :\n"
+                           ++ show str
+      Just v  -> when (verbosity >= deafening) $
+                   putStrLn $ path ++ " is version " ++ showVersion v
+  return version
 
 -- ------------------------------------------------------------
--- * cabal programs
+-- * Programs database
 -- ------------------------------------------------------------
+
+-- | The configuration is a collection of information about programs. It
+-- contains information both about configured programs and also about programs
+-- that we are yet to configure.
+--
+-- The idea is that we start from a collection of unconfigured programs and one
+-- by one we try to configure them at which point we move them into the
+-- configured collection. For unconfigured programs we record not just the
+-- 'Program' but also any user-provided arguments and location for the program.
+data ProgramConfiguration = ProgramConfiguration {
+        unconfiguredProgs :: UnconfiguredProgs,
+        configuredProgs   :: ConfiguredProgs
+    }
+type UnconfiguredProgram = (Program, Maybe FilePath, [ProgArg])
+type UnconfiguredProgs = Map.Map String UnconfiguredProgram
+type ConfiguredProgs =   Map.Map String ConfiguredProgram
+
+emptyProgramConfiguration :: ProgramConfiguration
+emptyProgramConfiguration = ProgramConfiguration Map.empty Map.empty
+
+defaultProgramConfiguration :: ProgramConfiguration
+defaultProgramConfiguration =
+  foldl (flip addKnownProgram) emptyProgramConfiguration builtinPrograms
+
+-- internal helpers:
+updateUnconfiguredProgs :: (UnconfiguredProgs -> UnconfiguredProgs)
+                        -> ProgramConfiguration -> ProgramConfiguration
+updateUnconfiguredProgs update conf =
+  conf { unconfiguredProgs = update (unconfiguredProgs conf) }
+updateConfiguredProgs :: (ConfiguredProgs -> ConfiguredProgs)
+                      -> ProgramConfiguration -> ProgramConfiguration
+updateConfiguredProgs update conf =
+  conf { configuredProgs = update (configuredProgs conf) }
+
+-- Read & Show instances are based on listToFM
+-- Note that we only serialise the configured part of the database, this is
+-- because we don't need the unconfigured part after the configure stage, and
+-- additionally because we cannot read/show 'Program' as it contains functions.
+instance Show ProgramConfiguration where
+  show = show . Map.toAscList . configuredProgs
+
+instance Read ProgramConfiguration where
+  readsPrec p s =
+    [ (emptyProgramConfiguration { configuredProgs = Map.fromList s' }, r)
+    | (s', r) <- readsPrec p s ]
+
+-- -------------------------------
+-- Managing unconfigured programs
+
+-- | Add a known program that we may configure later
+addKnownProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
+addKnownProgram prog = updateUnconfiguredProgs $
+  Map.insert (programName prog) (prog, Nothing, [])
+
+knownPrograms :: ProgramConfiguration -> [(Program, Maybe ConfiguredProgram)]
+knownPrograms conf = 
+  [ (p,p') | (p,_,_) <- Map.elems (unconfiguredProgs conf)
+           , let p' = Map.lookup (programName p) (configuredProgs conf) ]
+
+-- |User-specify this path.  Basically override any path information
+-- for this program in the configuration. If it's not a known
+-- program ignore it.
+userSpecifyPath :: String   -- ^Program name
+                -> FilePath -- ^user-specified path to the program
+                -> ProgramConfiguration -> ProgramConfiguration
+userSpecifyPath name path = updateUnconfiguredProgs $
+  flip Map.update name $ \(prog, _, args) -> Just (prog, Just path, args)
+
+userMaybeSpecifyPath :: String -> Maybe FilePath
+                     -> ProgramConfiguration -> ProgramConfiguration
+userMaybeSpecifyPath _    Nothing conf     = conf
+userMaybeSpecifyPath name (Just path) conf = userSpecifyPath name path conf
+
+-- |User-specify the arguments for this program.  Basically override
+-- any args information for this program in the configuration. If it's
+-- not a known program, ignore it..
+userSpecifyArgs :: String    -- ^Program name
+                -> [ProgArg] -- ^user-specified args
+                -> ProgramConfiguration
+                -> ProgramConfiguration
+userSpecifyArgs name args' = updateUnconfiguredProgs $
+  flip Map.update name $ \(prog, path, args) -> Just (prog, path, args ++ args')
+
+userSpecifiedPath :: Program -> ProgramConfiguration -> Maybe FilePath
+userSpecifiedPath prog =
+  join . fmap (\(_,p,_)->p) . Map.lookup (programName prog) . unconfiguredProgs
+
+userSpecifiedArgs :: Program -> ProgramConfiguration -> [ProgArg]
+userSpecifiedArgs prog =
+  maybe [] (\(_,_,as)->as) . Map.lookup (programName prog) . unconfiguredProgs
+
+-- -----------------------------
+-- Managing configured programs
+
+-- | Try to find a configured program
+lookupProgram :: Program -> ProgramConfiguration -> Maybe ConfiguredProgram
+lookupProgram prog = Map.lookup (programName prog) . configuredProgs
+
+-- | Update a configured program in the database.
+updateProgram :: ConfiguredProgram -> ProgramConfiguration
+                                   -> ProgramConfiguration
+updateProgram prog = updateConfiguredProgs $
+  Map.insert (programId prog) prog
+
+-- ---------------------------
+-- Configuring known programs
+
+-- | Try to configure a specific program. If the program is already included in
+-- the colleciton of unconfigured programs then we use any user-supplied
+-- location and arguments. If the program gets configured sucessfully it gets 
+-- added to the configured collection.
+--
+-- Note that it is not a failure if the program cannot be configured. It's only
+-- a failure if the user supplied a location and the program could not be found
+-- at that location.
+--
+-- The reason for it not being a failure at this stage is that we don't know up
+-- front all the programs we will need, so we try to configure them all.
+-- To verify that a program was actually sucessfully configured use
+-- 'requireProgram'. 
+--
+configureProgram :: Verbosity
+                 -> Program
+                 -> ProgramConfiguration
+                 -> IO ProgramConfiguration
+configureProgram verbosity prog conf = do
+  let name = programName prog
+  maybeLocation <- case userSpecifiedPath prog conf of
+    Nothing   -> programFindLocation prog verbosity
+             >>= return . fmap FoundOnSystem
+    Just path -> do
+      absolute <- doesFileExist path
+      if absolute
+        then return (Just (UserSpecified path))
+        else searchPath path verbosity
+         >>= maybe (die notFound) (return . Just . UserSpecified)
+      where notFound = "Cannot find " ++ name ++ " at "
+                     ++ path ++ " or on the path"
+  case maybeLocation of
+    Nothing -> return conf
+    Just location -> do
+      version <- programFindVersion prog verbosity (locationPath location)
+      let configuredProg = ConfiguredProgram {
+            programId       = name,
+            programVersion  = version,
+            programArgs     = userSpecifiedArgs prog conf,
+            programLocation = location
+          }
+      return (updateConfiguredProgs (Map.insert name configuredProg) conf)
+
+-- | Try to configure all the known programs that have not yet been configured.
+configureAllKnownPrograms :: Verbosity
+                  -> ProgramConfiguration
+                  -> IO ProgramConfiguration
+configureAllKnownPrograms verbosity conf =
+  foldM (flip (configureProgram verbosity)) conf
+    [ prog | (prog,_,_) <- Map.elems (unconfiguredProgs conf
+                     `Map.difference` configuredProgs conf) ]
+
+-- | Check that a program is configured and available to be run.
+--
+-- Additionally check that the version of the program number is suitable.
+-- For example 'AnyVersion' or @'orLaterVersion' ('Version' [1,0] [])@
+--
+-- It raises an exception if the program could not be configured or the version
+-- is unsuitable, otherwise it returns the configured program.
+requireProgram :: Verbosity -> Program -> VersionRange -> ProgramConfiguration
+               -> IO (ConfiguredProgram, ProgramConfiguration)
+requireProgram verbosity prog range conf = do
+  
+  -- If it's not already been configured, try to configure it now
+  conf' <- case lookupProgram prog conf of
+    Nothing -> configureProgram verbosity prog conf
+    Just _  -> return conf
+  
+  case lookupProgram prog conf' of
+    Nothing                           -> die notFound
+    Just configuredProg
+      | range == AnyVersion           -> return (configuredProg, conf')
+    Just configuredProg@ConfiguredProgram { programLocation = location } ->
+      case programVersion configuredProg of
+        Just version
+          | withinRange version range -> return (configuredProg, conf')
+          | otherwise                 -> die (badVersion version location)
+        Nothing                       -> die (noVersion location)
+
+  where notFound       = programName prog ++ versionRequirement
+                      ++ " is required but it could not be found."
+        badVersion v l = programName prog ++ versionRequirement
+                      ++ " is required but the version found at "
+                      ++ locationPath l ++ " is version " ++ showVersion v
+        noVersion l    = programName prog ++ versionRequirement
+                      ++ " is required but the version of "
+                      ++ locationPath l ++ " could not be determined."
+        versionRequirement
+          | range == AnyVersion = ""
+          | otherwise           = " version " ++ showVersionRange range
+
+-- ------------------------------------------------------------
+-- * Running programs
+-- ------------------------------------------------------------
+
+-- | Runs the given configured program.
+rawSystemProgram :: Verbosity          -- ^Verbosity
+                 -> ConfiguredProgram  -- ^The program to run
+                 -> [ProgArg]          -- ^Any /extra/ arguments to add
+                 -> IO ()
+rawSystemProgram verbosity prog extraArgs
+  = rawSystemExit verbosity (programPath prog) (programArgs prog ++ extraArgs)
+
+-- | Looks up the given program in the program configuration and runs it.
+rawSystemProgramConf :: Verbosity            -- ^verbosity
+                     -> Program              -- ^The program to run
+                     -> ProgramConfiguration -- ^look up the program here
+                     -> [ProgArg]            -- ^Any /extra/ arguments to add
+                     -> IO ()
+rawSystemProgramConf verbosity prog programConf extraArgs =
+  case lookupProgram prog programConf of
+    Nothing -> die (programName prog ++ " command not found")
+    Just configuredProg -> rawSystemProgram verbosity configuredProg extraArgs
+
+-- ------------------------------------------------------------
+-- * Known programs
+-- ------------------------------------------------------------
+
+-- | The default list of programs.
+-- These programs are typically used internally to Cabal.
+builtinPrograms :: [Program]
+builtinPrograms =
+    [
+    -- compilers and related progs
+      ghcProgram
+    , ghcPkgProgram
+    , hugsProgram
+    , ffihugsProgram
+    , nhcProgram
+    , hmakeProgram
+    , jhcProgram
+    -- preprocessors
+    , hscolourProgram
+    , haddockProgram
+    , happyProgram
+    , alexProgram
+    , hsc2hsProgram
+    , c2hsProgram
+    , cpphsProgram
+    , greencardProgram
+    , pfesetupProgram
+    -- platform toolchain
+    , ranlibProgram
+    , arProgram
+    , ldProgram
+    , tarProgram
+    ]
 
 ghcProgram :: Program
-ghcProgram = simpleProgram "ghc"
+ghcProgram = (simpleProgram "ghc") {
+    programFindVersion = findProgramVersion "--numeric-version" id
+  }
 
 ghcPkgProgram :: Program
-ghcPkgProgram = simpleProgram "ghc-pkg"
+ghcPkgProgram = (simpleProgram "ghc-pkg") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "ghc-pkg --version" gives a string like
+      -- "GHC package manager version 6.4.1"
+      case words str of
+        (_:_:_:_:ver:_) -> ver
+        _               -> ""
+  }
 
 nhcProgram :: Program
 nhcProgram = simpleProgram "nhc"
 
-jhcProgram :: Program
-jhcProgram = simpleProgram "jhc"
+hmakeProgram :: Program
+hmakeProgram = (simpleProgram "hmake") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      case words str of
+        (_:ver:_) -> ver
+        _         -> ""
+  }
 
+jhcProgram :: Program
+jhcProgram = (simpleProgram "jhc") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      case words str of
+        (_:ver:_) -> ver
+        _         -> ""
+  }
+
+-- AArgh! Finding the version of hugs or ffihugs is almost impossible.
 hugsProgram :: Program
 hugsProgram = simpleProgram "hugs"
 
+ffihugsProgram :: Program
+ffihugsProgram = simpleProgram "ffihugs"
+
 happyProgram :: Program
-happyProgram = simpleProgram "happy"
+happyProgram = (simpleProgram "happy") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "happy --version" gives a string like
+      -- "Happy Version 1.16 Copyright (c) ...."
+      case words str of
+        (_:_:ver:_) -> ver
+        _           -> ""
+  }
 
 alexProgram :: Program
-alexProgram = simpleProgram "alex"
+alexProgram = (simpleProgram "alex") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "alex --version" gives a string like
+      -- "Alex version 2.1.0, (c) 2003 Chris Dornan and Simon Marlow"
+      case words str of
+        (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
+        _           -> ""
+  }
+
 
 ranlibProgram :: Program
 ranlibProgram = simpleProgram "ranlib"
@@ -244,29 +510,53 @@ arProgram :: Program
 arProgram = simpleProgram "ar"
 
 hsc2hsProgram :: Program
-hsc2hsProgram = simpleProgram "hsc2hs"
+hsc2hsProgram = (simpleProgram "hsc2hs") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "hsc2hs --version" gives a string like "hsc2hs version 0.66"
+      case words str of
+        (_:_:ver:_) -> ver
+        _           -> ""
+  }
 
 c2hsProgram :: Program
-c2hsProgram = simpleProgram "c2hs"
+c2hsProgram = (simpleProgram "c2hs") {
+    programFindVersion = findProgramVersion "--numeric-version" id
+  }
 
 cpphsProgram :: Program
-cpphsProgram = simpleProgram "cpphs"
+cpphsProgram = (simpleProgram "cpphs") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "cpphs --version" gives a string like "cpphs 1.3"
+      case words str of
+        (_:ver:_) -> ver
+        _         -> ""
+  }
 
 hscolourProgram :: Program
-hscolourProgram = (simpleProgram "hscolour"){ programBinName = "HsColour" }
+hscolourProgram = (simpleProgram "hscolour") {
+    programFindLocation = searchPath "HsColour",
+    programFindVersion  = findProgramVersion "-version" $ \str ->
+      -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
+      case words str of
+        (_:ver:_) -> ver
+        _         -> ""
+  }
 
 haddockProgram :: Program
-haddockProgram = simpleProgram "haddock"
+haddockProgram = (simpleProgram "haddock") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "haddock --version" gives a string like
+      -- "Haddock version 0.8, (c) Simon Marlow 2006"
+      case words str of
+        (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
+        _           -> ""
+  }
 
 greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
-ldProgram = case os of
-                Windows MingW ->
-                    Program "ld" "ld" Nothing []
-                        (FoundOnSystem "<what-your-hs-compiler-shipped-with>")
-                _ -> simpleProgram "ld"
+ldProgram = simpleProgram "ld"
 
 tarProgram :: Program
 tarProgram = simpleProgram "tar"
@@ -276,114 +566,3 @@ cppProgram = simpleProgram "cpp"
 
 pfesetupProgram :: Program
 pfesetupProgram = simpleProgram "pfesetup"
-
--- ------------------------------------------------------------
--- * helpers
--- ------------------------------------------------------------
-
--- |Looks up a program in the given configuration.  If there's no
--- location information in the configuration, then we use IO to look
--- on the system in PATH for the program.  If the program is not in
--- the configuration at all, we return Nothing.  FIX: should we build
--- a simpleProgram in that case? Do we want a way to specify NOT to
--- find it on the system (populate programLocation).
-
-lookupProgram :: String -- simple name of program
-              -> ProgramConfiguration
-              -> IO (Maybe Program) -- the full program
-lookupProgram name conf = 
-  case lookupProgram' name conf of
-    Nothing   -> return Nothing
-    Just p@Program{ programLocation= configLoc
-                  , programBinName = binName}
-        -> do newLoc <- case configLoc of
-                         EmptyLocation
-                             -> do maybeLoc <- findExecutable binName
-                                   return $ maybe EmptyLocation FoundOnSystem maybeLoc
-                         a   -> return a
-              return $ Just p{programLocation=newLoc}
-
-lookupPrograms :: ProgramConfiguration -> IO [(String, Maybe Program)]
-lookupPrograms conf@(ProgramConfiguration fm) = do
-  let l = Map.elems fm
-  mapM (\p -> do fp <- lookupProgram (programName p) conf
-                 return (programName p, fp)
-       ) l
-
--- |User-specify this path.  Basically override any path information
--- for this program in the configuration. If it's not a known
--- program, add it.
-userSpecifyPath :: String   -- ^Program name
-                -> FilePath -- ^user-specified path to filename
-                -> ProgramConfiguration
-                -> ProgramConfiguration
-userSpecifyPath name path conf'@(ProgramConfiguration conf)
-    = case Map.lookup name conf of
-       Just p  -> updateProgram p{programLocation=UserSpecified path} conf'
-       Nothing -> updateProgram (simpleProgramAt name (UserSpecified path))
-                                conf'
-
--- |User-specify the arguments for this program.  Basically override
--- any args information for this program in the configuration. If it's
--- not a known program, add it.
-userSpecifyArgs :: String -- ^Program name
-                -> String -- ^user-specified args
-                -> ProgramConfiguration
-                -> ProgramConfiguration
-userSpecifyArgs name args conf'@(ProgramConfiguration conf)
-    = case Map.lookup name conf of
-       Just p  -> updateProgram p{programArgs=(words args)} conf'
-       Nothing -> updateProgram (Program name name Nothing (words args) EmptyLocation) conf'
-
--- |Update this program's entry in the configuration.
-updateProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
-updateProgram p@Program{programName=n} (ProgramConfiguration conf)
-    = ProgramConfiguration $ Map.insert n p conf
-
--- |Same as updateProgram but no changes if you pass in Nothing.
-maybeUpdateProgram :: Maybe Program -> ProgramConfiguration -> ProgramConfiguration
-maybeUpdateProgram m c = maybe c (\p -> updateProgram p c) m
-
--- |Runs the given program.
-rawSystemProgram :: Verbosity -- ^Verbosity
-                 -> Program   -- ^The program to run
-                 -> [String]  -- ^Any /extra/ arguments to add
-                 -> IO ()
-rawSystemProgram _ prog@(Program { programLocation = EmptyLocation }) _
-  = die ("Error: Could not find location for program: " ++ programName prog)
-rawSystemProgram verbosity prog extraArgs
-  = rawSystemExit verbosity (programPath prog) (programArgs prog ++ extraArgs)
-
-rawSystemProgramConf :: Verbosity            -- ^verbosity
-                     -> String               -- ^The name of the program to run
-                     -> ProgramConfiguration -- ^look up the program here
-                     -> [String]             -- ^Any /extra/ arguments to add
-                     -> IO ()
-rawSystemProgramConf verbosity progName programConf extraArgs 
-    = do prog <- do mProg <- lookupProgram progName programConf
-                    case mProg of
-                        Nothing -> (die (progName ++ " command not found"))
-                        Just h  -> return h
-         rawSystemProgram verbosity prog extraArgs
-
-
--- ------------------------------------------------------------
--- * Internal helpers
--- ------------------------------------------------------------
-
-lookupProgram' :: String -> ProgramConfiguration -> Maybe Program
-lookupProgram' s (ProgramConfiguration conf) = Map.lookup s conf
-
-progListToFM :: [Program] -> ProgramConfiguration
-progListToFM progs = foldl
-                     (\ (ProgramConfiguration conf')
-                      p@(Program {programName=n})
-                          -> ProgramConfiguration (Map.insert n p conf'))
-                     (ProgramConfiguration Map.empty)
-                     progs
-
-simpleProgram :: String -> Program
-simpleProgram s = simpleProgramAt s EmptyLocation
-
-simpleProgramAt :: String -> ProgramLocation -> Program
-simpleProgramAt s l = Program s s Nothing [] l

@@ -67,7 +67,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
 					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..),
                               compilerPkgToolPath, compilerVersion)
-import Distribution.Program (Program(..), ProgramLocation(..))
+import Distribution.Program (ConfiguredProgram(..), ProgramLocation(..))
 import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)

@@ -77,11 +77,10 @@ import Test.HUnit (Test(..))
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
-import Distribution.Program(ProgramConfiguration(..),
-                            userSpecifyPath, userSpecifyArgs)
+import Distribution.Program (Program(..), ProgramConfiguration,
+                             knownPrograms, userSpecifyPath, userSpecifyArgs)
 import Data.List(find)
 import Data.Char( toLower )
-import Distribution.Compat.Map (keys)
 import Distribution.GetOpt
 import Distribution.Verbosity
 import System.FilePath (normalise)
@@ -571,14 +570,16 @@ configureCmd progConf = Cmd {
         }
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-programArgsOptions (ProgramConfiguration conf) = map f (keys conf)
-    where f name = Option "" [name ++ "-args"] (reqArgArg (ProgramArgs name))
-                   ("give the args to " ++ name)
+programArgsOptions conf =
+  [ Option "" [name ++ "-args"] (reqArgArg (ProgramArgs name))
+    ("give the args to " ++ name)
+  | (Program { programName = name }, _) <- knownPrograms conf ]
 
 withProgramOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-withProgramOptions (ProgramConfiguration conf) = map f (keys conf)
-    where f name = Option "" ["with-" ++ name] (reqPathArg (WithProgram name))
-                   ("give the path to " ++ name)
+withProgramOptions conf =
+  [ Option "" ["with-" ++ name] (reqPathArg (WithProgram name))
+    ("give the path to " ++ name)
+  | (Program { programName = name }, _) <- knownPrograms conf ]
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg (constr . normalise) "PATH"
@@ -606,12 +607,15 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t HugsFlag             = t { configHcFlavor = Just Hugs }
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
-        updateCfg t (ProgramArgs name args) = t { configPrograms = (userSpecifyArgs
-                                                                 name
-                                                                 args (configPrograms t))}
-        updateCfg t (WithProgram name path) = t { configPrograms = (userSpecifyPath
-                                                                 name
-                                                                 path (configPrograms t))}
+        updateCfg t (ProgramArgs name args) = t { configPrograms = 
+                                                    userSpecifyArgs
+          --TODO: using words here is not good, it breaks for paths with spaces
+                                                      name (words args)
+                                                      (configPrograms t) }
+        updateCfg t (WithProgram name path) = t { configPrograms =
+                                                    userSpecifyPath
+                                                      name path
+                                                      (configPrograms t) }
         updateCfg t WithVanillaLib       = t { configVanillaLib  = True }
         updateCfg t WithoutVanillaLib    = t { configVanillaLib  = False, configGHCiLib = False }
         updateCfg t WithProfLib          = t { configProfLib  = True }

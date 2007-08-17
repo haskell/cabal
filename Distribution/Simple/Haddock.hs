@@ -51,7 +51,7 @@ import Distribution.Compat.ReadP(readP_to_S)
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
 import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
-import Distribution.Program(lookupProgram, Program(..), programPath,
+import Distribution.Program(ConfiguredProgram(..), requireProgram, programPath,
                             hscolourProgram, haddockProgram, rawSystemProgram)
 import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
@@ -72,8 +72,8 @@ import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile)
 
-import Control.Monad(liftM, when, unless, join)
-import Data.Maybe       ( isJust, fromMaybe, catMaybes )
+import Control.Monad (liftM, when, join)
+import Data.Maybe    ( isJust, catMaybes )
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
@@ -99,10 +99,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     when hsColour $ hscolour pkg_descr lbi suffixes $
              HscolourFlags hsColourCss doExes verbosity
 
-    confHaddock <- do let programConf = withPrograms lbi
-                      let haddockPath = programName haddockProgram
-                      mHaddock <- lookupProgram haddockPath programConf
-                      maybe (die "haddock command not found") return mHaddock
+    (confHaddock, _) <- requireProgram verbosity haddockProgram
+                        (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
 
     let tmpDir = buildDir lbi </> "tmp"
     createDirectoryIfMissingVerbose verbosity True tmpDir
@@ -117,8 +115,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let outputFlag = if haddockHoogle haddockFlags
                      then "--hoogle"
                      else "--html"
-    let version = fromMaybe (error "could not find haddock version")
-                    (programVersion confHaddock)
+    let Just version = programVersion confHaddock
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
     let comp = compiler lbi
@@ -260,15 +257,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
 hscolour :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HscolourFlags -> IO ()
 hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
-    confHscolour <- do let programConf = withPrograms lbi
-                       let hscolourPath = programName hscolourProgram
-                       mHscol <- lookupProgram hscolourPath programConf
-                       maybe (die "HsColour command not found") return mHscol
-
-    let version = fromMaybe (error "could not find hscolour version")
-                    (programVersion confHscolour)
-        haveLines = version >= Version [1,8] []
-    unless haveLines $ die "hscolour version >= 1.8 required"
+    (confHscolour, _) <- requireProgram verbosity hscolourProgram
+                         (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
 
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes

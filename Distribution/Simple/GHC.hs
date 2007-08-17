@@ -59,13 +59,15 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
-				  Program(..), ProgramConfiguration(..),
-				  ProgramLocation(..), programPath,
-				  findProgram, findProgramAndVersion,
-				  simpleProgramAt, lookupProgram,
- 				  arProgram, ranlibProgram )
+				  Program(..), ConfiguredProgram(..),
+                                  ProgramConfiguration, addKnownProgram,
+                                  userMaybeSpecifyPath, requireProgram,
+                                  programPath, lookupProgram,
+                                  ghcProgram, ghcPkgProgram,
+                                  arProgram, ranlibProgram, ldProgram )
 import Distribution.Compiler
-import Distribution.Version	( Version(..) )
+import Distribution.Version	( Version(..), showVersion,
+                                  VersionRange(..), orLaterVersion )
 import qualified Distribution.Simple.GHCPackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
@@ -92,17 +94,33 @@ import IO as Try
 -- -----------------------------------------------------------------------------
 -- Configuring
 
-configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
-configure hcPath hcPkgPath verbosity = do
+configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
+          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+configure verbosity hcPath hcPkgPath conf = do
 
-  -- find ghc and version number
-  ghcProg <- findProgramAndVersion verbosity "ghc" hcPath "--numeric-version" id
+  (ghcProg, conf') <- requireProgram verbosity ghcProgram 
+                        (orLaterVersion (Version [6,2] []))
+                        (userMaybeSpecifyPath "ghc" hcPath conf)
 
-  -- find ghc-pkg
-  ghcPkgProg <- case hcPkgPath of
-                      Just _  -> findProgram verbosity "ghc" hcPkgPath
-                      Nothing -> guessGhcPkgFromGhcPath verbosity ghcProg
-  -- TODO: santity check: the versions of ghc-pkg and ghc should be the same.
+  -- This is slightly tricky, we have to configure ghc first, then we use the
+  -- location of ghc to help find ghc-pkg in the case that the user did not
+  -- specify the location of ghc-pkg directly:
+  (ghcPkgProg, conf'') <- requireProgram verbosity ghcPkgProgram {
+                            programFindLocation = guessGhcPkgFromGhcPath ghcProg
+                          }
+                          (orLaterVersion (Version [0] []))
+                          (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf')
+
+  -- finding ghc's local ld is a bit tricky as it's not on the path:
+  let conf''' = case os of
+        Windows _ ->
+          let compilerDir  = takeDirectory (programPath ghcProg)
+              baseDir      = takeDirectory compilerDir
+              binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
+           in addKnownProgram ldProgram {
+                  programFindLocation = \_ -> return (Just binInstallLd)
+                } conf''
+        _ -> conf''
 
   let Just version = programVersion ghcProg
       isSep c = isSpace c || (c == ',')
@@ -114,13 +132,15 @@ configure hcPath hcPkgPath verbosity = do
                      | extStr <- breaks isSep exts
                      , (ext, "") <- reads extStr ++ reads ("No" ++ extStr) ]
       else return oldLanguageExtensions
-  return Compiler {
+
+  let comp = Compiler {
         compilerFlavor         = GHC,
         compilerId             = PackageIdentifier "ghc" version,
         compilerProg           = ghcProg,
         compilerPkgTool        = ghcPkgProg,
         compilerExtensions     = languageExtensions
-    }
+      }
+  return (comp, conf''')
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding ghc-pkg, we try looking for both a versioned and unversioned
@@ -129,8 +149,8 @@ configure hcPath hcPkgPath verbosity = do
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessGhcPkgFromGhcPath :: Verbosity -> Program -> IO Program
-guessGhcPkgFromGhcPath verbosity ghcProg
+guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
+guessGhcPkgFromGhcPath ghcProg verbosity
   = do let path            = programPath ghcProg
            dir             = takeDirectory path
            versionSuffix   = takeVersionSuffix (dropExeExtension path)
@@ -142,10 +162,10 @@ guessGhcPkgFromGhcPath verbosity ghcProg
          putStrLn $ "looking for package tool: ghc-pkg near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
-         [] -> die "Cannot find package tool: ghc-pkg"
+         [] -> return Nothing
          (pkgtool:_) -> do when (verbosity >= verbose) $
                              putStrLn $ "found package tool in " ++ pkgtool
-                           return (simpleProgramAt "ghc-pkg" (FoundOnSystem pkgtool))
+                           return (Just pkgtool)
 
   where takeVersionSuffix :: FilePath -> String
         takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") . reverse
@@ -281,7 +301,6 @@ build pkg_descr lbi verbosity = do
         Try.try (removeFile profLibName) -- first remove library if it exists
 	Try.try (removeFile ghciLibName) -- first remove library if it exists
 
-        ld <- findLdProgram lbi
         let arArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
                 ++ [libName]
             arObjArgs =
@@ -306,15 +325,12 @@ build pkg_descr lbi verbosity = do
               exists <- doesFileExist ghciLibName
                 -- SDM: we always remove ghciLibName above, so isn't this
                 -- always False?  What is this stuff for anyway?
-              rawSystemLd verbosity ld
-                          (args ++ if exists then [ghciLibName] else [])
+              rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
+                (args ++ if exists then [ghciLibName] else [])
               renameFile (ghciLibName <.> "tmp") ghciLibName
 
-            runAr = rawSystemProgramConf verbosity "ar" (withPrograms lbi)
+            runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
-            rawSystemLd = case os of
-                              Windows MingW -> rawSystemExit
-                              _             -> rawSystemPathExit
              --TODO: discover this at configure time on unix
             maxCommandLineSize = 30 * 1024
 
@@ -466,21 +482,6 @@ mkGHCiLibName :: FilePath -- ^file Prefix
               -> String
 mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
 
-
-findLdProgram :: LocalBuildInfo -> IO FilePath
-findLdProgram lbi
- = case os of
-       Windows MingW ->
-           do let compilerDir = takeDirectory $ compilerPath (compiler lbi)
-                  baseDir     = takeDirectory compilerDir
-                  binInstallLd     = baseDir </> "gcc-lib" </> "ld.exe"
-              mb <- lookupProgram "ld" (withPrograms lbi)
-              case fmap programLocation mb of
-                  Just (UserSpecified s) -> return s
-                  -- assume we're using an installed copy of GHC..
-                  _ -> return binInstallLd
-       _ -> return "ld"
-
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
 
@@ -501,9 +502,10 @@ makefile pkg_descr lbi flags = do
       packageId | versionBranch ghc_vers >= [6,4]
                                 = showPackageId (package pkg_descr)
                  | otherwise = pkgName (package pkg_descr)
-  mbAr <- lookupProgram "ar" (withPrograms lbi) 
-  let arProg = mbAr `programOrElse` "ar"
-  ld <- findLdProgram lbi
+  (arProg, _) <- requireProgram (makefileVerbose flags) arProgram AnyVersion
+                   (withPrograms lbi)
+  (ldProg, _) <- requireProgram (makefileVerbose flags) ldProgram AnyVersion
+                   (withPrograms lbi)
   let builddir = buildDir lbi
   let decls = [
         ("modules", unwords (exposedModules lib ++ otherModules bi)),
@@ -521,8 +523,8 @@ makefile pkg_descr lbi flags = do
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
         ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
-        ("AR", arProg),
-        ("LD", ld)
+        ("AR", programPath arProg),
+        ("LD", programPath ldProg)
         ]
   hPutStrLn h "# DO NOT EDIT!  Automatically generated by Cabal\n"
   hPutStrLn h (unlines (map (\(a,b)-> a ++ " = " ++ munge b) decls))
@@ -574,15 +576,11 @@ installLib verbosity programConf hasVanilla hasProf hasGHCi pref buildPref
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
          -- don't worry too much about it.
-         let ranlibProgName = programName $ ranlibProgram
-         mRanlibProg <- lookupProgram ranlibProgName programConf
-         case foundProg mRanlibProg of
+         case lookupProgram ranlibProgram programConf of
            Just rl  -> do ifVanilla $ rawSystemProgram verbosity rl [libTargetLoc]
                           ifProf $ rawSystemProgram verbosity rl [profLibTargetLoc]
 
-           Nothing -> do let arProgName = programName $ arProgram
-                         mArProg <- lookupProgram arProgName programConf
-                         case mArProg of
+           Nothing -> case lookupProgram arProgram programConf of
                           Just ar  -> do ifVanilla $ rawSystemProgram verbosity ar ["-s", libTargetLoc]
                                          ifProf $ rawSystemProgram verbosity ar ["-s", profLibTargetLoc]
                           Nothing -> setupMessage verbosity "Warning: Unable to generate index for library (missing ranlib and ar)" pd
@@ -592,19 +590,3 @@ installLib verbosity programConf hasVanilla hasProf hasGHCi pref buildPref
 	  ifGHCi action = when hasGHCi (action >> return ())
 installLib _ _ _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
-
--- Also checks whether the program was actually found.
-foundProg :: Maybe Program -> Maybe Program
-foundProg Nothing = Nothing
-foundProg (Just Program{programLocation=EmptyLocation}) = Nothing
-foundProg x = x
-
-programOrElse :: Maybe Program -> FilePath -> FilePath
-mb_prog `programOrElse` q =
-  case mb_prog of
-    Nothing -> q
-    Just Program{programLocation=l} ->
-        case l of
-          UserSpecified x -> x
-          FoundOnSystem x -> x
-          EmptyLocation   -> q

@@ -69,8 +69,8 @@ module Distribution.Simple (
 import Distribution.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Program(Program(..), ProgramConfiguration(..),
-                            defaultProgramConfiguration, updateProgram,
+import Distribution.Program(Program(..), ProgramConfiguration,
+                            defaultProgramConfiguration, addKnownProgram,
                             pfesetupProgram, rawSystemProgramConf)
 import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes,
                                 removePreprocessedPackage,
@@ -277,7 +277,7 @@ defaultMain__ margs mhooks mdescr = do
 -- into cabal.
 allPrograms :: UserHooks
             -> ProgramConfiguration -- combine defaults w/ user programs
-allPrograms h = foldl (flip updateProgram) 
+allPrograms h = foldl (flip addKnownProgram) 
                       defaultProgramConfiguration
                       (hookedPrograms h)
 
@@ -449,11 +449,8 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
         preprocessSources pkg_descr lbi False verbosity pps
         inFiles <- getModulePaths lbi bi mods
         let verbFlags = if verbosity >= deafening then ["-v"] else []
-        rawSystemProgramConf verbosity
-                             (programName pfesetupProgram)
-                             (withPrograms lbi)
+        rawSystemProgramConf verbosity pfesetupProgram (withPrograms lbi)
                              ("noplogic" : "cpp" : verbFlags ++ inFiles)
-        return ()
 
 
 -- --------------------------------------------------------------------------

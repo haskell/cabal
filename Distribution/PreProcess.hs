@@ -64,8 +64,11 @@ import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Program (Program(..), lookupProgram', rawSystemProgramConf,
-                             rawSystemProgram)
+import Distribution.Program (Program(..), ConfiguredProgram(..), lookupProgram,
+                             rawSystemProgramConf, rawSystemProgram,
+                             greencardProgram, cpphsProgram, hsc2hsProgram,
+                             c2hsProgram, happyProgram, alexProgram,
+                             haddockProgram)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 
@@ -275,7 +278,7 @@ ppGreenCard _ lbi
     = PreProcessor {
         platformIndependent = False,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-          rawSystemProgramConf verbosity "greencard" (withPrograms lbi)
+          rawSystemProgramConf verbosity greencardProgram (withPrograms lbi)
               (["-tffi", "-o" ++ outFile, inFile])
       }
 
@@ -330,7 +333,7 @@ ppCpphs extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity "cpphs" (withPrograms lbi) $
+      rawSystemProgramConf verbosity cpphsProgram (withPrograms lbi) $
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
         : extraArgs
@@ -341,14 +344,14 @@ ppCpphs extraArgs _bi lbi =
 -- -optP-P only if the Haddock version is prior to 0.8.
 use_optP_P :: LocalBuildInfo -> Bool
 use_optP_P lbi
- = case lookupProgram' "haddock" (withPrograms lbi) of
-     Just (Program { programVersion = Just version })
+ = case lookupProgram haddockProgram (withPrograms lbi) of
+     Just (ConfiguredProgram { programVersion = Just version })
        | version >= Version [0,8] [] -> False
      _                               -> True
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi = pp
-  where pp = standardPP lbi "hsc2hs" flags
+  where pp = standardPP lbi hsc2hsProgram flags
         flags = hcDefines (compiler lbi)
              ++ map ("--cflag=" ++) (getCcFlags bi)
              ++ map ("--lflag=" ++) (getLdFlags bi)
@@ -370,7 +373,7 @@ ppC2hs bi lbi
         platformIndependent = False,
         runPreProcessor = \(inBaseDir, inRelativeFile)
                            (outBaseDir, outRelativeFile) verbosity ->
-          rawSystemProgramConf verbosity "c2hs" (withPrograms lbi) $
+          rawSystemProgramConf verbosity c2hsProgram (withPrograms lbi) $
                ["--include=" ++ dir | dir <- hsSourceDirs bi ]
             ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
             ++ ["--output-dir=" ++ outBaseDir,
@@ -405,24 +408,24 @@ versionInt (Version { versionBranch = n1:n2:_ })
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ lbi = pp { platformIndependent = True }
-  where pp = standardPP lbi "happy" (hcFlags hc)
+  where pp = standardPP lbi happyProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-agc"]
 	hcFlags _ = []
 
 ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppAlex _ lbi = pp { platformIndependent = True }
-  where pp = standardPP lbi "alex" (hcFlags hc)
+  where pp = standardPP lbi alexProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
 	hcFlags GHC = ["-g"]
 	hcFlags _ = []
 
-standardPP :: LocalBuildInfo -> String -> [String] -> PreProcessor
-standardPP lbi progName args =
+standardPP :: LocalBuildInfo -> Program -> [String] -> PreProcessor
+standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity progName (withPrograms lbi)
+      rawSystemProgramConf verbosity prog (withPrograms lbi)
         (args ++ ["-o", outFile, inFile])
   }
 
