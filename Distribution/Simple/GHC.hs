@@ -101,6 +101,7 @@ configure verbosity hcPath hcPkgPath conf = do
   (ghcProg, conf') <- requireProgram verbosity ghcProgram 
                         (orLaterVersion (Version [6,2] []))
                         (userMaybeSpecifyPath "ghc" hcPath conf)
+  let Just ghcVersion = programVersion ghcProg
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -110,6 +111,12 @@ configure verbosity hcPath hcPkgPath conf = do
                           }
                           (orLaterVersion (Version [0] []))
                           (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf')
+  let Just ghcPkgVersion = programVersion ghcPkgProg
+
+  when (ghcVersion /= ghcPkgVersion) $ die $
+       "Version mismatch between ghc and ghc-pkg:\n"
+    ++ programPath ghcProg ++ " is version " ++ showVersion ghcVersion ++ "\n"
+    ++ programPath ghcPkgProg ++ " is version " ++ showVersion ghcPkgVersion
 
   -- finding ghc's local ld is a bit tricky as it's not on the path:
   let conf''' = case os of
@@ -122,10 +129,9 @@ configure verbosity hcPath hcPkgPath conf = do
                 } conf''
         _ -> conf''
 
-  let Just version = programVersion ghcProg
-      isSep c = isSpace c || (c == ',')
+  let isSep c = isSpace c || (c == ',')
   languageExtensions <-
-    if version >= Version [6,7] []
+    if ghcVersion >= Version [6,7] []
       then do exts <- rawSystemStdout verbosity (programPath ghcProg)
                         ["--supported-languages"]
               return [ (ext, "-X" ++ show ext)
@@ -135,7 +141,7 @@ configure verbosity hcPath hcPkgPath conf = do
 
   let comp = Compiler {
         compilerFlavor         = GHC,
-        compilerId             = PackageIdentifier "ghc" version,
+        compilerId             = PackageIdentifier "ghc" ghcVersion,
         compilerProg           = ghcProg,
         compilerPkgTool        = ghcPkgProg,
         compilerExtensions     = languageExtensions
