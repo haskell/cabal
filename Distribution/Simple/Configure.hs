@@ -81,9 +81,8 @@ import Distribution.PackageDescription
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Program
-    ( Program(..), ProgramLocation(..), ProgramConfiguration(..), programPath
-    , lookupProgram, lookupPrograms, updateProgram, maybeUpdateProgram
-    , findProgramAndVersion )
+    ( Program(..), ProgramLocation(..), ConfiguredProgram(..), programPath
+    , ProgramConfiguration, configureAllKnownPrograms, knownPrograms )
 import Distribution.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
@@ -189,7 +188,7 @@ configure :: ( Either GenericPackageDescription PackageDescription
 configure (pkg_descr0, pbi) cfg
   = do
 	-- detect compiler
-	comp <- configCompilerAux cfg
+	(comp, programsConfig) <- configCompilerAux cfg
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
@@ -270,14 +269,8 @@ configure (pkg_descr0, pbi) cfg
             show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
-        foundPrograms <- lookupPrograms (configPrograms cfg)
-
-        let newConfig = foldr (\(_, p) c -> maybeUpdateProgram p c) 
-                              (configPrograms cfg) foundPrograms
-
-        -- TODO: get version checking integrated into the Program abstraction
-        newConfig'  <- findHaddockVersion  (configVerbose cfg) newConfig
-        newConfig'' <- findHscolourVersion (configVerbose cfg) newConfig'
+        programsConfig' <- configureAllKnownPrograms (configVerbose cfg)
+                             programsConfig
 
 	split_objs <- 
 	   if not (configSplitObjs cfg)
@@ -296,7 +289,7 @@ configure (pkg_descr0, pbi) cfg
 			      scratchDir=distPref </> "scratch",
                               packageDeps=dep_pkgs,
                               localPkgDescr=pkg_descr,
-                              withPrograms=newConfig'',
+                              withPrograms=programsConfig',
                               withVanillaLib=configVanillaLib cfg,
                               withProfLib=configProfLib cfg,
                               withProfExe=configProfExe cfg,
@@ -323,7 +316,8 @@ configure (pkg_descr0, pbi) cfg
         message $ "Compiler version: " ++ showVersion version
         message $ "Using package tool: " ++ compilerPkgToolPath comp
 
-        mapM_ (uncurry reportProgram) foundPrograms
+        sequence_ [ reportProgram prog configuredProg
+                  | (prog, configuredProg) <- knownPrograms programsConfig' ]
 
 	return lbi
 
@@ -346,18 +340,17 @@ setDepByVersion (Dependency s (ThisVersion v)) = PackageIdentifier s v
 -- otherwise, just set it to empty
 setDepByVersion (Dependency s _) = PackageIdentifier s (Version [] [])
 
-
-reportProgram :: String -> Maybe Program -> IO ()
-reportProgram _ (Just Program{ programName=name
-                              , programLocation=EmptyLocation})
-                  = message ("No " ++ name ++ " found")
-reportProgram _ (Just Program{ programName=name
-                              , programLocation=FoundOnSystem p})
-                  = message ("Using " ++ name ++ " found on system at: " ++ p)
-reportProgram _ (Just Program{ programName=name
-                              , programLocation=UserSpecified p})
-                  = message ("Using " ++ name ++ " given by user at: " ++ p)
-reportProgram name Nothing = message ("No " ++ name ++ " found")
+reportProgram :: Program -> Maybe ConfiguredProgram -> IO ()
+reportProgram prog Nothing
+    = message $ "No " ++ programName prog ++ " found"
+reportProgram prog (Just configuredProg)
+    = message $ "Using " ++ programName prog ++ version ++ location
+    where location = case programLocation configuredProg of
+            FoundOnSystem p -> " found on system at: " ++ p
+            UserSpecified p -> " given by user at: " ++ p
+          version = case programVersion configuredProg of
+            Nothing -> ""
+            Just v  -> " version " ++ showVersion v
 
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
@@ -404,53 +397,24 @@ getInstalledPackages comp user verbosity = do
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompilerAux :: ConfigFlags -> IO Compiler
+configCompilerAux :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
 configCompilerAux cfg = configCompiler (configHcFlavor cfg)
                                        (configHcPath cfg)
                                        (configHcPkg cfg)
+                                       (configPrograms cfg)
                                        (configVerbose cfg)
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> Verbosity -> IO Compiler
-configCompiler Nothing _ _ _ = die "Unknown compiler"
-configCompiler (Just hcFlavor) hcPath hcPkg verbosity
-  = case hcFlavor of
-      GHC  -> GHC.configure  hcPath hcPkg verbosity
-      JHC  -> JHC.configure  hcPath hcPkg verbosity
-      Hugs -> Hugs.configure hcPath hcPkg verbosity
-      NHC  -> NHC.configure  hcPath hcPkg verbosity
+               -> ProgramConfiguration -> Verbosity
+               -> IO (Compiler, ProgramConfiguration)
+configCompiler Nothing _ _ _ _ = die "Unknown compiler"
+configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
+  case hcFlavor of
+      GHC  -> GHC.configure  verbosity hcPath hcPkg conf
+      JHC  -> JHC.configure  verbosity hcPath hcPkg conf
+      Hugs -> Hugs.configure verbosity hcPath hcPkg conf
+      NHC  -> NHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
-
-findHscolourVersion :: Verbosity -> ProgramConfiguration -> IO ProgramConfiguration
-findHscolourVersion verbosity conf = do
-   mHsColour <- lookupProgram "hscolour" conf
-   case mHsColour of
-     Nothing -> return conf
-     Just Program { programLocation = EmptyLocation } -> return conf
-     Just prog -> do
-       -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
-       prog' <- findProgramAndVersion verbosity (programBinName prog)
-                  (Just $ programPath prog) "-version" $ \str ->
-                  case words str of
-                    (_:ver:_) -> ver
-                    _         -> ""
-       return (updateProgram prog' { programName = "hscolour" } conf)
-
-findHaddockVersion :: Verbosity -> ProgramConfiguration -> IO ProgramConfiguration
-findHaddockVersion verbosity conf = do
-   mHaddock <- lookupProgram "haddock" conf
-   case mHaddock of
-     Nothing -> return conf
-     Just Program { programLocation = EmptyLocation } -> return conf
-     Just prog -> do
-       -- Invoking "haddock --version" gives a string like
-       -- "Haddock version 0.8, (c) Simon Marlow 2006"
-       prog' <- findProgramAndVersion verbosity (programBinName prog)
-                  (Just $ programPath prog) "--version" $ \str ->
-                  case words str of
-                    (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
-                    _           -> ""
-       return (updateProgram prog' conf)
 
 pCheck :: [(a, [Char])] -> [a]
 pCheck rs = [ r | (r,s) <- rs, all isSpace s ]

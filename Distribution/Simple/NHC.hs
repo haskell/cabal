@@ -53,30 +53,31 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
                                   extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Program     ( rawSystemProgram, findProgramAndVersion )
+import Distribution.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
+                                  requireProgram, hmakeProgram,
+                                  rawSystemProgram )
+import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Verbosity
 
 
 -- -----------------------------------------------------------------------------
 -- Configuring
 
-configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
-configure hcPath _hcPkgPath verbosity = do
+configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
+          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+configure verbosity hcPath _hcPkgPath conf = do
 
-  -- find hmake
-  -- TODO: why are we checking the version of hmake rather than nhc?
-  hmakeProg <- findProgramAndVersion verbosity "hmake" hcPath "--version" $ \str ->
-               case words str of
-                 (_:ver:_) -> ver
-                 _         -> ""
+  (hmakeProg, conf') <- requireProgram verbosity hmakeProgram AnyVersion
+                          (userMaybeSpecifyPath "hmake" hcPath conf)
 
-  return Compiler {
+  let comp = Compiler {
         compilerFlavor  = NHC,
         compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
         compilerProg    = hmakeProg,
         compilerPkgTool = hmakeProg,
         compilerExtensions = nhcLanguageExtensions
-    }
+      }
+  return (comp, conf')
 
 -- | The flags for the supported extensions
 nhcLanguageExtensions :: [(Extension, Flag)]
