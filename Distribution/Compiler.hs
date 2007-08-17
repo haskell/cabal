@@ -78,8 +78,8 @@ data CompilerFlavor
 data Compiler = Compiler {
         compilerFlavor          :: CompilerFlavor,
         compilerId              :: PackageIdentifier,
-        compilerProg            :: Program,
-        compilerPkgTool         :: Program,
+        compilerProg            :: ConfiguredProgram,
+        compilerPkgTool         :: ConfiguredProgram,
 	compilerExtensions      :: [(Extension, Flag)]
     }
     deriving (Show, Read)

@@ -55,8 +55,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
                                   extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Program     ( Program(..), rawSystemProgram,
-                                  findProgramAndVersion )
+import Distribution.Program     ( ConfiguredProgram(..), jhcProgram,
+                                  ProgramConfiguration, userMaybeSpecifyPath,
+                                  requireProgram, rawSystemProgram )
+import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
                                   copyFileVerbose, exeExtension )
@@ -70,23 +72,22 @@ import Data.List		( nub, intersperse )
 -- -----------------------------------------------------------------------------
 -- Configuring
 
-configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
-configure hcPath _hcPkgPath verbosity = do
+configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
+          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+configure verbosity hcPath _hcPkgPath conf = do
 
-  -- find jhc
-  jhcProg <- findProgramAndVersion verbosity "jhc" hcPath "--version" $ \str ->
-               case words str of
-                 (_:ver:_) -> ver
-                 _         -> ""
+  (jhcProg, conf')  <- requireProgram verbosity jhcProgram AnyVersion
+                         (userMaybeSpecifyPath "jhc" hcPath conf)
 
   let Just version = programVersion jhcProg
-  return Compiler {
+      comp = Compiler {
         compilerFlavor         = JHC,
         compilerId             = PackageIdentifier "jhc" version,
         compilerProg           = jhcProg,
         compilerPkgTool        = jhcProg,
         compilerExtensions     = jhcLanguageExtensions
-    }
+      }
+  return (comp, conf')
 
 -- | The flags for the supported extensions
 jhcLanguageExtensions :: [(Extension, Flag)]
