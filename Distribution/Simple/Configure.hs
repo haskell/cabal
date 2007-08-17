@@ -101,7 +101,7 @@ import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(ThisVersion), showVersion
     , showVersionRange )
 import Distribution.Verbosity
-    ( Verbosity, normal )
+    ( Verbosity, verbose, lessVerbose )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -186,25 +186,27 @@ configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do
+  = do  let verbosity = configVerbose cfg
+            cfg' = cfg { configVerbose = lessVerbose verbosity }
+
+	setupMessage verbosity "Configuring"
+                     (either packageDescription id pkg_descr0)
+
 	-- detect compiler
-	(comp, programsConfig) <- configCompilerAux cfg
+	(comp, programsConfig) <- configCompilerAux cfg'
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
         mipkgs <- case flavor of
                       GHC | version >= Version [6,3] [] ->
-                        getInstalledPackagesAux comp cfg >>= return . Just
+                        getInstalledPackagesAux comp cfg' >>= return . Just
                       JHC ->
-                        getInstalledPackagesJHC comp cfg >>= return . Just
+                        getInstalledPackagesJHC comp cfg' >>= return . Just
                       _ -> 
                         return Nothing  
                         -- return $ map setDepByVersion (buildDepends pkg_descr)
-                        
-	setupMessage (configVerbose cfg) "Configuring" 
-                     (either packageDescription id pkg_descr0)
-        
+
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
                 case finalizePackageDescription 
@@ -222,22 +224,22 @@ configure (pkg_descr0, pbi) cfg
             Right pd -> return (pd,[])
               
 
-        when (not (null flags)) $
+        when (not (null flags) && verbosity >= verbose) $
           message $ "Flags chosen: " ++ (concat . intersperse ", " .
                       map (\(n,b) -> n ++ "=" ++ show b) $ flags)
 
         (warns, ers) <- sanityCheckPackage $
                           updatePackageDescription pbi pkg_descr
         
-        errorOut (configVerbose cfg) warns ers
+        errorOut verbosity warns ers
 
         let ipkgs = fromMaybe (map setDepByVersion (buildDepends pkg_descr)) mipkgs 
 
         dep_pkgs <- case flavor of
                       GHC | version >= Version [6,3] [] -> do
-	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+	                mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
                       JHC                           -> do
-	                mapM (configDependency ipkgs) (buildDepends pkg_descr)
+	                mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
                       _                             -> do
                         return $ map setDepByVersion (buildDepends pkg_descr)
 
@@ -265,11 +267,11 @@ configure (pkg_descr0, pbi) cfg
         let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
                       concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
         let exts = unsupportedExtensions comp extlist
-        unless (null exts) $ warn (configVerbose cfg) $ -- Just warn, FIXME: Should this be an error?
+        unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
             show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
-        programsConfig' <- configureAllKnownPrograms (configVerbose cfg)
+        programsConfig' <- configureAllKnownPrograms (lessVerbose verbosity)
                              programsConfig
 
 	split_objs <- 
@@ -277,7 +279,7 @@ configure (pkg_descr0, pbi) cfg
 		then return False
 		else case flavor of
 			    GHC | version >= Version [6,5] [] -> return True
-	    		    _ -> do warn (configVerbose cfg)
+	    		    _ -> do warn verbosity
                                          ("this compiler does not support " ++
 					  "--enable-split-objs; ignoring")
 				    return False
@@ -302,22 +304,22 @@ configure (pkg_descr0, pbi) cfg
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs pkg_descr lbi
 
-        -- FIXME: maybe this should only be printed when verbose?
-        message $ "Using install prefix: " ++ prefix dirs
+        when (verbosity >= verbose) $ do
+          message $ "Using install prefix: " ++ prefix dirs
 
-        messageDir "Binaries"         pkg_descr (bindir dirs)    (bindir relative)
-        messageDir "Libraries"        pkg_descr (libdir dirs)    (libdir relative)
-        messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
-        messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
-        messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
-        
-        message $ "Using compiler: " ++ compilerPath comp
-        message $ "Compiler flavor: " ++ show flavor
-        message $ "Compiler version: " ++ showVersion version
-        message $ "Using package tool: " ++ compilerPkgToolPath comp
+          messageDir "Binaries"         pkg_descr (bindir dirs)    (bindir relative)
+          messageDir "Libraries"        pkg_descr (libdir dirs)    (libdir relative)
+          messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
+          messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
+          messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
 
-        sequence_ [ reportProgram prog configuredProg
-                  | (prog, configuredProg) <- knownPrograms programsConfig' ]
+          message $ "Using compiler: " ++ compilerPath comp
+          message $ "Compiler flavor: " ++ show flavor
+          message $ "Compiler version: " ++ showVersion version
+          message $ "Using package tool: " ++ compilerPkgToolPath comp
+
+          sequence_ [ reportProgram prog configuredProg
+                    | (prog, configuredProg) <- knownPrograms programsConfig' ]
 
 	return lbi
 
@@ -356,23 +358,23 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
-configDependency :: [PackageIdentifier] -> Dependency -> IO PackageIdentifier
-configDependency ps dep@(Dependency pkgname vrange) =
+configDependency :: Verbosity -> [PackageIdentifier] -> Dependency -> IO PackageIdentifier
+configDependency verbosity ps dep@(Dependency pkgname vrange) =
   case satisfyDependency ps dep of
         Nothing -> die ("cannot satisfy dependency " ++
                         pkgname ++ showVersionRange vrange ++ "\n" ++
                         "Perhaps you need to download and install it from\n" ++
                         hackageUrl ++ pkgname ++ "?")
-        Just pkg -> do
-                message ("Dependency " ++ pkgname ++
-                        showVersionRange vrange ++
-                        ": using " ++ showPackageId pkg)
-                return pkg
+        Just pkg -> do when (verbosity >= verbose) $
+                         message ("Dependency " ++ pkgname ++
+                         showVersionRange vrange ++
+                         ": using " ++ showPackageId pkg)
+                       return pkg
 
 getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
 getInstalledPackagesJHC comp cfg = do
    let verbosity = configVerbose cfg
-   when (verbosity >= normal) $ message "Reading installed packages..."
+   when (verbosity >= verbose) $ message "Reading installed packages..."
    str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
      [ps] -> return ps
@@ -383,7 +385,7 @@ getInstalledPackagesAux comp cfg = getInstalledPackages comp (configUser cfg) (c
 
 getInstalledPackages :: Compiler -> Bool -> Verbosity -> IO [PackageIdentifier]
 getInstalledPackages comp user verbosity = do
-   when (verbosity >= normal) $ message "Reading installed packages..."
+   when (verbosity >= verbose) $ message "Reading installed packages..."
    let user_flag = if user then "--user" else "--global"
    str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) [user_flag, "list"]
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)

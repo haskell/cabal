@@ -45,6 +45,7 @@ module Distribution.Verbosity (
   -- * Verbosity
   Verbosity,
   silent, normal, verbose, deafening,
+  moreVerbose, lessVerbose,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC
  ) where
@@ -70,6 +71,18 @@ verbose = Verbose
 -- being "verbose"), but we tell everything we run to be verbose too
 deafening :: Verbosity
 deafening = Deafening
+
+moreVerbose :: Verbosity -> Verbosity
+moreVerbose Silent    = Silent    --silent should stay silent
+moreVerbose Normal    = Verbose
+moreVerbose Verbose   = Deafening
+moreVerbose Deafening = Deafening
+
+lessVerbose :: Verbosity -> Verbosity
+lessVerbose Deafening = Verbose
+lessVerbose Verbose   = Normal
+lessVerbose Normal    = Silent
+lessVerbose Silent    = Silent
 
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just Silent
