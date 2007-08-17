@@ -285,21 +285,21 @@ configure (pkg_descr0, pbi) cfg
 				    return False
 
 	let lbi = LocalBuildInfo{
-                              installDirTemplates = installDirs,
-                              compiler=comp,
-			      buildDir=distPref </> "build",
-			      scratchDir=distPref </> "scratch",
-                              packageDeps=dep_pkgs,
-                              localPkgDescr=pkg_descr,
-                              withPrograms=programsConfig',
-                              withVanillaLib=configVanillaLib cfg,
-                              withProfLib=configProfLib cfg,
-                              withProfExe=configProfExe cfg,
-                              withOptimization=configOptimization cfg,
-			      withGHCiLib=configGHCiLib cfg,
-			      splitObjs=split_objs,
-                              userConf=configUser cfg
-                             }
+                    installDirTemplates = installDirs,
+                    compiler            = comp,
+		    buildDir            = distPref </> "build",
+		    scratchDir          = distPref </> "scratch",
+                    packageDeps         = dep_pkgs,
+                    localPkgDescr       = pkg_descr,
+                    withPrograms        = programsConfig',
+                    withVanillaLib      = configVanillaLib cfg,
+                    withProfLib         = configProfLib cfg,
+                    withProfExe         = configProfExe cfg,
+                    withOptimization    = configOptimization cfg,
+		    withGHCiLib         = configGHCiLib cfg,
+		    splitObjs           = split_objs,
+                    userConf            = configUser cfg
+                  }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs pkg_descr lbi
@@ -361,14 +361,14 @@ hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 configDependency :: Verbosity -> [PackageIdentifier] -> Dependency -> IO PackageIdentifier
 configDependency verbosity ps dep@(Dependency pkgname vrange) =
   case satisfyDependency ps dep of
-        Nothing -> die ("cannot satisfy dependency " ++
-                        pkgname ++ showVersionRange vrange ++ "\n" ++
-                        "Perhaps you need to download and install it from\n" ++
-                        hackageUrl ++ pkgname ++ "?")
+        Nothing -> die $ "cannot satisfy dependency "
+                      ++ pkgname ++ showVersionRange vrange ++ "\n"
+                      ++ "Perhaps you need to download and install it from\n"
+                      ++ hackageUrl ++ pkgname ++ "?"
         Just pkg -> do when (verbosity >= verbose) $
-                         message ("Dependency " ++ pkgname ++
-                         showVersionRange vrange ++
-                         ": using " ++ showPackageId pkg)
+                         message $ "Dependency " ++ pkgname
+                                ++ showVersionRange vrange
+                                ++ ": using " ++ showPackageId pkg
                        return pkg
 
 getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
