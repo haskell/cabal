@@ -499,7 +499,7 @@ configureCmd progConf = Cmd {
         cmdDescription = "",  -- This can be a multi-line description
         cmdOptions     = [cmd_help, cmd_verbose,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
-           Option "n" ["nhc"] (NoArg NhcFlag) "compile with NHC",
+           Option "" ["nhc"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["jhc"]  (NoArg JhcFlag) "compile with JHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (reqPathArg WithCompiler)
