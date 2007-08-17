@@ -27,7 +27,8 @@ import Distribution.PackageDescription
                                   packageDescription,
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
-import System.Console.GetOpt
+import Distribution.Program     ( emptyProgramConfiguration )
+import Distribution.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
 import Distribution.Verbosity
@@ -63,8 +64,8 @@ setupWrapper args mdir = inDir mdir $ do
   pkg_descr_file <- defaultPackageDesc (verbosity flags)
   ppkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
 
-  comp <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
-          normal
+  (comp, _)  <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
+                  emptyProgramConfiguration normal
   cabal_flag <- configCabalFlag flags (descCabalVersion (packageDescription ppkg_descr)) comp
 
   let

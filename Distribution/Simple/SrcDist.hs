@@ -61,14 +61,15 @@ import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          withLib, withExe, setupMessage)
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
-import Distribution.Version (Version(versionBranch))
+import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   smartCopySources, die, findPackageDesc,
-                                  findFile, copyFileVerbose, rawSystemPathExit)
+                                  findFile, copyFileVerbose)
 import Distribution.Setup (SDistFlags(..))
 import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Program ( lookupProgram, ProgramLocation(..), Program(programLocation) )
+import Distribution.Program ( defaultProgramConfiguration, requireProgram,
+                              rawSystemProgram, tarProgram )
 
 #ifndef __NHC__
 import Control.Exception (finally)
@@ -198,19 +199,14 @@ createArchive :: PackageDescription   -- ^info from cabal file
 
 createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr
-  let tarDefault = "tar"
-  tarProgram <- 
-    case mb_lbi of
-      Nothing -> return tarDefault
-      Just lbi -> do
-       mb <- lookupProgram "tar" (withPrograms lbi)
-       case fmap programLocation mb of
-         Just (UserSpecified s) -> return s
-	 _ -> return tarDefault
+
+  (tarProg, _) <- requireProgram verbosity tarProgram AnyVersion
+                    (maybe defaultProgramConfiguration withPrograms mb_lbi)
+
    -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
-  rawSystemPathExit verbosity tarProgram
+  rawSystemProgram verbosity tarProg
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
       -- XXX this should be done back where tmpDir is made, not here
       `finally` removeDirectoryRecursive tmpDir

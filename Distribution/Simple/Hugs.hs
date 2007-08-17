@@ -51,7 +51,10 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
-import Distribution.Program     ( rawSystemProgram, findProgram )
+import Distribution.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
+                                  requireProgram, rawSystemProgram,
+                                  ffihugsProgram, hugsProgram )
+import Distribution.Version	( Version(..), VersionRange(AnyVersion) )
 import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.PreProcess.Unlit
 				( unlit )
@@ -81,28 +84,27 @@ import IO			( try )
 import Data.List		( nub, sort, isSuffixOf )
 import System.Directory		( Permissions(..), getPermissions,
 				  setPermissions )
-import Distribution.Version
 
 
 -- -----------------------------------------------------------------------------
 -- Configuring
 
-configure :: Maybe FilePath -> Maybe FilePath -> Verbosity -> IO Compiler
-configure hcPath _hcPkgPath verbosity = do
+configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
+          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+configure verbosity hcPath _hcPkgPath conf = do
 
-  -- find ffihugs
-  ffihugsProg <- findProgram verbosity "ffihugs" hcPath
+  (ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram AnyVersion
+                            (userMaybeSpecifyPath "ffihugs" hcPath conf)
+  (hugsProg, conf'')   <- requireProgram verbosity hugsProgram AnyVersion conf'
 
-  -- find hugs
-  hugsProg <- findProgram verbosity "hugs" hcPath
-
-  return Compiler {
+  let comp = Compiler {
         compilerFlavor         = Hugs,
         compilerId             = PackageIdentifier "hugs" (Version [] []),
         compilerProg           = ffihugsProg,
         compilerPkgTool        = hugsProg,
         compilerExtensions     = hugsLanguageExtensions
-    }
+      }
+  return (comp, conf'')
 
 -- | The flags for the supported extensions
 hugsLanguageExtensions :: [(Extension, Flag)]
