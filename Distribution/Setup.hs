@@ -617,7 +617,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
                                                       name path
                                                       (configPrograms t) }
         updateCfg t WithVanillaLib       = t { configVanillaLib  = True }
-        updateCfg t WithoutVanillaLib    = t { configVanillaLib  = False, configGHCiLib = False }
+        updateCfg t WithoutVanillaLib    = t { configVanillaLib  = False,
+                                               configGHCiLib = False }
         updateCfg t WithProfLib          = t { configProfLib  = True }
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
@@ -633,7 +634,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (LibExecDir path)    = t { configLibExecDir = Just path }
         updateCfg t (DataDir path)       = t { configDataDir  = Just path }
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
-	updateCfg t (DocDir path)       = t { configDocDir  = Just path }
+	updateCfg t (DocDir path)        = t { configDocDir  = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configUser     = True }
         updateCfg t GlobalFlag           = t { configUser     = False }
