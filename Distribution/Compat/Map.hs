@@ -5,7 +5,9 @@ module Distribution.Compat.Map (
    member, lookup, findWithDefault,
    empty,
    insert, insertWith,
+   update,
    union, unionWith, unions,
+   difference,
    elems, keys,
    fromList, fromListWith,
    toAscList
@@ -41,6 +43,13 @@ insert k a m = addToFM m k a
 insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWith c k a m = addToFM_C (flip c) m k a
 
+update :: Ord k => (a -> Maybe a) -> k -> Map k a -> Map k a
+update f k m = case lookup k m of
+  Nothing -> m
+  Just a  -> case f a of
+    Nothing -> delete k m
+    Just a' -> insert k a' m
+
 union :: Ord k => Map k a -> Map k a -> Map k a
 union = flip plusFM
 
@@ -49,6 +58,9 @@ unionWith c l r = plusFM_C (flip c) r l
 
 unions :: Ord k => [Map k a] -> Map k a
 unions = foldl (flip plusFM) emptyFM
+
+difference :: Ord k => Map k a -> Map k b -> Map k a
+difference m1 m2 = delListFromFM m1 (elems m2)
 
 elems :: Map k a -> [a]
 elems = eltsFM
