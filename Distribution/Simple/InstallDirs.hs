@@ -63,6 +63,9 @@ module Distribution.Simple.InstallDirs (
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import System.FilePath ((</>), isPathSeparator)
+#if __HUGS__
+import System.FilePath (dropDrive)
+#endif
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (PackageDescription(package))
