@@ -374,7 +374,7 @@ ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
 ------------------------------------------------------------------------------
 -- compatibility
 
-#if __GLASGOW_HASKELL__ <= 602
+#if (__GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 602) || __NHC__
 -- This instance wasn't present in Data.Monoid in GHC 6.2
 instance (Monoid a, Monoid b) => Monoid (a,b) where
 	mempty = (mempty, mempty)

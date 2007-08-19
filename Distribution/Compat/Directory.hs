@@ -2,7 +2,7 @@
 -- #hide
 module Distribution.Compat.Directory (
         module System.Directory,
-#if __GLASGOW_HASKELL__ <= 602
+#if (__GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 602) || __NHC__
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
         removeDirectoryRecursive,
 #endif
@@ -17,7 +17,7 @@ module Distribution.Compat.Directory (
 #endif
 #endif
 
-#if !__GLASGOW_HASKELL__ || __GLASGOW_HASKELL__ > 602
+#if !(__GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 602) && !__NHC__
 
 import System.Directory
 
