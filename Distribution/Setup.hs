@@ -79,7 +79,7 @@ import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die)
 import Distribution.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
-import Data.List(find)
+import Data.List (find, sort)
 import Data.Char( toLower )
 import Distribution.GetOpt
 import Distribution.Verbosity
@@ -428,9 +428,11 @@ data Cmd a = Cmd {
         cmdName         :: String,
         cmdHelp         :: String, -- Short description
         cmdDescription  :: String, -- Long description
-        cmdOptions      :: [OptDescr (Flag a)],
+        cmdOptions      :: ShowOrParseArgs -> [OptDescr (Flag a)],
         cmdAction       :: Action
         }
+
+data ShowOrParseArgs = ShowArgs | ParseArgs
 
 commandList :: ProgramConfiguration -> [Cmd a]
 commandList progConf = [(configureCmd progConf), buildCmd, makefileCmd,
@@ -465,14 +467,14 @@ printGlobalHelp progConf =
 printCmdHelp :: Cmd a -> [OptDescr a] -> IO ()
 printCmdHelp cmd opts = do pname <- getProgName
                            let syntax_line = "Usage: " ++ pname ++ " " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
-                           putStrLn (usageInfo syntax_line (cmdOptions cmd ++ liftCustomOpts opts))
+                           putStrLn (usageInfo syntax_line (cmdOptions cmd ShowArgs ++ liftCustomOpts opts))
                            putStr (cmdDescription cmd)
 
 getCmdOpt :: Cmd a -> [OptDescr a] -> [String] -> ([Flag a], [String], [String])
 getCmdOpt cmd opts s = (flags, other_opts, errs++errs')
   where
     (flags, nonopts, other_opts, errs) =
-      getOpt' RequireOrder (cmdOptions cmd ++ liftCustomOpts opts) s
+      getOpt' RequireOrder (cmdOptions cmd ParseArgs ++ liftCustomOpts opts) s
     errs' = ["unexpected argument: " ++ nonopt | nonopt <- nonopts]
 
 -- We don't want to use elem, because that imposes Eq a
@@ -496,8 +498,8 @@ configureCmd :: ProgramConfiguration -> Cmd a
 configureCmd progConf = Cmd {
         cmdName        = "configure",
         cmdHelp        = "Prepare to build the package.",
-        cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdDescription = programFlagsDescription progConf,
+        cmdOptions     = \showOrParseArgs -> [cmd_help, cmd_verbose,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
            Option "" ["nhc"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["jhc"]  (NoArg JhcFlag) "compile with JHC",
@@ -556,18 +558,27 @@ configureCmd progConf = Cmd {
                "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs.",
            Option "f" ["flags"] (reqFlagsArgs ConfigurationsFlags)
                "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."       
-]
-{- 
-   FIX: Instead of using ++ here, we might add extra arguments.  That
-   way, we can condense the help out put to something like
-   --with-{haddock,happy,alex,etc}
-
-   FIX: shouldn't use default. Look in hooks?.
--}
-         ++ (withProgramOptions progConf)
-         ++ (programArgsOptions progConf),
+           ]
+        ++ (case showOrParseArgs of
+	      -- in the help text we don't want a massive verbose list
+	      -- so we just show two generic ones:
+              ShowArgs  -> [Option "" ["with-<program>"]
+                              (reqArgArg (ProgramArgs "<program>"))
+                              ("the path of the program")
+                           ,Option "" ["<program>-args"]
+                              (reqArgArg (WithProgram "<program>"))
+                              ("extra args to use when running the program")]
+              -- All the args for all the programs we might call
+              ParseArgs -> withProgramOptions progConf
+                        ++ programArgsOptions progConf),
         cmdAction      = ConfigCmd (emptyConfigFlags progConf)
         }
+
+programFlagsDescription :: ProgramConfiguration -> String
+programFlagsDescription progConf =
+     "The flags --with-<program> and --<program>-args can be used with"
+  ++ " the following programs: "
+  ++ unwords (sort [ programName prog | (prog, _) <- knownPrograms progConf ])
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
 programArgsOptions conf =
@@ -656,7 +667,7 @@ buildCmd = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose, cmd_ghc_option],
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose, cmd_ghc_option],
         cmdAction      = BuildCmd
         }
 
@@ -673,7 +684,7 @@ makefileCmd = Cmd {
         cmdName        = "makefile",
         cmdHelp        = "Perform any necessary makefileing.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose, cmd_ghc_option,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose, cmd_ghc_option,
            Option "f" ["file"] (reqPathArg MakefileFile)
                "Filename to use (default: Makefile)."],
         cmdAction      = MakefileCmd
@@ -693,7 +704,7 @@ hscolourCmd = Cmd {
         cmdName        = "hscolour",
         cmdHelp        = "Generate HsColour colourised code, in HTML format.",
         cmdDescription = "Requires hscolour.\n",
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
                           Option "" ["executables"] (NoArg HscolourExecutables)
                             "Run hscolour for Executables targets",
                           Option "" ["css"] (reqPathArg HscolourCss)
@@ -714,7 +725,7 @@ haddockCmd = Cmd {
         cmdName        = "haddock",
         cmdHelp        = "Generate Haddock HTML documentation.",
         cmdDescription = "Requires cpphs and haddock.\n",
-        cmdOptions     =
+        cmdOptions     = \_ ->
          [cmd_help, cmd_verbose,
           Option "" ["hoogle"] (NoArg HaddockHoogle)
             "Generate a hoogle database",
@@ -748,7 +759,7 @@ programaticaCmd = Cmd {
         cmdName        = "pfe",
         cmdHelp        = "Generate Programatica Project.",
         cmdDescription = "",
-        cmdOptions     = [cmd_help, cmd_verbose],
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose],
         cmdAction      = ProgramaticaCmd
         }
 
@@ -760,7 +771,7 @@ cleanCmd = Cmd {
         cmdName        = "clean",
         cmdHelp        = "Clean up after a build.",
         cmdDescription = "Removes .hi, .o, preprocessed sources, etc.\n", -- Multi-line!
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "s" ["save-configure"] (NoArg SaveConfigure)
                "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."],
         cmdAction      = CleanCmd
@@ -779,7 +790,7 @@ installCmd = Cmd {
         cmdName        = "install",
         cmdHelp        = "Copy the files into the install locations. Run register.",
         cmdDescription = "Unlike the copy command, install calls the register command.\nIf you want to install into a location that is not what was\nspecified in the configure step, use the copy command.\n",
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "" ["install-prefix"] (reqDirArg InstPrefix)
                "[DEPRECATED, use copy]",
            Option "" ["user"] (NoArg UserFlag)
@@ -795,7 +806,7 @@ copyCmd = Cmd {
         cmdName        = "copy",
         cmdHelp        = "Copy the files into the install locations.",
         cmdDescription = "Does not call register, and allows a prefix at install time\nWithout the --destdir flag, configure determines location.\n",
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "" ["destdir"] (reqDirArg DestDir)
                "directory to copy files to, prepended to installation directories",
            Option "" ["copy-prefix"] (reqDirArg InstPrefix)
@@ -829,7 +840,7 @@ sdistCmd = Cmd {
         cmdName        = "sdist",
         cmdHelp        = "Generate a source distribution file (.tar.gz or .zip).",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help,cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help,cmd_verbose,
            Option "" ["snapshot"] (NoArg Snapshot)
                "Produce a snapshot source distribution"
            ],
@@ -848,7 +859,7 @@ testCmd = Cmd {
         cmdName        = "test",
         cmdHelp        = "Run the test suite, if any (configure with UserHooks).",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help,cmd_verbose],
+        cmdOptions     = \_ -> [cmd_help,cmd_verbose],
         cmdAction      = TestCmd
         }
 
@@ -860,7 +871,7 @@ registerCmd = Cmd {
         cmdName        = "register",
         cmdHelp        = "Register this package with the compiler.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "" ["user"] (NoArg UserFlag)
                "upon registration, register this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -900,7 +911,7 @@ unregisterCmd = Cmd {
         cmdName        = "unregister",
         cmdHelp        = "Unregister this package with the compiler.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = [cmd_help, cmd_verbose,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "" ["user"] (NoArg UserFlag)
                "unregister this package in the user's local package database",
            Option "" ["global"] (NoArg GlobalFlag)
