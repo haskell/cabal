@@ -124,6 +124,7 @@ register pkg_descr lbi regFlags
     return ()
   | otherwise = do
     let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
+        isWindows = case os of Windows _ -> True; _ -> False
         genScript = regGenScript regFlags
         genPkgConf = regGenPkgConf regFlags
         genPkgConfigDefault = showPackageId (package pkg_descr) <.> "conf"
@@ -165,20 +166,16 @@ register pkg_descr lbi regFlags
           writeInstalledConfig pkg_descr lbi inplace (Just instConf)
 
         let register_flags
-                | ghc_63_plus = let conf = case os of
-                                               Windows MingW
-                                                | genScript -> []
-                                               _ ->            [instConf]
+                | ghc_63_plus = let conf = if genScript && not isWindows
+		                             then ["-"]
+		                             else [instConf]
                                 in "update" : conf
-                | otherwise   = let conf = case os of
-                                               Windows MingW
-                                                | genScript -> []
-                                               _ -> ["--input-file="++instConf]
+                | otherwise   = let conf = if genScript && not isWindows
+		                              then []
+                                              else ["--input-file="++instConf]
                                 in "--update-package" : conf
 
-        let allFlags = register_flags
-                       ++ config_flags
-                       ++ if ghc_63_plus && genScript then ["-"] else []
+        let allFlags = config_flags ++ register_flags
         let pkgTool = compilerPkgToolPath hc
 
         case () of
