@@ -76,7 +76,7 @@ import Test.HUnit (Test(..))
 #endif
 
 import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Simple.Utils (die)
+import Distribution.Simple.Utils (die, wrapText)
 import Distribution.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
 import Data.List (find, sort)
@@ -562,12 +562,12 @@ configureCmd progConf = Cmd {
         ++ (case showOrParseArgs of
 	      -- in the help text we don't want a massive verbose list
 	      -- so we just show two generic ones:
-              ShowArgs  -> [Option "" ["with-<program>"]
-                              (reqArgArg (ProgramArgs "<program>"))
-                              ("the path of the program")
-                           ,Option "" ["<program>-args"]
-                              (reqArgArg (WithProgram "<program>"))
-                              ("extra args to use when running the program")]
+              ShowArgs  -> [Option "" ["with-PROG"]
+                              (reqArgArg (ProgramArgs "PROG"))
+                              ("the path or name of the program PROG")
+                           ,Option "" ["PROG-args"]
+                              (reqArgArg (WithProgram "PROG"))
+                              ("extra args to pass to the program PROG")]
               -- All the args for all the programs we might call
               ParseArgs -> withProgramOptions progConf
                         ++ programArgsOptions progConf),
@@ -576,9 +576,11 @@ configureCmd progConf = Cmd {
 
 programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
-     "The flags --with-<program> and --<program>-args can be used with"
-  ++ " the following programs: "
-  ++ unwords (sort [ programName prog | (prog, _) <- knownPrograms progConf ])
+     "The flags --with-PROG and --PROG-args can be used with"
+  ++ " the following programs:"
+  ++ (concatMap ("\n  "++) . wrapText 77 . sort)
+     [ programName prog | (prog, _) <- knownPrograms progConf ]
+  ++ "\n"
 
 programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
 programArgsOptions conf =
