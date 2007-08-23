@@ -271,8 +271,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                         }
                       } NoCopyDest
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
-        haddockDir  | inplace   = haddockdir installDirs pkg_descr
-                    | otherwise = haddockdir inplaceDirs pkg_descr
+        haddockDir  | inplace   = haddockdir inplaceDirs pkg_descr
+                    | otherwise = haddockdir installDirs pkg_descr
         libraryDir  | inplace   = build_dir
                     | otherwise = libdir installDirs
     in
