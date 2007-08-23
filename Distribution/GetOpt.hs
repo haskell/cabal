@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.GetOpt
@@ -52,14 +51,7 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-#if __GLASGOW_HASKELL__ >= 606 || !__GLASGOW_HASKELL__
-
-import System.Console.GetOpt
-
-#else
--- to end of file:
-
-import Data.List ( isPrefixOf )
+import Data.List ( isPrefixOf, intersperse )
 
 -- |What to do with options following non-options
 data ArgOrder a
@@ -107,22 +99,26 @@ usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
           -> String                    -- nicely formatted decription of options
 usageInfo header optDescr = unlines (header:table)
-   where (ss,ls,ds)     = (unzip3 . concatMap fmtOpt) optDescr
-         table          = zipWith3 paste (sameLen ss) (sameLen ls) ds
-         paste x y z    = "  " ++ x ++ "  " ++ y ++ "  " ++ z
-         sameLen xs     = flushLeft ((maximum . map length) xs) xs
-         flushLeft n xs = [ take n (x ++ repeat ' ') | x <- xs ]
+   where (ss,ls,ds) = unzip3 [ (sepBy ", " (map (fmtShort ad) sos)
+                               ,sepBy ", " (map (fmtLong  ad) los)
+                               ,d)
+                             | Option sos los ad d <- optDescr ]
+         ssWidth    = (maximum . map length) ss
+	 lsWidth    = (maximum . map length) ls
+	 dsWidth    = 30 `max` (80 - (ssWidth + lsWidth + 3))
+         table      = [ " " ++ padTo ssWidth so' ++
+                        " " ++ padTo lsWidth lo' ++
+                        " " ++ d'
+                      | (so,lo,d) <- zip3 ss ls ds
+                      , (so',lo',d') <- fmtOpt dsWidth so lo d ]
+         padTo n x  = take n (x ++ repeat ' ')
+	 sepBy s    = concat . intersperse s
 
-fmtOpt :: OptDescr a -> [(String,String,String)]
-fmtOpt (Option sos los ad descr) =
-   case lines descr of
-     []     -> [(sosFmt,losFmt,"")]
-     (d:ds) ->  (sosFmt,losFmt,d) : [ ("","",d') | d' <- ds ]
-   where sepBy _  []     = ""
-         sepBy _  [x]    = x
-         sepBy ch (x:xs) = x ++ ch:' ':sepBy ch xs
-         sosFmt = sepBy ',' (map (fmtShort ad) sos)
-         losFmt = sepBy ',' (map (fmtLong  ad) los)
+fmtOpt :: Int -> String -> String -> String -> [(String, String, String)]
+fmtOpt descrWidth so lo descr =
+   case wrapText descrWidth descr of
+     []     -> [(so,lo,"")]
+     (d:ds) -> (so,lo,d) : [ ("","",d') | d' <- ds ]
 
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg  _   ) so = "-" ++ [so]
@@ -133,6 +129,21 @@ fmtLong :: ArgDescr a -> String -> String
 fmtLong (NoArg  _   ) lo = "--" ++ lo
 fmtLong (ReqArg _ ad) lo = "--" ++ lo ++ "=" ++ ad
 fmtLong (OptArg _ ad) lo = "--" ++ lo ++ "[=" ++ ad ++ "]"
+
+wrapText :: Int -> String -> [String]
+wrapText width = map unwords . wrap 0 [] . words
+  where wrap :: Int -> [String] -> [String] -> [[String]]
+        wrap 0   []   (w:ws)
+          | length w + 1 > width
+          = wrap (length w) [w] ws
+        wrap col line (w:ws)
+          | col + length w + 1 > width
+          = reverse line : wrap 0 [] (w:ws)
+        wrap col line (w:ws)
+          = let col' = col + length w + 1
+             in wrap col' (w:line) ws
+        wrap _ []   [] = []
+        wrap _ line [] = [reverse line]
 
 {-|
 Process the command-line, and return the list of values that matched
@@ -284,8 +295,6 @@ test order cmdline = case getOpt order options cmdline of
 --          -n USER   --name=USER           only dump USER's files
 -----------------------------------------------------------------------------------------
 -}
-
-#endif
 
 {- $example
 
