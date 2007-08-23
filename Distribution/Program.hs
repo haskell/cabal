@@ -45,6 +45,7 @@ module Distribution.Program (
     , emptyProgramConfiguration
     , defaultProgramConfiguration
     , addKnownProgram
+    , lookupKnownProgram
     , knownPrograms
     , userSpecifyPath
     , userMaybeSpecifyPath
@@ -239,6 +240,10 @@ instance Read ProgramConfiguration where
 addKnownProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
 addKnownProgram prog = updateUnconfiguredProgs $
   Map.insert (programName prog) (prog, Nothing, [])
+
+lookupKnownProgram :: String -> ProgramConfiguration -> Maybe Program
+lookupKnownProgram name =
+  fmap (\(p,_,_)->p) . Map.lookup name . unconfiguredProgs
 
 knownPrograms :: ProgramConfiguration -> [(Program, Maybe ConfiguredProgram)]
 knownPrograms conf = 
