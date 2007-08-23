@@ -46,6 +46,7 @@ module Distribution.Simple.Utils (
         dieWithLocation,
         warn,
         breaks,
+	wrapText,
         rawSystemExit,
         rawSystemStdout,
         maybeExit,
@@ -161,6 +162,22 @@ breaks f xs = case span f xs of
                       case break f xs' of
                           (v, xs'') ->
                               v : breaks f xs''
+
+-- Wraps a list of words text to a list of lines of a particular width.
+wrapText :: Int -> [String] -> [String]
+wrapText width = map unwords . wrap 0 []
+  where wrap :: Int -> [String] -> [String] -> [[String]]
+        wrap 0   []   (w:ws)
+          | length w + 1 > width
+          = wrap (length w) [w] ws
+        wrap col line (w:ws)
+          | col + length w + 1 > width
+          = reverse line : wrap 0 [] (w:ws)
+        wrap col line (w:ws)
+          = let col' = col + length w + 1
+             in wrap col' (w:line) ws
+        wrap _ []   [] = []
+        wrap _ line [] = [reverse line]
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
