@@ -962,7 +962,8 @@ parseDescription file = do
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
     maybeWarnCabalVersion pkg =
-        when (isAnyVersion (descCabalVersion pkg)) $
+        when (pkgName (package pkg) /= "Cabal" -- supress warning for Cabal
+	   && isAnyVersion (descCabalVersion pkg)) $
           lift $ warning $
             "A package using section syntax should require\n" 
             ++ "\"Cabal-Version: >= 1.2\" or equivalent."
