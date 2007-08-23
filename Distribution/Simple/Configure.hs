@@ -82,7 +82,8 @@ import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..), programPath
-    , ProgramConfiguration, configureAllKnownPrograms, knownPrograms )
+    , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
+    , lookupKnownProgram, requireProgram )
 import Distribution.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
@@ -109,7 +110,7 @@ import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad
-    ( when, unless )
+    ( when, unless, foldM )
 import Data.Char
     ( isSpace, toLower )
 import Data.List
@@ -271,8 +272,9 @@ configure (pkg_descr0, pbi) cfg
             show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
-        programsConfig' <- configureAllKnownPrograms (lessVerbose verbosity)
-                             programsConfig
+        programsConfig' <-
+              configureAllKnownPrograms (lessVerbose verbosity) programsConfig
+          >>= configureRequiredPrograms verbosity (buildTools pkg_descr)
 
 	split_objs <- 
 	   if not (configSplitObjs cfg)
@@ -331,6 +333,9 @@ messageDir name pkg_descr dir isPrefixRelative
       Windows MingW | not (hasLibs pkg_descr)
                    && isNothing isPrefixRelative -> "  (fixed location)"
       _                                          -> ""
+
+-- -----------------------------------------------------------------------------
+-- Configuring package dependencies
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
@@ -395,6 +400,19 @@ getInstalledPackages comp user verbosity = do
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
+
+-- -----------------------------------------------------------------------------
+-- Configuring program dependencies
+
+configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration -> IO ProgramConfiguration
+configureRequiredPrograms verbosity deps conf =
+  foldM (configureRequiredProgram verbosity) conf deps
+
+configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency -> IO ProgramConfiguration
+configureRequiredProgram verbosity conf (Dependency progName verRange) =
+  case lookupKnownProgram progName conf of
+    Nothing -> die ("Unknown build tool " ++ show progName)
+    Just prog -> snd `fmap` requireProgram verbosity prog verRange conf
 
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details

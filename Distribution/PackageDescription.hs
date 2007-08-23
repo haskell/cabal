@@ -165,6 +165,7 @@ data PackageDescription
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
         buildDepends   :: [Dependency],
+        buildTools     :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
         buildType      :: BuildType,
         -- components
@@ -189,6 +190,7 @@ emptyPackageDescription
                       stability    = "",
                       testedWith   = [],
                       buildDepends = [],
+                      buildTools   = [],
                       homepage     = "",
                       pkgUrl       = "",
                       synopsis     = "",
@@ -379,6 +381,9 @@ pkgDescrFieldDescrs =
  , commaListField  "build-depends"
            showDependency         parseDependency
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
+ , commaListField  "build-tools"
+           showDependency         parseDependency
+           buildTools             (\xs    pkg -> pkg{buildTools=xs})
  , simpleField "stability"
            showFreeText           (munch (const True))
            stability              (\val pkg -> pkg{stability=val})
@@ -1530,6 +1535,7 @@ comparePackageDescriptions p1 p2
                 : myCmp description      "description"
                 : myCmp category         "category"
                 : myCmp buildDepends     "buildDepends"
+                : myCmp buildTools       "buildTools"
                 : myCmp library          "library"
                 : myCmp executables      "executables"
                 : myCmp descCabalVersion "cabal-version" 
