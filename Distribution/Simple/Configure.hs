@@ -287,20 +287,21 @@ configure (pkg_descr0, pbi) cfg
 				    return False
 
 	let lbi = LocalBuildInfo{
-                    installDirTemplates = installDirs,
-                    compiler            = comp,
+		    installDirTemplates = installDirs,
+		    compiler            = comp,
 		    buildDir            = distPref </> "build",
 		    scratchDir          = distPref </> "scratch",
-                    packageDeps         = dep_pkgs,
-                    localPkgDescr       = pkg_descr,
-                    withPrograms        = programsConfig',
-                    withVanillaLib      = configVanillaLib cfg,
-                    withProfLib         = configProfLib cfg,
-                    withProfExe         = configProfExe cfg,
-                    withOptimization    = configOptimization cfg,
+		    packageDeps         = dep_pkgs,
+		    localPkgDescr       = pkg_descr,
+		    withPrograms        = programsConfig',
+		    withVanillaLib      = configVanillaLib cfg,
+		    withProfLib         = configProfLib cfg,
+		    withSharedLib       = configSharedLib cfg,
+		    withProfExe         = configProfExe cfg,
+		    withOptimization    = configOptimization cfg,
 		    withGHCiLib         = configGHCiLib cfg,
 		    splitObjs           = split_objs,
-                    userConf            = configUser cfg
+		    userConf            = configUser cfg
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest

@@ -94,6 +94,7 @@ data LocalBuildInfo = LocalBuildInfo {
         userConf      :: Bool,           -- ^Was this package configured with --user?
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
+        withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withOptimization :: Bool, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
