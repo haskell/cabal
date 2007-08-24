@@ -116,6 +116,12 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
       createDirectoryIfMissingVerbose verbosity True targetDir
       copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
       -- setPermissionsRecursive [Read] targetDir
+
+  let lfile = licenseFile pkg_descr
+  unless (null lfile) $ do
+    createDirectoryIfMissingVerbose verbosity True dataPref
+    copyFileVerbose verbosity lfile (dataPref </> lfile)
+
   let buildPref = buildDir lbi
   setupMessage verbosity ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
 
