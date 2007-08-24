@@ -149,7 +149,7 @@ installIncludeFiles verbosity PackageDescription{library=Just l} incdir
    sequence_ [ copyFileVerbose verbosity path (incdir </> f)
 	     | (f,path) <- incs ]
   where
-   relincdirs = filter (not.isAbsolute) (includeDirs lbi)
+   relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
    lbi = libBuildInfo l
 
    findInc [] f = die ("can't find include file " ++ f)
