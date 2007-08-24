@@ -875,8 +875,8 @@ Executable program2 {
               <literal>$libdir/includes</literal> when the package
               is installed.  Files listed in
               <literal>install-includes:</literal> should be found in
-              one of the directories listed in
-              <literal>include-dirs</literal>.</para>
+              relative to the top of the source tree or relative to one of the
+              directories listed in <literal>include-dirs</literal>.</para>
 
 	      <para><literal>install-includes</literal> is typically
 	      used to name header files that contain prototypes for
