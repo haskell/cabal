@@ -61,6 +61,7 @@ module Distribution.Simple.Utils (
         moduleToFilePath2,
         mkLibName,
         mkProfLibName,
+        mkSharedLibName,
         currentDir,
         dotToSep,
 	findFile,
@@ -112,7 +113,10 @@ import Distribution.Compat.Exception
     ( bracket )
 import Distribution.System
     ( OS(..), os )
-
+import Distribution.Version
+    (showVersion)
+import Distribution.Package
+    (PackageIdentifier(..))
 
 #if __GLASGOW_HASKELL__ >= 604
 import Control.Exception (evaluate)
@@ -416,6 +420,23 @@ mkProfLibName :: FilePath -- ^file Prefix
               -> String
 mkProfLibName pref lib = mkLibName pref (lib++"_p")
 
+-- Implement proper name mangling for dynamical shared objects
+-- libHS<packagename>-<compilerFlavour><compilerVersion>
+-- e.g. libHSbase-2.1-ghc6.6.1.so
+mkSharedLibName :: FilePath        -- ^file Prefix
+              -> String            -- ^library name.
+              -> PackageIdentifier -- ^package identifier of the compiler
+              -> String
+mkSharedLibName pref lib (PackageIdentifier compilerName version)
+  = pref </> ("libHS" ++ lib ++ "-" ++ compilerName ++ (showVersion version) ++
+#if defined(mingw32_TARGET_OS)
+              ".dll"
+#elseif defined(darwin_TARGET_OS)
+             ".dylib"
+#else
+             ".so"
+#endif
+             )
 -- ------------------------------------------------------------
 -- * Finding the description file
 -- ------------------------------------------------------------
