@@ -144,7 +144,6 @@ data ConfigFlags = ConfigFlags {
 	configUser     :: Bool,		  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
-        configHaddockUsePackages :: Bool,  -- ^ auto-gen haddock --use-package
         configConfigurationsFlags :: [(String, Bool)]
     }
     deriving Show
@@ -174,7 +173,6 @@ emptyConfigFlags progConf = ConfigFlags {
 	configUser     = False,
 	configGHCiLib  = True,
 	configSplitObjs = False, -- takes longer, so turn off by default
-        configHaddockUsePackages = True,
         configConfigurationsFlags = []
     }
 
@@ -312,7 +310,6 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DataDir FilePath
 	  | DataSubDir FilePath
 	  | DocDir FilePath
-          | WithHaddockUsePackages | WithoutHaddockUsePackages
           | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
@@ -552,10 +549,6 @@ configureCmd progConf = Cmd {
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
                "(default) dependencies must be satisfied from the global package database",
-           Option "" ["enable-haddock-use-packages"] (NoArg WithHaddockUsePackages)
-               "Automatically pass --use-library flags to haddock.",
-           Option "" ["disable-haddock-use-packages"] (NoArg WithoutHaddockUsePackages)
-               "Don't automatically pass --use-library flags to haddock.  Instead, you might use --haddock-args with --read-interface to get web links to your dependent library docs.",
            Option "f" ["flags"] (reqFlagsArgs ConfigurationsFlags)
                "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."       
            ]
@@ -653,8 +646,6 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t GlobalFlag           = t { configUser     = False }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
-	updateCfg t WithHaddockUsePackages    = t { configHaddockUsePackages = True }
-	updateCfg t WithoutHaddockUsePackages = t { configHaddockUsePackages = False }
         updateCfg t (ConfigurationsFlags fs)  = t { configConfigurationsFlags =
                                                         fs ++ configConfigurationsFlags t }
         updateCfg t (ConfigureOption o) = t { configConfigureArgs = o : configConfigureArgs t }
