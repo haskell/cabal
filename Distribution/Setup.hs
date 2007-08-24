@@ -120,6 +120,7 @@ data ConfigFlags = ConfigFlags {
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
         configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
+        configSharedLib  :: Bool,           -- ^Enable profiling in the library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configConfigureArgs :: [String],  -- ^Extra arguments to @configure@
         configOptimization :: Bool,       -- ^Enable optimization.
@@ -158,6 +159,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configHcPkg    = Nothing,
         configVanillaLib  = True,
         configProfLib  = False,
+        configSharedLib  = False,
         configProfExe  = False,
         configConfigureArgs = [],
         configOptimization = True,
@@ -296,6 +298,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithCompiler FilePath | WithHcPkg FilePath
           | WithVanillaLib | WithoutVanillaLib
           | WithProfLib | WithoutProfLib
+          | WithSharedLib | WithoutSharedLib
           | WithProfExe | WithoutProfExe
           | WithOptimization | WithoutOptimization
 	  | WithGHCiLib | WithoutGHCiLib
@@ -528,6 +531,10 @@ configureCmd progConf = Cmd {
                "Enable library profiling",
            Option "" ["disable-library-profiling"] (NoArg WithoutProfLib)
                "Disable library profiling",
+           Option "" ["enable-shared"] (NoArg WithSharedLib)
+               "Enable shared library",
+           Option "" ["disable-shared"] (NoArg WithoutSharedLib)
+               "Disable shared library",
            Option "" ["enable-executable-profiling"] (NoArg WithProfExe)
                "Enable executable profiling",
            Option "" ["disable-executable-profiling"] (NoArg WithoutProfExe)
@@ -627,6 +634,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
                                                configGHCiLib = False }
         updateCfg t WithProfLib          = t { configProfLib  = True }
         updateCfg t WithoutProfLib       = t { configProfLib  = False }
+        updateCfg t WithSharedLib          = t { configSharedLib  = True }
+        updateCfg t WithoutSharedLib       = t { configSharedLib  = False }
         updateCfg t WithProfExe          = t { configProfExe  = True }
         updateCfg t WithoutProfExe       = t { configProfExe  = False }
         updateCfg t WithOptimization     = t { configOptimization = True }
