@@ -267,7 +267,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         inplaceDirs = absoluteInstallDirs pkg_descr lbi {
                         installDirTemplates = (installDirTemplates lbi) {
                           dataDirTemplate    = toPathTemplate pwd,
-                          dataSubdirTemplate = toPathTemplate distPref
+                          dataSubdirTemplate = toPathTemplate distPref,
+                          docDirTemplate     = toPathTemplate (pwd </> distPref </> "doc")
                         }
                       } NoCopyDest
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
