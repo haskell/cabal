@@ -63,7 +63,7 @@ module Distribution.Simple.InstallDirs (
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import System.FilePath ((</>), isPathSeparator)
-#if __HUGS__
+#if __HUGS__ || __GLASGOW_HASKELL__ > 606
 import System.FilePath (dropDrive)
 #endif
 
@@ -486,7 +486,7 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
                               -> IO CInt
 #endif
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 606
+#if !(__HUGS__ || __GLASGOW_HASKELL__ > 606)
 -- Compat: this function only appears in FilePath > 1.0
 -- (which at the time of writing is unreleased)
 dropDrive :: FilePath -> FilePath
