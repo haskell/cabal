@@ -819,6 +819,18 @@ Executable program2 {
 
           <varlistentry>
             <term>
+              <literal>ghc-shared-options:</literal>
+              <replaceable>token list</replaceable>
+            </term>
+            <listitem>
+              <para>Additional options for GHC when the package is
+              built as shared library.</para>
+            </listitem>
+          </varlistentry>
+
+
+          <varlistentry>
+            <term>
               <literal>hugs-options:</literal>
               <replaceable>token list</replaceable>
             </term>
@@ -2259,6 +2271,24 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 executables that use the library will be larger.</para>
 	    </listitem>
 	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-shared</option></term>
+	    <listitem>
+	      <para>Build shared library. This implies a seperate
+	      compiler run to generate position independent code as
+	      required on most platforms.</para>
+	    </listitem>
+	  </varlistentry>
+
+
+	  <varlistentry>
+	    <term><option>--disable-shared</option></term>
+	    <listitem>
+	      <para>(default) Do not build shared library.</para>
+	    </listitem>
+	  </varlistentry>
+
 
 	  <varlistentry>
             <term><option>--configure-option</option>=<replaceable>str</replaceable></term>
