@@ -565,6 +565,20 @@ Executable program2 {
             </listitem>
           </varlistentry>
 
+	  <varlistentry>
+            <term>
+              <literal>build-tools:</literal>
+              <replaceable>program list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of programs, possibly annotated with versions,
+                needed to build this package,
+                e.g. <literal>c2hs > 0.15, cpphs</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable.</para>
+            </listitem>
+          </varlistentry>
+
           <varlistentry>
             <term>
               <literal>tested-with:</literal>
@@ -624,7 +638,7 @@ Executable program2 {
         <title>Library</title>
 
         <para>The library section should contain the following
-        field:</para>
+        fields:</para>
 
         <variablelist>
           <varlistentry>
@@ -858,7 +872,7 @@ Executable program2 {
             <listitem>
               <para>A list of header files from this package to be
               installed into
-              <literal>$(libdir)/includes</literal> when the package
+              <literal>$libdir/includes</literal> when the package
               is installed.  Files listed in
               <literal>install-includes:</literal> should be found in
               one of the directories listed in
@@ -1427,7 +1441,9 @@ main = defaultMain</programlisting>
                 <literal>configure</literal> command are passed on to
                 the <filename>configure</filename> script.
                 In addition the value of the <option>--with-compiler</option>
-                option is passed in a <option>--with-hc</option> option.</para>
+                option is passed in a <option>--with-hc</option> option and
+                all options specified with <option>--configure-option</option>=
+                are passed on.</para>
             </listitem>
 
             <listitem>
@@ -1580,10 +1596,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	<option>--with-hc-pkg</option>,
 	<option>--prefix</option>, <option>--bindir</option>,
 	<option>--libdir</option>, <option>--datadir</option> and
-	<option>--libexecdir</option> options, plus any unrecognized
-	options.
+	<option>--libexecdir</option> options.
 	In addition the value of the <option>--with-compiler</option>
-	option is passed in a <option>--with-hc</option> option.</para>
+	option is passed in a <option>--with-hc</option> option  and
+        all options specified with <option>--configure-option</option>=
+        are passed on.</para>
 
       <sect3 id="setup-configure-programs">
 	<title>Programs used for building</title>
@@ -1594,7 +1611,8 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	<variablelist>
 	  <varlistentry>
 	    <term><option>--ghc</option> or <option>-g</option></term>
-	    <term><option>--nhc</option> or <option>-n</option></term>
+	    <term><option>--nhc</option></term>
+	    <term><option>--jhc</option></term>
 	    <term><option>--hugs</option></term>
 	    <listitem>
 	      <para>Specify which Haskell implementation to use to build
@@ -1615,7 +1633,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      <para>This flag also sets the default value of the
 		<option>--with-hc-pkg</option> option to the package tool
 		for this compiler.
-		Check the output of <literal>setup configure</literal>
+		Check the output of <literal>setup configure -v</literal>
 		to ensure that it finds the right package tool (or use
 		<option>--with-hc-pkg</option> explicitly).</para>
 	    </listitem>
@@ -1634,58 +1652,24 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--with-hscolour</option>=<replaceable>path</replaceable></term>
+	    <term><option>--with-<replaceable>prog</replaceable></option>=<replaceable>path</replaceable></term>
 	    <listitem>
-	      <para>Specify the path to &HsColour;.</para>
+	      <para>Specify the path to the program <replaceable>prog</replaceable>.
+                Any program known to Cabal can be used in place of
+                <replaceable>prog</replaceable>. It can either be a fully
+                path or the name of a program that can be found on the program
+                 search path. For example: <option>--with-ghc=ghc-6.6.1</option>
+                or <option>--with-cpphs=/usr/local/bin/cpphs</option>.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--with-haddock</option>=<replaceable>path</replaceable></term>
+	    <term><option>--<replaceable>prog</replaceable>-args</option>=<replaceable>args</replaceable></term>
 	    <listitem>
-	      <para>Specify the path to &Haddock;.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-happy</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to &Happy;.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-alex</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to &Alex;.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-hsc2hs</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to <command>hsc2hs</command>.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-c2hs</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to &C2hs;.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-greencard</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to &Greencard;.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--with-cpphs</option>=<replaceable>path</replaceable></term>
-	    <listitem>
-	      <para>Specify the path to &Cpphs;.</para>
+	      <para>Specify additional arguments to the program <replaceable>prog</replaceable>
+                Any program known to Cabal can be used in place of
+                <replaceable>prog</replaceable>. For example:
+                <option>--alex-args="--template=mytemplatedir/"</option>.</para>
 	    </listitem>
 	  </varlistentry>
 	</variablelist>
@@ -1708,6 +1692,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      The other installation paths are usually subdirectories of
 	      <replaceable>prefix</replaceable>, but they don't have
 	      to be.</para>
+              <para>In the simple build system, <replaceable>dir</replaceable>
+                may contain the following path variables:
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1715,6 +1706,14 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <term><option>--bindir</option>=<replaceable>dir</replaceable></term>
 	    <listitem>
 	      <para>Executables that the user might invoke are installed here.</para>
+              <para>In the simple build system, <replaceable>dir</replaceable>
+                may contain the following path variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1722,44 +1721,15 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <term><option>--libdir</option>=<replaceable>dir</replaceable></term>
 	    <listitem>
 	      <para>Object-code libraries are installed here.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--libsubdir</option>=<replaceable>dir</replaceable></term>
-	    <listitem>
-	      <para>A subdirectory of <replaceable>libdir</replaceable>
-	      in which libraries are actually installed.  For example,
-	      in the simple build system on Unix, the default
-	      <replaceable>libdir</replaceable> is
-	      <filename>/usr/local/lib</filename>, and
-	      <replaceable>libsubdir</replaceable> contains the package
-	      identifier and compiler,
-	      e.g. <literal>mypkg-0.2/ghc-6.4</literal>, so libraries
-	      would be installed in
-	      <filename>/usr/local/lib/mypkg-0.2/ghc-6.4</filename>.</para>
-
-	      <para>Not all build systems make use of
-	        <replaceable>libsubdir</replaceable>, in particular the
-	        &Make; system does not.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--datadir</option>=<replaceable>dir</replaceable></term>
-	    <listitem>
-	      <para>Architecture-independent data files are installed
-	      here.</para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><option>--datasubdir</option>=<replaceable>dir</replaceable></term>
-	    <listitem>
-	      <para>A subdirectory of <replaceable>datadir</replaceable>
-		in which data files are actually installed.  This option
-		is similar to <literal>--libsubdir</literal> in that
-		not all build systems make use of it.</para>
+              <para>In the simple build system, <replaceable>dir</replaceable>
+                may contain the following path variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$bindir</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
 	    </listitem>
 	  </varlistentry>
 
@@ -1768,9 +1738,209 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    <listitem>
 	      <para>Executables that are not expected to be invoked
 	      directly by the user are installed here.</para>
+              <para>In the simple build system, <replaceable>dir</replaceable>
+                may contain the following path variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$bindir</replaceable>
+                <replaceable>$libdir</replaceable>
+                <replaceable>$libsubdir</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--datadir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Architecture-independent data files are installed
+	      here.</para>
+              <para>In the simple build system, <replaceable>dir</replaceable>
+                may contain the following path variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$bindir</replaceable>
+                <replaceable>$libdir</replaceable>
+                <replaceable>$libsubdir</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
 	    </listitem>
 	  </varlistentry>
 	</variablelist>
+
+	<para>In addition the simple build system supports the following
+         installation path options:</para>
+
+	<variablelist>
+	  <varlistentry>
+	    <term><option>--libsubdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>A subdirectory of <replaceable>libdir</replaceable>
+	        in which libraries are actually installed.  For example,
+	        in the simple build system on Unix, the default
+	        <replaceable>libdir</replaceable> is
+	        <filename>/usr/local/lib</filename>, and
+	        <replaceable>libsubdir</replaceable> contains the package
+	        identifier and compiler,
+	        e.g. <literal>mypkg-0.2/ghc-6.4</literal>, so libraries
+	        would be installed in
+	        <filename>/usr/local/lib/mypkg-0.2/ghc-6.4</filename>.
+              </para>
+              <para><replaceable>dir</replaceable> may contain the following path
+                variables:
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--datasubdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>A subdirectory of <replaceable>datadir</replaceable>
+		in which data files are actually installed.
+              </para>
+              <para><replaceable>dir</replaceable> may contain the following path
+                variables:
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--docdir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>Documentation files are installed relative to this directory.
+              </para>
+              <para><replaceable>dir</replaceable> may contain the following path
+                variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$bindir</replaceable>
+                <replaceable>$libdir</replaceable>
+                <replaceable>$libsubdir</replaceable>
+                <replaceable>$datadir</replaceable>
+                <replaceable>$datasubdir</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	</variablelist>
+
+	<sect4 id="simple-path-vars">
+	  <title>Path variables in the simple build system</title>
+
+	  <para>For the simple build system, there are a number of variables
+            that can be used when specifying installation paths. The defaults
+            are also specified in terms of these variables. A number of the
+            variables are actually for other paths, like
+            <literal>$prefix</literal>. This allows paths to be specified
+            relative to each other rather than as absolute paths, which is
+            important for building relocatable packages (see
+            <xref linkend="prefix-independence"/>).</para>
+
+	  <variablelist>
+	    <varlistentry>
+	      <term><replaceable>$prefix</replaceable></term>
+	      <listitem>
+	        <para>The path variable that stands for the root of the
+                  installation.</para>
+                <para>For an installation to be relocatable, all other
+                   instllation paths must be relative to the
+                   <replaceable>$prefix</replaceable> variable.</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$bindir</replaceable></term>
+              <listitem>
+                <para>The path variable that expands to the path given by
+                the <option>--bindir</option> configure option (or the
+                default).</para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$libdir</replaceable></term>
+              <listitem>
+                <para>As above but for <option>--libdir</option></para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$libsubdir</replaceable></term>
+              <listitem>
+                <para>As above but for <option>--libsubdir</option></para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$datadir</replaceable></term>
+              <listitem>
+                <para>As above but for <option>--datadir</option></para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$datasubdir</replaceable></term>
+              <listitem>
+                <para>As above but for <option>--datasubdir</option></para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$docdir</replaceable></term>
+              <listitem>
+                <para>As above but for <option>--docdir</option></para>
+              </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$pkgid</replaceable></term>
+	      <listitem>
+	        <para>The name and version of the package, eg
+                  <literal>mypkg-0.2</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$pkg</replaceable></term>
+	      <listitem>
+	        <para>The name of the package, eg
+                  <literal>mypkg</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$version</replaceable></term>
+	      <listitem>
+	        <para>The version of the package, eg
+                  <literal>0.2</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$compiler</replaceable></term>
+	      <listitem>
+	        <para>The compiler being used to build the package, eg
+                  <literal>ghc-6.6.1</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	  </variablelist>
+	</sect4>
 
 	<sect4 id="simple-paths">
 	  <title>Paths in the simple build system</title>
@@ -1848,42 +2018,6 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      </tbody>
 	    </tgroup>
 	  </informaltable>
-
-	  <para>The following strings are substituted into directory
-	    names:</para>
-
-	  <variablelist>
-	    <varlistentry>
-	      <term><literal>$prefix</literal></term>
-	      <listitem>
-		<para>The value of <replaceable>prefix</replaceable></para>
-	      </listitem>
-	    </varlistentry>
-	    <varlistentry>
-	      <term><literal>$pkgid</literal></term>
-	      <listitem>
-		<para>The full package identifier, e.g. <literal>pkg-0.1</literal></para>
-	      </listitem>
-	    </varlistentry>
-	    <varlistentry>
-	      <term><literal>$compiler</literal></term>
-	      <listitem>
-		<para>The compiler and version, e.g. <literal>ghc-6.4.1</literal></para>
-	      </listitem>
-	    </varlistentry>
-	    <varlistentry>
-	      <term><literal>$pkg</literal></term>
-	      <listitem>
-		<para>The name of the package only</para>
-	      </listitem>
-	    </varlistentry>
-	    <varlistentry>
-	      <term><literal>$version</literal></term>
-	      <listitem>
-		<para>The version of the package</para>
-	      </listitem>
-	    </varlistentry>
-	  </variablelist>
 	</sect4>
 
 	<sect4 id="prefix-independence">
@@ -2016,6 +2150,24 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>--enable-optimization</option> or <option>-O</option></term>
+	    <listitem>
+	      <para>(default) Build with optimization flags (if available).
+		This is appropriate for production use, taking more time
+		to build faster libraries and programs.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-optimization</option></term>
+	    <listitem>
+	      <para>Build without optimization.  This is suited for
+		development: building will be quicker, but the resulting
+		library or programs will be slower.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>--enable-library-profiling</option> or
 	      <option>-p</option></term>
 	    <listitem>
@@ -2052,20 +2204,59 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--enable-optimization</option> or <option>-O</option></term>
+	    <term><option>--enable-library-vanilla</option></term>
 	    <listitem>
-	      <para>(default) Build with optimization flags (if available).
-		This is appropriate for production use, taking more time
-		to build faster libraries and programs.</para>
+	      <para>(default) Build ordinary libraries (as opposed to profiling
+                libraries). This is independent of the
+                <option>--enable-library-profiling</option> option. If you
+                enable both, you get both.</para>
 	    </listitem>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--disable-optimization</option></term>
+	    <term><option>--disable-library-vanilla</option></term>
 	    <listitem>
-	      <para>Build without optimization.  This is suited for
-		development: building will be quicker, but the resulting
-		library or programs will be slower.</para>
+	      <para>(default) Do not build ordinary libraries. This is useful
+                in conjunction with <option>--enable-library-profiling</option>
+                to build only profiling libraries, rather than profiling and
+                ordinary libraries.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-library-for-ghci</option></term>
+	    <listitem>
+	      <para>(default) Build libraries suitable for use with GHCi.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-library-for-ghci</option></term>
+	    <listitem>
+	      <para>Not all platforms support GHCi and indeed on some
+                platforms, trying to build GHCi libs fails. In such cases
+                this flag can be used as a workaround.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--enable-split-objs</option></term>
+	    <listitem>
+	      <para>Use the GHC <option>-split-objs</option> feature when
+                building the library. This reduces the final size of the
+                executables that use the library by allowing them to link with
+                only the bits that they use rather than the entire library.
+                The downside is that building the library takes longer and uses
+                considerably more memory.</para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-split-objs</option></term>
+	    <listitem>
+	      <para>(default) Do not use the GHC <option>-split-objs</option>
+                feature. This makes building the library quicker but the final
+                executables that use the library will be larger.</para>
 	    </listitem>
 	  </varlistentry>
 
@@ -2393,6 +2584,24 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term><option>--gen-pkg-config</option>=[<replaceable>path</replaceable>]</term>
+          <listitem>
+            <para>Instead of registering the package, generate a package
+              registration file. This only applies to compilers that support
+              package registration files which at the moment is only GHC.
+              The file should be used with the compiler's mechanism for
+              registering packages.</para>
+            <para>This option is mainly intended for packaging systems. If
+              possible use the <option>--gen-script</option> option instead
+              since it is more portable across Haskell implementations.</para>
+            <para>The <replaceable>path</replaceable> is optional and can be
+              used to specify a particular output file to generate. Otherwise, 
+              by default the file is the package name and version with a
+              <literal>.conf</literal> extension.</para>
+          </listitem>
+        </varlistentry>
+
 	<varlistentry>
 	  <term><option>--inplace</option></term>
 	  <listitem>
@@ -2469,6 +2678,18 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
         <literal>unregister</literal> steps, and also any files and
         directories listed in the <literal>extra-tmp-files</literal>
         field.</para>
+
+      <para>This command takes the following options:</para>
+
+      <variablelist>
+        <varlistentry>
+          <term><option>--save-configure</option> or <option>-s</option></term>
+          <listitem>
+            <para>Keeps the configuration information so it is not necessary
+              to run the configure step again before building.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
     </sect2>
 
     <sect2 id="setup-test">
