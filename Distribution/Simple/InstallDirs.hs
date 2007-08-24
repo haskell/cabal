@@ -146,15 +146,12 @@ data InstallDirTemplates = InstallDirTemplates {
 defaultInstallDirs :: CompilerFlavor -> Bool -> IO InstallDirTemplates
 defaultInstallDirs comp hasLibs = do
   windowsProgramFilesDir <- getWindowsProgramFilesDir
-  windowsCommonFilesDir  <- getWindowsCommonFilesDir
   let prefixDir    = case os of
-        Windows _ -> windowsProgramFilesDir
+        Windows _ -> windowsProgramFilesDir </> "Haskell"
         _other    -> "/usr/local"
-      binDir       = case os of
-        Windows _ -> "$prefix" </> "Haskell" </> "bin"
-        _other    -> "$prefix" </> "bin"
+      binDir       = "$prefix" </> "bin"
       libDir       = case os of
-        Windows _ -> "$prefix" </> "Haskell"
+        Windows _ -> "$prefix"
         _other    -> "$prefix" </> "lib"
       libSubdir    = case comp of
            Hugs   -> "hugs" </> "packages" </> "$pkg"
@@ -166,11 +163,13 @@ defaultInstallDirs comp hasLibs = do
       progDir      = "$libdir" </> "hugs" </> "programs"
       includeDir   = "$libdir" </> "$libsubdir" </> "include"
       dataDir      = case os of
-        Windows _  | hasLibs   -> windowsCommonFilesDir
-                   | otherwise -> "$prefix" </> "Haskell"
+        Windows _  | hasLibs   -> windowsProgramFilesDir </> "Haskell"
+                   | otherwise -> "$prefix"
         _other    -> "$prefix" </> "share"
       dataSubdir   = "$pkgid"
-      docDir       = "$datadir" </> "doc" </> "$pkgid"
+      docDir       = case os of
+        Windows _ -> "$prefix"  </> "doc" </> "$pkgid"
+	_other    -> "$datadir" </> "doc" </> "$pkgid"
       htmlDir      = "$docdir"  </> "html"
   return InstallDirTemplates {
       prefixDirTemplate  = toPathTemplate prefixDir,
@@ -449,17 +448,6 @@ getWindowsProgramFilesDir = do
   let m = Nothing
 #endif
   return (fromMaybe "C:\\Program Files" m)
-
-getWindowsCommonFilesDir :: IO FilePath
-getWindowsCommonFilesDir = do
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-  m <- shGetFolderPath csidl_PROGRAM_FILES_COMMON
-#else
-  let m = Nothing
-#endif
-  case m of
-   Nothing -> getWindowsProgramFilesDir
-   Just s  -> return s
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 shGetFolderPath :: CInt -> IO (Maybe FilePath)
