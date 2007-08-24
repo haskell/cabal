@@ -572,7 +572,8 @@ data BuildInfo = BuildInfo {
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
 	installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
-        ghcProfOptions    :: [String]
+        ghcProfOptions    :: [String],
+        ghcSharedOptions  :: [String]
     }
     deriving (Show,Read,Eq)
 
@@ -592,7 +593,8 @@ nullBuildInfo = BuildInfo {
                       includes          = [],
                       installIncludes   = [],
                       options           = [],
-                      ghcProfOptions    = []
+                      ghcProfOptions    = [],
+                      ghcSharedOptions  = []
                      }
 
 -- | Modify all the 'BuildInfo's in a package description.
@@ -664,6 +666,9 @@ binfoFieldDescrs =
  , listField   "ghc-prof-options"         
            text               parseTokenQ
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
+ , listField   "ghc-shared-options"
+           text               parseTokenQ
+           ghcProfOptions        (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
