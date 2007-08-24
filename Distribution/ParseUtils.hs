@@ -403,7 +403,9 @@ parseModuleNameQ = parseQuoted modu <++ modu
 	  return (c:cs)
 
 parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = liftM normalise parseTokenQ
+parseFilePathQ = parseTokenQ 
+  -- removed until normalise is no longer broken, was:
+  --   liftM normalise parseTokenQ
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
