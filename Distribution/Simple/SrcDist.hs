@@ -81,7 +81,7 @@ import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, removeDirectoryRecursive)
 import Distribution.Verbosity
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>), takeDirectory, isAbsolute)
 
 #ifdef DEBUG
 import Test.HUnit (Test)
@@ -150,6 +150,14 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     copyFileTo verbosity targetDir fpath
 
+  -- copy the install-include files
+  withLib pkg_descr () $ \ l -> do
+    let lbi = libBuildInfo l
+        relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
+    incs <- mapM (findInc relincdirs) (installIncludes lbi)
+    flip mapM_ incs $ \(_,fpath) ->
+       copyFileTo verbosity targetDir fpath
+
   -- we have some preprocessors specified, try to generate those files
   when (not (null pps)) $
     case mb_lbi of
@@ -188,6 +196,12 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
 
     trimTrailingSpace :: String -> String
     trimTrailingSpace = reverse . dropWhile isSpace . reverse
+
+    findInc [] f = die ("can't find include file " ++ f)
+    findInc (d:ds) f = do
+      let path = (d </> f)
+      b <- doesFileExist path
+      if b then return (f,path) else findInc ds f
 
 -- |Create an archive from a tree of source files, and clean up the tree.
 createArchive :: PackageDescription   -- ^info from cabal file
