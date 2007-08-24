@@ -271,6 +271,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                         }
                       } NoCopyDest
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
+	installIncludeDir | null (installIncludes bi) = []
+	                  | otherwise = [includedir installDirs]
         haddockDir  | inplace   = haddockdir inplaceDirs pkg_descr
                     | otherwise = haddockdir installDirs pkg_descr
         libraryDir  | inplace   = build_dir
@@ -296,7 +298,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = absinc ++ if inplace
                                             then map (pwd </>) relinc
-                                            else [includedir installDirs],
+                                            else installIncludeDir,
         IPI.includes	      = includes bi,
         IPI.depends           = packageDeps lbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],

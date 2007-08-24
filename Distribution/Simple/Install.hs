@@ -73,7 +73,7 @@ import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
-import Control.Monad(when)
+import Control.Monad (when, unless)
 import Distribution.Compat.Directory(doesDirectoryExist, doesFileExist)
 import System.FilePath(takeDirectory, (</>), isAbsolute)
 
@@ -124,11 +124,12 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
   when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr incPref
 
   case compilerFlavor (compiler lbi) of
-     GHC  -> do when (hasLibs pkg_descr)
-                     (GHC.installLib verbosity (withPrograms lbi)
+     GHC  -> do withLib pkg_descr () $ \_ ->
+                  GHC.installLib verbosity (withPrograms lbi)
                        (withVanillaLib lbi) (withProfLib lbi)
-                       (withGHCiLib lbi) libPref buildPref pkg_descr)
-                GHC.installExe verbosity binPref buildPref pkg_descr
+                       (withGHCiLib lbi) libPref buildPref pkg_descr
+                withExe pkg_descr $ \_ ->
+		  GHC.installExe verbosity binPref buildPref pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref pkg_descr
      Hugs -> do
@@ -144,10 +145,11 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
 installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installIncludeFiles verbosity PackageDescription{library=Just l} incdir
  = do
-   createDirectoryIfMissingVerbose verbosity True incdir
    incs <- mapM (findInc relincdirs) (installIncludes lbi)
-   sequence_ [ copyFileVerbose verbosity path (incdir </> f)
-	     | (f,path) <- incs ]
+   unless (null incs) $ do
+     createDirectoryIfMissingVerbose verbosity True incdir
+     sequence_ [ copyFileVerbose verbosity path (incdir </> f)
+	       | (f,path) <- incs ]
   where
    relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
    lbi = libBuildInfo l
