@@ -64,12 +64,10 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import System.FilePath (normalise)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ
-import Control.Monad (liftM)
-import Data.Char
+import Data.Char        (isSpace, isUpper, toLower, isAlphaNum)
 import Data.Maybe	( fromMaybe)
 
 -- -----------------------------------------------------------------------------
