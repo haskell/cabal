@@ -427,16 +427,10 @@ mkSharedLibName :: FilePath        -- ^file Prefix
               -> String            -- ^library name.
               -> PackageIdentifier -- ^package identifier of the compiler
               -> String
-mkSharedLibName pref lib (PackageIdentifier compilerName version)
-  = pref </> ("libHS" ++ lib ++ "-" ++ compilerName ++ (showVersion version) ++
-#if defined(mingw32_TARGET_OS)
-              ".dll"
-#elseif defined(darwin_TARGET_OS)
-             ".dylib"
-#else
-             ".so"
-#endif
-             )
+mkSharedLibName pref lib (PackageIdentifier compilerName compilerVersion)
+  = pref </> ("libHS" ++ lib ++ "-" ++ compiler) <.> dllExtension
+  where compiler = compilerName ++ showVersion compilerVersion
+
 -- ------------------------------------------------------------
 -- * Finding the description file
 -- ------------------------------------------------------------
@@ -540,6 +534,7 @@ objExtension = "o"
 dllExtension :: String
 dllExtension = case os of
                    Windows _ -> "dll"
+                   OSX       -> "dylib"
                    _         -> "so"
 
 -- ------------------------------------------------------------
