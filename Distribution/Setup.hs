@@ -120,7 +120,7 @@ data ConfigFlags = ConfigFlags {
         configHcPkg    :: Maybe FilePath, -- ^given hc-pkg location
         configVanillaLib  :: Bool,        -- ^Enable vanilla library
         configProfLib  :: Bool,           -- ^Enable profiling in the library
-        configSharedLib  :: Bool,           -- ^Enable profiling in the library
+        configSharedLib  :: Bool,         -- ^Build shared library
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configConfigureArgs :: [String],  -- ^Extra arguments to @configure@
         configOptimization :: Bool,       -- ^Enable optimization.
