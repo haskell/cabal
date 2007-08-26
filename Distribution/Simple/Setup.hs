@@ -1,7 +1,7 @@
 {-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Setup
+-- Module      :  Distribution.Simple.Setup
 -- Copyright   :  Isaac Jones 2003-2004
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -41,8 +41,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Setup (--parseArgs,
-                           module Distribution.Compiler,
+module Distribution.Simple.Setup (--parseArgs,
+                           module Distribution.Simple.Compiler,
                            Action(..),
                            ConfigFlags(..), emptyConfigFlags, configureArgs,
                            CopyFlags(..), CopyDest(..), emptyCopyFlags,
@@ -75,9 +75,9 @@ module Distribution.Setup (--parseArgs,
 import Test.HUnit (Test(..))
 #endif
 
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Utils (die, wrapText)
-import Distribution.Program (Program(..), ProgramConfiguration,
+import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
 import Data.List (find, sort)
 import Data.Char( toLower )

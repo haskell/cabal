@@ -61,11 +61,11 @@ module Distribution.Simple.LocalBuildInfo (
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Setup (CopyDest(..))
-import Distribution.Program (ProgramConfiguration)
+import Distribution.Simple.Setup (CopyDest(..))
+import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..))
-import Distribution.Compiler (Compiler(..))
+import Distribution.Simple.Compiler (Compiler(..))
 import System.FilePath (FilePath, (</>))
 
 -- |Data cached after configuration step.  See also

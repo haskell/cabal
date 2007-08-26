@@ -68,7 +68,7 @@ import Distribution.Compat.Directory
     ( createDirectoryIfMissing )
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
-import Distribution.Compiler
+import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerVersion, compilerPath
     , compilerPkgToolPath, unsupportedExtensions )
 import Distribution.Package
@@ -80,11 +80,11 @@ import Distribution.PackageDescription
     , setupMessage, satisfyDependency, hasLibs )
 import Distribution.ParseUtils
     ( showDependency )
-import Distribution.Program
+import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..), programPath
     , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
     , lookupKnownProgram, requireProgram )
-import Distribution.Setup
+import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), InstallDirTemplates(..), defaultInstallDirs

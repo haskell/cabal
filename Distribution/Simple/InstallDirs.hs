@@ -71,9 +71,9 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (PackageDescription(package))
 import Data.Version (showVersion)
 import Distribution.System (OS(..), os)
-import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Simple.Compiler (CompilerFlavor(..))
 -- TODO: move CopyDest to this module
-import Distribution.Setup (CopyDest(..))
+import Distribution.Simple.Setup (CopyDest(..))
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign

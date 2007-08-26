@@ -1,7 +1,7 @@
 {-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Program
+-- Module      :  Distribution.Simple.Program
 -- Copyright   :  Isaac Jones 2006
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -23,7 +23,7 @@
 -- hook user the ability to get the above flags and such so that they
 -- don't have to write all the PATH logic inside Setup.lhs.
 
-module Distribution.Program (
+module Distribution.Simple.Program (
     -- * Program and functions for constructing them
       Program(..)
     , simpleProgram

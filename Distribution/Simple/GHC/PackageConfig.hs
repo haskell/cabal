@@ -1,7 +1,7 @@
 {-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.GHCPackageConfig
+-- Module      :  Distribution.Simple.GHC.PackageConfig
 -- Copyright   :  (c) The University of Glasgow 2004
 -- 
 -- Maintainer  :  libraries@haskell.org
@@ -12,7 +12,7 @@
 -- ghc-pkg. Creates a GHC package config file.  See also
 -- 'Distribution.Simple.GHC.build', etc.
 
-module Distribution.Simple.GHCPackageConfig (
+module Distribution.Simple.GHC.PackageConfig (
 	GHCPackageConfig(..),
 	mkGHCPackageConfig,
 	defaultGHCPackageConfig,
@@ -26,7 +26,7 @@ import Distribution.PackageDescription (PackageDescription(..), BuildInfo(..), L
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), absoluteInstallDirs)
 import Distribution.Simple.InstallDirs (InstallDirs(..))
-import Distribution.Setup (CopyDest(..))
+import Distribution.Simple.Setup (CopyDest(..))
 
 #ifndef __NHC__
 import Control.Exception (try)

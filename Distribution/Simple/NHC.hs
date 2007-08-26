@@ -50,10 +50,10 @@ import Distribution.PackageDescription
 				  Library(..), libModules, hcOptions)
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
+import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
                                   extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
+import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, hmakeProgram,
                                   rawSystemProgram )
 import Distribution.Version	( VersionRange(AnyVersion) )

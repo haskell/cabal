@@ -52,10 +52,10 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), 
 				  autogenModulesDir )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
+import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
                                   extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Program     ( ConfiguredProgram(..), jhcProgram,
+import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgram )
 import Distribution.Version	( VersionRange(AnyVersion) )

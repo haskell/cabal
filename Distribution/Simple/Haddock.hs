@@ -51,11 +51,11 @@ import Distribution.Compat.ReadP(readP_to_S)
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
 import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
-import Distribution.Program(ConfiguredProgram(..), requireProgram, programPath,
+import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, programPath,
                             hscolourProgram, haddockProgram, rawSystemProgram)
-import Distribution.PreProcess (ppCpp', ppUnlit, preprocessSources,
+import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
-import Distribution.Setup
+import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,

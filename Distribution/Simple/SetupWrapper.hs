@@ -21,13 +21,13 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
 				( configCompiler, getInstalledPackages,
 		  	  	  configDependency )
-import Distribution.Setup	( reqPathArg )
+import Distribution.Simple.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
                                   packageDescription,
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
-import Distribution.Program     ( emptyProgramConfiguration )
+import Distribution.Simple.Program     ( emptyProgramConfiguration )
 import Distribution.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
