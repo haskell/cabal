@@ -85,9 +85,9 @@ module Distribution.Make (
 
 -- local
 import Distribution.Package --must not specify imports, since we're exporting moule.
-import Distribution.Program(defaultProgramConfiguration)
+import Distribution.Simple.Program(defaultProgramConfiguration)
 import Distribution.PackageDescription
-import Distribution.Setup --(parseArgs, Action(..), optionHelpString)
+import Distribution.Simple.Setup
 
 import Distribution.Simple.Utils (die, maybeExit)
 

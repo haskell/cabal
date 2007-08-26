@@ -51,7 +51,7 @@ module Distribution.Simple (
 	module Distribution.Package,
 	module Distribution.Version,
 	module Distribution.License,
-	module Distribution.Compiler,
+	module Distribution.Simple.Compiler,
 	module Language.Haskell.Extension,
         -- * Simple interface
 	defaultMain, defaultMainNoRead, defaultMainArgs,
@@ -66,16 +66,16 @@ module Distribution.Simple (
   ) where
 
 -- local
-import Distribution.Compiler
+import Distribution.Simple.Compiler
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Program(Program(..), ProgramConfiguration,
+import Distribution.Simple.Program(Program(..), ProgramConfiguration,
                             defaultProgramConfiguration, addKnownProgram,
                             pfesetupProgram, rawSystemProgramConf)
-import Distribution.PreProcess (knownSuffixHandlers, ppSuffixes,
+import Distribution.Simple.PreProcess (knownSuffixHandlers, ppSuffixes,
                                 removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
-import Distribution.Setup
+import Distribution.Simple.Setup
 
 import Distribution.Simple.Build	( build, makefile )
 import Distribution.Simple.SrcDist	( sdist )

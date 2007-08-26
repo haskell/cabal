@@ -1,7 +1,7 @@
 #!/bin/sh
-file=Distribution/Simple/GHCMakefile.hs
-echo "-- DO NOT EDIT: change GHCMakefile.in, and run ../../mkGHCMakefile.sh" >$file
-echo "module Distribution.Simple.GHCMakefile where {" >>$file
+file=Distribution/Simple/GHC/Makefile.hs
+echo "-- DO NOT EDIT: change Makefile.in, and run ../../../mkGHCMakefile.sh" >$file
+echo "module Distribution.Simple.GHC.Makefile where {" >>$file
 echo "makefileTemplate :: String; makefileTemplate=unlines" >>$file
-ghc -e "readFile \"Distribution/Simple/GHCMakefile.in\" >>= print . lines" >>$file
+ghc -e "readFile \"Distribution/Simple/GHC/Makefile.in\" >>= print . lines" >>$file
 echo "}" >>$file
