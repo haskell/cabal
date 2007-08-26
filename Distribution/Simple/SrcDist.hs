@@ -65,10 +65,10 @@ import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   smartCopySources, die, findPackageDesc,
                                   findFile, copyFileVerbose)
-import Distribution.Setup (SDistFlags(..))
-import Distribution.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
+import Distribution.Simple.Setup (SDistFlags(..))
+import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Program ( defaultProgramConfiguration, requireProgram,
+import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
 
 #ifndef __NHC__

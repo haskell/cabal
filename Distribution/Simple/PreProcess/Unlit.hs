@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.PreProcess.Unlit
+-- Module      :  Distribution.Simple.PreProcess.Unlit
 -- Copyright   :  ...
 -- 
 -- Maintainer  :  Malcolm Wallace <Malcolm.Wallace@cs.york.ac.uk>
@@ -14,7 +14,7 @@
 -- /Report on the Programming Language Haskell/,
 --   version 1.2, appendix C.
 
-module Distribution.PreProcess.Unlit(unlit,plain) where
+module Distribution.Simple.PreProcess.Unlit(unlit,plain) where
 
 import Data.Char
 

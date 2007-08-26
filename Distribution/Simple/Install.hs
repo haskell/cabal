@@ -66,8 +66,8 @@ import Distribution.Simple.LocalBuildInfo (
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   copyFileVerbose, die,
                                   copyDirectoryRecursiveVerbose)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Setup (CopyFlags(..), CopyDest(..))
+import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..))
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC

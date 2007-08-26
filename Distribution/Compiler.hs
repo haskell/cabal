@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compiler
@@ -8,7 +7,7 @@
 -- Stability   :  alpha
 -- Portability :  portable
 --
--- Haskell implementations.
+-- Haskell compiler flavors
 
 {- All rights reserved.
 
@@ -40,86 +39,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Compiler (
-        -- * Haskell implementations
-	CompilerFlavor(..), Compiler(..),
-        showCompilerId, compilerVersion,
-	compilerPath, compilerPkgToolPath,
-
-        -- * Support for language extensions
-        Flag,
-        extensionsToFlags,
-        unsupportedExtensions
-#ifdef DEBUG
-        ,hunitTests
-#endif
-  ) where
-
-import Distribution.Version (Version(..))
-import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Language.Haskell.Extension (Extension(..))
-import Distribution.Program
-
-import Data.List (nub)
-import Data.Maybe (catMaybes, isNothing)
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
-
--- ------------------------------------------------------------
--- * Command Line Types and Exports
--- ------------------------------------------------------------
+module Distribution.Compiler (CompilerFlavor(..)) where
 
 data CompilerFlavor
   = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
-              deriving (Show, Read, Eq, Ord)
+  deriving (Show, Read, Eq, Ord)
 
-data Compiler = Compiler {
-        compilerFlavor          :: CompilerFlavor,
-        compilerId              :: PackageIdentifier,
-        compilerProg            :: ConfiguredProgram,
-        compilerPkgTool         :: ConfiguredProgram,
-	compilerExtensions      :: [(Extension, Flag)]
-    }
-    deriving (Show, Read)
-
-showCompilerId :: Compiler -> String
-showCompilerId = showPackageId . compilerId
-
-compilerVersion :: Compiler -> Version
-compilerVersion = pkgVersion . compilerId
-
-compilerPath :: Compiler -> FilePath
-compilerPath = programPath . compilerProg
-
-compilerPkgToolPath :: Compiler -> FilePath
-compilerPkgToolPath = programPath . compilerPkgTool
-
--- ------------------------------------------------------------
--- * Extensions
--- ------------------------------------------------------------
-
--- |For the given compiler, return the flags for the supported extensions.
-unsupportedExtensions :: Compiler -> [Extension] -> [Extension]
-unsupportedExtensions comp exts =
-  [ ext | ext <- exts
-        , isNothing $ lookup ext (compilerExtensions comp) ]
-
-type Flag = String
-
--- |For the given compiler, return the flags for the supported extensions.
-extensionsToFlags :: Compiler -> [Extension] -> [Flag]
-extensionsToFlags comp exts =
-  nub $ filter (not . null) $ catMaybes
-  [ lookup ext (compilerExtensions comp)
-  | ext <- exts ]
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif

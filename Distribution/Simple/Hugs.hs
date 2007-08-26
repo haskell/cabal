@@ -50,13 +50,13 @@ import Distribution.PackageDescription
 				  withLib,
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions, autogenModuleName )
-import Distribution.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
-import Distribution.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
+import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
+import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgram,
                                   ffihugsProgram, hugsProgram )
 import Distribution.Version	( Version(..), VersionRange(AnyVersion) )
-import Distribution.PreProcess 	( ppCpp, runSimplePreProcessor )
-import Distribution.PreProcess.Unlit
+import Distribution.Simple.PreProcess 	( ppCpp, runSimplePreProcessor )
+import Distribution.Simple.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
