@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.PreProcess
+-- Module      :  Distribution.Simple.PreProcess
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -46,7 +46,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
+module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor,
                                 runSimplePreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
@@ -56,15 +56,15 @@ module Distribution.PreProcess (preprocessSources, knownSuffixHandlers,
     where
 
 
-import Distribution.PreProcess.Unlit (unlit)
+import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
+import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Program (Program(..), ConfiguredProgram(..), lookupProgram,
+import Distribution.Simple.Program (Program(..), ConfiguredProgram(..), lookupProgram,
                              rawSystemProgramConf, rawSystemProgram,
                              greencardProgram, cpphsProgram, hsc2hsProgram,
                              c2hsProgram, happyProgram, alexProgram,

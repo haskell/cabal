@@ -49,15 +49,15 @@ module Distribution.Simple.Build (
 #endif
   ) where
 
-import Distribution.Compiler	( Compiler(..), CompilerFlavor(..) )
+import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
 				  setupMessage, Executable(..), Library(..), 
                                   autogenModuleName, mapBuildInfo )
 import Distribution.Package 	( PackageIdentifier(..), showPackageId )
-import Distribution.Setup	( CopyDest(..), BuildFlags(..), 
+import Distribution.Simple.Setup	( CopyDest(..), BuildFlags(..), 
                                   MakefileFlags(..) )
-import Distribution.PreProcess  ( preprocessSources, PPSuffixHandler )
+import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..),
                                   InstallDirs(..), absoluteInstallDirs,

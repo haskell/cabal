@@ -47,8 +47,8 @@ module Distribution.Simple.GHC (
 	configure, build, makefile, installLib, installExe
  ) where
 
-import Distribution.Simple.GHCMakefile
-import Distribution.Setup       ( MakefileFlags(..) )
+import Distribution.Simple.GHC.Makefile
+import Distribution.Simple.Setup       ( MakefileFlags(..) )
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  withLib, setupMessage,
@@ -58,17 +58,17 @@ import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
-import Distribution.Program	( rawSystemProgram, rawSystemProgramConf,
+import Distribution.Simple.Program	( rawSystemProgram, rawSystemProgramConf,
 				  Program(..), ConfiguredProgram(..),
                                   ProgramConfiguration, addKnownProgram,
                                   userMaybeSpecifyPath, requireProgram,
                                   programPath, lookupProgram,
                                   ghcProgram, ghcPkgProgram,
                                   arProgram, ranlibProgram, ldProgram )
-import Distribution.Compiler
+import Distribution.Simple.Compiler
 import Distribution.Version	( Version(..), showVersion,
                                   VersionRange(..), orLaterVersion )
-import qualified Distribution.Simple.GHCPackageConfig as GHC
+import qualified Distribution.Simple.GHC.PackageConfig as GHC
 				( localPackageConfig,
 				  canReadLocalPackageConfig )
 import Distribution.System

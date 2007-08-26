@@ -65,10 +65,10 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirs(..), haddockdir,
                                            InstallDirTemplates(..),
 					   absoluteInstallDirs, toPathTemplate)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..),
+import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
                               compilerPkgToolPath, compilerVersion)
-import Distribution.Program (ConfiguredProgram(..), ProgramLocation(..))
-import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
+import Distribution.Simple.Program (ConfiguredProgram(..), ProgramLocation(..))
+import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -80,8 +80,8 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   rawSystemExit, copyFileVerbose, die)
-import Distribution.Simple.GHCPackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
-import qualified Distribution.Simple.GHCPackageConfig
+import Distribution.Simple.GHC.PackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
+import qualified Distribution.Simple.GHC.PackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 import Distribution.System
 import Distribution.Compat.Directory
