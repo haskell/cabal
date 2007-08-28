@@ -67,8 +67,8 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
 					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
                               compilerPkgToolPath, compilerVersion)
-import Distribution.Simple.Program (ConfiguredProgram(..), ProgramLocation(..))
-import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..), userOverride)
+import Distribution.Program (ConfiguredProgram(..), ProgramLocation(..))
+import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -133,7 +133,7 @@ register pkg_descr lbi regFlags
         verbosity = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
-        hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
+        hc = compiler lbi
         message | genPkgConf = "Writing package registration file: "
                             ++ genPkgConfigFile ++ " for"
                 | genScript = "Writing registration script: "
@@ -176,15 +176,16 @@ register pkg_descr lbi regFlags
                                 in "--update-package" : conf
 
         let allFlags = config_flags ++ register_flags
-        let pkgTool = compilerPkgToolPath hc
 
         case () of
           _ | genPkgConf -> return ()
             | genScript ->
               do cfg <- showInstalledConfig pkg_descr lbi inplace
                  rawSystemPipe regScriptLocation verbosity cfg
-                           pkgTool allFlags
-          _ -> rawSystemExit verbosity pkgTool allFlags
+                           (compilerPkgToolPath hc)
+                           (compilerPkgToolArgs hc ++ allFlags)
+          _ -> rawSystemProgramConf verbosity
+                                    ghcPkgProgram (withPrograms lbi) allFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
@@ -321,7 +322,7 @@ unregister pkg_descr lbi regFlags = do
       genScript = regGenScript regFlags
       verbosity = regVerbose regFlags
       user = regUser regFlags `userOverride` userConf lbi
-      hc = updateCompilerPkgTool (regWithHcPkg regFlags) (compiler lbi)
+      hc = compiler lbi
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
   case compilerFlavor hc of
     GHC -> do
@@ -338,9 +339,12 @@ unregister pkg_descr lbi regFlags = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",showPackageId (package pkg_descr)]
                         else ["--remove-package="++(pkgName $ package pkg_descr)]
-        let pkgTool = compilerPkgToolPath hc
-	rawSystemEmit unregScriptLocation genScript verbosity pkgTool
-	    (removeCmd++config_flags)
+        -- XXX This should be rewritten so we use rawSystemProgramConf
+        -- when not making a script
+        let pkgTool     = compilerPkgToolPath hc
+            pkgToolArgs = compilerPkgToolArgs hc
+            allArgs     = pkgToolArgs ++ removeCmd ++ config_flags
+	rawSystemEmit unregScriptLocation genScript verbosity pkgTool allArgs
     Hugs -> do
         try $ removeDirectoryRecursive (libdir installDirs)
 	return ()
@@ -349,16 +353,6 @@ unregister pkg_descr lbi regFlags = do
 	return ()
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
-
-updateCompilerPkgTool :: Maybe FilePath -> Compiler -> Compiler
-updateCompilerPkgTool Nothing comp = comp
-updateCompilerPkgTool (Just hcPkgPath) comp =
-  comp {
-    compilerPkgTool = (compilerPkgTool comp) {
-      programLocation = UserSpecified hcPkgPath
-    }
-  }
-
 
 -- |Like rawSystemExit, but optionally emits to a script instead of
 -- exiting. FIX: chmod +x?
