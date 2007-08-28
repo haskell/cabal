@@ -20,7 +20,7 @@ import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
-import Distribution.Setup (defaultCompilerFlavor, CompilerFlavor(..))
+import Distribution.Compiler (defaultCompilerFlavor, CompilerFlavor(..))
 import Distribution.Verbosity
 import Data.List (find)
 import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usageInfo, getOpt')
