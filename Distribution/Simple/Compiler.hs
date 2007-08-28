@@ -42,7 +42,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Compiler (
         -- * Haskell implementations
-	CompilerFlavor(..), Compiler(..),
+	module Distribution.Compiler,
+	Compiler(..),
         showCompilerId, compilerVersion,
 	compilerPath, compilerPkgToolPath,
 
@@ -55,7 +56,7 @@ module Distribution.Simple.Compiler (
 #endif
   ) where
 
-import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Compiler
 import Distribution.Version (Version(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Language.Haskell.Extension (Extension(..))
