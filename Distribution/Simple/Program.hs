@@ -27,7 +27,7 @@ module Distribution.Simple.Program (
     -- * Program and functions for constructing them
       Program(..)
     , simpleProgram
-    , searchPath
+    , findProgramOnPath
     , findProgramVersion
 
     -- * Configured program and related functions
@@ -149,11 +149,11 @@ programPath = locationPath . programLocation
 --
 simpleProgram :: String -> Program
 simpleProgram name = 
-  Program name (searchPath name) (\_ _ -> return Nothing)
+  Program name (findProgramOnPath name) (\_ _ -> return Nothing)
 
 -- | Look for a program on the path.
-searchPath :: FilePath -> Verbosity -> IO (Maybe FilePath)
-searchPath prog verbosity = do
+findProgramOnPath :: FilePath -> Verbosity -> IO (Maybe FilePath)
+findProgramOnPath prog verbosity = do
   when (verbosity >= deafening) $
       putStrLn $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
@@ -325,7 +325,7 @@ configureProgram verbosity prog conf = do
       absolute <- doesFileExist path
       if absolute
         then return (Just (UserSpecified path))
-        else searchPath path verbosity
+        else findProgramOnPath path verbosity
          >>= maybe (die notFound) (return . Just . UserSpecified)
       where notFound = "Cannot find " ++ name ++ " at "
                      ++ path ++ " or on the path"
@@ -539,7 +539,7 @@ cpphsProgram = (simpleProgram "cpphs") {
 
 hscolourProgram :: Program
 hscolourProgram = (simpleProgram "hscolour") {
-    programFindLocation = searchPath "HsColour",
+    programFindLocation = findProgramOnPath "HsColour",
     programFindVersion  = findProgramVersion "-version" $ \str ->
       -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
       case words str of
