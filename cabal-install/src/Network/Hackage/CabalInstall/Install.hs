@@ -26,7 +26,7 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency
                                       ,OutputGen(..))
 import Network.Hackage.CabalInstall.TarUtils
 
-import Distribution.SetupWrapper (setupWrapper)
+import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Verbosity

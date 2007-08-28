@@ -23,15 +23,17 @@ import Network.Hackage.CabalInstall.Config
          (getDefaultConfigDir, getLocalConfigDir, getLocalCacheDir,
           getLocalPkgListDir, getKnownServers, selectValidConfigDir)
 
-import qualified Distribution.Simple.Configure as Configure (findProgram, configCompiler)
+import qualified Distribution.Simple.Configure as Configure (configCompiler)
+import Distribution.Simple.Program
 import Distribution.ParseUtils (showDependency)
 import Distribution.Package (showPackageId)
+import Distribution.Version (VersionRange(..))
 import Distribution.Verbosity
 import System.FilePath ((</>))
 
 import Text.Printf (printf)
 import System.IO (openFile, IOMode (..))
-import System.Directory (getHomeDirectory, getAppUserDataDirectory)
+import System.Directory (doesFileExist, getHomeDirectory, getAppUserDataDirectory)
 import Data.Maybe (fromMaybe)
 
 {-|
@@ -85,11 +87,6 @@ defaultOutputGen verbosity
           showDep dep = show (showDependency (fulfilling dep))
 
 
-
-
-findProgramOrDie :: String -> Maybe FilePath -> IO FilePath
-findProgramOrDie name p = fmap (fromMaybe (error $ printf "No %s found." name)) (Configure.findProgram name p)
-
 -- |Compute the default prefix when doing a local install ('~/usr' on Linux).
 localPrefix :: IO FilePath
 localPrefix
@@ -109,9 +106,13 @@ localPrefix
 -}
 mkConfigFlags :: TempFlags -> IO ConfigFlags
 mkConfigFlags cfg
-    = do runHc <- findProgramOrDie "runhaskell" (tempRunHc cfg)
-         tarProg <- findProgramOrDie "tar" (tempTarPath cfg)
-         comp <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) (tempVerbose cfg)
+    = do let verbosity = tempVerbose cfg
+             conf = userMaybeSpecifyPath "runhaskell" (tempRunHc cfg) $
+	            userMaybeSpecifyPath "tar" (tempTarPath cfg) $
+	            defaultProgramConfiguration
+         (runHc, conf') <- requireProgram verbosity runhaskellProgram AnyVersion conf
+	 (tarProg, conf'') <- requireProgram verbosity tarProgram AnyVersion conf'
+         (comp, conf''') <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) conf'' verbosity
          let userIns = tempUserIns cfg
          prefix <- if userIns
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
@@ -124,9 +125,10 @@ mkConfigFlags cfg
                                            [localConfigDir, defaultConfigDir] )
          let cacheDir   = fromMaybe localCacheDir   (tempCacheDir cfg)
              pkgListDir = fromMaybe localPkgListDir (tempPkgListDir cfg)
-         when (tempVerbose cfg > normal) $ do printf "Using config dir: %s\n" confDir
-                                              printf "Using cache dir: %s\n" cacheDir
-                                              printf "Using pkglist dir: %s\n" pkgListDir
+         when (verbosity > normal) $ do
+             printf "Using config dir: %s\n" confDir
+             printf "Using cache dir: %s\n" cacheDir
+             printf "Using pkglist dir: %s\n" pkgListDir
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
@@ -135,8 +137,8 @@ mkConfigFlags cfg
                       , configPkgListDir  = pkgListDir
                       , configPrefix      = prefix
                       , configServers     = []
-                      , configTarPath     = tarProg
-                      , configRunHc       = runHc
+                      , configTarPath     = programPath tarProg
+                      , configRunHc       = programPath runHc
                       , configOutputGen   = outputGen
                       , configVerbose     = tempVerbose cfg
 --                      , configUpgradeDeps = tempUpgradeDeps cfg
@@ -145,3 +147,5 @@ mkConfigFlags cfg
          knownServers <- getKnownServers config
          return (config{ configServers = knownServers ++ tempServers cfg})
 
+runhaskellProgram :: Program
+runhaskellProgram = simpleProgram "runhaskell"

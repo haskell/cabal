@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Types where
 
-import Distribution.Setup (CompilerFlavor(..),Compiler)
+import Distribution.Simple.Compiler (CompilerFlavor(..),Compiler)
 import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
