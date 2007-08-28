@@ -45,7 +45,7 @@ module Distribution.Simple.Compiler (
 	module Distribution.Compiler,
 	Compiler(..),
         showCompilerId, compilerVersion,
-	compilerPath, compilerPkgToolPath,
+	compilerPath, compilerPkgToolPath, compilerPkgToolArgs,
 
         -- * Support for language extensions
         Flag,
@@ -89,6 +89,9 @@ compilerPath = programPath . compilerProg
 
 compilerPkgToolPath :: Compiler -> FilePath
 compilerPkgToolPath = programPath . compilerPkgTool
+
+compilerPkgToolArgs :: Compiler -> [ProgArg]
+compilerPkgToolArgs = programArgs . compilerPkgTool
 
 -- ------------------------------------------------------------
 -- * Extensions
