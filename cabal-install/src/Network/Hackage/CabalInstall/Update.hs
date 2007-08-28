@@ -21,7 +21,7 @@ import Network.Hackage.CabalInstall.Utils (isVerbose)
 import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
 import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
-import Distribution.PackageDescription (PackageDescription(..), readPackageDescription)
+import Distribution.PackageDescription (PackageDescription(..), readPackageDescription, GenericPackageDescription(..))
 import Distribution.Verbosity
 import System.FilePath ((</>), joinPath, addExtension, takeExtension)
 
@@ -44,11 +44,13 @@ update cfg =
                   cabalFiles = [ packageDir </> path
                                | path <- contents
                                , ".cabal" == takeExtension path ]
-                  v = configVerbose cfg
-                  v'= if v == verbose then normal else v
-              packageDescriptions <-
-                  mapM (readPackageDescription v') cabalFiles
-              return $ map (parsePkg server) packageDescriptions
+	      --TODO: we can't just take the packageDescription out of the
+	      -- GenericPackageDescription since the build-depends is empty
+	      -- we should store the whole GenericPackageDescription and
+	      -- resolve the configuration later when we build.
+	      mapM (liftM (parsePkg server . packageDescription)
+	            . readPackageDescription (lessVerbose (configVerbose cfg)))
+		   cabalFiles
        when (isVerbose cfg) $ printf "Processed %d package descriptions\n" (length packages)
        writeKnownPackages cfg packages
     where servers = configServers cfg
