@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compiler
@@ -39,9 +40,22 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Compiler (CompilerFlavor(..)) where
+module Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor) where
 
 data CompilerFlavor
   = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
   deriving (Show, Read, Eq, Ord)
 
+defaultCompilerFlavor :: Maybe CompilerFlavor
+defaultCompilerFlavor =
+#if defined(__GLASGOW_HASKELL__)
+   Just GHC
+#elif defined(__NHC__)
+   Just NHC
+#elif defined(__JHC__)
+   Just JHC
+#elif defined(__HUGS__)
+   Just Hugs
+#else
+   Nothing
+#endif
