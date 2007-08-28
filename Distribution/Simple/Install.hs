@@ -93,8 +93,9 @@ install :: PackageDescription -- ^information from the .cabal file
         -> IO ()
 install pkg_descr lbi (CopyFlags copydest verbosity) = do
   let InstallDirs {
-         libdir     = libPref,
          bindir     = binPref,
+         libdir     = libPref,
+         dynlibdir  = dynlibPref,
          datadir    = dataPref,
          progdir    = progPref,
          htmldir    = htmlPref,
