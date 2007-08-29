@@ -57,7 +57,8 @@ import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, rawSystemProgram )
+                                  requireProgram, rawSystemProgram,
+				  lookupProgram )
 import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
@@ -105,7 +106,7 @@ jhcLanguageExtensions =
 -- Currently C source files are not supported.
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
-  let jhcProg = compilerProg (compiler lbi)
+  let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   withLib pkg_descr () $ \lib -> do
       when (verbosity >= verbose) (putStrLn "Building library...")
       let libBi = libBuildInfo lib

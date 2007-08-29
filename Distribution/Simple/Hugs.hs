@@ -52,7 +52,7 @@ import Distribution.PackageDescription
 				  libModules, hcOptions, autogenModuleName )
 import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, rawSystemProgram,
+                                  requireProgram, rawSystemProgramConf,
                                   ffihugsProgram, hugsProgram )
 import Distribution.Version	( Version(..), VersionRange(AnyVersion) )
 import Distribution.Simple.PreProcess 	( ppCpp, runSimplePreProcessor )
@@ -230,9 +230,8 @@ build pkg_descr lbi verbosity = do
                     ldOptions bi ++
                     ["-l" ++ lib | lib <- extraLibs bi] ++
                     concat [["-framework", f] | f <- frameworks bi]
-            rawSystemProgram verbosity ffihugs (hugsArgs ++ file : cArgs)
-
-	ffihugs = compilerProg (compiler lbi)
+            rawSystemProgramConf verbosity ffihugsProgram (withPrograms lbi)
+	      (hugsArgs ++ file : cArgs)
 
 	includeOpts :: [String] -> [String]
 	includeOpts [] = []
