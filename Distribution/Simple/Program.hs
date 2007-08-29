@@ -36,6 +36,7 @@ module Distribution.Simple.Program (
     , ProgArg
     , ProgramLocation(..)
     , rawSystemProgram
+    , rawSystemProgramStdout
 
     -- * The collection of unconfigured and configured progams
     , builtinPrograms
@@ -55,6 +56,7 @@ module Distribution.Simple.Program (
     , configureAllKnownPrograms
     , requireProgram
     , rawSystemProgramConf
+    , rawSystemProgramStdoutConf
 
     -- * Programs that Cabal knows about
     , ghcProgram
@@ -401,6 +403,14 @@ rawSystemProgram :: Verbosity          -- ^Verbosity
 rawSystemProgram verbosity prog extraArgs
   = rawSystemExit verbosity (programPath prog) (programArgs prog ++ extraArgs)
 
+-- | Runs the given configured program and gets the output.
+rawSystemProgramStdout :: Verbosity          -- ^Verbosity
+                       -> ConfiguredProgram  -- ^The program to run
+                       -> [ProgArg]          -- ^Any /extra/ arguments to add
+                       -> IO String
+rawSystemProgramStdout verbosity prog extraArgs
+  = rawSystemStdout verbosity (programPath prog) (programArgs prog ++ extraArgs)
+
 -- | Looks up the given program in the program configuration and runs it.
 rawSystemProgramConf :: Verbosity            -- ^verbosity
                      -> Program              -- ^The program to run
@@ -411,6 +421,17 @@ rawSystemProgramConf verbosity prog programConf extraArgs =
   case lookupProgram prog programConf of
     Nothing -> die (programName prog ++ " command not found")
     Just configuredProg -> rawSystemProgram verbosity configuredProg extraArgs
+
+-- | Looks up the given program in the program configuration and runs it.
+rawSystemProgramStdoutConf :: Verbosity            -- ^verbosity
+                           -> Program              -- ^The program to run
+                           -> ProgramConfiguration -- ^look up the program here
+                           -> [ProgArg]            -- ^Any /extra/ arguments to add
+                           -> IO String
+rawSystemProgramStdoutConf verbosity prog programConf extraArgs =
+  case lookupProgram prog programConf of
+    Nothing -> die (programName prog ++ " command not found")
+    Just configuredProg -> rawSystemProgramStdout verbosity configuredProg extraArgs
 
 -- ------------------------------------------------------------
 -- * Known programs
