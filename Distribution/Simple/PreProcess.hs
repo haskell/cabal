@@ -64,11 +64,12 @@ import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerV
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
-import Distribution.Simple.Program (Program(..), ConfiguredProgram(..), lookupProgram,
+import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
+                             lookupProgram,
                              rawSystemProgramConf, rawSystemProgram,
                              greencardProgram, cpphsProgram, hsc2hsProgram,
                              c2hsProgram, happyProgram, alexProgram,
-                             haddockProgram)
+                             haddockProgram, ghcProgram)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 
@@ -325,7 +326,7 @@ ppGhcCpp extraArgs _bi lbi =
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
-  where ghcProg = compilerProg (compiler lbi)
+  where Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
         Just ghcVersion = programVersion ghcProg
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor

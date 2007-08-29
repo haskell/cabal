@@ -55,7 +55,7 @@ import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, hmakeProgram,
-                                  rawSystemProgram )
+                                  rawSystemProgramConf )
 import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Verbosity
 
@@ -102,7 +102,7 @@ build pkg_descr lbi verbosity =
   let flags = ( extensionsToFlags (compiler lbi)
               . maybe [] (extensions . libBuildInfo)
               . library ) pkg_descr in
-  rawSystemProgram verbosity (compilerProg (compiler lbi))
+  rawSystemProgramConf verbosity hmakeProgram (withPrograms lbi)
                 (["-hc=nhc98"]
                 ++ flags
                 ++ maybe [] (hcOptions NHC . options . libBuildInfo)
