@@ -69,7 +69,7 @@ import Distribution.Compat.Directory
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(..), compilerVersion
+    ( CompilerFlavor(..), Compiler(..), compilerVersion, showCompilerId
     , unsupportedExtensions )
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId,  parsePackageId )
@@ -308,6 +308,7 @@ configure (pkg_descr0, pbi) cfg
             relative = prefixRelativeInstallDirs pkg_descr lbi
 
         when (verbosity >= verbose) $ do
+          message $ "Using compiler: " ++ showCompilerId comp
           message $ "Using install prefix: " ++ prefix dirs
 
           messageDir "Binaries"         pkg_descr (bindir dirs)    (bindir relative)
@@ -315,8 +316,6 @@ configure (pkg_descr0, pbi) cfg
           messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
           messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
           messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
-
-          message $ "Using compiler:  " ++ show flavor ++ " " ++ showVersion version
 
           sequence_ [ reportProgram prog configuredProg
                     | (prog, configuredProg) <- knownPrograms programsConfig' ]
