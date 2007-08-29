@@ -84,8 +84,6 @@ configure verbosity hcPath _hcPkgPath conf = do
       comp = Compiler {
         compilerFlavor         = JHC,
         compilerId             = PackageIdentifier "jhc" version,
-        compilerProg           = jhcProg,
-        compilerPkgTool        = jhcProg,
         compilerExtensions     = jhcLanguageExtensions
       }
   return (comp, conf')

@@ -45,7 +45,6 @@ module Distribution.Simple.Compiler (
 	module Distribution.Compiler,
 	Compiler(..),
         showCompilerId, compilerVersion,
-	compilerPath, compilerPkgToolPath,
 
         -- * Support for language extensions
         Flag,
@@ -60,7 +59,6 @@ import Distribution.Compiler
 import Distribution.Version (Version(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Simple.Program
 
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
@@ -72,8 +70,6 @@ import Test.HUnit (Test)
 data Compiler = Compiler {
         compilerFlavor          :: CompilerFlavor,
         compilerId              :: PackageIdentifier,
-        compilerProg            :: ConfiguredProgram,
-        compilerPkgTool         :: ConfiguredProgram,
 	compilerExtensions      :: [(Extension, Flag)]
     }
     deriving (Show, Read)
@@ -83,12 +79,6 @@ showCompilerId = showPackageId . compilerId
 
 compilerVersion :: Compiler -> Version
 compilerVersion = pkgVersion . compilerId
-
-compilerPath :: Compiler -> FilePath
-compilerPath = programPath . compilerProg
-
-compilerPkgToolPath :: Compiler -> FilePath
-compilerPkgToolPath = programPath . compilerPkgTool
 
 -- ------------------------------------------------------------
 -- * Extensions
