@@ -40,6 +40,12 @@ empty = emptyFM
 insert :: Ord k => k -> a -> Map k a -> Map k a
 insert k a m = addToFM m k a
 
+-- This might be able to use delFromFM, but I'm confused by the
+--     IF_NOT_GHC(delFromFM COMMA)
+-- in the Data.FiniteMap export list in ghc 6.2.
+delete :: Ord k => k -> Map k a -> Map k a
+delete k m = delListFromFM m [k]
+
 insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWith c k a m = addToFM_C (flip c) m k a
 
