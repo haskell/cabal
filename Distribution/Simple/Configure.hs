@@ -47,7 +47,7 @@ module Distribution.Simple.Configure (configure,
                                       maybeGetPersistBuildConfig,
 --                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
-                                      getInstalledPackages,
+                                      getInstalledPackagesGHC,
 				      configDependency,
                                       configCompiler, configCompilerAux,
 #ifdef DEBUG
@@ -81,9 +81,10 @@ import Distribution.PackageDescription
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
-    ( Program(..), ProgramLocation(..), ConfiguredProgram(..), programPath
+    ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
-    , lookupKnownProgram, requireProgram )
+    , lookupKnownProgram, requireProgram, rawSystemProgramStdoutConf
+    , ghcPkgProgram, jhcProgram )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
@@ -93,7 +94,7 @@ import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
-    ( die, warn, rawSystemStdout )
+    ( die, warn )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -200,13 +201,12 @@ configure (pkg_descr0, pbi) cfg
 
         -- FIXME: currently only GHC has hc-pkg
         mipkgs <- case flavor of
-                      GHC | version >= Version [6,3] [] ->
-                        getInstalledPackagesAux comp cfg' >>= return . Just
-                      JHC ->
-                        getInstalledPackagesJHC comp cfg' >>= return . Just
-                      _ -> 
-                        return Nothing  
-                        -- return $ map setDepByVersion (buildDepends pkg_descr)
+            GHC | version >= Version [6,3] [] -> return . Just =<<
+              getInstalledPackagesGHC verbosity programsConfig (configUser cfg)
+            JHC -> return . Just =<<
+              getInstalledPackagesJHC verbosity programsConfig
+            _ -> return Nothing
+              -- return $ map setDepByVersion (buildDepends pkg_descr)
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
@@ -377,23 +377,19 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
                                 ++ ": using " ++ showPackageId pkg
                        return pkg
 
-getInstalledPackagesJHC :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
-getInstalledPackagesJHC comp cfg = do
-   let verbosity = configVerbose cfg
+getInstalledPackagesJHC :: Verbosity -> ProgramConfiguration -> IO [PackageIdentifier]
+getInstalledPackagesJHC verbosity conf = do
    when (verbosity >= verbose) $ message "Reading installed packages..."
-   str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) ["--list-libraries"]
+   str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
      [ps] -> return ps
      _    -> die "cannot parse package list"
 
-getInstalledPackagesAux :: Compiler -> ConfigFlags -> IO [PackageIdentifier]
-getInstalledPackagesAux comp cfg = getInstalledPackages comp (configUser cfg) (configVerbose cfg)
-
-getInstalledPackages :: Compiler -> Bool -> Verbosity -> IO [PackageIdentifier]
-getInstalledPackages comp user verbosity = do
+getInstalledPackagesGHC :: Verbosity -> ProgramConfiguration -> Bool -> IO [PackageIdentifier]
+getInstalledPackagesGHC verbosity conf user = do
    when (verbosity >= verbose) $ message "Reading installed packages..."
    let user_flag = if user then "--user" else "--global"
-   str <- rawSystemStdout verbosity (programPath $ compilerPkgTool comp) [user_flag, "list"]
+   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf [user_flag, "list"]
    let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
        str1 = unlines (filter keep_line (lines str))
        str2 = filter (`notElem` ",(){}") str1
