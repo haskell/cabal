@@ -69,8 +69,8 @@ import Distribution.Compat.Directory
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(..), compilerVersion, compilerPath
-    , compilerPkgToolPath, unsupportedExtensions )
+    ( CompilerFlavor(..), Compiler(..), compilerVersion
+    , unsupportedExtensions )
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId,  parsePackageId )
 import Distribution.PackageDescription
@@ -316,10 +316,7 @@ configure (pkg_descr0, pbi) cfg
           messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
           messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
 
-          message $ "Using compiler: " ++ compilerPath comp
-          message $ "Compiler flavor: " ++ show flavor
-          message $ "Compiler version: " ++ showVersion version
-          message $ "Using package tool: " ++ compilerPkgToolPath comp
+          message $ "Using compiler:  " ++ show flavor ++ " " ++ showVersion version
 
           sequence_ [ reportProgram prog configuredProg
                     | (prog, configuredProg) <- knownPrograms programsConfig' ]

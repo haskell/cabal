@@ -142,8 +142,6 @@ configure verbosity hcPath hcPkgPath conf = do
   let comp = Compiler {
         compilerFlavor         = GHC,
         compilerId             = PackageIdentifier "ghc" ghcVersion,
-        compilerProg           = ghcProg,
-        compilerPkgTool        = ghcPkgProg,
         compilerExtensions     = languageExtensions
       }
   return (comp, conf''')

@@ -67,14 +67,12 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (hmakeProg, conf') <- requireProgram verbosity hmakeProgram AnyVersion
+  (_hmakeProg, conf') <- requireProgram verbosity hmakeProgram AnyVersion
                           (userMaybeSpecifyPath "hmake" hcPath conf)
 
   let comp = Compiler {
         compilerFlavor  = NHC,
         compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
-        compilerProg    = hmakeProg,
-        compilerPkgTool = hmakeProg,
         compilerExtensions = nhcLanguageExtensions
       }
   return (comp, conf')
