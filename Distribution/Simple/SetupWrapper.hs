@@ -19,7 +19,7 @@ import qualified Distribution.Make as Make
 import Distribution.Simple
 import Distribution.Simple.Utils
 import Distribution.Simple.Configure
-				( configCompiler, getInstalledPackages,
+				( configCompiler, getInstalledPackagesGHC,
 		  	  	  configDependency )
 import Distribution.Simple.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
@@ -27,7 +27,9 @@ import Distribution.PackageDescription
                                   packageDescription,
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
-import Distribution.Simple.Program     ( emptyProgramConfiguration )
+import Distribution.Simple.Program ( ProgramConfiguration,
+                                     emptyProgramConfiguration,
+                                     rawSystemProgramConf, ghcProgram )
 import Distribution.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
@@ -64,9 +66,11 @@ setupWrapper args mdir = inDir mdir $ do
   pkg_descr_file <- defaultPackageDesc (verbosity flags)
   ppkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
 
-  (comp, _)  <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
-                  emptyProgramConfiguration normal
-  cabal_flag <- configCabalFlag flags (descCabalVersion (packageDescription ppkg_descr)) comp
+  (_, conf) <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
+                 emptyProgramConfiguration normal
+
+  cabal_flag <- let verRange = descCabalVersion (packageDescription ppkg_descr)
+                 in configCabalFlag flags verRange conf
 
   let
     trySetupScript f on_fail = do
@@ -78,8 +82,7 @@ setupWrapper args mdir = inDir mdir $ do
                           t2 <- getModificationTime "setup"
                           return (t1 < t2)
          unless hasSetup $
-           rawSystemExit (verbosity flags)
-             (compilerPath comp)
+           rawSystemProgramConf (verbosity flags) ghcProgram conf
              (cabal_flag ++ 
               ["--make", f, "-o", "setup", "-v"++showForGHC (verbosity flags)])
          rawSystemExit (verbosity flags)
@@ -144,10 +147,10 @@ opts = [
 	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   ]
 
-configCabalFlag :: Flags -> VersionRange -> Compiler -> IO [String]
+configCabalFlag :: Flags -> VersionRange -> ProgramConfiguration -> IO [String]
 configCabalFlag _flags AnyVersion _ = return []
-configCabalFlag flags range comp = do
-  ipkgs <-  getInstalledPackages comp True (verbosity flags)
+configCabalFlag flags range conf = do
+  ipkgs <-  getInstalledPackagesGHC (verbosity flags) conf True
 	-- user packages are *allowed* here, no portability problem
   cabal_pkgid <- configDependency (verbosity flags) ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
