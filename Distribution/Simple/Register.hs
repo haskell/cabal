@@ -66,9 +66,11 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirTemplates(..),
 					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                              compilerPkgToolPath, compilerVersion)
-import Distribution.Program (ConfiguredProgram(..), ProgramLocation(..))
-import Distribution.Setup (RegisterFlags(..), CopyDest(..), userOverride)
+                                     compilerVersion)
+import Distribution.Simple.Program (ConfiguredProgram, programPath,
+                                    programArgs, rawSystemProgram,
+                                    lookupProgram, ghcPkgProgram)
+import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..), userOverride)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -79,7 +81,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  rawSystemExit, copyFileVerbose, die)
+                                  copyFileVerbose, die)
 import Distribution.Simple.GHC.PackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHC.PackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
@@ -133,7 +135,6 @@ register pkg_descr lbi regFlags
         verbosity = regVerbose regFlags
         user = regUser regFlags `userOverride` userConf lbi
 	inplace = regInPlace regFlags
-        hc = compiler lbi
         message | genPkgConf = "Writing package registration file: "
                             ++ genPkgConfigFile ++ " for"
                 | genScript = "Writing registration script: "
@@ -141,7 +142,7 @@ register pkg_descr lbi regFlags
                 | otherwise = "Registering"
     setupMessage (regVerbose regFlags) message pkg_descr
 
-    case compilerFlavor hc of
+    case compilerFlavor (compiler lbi) of
       GHC -> do 
 	config_flags <-
 	   if user
@@ -176,16 +177,14 @@ register pkg_descr lbi regFlags
                                 in "--update-package" : conf
 
         let allFlags = config_flags ++ register_flags
+        let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
 
         case () of
           _ | genPkgConf -> return ()
             | genScript ->
               do cfg <- showInstalledConfig pkg_descr lbi inplace
-                 rawSystemPipe regScriptLocation verbosity cfg
-                           (compilerPkgToolPath hc)
-                           (compilerPkgToolArgs hc ++ allFlags)
-          _ -> rawSystemProgramConf verbosity
-                                    ghcPkgProgram (withPrograms lbi) allFlags
+                 rawSystemPipe pkgTool regScriptLocation cfg allFlags
+          _ -> rawSystemProgram verbosity pkgTool allFlags
 
       Hugs -> do
 	when inplace $ die "--inplace is not supported with Hugs"
@@ -322,9 +321,8 @@ unregister pkg_descr lbi regFlags = do
       genScript = regGenScript regFlags
       verbosity = regVerbose regFlags
       user = regUser regFlags `userOverride` userConf lbi
-      hc = compiler lbi
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-  case compilerFlavor hc of
+  case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <-
 	   if user
@@ -339,12 +337,11 @@ unregister pkg_descr lbi regFlags = do
         let removeCmd = if ghc_63_plus
                         then ["unregister",showPackageId (package pkg_descr)]
                         else ["--remove-package="++(pkgName $ package pkg_descr)]
-        -- XXX This should be rewritten so we use rawSystemProgramConf
-        -- when not making a script
-        let pkgTool     = compilerPkgToolPath hc
-            pkgToolArgs = compilerPkgToolArgs hc
-            allArgs     = pkgToolArgs ++ removeCmd ++ config_flags
-	rawSystemEmit unregScriptLocation genScript verbosity pkgTool allArgs
+        let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
+            allArgs      = removeCmd ++ config_flags
+	if genScript
+          then rawSystemEmit pkgTool unregScriptLocation allArgs
+          else rawSystemProgram verbosity pkgTool allArgs
     Hugs -> do
         try $ removeDirectoryRecursive (libdir installDirs)
 	return ()
@@ -354,17 +351,13 @@ unregister pkg_descr lbi regFlags = do
     _ ->
 	die ("only unregistering with GHC and Hugs is implemented")
 
--- |Like rawSystemExit, but optionally emits to a script instead of
--- exiting. FIX: chmod +x?
-rawSystemEmit :: FilePath  -- ^Script name
-              -> Bool      -- ^if true, emit, if false, run
-              -> Verbosity -- ^Verbosity
-              -> FilePath  -- ^Program to run
+-- |Like rawSystemProgram, but emits to a script instead of exiting.
+-- FIX: chmod +x?
+rawSystemEmit :: ConfiguredProgram  -- ^Program to run
+              -> FilePath  -- ^Script name
               -> [String]  -- ^Args
               -> IO ()
-rawSystemEmit _ False verbosity path args
-    = rawSystemExit verbosity path args
-rawSystemEmit scriptName True _ path args
+rawSystemEmit prog scriptName extraArgs
  = case os of
        Windows _ ->
            writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
@@ -373,15 +366,16 @@ rawSystemEmit scriptName True _ path args
                                   ++ "\n")
                p <- getPermissions scriptName
                setPermissions scriptName p{executable=True}
+  where args = programArgs prog ++ extraArgs
+        path = programPath prog
 
 -- |Like rawSystemEmit, except it has string for pipeFrom. FIX: chmod +x
-rawSystemPipe :: FilePath  -- ^Script location
-              -> Verbosity -- ^Verbosity
+rawSystemPipe :: ConfiguredProgram
+              -> FilePath  -- ^Script location
               -> String    -- ^where to pipe from
-              -> FilePath  -- ^Program to run
               -> [String]  -- ^Args
               -> IO ()
-rawSystemPipe scriptName _ pipeFrom path args
+rawSystemPipe prog scriptName pipeFrom extraArgs
  = case os of
        Windows _ ->
            writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
@@ -395,6 +389,8 @@ rawSystemPipe scriptName _ pipeFrom path args
   where escapeForShell [] = []
         escapeForShell ('\'':cs) = "'\\''" ++ escapeForShell cs
         escapeForShell (c   :cs) = c        : escapeForShell cs
+        args = programArgs prog ++ extraArgs
+        path = programPath prog
 
 -- ------------------------------------------------------------
 -- * Testing
