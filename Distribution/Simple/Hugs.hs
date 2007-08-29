@@ -93,15 +93,13 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram AnyVersion
+  (_ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram AnyVersion
                             (userMaybeSpecifyPath "ffihugs" hcPath conf)
-  (hugsProg, conf'')   <- requireProgram verbosity hugsProgram AnyVersion conf'
+  (_hugsProg, conf'')   <- requireProgram verbosity hugsProgram AnyVersion conf'
 
   let comp = Compiler {
         compilerFlavor         = Hugs,
         compilerId             = PackageIdentifier "hugs" (Version [] []),
-        compilerProg           = ffihugsProg,
-        compilerPkgTool        = hugsProg,
         compilerExtensions     = hugsLanguageExtensions
       }
   return (comp, conf'')
