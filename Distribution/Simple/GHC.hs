@@ -226,7 +226,7 @@ oldLanguageExtensions =
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let pref = buildDir lbi
-      ghcProg = compilerProg (compiler lbi)
+      runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
@@ -270,8 +270,8 @@ build pkg_descr lbi verbosity = do
                  ]
               ++ ghcProfOptions libBi
       unless (null (libModules pkg_descr)) $
-        do ifVanillaLib forceVanillaLib (rawSystemProgram verbosity ghcProg ghcArgs)
-           ifProfLib (rawSystemProgram verbosity ghcProg ghcArgsProf)
+        do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
+           ifProfLib (runGhcProg ghcArgsProf)
 
       -- build any C sources
       unless (null (cSources libBi)) $ do
@@ -279,7 +279,7 @@ build pkg_descr lbi verbosity = do
          sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref 
                                                             filename verbosity
                        createDirectoryIfMissingVerbose verbosity True odir
-                       rawSystemProgram verbosity ghcProg args
+                       runGhcProg args
                    | filename <- cSources libBi]
 
       -- link:
@@ -373,7 +373,7 @@ build pkg_descr lbi verbosity = do
 		  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
                                                          exeDir filename verbosity
                                 createDirectoryIfMissingVerbose verbosity True odir
-                                rawSystemProgram verbosity ghcProg args
+                                runGhcProg args
                             | filename <- cSources exeBi]
 
                  srcMainFile <- findFile (hsSourceDirs exeBi) modPath
@@ -403,9 +403,9 @@ build pkg_descr lbi verbosity = do
 		 -- run at compile time needs to be the vanilla ABI so it can
 		 -- be loaded up and run by the compiler.
 		 when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
-		    (rawSystemProgram verbosity ghcProg (binArgs False False))
+		    (runGhcProg (binArgs False False))
 
-		 rawSystemProgram verbosity ghcProg (binArgs True (withProfExe lbi))
+		 runGhcProg (binArgs True (withProfExe lbi))
 
 
 -- when using -split-objs, we need to search for object files in the
@@ -513,9 +513,10 @@ makefile pkg_descr lbi flags = do
   (ldProg, _) <- requireProgram (makefileVerbose flags) ldProgram AnyVersion
                    (withPrograms lbi)
   let builddir = buildDir lbi
+      Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
   let decls = [
         ("modules", unwords (exposedModules lib ++ otherModules bi)),
-        ("GHC", compilerPath (compiler lbi)),
+        ("GHC", programPath ghcProg),
         ("WAYS", if withProfLib lbi then "p" else ""),
         ("odir", builddir),
         ("srcdir", case hsSourceDirs bi of
