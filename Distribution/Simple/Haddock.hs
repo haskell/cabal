@@ -51,8 +51,9 @@ import Distribution.Compat.ReadP(readP_to_S)
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
 import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
-import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, programPath,
-                            hscolourProgram, haddockProgram, rawSystemProgram)
+import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, 
+                            lookupProgram, programPath, ghcPkgProgram,
+			    hscolourProgram, haddockProgram, rawSystemProgram)
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
@@ -119,7 +120,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let have_src_hyperlink_flags = version >= Version [0,8] []
         have_new_flags           = version >  Version [0,8] []
     let comp = compiler lbi
-        pkgTool = compilerPkgTool comp
+        Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
     let ghcpkgFlags = if have_new_flags
                       then ["--ghc-pkg=" ++ programPath pkgTool]
                       else []
