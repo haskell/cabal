@@ -375,7 +375,7 @@ ppC2hs bi lbi
         runPreProcessor = \(inBaseDir, inRelativeFile)
                            (outBaseDir, outRelativeFile) verbosity ->
           rawSystemProgramConf verbosity c2hsProgram (withPrograms lbi) $
-               ["--include=" ++ dir | dir <- hsSourceDirs bi ]
+               ["--include=" ++ outBaseDir]
             ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
             ++ ["--output-dir=" ++ outBaseDir,
                 "--output=" ++ outRelativeFile,
