@@ -86,7 +86,7 @@ module Distribution.Simple.Utils (
 #endif
 
 import Control.Monad
-    ( when, filterM, unless )
+    ( when, filterM, unless, liftM2 )
 import Data.List
     ( nub, unfoldr )
 
@@ -100,7 +100,7 @@ import System.Exit
 import System.FilePath
     ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
 import System.IO
-    ( hPutStrLn, stderr, hFlush, stdout )
+    ( hPutStrLn, stderr, hFlush, stdout, openFile, IOMode(WriteMode) )
 import System.IO.Error
     ( try )
 
@@ -222,30 +222,26 @@ rawSystemStdout verbosity path args = do
   --      connect to all three since then we'd need threads to pull on stdout
   --      and stderr simultaniously to avoid deadlock, and using threads like
   --      that would not be portable to Hugs for example.
-  bracket (openTempFile "." "tmp")
+  bracket (liftM2 (,) (openTempFile "." "tmp") (openFile devNull WriteMode))
           -- We need to close tmpHandle or the file removal fails on Windows
-          (\(tmpName, tmpHandle) -> hClose tmpHandle >> removeFile tmpName)
-         $ \(tmpName, tmpHandle) -> do
+          (\((tmpName, tmpHandle), nullHandle) -> do
+             hClose tmpHandle
+             removeFile tmpName
+             hClose nullHandle)
+         $ \((tmpName, tmpHandle), nullHandle) -> do
     cmdHandle <- runProcess path args Nothing Nothing
-                   Nothing (Just tmpHandle) Nothing
-    res <- waitForProcess cmdHandle
-    checkResult res
+                   Nothing (Just tmpHandle) (Just nullHandle)
+    maybeExit (waitForProcess cmdHandle)
     output <- readFile tmpName
     evaluate (length output)
     return output
 #else
   withTempFile "." "" $ \tmpName -> do
     let quote name = "'" ++ name ++ "'"
-    res <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
-    checkResult res
+    maybeExit system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     output <- readFile tmpName
     length output `seq` return output
 #endif
-  where 
-    checkResult ExitSuccess     = return ()
-    checkResult (ExitFailure n) = 
-        die ("executing external program failed (exit " ++ show n ++ ") : "
-             ++ unwords (path : args))
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
@@ -536,6 +532,11 @@ dllExtension = case os of
                    Windows _ -> "dll"
                    OSX       -> "dylib"
                    _         -> "so"
+
+devNull :: FilePath
+devNull = case os of
+                   Windows _ -> "NUL"
+                   _         -> "/dev/null"
 
 -- ------------------------------------------------------------
 -- * Testing
