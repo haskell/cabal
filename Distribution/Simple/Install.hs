@@ -98,6 +98,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
          dynlibdir  = dynlibPref,
          datadir    = dataPref,
          progdir    = progPref,
+         docdir     = docPref,
          htmldir    = htmlPref,
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
@@ -120,8 +121,8 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
 
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
-    createDirectoryIfMissingVerbose verbosity True dataPref
-    copyFileVerbose verbosity lfile (dataPref </> lfile)
+    createDirectoryIfMissingVerbose verbosity True docPref
+    copyFileVerbose verbosity lfile (docPref </> lfile)
 
   let buildPref = buildDir lbi
   setupMessage verbosity ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
