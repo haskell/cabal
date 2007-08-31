@@ -75,6 +75,7 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         mapBuildInfo,
+        allBuildInfo,
 
         -- ** Supplementary build information
         HookedBuildInfo,
@@ -613,6 +614,16 @@ mapBuildInfo f pkg = pkg {
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = nullBuildInfo { hsSourceDirs = [currentDir] }
+
+-- | The 'BuildInfo' for the library (if there is one and it's buildable) and
+-- all the buildable executables. Useful for gathering dependencies.
+allBuildInfo :: PackageDescription -> [BuildInfo]
+allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
+                              , let bi = libBuildInfo lib
+                              , buildable bi ]
+                      ++ [ bi | exe <- executables pkg_descr
+                              , let bi = buildInfo exe
+                              , buildable bi ]
 
 -- see comment at libFillInDefaults
 biFillInDefaults :: BuildInfo -> BuildInfo
