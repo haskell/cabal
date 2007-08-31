@@ -357,7 +357,6 @@ configureArgs flags
         optFlag "libdir" configLibDir ++
         optFlag "libexecdir" configLibExecDir ++
         optFlag "datadir" configDataDir ++
-	optFlag "docdir" configDocDir ++
         configConfigureArgs flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
