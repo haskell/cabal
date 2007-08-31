@@ -47,7 +47,7 @@ module Distribution.Simple.Configure (configure,
                                       maybeGetPersistBuildConfig,
 --                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
-                                      getInstalledPackagesGHC,
+                                      getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
 #ifdef DEBUG
@@ -66,13 +66,11 @@ module Distribution.Simple.Configure (configure,
 
 import Distribution.Compat.Directory
     ( createDirectoryIfMissing )
-import Distribution.Compat.ReadP
-    ( readP_to_S, many, skipSpaces )
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerVersion, showCompilerId
-    , unsupportedExtensions )
+    , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
-    ( PackageIdentifier(..), showPackageId,  parsePackageId )
+    ( PackageIdentifier(..), showPackageId )
 import Distribution.PackageDescription
     ( PackageDescription(..), Library(..), GenericPackageDescription(..)
     , BuildInfo(..), Executable(..), finalizePackageDescription
@@ -83,8 +81,8 @@ import Distribution.ParseUtils
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
-    , lookupKnownProgram, requireProgram, rawSystemProgramStdoutConf
-    , ghcPkgProgram, jhcProgram )
+    , lookupKnownProgram, requireProgram )
+
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
@@ -113,9 +111,9 @@ import qualified Distribution.Simple.Hugs as Hugs
 import Control.Monad
     ( when, unless, foldM )
 import Data.Char
-    ( isSpace, toLower )
+    ( toLower )
 import Data.List
-    ( intersperse, nub, isPrefixOf )
+    ( intersperse, nub )
 import Data.Maybe
     ( fromMaybe, isNothing )
 import System.Directory
@@ -200,13 +198,8 @@ configure (pkg_descr0, pbi) cfg
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
-        mipkgs <- case flavor of
-            GHC | version >= Version [6,3] [] -> return . Just =<<
-              getInstalledPackagesGHC verbosity programsConfig (configUser cfg)
-            JHC -> return . Just =<<
-              getInstalledPackagesJHC verbosity programsConfig
-            _ -> return Nothing
-              -- return $ map setDepByVersion (buildDepends pkg_descr)
+        mipkgs <- getInstalledPackages verbosity comp (configPackageDB cfg)
+                    programsConfig
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
@@ -301,7 +294,7 @@ configure (pkg_descr0, pbi) cfg
 		    withOptimization    = configOptimization cfg,
 		    withGHCiLib         = configGHCiLib cfg,
 		    splitObjs           = split_objs,
-		    userConf            = configUser cfg
+		    withPackageDB       = configPackageDB cfg
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
@@ -373,26 +366,15 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
                                 ++ ": using " ++ showPackageId pkg
                        return pkg
 
-getInstalledPackagesJHC :: Verbosity -> ProgramConfiguration -> IO [PackageIdentifier]
-getInstalledPackagesJHC verbosity conf = do
-   when (verbosity >= verbose) $ message "Reading installed packages..."
-   str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
-   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
-     [ps] -> return ps
-     _    -> die "cannot parse package list"
-
-getInstalledPackagesGHC :: Verbosity -> ProgramConfiguration -> Bool -> IO [PackageIdentifier]
-getInstalledPackagesGHC verbosity conf user = do
-   when (verbosity >= verbose) $ message "Reading installed packages..."
-   let user_flag = if user then "--user" else "--global"
-   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf [user_flag, "list"]
-   let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
-       str1 = unlines (filter keep_line (lines str))
-       str2 = filter (`notElem` ",(){}") str1
-       --
-   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
-     [ps] -> return ps
-     _    -> die "cannot parse package list"
+getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
+                     -> IO (Maybe [PackageIdentifier])
+getInstalledPackages verbosity comp packageDb progconf = do
+  when (verbosity >= verbose) $ message "Reading installed packages..."
+  case compilerFlavor comp of
+    GHC | compilerVersion comp >= Version [6,3] []
+        -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
+    JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDb progconf
+    _   -> return Nothing
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
@@ -428,9 +410,6 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       Hugs -> Hugs.configure verbosity hcPath hcPkg conf
       NHC  -> NHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
-
-pCheck :: [(a, [Char])] -> [a]
-pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
 message :: String -> IO ()
 message s = putStrLn $ "configure: " ++ s

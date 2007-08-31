@@ -55,7 +55,6 @@ module Distribution.Simple.Setup (--parseArgs,
                            MakefileFlags(..), emptyMakefileFlags,
                            RegisterFlags(..), emptyRegisterFlags,
 			   SDistFlags(..),
-                           MaybeUserFlag(..), userOverride,
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,
@@ -76,7 +75,7 @@ import Test.HUnit (Test(..))
 #endif
 
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                                     defaultCompilerFlavor)
+                                     defaultCompilerFlavor, PackageDB(..))
 import Distribution.Simple.Utils (die, wrapText)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
@@ -142,8 +141,8 @@ data ConfigFlags = ConfigFlags {
 	configDocDir   :: Maybe FilePath,
 		-- ^installation dir for documentation
 
-        configVerbose  :: Verbosity,            -- ^verbosity level
-	configUser     :: Bool,		  -- ^ the --user flag?
+        configVerbose  :: Verbosity,      -- ^verbosity level
+	configPackageDB:: PackageDB,	  -- ^ the --user flag?
 	configGHCiLib  :: Bool,           -- ^Enable compiling library for GHCi
 	configSplitObjs :: Bool,	  -- ^Enable -split-objs with GHC
         configConfigurationsFlags :: [(String, Bool)]
@@ -173,7 +172,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDataSubDir = Nothing,
 	configDocDir = Nothing,
         configVerbose  = normal,
-	configUser     = False,
+	configPackageDB = GlobalPackageDB,
 	configGHCiLib  = True,
 	configSplitObjs = False, -- takes longer, so turn off by default
         configConfigurationsFlags = []
@@ -195,24 +194,13 @@ emptyCopyFlags :: CopyDest -> CopyFlags
 emptyCopyFlags mprefix = CopyFlags{ copyDest = mprefix,
                                     copyVerbose = normal }
 
-data MaybeUserFlag  = MaybeUserNone   -- ^no --user OR --global flag.
-                    | MaybeUserUser   -- ^the --user flag
-                    | MaybeUserGlobal -- ^the --global flag
-    deriving Show
-
--- |A 'MaybeUserFlag' overrides the default --user setting
-userOverride :: MaybeUserFlag -> Bool -> Bool
-MaybeUserUser   `userOverride` _ = True
-MaybeUserGlobal `userOverride` _ = False
-_               `userOverride` r = r
-
--- | Flags to @install@: (user package, verbosity)
-data InstallFlags = InstallFlags {installUserFlags :: MaybeUserFlag
+-- | Flags to @install@: (package db, verbosity)
+data InstallFlags = InstallFlags {installPackageDB :: Maybe PackageDB
                                  ,installVerbose :: Verbosity}
     deriving Show
 
 emptyInstallFlags :: InstallFlags
-emptyInstallFlags = InstallFlags{ installUserFlags=MaybeUserNone,
+emptyInstallFlags = InstallFlags{ installPackageDB=Nothing,
                                   installVerbose = normal }
 
 -- | Flags to @sdist@: (snapshot, verbosity)
@@ -222,7 +210,7 @@ data SDistFlags = SDistFlags {sDistSnapshot :: Bool
 
 -- | Flags to @register@ and @unregister@: (user package, gen-script,
 -- in-place, verbosity)
-data RegisterFlags = RegisterFlags { regUser :: MaybeUserFlag
+data RegisterFlags = RegisterFlags { regPackageDB :: Maybe PackageDB
                                    , regGenScript :: Bool
                                    , regGenPkgConf :: Bool
                                    , regPkgConfFile :: Maybe FilePath
@@ -233,7 +221,7 @@ data RegisterFlags = RegisterFlags { regUser :: MaybeUserFlag
 
 
 emptyRegisterFlags :: RegisterFlags
-emptyRegisterFlags = RegisterFlags { regUser = MaybeUserNone,
+emptyRegisterFlags = RegisterFlags { regPackageDB = Nothing,
                                      regGenScript = False,
                                      regGenPkgConf = False,
                                      regPkgConfFile = Nothing,
@@ -638,8 +626,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
 	updateCfg t (DocDir path)        = t { configDocDir  = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
-        updateCfg t UserFlag             = t { configUser     = True }
-        updateCfg t GlobalFlag           = t { configUser     = False }
+        updateCfg t UserFlag             = t { configPackageDB = UserPackageDB }
+        updateCfg t GlobalFlag           = t { configPackageDB = GlobalPackageDB }
 	updateCfg t WithSplitObjs	 = t { configSplitObjs = True }
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
         updateCfg t (ConfigurationsFlags fs)  = t { configConfigurationsFlags =
@@ -819,8 +807,8 @@ parseInstallArgs :: InstallFlags -> [String] -> [OptDescr a] ->
 parseInstallArgs = parseArgs installCmd updateCfg
   where updateCfg (InstallFlags uFlag verbosity) fl = case fl of
             InstPrefix _ -> error "--install-prefix is obsolete. Use copy command instead."
-            UserFlag     -> (InstallFlags MaybeUserUser   verbosity)
-            GlobalFlag   -> (InstallFlags MaybeUserGlobal verbosity)
+            UserFlag     -> (InstallFlags (Just UserPackageDB)   verbosity)
+            GlobalFlag   -> (InstallFlags (Just GlobalPackageDB) verbosity)
             Verbose n    -> (InstallFlags uFlag n)
             _            -> error $ "Unexpected flag!"
 
@@ -882,8 +870,8 @@ parseRegisterArgs = parseArgs registerCmd registerUpdateCfg
 
 registerUpdateCfg :: RegisterFlags -> Flag a -> RegisterFlags
 registerUpdateCfg reg fl = case fl of
-            UserFlag        -> reg { regUser=MaybeUserUser }
-            GlobalFlag      -> reg { regUser=MaybeUserGlobal }
+            UserFlag        -> reg { regPackageDB=Just UserPackageDB }
+            GlobalFlag      -> reg { regPackageDB=Just GlobalPackageDB }
             Verbose n       -> reg { regVerbose=n }
             GenScriptFlag   -> reg { regGenScript=True }
             GetPkgConfFlag
