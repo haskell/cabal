@@ -167,7 +167,6 @@ data PackageDescription
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
         buildDepends   :: [Dependency],
-        buildTools     :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
         buildType      :: BuildType,
         -- components
@@ -192,7 +191,6 @@ emptyPackageDescription
                       stability    = "",
                       testedWith   = [],
                       buildDepends = [],
-                      buildTools   = [],
                       homepage     = "",
                       pkgUrl       = "",
                       synopsis     = "",
@@ -383,9 +381,6 @@ pkgDescrFieldDescrs =
  , commaListField  "build-depends"
            showDependency         parseDependency
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
- , commaListField  "build-tools"
-           showDependency         parseDependency
-           buildTools             (\xs    pkg -> pkg{buildTools=xs})
  , simpleField "stability"
            showFreeText           (munch (const True))
            stability              (\val pkg -> pkg{stability=val})
@@ -564,6 +559,7 @@ unionExecutable e1 e2 =
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
+        buildTools        :: [Dependency], -- ^ tools needed to build this bit
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
         frameworks        :: [String], -- ^support frameworks for Mac OS X
@@ -585,6 +581,7 @@ data BuildInfo = BuildInfo {
 nullBuildInfo :: BuildInfo
 nullBuildInfo = BuildInfo {
                       buildable         = True,
+                      buildTools        = [],
                       ccOptions         = [],
                       ldOptions         = [],
                       frameworks        = [],
@@ -642,6 +639,9 @@ binfoFieldDescrs =
  [ simpleField "buildable"
            (text . show)      parseReadS
            buildable          (\val binfo -> binfo{buildable=val})
+ , commaListField  "build-tools"
+           showDependency     parseDependency
+           buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , listField "cc-options"
            showToken          parseTokenQ
            ccOptions          (\val binfo -> binfo{ccOptions=val})
@@ -754,6 +754,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
     = b1{buildable         = buildable b1 && buildable b2,
+         buildTools        = combine buildTools,
          ccOptions         = combine ccOptions,
          ldOptions         = combine ldOptions,
          frameworks        = combine frameworks,
@@ -1555,7 +1556,6 @@ comparePackageDescriptions p1 p2
                 : myCmp description      "description"
                 : myCmp category         "category"
                 : myCmp buildDepends     "buildDepends"
-                : myCmp buildTools       "buildTools"
                 : myCmp library          "library"
                 : myCmp executables      "executables"
                 : myCmp descCabalVersion "cabal-version" 
