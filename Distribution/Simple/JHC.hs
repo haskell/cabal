@@ -41,7 +41,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.JHC (
-	configure, build, installLib, installExe
+	configure, getInstalledPackages, build, installLib, installExe
  ) where
 
 import Distribution.PackageDescription
@@ -52,22 +52,27 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), 
 				  autogenModulesDir )
-import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag,
-                                  extensionsToFlags )
+import Distribution.Simple.Compiler ( Compiler(..), CompilerFlavor(..), Flag,
+                                  PackageDB, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, rawSystemProgram,
-				  lookupProgram )
+                                  requireProgram, lookupProgram,
+                                  rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version	( VersionRange(AnyVersion) )
-import Distribution.Package  	( PackageIdentifier(..), showPackageId )
+import Distribution.Package  	( PackageIdentifier(..), showPackageId,
+                                  parsePackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, exeExtension )
+                                  copyFileVerbose, exeExtension, die )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
+import Distribution.Compat.ReadP
+    ( readP_to_S, many, skipSpaces )
 
 import Control.Monad		( when )
 import Data.List		( nub, intersperse )
+import Data.Char		( isSpace )
+
 
 
 -- -----------------------------------------------------------------------------
@@ -96,6 +101,17 @@ jhcLanguageExtensions =
     ,(NoImplicitPrelude          , "--noprelude")
     ,(CPP                        , "-fcpp")
     ]
+
+getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
+                    -> IO [PackageIdentifier]
+getInstalledPackages verbosity _packagedb conf = do
+   str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
+   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
+     [ps] -> return ps
+     _    -> die "cannot parse package list"
+  where
+    pCheck :: [(a, [Char])] -> [a]
+    pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
 -- -----------------------------------------------------------------------------
 -- Building

@@ -642,7 +642,7 @@ defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbosity)
   install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbosity)
   when (hasLibs pkg_descr) $
       register pkg_descr localbuildinfo
-           emptyRegisterFlags{ regUser=uInstFlag, regVerbose=verbosity }
+           emptyRegisterFlags{ regPackageDB=uInstFlag, regVerbose=verbosity }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> BuildFlags -> IO ()

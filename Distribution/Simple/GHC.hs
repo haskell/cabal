@@ -44,7 +44,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-	configure, build, makefile, installLib, installExe
+	configure, getInstalledPackages, build, makefile, installLib, installExe
  ) where
 
 import Distribution.Simple.GHC.Makefile
@@ -57,8 +57,10 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils
-import Distribution.Package  	( PackageIdentifier(..), showPackageId )
-import Distribution.Simple.Program	( rawSystemProgram, rawSystemProgramConf,
+import Distribution.Package  	( PackageIdentifier(..), showPackageId,
+                                  parsePackageId )
+import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
+				  rawSystemProgramStdoutConf,
 				  Program(..), ConfiguredProgram(..),
                                   ProgramConfiguration, addKnownProgram,
                                   userMaybeSpecifyPath, requireProgram,
@@ -74,10 +76,12 @@ import qualified Distribution.Simple.GHC.PackageConfig as GHC
 import Distribution.System
 import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
+import Distribution.Compat.ReadP
+    ( readP_to_S, many, skipSpaces )
 
 import Control.Monad		( unless, when )
 import Data.Char
-import Data.List		( nub )
+import Data.List		( nub, isPrefixOf )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
@@ -215,6 +219,27 @@ oldLanguageExtensions =
     ]
     where
       fglasgowExts = "-fglasgow-exts"
+
+getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
+                     -> IO [PackageIdentifier]
+getInstalledPackages verbosity packagedb conf = do
+   --TODO: use --simple-output flag for easier parsing
+   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
+            [packageDbGhcPkgFlag packagedb, "list"]
+   let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
+       str1 = unlines (filter keep_line (lines str))
+       str2 = filter (`notElem` ",(){}") str1
+       --
+   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
+     [ps] -> return ps
+     _    -> die "cannot parse package list"
+  where
+    packageDbGhcPkgFlag GlobalPackageDB          = "--global"
+    packageDbGhcPkgFlag UserPackageDB            = "--user"
+    packageDbGhcPkgFlag (SpecificPackageDB path) = "--package-conf=" ++ path
+
+    pCheck :: [(a, [Char])] -> [a]
+    pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
 
 -- -----------------------------------------------------------------------------
 -- Building

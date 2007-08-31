@@ -19,7 +19,7 @@ import qualified Distribution.Make as Make
 import Distribution.Simple
 import Distribution.Simple.Utils
 import Distribution.Simple.Configure
-				( configCompiler, getInstalledPackagesGHC,
+				( configCompiler, getInstalledPackages,
 		  	  	  configDependency )
 import Distribution.Simple.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
@@ -36,6 +36,7 @@ import Distribution.Compat.Exception ( finally )
 import Distribution.Verbosity
 import System.FilePath (pathSeparator)
 import Control.Monad		( when, unless )
+import Data.Maybe		( fromMaybe )
 
   -- read the .cabal file
   -- 	- attempt to find the version of Cabal required
@@ -60,17 +61,18 @@ setupWrapper ::
 setupWrapper args mdir = inDir mdir $ do  
   let (flag_fn, non_opts, unrec_opts, errs) = getOpt' Permute opts args
   when (not (null errs)) $ die (unlines errs)
-  let flags = foldr (.) id flag_fn defaultFlags
+  let Flags { withCompiler = hc, withHcPkg = hcPkg, withVerbosity = verbosity
+        } = foldr (.) id flag_fn defaultFlags
   let setup_args = unrec_opts ++ non_opts
 
-  pkg_descr_file <- defaultPackageDesc (verbosity flags)
-  ppkg_descr <- readPackageDescription (verbosity flags) pkg_descr_file 
+  pkg_descr_file <- defaultPackageDesc verbosity
+  ppkg_descr <- readPackageDescription verbosity pkg_descr_file 
 
-  (_, conf) <- configCompiler (Just GHC) (withCompiler flags) (withHcPkg flags)
+  (comp, conf) <- configCompiler (Just GHC) hc hcPkg 
                  emptyProgramConfiguration normal
 
   cabal_flag <- let verRange = descCabalVersion (packageDescription ppkg_descr)
-                 in configCabalFlag flags verRange conf
+                 in configCabalFlag verbosity verRange comp conf
 
   let
     trySetupScript f on_fail = do
@@ -82,12 +84,10 @@ setupWrapper args mdir = inDir mdir $ do
                           t2 <- getModificationTime "setup"
                           return (t1 < t2)
          unless hasSetup $
-           rawSystemProgramConf (verbosity flags) ghcProgram conf
+           rawSystemProgramConf verbosity ghcProgram conf
              (cabal_flag ++ 
-              ["--make", f, "-o", "setup", "-v"++showForGHC (verbosity flags)])
-         rawSystemExit (verbosity flags)
-           ('.':pathSeparator:"setup")
-           setup_args
+              ["--make", f, "-o", "setup", "-v"++showForGHC verbosity])
+         rawSystemExit verbosity ('.':pathSeparator:"setup") setup_args
 
   case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
     Just (mainAction, mainText) ->
@@ -119,14 +119,14 @@ data Flags
   = Flags {
     withCompiler :: Maybe FilePath,
     withHcPkg    :: Maybe FilePath,
-    verbosity      :: Verbosity
+    withVerbosity :: Verbosity
   }
 
 defaultFlags :: Flags
 defaultFlags = Flags {
   withCompiler = Nothing,
   withHcPkg    = Nothing,
-  verbosity      = normal
+  withVerbosity = normal
  }
 
 setWithCompiler :: Maybe FilePath -> Flags -> Flags
@@ -136,7 +136,7 @@ setWithHcPkg :: Maybe FilePath -> Flags -> Flags
 setWithHcPkg f flags = flags{ withHcPkg=f }
 
 setVerbosity :: Verbosity -> Flags -> Flags
-setVerbosity v flags = flags{ verbosity=v }
+setVerbosity v flags = flags{ withVerbosity=v }
 
 opts :: [OptDescr (Flags -> Flags)]
 opts = [
@@ -147,10 +147,11 @@ opts = [
 	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
   ]
 
-configCabalFlag :: Flags -> VersionRange -> ProgramConfiguration -> IO [String]
-configCabalFlag _flags AnyVersion _ = return []
-configCabalFlag flags range conf = do
-  ipkgs <-  getInstalledPackagesGHC (verbosity flags) conf True
+configCabalFlag :: Verbosity -> VersionRange -> Compiler -> ProgramConfiguration -> IO [String]
+configCabalFlag _ AnyVersion _ _ = return []
+configCabalFlag verbosity range comp conf = do
+  ipkgs <-  getInstalledPackages verbosity comp UserPackageDB conf
+            >>= return . fromMaybe []
 	-- user packages are *allowed* here, no portability problem
-  cabal_pkgid <- configDependency (verbosity flags) ipkgs (Dependency "Cabal" range)
+  cabal_pkgid <- configDependency verbosity ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
