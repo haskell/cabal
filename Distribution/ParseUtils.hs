@@ -50,8 +50,8 @@ module Distribution.ParseUtils (
 	Field(..), fName, lineNo,
 	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
-	parseModuleNameQ, parseDependency, parseOptVersion,
-	parsePackageNameQ, parseVersionRangeQ,
+	parseModuleNameQ, parseDependency, parsePkgconfigDependency,
+        parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, 
 	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
@@ -414,6 +414,16 @@ parseDependency = do name <- parsePackageNameQ
                      ver <- parseVersionRangeQ <++ return AnyVersion
                      skipSpaces
                      return $ Dependency name ver
+
+-- pkg-config allows versions and other letters in package names, 
+-- eg "gtk+-2.0" is a valid pkg-config package _name_.
+-- It then has a package version number like 2.10.13
+parsePkgconfigDependency :: ReadP r Dependency
+parsePkgconfigDependency = do name <- munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+                              skipSpaces
+                              ver <- parseVersionRangeQ <++ return AnyVersion
+                              skipSpaces
+                              return $ Dependency name ver
 
 parsePackageNameQ :: ReadP r String
 parsePackageNameQ = parseQuoted parsePackageName <++ parsePackageName 
