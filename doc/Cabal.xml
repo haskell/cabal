@@ -15,6 +15,7 @@
     <!ENTITY HsColour '<ulink url="http://www.cs.york.ac.uk/fp/darcs/hscolour/"><command>HsColour</command></ulink>'>
     <!ENTITY Happy '<ulink url="http://www.haskell.org/happy/"><command>happy</command></ulink>'>
     <!ENTITY HackageDB '<ulink url="http://hackage.haskell.org/">HackageDB</ulink>'>
+    <!ENTITY PkgConfig '<ulink url="http://pkg-config.freedesktop.org/">pkg-config</ulink>'>
   ]>
 
 <article>
@@ -974,6 +975,30 @@ Executable program2 {
                 Since the arguments are compiler-dependent, this field
                 is more useful with the setup described in
                 <xref linkend="system-dependent"/>.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>pkgconfig-depends:</literal>
+              <replaceable>package list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of &PkgConfig; packages, needed to build this
+                package. They can be annotated with versions,
+                e.g. <literal>gtk+-2.0 >= 2.10, cairo >= 1.0</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable. Cabal uses
+                <literal>pkg-config</literal> to find if the packages are
+                available on the system and to find the extra compilation and
+                linker options needed to use the packages.
+              </para>
+              <para> If you need to bind to a C library that supports
+                <literal>pkg-config</literal> (use
+                <literal>pkg-config --list-all</literal> to find out if it is
+                supported) then it is much preferable to use this field rather
+                than hard code options into the other fields.
+              </para>
             </listitem>
           </varlistentry>
 
