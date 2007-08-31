@@ -73,7 +73,7 @@ import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
 import Distribution.PackageDescription
     ( PackageDescription(..), GenericPackageDescription(..)
-    , BuildInfo(..), finalizePackageDescription
+    , Library(..), Executable(..), BuildInfo(..), finalizePackageDescription
     , HookedBuildInfo, sanityCheckPackage, updatePackageDescription
     , setupMessage, satisfyDependency, hasLibs, allBuildInfo )
 import Distribution.ParseUtils
@@ -81,8 +81,8 @@ import Distribution.ParseUtils
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
-    , lookupKnownProgram, requireProgram )
-
+    , lookupKnownProgram, requireProgram, pkgConfigProgram
+    , rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
@@ -98,8 +98,8 @@ import Distribution.Simple.Register
 import Distribution.System
     ( os, OS(..), Windows(..) )
 import Distribution.Version
-    ( Version(..), Dependency(..), VersionRange(ThisVersion), showVersion
-    , showVersionRange )
+    ( Version(..), Dependency(..), VersionRange(..), showVersion, readVersion
+    , showVersionRange, orLaterVersion, withinRange )
 import Distribution.Verbosity
     ( Verbosity, verbose, lessVerbose )
 
@@ -110,10 +110,12 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad
     ( when, unless, foldM )
+import Control.Exception as Exception
+    ( catch )
 import Data.Char
     ( toLower )
 import Data.List
-    ( intersperse, nub )
+    ( intersperse, nub, partition, isPrefixOf )
 import Data.Maybe
     ( fromMaybe, isNothing )
 import System.Directory
@@ -198,8 +200,8 @@ configure (pkg_descr0, pbi) cfg
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
-        mipkgs <- getInstalledPackages verbosity comp (configPackageDB cfg)
-                    programsConfig
+        mipkgs <- getInstalledPackages (lessVerbose verbosity) comp
+                    (configPackageDB cfg) programsConfig
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
@@ -267,6 +269,9 @@ configure (pkg_descr0, pbi) cfg
         programsConfig' <-
               configureAllKnownPrograms (lessVerbose verbosity) programsConfig
           >>= configureRequiredPrograms verbosity requiredBuildTools
+        
+        (pkg_descr', programsConfig'') <- configurePkgconfigPackages verbosity
+                                            pkg_descr programsConfig'
 
 	split_objs <- 
 	   if not (configSplitObjs cfg)
@@ -284,8 +289,8 @@ configure (pkg_descr0, pbi) cfg
 		    buildDir            = distPref </> "build",
 		    scratchDir          = distPref </> "scratch",
 		    packageDeps         = dep_pkgs,
-		    localPkgDescr       = pkg_descr,
-		    withPrograms        = programsConfig',
+		    localPkgDescr       = pkg_descr',
+		    withPrograms        = programsConfig'',
 		    withVanillaLib      = configVanillaLib cfg,
 		    withProfLib         = configProfLib cfg,
 		    withSharedLib       = configSharedLib cfg,
@@ -387,6 +392,78 @@ configureRequiredProgram verbosity conf (Dependency progName verRange) =
   case lookupKnownProgram progName conf of
     Nothing -> die ("Unknown build tool " ++ show progName)
     Just prog -> snd `fmap` requireProgram verbosity prog verRange conf
+
+-- -----------------------------------------------------------------------------
+-- Configuring pkg-config package dependencies
+
+configurePkgconfigPackages :: Verbosity -> PackageDescription
+                           -> ProgramConfiguration
+                           -> IO (PackageDescription, ProgramConfiguration)
+configurePkgconfigPackages verbosity pkg_descr conf
+  | null allpkgs = return (pkg_descr, conf)
+  | otherwise    = do
+    (_, conf') <- requireProgram (lessVerbose verbosity) pkgConfigProgram
+                    (orLaterVersion $ Version [0,9,0] []) conf
+    mapM_ requirePkg allpkgs
+    lib'  <- updateLibrary (library pkg_descr)
+    exes' <- mapM updateExecutable (executables pkg_descr)
+    let pkg_descr' = pkg_descr { library = lib', executables = exes' }
+    return (pkg_descr', conf')
+        
+  where 
+    allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
+    pkgconfig = rawSystemProgramStdoutConf (lessVerbose verbosity)
+                  pkgConfigProgram conf
+
+    requirePkg (Dependency pkg range) = do
+      version <- pkgconfig ["--modversion", pkg]
+                 `Exception.catch` \_ -> die notFound
+      case readVersion version of
+        Nothing -> die "parsing output of pkg-config --modversion failed"
+        Just v | not (withinRange v range) -> die (badVersion v)
+               | verbosity >= verbose      -> message (depSatisfied v)
+               | otherwise                 -> return ()
+      where 
+        notFound     = "The pkg-config package " ++ pkg ++ versionRequirement
+                    ++ " is required but it could not be found."
+        badVersion v = "The pkg-config package " ++ pkg ++ versionRequirement
+                    ++ " is required but the version installed on the"
+                    ++ " system is version " ++ showVersion v
+        depSatisfied v = "Dependency " ++ pkg ++ showVersionRange range
+                      ++ ": using version " ++ showVersion v
+
+        versionRequirement
+          | range == AnyVersion = ""
+          | otherwise           = " version " ++ showVersionRange range                            
+
+    updateLibrary Nothing    = return Nothing
+    updateLibrary (Just lib) = do
+      let bi = libBuildInfo lib
+      bi' <- updateBuildInfo bi
+      return $ Just lib { libBuildInfo = bi' }
+
+    updateExecutable exe = do
+      let bi = buildInfo exe
+      bi' <- updateBuildInfo bi
+      return exe { buildInfo = bi' }
+
+    updateBuildInfo :: BuildInfo -> IO BuildInfo
+    updateBuildInfo bi
+      | not (buildable bi) = return bi
+      | otherwise = do
+      let pkgs = nub [ pkg | Dependency pkg _ <- pkgconfigDepends bi ]
+      cflags  <- words `fmap` pkgconfig ("--cflags" : pkgs)
+      ldflags <- words `fmap` pkgconfig ("--libs"   : pkgs)
+      let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
+          (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
+          (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
+      return bi {
+        includeDirs  = includeDirs  bi ++ map (drop 2) includeDirs',
+        extraLibs    = extraLibs    bi ++ map (drop 2) extraLibs',
+        extraLibDirs = extraLibDirs bi ++ map (drop 2) extraLibDirs',
+        ccOptions    = ccOptions    bi ++ cflags',
+        ldOptions    = ldOptions    bi ++ ldflags''
+      }
 
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
