@@ -238,7 +238,7 @@ rawSystemStdout verbosity path args = do
 #else
   withTempFile "." "" $ \tmpName -> do
     let quote name = "'" ++ name ++ "'"
-    maybeExit system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+    maybeExit $ system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     output <- readFile tmpName
     length output `seq` return output
 #endif
