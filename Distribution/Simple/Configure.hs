@@ -72,10 +72,10 @@ import Distribution.Simple.Compiler
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
 import Distribution.PackageDescription
-    ( PackageDescription(..), Library(..), GenericPackageDescription(..)
-    , BuildInfo(..), Executable(..), finalizePackageDescription
+    ( PackageDescription(..), GenericPackageDescription(..)
+    , BuildInfo(..), finalizePackageDescription
     , HookedBuildInfo, sanityCheckPackage, updatePackageDescription
-    , setupMessage, satisfyDependency, hasLibs )
+    , setupMessage, satisfyDependency, hasLibs, allBuildInfo )
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
@@ -257,17 +257,16 @@ configure (pkg_descr0, pbi) cfg
 	      }
 
         -- check extensions
-        let lib = library pkg_descr
-        let extlist = nub $ maybe [] (extensions . libBuildInfo) lib ++
-                      concat [ extensions exeBi | Executable _ _ exeBi <- executables pkg_descr ]
+        let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
         let exts = unsupportedExtensions comp extlist
         unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
             show flavor ++ " does not support the following extensions:\n " ++
             concat (intersperse ", " (map show exts))
 
+        let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
         programsConfig' <-
               configureAllKnownPrograms (lessVerbose verbosity) programsConfig
-          >>= configureRequiredPrograms verbosity (buildTools pkg_descr)
+          >>= configureRequiredPrograms verbosity requiredBuildTools
 
 	split_objs <- 
 	   if not (configSplitObjs cfg)
