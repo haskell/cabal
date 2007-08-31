@@ -80,6 +80,7 @@ module Distribution.Simple.Program (
     , tarProgram
     , cppProgram
     , pfesetupProgram
+    , pkgConfigProgram
     ) where
 
 import qualified Distribution.Compat.Map as Map
@@ -465,6 +466,8 @@ builtinPrograms =
     , arProgram
     , ldProgram
     , tarProgram
+    -- configuration tools
+    , pkgConfigProgram
     ]
 
 ghcProgram :: Program
@@ -592,3 +595,8 @@ cppProgram = simpleProgram "cpp"
 
 pfesetupProgram :: Program
 pfesetupProgram = simpleProgram "pfesetup"
+
+pkgConfigProgram :: Program
+pkgConfigProgram = (simpleProgram "pkg-config") {
+    programFindVersion = findProgramVersion "--version" id
+  }
