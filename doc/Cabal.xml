@@ -565,20 +565,6 @@ Executable program2 {
             </listitem>
           </varlistentry>
 
-	  <varlistentry>
-            <term>
-              <literal>build-tools:</literal>
-              <replaceable>program list</replaceable>
-            </term>
-            <listitem>
-              <para>A list of programs, possibly annotated with versions,
-                needed to build this package,
-                e.g. <literal>c2hs > 0.15, cpphs</literal>.
-                If no version constraint is specified, any version is
-                assumed to be acceptable.</para>
-            </listitem>
-          </varlistentry>
-
           <varlistentry>
             <term>
               <literal>tested-with:</literal>
@@ -787,6 +773,20 @@ Executable program2 {
                 <para>GHC versions prior to 6.6 do not support the
                   <literal>LANGUAGE</literal> pragma.</para>
 	      </note>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>build-tools:</literal>
+              <replaceable>program list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of programs, possibly annotated with versions,
+                needed to build this package,
+                e.g. <literal>c2hs > 0.15, cpphs</literal>.
+                If no version constraint is specified, any version is
+                assumed to be acceptable.</para>
             </listitem>
           </varlistentry>
 
