@@ -19,7 +19,7 @@ Description:
 Category: Distribution
 
 Extra-Source-Files:
-        mkGHCMakefile.sh Distribution/Simple/GHCMakefile.in
+        mkGHCMakefile.sh Distribution/Simple/GHC/Makefile.in
 
 
 Flag small_base {
