@@ -60,7 +60,7 @@ module Distribution.Simple.Install (
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
-	setupMessage, hasLibs, withLib, withExe )
+	hasLibs, withLib, hasExes, withExe )
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs, haddockPref)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
@@ -125,7 +125,10 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
     copyFileVerbose verbosity lfile (docPref </> lfile)
 
   let buildPref = buildDir lbi
-  setupMessage verbosity ("Installing: " ++ libPref ++ " & " ++ binPref) pkg_descr
+  when (hasLibs pkg_descr && verbosity >= normal) $
+    putStrLn ("Installing: " ++ libPref)
+  when (hasExes pkg_descr && verbosity >= normal) $
+    putStrLn ("Installing: " ++ binPref)
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)

@@ -61,6 +61,7 @@ module Distribution.PackageDescription (
 	-- ** Executables
         Executable(..),
         withExe,
+        hasExes,
         exeModules,
 
 	-- ** Parsing
@@ -514,6 +515,9 @@ exeFillInDefaults :: Executable -> Executable
 exeFillInDefaults exe@(Executable { buildInfo = bi }) = 
     exe { buildInfo = biFillInDefaults bi }
 
+-- |does this package have any executables?
+hasExes :: PackageDescription -> Bool
+hasExes p = any (buildable . buildInfo) (executables p)
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.
