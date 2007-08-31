@@ -562,6 +562,7 @@ data BuildInfo = BuildInfo {
         buildTools        :: [Dependency], -- ^ tools needed to build this bit
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
+        pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
@@ -584,6 +585,7 @@ nullBuildInfo = BuildInfo {
                       buildTools        = [],
                       ccOptions         = [],
                       ldOptions         = [],
+                      pkgconfigDepends  = [],
                       frameworks        = [],
                       cSources          = [],
                       hsSourceDirs      = [],
@@ -648,6 +650,9 @@ binfoFieldDescrs =
  , listField "ld-options"
            showToken          parseTokenQ
            ldOptions          (\val binfo -> binfo{ldOptions=val})
+ , commaListField  "pkgconfig-depends"
+           showDependency     parsePkgconfigDependency
+           pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
  , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
@@ -757,6 +762,7 @@ unionBuildInfo b1 b2
          buildTools        = combine buildTools,
          ccOptions         = combine ccOptions,
          ldOptions         = combine ldOptions,
+         pkgconfigDepends  = combine pkgconfigDepends,
          frameworks        = combine frameworks,
          cSources          = combine cSources,
          hsSourceDirs      = combine hsSourceDirs,
