@@ -65,7 +65,7 @@ import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..))
-import Distribution.Simple.Compiler (Compiler(..))
+import Distribution.Simple.Compiler (Compiler(..), PackageDB)
 import System.FilePath (FilePath, (</>))
 
 -- |Data cached after configuration step.  See also
@@ -91,7 +91,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
         withPrograms  :: ProgramConfiguration, -- location and args for all programs
-        userConf      :: Bool,           -- ^Was this package configured with --user?
+        withPackageDB :: PackageDB,  -- ^What package database to use, global/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.

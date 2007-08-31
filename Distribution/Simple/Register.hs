@@ -66,11 +66,11 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirTemplates(..),
 					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                                     compilerVersion)
+                                     compilerVersion, PackageDB(..))
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
-import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..), userOverride)
+import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..))
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -93,10 +93,10 @@ import Distribution.Compat.Directory
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 
-import System.Directory(doesFileExist, removeFile, getCurrentDirectory)
+import System.Directory( removeFile, getCurrentDirectory)
 import System.IO.Error (try)
 
-import Control.Monad (when, unless)
+import Control.Monad (when)
 import Data.Maybe (isNothing, fromJust, fromMaybe)
 import Data.List (partition)
 
@@ -133,7 +133,7 @@ register pkg_descr lbi regFlags
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (regPkgConfFile regFlags)
         verbosity = regVerbose regFlags
-        user = regUser regFlags `userOverride` userConf lbi
+        packageDB = fromMaybe (withPackageDB lbi) (regPackageDB regFlags)
 	inplace = regInPlace regFlags
         message | genPkgConf = "Writing package registration file: "
                             ++ genPkgConfigFile ++ " for"
@@ -144,18 +144,20 @@ register pkg_descr lbi regFlags
 
     case compilerFlavor (compiler lbi) of
       GHC -> do 
-	config_flags <-
-	   if user
-		then if ghc_63_plus
-			then return ["--user"]
-			else do 
-			  GHC.maybeCreateLocalPackageConfig
-		          localConf <- GHC.localPackageConfig
-			  pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-		          when (not pkgConfWriteable && not genScript)
-                                   $ userPkgConfErr localConf
-			  return ["--config-file=" ++ localConf]
-		else return []
+	config_flags <- case packageDB of
+          GlobalPackageDB -> return []
+          UserPackageDB
+            | ghc_63_plus -> return ["--user"]
+            | otherwise -> do
+	        GHC.maybeCreateLocalPackageConfig
+	        localConf <- GHC.localPackageConfig
+	        pkgConfWriteable <- GHC.canWriteLocalPackageConfig
+	        when (not pkgConfWriteable && not genScript)
+                         $ userPkgConfErr localConf
+	        return ["--config-file=" ++ localConf]
+          SpecificPackageDB db
+            | ghc_63_plus -> return ["-package-conf", db]
+            | otherwise   -> return ["--config-file=" ++ db]
 
 	let instConf | genPkgConf = genPkgConfigFile
                      | inplace    = inplacePkgConfigFile
@@ -320,20 +322,25 @@ unregister pkg_descr lbi regFlags = do
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
       genScript = regGenScript regFlags
       verbosity = regVerbose regFlags
-      user = regUser regFlags `userOverride` userConf lbi
+      packageDB = fromMaybe (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
   case compilerFlavor (compiler lbi) of
     GHC -> do
-	config_flags <-
-	   if user
-		then if ghc_63_plus
-			then return ["--user"]
-			else do
-                          instConfExists <- doesFileExist installedPkgConfigFile
-		          localConf <- GHC.localPackageConfig
-		          unless instConfExists (userPkgConfErr localConf)
-			  return ["--config-file=" ++ localConf]
-		else return []
+	config_flags <- case packageDB of
+          GlobalPackageDB -> return []
+          UserPackageDB
+            | ghc_63_plus -> return ["--user"]
+            | otherwise -> do
+	        GHC.maybeCreateLocalPackageConfig
+	        localConf <- GHC.localPackageConfig
+	        pkgConfWriteable <- GHC.canWriteLocalPackageConfig
+	        when (not pkgConfWriteable && not genScript)
+                         $ userPkgConfErr localConf
+	        return ["--config-file=" ++ localConf]
+          SpecificPackageDB db
+            | ghc_63_plus -> return ["-package-conf", db]
+            | otherwise   -> return ["--config-file=" ++ db]
+
         let removeCmd = if ghc_63_plus
                         then ["unregister",showPackageId (package pkg_descr)]
                         else ["--remove-package="++(pkgName $ package pkg_descr)]
