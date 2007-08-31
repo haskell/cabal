@@ -1976,19 +1976,19 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      <tbody>
 		<row>
 		  <entry><literal>--prefix</literal></entry>
-		  <entry><filename>C:\Program Files</filename></entry>
+		  <entry><filename>C:\Program Files\Haskell</filename></entry>
 		  <entry><filename>/usr/local</filename></entry>
 		</row>
 
 		<row>
 		  <entry><literal>--bindir</literal></entry>
-		  <entry><literal>$prefix\Haskell\bin</literal></entry>
+		  <entry><literal>$prefix\bin</literal></entry>
 		  <entry><literal>$prefix/bin</literal></entry>
 		</row>
 
 		<row>
 		  <entry><literal>--libdir</literal></entry>
-		  <entry><literal>$prefix\Haskell</literal></entry>
+		  <entry><literal>$prefix</literal></entry>
 		  <entry><literal>$prefix/lib</literal></entry>
 		</row>
 
@@ -2005,14 +2005,20 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		</row>
 
 		<row>
+		  <entry><literal>--libexecdir</literal></entry>
+		  <entry><literal>$prefix\$pkgid</literal></entry>
+		  <entry><literal>$prefix/libexec</literal></entry>
+		</row>
+
+		<row>
 		  <entry><literal>--datadir</literal> (executable)</entry>
-		  <entry><literal>$prefix\Haskell</literal></entry>
+		  <entry><literal>$prefix</literal></entry>
 		  <entry><literal>$prefix/share</literal></entry>
 		</row>
 
 		<row>
 		  <entry><literal>--datadir</literal> (library)</entry>
-		  <entry><filename>C:\Program Files\Common Files</filename></entry>
+		  <entry><filename>C:\Program Files\Haskell</filename></entry>
 		  <entry><literal>$prefix/share</literal></entry>
 		</row>
 
@@ -2023,9 +2029,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		</row>
 
 		<row>
-		  <entry><literal>--libexecdir</literal></entry>
-		  <entry><literal>$prefix\$pkgid</literal></entry>
-		  <entry><literal>$prefix/libexec</literal></entry>
+		  <entry><literal>--docdir</literal></entry>
+		  <entry><literal>$prefix\doc\$pkgid</literal></entry>
+		  <entry><literal>$datadir/doc/$pkgid</literal></entry>
 		</row>
 	      </tbody>
 	    </tgroup>
