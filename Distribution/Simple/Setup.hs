@@ -80,7 +80,7 @@ import Distribution.Simple.Utils (die, wrapText)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
 import Data.List (find, sort)
-import Data.Char( toLower )
+import Data.Char( toLower, isSpace )
 import Distribution.GetOpt
 import Distribution.Verbosity
 import System.Exit
@@ -304,6 +304,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
+	  | ProgramArg  String String   -- program name, single argument
           | WithProgram String FilePath -- program name, location
 
           -- For build:
@@ -535,43 +536,43 @@ configureCmd progConf = Cmd {
         ++ (case showOrParseArgs of
 	      -- in the help text we don't want a massive verbose list
 	      -- so we just show two generic ones:
-              ShowArgs  -> [Option "" ["with-PROG"]
-                              (reqArgArg (ProgramArgs "PROG"))
-                              ("the path or name of the program PROG")
-                           ,Option "" ["PROG-args"]
-                              (reqArgArg (WithProgram "PROG"))
-                              ("extra args to pass to the program PROG")]
+              ShowArgs  -> [withProgramOption "PROG"
+	                   ,programArgsOption "PROG"
+			   ,programArgOption  "PROG"]
               -- All the args for all the programs we might call
-              ParseArgs -> withProgramOptions progConf
-                        ++ programArgsOptions progConf),
+              ParseArgs -> concat
+                           [[withProgramOption (programName prog)
+			    ,programArgsOption (programName prog)
+			    ,programArgOption  (programName prog)]
+			   | (prog,_) <- knownPrograms progConf]),
         cmdAction      = ConfigCmd (emptyConfigFlags progConf)
         }
 
 programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
-     "The flags --with-PROG and --PROG-args can be used with"
+     "The flags --with-PROG and --PROG-arg(s) can be used with"
   ++ " the following programs:"
   ++ (concatMap ("\n  "++) . wrapText 77 . sort)
      [ programName prog | (prog, _) <- knownPrograms progConf ]
   ++ "\n"
 
-programArgsOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-programArgsOptions conf =
-  [ Option "" [name ++ "-args"] (reqArgArg (ProgramArgs name))
-    ("give the args to " ++ name)
-  | (Program { programName = name }, _) <- knownPrograms conf ]
+programArgsOption :: String -> OptDescr (Flag a)
+programArgsOption prog =
+  Option "" [prog ++ "-args"] (ReqArg (ProgramArgs prog) "ARGS")
+    ("give extra args to " ++ prog)
 
-withProgramOptions :: ProgramConfiguration -> [OptDescr (Flag a)]
-withProgramOptions conf =
-  [ Option "" ["with-" ++ name] (reqPathArg (WithProgram name))
-    ("give the path to " ++ name)
-  | (Program { programName = name }, _) <- knownPrograms conf ]
+programArgOption :: String -> OptDescr (Flag a)
+programArgOption prog =
+  Option "" [prog ++ "-arg"] (ReqArg (ProgramArg prog) "ARG")
+    ("give an extra arg to " ++ prog ++ " (avoids the need to quote args containing spaces)")
+
+withProgramOption :: String -> OptDescr (Flag a)
+withProgramOption prog =
+  Option "" ["with-" ++ prog] (reqPathArg (WithProgram prog))
+    ("give the path to " ++ prog)
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg constr "PATH"
-
-reqArgArg :: (FilePath -> a) -> ArgDescr a
-reqArgArg constr = ReqArg constr "ARGS"
 
 reqDirArg :: (FilePath -> a) -> ArgDescr a
 reqDirArg constr = ReqArg constr "DIR"
@@ -594,11 +595,13 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (WithCompiler path)  = t { configHcPath   = Just path }
         updateCfg t (WithHcPkg path)     = t { configHcPkg    = Just path }
         updateCfg t (ProgramArgs name args) = t { configPrograms = 
-                                                    userSpecifyArgs
-          --TODO: using words here is not good, it breaks for paths with spaces
-                                                      name (words args)
+                                                    userSpecifyArgs name
+                                                      (splitArgs args)
                                                       (configPrograms t) }
-        updateCfg t (WithProgram name path) = t { configPrograms =
+        updateCfg t (ProgramArg  name arg)  = t { configPrograms =
+                                                    userSpecifyArgs name [arg]
+						      (configPrograms t) }
+	updateCfg t (WithProgram name path) = t { configPrograms =
                                                     userSpecifyPath
                                                       name path
                                                       (configPrograms t) }
@@ -931,6 +934,35 @@ parseArgs cmd updateCfg cfg args customOpts =
     isLift _        = False
     unliftFlags :: [Flag a] -> [a]
     unliftFlags flags = [ fl | Lift fl <- flags ]
+
+-- |Helper function to split a string into a list of arguments.
+-- It's supposed to handle quoted things sensibly, eg:
+--
+-- > splitArgs "--foo=\"C:\Program Files\Bar\" --baz"
+-- >   = ["--foo=C:\Program Files\Bar", "--baz"]
+--
+splitArgs :: String -> [String]
+splitArgs  = space []
+  where
+    space :: String -> String -> [String]
+    space w []      = word w []
+    space w ( c :s)
+        | isSpace c = word w (space [] s)
+    space w ('"':s) = string w s
+    space w s       = nonstring w s
+
+    string :: String -> String -> [String]
+    string w []      = word w []
+    string w ('"':s) = space w s
+    string w ( c :s) = string (c:w) s
+
+    nonstring :: String -> String -> [String]
+    nonstring w  []      = word w []
+    nonstring w  ('"':s) = string w s
+    nonstring w  ( c :s) = space (c:w) s
+
+    word [] s = s
+    word w  s = reverse w : s
 
 putErrors :: [String] -> IO a
 putErrors errs = die $ "Errors:" ++ concat ['\n':err | err <- errs]
