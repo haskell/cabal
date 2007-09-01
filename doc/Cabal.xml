@@ -1703,10 +1703,37 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <varlistentry>
 	    <term><option>--<replaceable>prog</replaceable>-args</option>=<replaceable>args</replaceable></term>
 	    <listitem>
-	      <para>Specify additional arguments to the program <replaceable>prog</replaceable>
+	      <para>Specify additional arguments to the program <replaceable>prog</replaceable>.
                 Any program known to Cabal can be used in place of
                 <replaceable>prog</replaceable>. For example:
                 <option>--alex-args="--template=mytemplatedir/"</option>.</para>
+        <para>The <replaceable>args</replaceable> is split into program options
+                based on spaces. Any options containing embeded spaced need to
+                be quoted, for example
+                <literal>--foo-args='--bar="C:\Program File\Bar"'</para>. As an
+                alternative that takes only one option at a time but avoids the
+                need to quote, use 
+                <option>--<replaceable>prog</replaceable>-arg</option> instead.
+        </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--<replaceable>prog</replaceable>-arg</option>=<replaceable>args</replaceable></term>
+	    <listitem>
+	      <para>Specify a single additional argument to the program
+              <replaceable>prog</replaceable>.</para>
+        <para>For passing an option that contain embeded spaces, such as a file
+              name with embeded spaces, using this rather than
+              <option>--<replaceable>prog</replaceable>-args</option> means you
+              do not need an additional level of quoting. Of course if
+              you are using a command shell you may still need to quote, for
+              example <literal>--foo-args="--bar=C:\Program File\Bar"</para>.
+        <para>All of the options passed with either
+              <option>--<replaceable>prog</replaceable>-args</option> or
+              <option>--<replaceable>prog</replaceable>-arg</option> are passed
+              in the order they were specified on the configure command line.
+        </para>
 	    </listitem>
 	  </varlistentry>
 	</variablelist>
