@@ -5,7 +5,7 @@ Copyright: 2003-2006, Isaac Jones
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
-Maintainer: Isaac Jones <ijones@syntaxpolice.org>
+Maintainer: cabal-devel@haskell.org
 Homepage: http://www.haskell.org/cabal/
 Synopsis: A framework for packaging Haskell software
 Description:
