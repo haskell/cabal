@@ -83,7 +83,6 @@ import Data.List (find, sort)
 import Data.Char( toLower )
 import Distribution.GetOpt
 import Distribution.Verbosity
-import System.FilePath (normalise)
 import System.Exit
 import System.Environment
 
@@ -569,13 +568,13 @@ withProgramOptions conf =
   | (Program { programName = name }, _) <- knownPrograms conf ]
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
-reqPathArg constr = ReqArg (constr . normalise) "PATH"
+reqPathArg constr = ReqArg constr "PATH"
 
 reqArgArg :: (FilePath -> a) -> ArgDescr a
-reqArgArg constr = ReqArg (constr . normalise) "ARGS"
+reqArgArg constr = ReqArg constr "ARGS"
 
 reqDirArg :: (FilePath -> a) -> ArgDescr a
-reqDirArg constr = ReqArg (constr . normalise) "DIR"
+reqDirArg constr = ReqArg constr "DIR"
 
 reqFlagsArgs :: ([(String,Bool)] -> a) -> ArgDescr a
 reqFlagsArgs constr = ReqArg (constr . flagList) "FLAGS"
