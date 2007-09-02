@@ -2349,9 +2349,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
 
 	  <varlistentry>
-            <term><option>--configure-arg</option>=<replaceable>arg</replaceable></term>
+            <term><option>--configure-option</option>=<replaceable>str</replaceable></term>
             <listitem>
-              <para>An extra argument to an external
+              <para>An extra option to an external
                 <filename>configure</filename> script,
                 if one is used (see <xref linkend="system-dependent"/>).
                 There can be several of these options.</para>
