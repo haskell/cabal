@@ -291,7 +291,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
           | WithOptimization | WithoutOptimization
 	  | WithGHCiLib | WithoutGHCiLib
 	  | WithSplitObjs | WithoutSplitObjs
-          | ConfigureArg String
+          | ConfigureOption String
 
 	  | Prefix FilePath
 	  | BinDir FilePath
@@ -525,7 +525,7 @@ configureCmd progConf = Cmd {
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
 	   Option "" ["disable-split-objs"] (NoArg WithoutSplitObjs)
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
-           Option "" ["configure-arg"] (ReqArg ConfigureArg "ARG") "Extra argument for ./configure script",
+           Option "" ["configure-option"] (ReqArg ConfigureOption "ARG") "Extra option for configure",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -633,7 +633,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
 	updateCfg t WithoutSplitObjs	 = t { configSplitObjs = False }
         updateCfg t (ConfigurationsFlags fs)  = t { configConfigurationsFlags =
                                                         fs ++ configConfigurationsFlags t }
-        updateCfg t (ConfigureArg o) = t { configConfigureArgs = o : configConfigureArgs t }
+        updateCfg t (ConfigureOption o) = t { configConfigureArgs = o : configConfigureArgs t }
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
