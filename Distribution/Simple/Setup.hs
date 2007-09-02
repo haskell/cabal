@@ -525,7 +525,7 @@ configureCmd progConf = Cmd {
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
 	   Option "" ["disable-split-objs"] (NoArg WithoutSplitObjs)
 	       "split library into smaller objects to reduce binary sizes (GHC 6.6+)",
-           Option "" ["configure-option"] (ReqArg ConfigureOption "ARG") "Extra option for configure",
+           Option "" ["configure-option"] (ReqArg ConfigureOption "OPT") "Extra option for configure",
            Option "" ["user"] (NoArg UserFlag)
                "allow dependencies to be satisfied from the user package database. also implies install --user",
            Option "" ["global"] (NoArg GlobalFlag)
@@ -536,14 +536,14 @@ configureCmd progConf = Cmd {
         ++ (case showOrParseArgs of
 	      -- in the help text we don't want a massive verbose list
 	      -- so we just show two generic ones:
-              ShowArgs  -> [withProgramOption "PROG"
-	                   ,programArgsOption "PROG"
-			   ,programArgOption  "PROG"]
+              ShowArgs  -> [withProgramPath "PROG"
+	                   ,programOptions  "PROG"
+			   ,programOption   "PROG"]
               -- All the args for all the programs we might call
               ParseArgs -> concat
-                           [[withProgramOption (programName prog)
-			    ,programArgsOption (programName prog)
-			    ,programArgOption  (programName prog)]
+                           [[withProgramPath (programName prog)
+			    ,programOptions  (programName prog)
+			    ,programOption   (programName prog)]
 			   | (prog,_) <- knownPrograms progConf]),
         cmdAction      = ConfigCmd (emptyConfigFlags progConf)
         }
@@ -556,18 +556,19 @@ programFlagsDescription progConf =
      [ programName prog | (prog, _) <- knownPrograms progConf ]
   ++ "\n"
 
-programArgsOption :: String -> OptDescr (Flag a)
-programArgsOption prog =
-  Option "" [prog ++ "-args"] (ReqArg (ProgramArgs prog) "ARGS")
-    ("give extra args to " ++ prog)
+programOptions :: String -> OptDescr (Flag a)
+programOptions prog =
+  Option "" [prog ++ "-options"] (ReqArg (ProgramArgs prog) "OPTS")
+    ("give extra options to " ++ prog)
 
-programArgOption :: String -> OptDescr (Flag a)
-programArgOption prog =
-  Option "" [prog ++ "-arg"] (ReqArg (ProgramArg prog) "ARG")
-    ("give an extra arg to " ++ prog ++ " (avoids the need to quote args containing spaces)")
+programOption :: String -> OptDescr (Flag a)
+programOption prog =
+  Option "" [prog ++ "-option"] (ReqArg (ProgramArg prog) "OPT")
+    ("give an extra option to " ++ prog ++
+     " (no need to quote options containing spaces)")
 
-withProgramOption :: String -> OptDescr (Flag a)
-withProgramOption prog =
+withProgramPath :: String -> OptDescr (Flag a)
+withProgramPath prog =
   Option "" ["with-" ++ prog] (reqPathArg (WithProgram prog))
     ("give the path to " ++ prog)
 
