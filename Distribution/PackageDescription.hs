@@ -74,7 +74,6 @@ module Distribution.PackageDescription (
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
-        mapBuildInfo,
         allBuildInfo,
 
         -- ** Supplementary build information
@@ -600,16 +599,6 @@ nullBuildInfo = BuildInfo {
                       ghcProfOptions    = [],
                       ghcSharedOptions  = []
                      }
-
--- | Modify all the 'BuildInfo's in a package description.
-mapBuildInfo :: (BuildInfo -> BuildInfo) ->
-                PackageDescription -> PackageDescription
-mapBuildInfo f pkg = pkg {
-    library = liftM mapLibBuildInfo (library pkg),
-    executables = map mapExeBuildInfo (executables pkg) }
-  where
-    mapLibBuildInfo lib = lib { libBuildInfo = f (libBuildInfo lib) }
-    mapExeBuildInfo exe = exe { buildInfo = f (buildInfo exe) }
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = nullBuildInfo { hsSourceDirs = [currentDir] }
