@@ -260,20 +260,19 @@ data CleanFlags   = CleanFlags   {cleanSaveConf  :: Bool
 emptyCleanFlags :: CleanFlags
 emptyCleanFlags = CleanFlags {cleanSaveConf = False, cleanVerbose = normal}
 
-data BuildFlags   = BuildFlags   {buildVerbose   :: Verbosity
-                                 ,buildCompilerOptions :: [(CompilerFlavor, String)]}
+data BuildFlags   = BuildFlags   {buildVerbose   :: Verbosity,
+                                  buildPrograms  :: ProgramConfiguration}
     deriving Show
 
-emptyBuildFlags :: BuildFlags
-emptyBuildFlags = BuildFlags {buildVerbose = normal, buildCompilerOptions = []}
+emptyBuildFlags :: ProgramConfiguration -> BuildFlags
+emptyBuildFlags progs = BuildFlags {buildVerbose  = normal,
+                                    buildPrograms = progs}
 
 data MakefileFlags = MakefileFlags {makefileVerbose :: Verbosity,
-                                    makefileCompilerOptions :: [(CompilerFlavor, String)],
                                     makefileFile :: Maybe FilePath}
     deriving Show
 emptyMakefileFlags :: MakefileFlags
 emptyMakefileFlags = MakefileFlags {makefileVerbose = normal,
-                                    makefileCompilerOptions = [],
                                     makefileFile = Nothing}
 
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Verbosity}
@@ -305,8 +304,6 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | ProgramArg  String String   -- program name, single argument
           | WithProgram String FilePath -- program name, location
 
-          -- For build:
-          | GHCOption String
           -- For install, register, and unregister:
           | UserFlag | GlobalFlag
           -- for register & unregister
@@ -403,7 +400,7 @@ data Cmd a = Cmd {
 data ShowOrParseArgs = ShowArgs | ParseArgs
 
 commandList :: ProgramConfiguration -> [Cmd a]
-commandList progConf = [(configureCmd progConf), buildCmd, makefileCmd,
+commandList progConf = [configureCmd progConf, buildCmd progConf, makefileCmd,
                         cleanCmd, installCmd,
                         copyCmd, sdistCmd, testCmd,
                         haddockCmd, hscolourCmd, programaticaCmd,
@@ -528,18 +525,8 @@ configureCmd progConf = Cmd {
            Option "f" ["flags"] (reqFlagsArgs ConfigurationsFlags)
                "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."       
            ]
-        ++ (case showOrParseArgs of
-	      -- in the help text we don't want a massive verbose list
-	      -- so we just show two generic ones:
-              ShowArgs  -> [withProgramPath "PROG"
-	                   ,programOptions  "PROG"
-			   ,programOption   "PROG"]
-              -- All the args for all the programs we might call
-              ParseArgs -> concat
-                           [[withProgramPath (programName prog)
-			    ,programOptions  (programName prog)
-			    ,programOption   (programName prog)]
-			   | (prog,_) <- knownPrograms progConf]),
+        ++ programConfigurationPaths   progConf showOrParseArgs
+        ++ programConfigurationOptions progConf showOrParseArgs,
         cmdAction      = ConfigCmd (emptyConfigFlags progConf)
         }
 
@@ -551,21 +538,36 @@ programFlagsDescription progConf =
      [ programName prog | (prog, _) <- knownPrograms progConf ]
   ++ "\n"
 
-programOptions :: String -> OptDescr (Flag a)
-programOptions prog =
-  Option "" [prog ++ "-options"] (ReqArg (ProgramArgs prog) "OPTS")
-    ("give extra options to " ++ prog)
+programConfigurationPaths :: ProgramConfiguration -> ShowOrParseArgs
+                          -> [OptDescr (Flag a)]
+programConfigurationPaths progConf args = case args of
+-- we don't want a verbose help text list so we just show a generic one:
+  ShowArgs  -> [withProgramPath "PROG"]
+  ParseArgs -> map (withProgramPath . programName . fst) (knownPrograms progConf)
+  where
+    withProgramPath :: String -> OptDescr (Flag a)
+    withProgramPath prog =
+      Option "" ["with-" ++ prog] (reqPathArg (WithProgram prog))
+        ("give the path to " ++ prog)
 
-programOption :: String -> OptDescr (Flag a)
-programOption prog =
-  Option "" [prog ++ "-option"] (ReqArg (ProgramArg prog) "OPT")
-    ("give an extra option to " ++ prog ++
-     " (no need to quote options containing spaces)")
+programConfigurationOptions :: ProgramConfiguration -> ShowOrParseArgs
+                            -> [OptDescr (Flag a)]
+programConfigurationOptions progConf args = case args of
+-- we don't want a verbose help text list so we just show a generic one:
+  ShowArgs  -> [programOptions  "PROG", programOption   "PROG"]
+  ParseArgs -> map (programOptions . programName . fst) (knownPrograms progConf)
+            ++ map (programOption  . programName . fst) (knownPrograms progConf)
+  where
+    programOptions :: String -> OptDescr (Flag a)
+    programOptions prog =
+      Option "" [prog ++ "-options"] (ReqArg (ProgramArgs prog) "OPTS")
+        ("give extra options to " ++ prog)
 
-withProgramPath :: String -> OptDescr (Flag a)
-withProgramPath prog =
-  Option "" ["with-" ++ prog] (reqPathArg (WithProgram prog))
-    ("give the path to " ++ prog)
+    programOption :: String -> OptDescr (Flag a)
+    programOption prog =
+      Option "" [prog ++ "-option"] (ReqArg (ProgramArg prog) "OPT")
+        ("give an extra option to " ++ prog ++
+         " (no need to quote options containing spaces)")
 
 reqPathArg :: (FilePath -> a) -> ArgDescr a
 reqPathArg constr = ReqArg constr "PATH"
@@ -633,32 +635,36 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (Lift _)             = t
         updateCfg _ _                    = error $ "Unexpected flag!"
 
-cmd_ghc_option :: OptDescr (Flag a)
-cmd_ghc_option = Option "" ["ghc-option"] (ReqArg GHCOption "ARG") "Extra option for GHC"
-
-buildCmd :: Cmd a
-buildCmd = Cmd {
+buildCmd :: ProgramConfiguration -> Cmd a
+buildCmd progConf = Cmd {
         cmdName        = "build",
         cmdHelp        = "Make this package ready for installation.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = \_ -> [cmd_help, cmd_verbose, cmd_ghc_option],
+        cmdOptions     = \showOrParseArgs -> [cmd_help, cmd_verbose]
+          ++ programConfigurationOptions progConf showOrParseArgs,
         cmdAction      = BuildCmd
         }
 
-parseBuildArgs :: BuildFlags -> [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
-parseBuildArgs = parseArgs buildCmd updateArgs
+parseBuildArgs :: ProgramConfiguration -> BuildFlags -> [String] -> [OptDescr a] -> IO (BuildFlags, [a], [String])
+parseBuildArgs progConf = parseArgs (buildCmd progConf) updateArgs
   where updateArgs bflags fl =
            case fl of
-                Verbose n      -> bflags{buildVerbose=n}
-                GHCOption s    -> bflags{buildCompilerOptions=buildCompilerOptions bflags ++ [(GHC,s)] }
-                _              -> error "Unexpected flag!"
+                Verbose n             -> bflags{buildVerbose=n}
+                ProgramArgs name args -> bflags{buildPrograms =
+                                                  userSpecifyArgs name
+                                                    (splitArgs args)
+                                                    (buildPrograms bflags)}
+                ProgramArg  name arg ->  bflags{buildPrograms =
+                                                  userSpecifyArgs name [arg]
+						    (buildPrograms bflags)}
+                _                    -> error "Unexpected flag!"
 
 makefileCmd :: Cmd a
 makefileCmd = Cmd {
         cmdName        = "makefile",
         cmdHelp        = "Perform any necessary makefileing.",
         cmdDescription = "",  -- This can be a multi-line description
-        cmdOptions     = \_ -> [cmd_help, cmd_verbose, cmd_ghc_option,
+        cmdOptions     = \_ -> [cmd_help, cmd_verbose,
            Option "f" ["file"] (reqPathArg MakefileFile)
                "Filename to use (default: Makefile)."],
         cmdAction      = MakefileCmd
@@ -669,7 +675,6 @@ parseMakefileArgs = parseArgs makefileCmd updateCfg
   where updateCfg mflags fl =
            case fl of
                 Verbose n      -> mflags{makefileVerbose=n}
-                GHCOption s    -> mflags{makefileCompilerOptions=makefileCompilerOptions mflags ++ [(GHC,s)] }
                 MakefileFile f -> mflags{makefileFile=Just f}
                 _              -> error "Unexpected flag!"
 

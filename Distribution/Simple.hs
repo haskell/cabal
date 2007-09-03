@@ -332,11 +332,15 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                       ppd <- readPackageDescription (configVerbose cfgflags) pdfile
                       return (Left ppd)
 
-            BuildCmd -> 
-                command (parseBuildArgs emptyBuildFlags) buildVerbose
+            BuildCmd -> do
+                lbi <- getPersistBuildConfig
+                res@(flags, _, _) <-
+                  parseBuildArgs prog_conf
+                                 (emptyBuildFlags (withPrograms lbi)) all_args []
+                command (\_ _ -> return res) buildVerbose
                         preBuild buildHook postBuild
-                        getPersistBuildConfig
-        
+                        (return lbi { withPrograms = buildPrograms flags })
+
             MakefileCmd ->
                 command (parseMakefileArgs emptyMakefileFlags) makefileVerbose
                         preMakefile makefileHook postMakefile
