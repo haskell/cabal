@@ -2709,16 +2709,6 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
 	    Haskell libraries should be fine.</para>
 	  </listitem>
 	</varlistentry>
-
-	<varlistentry>
-	  <term><option>--with-hc-pkg</option>=<replaceable>path</replaceable></term>
-	  <listitem>
-	    <para>Specify the path to the package tool, e.g.
-		  <command>ghc-pkg</command>.  This overrides the
-		  <replaceable>hc-pkg</replaceable> tool discovered during
-		  configure.</para>
-	  </listitem>
-	</varlistentry>
       </variablelist>
     </sect2>
 
