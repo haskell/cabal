@@ -2382,17 +2382,23 @@ runhaskell Setup.hs unregister --gen-script</screen>
       <para>Perform any preprocessing or compilation needed to make this
         package ready for installation.</para>
 
-      <para>This command takes the following option:</para>
+      <para>This command takes the following options:</para>
 
       <variablelist>
-        <varlistentry>
-          <term><option>--ghc-option</option>=<replaceable>str</replaceable></term>
-          <listitem>
-            <para>An extra option to GHC, added after those specified in
-              the package description.  There can be several of these
-              options.</para>
-          </listitem>
-        </varlistentry>
+	      <varlistentry>
+	        <term><option>--<replaceable>prog</replaceable>-options</option>=<replaceable>options</replaceable></term>
+	        <term><option>--<replaceable>prog</replaceable>-option</option>=<replaceable>option</replaceable></term>
+	        <listitem>
+	          <para>These are the mostly same as the options configure step (see
+              <xref linkend="setup-configure-programs"/>). Unlike the options
+              specified at the configure step, any program options specified at
+              the build step are not persistent but are used for that
+              invocation only. They options specified at the build step are in
+              addition not in replacement of any options specified at the
+              configure step.
+            </para>
+	        </listitem>
+	      </varlistentry>
       </variablelist>
 
     </sect2>
@@ -2445,15 +2451,6 @@ runhaskell Setup.hs build
             <option>-f</option> <replaceable>filename</replaceable></term>
           <listitem>
             <para>Specify the output file (default <filename>Makefile</filename>).</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term><option>--ghc-option</option>=<replaceable>str</replaceable></term>
-          <listitem>
-            <para>An extra option to GHC, added after those specified in
-              the package description.  There can be several of these
-              options.</para>
           </listitem>
         </varlistentry>
       </variablelist>
