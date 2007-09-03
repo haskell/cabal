@@ -66,7 +66,8 @@ unions :: Ord k => [Map k a] -> Map k a
 unions = foldl (flip plusFM) emptyFM
 
 difference :: Ord k => Map k a -> Map k b -> Map k a
-difference m1 m2 = delListFromFM m1 (elems m2)
+difference m1 m2 = delListFromFM m1 (keys m2)
+  -- minusFM wasn't polymorphic enough in GHC 6.2.x
 
 elems :: Map k a -> [a]
 elems = eltsFM
