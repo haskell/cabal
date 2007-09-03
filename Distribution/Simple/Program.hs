@@ -274,8 +274,13 @@ userSpecifyArgs :: String    -- ^Program name
                 -> [ProgArg] -- ^user-specified args
                 -> ProgramConfiguration
                 -> ProgramConfiguration
-userSpecifyArgs name args' = updateUnconfiguredProgs $
-  flip Map.update name $ \(prog, path, args) -> Just (prog, path, args ++ args')
+userSpecifyArgs name args' =
+    updateUnconfiguredProgs
+      (flip Map.update name $
+         \(prog, path, args) -> Just (prog, path, args ++ args'))
+  . updateConfiguredProgs
+      (flip Map.update name $
+         \prog -> Just prog { programArgs = programArgs prog ++ args' })
 
 userSpecifiedPath :: Program -> ProgramConfiguration -> Maybe FilePath
 userSpecifiedPath prog =
