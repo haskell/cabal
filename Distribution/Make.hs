@@ -167,7 +167,9 @@ defaultMainHelper globalArgs _get_pkg_descr
                                   exitWith retVal'
 
             BuildCmd -> basicCommand "Build" "make"
-                                     (parseBuildArgs emptyBuildFlags args [])
+                                     (parseBuildArgs defaultProgramConfiguration
+				        (emptyBuildFlags defaultProgramConfiguration)
+					args [])
 
             MakefileCmd -> exitWith ExitSuccess -- presumably nothing to do
 
