@@ -90,8 +90,8 @@ data LocalBuildInfo = LocalBuildInfo {
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
-        withPrograms  :: ProgramConfiguration, -- location and args for all programs
-        withPackageDB :: PackageDB,  -- ^What package database to use, global/user
+        withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
+        withPackageDB :: PackageDB,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
