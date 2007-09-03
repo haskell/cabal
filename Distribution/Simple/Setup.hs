@@ -214,7 +214,6 @@ data RegisterFlags = RegisterFlags { regPackageDB :: Maybe PackageDB
                                    , regGenPkgConf :: Bool
                                    , regPkgConfFile :: Maybe FilePath
                                    , regInPlace :: Bool
-                                   , regWithHcPkg :: Maybe FilePath
                                    , regVerbose :: Verbosity }
     deriving Show
 
@@ -225,7 +224,6 @@ emptyRegisterFlags = RegisterFlags { regPackageDB = Nothing,
                                      regGenPkgConf = False,
                                      regPkgConfFile = Nothing,
                                      regInPlace = False,
-                                     regWithHcPkg = Nothing,
                                      regVerbose = normal }
 
 data HscolourFlags = HscolourFlags {hscolourCSS :: Maybe FilePath
@@ -381,10 +379,6 @@ cmd_verbose :: OptDescr (Flag a)
 cmd_verbose = Option "v" ["verbose"] (OptArg (Verbose . flagToVerbosity) "n")
               "Control verbosity (n is 0--2, default verbosity level is 1)"
 
-cmd_with_hc_pkg :: OptDescr (Flag a)
-cmd_with_hc_pkg = Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
-               "give the path to the package tool"
-
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
 globalOptions = [
@@ -480,7 +474,8 @@ configureCmd progConf = Cmd {
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (reqPathArg WithCompiler)
                "give the path to a particular compiler",
-	   cmd_with_hc_pkg,
+	   Option "" ["with-hc-pkg"] (reqPathArg WithHcPkg)
+		"give the path to the package tool",
            Option "" ["prefix"] (reqDirArg Prefix)
                "bake this prefix in preparation of installation",
 	   Option "" ["bindir"] (reqDirArg BinDir)
@@ -860,8 +855,7 @@ registerCmd = Cmd {
            Option "" ["gen-script"] (NoArg GenScriptFlag)
                "instead of registering, generate a script to register later",
            Option "" ["gen-pkg-config"] (OptArg GetPkgConfFlag "PKG")
-               "instead of registering, generate a package registration file",
-	   cmd_with_hc_pkg
+               "instead of registering, generate a package registration file"
            ],
         cmdAction      = RegisterCmd
         }
@@ -882,7 +876,6 @@ registerUpdateCfg reg fl = case fl of
               (Just f)      -> reg { regGenPkgConf=True,
                                      regPkgConfFile=Just f }
             InPlaceFlag     -> reg { regInPlace=True }
-            WithHcPkg f     -> reg { regWithHcPkg=Just f }
             _               -> error $ "Unexpected flag!"
 
 unregisterCmd :: Cmd a
