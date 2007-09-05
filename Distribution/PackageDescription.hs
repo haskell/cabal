@@ -814,26 +814,7 @@ readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription verbosity =
     readAndParseFile verbosity parseDescription
-{-
-parseDescription :: String -> ParseResult PackageDescription
-parseDescription str = do 
-  all_fields0 <- readFields str
---  detectCabalFormat all_fields0
-  all_fields <- mapM deprecField all_fields0
-  let (st:sts) = stanzas all_fields
-  pkg <- parseFields basic_field_descrs emptyPackageDescription st
-  foldM parseExtraStanza pkg sts
-  where
-        parseExtraStanza pkg st@((F _lineNo "executable" _eName):_) = do
-		exe <- parseFields executableFieldDescrs emptyExecutable st
-		return pkg{executables= executables pkg ++ [exe]}
-        parseExtraStanza _ x = error ("This shouldn't happen!" ++ show x)
 
-basic_field_descrs :: [FieldDescr PackageDescription]
-basic_field_descrs = pkgDescrFieldDescrs ++ map liftToPkg libFieldDescrs
-  where liftToPkg = liftField (fromMaybe emptyLibrary . library)
-			      (\lib pkg -> pkg{library = Just lib})
--}
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []
 stanzas (f:fields) = (f:this) : stanzas rest
@@ -894,17 +875,6 @@ buildInfoNames :: [String]
 buildInfoNames = map fieldName binfoFieldDescrs
                 ++ map fst deprecatedFieldsBuildInfo
 
-
-{-
--- Just to make the structure explicit
-data CabalFile = MkCabalFile
-    { headerFields :: [Field]
-    , cfFlags      :: [Flag]
-    , exeFields    :: [(String,CondTree ConfVar Dependency Field)]
-    , libFields    :: CondTree ConfVar Dependency Field
-    } -- deriving Show
--}
-
 -- A minimal implementation of the StateT monad transformer to avoid depending
 -- on the 'mtl' package.
 newtype StT s m a = StT { runStT :: s -> m (a,s) }
@@ -954,15 +924,12 @@ parseDescription file = do
     fields0 <- readFields file `catchParseError` \err ->
                  case err of
                    -- In case of a TabsError report them all at once.
-                   TabsError _ -> reportTabsError tabs
+                   TabsError tabLineNo -> reportTabsError
+                   -- but only report the ones including and following
+                   -- the one that caused the actual error
+                                            [ t | t@(lineNo',_) <- tabs
+                                                , lineNo' >= tabLineNo ]
                    _ -> parseFail err
-
-    -- Parsing might have been successful, but if the new syntax was used with
-    -- tabs we can't be quite sure the parse was correct.  (It is possible to
-    -- allow tabs in non-indented fields, but that would be inconsistent so we
-    -- disallow tabs as indentation alltogether.)
-    when (not (oldSyntax fields0) && not (null tabs)) $
-      reportTabsError tabs
 
     let sf = sectionizeFields fields0
     fields <- mapSimpleFields deprecField sf
@@ -1004,16 +971,14 @@ parseDescription file = do
             let (hdr0, exes0) = break ((=="executable") . fName) fs
                 (hdr, libfs0) = partition (not . (`elem` libFieldNames) . fName) hdr0
 
-                -- XXX: In traditional cabal files, dependencies are global.
-                -- However, we now have library dependencies and
-                -- per-executable dependencies, of which only the library
-                -- dependencies are used for flag resolution.
-                --
-                -- The right solution would be to add global dependencies to
-                -- each non-empty section and resolve dependencies for each.
-                -- The workaround, for now, is to allow library sections that
-                -- only consist of dependency specifications.
-                --
+                -- The 'build-depends' field was global so far.  Now it's 
+                -- supported in each section. 
+                -- XXX: we actially have two options here
+                --  (1) put all dependencies into the library section, if the
+                --      library section would be empty, mark it as not buildable
+                --  (2) duplicate all dependencies in each section, libraries
+                --      and executables
+                -- Right now we go with (1)
                 (deps, libfs1) = partition ((`elem` constraintFieldNames) . fName) libfs0
                 libfs = if null libfs1 && not (null deps)
                        -- mark library as not buildable 
@@ -1048,32 +1013,33 @@ parseDescription file = do
 
     -- all simple fields at the beginning of the file are (considered) header
     -- fields
+    getHeader :: [Field] -> PM [Field]
     getHeader acc = peekField >>= \mf -> case mf of
         Just f@(F _ _ _) -> skipField >> getHeader (f:acc)
         _ -> return (reverse acc)
       
     --
-    -- body ::= [ flags ] { library | executable }+   -- at most one lib
+    -- body ::= flag* { library | executable }+   -- at most one lib
     --        
+    -- The body consists of an optional sequence of flag declarations and after
+    -- that an arbitrary number of executables and an optional library.  The 
+    -- order of the latter doesn't play a role.
+    getBody :: PM ([Flag]
+                  ,Maybe (CondTree ConfVar [Dependency] Library)
+                  ,[(String, CondTree ConfVar [Dependency] Executable)])
     getBody = do
       mf <- peekField
       case mf of
-      --  Just f@(F l n v) 
-      --    | n `elem` libFieldNames -> compatParse f -- old-style format
-      --    | n == "executable" -> compatParse f
-      --    | otherwise -> error $ "???" ++ show f -- XXX
-        Just (Section l sn _label _fields) 
+        Just (Section _ sn _label _fields) 
           | sn == "flag"    -> do 
               -- don't skipField here.  it's simpler to let getFlags do it
               -- itself
               flags <- getFlags []
-              (lib, exes) <- getLibOrExe (Lit True)
+              (lib, exes) <- getLibOrExe
               return (flags, lib, exes)
-          | sn `elem` ["library", "executable"] -> do 
-              (lib,exes) <- getLibOrExe (Lit True)
+          | otherwise -> do 
+              (lib,exes) <- getLibOrExe
               return ([], lib, exes)
-          | otherwise -> 
-              lift $ syntaxError l $ "Unknown section type: " ++ sn
         Nothing -> do lift $ warning "No library or executable specified"
                       return ([], Nothing, [])
         Just f -> lift $ syntaxError (lineNo f) $ 
@@ -1082,6 +1048,7 @@ parseDescription file = do
     -- 
     -- flags ::= "flag:" name { flag_prop } 
     --
+    getFlags :: [Flag] -> StT [Field] ParseResult [Flag]
     getFlags acc = peekField >>= \mf -> case mf of
         Just (Section _ sn sl fs) 
           | sn == "flag" -> do
@@ -1091,24 +1058,33 @@ parseDescription file = do
                       fs 
               skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
-              
-    getLibOrExe cond = peekField >>= \mf -> case mf of
-        Just (Section _ sn sl fs)
+
+    getLibOrExe :: PM (Maybe (CondTree ConfVar [Dependency] Library)
+                      ,[(String, CondTree ConfVar [Dependency] Executable)])
+    getLibOrExe = peekField >>= \mf -> case mf of
+        Just (Section n sn sl fs)
           | sn == "executable" -> do
+              when (null sl) $ lift $
+                syntaxError n "'executable' needs one argument (the executable's name)"
+              exename <- lift $ runP n "executable" parseTokenQ sl
               flds <- collectFields parseExeFields fs
               skipField
-              (lib, exes) <- getLibOrExe cond
-              return (lib, exes ++ [(sl, flds)])
+              (lib, exes) <- getLibOrExe
+              return (lib, exes ++ [(exename, flds)])
           | sn == "library" -> do
+              when (not (null sl)) $ lift $
+                syntaxError n "'library' expects no argument"
               flds <- collectFields parseLibFields fs
               skipField
-              (lib, exes) <- getLibOrExe cond
+              (lib, exes) <- getLibOrExe
               return (maybe (Just flds)
                             (const (error "Multiple libraries specified"))
                             lib
                      , exes)
-        Just x -> lift $ syntaxError (lineNo x) $ 
-                     "Library or Executable section expected."
+          | otherwise -> do
+              lift $ warning $ "Unknown section type: " ++ sn ++ " ignoring..."
+              return (Nothing, []) -- yep
+        Just x -> lift $ syntaxError (lineNo x) $ "Section expected."
         Nothing -> return (Nothing, [])
 
     -- extracts all fields in a block, possibly add dependencies to the
@@ -1136,8 +1112,10 @@ parseDescription file = do
             return (cnd, t', e')
         processIfs _ = bug "processIfs called with wrong field type"
 
+    parseLibFields :: [Field] -> StT s ParseResult Library
     parseLibFields = lift . parseFields libFieldDescrs nullLibrary 
 
+    parseExeFields :: [Field] -> StT s ParseResult Executable
     parseExeFields = lift . parseFields executableFieldDescrs nullExecutable
 
 
@@ -1342,7 +1320,6 @@ bug msg = error $ msg ++ ". Consider this a bug."
 -- * Testing
 -- ------------------------------------------------------------
 #ifdef DEBUG
--- disabled for now
 
 compatTestPkgDesc :: String
 compatTestPkgDesc = unlines [
