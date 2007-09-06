@@ -7,12 +7,15 @@ GHC_OPTS += -i$(odir)
 GHC_OPTS += $(EXTRA_HC_OPTS)
 
 WAY_p_OPTS = -prof
+WAY_dyn_OPTS = -fPIC -dynamic
+WAY_dyn_CC_OPTS = -fPIC
 
 ifneq "$(way)" ""
 way_ := $(way)_
 _way := _$(way)
 GHC_OPTS += $(WAY_$(way)_OPTS)
 GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(osuf)
+GHC_CC_OPTS += $(WAY_$(way)_CC_OPTS)
 endif
 osuf  = $(way_)o
 hisuf = $(way_)hi
@@ -21,7 +24,11 @@ HS_OBJS = $(patsubst %,$(odir)/%.$(osuf),$(subst .,/,$(modules)))
 HS_IFS  = $(patsubst %,$(odir)/%.$(hisuf),$(subst .,/,$(modules)))
 C_OBJS  = $(patsubst %.c,$(odir)/%.$(osuf),$(C_SRCS))
 
+ifeq "$(way:%dyn=YES)" "YES"
+LIB = $(odir)/libHS$(package)$(_way:%_dyn=%)-ghc$(GHC_VERSION)$(soext)
+else
 LIB = $(odir)/libHS$(package)$(_way).a
+endif
 
 RM = rm -f
 
@@ -44,6 +51,11 @@ $(odir)/.depend : $(MAKEFILE)
 
 include $(odir)/.depend
 
+ifeq "$(way:%dyn=YES)" "YES"
+$(LIB) : $(HS_OBJS) $(C_OBJS)
+	@$(RM) $@
+	$(GHC) -shared -dynamic -o $@ $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` $(LIB_LD_OPTS)
+else
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
 $(LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
@@ -51,7 +63,8 @@ $(LIB) : $(HS_OBJS) $(C_OBJS)
 else
 $(LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
-	echo $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@ 
+	echo $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` | xargs -s 30000 $(AR) q $(EXTRA_AR_ARGS) $@
+endif
 endif
 
 ifneq "$(GHCI_LIB)" ""

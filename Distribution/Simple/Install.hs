@@ -143,9 +143,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
 
   case compilerFlavor (compiler lbi) of
      GHC  -> do withLib pkg_descr () $ \_ ->
-                  GHC.installLib verbosity (withPrograms lbi)
-                       (withVanillaLib lbi) (withProfLib lbi)
-                       (withGHCiLib lbi) libPref buildPref pkg_descr
+                  GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
 		  GHC.installExe verbosity binPref buildPref pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
