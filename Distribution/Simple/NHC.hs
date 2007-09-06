@@ -72,7 +72,7 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   let comp = Compiler {
         compilerFlavor  = NHC,
-        compilerId      = error "TODO: nhc compilerId", --PackageIdentifier "nhc" version
+        compilerId      = error "TODO: nhc98 compilerId", --PackageIdentifier "nhc98" version
         compilerExtensions = nhcLanguageExtensions
       }
   return (comp, conf')

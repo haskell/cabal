@@ -682,7 +682,7 @@ binfoFieldDescrs =
            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
            options            (\path  binfo -> binfo{options=path})
- , optsField   "nhc-options"  NHC
+ , optsField   "nhc98-options"  NHC
            options            (\path  binfo -> binfo{options=path})
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})
