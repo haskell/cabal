@@ -21,19 +21,15 @@ Category: Distribution
 Extra-Source-Files:
         mkGHCMakefile.sh Distribution/Simple/GHC/Makefile.in
 
-
-Flag small_base {
+Flag small_base
   Description: Choose the new smaller, split-up base package.
-}
 
-
-Library {
-  if flag(small_base) {
+Library
+  if flag(small_base)
     -- For ghc 6.2 you need to add 'unix' to Build-Depends:
     Build-Depends: base, filepath, pretty, directory, old-time, process, containers
-  } else {
+  else
     Build-Depends: base, filepath
-  }
 
   --FIXME: we need a CPP-Options field
   GHC-Options: -DCABAL_VERSION=1,1,7 -Wall
@@ -86,6 +82,4 @@ Library {
         Distribution.Compat.RawSystem,
         Distribution.Compat.TempFile
 
-
   Extensions: CPP
-}
