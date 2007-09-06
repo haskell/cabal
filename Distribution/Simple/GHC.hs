@@ -252,6 +252,7 @@ build pkg_descr lbi verbosity = do
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
+      ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
 
   -- GHC versions prior to 6.4 didn't have the user package database,
@@ -292,9 +293,16 @@ build pkg_descr lbi verbosity = do
                   "-osuf", "p_o"
                  ]
               ++ ghcProfOptions libBi
+          ghcArgsShared = ghcArgs
+              ++ ["-dynamic",
+                  "-hisuf", "dyn_hi",
+                  "-osuf", "dyn_o", "-fPIC"
+                 ]
+              ++ ghcSharedOptions libBi
       unless (null (libModules pkg_descr)) $
         do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
            ifProfLib (runGhcProg ghcArgsProf)
+           ifSharedLib (runGhcProg ghcArgsShared)
 
       -- build any C sources
       unless (null (cSources libBi)) $ do
@@ -303,31 +311,42 @@ build pkg_descr lbi verbosity = do
                                                             filename verbosity
                        createDirectoryIfMissingVerbose verbosity True odir
                        runGhcProg args
+                       ifSharedLib (runGhcProg (args ++ ["-fPIC", "-osuf dyn_o"]))
                    | filename <- cSources libBi]
 
       -- link:
       when (verbosity > verbose) (putStrLn "cabal-linking...")
       let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
-          libName  = mkLibName pref (showPackageId (package pkg_descr))
-          profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
+	  cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
+	  libName  = mkLibName pref (showPackageId (package pkg_descr))
+	  profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
+	  sharedLibName  = mkSharedLibName pref (showPackageId (package pkg_descr)) (compilerId (compiler lbi))
 	  ghciLibName = mkGHCiLibName pref (showPackageId (package pkg_descr))
 
       stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
       stubProfObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["p_" ++ objExtension]
                            |  x <- libModules pkg_descr ]  >>= return . concat
+      stubSharedObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["dyn_" ++ objExtension]
+                           |  x <- libModules pkg_descr ]  >>= return . concat
 
       hObjs     <- getHaskellObjects pkg_descr libBi lbi
-			pref objExtension
+			pref objExtension True
       hProfObjs <- 
 	if (withProfLib lbi)
 		then getHaskellObjects pkg_descr libBi lbi
-			pref ("p_" ++ objExtension)
+			pref ("p_" ++ objExtension) True
+		else return []
+      hSharedObjs <-
+	if (withSharedLib lbi)
+		then getHaskellObjects pkg_descr libBi lbi
+			pref ("dyn_" ++ objExtension) False
 		else return []
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
         Try.try (removeFile libName) -- first remove library if it exists
         Try.try (removeFile profLibName) -- first remove library if it exists
+        Try.try (removeFile sharedLibName) -- first remove library if it exists
 	Try.try (removeFile ghciLibName) -- first remove library if it exists
 
         let arArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
@@ -349,14 +368,29 @@ build pkg_descr lbi verbosity = do
 		   hObjs
                 ++ map (pref </>) cObjs
 		++ stubObjs
+            ghcSharedObjArgs =
+		   hSharedObjs
+                ++ map (pref </>) cSharedObjs
+		++ stubSharedObjs
+	    -- After the relocation lib is created we invoke ghc -shared
+	    -- with the dependencies spelled out as -package arguments
+	    -- and ghc invokes the linker with the proper library paths
+	    ghcSharedLinkArgs =
+		[ "-shared",
+		  "-dynamic",
+		  "-o", sharedLibName ]
+		++ ghcSharedObjArgs
+		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
-            runLd args = do
-              exists <- doesFileExist ghciLibName
-                -- SDM: we always remove ghciLibName above, so isn't this
-                -- always False?  What is this stuff for anyway?
+            runLd libName args = do
+              exists <- doesFileExist libName
+	        -- This method is called iteratively by xargs. The
+	        -- output goes to <libName>.tmp, and any existing file
+	        -- named <libName> is included when linking. The
+	        -- output is renamed to <libName>.
               rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
-                (args ++ if exists then [ghciLibName] else [])
-              renameFile (ghciLibName <.> "tmp") ghciLibName
+                (args ++ if exists then [libName] else [])
+              renameFile (libName <.> "tmp") libName
 
             runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
@@ -370,7 +404,9 @@ build pkg_descr lbi verbosity = do
           runAr arProfArgs arProfObjArgs
 
         ifGHCiLib $ xargs maxCommandLineSize
-          runLd ldArgs ldObjArgs
+          (runLd ghciLibName) ldArgs ldObjArgs
+
+        ifSharedLib $ runGhcProg ghcSharedLinkArgs
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
@@ -434,9 +470,9 @@ build pkg_descr lbi verbosity = do
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
 getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
- 	-> FilePath -> String -> IO [FilePath]
-getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext
-  | splitObjs lbi = do
+ 	-> FilePath -> String -> Bool -> IO [FilePath]
+getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext allow_split_objs
+  | splitObjs lbi && allow_split_objs = do
 	let dirs = [ pref </> (dotToSep x ++ "_split") 
 		   | x <- libModules pkg_descr ]
 	objss <- mapM getDirectoryContents dirs
@@ -540,7 +576,8 @@ makefile pkg_descr lbi flags = do
   let decls = [
         ("modules", unwords (exposedModules lib ++ otherModules bi)),
         ("GHC", programPath ghcProg),
-        ("WAYS", if withProfLib lbi then "p" else ""),
+        ("GHC_VERSION", (showVersion (compilerVersion (compiler lbi)))),
+        ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
         ("odir", builddir),
         ("srcdir", case hsSourceDirs bi of
                         [one] -> one
@@ -553,6 +590,8 @@ makefile pkg_descr lbi flags = do
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
         ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
+        ("soext", dllExtension),
+        ("LIB_LD_OPTS", unwords (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])),
         ("AR", programPath arProg),
         ("LD", programPath ldProg)
         ]
@@ -584,24 +623,25 @@ installExe verbosity pref buildPref pkg_descr
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity -- ^verbosity
-              -> ProgramConfiguration
-              -> Bool      -- ^has vanilla library
-              -> Bool      -- ^has profiling library
-              -> Bool      -- ^has GHCi libs
+              -> LocalBuildInfo
               -> FilePath  -- ^install location
+              -> FilePath  -- ^install location for dynamic librarys
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
-installLib verbosity programConf hasVanilla hasProf hasGHCi pref buildPref
+installLib verbosity lbi pref dynPref buildPref
               pd@PackageDescription{library=Just _,
                                     package=p}
-    = do ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"] True False
+    = do let programConf = withPrograms lbi
+         ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"] True False
          ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"] True False
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
 	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
+	     sharedLibTargetLoc = mkSharedLibName dynPref (showPackageId p) (compilerId (compiler lbi))
          ifVanilla $ copyFileVerbose verbosity (mkLibName buildPref (showPackageId p)) libTargetLoc
          ifProf $ copyFileVerbose verbosity (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
 	 ifGHCi $ copyFileVerbose verbosity (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
+	 ifShared $ copyFileVerbose verbosity (mkSharedLibName buildPref (showPackageId p) (compilerId (compiler lbi))) sharedLibTargetLoc
 
          -- use ranlib or ar -s to build an index. this is necessary
          -- on some systems like MacOS X.  If we can't find those,
@@ -615,8 +655,10 @@ installLib verbosity programConf hasVanilla hasProf hasGHCi pref buildPref
                                          ifProf $ rawSystemProgram verbosity ar ["-s", profLibTargetLoc]
                           Nothing -> setupMessage verbosity "Warning: Unable to generate index for library (missing ranlib and ar)" pd
          return ()
-    where ifVanilla action = when hasVanilla (action >> return ())
-          ifProf action = when hasProf (action >> return ())
-	  ifGHCi action = when hasGHCi (action >> return ())
-installLib _ _ _ _ _ _ _ PackageDescription{library=Nothing}
+    where ifVanilla action = when (withVanillaLib lbi) (action >> return ())
+          ifProf action = when (withProfLib lbi) (action >> return ())
+          ifGHCi action = when (withGHCiLib lbi) (action >> return ())
+          ifShared action = when (withSharedLib lbi) (action >> return ())
+
+installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
