@@ -76,7 +76,7 @@ import System.FilePath (dropDrive)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (PackageDescription(package))
-import Data.Version (showVersion)
+import Distribution.Version (showVersion)
 import Distribution.System (OS(..), os)
 import Distribution.Simple.Compiler (CompilerFlavor(..))
 -- TODO: move CopyDest to this module
