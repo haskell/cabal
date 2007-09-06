@@ -34,7 +34,7 @@ Library
   --FIXME: we need a CPP-Options field
   GHC-Options: -DCABAL_VERSION=1,2,0 -Wall
   CC-Options: "-DCABAL_VERSION=1,2,0"
-  nhc-Options: -K4M
+  nhc98-Options: -K4M
 
   Exposed-Modules:
         Distribution.Compiler,
