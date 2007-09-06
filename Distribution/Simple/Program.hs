@@ -491,7 +491,7 @@ ghcPkgProgram = (simpleProgram "ghc-pkg") {
   }
 
 nhcProgram :: Program
-nhcProgram = simpleProgram "nhc"
+nhcProgram = simpleProgram "nhc98"
 
 hmakeProgram :: Program
 hmakeProgram = (simpleProgram "hmake") {

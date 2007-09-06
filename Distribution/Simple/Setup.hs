@@ -466,7 +466,7 @@ configureCmd progConf = Cmd {
         cmdDescription = programFlagsDescription progConf,
         cmdOptions     = \showOrParseArgs -> [cmd_help, cmd_verbose,
            Option "g" ["ghc"] (NoArg GhcFlag) "compile with GHC",
-           Option "" ["nhc"] (NoArg NhcFlag) "compile with NHC",
+           Option "" ["nhc98"] (NoArg NhcFlag) "compile with NHC",
            Option "" ["jhc"]  (NoArg JhcFlag) "compile with JHC",
            Option "" ["hugs"] (NoArg HugsFlag) "compile with hugs",
            Option "w" ["with-compiler"] (reqPathArg WithCompiler)
@@ -972,9 +972,9 @@ hunitTests :: [Test]
 hunitTests = []
 -- The test cases kinda have to be rewritten from the ground up... :/
 --hunitTests =
---    let m = [("ghc", GHC), ("nhc", NHC), ("hugs", Hugs)]
+--    let m = [("ghc", GHC), ("nhc98", NHC), ("hugs", Hugs)]
 --        (flags, commands', unkFlags, ers)
---               = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo", "--user", "--global"]
+--               = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc98", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo", "--user", "--global"]
 --       in  [TestLabel "very basic option parsing" $ TestList [
 --                 "getOpt flags" ~: "failed" ~:
 --                 [Prefix "/foo", GhcFlag, NhcFlag, HugsFlag,
