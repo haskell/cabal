@@ -132,6 +132,7 @@ mkConfigFlags cfg
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
+		      , configPrograms    = conf'''
                       , configConfDir     = confDir
                       , configCacheDir    = cacheDir
                       , configPkgListDir  = pkgListDir

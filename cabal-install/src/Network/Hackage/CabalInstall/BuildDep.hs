@@ -19,6 +19,7 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependenc
 import Distribution.PackageDescription (readPackageDescription, buildDepends,
                                         GenericPackageDescription(..))
 import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Compiler  (PackageDB(..))
 
 {-|
   This function behaves exactly like 'Network.Hackage.CabalInstall.Install.install' except
@@ -26,8 +27,13 @@ import Distribution.Simple.Configure (getInstalledPackages)
 -}
 buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 buildDep cfg globalArgs deps
-    = do ipkgs <- getInstalledPackages (configCompiler cfg) (configUserIns cfg) (configVerbose cfg)
-         apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs) (resolveDependenciesAux cfg ipkgs deps))
+    = do Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) (configCompiler cfg)
+                         (if configUserIns cfg then UserPackageDB
+                                               else GlobalPackageDB)
+                         (configPrograms cfg)
+         apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs)
+	                                 (resolveDependenciesAux cfg ipkgs deps))
          mapM_ (installPkg cfg globalArgs) apkgs
 
 -- | Takes the path to a .cabal file, and installs the build-dependencies listed there.

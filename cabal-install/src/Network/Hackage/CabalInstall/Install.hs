@@ -28,6 +28,7 @@ import Network.Hackage.CabalInstall.TarUtils
 
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Compiler  (PackageDB(..))
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Verbosity
 import System.FilePath ((</>), splitFileName)
@@ -44,7 +45,11 @@ import System.Posix.Signals
 -- |Installs the packages needed to satisfy a list of dependencies.
 install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg globalArgs deps
-    = do ipkgs <- getInstalledPackages (configCompiler cfg) (configUserIns cfg) (configVerbose cfg)
+    = do Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) (configCompiler cfg)
+                         (if configUserIns cfg then UserPackageDB
+                                               else GlobalPackageDB)
+                         (configPrograms cfg)
          resolvedDeps <- resolveDependencies cfg ipkgs deps
          let apkgs = getPackages resolvedDeps
          if null apkgs

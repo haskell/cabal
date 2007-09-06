@@ -13,6 +13,7 @@
 module Network.Hackage.CabalInstall.Types where
 
 import Distribution.Simple.Compiler (CompilerFlavor(..),Compiler)
+import Distribution.Simple.Program  (ProgramConfiguration)
 import Distribution.Package (PackageIdentifier)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
@@ -57,6 +58,7 @@ data TempFlags = TempFlags {
 
 data ConfigFlags = ConfigFlags {
         configCompiler    :: Compiler,
+	configPrograms    :: ProgramConfiguration,
         configConfDir     :: FilePath,
         configCacheDir    :: FilePath,
         configPkgListDir  :: FilePath,
