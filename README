@@ -19,14 +19,14 @@ install, and register it in a standard location.
 
 Cabal should build just like any other Cabal-ized packagem, so if you
 you can't or don't want to use the Makefile, you can run:
-ghc --make Setup.lhs -o setup
+ghc -i. --make Setup.lhs -o setup
 ./setup configure
 ./setup build
 sudo ./setup install
 
 -= Installing as a user (no root or administer access) =-
 
-ghc --make Setup.lhs -o setup
+ghc -i. --make Setup.lhs -o setup
 ./setup configure --prefix=$HOME --user
 ./setup build
 ./setup install --user
@@ -98,8 +98,11 @@ Cabal Coders:
 - David Himmelstrup (Lemmih)
 - Simon Marlow
 - Ross Patterson
+- Thomas Schilling
 - Martin Sjögren
 - Malcolm Wallace (via hmake)
+
+- and nearly 30 other people have contributed occasional patches
 
 Cabal spec:
 - Isaac Jones
