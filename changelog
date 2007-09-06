@@ -1,5 +1,40 @@
 -*-change-log-*-
 
+1.2.0  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Sept 2007
+	* To be included in GHC 6.8.x
+	* New configurations feature
+	* Can make haddock docs link to hilighted sources (with hscolour)
+	* New flag to allow linking to haddock docs on the web
+	* Supports pkg-config
+	* New field "build-tools" for tool dependencies
+	* Improved c2hs support
+	* Preprocessor output no longer clutters source dirs
+	* Seperate "includes" and "install-includes" fields
+	* Makefile command to generate makefiles for building libs with GHC
+	* New --docdir configure flag
+	* Generic --with-prog --prog-args configure flags
+	* Better default installation paths on Windows
+	* Install paths can be specified relative to each other
+	* License files now installed
+	* Initial support for NHC (incomplete)
+	* Consistent treatment of verbosity
+	* Reduced verbosity of configure step by default
+	* Improved helpfulness of output messages
+	* Help output now clearer and fits in 80 columns
+	* New setup register --gen-pkg-config flag for distros
+	* Major internal refactoring, hooks api has changed
+	* Dozens of bug fixes
+
+1.1.6.2 Duncan Coutts <duncan.coutts@worc.ox.ac.uk> May 2007
+	* Released with GHC 6.6.1
+	* Handle windows text file encoding for .cabal files
+	* Fix compiling a executable for profiling that uses Template Haskell
+	* Other minor bug fixes and user guide clarifications
+
+1.1.6.1 Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
+	* fix unlit code
+	* fix escaping in register.sh
+
 1.1.6  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
 	* Released with GHC 6.6
 	* Added support for hoogle
