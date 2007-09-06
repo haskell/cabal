@@ -848,7 +848,7 @@ Executable program2 {
 
           <varlistentry>
             <term>
-              <literal>nhc-options:</literal>
+              <literal>nhc98-options:</literal>
               <replaceable>token list</replaceable>
             </term>
             <listitem>
@@ -857,8 +857,11 @@ Executable program2 {
                 field, which is preferred.</para>
 
               <para>Options required only by one module may be specified
-                by placing an <literal>OPTIONS_NHC</literal> pragma in the
+                by placing an <literal>OPTIONS_NHC98</literal> pragma in the
                 source file affected.</para>
+
+              <para>Warning: Cabal does not currently support building
+                libraries or executables with nhc98 anyway.</para>
             </listitem>
           </varlistentry>
 
