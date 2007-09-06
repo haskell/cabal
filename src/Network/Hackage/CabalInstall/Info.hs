@@ -19,12 +19,17 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags(..), ResolvedPackage(..)
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Compiler  (PackageDB(..))
 
 import Data.Maybe (listToMaybe)
 
 info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 info cfg globalArgs deps
-    = do ipkgs <- getInstalledPackages (configCompiler cfg) (configUserIns cfg) (configVerbose cfg)
+    = do Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) (configCompiler cfg)
+                         (if configUserIns cfg then UserPackageDB
+                                               else GlobalPackageDB)
+                         (configPrograms cfg)
          apkgs <- resolveDependencies cfg [] deps
          mapM_ (infoPkg cfg ipkgs globalArgs) apkgs
 
