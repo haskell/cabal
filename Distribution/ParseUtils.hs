@@ -269,6 +269,7 @@ data Token =
        -- have a known indentation level.
        --
        -- eg: we can't have this:
+       --
        -- > if ... {
        -- > } else
        -- >     other
@@ -328,7 +329,7 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 
 type SyntaxTree = Tree (LineNo, HasTabs, String)
 
--- | Parse the stream of tokens into a tree of them, based on indent / layout
+-- | Parse the stream of tokens into a tree of them, based on indent \/ layout
 mkTree :: [Token] -> ParseResult [SyntaxTree]
 mkTree toks =
   layout 0 [] toks >>= \(trees, trailing) -> case trailing of
@@ -343,7 +344,7 @@ mkTree toks =
 -- | Parse the stream of tokens into a tree of them, based on indent
 -- This parse state expect to be in a layout context, though possibly
 -- nested within a braces context so we may still encounter closing braces.
-layout :: Indent       -- ^ indent level of the parent/previous line
+layout :: Indent       -- ^ indent level of the parent\/previous line
        -> [SyntaxTree] -- ^ accumulating param, trees in this level
        -> [Token]      -- ^ remaining tokens
        -> ParseResult ([SyntaxTree], [Token])
