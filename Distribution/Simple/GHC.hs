@@ -382,15 +382,15 @@ build pkg_descr lbi verbosity = do
 		++ ghcSharedObjArgs
 		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
-            runLd libName args = do
-              exists <- doesFileExist libName
+            runLd ldLibName args = do
+              exists <- doesFileExist ldLibName
 	        -- This method is called iteratively by xargs. The
-	        -- output goes to <libName>.tmp, and any existing file
-	        -- named <libName> is included when linking. The
+	        -- output goes to <ldLibName>.tmp, and any existing file
+	        -- named <ldLibName> is included when linking. The
 	        -- output is renamed to <libName>.
               rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
-                (args ++ if exists then [libName] else [])
-              renameFile (libName <.> "tmp") libName
+                (args ++ if exists then [ldLibName] else [])
+              renameFile (ldLibName <.> "tmp") ldLibName
 
             runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
