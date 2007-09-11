@@ -118,10 +118,9 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
       copyFileVerbose verbosity file (dataPref </> file)
   when docExists $ do
-      let targetDir = htmlPref </> pkgName (package pkg_descr)
-      createDirectoryIfMissingVerbose verbosity True targetDir
-      copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
-      -- setPermissionsRecursive [Read] targetDir
+      createDirectoryIfMissingVerbose verbosity True htmlPref
+      copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) htmlPref
+      -- setPermissionsRecursive [Read] htmlPref
 
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
