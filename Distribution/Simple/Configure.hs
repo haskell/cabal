@@ -254,8 +254,8 @@ configure (pkg_descr0, pbi) cfg
 		libexecDirTemplate = maybeDefault configLibExecDir libexecDirTemplate,
 		dataDirTemplate    = maybeDefault configDataDir    dataDirTemplate,
 		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate,
-		docDirTemplate     = maybeDefault configDocDir     docDirTemplate
---		htmlDirTemplate    =
+		docDirTemplate     = maybeDefault configDocDir     docDirTemplate,
+		htmlDirTemplate    = maybeDefault configHtmlDir    htmlDirTemplate
 	      }
 
         -- check extensions
