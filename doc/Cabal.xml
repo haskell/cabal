@@ -1905,6 +1905,28 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	    </listitem>
 	  </varlistentry>
 
+	  <varlistentry>
+	    <term><option>--htmldir</option>=<replaceable>dir</replaceable></term>
+	    <listitem>
+	      <para>HTML documentation files are installed relative to this directory.
+              </para>
+              <para><replaceable>dir</replaceable> may contain the following path
+                variables:
+                <replaceable>$prefix</replaceable>
+                <replaceable>$bindir</replaceable>
+                <replaceable>$libdir</replaceable>
+                <replaceable>$libsubdir</replaceable>
+                <replaceable>$datadir</replaceable>
+                <replaceable>$datasubdir</replaceable>
+                <replaceable>$docdir</replaceable>
+                <replaceable>$pkgid</replaceable>
+                <replaceable>$pkg</replaceable>
+                <replaceable>$version</replaceable>
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
 	</variablelist>
 
 	<sect4 id="simple-path-vars">
@@ -2088,6 +2110,12 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		  <entry><literal>--docdir</literal></entry>
 		  <entry><literal>$prefix\doc\$pkgid</literal></entry>
 		  <entry><literal>$datadir/doc/$pkgid</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--htmldir</literal></entry>
+		  <entry><literal>$docdir\html</literal></entry>
+		  <entry><literal>$docdir/html</literal></entry>
 		</row>
 	      </tbody>
 	    </tgroup>
