@@ -26,10 +26,12 @@ Flag small_base
 
 Library
   if flag(small_base)
-    -- For ghc 6.2 you need to add 'unix' to Build-Depends:
     Build-Depends: base, filepath, pretty, directory, old-time, process, containers
   else
     Build-Depends: base, filepath
+
+  if impl(ghc < 6.3)
+    Build-Depends: unix
 
   --FIXME: we need a CPP-Options field
   GHC-Options: -DCABAL_VERSION=1,2,0 -Wall
