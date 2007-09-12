@@ -139,6 +139,8 @@ data ConfigFlags = ConfigFlags {
 		-- ^subdirectory of datadir in which data files are installed
 	configDocDir   :: Maybe FilePath,
 		-- ^installation dir for documentation
+	configHtmlDir   :: Maybe FilePath,
+		-- ^installation dir for HTML documentation
 
         configVerbose  :: Verbosity,      -- ^verbosity level
 	configPackageDB:: PackageDB,	  -- ^ the --user flag?
@@ -170,6 +172,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDataDir  = Nothing,
 	configDataSubDir = Nothing,
 	configDocDir = Nothing,
+	configHtmlDir = Nothing,
         configVerbose  = normal,
 	configPackageDB = GlobalPackageDB,
 	configGHCiLib  = True,
@@ -298,6 +301,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DataDir FilePath
 	  | DataSubDir FilePath
 	  | DocDir FilePath
+	  | HtmlDir FilePath
           | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
@@ -489,6 +493,8 @@ configureCmd progConf = Cmd {
 		"subdirectory of datadir in which data files are installed",
 	   Option "" ["docdir"] (reqDirArg DocDir)
 		"installation directory for documentation",
+	   Option "" ["htmldir"] (reqDirArg HtmlDir)
+		"installation directory for HTML documentation",
            Option "" ["enable-library-vanilla"] (NoArg WithVanillaLib)
                "Enable vanilla libraries",
            Option "" ["disable-library-vanilla"] (NoArg WithoutVanillaLib)
@@ -623,7 +629,8 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (LibExecDir path)    = t { configLibExecDir = Just path }
         updateCfg t (DataDir path)       = t { configDataDir  = Just path }
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
-	updateCfg t (DocDir path)        = t { configDocDir  = Just path }
+        updateCfg t (DocDir path)        = t { configDocDir  = Just path }
+        updateCfg t (HtmlDir path)       = t { configHtmlDir  = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configPackageDB = UserPackageDB }
         updateCfg t GlobalFlag           = t { configPackageDB = GlobalPackageDB }
