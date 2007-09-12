@@ -194,7 +194,7 @@ defaultInstallDirs comp hasLibs = do
 
 haddockdir :: InstallDirs FilePath -> PackageDescription -> FilePath
 haddockdir installDirs pkg_descr =
-  htmldir installDirs </> pkgName (package pkg_descr)
+  htmldir installDirs
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative
