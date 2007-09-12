@@ -109,18 +109,15 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
          htmldir    = htmlPref,
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
-  let dataFilesExist = not (null (dataFiles pkg_descr))
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
   when (verbosity >= verbose)
        (putStrLn ("directory " ++ haddockPref pkg_descr ++
                   " does exist: " ++ show docExists))
-  when (dataFilesExist || docExists) $ do
-    createDirectoryIfMissingVerbose verbosity True dataPref
-    flip mapM_ (dataFiles pkg_descr) $ \ file -> do
+  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
       copyFileVerbose verbosity file (dataPref </> file)
-    when docExists $ do
+  when docExists $ do
       let targetDir = htmlPref </> pkgName (package pkg_descr)
       createDirectoryIfMissingVerbose verbosity True targetDir
       copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) targetDir
