@@ -270,7 +270,8 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                         installDirTemplates = (installDirTemplates lbi) {
                           dataDirTemplate    = toPathTemplate pwd,
                           dataSubdirTemplate = toPathTemplate distPref,
-                          docDirTemplate     = toPathTemplate (pwd </> distPref </> "doc")
+                          docDirTemplate     = toPathTemplate (pwd </> distPref </> "doc"),
+                          htmlDirTemplate    = toPathTemplate (pwd </> distPref </> "doc" </> "html")
                         }
                       } NoCopyDest
 	(absinc,relinc) = partition isAbsolute (includeDirs bi)
