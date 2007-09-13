@@ -101,7 +101,7 @@ module Distribution.PackageDescription (
 #endif
   ) where
 
-import Control.Monad(liftM, foldM, when)
+import Control.Monad(liftM, foldM, when, unless)
 import Data.Char
 import Data.Maybe(isNothing, isJust, catMaybes, listToMaybe, maybeToList)
 import Data.List (nub, maximumBy, unfoldr, partition)
@@ -1092,16 +1092,23 @@ parseDescription file = do
     collectFields :: ([Field] -> PM a) -> [Field] 
                   -> PM (CondTree ConfVar [Dependency] a)
     collectFields parser allflds = do
+        unless (null subSects) $
+          lift $ warning $ "Unknown section types: " ++ show (map fName subSects)
+            ++ "\n  Probable cause: missing colon after field name, or newer Cabal version required"
         a <- parser dataFlds
         deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
         ifs <- mapM processIfs condFlds
         return (CondNode a deps ifs)
       where
         (depFlds, dataFlds) = partition isConstraint simplFlds
-        simplFlds = [ F l n v | F l n v <- allflds ]
-        condFlds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
+        (simplFlds, cplxFlds) = partition isSimple allflds
+        (condFlds, subSects) = partition isCond cplxFlds
+        isSimple (F _ _ _) = True
+        isSimple _         = False
+        isCond (IfBlock _ _ _ _) = True
+        isCond _                 = False
         isConstraint (F _ n _) = n `elem` constraintFieldNames
-        isConstraint _ = False
+        isConstraint _         = False
         processIfs (IfBlock l c t e) = do
             cnd <- lift $ runP l "if" parseCondition c
             t' <- collectFields parser t
