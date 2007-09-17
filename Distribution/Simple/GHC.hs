@@ -508,9 +508,9 @@ ghcOptions lbi bi odir
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ autogenModulesDir lbi]
-     ++ ["-i" ++ buildDir lbi]
+     ++ ["-i" ++ odir]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
-     ++ ["-I" ++ buildDir lbi]
+     ++ ["-I" ++ odir]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
