@@ -27,6 +27,7 @@ import Distribution.PackageDescription
                                   packageDescription,
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
+import Distribution.Simple.LocalBuildInfo ( distPref )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
@@ -34,7 +35,7 @@ import Distribution.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
 import Distribution.Verbosity
-import System.FilePath (pathSeparator)
+import System.FilePath ((</>), (<.>))
 import Control.Monad		( when, unless )
 import Data.Maybe		( fromMaybe )
 
@@ -75,27 +76,34 @@ setupWrapper args mdir = inDir mdir $ do
                  in configCabalFlag verbosity verRange comp conf
 
   let
+    setupDir  = distPref </> "setup"
+    setupHs   = setupDir </> "setup" <.> "hs"
+    setupProg = setupDir </> "setup" <.> exeExtension
     trySetupScript f on_fail = do
        b <- doesFileExist f
        if not b then on_fail else do
-         hasSetup <- do b' <- doesFileExist "setup"
+         hasSetup <- do b' <- doesFileExist setupProg
                         if not b' then return False else do
                           t1 <- getModificationTime f
-                          t2 <- getModificationTime "setup"
+                          t2 <- getModificationTime setupProg
                           return (t1 < t2)
-         unless hasSetup $
-           rawSystemProgramConf verbosity ghcProgram conf
-             (cabal_flag ++ 
-              ["--make", f, "-o", "setup", "-v"++showForGHC verbosity])
-         rawSystemExit verbosity ('.':pathSeparator:"setup") setup_args
+         unless hasSetup $ do
+           createDirectoryIfMissingVerbose verbosity True setupDir
+	   rawSystemProgramConf verbosity ghcProgram conf $
+                cabal_flag
+             ++ ["--make", f, "-o", setupProg
+	        ,"-odir", setupDir, "-hidir", setupDir]
+	     ++ if verbosity >= deafening then ["-v"] else []
+         rawSystemExit verbosity setupProg setup_args
 
   case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
     Just (mainAction, mainText) ->
       if withinRange cabalVersion (descCabalVersion (packageDescription ppkg_descr))
 	then mainAction setup_args -- current version is OK, so no need
 				   -- to compile a special Setup.hs.
-	else do writeFile ".Setup.hs" mainText
-		trySetupScript ".Setup.hs" $ error "panic! shouldn't happen"
+	else do createDirectoryIfMissingVerbose verbosity True setupDir
+	        writeFile setupHs mainText
+		trySetupScript setupHs $ error "panic! shouldn't happen"
     Nothing ->
       trySetupScript "Setup.hs"  $
       trySetupScript "Setup.lhs" $
