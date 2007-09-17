@@ -378,7 +378,7 @@ cmd_help = Option "h?" ["help"] (NoArg HelpFlag) "Show this help text"
 
 cmd_verbose :: OptDescr (Flag a)
 cmd_verbose = Option "v" ["verbose"] (OptArg (Verbose . flagToVerbosity) "n")
-              "Control verbosity (n is 0--2, default verbosity level is 1)"
+              "Control verbosity (n is 0--3, default verbosity level is 1)"
 
 -- Do we have any other interesting global flags?
 globalOptions :: [OptDescr (Flag a)]
