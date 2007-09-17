@@ -144,7 +144,8 @@ opts = [
                "give the path to a particular compiler to use on setup",
            Option "" ["with-setup-hc-pkg"] (reqPathArg (setWithHcPkg.Just))
                "give the path to the package tool to use on setup",
-	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n") "Control verbosity (n is 0--5, normal verbosity level is 1, -v alone is equivalent to -v3)"
+	   Option "v" ["verbosity"] (OptArg (setVerbosity . flagToVerbosity) "n")
+	       "Control verbosity (n is 0--3, default verbosity level is 1)"
   ]
 
 configCabalFlag :: Verbosity -> VersionRange -> Compiler -> ProgramConfiguration -> IO [String]
