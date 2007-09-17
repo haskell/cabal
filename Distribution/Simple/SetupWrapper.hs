@@ -68,12 +68,6 @@ setupWrapper args mdir = inDir mdir $ do
   pkg_descr_file <- defaultPackageDesc verbosity
   ppkg_descr <- readPackageDescription verbosity pkg_descr_file 
 
-  (comp, conf) <- configCompiler (Just GHC) hc hcPkg 
-                 emptyProgramConfiguration normal
-
-  cabal_flag <- let verRange = descCabalVersion (packageDescription ppkg_descr)
-                 in configCabalFlag verbosity verRange comp conf
-
   let
     setupDir  = distPref </> "setup"
     setupHs   = setupDir </> "setup" <.> "hs"
@@ -87,6 +81,10 @@ setupWrapper args mdir = inDir mdir $ do
                           t2 <- getModificationTime setupProg
                           return (t1 < t2)
          unless hasSetup $ do
+	   (comp, conf) <- configCompiler (Just GHC) hc hcPkg
+	                     emptyProgramConfiguration normal
+	   let verRange  = descCabalVersion (packageDescription ppkg_descr)
+	   cabal_flag   <- configCabalFlag verbosity verRange comp conf
            createDirectoryIfMissingVerbose verbosity True setupDir
 	   rawSystemProgramConf verbosity ghcProgram conf $
                 cabal_flag
