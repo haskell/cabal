@@ -60,11 +60,10 @@ setupWrapper ::
     -> Maybe FilePath -- ^ Directory to run in. If 'Nothing', the current directory is used.
     -> IO ()
 setupWrapper args mdir = inDir mdir $ do  
-  let (flag_fn, non_opts, unrec_opts, errs) = getOpt' Permute opts args
+  let (flag_fn, _, _, errs) = getOpt' Permute opts args
   when (not (null errs)) $ die (unlines errs)
   let Flags { withCompiler = hc, withHcPkg = hcPkg, withVerbosity = verbosity
         } = foldr (.) id flag_fn defaultFlags
-  let setup_args = unrec_opts ++ non_opts
 
   pkg_descr_file <- defaultPackageDesc verbosity
   ppkg_descr <- readPackageDescription verbosity pkg_descr_file 
@@ -94,13 +93,13 @@ setupWrapper args mdir = inDir mdir $ do
              ++ ["--make", f, "-o", setupProg
 	        ,"-odir", setupDir, "-hidir", setupDir]
 	     ++ if verbosity >= deafening then ["-v"] else []
-         rawSystemExit verbosity setupProg setup_args
+         rawSystemExit verbosity setupProg args
 
   case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
     Just (mainAction, mainText) ->
       if withinRange cabalVersion (descCabalVersion (packageDescription ppkg_descr))
-	then mainAction setup_args -- current version is OK, so no need
-				   -- to compile a special Setup.hs.
+	then mainAction args -- current version is OK, so no need
+			     -- to compile a special Setup.hs.
 	else do createDirectoryIfMissingVerbose verbosity True setupDir
 	        writeFile setupHs mainText
 		trySetupScript setupHs $ error "panic! shouldn't happen"
