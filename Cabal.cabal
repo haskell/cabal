@@ -17,6 +17,9 @@ Description:
         for distributing, organizing, and cataloging Haskell libraries
         and tools.
 Category: Distribution
+Build-Type: Custom
+-- Even though we do use the default Setup.lhs it's vital to bootstraping
+-- that we build Setup.lhs using our own local Cabal source code.
 
 Extra-Source-Files:
         mkGHCMakefile.sh Distribution/Simple/GHC/Makefile.in
