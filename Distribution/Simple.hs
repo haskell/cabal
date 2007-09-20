@@ -72,7 +72,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Program(Program(..), ProgramConfiguration,
                             defaultProgramConfiguration, addKnownProgram,
                             pfesetupProgram, rawSystemProgramConf)
-import Distribution.Simple.PreProcess (knownSuffixHandlers, ppSuffixes,
+import Distribution.Simple.PreProcess (knownSuffixHandlers,
                                 removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Setup
@@ -474,10 +474,6 @@ clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
 
     -- these live in the top level dir so must be removed separately
     removeRegScripts
-
-    -- XXX: This is actually no longer necessary, but we keep it, so that
-    -- clean works correctly on packages built with an older version of Cabal
-    removePreprocessedPackage pkg_descr currentDir (ppSuffixes pps)
 
     -- Any extra files the user wants to remove
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
