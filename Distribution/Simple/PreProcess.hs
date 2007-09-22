@@ -78,7 +78,8 @@ import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
 import System.Info (os, arch)
-import System.FilePath (splitExtension, (</>), (<.>), takeDirectory, normalise)
+import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
+                        takeDirectory, normalise)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -176,11 +177,15 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
+        let exeDir = buildDir lbi </> exeName theExe </> exeName theExe ++ "-tmp"
         sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
                                   ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
-                                     (buildDir lbi) forSDist
+                                     exeDir forSDist
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
+        preprocessModule (hsSourceDirs bi) exeDir forSDist
+                         (dropExtensions (modulePath theExe))
+                         verbosity builtinSuffixes biHandlers
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
 	  | hc == NHC = ["hs", "lhs", "gc"]
