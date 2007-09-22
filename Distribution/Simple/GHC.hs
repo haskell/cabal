@@ -435,7 +435,7 @@ build pkg_descr lbi verbosity = do
                                 runGhcProg args
                             | filename <- cSources exeBi]
 
-                 srcMainFile <- findFile (hsSourceDirs exeBi) modPath
+                 srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
                  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
                  let binArgs linkExe profExe =
