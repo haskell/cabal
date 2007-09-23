@@ -461,8 +461,7 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
 -- Cleaning
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi hooks (CleanFlags saveConfigure _verbosity) = do
-    let pps = allSuffixHandlers hooks
+clean pkg_descr maybeLbi _ (CleanFlags saveConfigure _verbosity) = do
     putStrLn "cleaning..."
 
     maybeConfig <- if saveConfigure then maybeGetPersistBuildConfig
