@@ -71,7 +71,7 @@ import Distribution.Simple.Utils (rawSystemStdout)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
-import System.Directory(removeFile)
+import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad (liftM, when, join)
 import Data.Maybe    ( isJust, catMaybes )
@@ -161,11 +161,16 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                                          . substPathTemplate env
                                          . toPathTemplate
                    in return (expandTemplateVars htmlStrTemplate)
-            return $ if null interface
-                then Nothing
-                else Just $ "--read-interface=" ++
-                            (if null html then "" else html ++ ",") ++
-                            interface
+            interfaceExists <- doesFileExist interface
+            if interfaceExists
+              then return $ Just $ "--read-interface="
+                         ++ (if null html then "" else html ++ ",")
+                         ++ interface
+              else do warn verbosity $ "The documentation for package "
+                         ++ showPackageId pkgId ++ " is not installed. "
+                         ++ "No links to it will be generated."
+                      return Nothing
+
     packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
 
     withLib pkg_descr () $ \lib -> do
