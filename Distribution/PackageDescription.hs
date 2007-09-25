@@ -1281,16 +1281,20 @@ checkMissingFields pkg_descr =
               = toMaybe (null (f pkg_descr)) ("Missing field: " ++ n)
 
 sanityCheckLib :: Maybe Library -> Maybe String
-sanityCheckLib ml =
-   ml >>= (\l ->
-      toMaybe (buildable (libBuildInfo l) && null (exposedModules l))
-              ("Non-empty library, but empty exposed modules list. " ++
-               "Cabal may not build this library correctly"))
+sanityCheckLib ml = do
+    l <- ml
+    toMaybe (buildable (libBuildInfo l) && null (exposedModules l)) $
+       "A library was specified, but no exposed modules list has been given.\n"
+       ++ "Fields of the library section:\n"
+       ++ (render $ nest 4 $ ppFields l libFieldDescrs )
+   
 
 sanityCheckExe :: Executable -> Maybe String
 sanityCheckExe exe
    = if null (modulePath exe)
-	then Just ("No 'Main-Is' field found for executable " ++ exeName exe)
+	then Just ("No 'Main-Is' field found for executable " ++ exeName exe
+                  ++ "Fields of the executable section:\n"
+                  ++ (render $ nest 4 $ ppFields exe executableFieldDescrs))
 	else Nothing
 
 checkSanity :: Bool -> String -> Maybe String
