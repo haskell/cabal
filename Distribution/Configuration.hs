@@ -156,11 +156,19 @@ simplifyWithSysParams :: String -> String -> (String, Version) -> Condition Conf
 simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
-    interp (OS name)   = Right $ name == os
-    interp (Arch name) = Right $ name == arch
-    interp (Impl i vr) = Right $ impl == i && implVer `withinRange` vr
+    interp (OS name)   = Right $ lcase name == lcase os
+                              || lcase name `elem` osAliases (lcase os)
+    interp (Arch name) = Right $ lcase name == lcase arch
+    interp (Impl i vr) = Right $ lcase impl == lcase i
+                              && implVer `withinRange` vr
     interp (Flag  f)   = Left f
     flags = [ fname | ConfFlag fname <- fvs ]
+
+    --FIXME: use Distribution.System.OS type and alias list:
+    osAliases "ming32"   = ["windows"]
+    osAliases "solaris2" = ["solaris"]
+    osAliases _          = []
+    lcase = map toLower
 
 -- XXX: Add instances and check
 --
