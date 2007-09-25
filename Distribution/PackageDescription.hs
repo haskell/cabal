@@ -963,38 +963,31 @@ parsePackageDescription file = do
     -- in a library section and wraps all executable stanzas in an executable
     -- section.
     sectionizeFields fs
-        | oldSyntax fs =
-            let (hdr0, exes0) = break ((=="executable") . fName) fs
-                (hdr, libfs0) = partition (not . (`elem` libFieldNames) . fName) hdr0
+      | oldSyntax fs =
+          let 
+            -- "build-depends" is a local field now.  To be backwards
+            -- compatible, we still allow it as a global field in old-style
+            -- package description files and translate it to a local field by
+            -- adding it to every non-empty section
+            (hdr0, exes0) = break ((=="executable") . fName) fs
+            (hdr, libfs0) = partition (not . (`elem` libFieldNames) . fName) hdr0
 
-                -- The 'build-depends' field was global so far.  Now it's 
-                -- supported in each section. 
-                -- XXX: we actially have two options here
-                --  (1) put all dependencies into the library section, if the
-                --      library section would be empty, mark it as not buildable
-                --  (2) duplicate all dependencies in each section, libraries
-                --      and executables
-                -- Right now we go with (1)
-                (deps, libfs1) = partition ((`elem` constraintFieldNames) . fName) libfs0
-                libfs = if null libfs1 && not (null deps)
-                       -- mark library as not buildable 
-                        then [F (lineNo (head deps)) "buildable" "False"]
-                        else libfs1
+            (deps, libfs) = partition ((== "build-depends") . fName)
+                                       libfs0
 
-                exes = unfoldr toExe exes0
-                toExe [] = Nothing
-                toExe (F l e n : r) 
-                 | e == "executable" = 
-                     let (efs, r') = break ((=="executable") . fName) r
-                     in Just (Section l "executable" n (deps ++ efs), r')
-                toExe _ = bug "unexpeced input to 'toExe'"
-            in hdr 
-               ++ 
-               (if null libfs then [] 
-               else [Section (lineNo (head libfs)) "library" "" (deps ++ libfs)])
-               ++
-               exes
-        | otherwise = fs
+            exes = unfoldr toExe exes0
+            toExe [] = Nothing
+            toExe (F l e n : r) 
+              | e == "executable" = 
+                  let (efs, r') = break ((=="executable") . fName) r
+                  in Just (Section l "executable" n (deps ++ efs), r')
+            toExe _ = bug "unexpeced input to 'toExe'"
+          in 
+            hdr ++ 
+           (if null libfs then [] 
+            else [Section (lineNo (head libfs)) "library" "" (deps ++ libfs)])
+            ++ exes
+      | otherwise = fs
 
     isSimpleField (F _ _ _) = True
     isSimpleField _ = False
