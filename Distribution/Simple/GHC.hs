@@ -380,6 +380,7 @@ build pkg_descr lbi verbosity = do
 		  "-dynamic",
 		  "-o", sharedLibName ]
 		++ ghcSharedObjArgs
+		++ ["-package-name", packageId ]
 		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 
             runLd ldLibName args = do
@@ -593,7 +594,7 @@ makefile pkg_descr lbi flags = do
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
         ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
         ("soext", dllExtension),
-        ("LIB_LD_OPTS", unwords (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])),
+        ("LIB_LD_OPTS", unwords ("-package-name" : packageId : concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])),
         ("AR", programPath arProg),
         ("LD", programPath ldProg)
         ]
