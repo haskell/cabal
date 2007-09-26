@@ -516,7 +516,7 @@ ghcOptions lbi bi odir
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
-     ++ (if compilerVersion c > Version [6,6] []
+     ++ (if compilerVersion c >= Version [6,6] []
            then ["-stubdir", odir] else [])
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])
