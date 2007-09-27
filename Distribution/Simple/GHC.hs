@@ -382,6 +382,8 @@ build pkg_descr lbi verbosity = do
 		++ ghcSharedObjArgs
 		++ ["-package-name", packageId ]
 		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+	        ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
+	        ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
             runLd ldLibName args = do
               exists <- doesFileExist ldLibName
@@ -594,7 +596,10 @@ makefile pkg_descr lbi flags = do
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
         ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
         ("soext", dllExtension),
-        ("LIB_LD_OPTS", unwords ("-package-name" : packageId : concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])),
+        ("LIB_LD_OPTS", unwords (["-package-name", packageId]
+				 ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
+				 ++ ["-l"++libName | libName <- extraLibs bi]
+				 ++ ["-L"++libDir | libDir <- extraLibDirs bi])),
         ("AR", programPath arProg),
         ("LD", programPath ldProg)
         ]
