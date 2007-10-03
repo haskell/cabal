@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- This module is meant to be local-only to Distribution...
 
 module Distribution.InstalledPackageInfo (
-	InstalledPackageInfo(..),
+	InstalledPackageInfo_(..), InstalledPackageInfo,
 	ParseResult(..), PError(..), PWarning,
 	emptyInstalledPackageInfo,
 	parseInstalledPackageInfo,
@@ -72,8 +72,8 @@ import Text.PrettyPrint
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
 
-data InstalledPackageInfo
-   = InstalledPackageInfo {
+data InstalledPackageInfo_ m
+   = InstalledPackageInfo_ {
 	-- these parts are exactly the same as PackageDescription
 	package           :: PackageIdentifier,
         license           :: License,
@@ -87,8 +87,8 @@ data InstalledPackageInfo
 	category          :: String,
 	-- these parts are required by an installed package only:
         exposed           :: Bool,
-	exposedModules	  :: [String],
-	hiddenModules     :: [String],
+	exposedModules	  :: [m],
+	hiddenModules     :: [m],
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
         libraryDirs       :: [FilePath],
         hsLibraries       :: [String],
@@ -107,9 +107,11 @@ data InstalledPackageInfo
     }
     deriving (Read, Show)
 
-emptyInstalledPackageInfo :: InstalledPackageInfo
+type InstalledPackageInfo = InstalledPackageInfo_ String
+
+emptyInstalledPackageInfo :: InstalledPackageInfo_ m
 emptyInstalledPackageInfo
-   = InstalledPackageInfo {
+   = InstalledPackageInfo_ {
         package           = PackageIdentifier "" noVersion,
         license           = AllRightsReserved,
         copyright         = "",
