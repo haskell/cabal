@@ -137,22 +137,18 @@ fulfillDependency (Dependency depName vrange) pkg
 
 getDependency :: [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
-getDependency ps (UnresolvedDependency { dependency=dep@(Dependency pkgname vrange)
-                                       , depOptions=opts})
-    = case filter ok ps of
-        [] -> ResolvedPackage
-              { fulfilling = dep
-              , resolvedData = Nothing
-              , pkgOptions = opts }
-        qs -> let PkgInfo { infoId = pkg, infoDeps = deps, infoURL = location } = maximumBy versions qs
-                  versions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
-              in ResolvedPackage
-                 { fulfilling = dep
-                 , resolvedData = Just ( pkg
-                                       , location
-                                       , (map (getDependency ps) (map depToUnresolvedDep deps)))
-                 , pkgOptions = opts }
-    where ok PkgInfo{ infoId = p } = pkgName p == pkgname && pkgVersion p `withinRange` vrange
+getDependency ps (UnresolvedDependency { dependency=dep, depOptions=opts})
+    = ResolvedPackage { fulfilling = dep
+                      , resolvedData = d
+                      , pkgOptions = opts }
+    where d = case filter (fulfillDependency dep . infoId) ps of
+                [] -> Nothing
+                qs -> let p = maximumBy compareVersions qs
+                       in Just (infoId p
+                               , infoURL p
+                               , map (getDependency ps . depToUnresolvedDep) (infoDeps p))
+          compareVersions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
+
 
 -- |Get the PackageIdentifier, build options and location from a list of resolved packages.
 --  Throws an exception if a package couldn't be resolved.
