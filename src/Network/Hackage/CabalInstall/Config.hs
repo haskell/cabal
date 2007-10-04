@@ -25,6 +25,7 @@ module Network.Hackage.CabalInstall.Config
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
+import Data.Maybe (mapMaybe)
 import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
 	                    ,getTemporaryDirectory)
 import System.IO.Error (isDoesNotExistError)
@@ -32,6 +33,7 @@ import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe
 
 import Distribution.Package (PackageIdentifier)
+import Distribution.PackageDescription (parseDescription, ParseResult(..))
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
 import System.FilePath ((</>))
@@ -83,7 +85,7 @@ pkgList cfg = configPkgListDir cfg </> pkgListFile
 -- |Read the list of known packages from the pkg.list file.
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
-    = fmap read (readFile (pkgList cfg))
+    = fmap readKnownPackages (readFile (pkgList cfg))
         `catch` (\e
                  -> do hPutStrLn stderr ("Warning: Problem opening package list '"
                                           ++ pkgList cfg
@@ -94,6 +96,7 @@ getKnownPackages cfg
                            hPutStrLn stderr "File doesn't exist. Run 'cabal-install update' to create the package list."
                          _ -> hPutStrLn stderr ("Error: " ++ (show e))
                        return [])
+  where 
 
 -- |Write the list of known packages to the pkg.list file.
 writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
@@ -101,7 +104,19 @@ writeKnownPackages cfg pkgs
     = do message (configOutputGen cfg) verbose $
            "creating package file " ++ pkgList cfg
          createDirectoryIfMissing True (configPkgListDir cfg)
-         writeFile (pkgList cfg) (show pkgs)
+         writeFile (pkgList cfg) (showKnownPackages pkgs)
+
+-- FIXME: hacky format
+showKnownPackages :: [PkgInfo] -> String
+showKnownPackages = show . map show
+
+-- FIXME: hacky format
+-- FIXME: report errors
+readKnownPackages :: String -> [PkgInfo]
+readKnownPackages = mapMaybe readDesc . read
+  where readDesc s = case parseDescription s of
+                       ParseOk _ d -> Just d
+                       ParseFailed e -> Nothing
 
 getKnownServers :: ConfigFlags -> IO [String]
 getKnownServers cfg

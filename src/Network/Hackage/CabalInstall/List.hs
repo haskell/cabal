@@ -16,12 +16,13 @@ module Network.Hackage.CabalInstall.List
 
 import Text.Regex
 import Data.Maybe (catMaybes, isJust)
-import Data.List (find, nub, sortBy)
+import Data.List (find, nubBy, sortBy)
 import Data.Char as Char (toLower)
 import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
+import Network.Hackage.CabalInstall.Dependency (finalizePackage, listInstalledPackages)
 import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..)
                                       ,OutputGen(..))
 
@@ -30,22 +31,24 @@ list :: ConfigFlags -> [String] -> IO ()
 list cfg pats = do
     pkgs <- getKnownPackages cfg
     let pkgs' | null pats = pkgs
-              | otherwise = nub (concatMap (findInPkgs pkgs) pats)
+              | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats)
     mapM_ doList (sortBy (comparing nameAndVersion) pkgs')
     where
     findInPkgs :: [PkgInfo] -> String -> [PkgInfo]
     findInPkgs pkgs pat = let rx = mkRegexWithOpts pat False False in
         filter (isJust . matchRegex rx . showInfo) pkgs
     showInfo :: PkgInfo -> String
-    showInfo pkg = showPackageId (infoId pkg) ++ "\n" ++ infoSynopsis pkg
-    nameAndVersion PkgInfo { infoId =
-        PackageIdentifier { pkgName = name, pkgVersion = version }
-      } = (map Char.toLower name, name, version)
+    showInfo pkg = showPackageId (package (packageDescription pkg)) 
+                   ++ "\n" ++ synopsis (packageDescription pkg)
+    nameAndVersion p = (map Char.toLower name, name, version)
+        where name = pkgName (package (packageDescription p))
+              version = pkgVersion (package (packageDescription p))
+    samePackage a b = nameAndVersion a == nameAndVersion b
 
 doList :: PkgInfo -> IO ()
 doList info = do
-    putStr . (if null syn then id else padTo 25) . showPackageId . infoId $ info
+    putStr . (if null syn then id else padTo 25) . showPackageId . package . packageDescription $ info
     putStrLn syn
     where
-    syn = infoSynopsis info
+    syn = synopsis $ packageDescription info
     padTo n s = s ++ (replicate (n - length s) ' ')
