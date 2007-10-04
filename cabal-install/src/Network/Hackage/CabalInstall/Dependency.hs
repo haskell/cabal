@@ -47,21 +47,12 @@ import Text.Printf (printf)
 flattenDepList :: [PackageIdentifier] -- ^List of installed packages.
                -> [ResolvedPackage] -- ^List of resolved packages.
                -> [ResolvedPackage]
-flattenDepList ps deps
-    = nub $ worker deps
-    where isBeingInstalled dep
-              = not . null $ flip mapMaybe deps $ \rpkg -> do (pkg,_,_) <- resolvedData rpkg
-                                                              guard (fulfillDependency dep pkg)
-          worker [] = []
-          worker (pkgInfo:xs)
-              = case getLatestPkg ps (fulfilling pkgInfo) of
-                  Just _pkg -> worker xs
-                  Nothing
-                      -> case resolvedData pkgInfo of
-                           Just (_pkg,_location,subDeps)
-                               -> worker (filter (not.isBeingInstalled.fulfilling) subDeps) ++ pkgInfo:worker xs
-                           Nothing
-                               -> pkgInfo:worker xs
+flattenDepList ps
+    = nub . filter (not . isInstalled ps . fulfilling) . concatMap flatten
+    where flatten pkgInfo = subs ++ [pkgInfo]
+              where subs = case resolvedData pkgInfo of
+                             Just (_,_,subDeps) -> concatMap flatten subDeps
+                             Nothing            -> []
 
 -- |Flattens a dependency list while only keeping the dependencies of the packages.
 --  This is used for installing all the dependencies of a package but not the package itself.
