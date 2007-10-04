@@ -15,6 +15,8 @@ module Network.Hackage.CabalInstall.Dependency
     -- * Dependency resolution
       resolveDependencies
     , resolveDependenciesAux 
+    -- * Installed packages
+    , listInstalledPackages
     -- * Utilities
     , depToUnresolvedDep
     , getPackages            -- :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
@@ -26,6 +28,8 @@ module Network.Hackage.CabalInstall.Dependency
 import Distribution.Version (Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.ParseUtils (showDependency)
+import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Compiler  (PackageDB(..))
 
 import Data.List (nub, maximumBy)
 import Data.Maybe (mapMaybe)
@@ -193,3 +197,13 @@ resolveDependencies :: ConfigFlags
                     -> IO [ResolvedPackage]
 resolveDependencies cfg ps deps
     = fmap (flattenDepList ps) (resolveDependenciesAux cfg ps deps)
+
+
+listInstalledPackages :: ConfigFlags -> IO [PackageIdentifier]
+listInstalledPackages cfg =
+    do Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) (configCompiler cfg)
+                         (if configUserIns cfg then UserPackageDB
+                                               else GlobalPackageDB)
+                         (configPrograms cfg)
+       return ipkgs
