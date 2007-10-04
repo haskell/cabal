@@ -12,14 +12,14 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.BuildDep where
 
-import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps, depToUnresolvedDep, resolveDependenciesAux)
+import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps
+                                               , listInstalledPackages
+                                               , depToUnresolvedDep, resolveDependenciesAux)
 import Network.Hackage.CabalInstall.Install (install, installPkg)
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency)
 
 import Distribution.PackageDescription (readPackageDescription, buildDepends,
                                         GenericPackageDescription(..))
-import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Simple.Compiler  (PackageDB(..))
 
 {-|
   This function behaves exactly like 'Network.Hackage.CabalInstall.Install.install' except
@@ -27,11 +27,7 @@ import Distribution.Simple.Compiler  (PackageDB(..))
 -}
 buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 buildDep cfg globalArgs deps
-    = do Just ipkgs <- getInstalledPackages
-                         (configVerbose cfg) (configCompiler cfg)
-                         (if configUserIns cfg then UserPackageDB
-                                               else GlobalPackageDB)
-                         (configPrograms cfg)
+    = do ipkgs <- listInstalledPackages cfg
          apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs)
 	                                 (resolveDependenciesAux cfg ipkgs deps))
          mapM_ (installPkg cfg globalArgs) apkgs
