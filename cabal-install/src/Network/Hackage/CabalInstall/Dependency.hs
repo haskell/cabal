@@ -139,6 +139,13 @@ fulfillDependency :: Dependency -> PackageIdentifier -> Bool
 fulfillDependency (Dependency depName vrange) pkg
     = pkgName pkg == depName && pkgVersion pkg `withinRange` vrange
 
+-- | Checks whether there is an installed package that satisfies the
+--   given dependency.
+isInstalled :: [PackageIdentifier] -- ^Installed packages.
+            -> Dependency -> Bool
+isInstalled ps dep = any (fulfillDependency dep) ps
+
+
 getDependency :: [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
 getDependency ps (UnresolvedDependency { dependency=dep, depOptions=opts})
@@ -180,10 +187,9 @@ resolveDependenciesAux :: ConfigFlags
                        -> IO [ResolvedPackage]
 resolveDependenciesAux cfg ps deps
     = do knownPkgs <- getKnownPackages cfg
-         let resolved = map (resolve knownPkgs) (filter isNotInstalled deps)
+         let resolved = map (resolve knownPkgs) (filter (not . isInstalled ps . dependency) deps)
          return resolved
-    where isNotInstalled pkgDep = not (or (map (fulfillDependency (dependency pkgDep)) ps))
-          resolve pkgs dep
+    where resolve pkgs dep
               = let rDep = getDependency pkgs dep
                 in case resolvedData rDep of
                     Nothing -> resolvedDepToResolvedPkg (dependency dep,Nothing)
