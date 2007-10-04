@@ -244,7 +244,8 @@ instance Monoid PDTagged where
 
 finalizePackageDescription 
   :: [(String,Bool)]  -- ^ Explicitly specified flag assignments
-  -> Maybe [PackageIdentifier] -- ^ Available dependencies
+  -> Maybe [PackageIdentifier] -- ^ Available dependencies. Pass 'Nothing' if this
+                               -- is unknown.
   -> String -- ^ OS-name
   -> String -- ^ Arch-name
   -> (String, Version) -- ^ Compiler + Version
