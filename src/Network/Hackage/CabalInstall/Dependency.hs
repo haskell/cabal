@@ -111,15 +111,14 @@ resolvedDepToResolvedPkg (dep,rDep)
                             , map resolvedDepToResolvedPkg subDeps )
 
 
--- |Locates a @PackageIdentifier@ which satisfies a given @Dependency@.
+-- |Locates a @PkgInfo@ which satisfies a given @Dependency@.
 --  Fails with "cannot satisfy dependency: %s." where %s == the given dependency.
-getLatestPkg :: (Monad m) => [PackageIdentifier] -> Dependency -> m PackageIdentifier
+getLatestPkg :: (Monad m) => [PkgInfo] -> Dependency -> m PkgInfo
 getLatestPkg ps dep
-    = case filter (fulfillDependency dep) ps of
+    = case filter (fulfillDependency dep . infoId) ps of
         [] -> fail $ printf "cannot satisfy dependency: %s." (show (showDependency dep))
-        qs -> let pkg = maximumBy versions qs
-                  versions a b = pkgVersion a `compare` pkgVersion b
-              in return pkg
+        qs -> return $ maximumBy compareVersions qs
+  where compareVersions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
 
 -- |Evaluates to @True@ if the given @Dependency@ is satisfied by the given @PackageIdentifer@.
 fulfillDependency :: Dependency -> PackageIdentifier -> Bool
@@ -137,16 +136,11 @@ getDependency :: [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
 getDependency ps (UnresolvedDependency { dependency=dep, depOptions=opts})
     = ResolvedPackage { fulfilling = dep
-                      , resolvedData = d
+                      , resolvedData = fmap pkgData (getLatestPkg ps dep)
                       , pkgOptions = opts }
-    where d = case filter (fulfillDependency dep . infoId) ps of
-                [] -> Nothing
-                qs -> let p = maximumBy compareVersions qs
-                       in Just (infoId p
-                               , infoURL p
-                               , map (getDependency ps . depToUnresolvedDep) (infoDeps p))
-          compareVersions a b = pkgVersion (infoId a) `compare` pkgVersion (infoId b)
-
+    where pkgData p = (infoId p
+                      , infoURL p
+                      , map (getDependency ps . depToUnresolvedDep) (infoDeps p))
 
 -- |Get the PackageIdentifier, build options and location from a list of resolved packages.
 --  Throws an exception if a package couldn't be resolved.
