@@ -15,18 +15,15 @@ module Network.Hackage.CabalInstall.Types where
 import Distribution.Simple.Compiler (CompilerFlavor(..),Compiler)
 import Distribution.Simple.Program  (ProgramConfiguration)
 import Distribution.Package (PackageIdentifier)
+import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
 
 import System.IO (Handle)
 
-data PkgInfo = PkgInfo
-    { infoId        :: PackageIdentifier
-    , infoDeps      :: [Dependency]
-    , infoSynopsis  :: String
-    , infoURL       :: String
-    }
-    deriving (Show, Read, Eq)
+-- | We re-use @GenericPackageDescription@ and use the @package-url@
+-- field to store the tarball URL.
+type PkgInfo = GenericPackageDescription
 
 data Action
     = FetchCmd
