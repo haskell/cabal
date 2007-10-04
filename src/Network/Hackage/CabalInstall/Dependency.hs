@@ -49,24 +49,20 @@ flattenDepList :: [PackageIdentifier] -- ^List of installed packages.
                -> [ResolvedPackage]
 flattenDepList ps
     = nub . filter (not . isInstalled ps . fulfilling) . concatMap flatten
-    where flatten pkgInfo = subs ++ [pkgInfo]
-              where subs = case resolvedData pkgInfo of
-                             Just (_,_,subDeps) -> concatMap flatten subDeps
-                             Nothing            -> []
+    where flatten pkgInfo = getBuildDeps ps [pkgInfo] ++ [pkgInfo]
 
--- |Flattens a dependency list while only keeping the dependencies of the packages.
---  This is used for installing all the dependencies of a package but not the package itself.
+-- | Flattens a dependency list, keeping only the transitive closure of the 
+--   dependencies of the top-level packages.
+--   This is used for installing all the dependencies of set of packages but not the packages
+--   themselves. Filters out installed packages and duplicates.
 getBuildDeps :: [PackageIdentifier] -> [ResolvedPackage]
              -> [ResolvedPackage]
-getBuildDeps ps deps
-    = nub $ concatMap worker deps
-    where worker pkgInfo
-              = case getLatestPkg ps (fulfilling pkgInfo) of
-                  Just _pkg -> []
-                  Nothing -> case resolvedData pkgInfo of
-                               Just (_pkg,_location,subDeps)
-                                        -> flattenDepList ps subDeps
-                               Nothing -> []
+getBuildDeps ps
+    = nub . filter (not . isInstalled ps . fulfilling) . concatMap flattenDeps
+    where flattenDeps pkgInfo 
+              = case resolvedData pkgInfo of
+                  Just (_,_,subDeps) -> flattenDepList ps subDeps
+                  Nothing            -> []
 
 {-
 getReverseDeps :: [PackageIdentifier] -- All installed packages.
