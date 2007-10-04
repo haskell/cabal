@@ -44,11 +44,7 @@ update cfg =
                   cabalFiles = [ packageDir </> path
                                | path <- contents
                                , ".cabal" == takeExtension path ]
-	      --TODO: we can't just take the packageDescription out of the
-	      -- GenericPackageDescription since the build-depends is empty
-	      -- we should store the whole GenericPackageDescription and
-	      -- resolve the configuration later when we build.
-	      mapM (liftM (parsePkg server . packageDescription)
+	      mapM (liftM (mkPkgInfo server)
 	            . readPackageDescription (lessVerbose (configVerbose cfg)))
 		   cabalFiles
        when (isVerbose cfg) $ printf "Processed %d package descriptions\n" (length packages)
@@ -57,13 +53,10 @@ update cfg =
           output = configOutputGen cfg
           tarPath = configTarPath cfg
 
-parsePkg :: String -> PackageDescription -> PkgInfo
-parsePkg server description =
-    PkgInfo { infoId       = package description
-            , infoDeps     = buildDepends description
-            , infoSynopsis = synopsis description
-            , infoURL      = pkgURL (package description) server
-            }
+mkPkgInfo :: String -> GenericPackageDescription -> PkgInfo
+mkPkgInfo server desc
+    = desc { packageDescription = (packageDescription desc) { pkgUrl = url } }
+  where url = pkgURL (package (packageDescription desc)) server
 
 -- | Generate the URL of the tarball for a given package.
 pkgURL :: PackageIdentifier -> String -> String
