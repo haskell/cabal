@@ -216,21 +216,18 @@ instance Show GenericPackageDescription where
     show (GenericPackageDescription pkg flgs mlib exes) =
         showPackageDescription pkg ++ "\n" ++
         (render $ vcat $ map ppFlag flgs) ++ "\n" ++
-        render (maybe empty (\l -> text "Library:" $+$ 
-                                   nest 2 (ppCondTree l showDeps)) mlib)
+        render (maybe empty (\l -> showStanza "Library" (ppCondTree l showDeps)) mlib)
         ++ "\n" ++
         (render $ vcat $ 
-            map (\(n,ct) -> (text ("Executable: " ++ n) $+$ 
-                             nest 2 (ppCondTree ct showDeps))) exes)
+            map (\(n,ct) -> showStanza ("Executable " ++ n) (ppCondTree ct showDeps)) exes)
       where
         ppFlag (MkFlag name desc dflt) =
-            (text ("Flag: " ++ name) <> colon) $+$ 
-            nest 2 
+            showStanza ("Flag " ++ name)
               ((if (null desc) then empty else 
                    text ("Description: " ++ desc)) $+$
               text ("Default: " ++ show dflt))
         showDeps = fsep . punctuate comma . map showDependency
-         
+        showStanza h b = text h <+> lbrace $+$ nest 2 b $+$ rbrace
 
 data PDTagged = Lib Library | Exe String Executable | PDNull
 
