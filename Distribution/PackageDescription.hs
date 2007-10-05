@@ -49,6 +49,7 @@ module Distribution.PackageDescription (
         emptyPackageDescription,
         readPackageDescription,
         writePackageDescription,
+        parseDescription,
         showPackageDescription,
         BuildType(..),
 
