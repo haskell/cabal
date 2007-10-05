@@ -13,7 +13,7 @@ Build-type: Simple
 -- For GHC <6.6, remove regex-compat
 Build-depends: base, mtl, network, regex-compat,
                filepath >= 1.0,
-               Cabal>=1.2.0,
+               Cabal>=1.3,
                HTTP >= 3000.0 && < 3000.1
 data-files: serv.list
 Extra-Source-Files: copyright README
