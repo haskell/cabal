@@ -246,7 +246,7 @@ instance (Show v, Show c) => Show (CondTree v c a) where
 
 ppCondTree :: Show v => CondTree v c a -> (c -> Doc) -> Doc
 ppCondTree (CondNode _dat cs ifs) ppD =
-    (text "depends: " <+>
+    (text "build-depends: " <+>
       ppD cs)
     $+$
     (vcat $ map ppIf ifs)
