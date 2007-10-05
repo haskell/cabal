@@ -33,8 +33,8 @@ import Data.Version
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..), Repo(..))
+import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -95,16 +95,17 @@ downloadPackage cfg pkg url
            Nothing -> return path
     where path = packageFile cfg pkg
 
--- Downloads an index file to [config-dir/packages/serv-id
-downloadIndex :: ConfigFlags -> String -> IO String
-downloadIndex cfg serv
-    = do createDirectoryIfMissing True (packagesDirectory cfg)
+-- Downloads an index file to [config-dir/packages/serv-id].
+downloadIndex :: ConfigFlags -> Repo -> IO FilePath
+downloadIndex cfg repo
+    = do let url = repoURL repo ++ "/" ++ "00-index.tar.gz"
+             dir = repoCacheDir cfg repo
+             path = dir </> "00-index" <.> "tar.gz"
+         createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
            Just err -> fail $ printf "Failed to download index '%s'" (show err)
            Nothing  -> return path
-    where url = serv ++ "/" ++ "00-index.tar.gz"
-          path = packagesDirectory cfg </> "00-index" <.> "tar.gz"
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.

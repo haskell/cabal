@@ -39,7 +39,6 @@ emptyTempFlags = TempFlags {
         tempPkgListDir  = Nothing,
         tempHcPkg       = Nothing,
         tempPrefix      = Nothing,
-        tempServers     = [],
         tempRunHc       = Nothing,
         tempTarPath     = Nothing,
         tempVerbose     = normal,
@@ -62,8 +61,6 @@ globalOptions =
     , Option "g" ["ghc"] (NoArg (\t -> t { tempHcFlavor = Just GHC }))  "compile with GHC"
     , Option "n" ["nhc"] (NoArg (\t -> t { tempHcFlavor = Just NHC }))  "compile with NHC"
     , Option "" ["hugs"] (NoArg (\t -> t { tempHcFlavor = Just Hugs })) "compile with hugs"
-    , Option "s" ["with-server"] (ReqArg (\url t -> t { tempServers = url:tempServers t }) "URL")
-                 "give the URL to a Hackage server"
     , Option "c" ["config-dir"] (ReqArg (\path t -> t { tempConfDir = Just path }) "PATH")
                  ("override the path to the config dir.")
     , Option "" ["cache-dir"] (ReqArg (\path t -> t { tempCacheDir = Just path }) "PATH")

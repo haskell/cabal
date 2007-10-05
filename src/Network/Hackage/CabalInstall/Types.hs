@@ -44,7 +44,6 @@ data TempFlags = TempFlags {
         tempPkgListDir  :: Maybe FilePath,
         tempHcPkg       :: Maybe FilePath, -- ^given hc-pkg location
         tempPrefix      :: Maybe FilePath,
-        tempServers     :: [String],       -- ^Available Hackage servers.
         tempTarPath     :: Maybe FilePath,
         tempRunHc       :: Maybe FilePath,
         tempVerbose     :: Verbosity,            -- ^verbosity level
@@ -60,7 +59,7 @@ data ConfigFlags = ConfigFlags {
         configCacheDir    :: FilePath,
         configPkgListDir  :: FilePath,
         configPrefix      :: Maybe FilePath,
-        configServers     :: [String],       -- ^Available Hackage servers.
+        configServers     :: [Repo],       -- ^Available Hackage servers.
         configTarPath     :: FilePath,
         configRunHc       :: FilePath,
         configOutputGen   :: OutputGen,
@@ -68,6 +67,11 @@ data ConfigFlags = ConfigFlags {
 --        configUpgradeDeps :: Bool,
         configUserIns     :: Bool            -- ^--user-install flag
    }
+
+data Repo = Repo {
+                  repoName :: String,
+                  repoURL :: String
+                 }
 
 data OutputGen
     = OutputGen

@@ -12,19 +12,21 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Config
     ( packagesDirectory
+    , repoCacheDir
     , getDefaultConfigDir
     , getLocalConfigDir
     , getLocalCacheDir
     , getLocalPkgListDir
     , getKnownServers
     , getKnownPackages
-    , writeKnownPackages
     , selectValidConfigDir
     ) where
 
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
+import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (mapMaybe)
 import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
 	                    ,getTemporaryDirectory)
@@ -36,10 +38,11 @@ import Distribution.Package (PackageIdentifier)
 import Distribution.PackageDescription (parseDescription, ParseResult(..))
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeExtension)
 import System.Directory
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo (..))
+import Network.Hackage.CabalInstall.Tar (readTarArchive)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo (..), Repo(..))
 
 import Paths_cabal_install (getDataDir)
 
@@ -77,51 +80,43 @@ servList cfg = configConfDir cfg </> servListFile
 packagesDirectory :: ConfigFlags -> FilePath
 packagesDirectory cfg = configCacheDir cfg </> packagesDirectoryName
 
--- | Full path to the package list file
-pkgList :: ConfigFlags -> FilePath
-pkgList cfg = configPkgListDir cfg </> pkgListFile
+-- | Full path to the local cache directory for a repository.
+repoCacheDir :: ConfigFlags -> Repo -> FilePath
+repoCacheDir cfg repo = packagesDirectory cfg </> repoName repo
 
-
--- |Read the list of known packages from the pkg.list file.
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
-    = fmap readKnownPackages (readFile (pkgList cfg))
-        `catch` (\e
+    = fmap concat $ mapM (readRepoIndex cfg) $ configServers cfg
+
+readRepoIndex :: ConfigFlags -> Repo -> IO [PkgInfo]
+readRepoIndex cfg repo =
+    do let indexFile = repoCacheDir cfg repo </> "00-index.tar"
+       fmap parseRepoIndex (BS.readFile indexFile)
+          `catch` (\e
                  -> do hPutStrLn stderr ("Warning: Problem opening package list '"
-                                          ++ pkgList cfg
-                                          ++ "'."
-                                        )
+                                          ++ indexFile ++ "'.")
                        case e of
                          IOException ioe | isDoesNotExistError ioe ->
                            hPutStrLn stderr "File doesn't exist. Run 'cabal-install update' to create the package list."
                          _ -> hPutStrLn stderr ("Error: " ++ (show e))
                        return [])
-  where 
 
--- |Write the list of known packages to the pkg.list file.
-writeKnownPackages :: ConfigFlags -> [PkgInfo] -> IO ()
-writeKnownPackages cfg pkgs
-    = do message (configOutputGen cfg) verbose $
-           "creating package file " ++ pkgList cfg
-         createDirectoryIfMissing True (configPkgListDir cfg)
-         writeFile (pkgList cfg) (showKnownPackages pkgs)
+parseRepoIndex :: ByteString -> [PkgInfo]
+parseRepoIndex s =
+    do (name, content) <- readTarArchive s
+       if takeExtension name == ".cabal"
+         then case parseDescription (BS.unpack content) of
+                    ParseOk _ descr -> return descr
+                    _               -> error $ "Couldn't read cabal file " ++ show name
+         else fail "Not a .cabal file"
 
--- FIXME: hacky format
-showKnownPackages :: [PkgInfo] -> String
-showKnownPackages = show . map show
-
--- FIXME: hacky format
--- FIXME: report errors
-readKnownPackages :: String -> [PkgInfo]
-readKnownPackages = mapMaybe readDesc . read
-  where readDesc s = case parseDescription s of
-                       ParseOk _ d -> Just d
-                       ParseFailed e -> Nothing
-
-getKnownServers :: ConfigFlags -> IO [String]
+getKnownServers :: ConfigFlags -> IO [Repo]
 getKnownServers cfg
-    = fmap read (readFile (servList cfg))
+    = fmap readRepos (readFile (servList cfg))
       `mplus` return []
+
+readRepos :: String -> [Repo]
+readRepos = map (\ (n,u) -> Repo { repoName = n, repoURL = u }) . read
 
 -- |Confirms validity of a config directory by checking the permissions for the package-list file,
 --  server-list file and downloaded packages directory.
