@@ -28,7 +28,6 @@ import Codec.Compression.GZip(decompress)
 import Control.Monad (liftM, when)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
-import Data.List (intersperse, isSuffixOf)
 import Data.Version (showVersion)
 
 import Text.Printf
@@ -44,9 +43,3 @@ updateRepo cfg repo =
     do gettingPkgList (configOutputGen cfg) (repoURL repo)
        indexPath <- downloadIndex cfg repo
        BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . decompress
-
--- | Generate the URL of the tarball for a given package.
-pkgURL :: PackageIdentifier -> Repo -> String
-pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
-                           ++ ".tar.gz"
-                      where joinWith tok = concat . intersperse tok

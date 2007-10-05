@@ -27,6 +27,7 @@ import Control.Exception (catch, Exception(IOException))
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
+import Data.List (intersperse)
 import Data.Maybe (mapMaybe)
 import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
 	                    ,getTemporaryDirectory)
@@ -34,9 +35,11 @@ import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe
 
-import Distribution.Package (PackageIdentifier)
-import Distribution.PackageDescription (parseDescription, ParseResult(..))
-import Distribution.Version (Dependency)
+import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.PackageDescription (GenericPackageDescription(..)
+                                       , PackageDescription(..)
+                                       , parseDescription, ParseResult(..))
+import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity
 import System.FilePath ((</>), takeExtension)
 import System.Directory
@@ -91,7 +94,7 @@ getKnownPackages cfg
 readRepoIndex :: ConfigFlags -> Repo -> IO [PkgInfo]
 readRepoIndex cfg repo =
     do let indexFile = repoCacheDir cfg repo </> "00-index.tar"
-       fmap parseRepoIndex (BS.readFile indexFile)
+       fmap (parseRepoIndex repo) (BS.readFile indexFile)
           `catch` (\e
                  -> do hPutStrLn stderr ("Warning: Problem opening package list '"
                                           ++ indexFile ++ "'.")
@@ -101,14 +104,26 @@ readRepoIndex cfg repo =
                          _ -> hPutStrLn stderr ("Error: " ++ (show e))
                        return [])
 
-parseRepoIndex :: ByteString -> [PkgInfo]
-parseRepoIndex s =
+parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
+parseRepoIndex repo s =
     do (name, content) <- readTarArchive s
        if takeExtension name == ".cabal"
          then case parseDescription (BS.unpack content) of
-                    ParseOk _ descr -> return descr
+                    ParseOk _ descr -> return $ mkPkgInfo repo descr
                     _               -> error $ "Couldn't read cabal file " ++ show name
          else fail "Not a .cabal file"
+
+mkPkgInfo :: Repo -> GenericPackageDescription -> PkgInfo
+mkPkgInfo repo desc 
+    = desc { packageDescription = (packageDescription desc) { pkgUrl = url } }
+  where url = pkgURL (package (packageDescription desc)) repo
+
+-- | Generate the URL of the tarball for a given package.
+pkgURL :: PackageIdentifier -> Repo -> String
+pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
+                           ++ ".tar.gz"
+                      where joinWith tok = concat . intersperse tok
+
 
 getKnownServers :: ConfigFlags -> IO [Repo]
 getKnownServers cfg
