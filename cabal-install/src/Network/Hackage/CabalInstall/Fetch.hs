@@ -88,12 +88,15 @@ downloadFile path url
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
 downloadPackage cfg pkg url
-    = do message (configOutputGen cfg) verbose $ "GET " ++ show url
+    = do let dir = packageDir cfg pkg
+             path = packageFile cfg pkg
+         message (configOutputGen cfg) verbose $ "GET " ++ show url
+         createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
-    where path = packageFile cfg pkg
+    where 
 
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: ConfigFlags -> Repo -> IO FilePath
@@ -110,11 +113,16 @@ downloadIndex cfg repo
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.
 packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
-packageFile cfg pkg = packagesDirectory cfg 
-                      </> pkgName pkg
-                      </> showVersion (pkgVersion pkg)
+packageFile cfg pkg = packageDir cfg pkg
                       </> showPackageId pkg 
                       <.> "tar.gz"
+
+-- |Generate the full path to the directory where the local cached copy of
+-- the tarball for a given @PackageIdentifer@ is stored.
+packageDir :: ConfigFlags -> PackageIdentifier -> FilePath
+packageDir cfg pkg = packagesDirectory cfg 
+                      </> pkgName pkg
+                      </> showVersion (pkgVersion pkg)
 
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: ConfigFlags -> PackageIdentifier -> IO Bool
