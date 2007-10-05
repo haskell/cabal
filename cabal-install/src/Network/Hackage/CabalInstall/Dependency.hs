@@ -36,7 +36,8 @@ import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler  (PackageDB(..), showCompilerId, compilerVersion)
 
-import Data.List (nub, maximumBy)
+import Data.Char (toLower)
+import Data.List (nub, maximumBy, isPrefixOf)
 import Data.Maybe (mapMaybe)
 import Control.Monad (guard)
 import qualified System.Info (arch,os)
@@ -150,7 +151,18 @@ getDependency cfg installed available (UnresolvedDependency { dependency=dep, de
     where pkgData p = ( package p'
                       , pkgUrl p'
                       , map (getDependency cfg installed available . depToUnresolvedDep) (buildDepends p'))
-             where p' = finalizePackage cfg installed available p
+             where p' = finalizePackage cfg installed available (configurationsFlags opts) p
+
+configurationsFlags :: [String] -> [(String, Bool)]
+configurationsFlags opts = 
+    case filter ("--flags=" `isPrefixOf`) opts of
+      [] -> []
+      xs -> flagList $ removeQuotes $ drop 8 $ last xs
+  where removeQuotes ('"':s) = take (length s - 1) s
+        removeQuotes s = s
+        flagList = map tagWithValue . words
+            where tagWithValue ('-':name) = (map toLower name, False)
+                  tagWithValue name       = (map toLower name, True)
 
 -- |Get the PackageIdentifier, build options and location from a list of resolved packages.
 --  Throws an exception if a package couldn't be resolved.
@@ -172,15 +184,16 @@ filterFetchables = mapMaybe worker
 finalizePackage :: ConfigFlags 
                 -> [PackageIdentifier] -- ^ All installed packages
                 -> [GenericPackageDescription] -- ^  All available packages
+                -> [(String,Bool)] -- ^ Configurations flags
                 -> GenericPackageDescription
                 -> PackageDescription
-finalizePackage cfg installed available desc
+finalizePackage cfg installed available flags desc
     = case e of
         Left missing -> error $ "Can't resolve dependencies: " ++ show missing
         Right (d,flags) -> d
   where 
     e = finalizePackageDescription 
-          [] 
+          flags
           (Just $ nub $ installed ++ map (package . packageDescription) available) 
           System.Info.os
           System.Info.arch
