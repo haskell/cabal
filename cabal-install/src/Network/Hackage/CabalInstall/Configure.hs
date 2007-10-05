@@ -146,7 +146,7 @@ mkConfigFlags cfg
                       , configUserIns     = userIns
                       }
          knownServers <- getKnownServers config
-         return (config{ configServers = knownServers ++ tempServers cfg})
+         return (config{ configServers = knownServers})
 
 runhaskellProgram :: Program
 runhaskellProgram = simpleProgram "runhaskell"
