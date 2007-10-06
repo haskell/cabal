@@ -40,7 +40,7 @@ import System.IO.Unsafe
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (GenericPackageDescription(..)
                                        , PackageDescription(..)
-                                       , parseDescription, ParseResult(..))
+                                       , parsePackageDescription, ParseResult(..))
 import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity
 import System.FilePath ((</>), takeExtension, (<.>))
@@ -124,7 +124,7 @@ parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =
     do (name, content) <- readTarArchive s
        if takeExtension name == ".cabal"
-         then case parseDescription (BS.unpack content) of
+         then case parsePackageDescription (BS.unpack content) of
                     ParseOk _ descr -> return $ PkgInfo { 
                                                          pkgRepo = repo,
                                                          pkgDesc = descr
