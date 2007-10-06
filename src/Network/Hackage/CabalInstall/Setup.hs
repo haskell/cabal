@@ -48,21 +48,21 @@ globalOptions =
     , Option "" ["prefix"] (reqDirArg OptPrefix)
                  "Bake this prefix in preparation of installation"
     , Option "" ["bindir"] (reqDirArg OptBinDir)
-		"Installation directory for executables"
+                "Installation directory for executables"
     , Option "" ["libdir"] (reqDirArg OptLibDir)
-		"Installation directory for libraries"
+                "Installation directory for libraries"
     , Option "" ["libsubdir"] (reqDirArg OptLibSubDir)
-		"Subdirectory of libdir in which libs are installed"
+                "Subdirectory of libdir in which libs are installed"
     , Option "" ["libexecdir"] (reqDirArg OptLibExecDir)
-		"Installation directory for program executables"
+                "Installation directory for program executables"
     , Option "" ["datadir"] (reqDirArg OptDataDir)
-		"Installation directory for read-only data"
+                "Installation directory for read-only data"
     , Option "" ["datasubdir"] (reqDirArg OptDataSubDir)
                  "Subdirectory of datadir in which data files are installed"
     , Option "" ["docdir"] (reqDirArg OptDocDir)
-		 "Installation directory for documentation"
+                 "Installation directory for documentation"
     , Option "" ["htmldir"] (reqDirArg OptHtmlDir)
-		 "Installation directory for HTML documentation"
+                 "Installation directory for HTML documentation"
     , Option "" ["user"] (NoArg (OptUserInstall True))
                  "Upon registration, register this package in the user's local package database"
     , Option "" ["global"] (NoArg (OptUserInstall False))
