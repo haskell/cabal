@@ -25,7 +25,7 @@ module Network.Hackage.CabalInstall.Config
     ) where
 
 import Prelude hiding (catch)
-import Control.Exception (catch, Exception(IOException))
+import Control.Exception (catch, Exception(IOException),evaluate)
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -134,9 +134,12 @@ parseRepoIndex repo s =
 
 getKnownServers :: ConfigFlags -> IO [Repo]
 getKnownServers cfg
-    = fmap readRepos (readFile (servList cfg))
-      `mplus` return []
-
+    = (evaluate =<< fmap readRepos (readFile (servList cfg)))
+      `catch` \e -> case e of
+                         IOException ioe | isDoesNotExistError ioe ->
+                           return defaultServs
+                         _ -> hPutStrLn stderr ("Failed to read server list: " ++ (show e) ++ ". Using hackage.haskell.org.") >> return defaultServs
+          where defaultServs = [ Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive" ]
 readRepos :: String -> [Repo]
 readRepos = map (\ (n,u) -> Repo { repoName = n, repoURL = u }) . read
 
@@ -145,8 +148,8 @@ readRepos = map (\ (n,u) -> Repo { repoName = n, repoURL = u }) . read
 isValidConfigDir :: FilePath -> IO Bool
 isValidConfigDir path
     = do checks <- sequence
-                   [ checkFiles readable [ path
-                                         , path </> servListFile ]]
+                   [ checkFiles readable [ path ]]
+--                                         , path </> servListFile ]]
          return (and checks)
 
 -- |Picks the first valid config directory or throws an exception if none were found.
