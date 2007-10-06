@@ -44,7 +44,6 @@ data TempFlags = TempFlags {
         tempHcPath      :: Maybe FilePath, -- ^given compiler location
         tempConfDir     :: Maybe FilePath,
         tempCacheDir    :: Maybe FilePath,
-        tempPkgListDir  :: Maybe FilePath,
         tempHcPkg       :: Maybe FilePath, -- ^given hc-pkg location
         tempPrefix      :: Maybe FilePath,
         tempTarPath     :: Maybe FilePath,
@@ -60,7 +59,6 @@ data ConfigFlags = ConfigFlags {
 	configPrograms    :: ProgramConfiguration,
         configConfDir     :: FilePath,
         configCacheDir    :: FilePath,
-        configPkgListDir  :: FilePath,
         configPrefix      :: Maybe FilePath,
         configServers     :: [Repo],       -- ^Available Hackage servers.
         configTarPath     :: FilePath,
