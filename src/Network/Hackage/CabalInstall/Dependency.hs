@@ -34,7 +34,8 @@ import Distribution.PackageDescription
     , finalizePackageDescription)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Simple.Compiler  (PackageDB(..), showCompilerId, compilerVersion)
+import Distribution.Simple.Compiler  (PackageDB(..), Compiler, showCompilerId, compilerVersion)
+import Distribution.Simple.Program  (defaultProgramConfiguration)
 
 import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
@@ -42,7 +43,7 @@ import Data.Maybe (mapMaybe)
 import Control.Monad (guard)
 import qualified System.Info (arch,os)
 
-import Network.Hackage.CabalInstall.Config (getKnownPackages)
+import Network.Hackage.CabalInstall.Config (getKnownPackages, findCompiler)
 import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
                                       , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..), Repo(..))
 import Text.Printf (printf)
@@ -140,18 +141,18 @@ isInstalled :: [PackageIdentifier] -- ^Installed packages.
 isInstalled ps dep = any (fulfillDependency dep) ps
 
 
-getDependency :: ConfigFlags 
+getDependency :: Compiler 
               -> [PackageIdentifier]
               -> [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
-getDependency cfg installed available (UnresolvedDependency { dependency=dep, depOptions=opts})
+getDependency comp installed available (UnresolvedDependency { dependency=dep, depOptions=opts})
     = ResolvedPackage { fulfilling = dep
                       , resolvedData = fmap pkgData (getLatestPkg available dep)
                       , pkgOptions = opts }
     where pkgData p = ( package d
                       , pkgRepo p
-                      , map (getDependency cfg installed available . depToUnresolvedDep) (buildDepends d))
-             where d = finalizePackage cfg installed available (configurationsFlags opts) p
+                      , map (getDependency comp installed available . depToUnresolvedDep) (buildDepends d))
+             where d = finalizePackage comp installed available (configurationsFlags opts) p
 
 configurationsFlags :: [String] -> [(String, Bool)]
 configurationsFlags opts = 
@@ -181,13 +182,13 @@ filterFetchables = mapMaybe worker
     where worker dep = do (pkg,repo,_) <- resolvedData dep
                           return (pkg,repo)
 
-finalizePackage :: ConfigFlags 
+finalizePackage :: Compiler 
                 -> [PackageIdentifier] -- ^ All installed packages
                 -> [PkgInfo] -- ^  All available packages
                 -> [(String,Bool)] -- ^ Configurations flags
                 -> PkgInfo
                 -> PackageDescription
-finalizePackage cfg installed available flags desc
+finalizePackage comp installed available flags desc
     = case e of
         Left missing -> error $ "Can't resolve dependencies: " ++ show missing
         Right (d,flags) -> d
@@ -197,7 +198,7 @@ finalizePackage cfg installed available flags desc
           (Just $ nub $ installed ++ map (package . packageDescription . pkgDesc) available) 
           System.Info.os
           System.Info.arch
-          (showCompilerId (configCompiler cfg), compilerVersion (configCompiler cfg))
+          (showCompilerId comp, compilerVersion comp)
           (pkgDesc desc)
 
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
@@ -207,10 +208,11 @@ resolveDependenciesAux :: ConfigFlags
                        -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
                        -> IO [ResolvedPackage]
 resolveDependenciesAux cfg ps deps
-    = do installed <- listInstalledPackages cfg
+    = do (comp,_) <- findCompiler cfg
+         installed <- listInstalledPackages cfg
          knownPkgs <- getKnownPackages cfg
          let resolve dep
-              = let rDep = getDependency cfg installed knownPkgs dep
+              = let rDep = getDependency comp installed knownPkgs dep
                 in case resolvedData rDep of
                     Nothing -> resolvedDepToResolvedPkg (dependency dep,Nothing)
                     _ -> rDep
@@ -228,9 +230,10 @@ resolveDependencies cfg ps deps
 
 listInstalledPackages :: ConfigFlags -> IO [PackageIdentifier]
 listInstalledPackages cfg =
-    do Just ipkgs <- getInstalledPackages
-                         (configVerbose cfg) (configCompiler cfg)
-                         (if configUserIns cfg then UserPackageDB
+    do (comp, conf) <- findCompiler cfg
+       Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) comp
+                         (if configUserInstall cfg then UserPackageDB
                                                else GlobalPackageDB)
-                         (configPrograms cfg)
+                         conf
        return ipkgs

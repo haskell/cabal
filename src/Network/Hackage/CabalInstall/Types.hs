@@ -12,8 +12,8 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Types where
 
-import Distribution.Simple.Compiler (CompilerFlavor(..),Compiler)
-import Distribution.Simple.Program  (ProgramConfiguration)
+import Distribution.Simple.Compiler (CompilerFlavor)
+import Distribution.Simple.InstallDirs (InstallDirTemplates)
 import Distribution.Package (PackageIdentifier)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
@@ -39,32 +39,33 @@ data Action
     | ListCmd
  deriving (Eq)
 
-data TempFlags = TempFlags {
-        tempHcFlavor    :: Maybe CompilerFlavor,
-        tempHcPath      :: Maybe FilePath, -- ^given compiler location
-        tempConfDir     :: Maybe FilePath,
-        tempCacheDir    :: Maybe FilePath,
-        tempHcPkg       :: Maybe FilePath, -- ^given hc-pkg location
-        tempPrefix      :: Maybe FilePath,
-        tempTarPath     :: Maybe FilePath,
-        tempVerbose     :: Verbosity,            -- ^verbosity level
---        tempUpgradeDeps :: Bool,
-        tempUserIns     :: Bool,           -- ^--user-install flag
-        tempHelp        :: Bool
-   }
+data Option = OptCompilerFlavor CompilerFlavor
+            | OptCompiler FilePath
+            | OptHcPkg FilePath
+            | OptConfigFile FilePath
+            | OptCacheDir FilePath
+            | OptPrefix FilePath
+	    | OptBinDir FilePath
+	    | OptLibDir FilePath
+	    | OptLibSubDir FilePath
+	    | OptLibExecDir FilePath
+	    | OptDataDir FilePath
+	    | OptDataSubDir FilePath
+	    | OptDocDir FilePath
+	    | OptHtmlDir FilePath
+            | OptUserInstall Bool
+            | OptHelp
+            | OptVerbose Verbosity
+  deriving (Eq,Show)
 
 data ConfigFlags = ConfigFlags {
-        configCompiler    :: Compiler,
-	configPrograms    :: ProgramConfiguration,
-        configConfDir     :: FilePath,
+        configCompiler    :: CompilerFlavor,
+        configInstallDirs :: InstallDirTemplates,
         configCacheDir    :: FilePath,
-        configPrefix      :: Maybe FilePath,
-        configServers     :: [Repo],       -- ^Available Hackage servers.
-        configTarPath     :: FilePath,
+        configRepos       :: [Repo],       -- ^Available Hackage servers.
         configOutputGen   :: OutputGen,
         configVerbose     :: Verbosity,
---        configUpgradeDeps :: Bool,
-        configUserIns     :: Bool            -- ^--user-install flag
+        configUserInstall :: Bool            -- ^--user-install flag
    }
 
 data Repo = Repo {

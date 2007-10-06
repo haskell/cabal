@@ -33,7 +33,7 @@ import Text.Printf
 
 -- | 'update' downloads the package list from all known servers
 update :: ConfigFlags -> IO ()
-update cfg = mapM_ (updateRepo cfg) (configServers cfg)
+update cfg = mapM_ (updateRepo cfg) (configRepos cfg)
 
 updateRepo :: ConfigFlags 
            -> Repo
