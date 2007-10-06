@@ -21,7 +21,7 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
                                       , TempFlags (..), ResolvedPackage (..))
 import Network.Hackage.CabalInstall.Config
          (getDefaultConfigDir, getLocalConfigDir, getLocalCacheDir,
-          getLocalPkgListDir, getKnownServers, selectValidConfigDir)
+          getKnownServers, selectValidConfigDir)
 import Network.Hackage.CabalInstall.Fetch (pkgURL)
 
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
@@ -121,22 +121,18 @@ mkConfigFlags cfg
          defaultConfigDir <- getDefaultConfigDir
          localConfigDir   <- getLocalConfigDir
          localCacheDir    <- getLocalCacheDir
-         localPkgListDir  <- getLocalPkgListDir
          confDir <- selectValidConfigDir ( maybe id (:) (tempConfDir cfg)
                                            [localConfigDir, defaultConfigDir] )
          let cacheDir   = fromMaybe localCacheDir   (tempCacheDir cfg)
-             pkgListDir = fromMaybe localPkgListDir (tempPkgListDir cfg)
          when (verbosity > normal) $ do
              printf "Using config dir: %s\n" confDir
              printf "Using cache dir: %s\n" cacheDir
-             printf "Using pkglist dir: %s\n" pkgListDir
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
 		      , configPrograms    = conf'''
                       , configConfDir     = confDir
                       , configCacheDir    = cacheDir
-                      , configPkgListDir  = pkgListDir
                       , configPrefix      = prefix
                       , configServers     = []
                       , configTarPath     = programPath tarProg

@@ -36,7 +36,6 @@ emptyTempFlags = TempFlags {
         tempHcPath      = Nothing,
         tempConfDir     = Nothing,
         tempCacheDir    = Nothing,
-        tempPkgListDir  = Nothing,
         tempHcPkg       = Nothing,
         tempPrefix      = Nothing,
         tempRunHc       = Nothing,
@@ -65,8 +64,6 @@ globalOptions =
                  ("override the path to the config dir.")
     , Option "" ["cache-dir"] (ReqArg (\path t -> t { tempCacheDir = Just path }) "PATH")
                  ("override the path to the package cache dir.")
-    , Option "" ["pkglist-dir"] (ReqArg (\path t -> t { tempPkgListDir = Just path }) "PATH")
-                 ("override the path to the package list dir.")
     , Option "" ["tar-path"] (ReqArg (\path t -> t { tempTarPath = Just path }) "PATH")
                  "give the path to tar"
     , Option "w" ["with-compiler"] (ReqArg (\path t -> t { tempHcPath = Just path }) "PATH")
