@@ -21,13 +21,13 @@ import Data.Maybe (fromJust)
 import Debug.Trace
 import Control.Exception (bracket_)
 
-import Network.Hackage.CabalInstall.Config (programConfiguration, findCompiler)
+import Network.Hackage.CabalInstall.Config (programConfiguration, findCompiler, message)
 import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
                                                , listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
 import Network.Hackage.CabalInstall.Tar (extractTarGzFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency(..)
-                                      ,OutputGen(..), Repo(..))
+                                      , Repo(..))
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
@@ -62,7 +62,7 @@ downloadPkg :: ConfigFlags -> PackageIdentifier -> Repo -> IO FilePath
 downloadPkg cfg pkg repo
     = do fetched <- isFetched cfg pkg repo
          if fetched
-            then do pkgIsPresent (configOutputGen cfg) pkg
+            then do printf "'%s' is present.\n" (showPackageId pkg)
                     return (packageFile cfg pkg repo)
             else fetchPackage cfg pkg repo
 
@@ -132,27 +132,25 @@ installPkg cfg comp globalArgs (pkg,ops,repo)
              setup cmd
                  = do let cmdOps = mkPkgOps cfg comp pkg cmd (globalArgs++ops)
                           path = tmpDirPath </> showPackageId pkg
-                      message output deafening $ 
+                      message cfg deafening $ 
                                  unwords ["setupWrapper", show (cmd:cmdOps), show path]
                       setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
-                  (do message output deafening (printf "Extracting %s..." pkgPath)
+                  (do message cfg deafening (printf "Extracting %s..." pkgPath)
                       extractTarGzFile (Just tmpDirPath) pkgPath
                       installUnpackedPkg cfg pkg setup
                       return ())
-    where output = configOutputGen cfg
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier
                    -> (String -> IO ()) -> IO ()
 installUnpackedPkg cfg pkgId setup
-    = do buildingPkg output pkgId
-         stepConfigPkg output pkgId
+    = do printf "Building '%s'\n" (showPackageId pkgId)
+         printf "  Configuring...\n"
          setup "configure"
-         stepBuildPkg output pkgId
+         printf "  Building...\n"
          setup "build"
-         stepInstallPkg output pkgId
+         printf "  Installing...\n"
          setup "install"
-         stepFinishedPkg output pkgId
+         printf "  Done.\n"
          return ()
-    where output = configOutputGen cfg
