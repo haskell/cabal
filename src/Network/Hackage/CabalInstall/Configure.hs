@@ -22,6 +22,7 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
 import Network.Hackage.CabalInstall.Config
          (getDefaultConfigDir, getLocalConfigDir, getLocalCacheDir,
           getLocalPkgListDir, getKnownServers, selectValidConfigDir)
+import Network.Hackage.CabalInstall.Fetch (pkgURL)
 
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.Program
@@ -75,13 +76,13 @@ defaultOutputGen verbosity
                      Nothing  -> printf "    Not available!\n\n"
                      Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
                                     printf "    Installed: Yes\n\n"
-          showPkgInfo mbPath installed ops dep (pkg,location,deps)
+          showPkgInfo mbPath installed ops dep (pkg,repo,deps)
               = do printf "  Package:     '%s'\n" (show $ showDependency dep)
                    printf "    Using:     %s\n" (showPackageId pkg)
                    printf "    Installed: %s\n" (if installed then "Yes" else "No")
                    printf "    Depends:   %s\n" (showDeps deps)
                    printf "    Options:   %s\n" (unwords ops)
-                   printf "    Location:  %s\n" location
+                   printf "    Location:  %s\n" (pkgURL pkg repo)
                    printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
           showDeps = show . map showDep
           showDep dep = show (showDependency (fulfilling dep))

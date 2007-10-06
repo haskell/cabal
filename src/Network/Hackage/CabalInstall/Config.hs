@@ -13,6 +13,8 @@
 module Network.Hackage.CabalInstall.Config
     ( packagesDirectory
     , repoCacheDir
+    , packageFile
+    , packageDir
     , getDefaultConfigDir
     , getLocalConfigDir
     , getLocalCacheDir
@@ -41,7 +43,7 @@ import Distribution.PackageDescription (GenericPackageDescription(..)
                                        , parseDescription, ParseResult(..))
 import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity
-import System.FilePath ((</>), takeExtension)
+import System.FilePath ((</>), takeExtension, (<.>))
 import System.Directory
 
 import Network.Hackage.CabalInstall.Tar (readTarArchive)
@@ -87,6 +89,20 @@ packagesDirectory cfg = configCacheDir cfg </> packagesDirectoryName
 repoCacheDir :: ConfigFlags -> Repo -> FilePath
 repoCacheDir cfg repo = packagesDirectory cfg </> repoName repo
 
+-- |Generate the full path to the locally cached copy of
+-- the tarball for a given @PackageIdentifer@.
+packageFile :: ConfigFlags -> PackageIdentifier -> Repo -> FilePath
+packageFile cfg pkg repo = packageDir cfg pkg repo
+                           </> showPackageId pkg 
+                           <.> "tar.gz"
+
+-- |Generate the full path to the directory where the local cached copy of
+-- the tarball for a given @PackageIdentifer@ is stored.
+packageDir :: ConfigFlags -> PackageIdentifier -> Repo -> FilePath
+packageDir cfg pkg repo = repoCacheDir cfg repo
+                      </> pkgName pkg
+                      </> showVersion (pkgVersion pkg)
+
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
     = fmap concat $ mapM (readRepoIndex cfg) $ configServers cfg
@@ -109,21 +125,12 @@ parseRepoIndex repo s =
     do (name, content) <- readTarArchive s
        if takeExtension name == ".cabal"
          then case parseDescription (BS.unpack content) of
-                    ParseOk _ descr -> return $ mkPkgInfo repo descr
+                    ParseOk _ descr -> return $ PkgInfo { 
+                                                         pkgRepo = repo,
+                                                         pkgDesc = descr
+                                                        }
                     _               -> error $ "Couldn't read cabal file " ++ show name
          else fail "Not a .cabal file"
-
-mkPkgInfo :: Repo -> GenericPackageDescription -> PkgInfo
-mkPkgInfo repo desc 
-    = desc { packageDescription = (packageDescription desc) { pkgUrl = url } }
-  where url = pkgURL (package (packageDescription desc)) repo
-
--- | Generate the URL of the tarball for a given package.
-pkgURL :: PackageIdentifier -> Repo -> String
-pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
-                           ++ ".tar.gz"
-                      where joinWith tok = concat . intersperse tok
-
 
 getKnownServers :: ConfigFlags -> IO [Repo]
 getKnownServers cfg

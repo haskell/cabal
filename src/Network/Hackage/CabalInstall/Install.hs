@@ -24,7 +24,7 @@ import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
                                                , listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency(..)
-                                      ,OutputGen(..))
+                                      ,OutputGen(..), Repo(..))
 import Network.Hackage.CabalInstall.TarUtils
 
 import Distribution.Simple.SetupWrapper (setupWrapper)
@@ -52,13 +52,13 @@ install cfg globalArgs deps
            else mapM_ (installPkg cfg globalArgs) apkgs
 
 -- Fetch a package and output nice messages.
-downloadPkg :: ConfigFlags -> PackageIdentifier -> String -> IO FilePath
-downloadPkg cfg pkg location
-    = do fetched <- isFetched cfg pkg
+downloadPkg :: ConfigFlags -> PackageIdentifier -> Repo -> IO FilePath
+downloadPkg cfg pkg repo
+    = do fetched <- isFetched cfg pkg repo
          if fetched
             then do pkgIsPresent (configOutputGen cfg) pkg
-                    return (packageFile cfg pkg)
-            else fetchPackage cfg pkg location
+                    return (packageFile cfg pkg repo)
+            else fetchPackage cfg pkg repo
 
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
@@ -93,10 +93,10 @@ mkPkgOps cfg cmd ops = verbosity ++
 -} 
 installPkg :: ConfigFlags
            -> [String] -- ^Options which will be parse to every package.
-           -> (PackageIdentifier,[String],String) -- ^(Package, list of configure options, package location)
+           -> (PackageIdentifier,[String],Repo) -- ^(Package, list of configure options, package location)
            -> IO ()
-installPkg cfg globalArgs (pkg,ops,location)
-    = do pkgPath <- downloadPkg cfg pkg location
+installPkg cfg globalArgs (pkg,ops,repo)
+    = do pkgPath <- downloadPkg cfg pkg repo
          tmp <- getTemporaryDirectory
          let tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId pkg)
              tmpPkgPath = tmpDirPath </> printf "TAR%s.tgz" (showPackageId pkg)

@@ -23,7 +23,10 @@ import System.IO (Handle)
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
-type PkgInfo = GenericPackageDescription
+data PkgInfo = PkgInfo {
+                        pkgRepo :: Repo,
+                        pkgDesc :: GenericPackageDescription
+                       }
 
 data Action
     = FetchCmd
@@ -72,6 +75,7 @@ data Repo = Repo {
                   repoName :: String,
                   repoURL :: String
                  }
+          deriving (Show,Eq)
 
 data OutputGen
     = OutputGen
@@ -92,7 +96,7 @@ data OutputGen
                         -> Bool -- is installed
                         -> [String] -- Options
                         -> Dependency -- Which dependency is this package supposed to fill
-                        -> (PackageIdentifier,String,[ResolvedPackage])
+                        -> (PackageIdentifier,Repo,[ResolvedPackage])
                         -> IO ()
       , showOtherPackageInfo :: Maybe PackageIdentifier -- package if installed.
                              -> Dependency
@@ -110,7 +114,7 @@ data ResolvedPackage
     = ResolvedPackage
     { fulfilling :: Dependency
     , resolvedData :: Maybe ( PackageIdentifier -- pkg id
-                            , String            -- pkg location
+                            , Repo            -- pkg location
                             , [ResolvedPackage] -- pkg dependencies
                             )
     , pkgOptions :: [String]
@@ -123,5 +127,5 @@ data UnresolvedDependency
     }
 
 data ResolvedDependency
-    = ResolvedDependency PackageIdentifier String [(Dependency,Maybe ResolvedDependency)]
+    = ResolvedDependency PackageIdentifier Repo [(Dependency,Maybe ResolvedDependency)]
       deriving (Eq,Show)
