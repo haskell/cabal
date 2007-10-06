@@ -108,12 +108,10 @@ localPrefix
 mkConfigFlags :: TempFlags -> IO ConfigFlags
 mkConfigFlags cfg
     = do let verbosity = tempVerbose cfg
-             conf = userMaybeSpecifyPath "runhaskell" (tempRunHc cfg) $
-	            userMaybeSpecifyPath "tar" (tempTarPath cfg) $
+             conf = userMaybeSpecifyPath "tar" (tempTarPath cfg) $
 	            defaultProgramConfiguration
-         (runHc, conf') <- requireProgram verbosity runhaskellProgram AnyVersion conf
-	 (tarProg, conf'') <- requireProgram verbosity tarProgram AnyVersion conf'
-         (comp, conf''') <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) conf'' verbosity
+	 (tarProg, conf') <- requireProgram verbosity tarProgram AnyVersion conf
+         (comp, conf'') <- Configure.configCompiler (tempHcFlavor cfg) (tempHcPath cfg) (tempHcPkg cfg) conf' verbosity
          let userIns = tempUserIns cfg
          prefix <- if userIns
                       then fmap Just (maybe localPrefix return (tempPrefix cfg))
@@ -130,13 +128,12 @@ mkConfigFlags cfg
          outputGen <- defaultOutputGen (tempVerbose cfg)
          let config = ConfigFlags
                       { configCompiler    = comp
-		      , configPrograms    = conf'''
+		      , configPrograms    = conf''
                       , configConfDir     = confDir
                       , configCacheDir    = cacheDir
                       , configPrefix      = prefix
                       , configServers     = []
                       , configTarPath     = programPath tarProg
-                      , configRunHc       = programPath runHc
                       , configOutputGen   = outputGen
                       , configVerbose     = tempVerbose cfg
 --                      , configUpgradeDeps = tempUpgradeDeps cfg
