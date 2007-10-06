@@ -23,13 +23,14 @@ import Control.Exception (bracket_)
 import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
                                                , listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
+import Network.Hackage.CabalInstall.Tar (extractTarGzFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency(..)
                                       ,OutputGen(..), Repo(..))
-import Network.Hackage.CabalInstall.TarUtils
 
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Verbosity
+
 import System.FilePath ((</>), splitFileName)
 
 import Data.Maybe (fromMaybe, maybeToList)
@@ -99,7 +100,6 @@ installPkg cfg globalArgs (pkg,ops,repo)
     = do pkgPath <- downloadPkg cfg pkg repo
          tmp <- getTemporaryDirectory
          let tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId pkg)
-             tmpPkgPath = tmpDirPath </> printf "TAR%s.tgz" (showPackageId pkg)
              setup cmd
                  = let cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
                        path = tmpDirPath </> showPackageId pkg
@@ -108,30 +108,23 @@ installPkg cfg globalArgs (pkg,ops,repo)
                          setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
-                  (do copyFile pkgPath tmpPkgPath
-                      message output deafening (printf "Extracting %s..." tmpPkgPath)
-                      extractTarFile tarProg tmpPkgPath
-                      installUnpackedPkg cfg pkg tmpPkgPath setup
+                  (do message output deafening (printf "Extracting %s..." pkgPath)
+                      extractTarGzFile (Just tmpDirPath) pkgPath
+                      installUnpackedPkg cfg pkg setup
                       return ())
     where tarProg = configTarPath cfg
           output = configOutputGen cfg
 
-installUnpackedPkg :: ConfigFlags -> PackageIdentifier -> FilePath
+installUnpackedPkg :: ConfigFlags -> PackageIdentifier
                    -> (String -> IO ()) -> IO ()
-installUnpackedPkg cfg pkgId tarFile setup
-    = do tarFiles <- tarballGetFiles tarProg tarFile
-         let cabalFile = locateFileExt tarFiles "cabal"
-         case cabalFile of
-           Just f -> let (path,_) = splitFileName f
-                     in do buildingPkg output pkgId
-                           stepConfigPkg output pkgId
-                           setup "configure"
-                           stepBuildPkg output pkgId
-                           setup "build"
-                           stepInstallPkg output pkgId
-                           setup "install"
-                           stepFinishedPkg output pkgId
-                           return ()
-           Nothing -> noCabalFile output pkgId
+installUnpackedPkg cfg pkgId setup
+    = do buildingPkg output pkgId
+         stepConfigPkg output pkgId
+         setup "configure"
+         stepBuildPkg output pkgId
+         setup "build"
+         stepInstallPkg output pkgId
+         setup "install"
+         stepFinishedPkg output pkgId
+         return ()
     where output = configOutputGen cfg
-          tarProg = configTarPath cfg
