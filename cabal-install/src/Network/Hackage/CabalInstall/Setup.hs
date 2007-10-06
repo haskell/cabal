@@ -38,7 +38,6 @@ emptyTempFlags = TempFlags {
         tempCacheDir    = Nothing,
         tempHcPkg       = Nothing,
         tempPrefix      = Nothing,
-        tempRunHc       = Nothing,
         tempTarPath     = Nothing,
         tempVerbose     = normal,
 --        tempUpgradeDeps = False,

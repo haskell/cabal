@@ -113,8 +113,7 @@ installPkg cfg globalArgs (pkg,ops,repo)
                       extractTarFile tarProg tmpPkgPath
                       installUnpackedPkg cfg pkg tmpPkgPath setup
                       return ())
-    where runHc = configRunHc cfg
-          tarProg = configTarPath cfg
+    where tarProg = configTarPath cfg
           output = configOutputGen cfg
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier -> FilePath
