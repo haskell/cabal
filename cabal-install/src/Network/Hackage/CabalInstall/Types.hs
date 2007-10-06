@@ -45,11 +45,11 @@ data Option = OptCompilerFlavor CompilerFlavor
             | OptConfigFile FilePath
             | OptCacheDir FilePath
             | OptPrefix FilePath
-	    | OptBinDir FilePath
-	    | OptLibDir FilePath
-	    | OptLibSubDir FilePath
-	    | OptLibExecDir FilePath
-	    | OptDataDir FilePath
+            | OptBinDir FilePath
+            | OptLibDir FilePath
+            | OptLibSubDir FilePath
+            | OptLibExecDir FilePath
+            | OptDataDir FilePath
 	    | OptDataSubDir FilePath
 	    | OptDocDir FilePath
 	    | OptHtmlDir FilePath
