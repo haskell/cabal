@@ -49,7 +49,7 @@ module Distribution.PackageDescription (
         emptyPackageDescription,
         readPackageDescription,
         writePackageDescription,
-        parseDescription,
+        parsePackageDescription,
         showPackageDescription,
         BuildType(..),
 
@@ -809,10 +809,10 @@ readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 
 -- |Parse the given package file.
 -- readPackageDescription :: Int -> FilePath -> IO PackageDescription
--- readPackageDescription verbosity = readAndParseFile verbosity parseDescription 
+-- readPackageDescription verbosity = readAndParseFile verbosity parsePackageDescription 
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription verbosity =
-    readAndParseFile verbosity parseDescription
+    readAndParseFile verbosity parsePackageDescription
 
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []
@@ -916,8 +916,8 @@ skipField = modify tail
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.  
-parseDescription :: String -> ParseResult GenericPackageDescription
-parseDescription file = do
+parsePackageDescription :: String -> ParseResult GenericPackageDescription
+parsePackageDescription file = do
     let tabs = findIndentTabs file
 
     fields0 <- readFields file `catchParseError` \err ->
@@ -1438,7 +1438,7 @@ compatTestPkgDescAnswer =
 -- Parse an old style package description.  Assumes no flags etc. being used.
 compatParseDescription :: String -> ParseResult PackageDescription
 compatParseDescription descr = do
-    gpd <- parseDescription descr
+    gpd <- parsePackageDescription descr
     case finalizePackageDescription [] Nothing "" "" ("",Version [] []) gpd of
       Left _ -> syntaxError (-1) "finalize failed"
       Right (pd,_) -> return pd
@@ -1569,7 +1569,7 @@ test :: IO Counts
 test = runTestTT (TestList hunitTests)
 ------------------------------------------------------------------------------
 
-test_stanzas' = parseDescription testFile
+test_stanzas' = parsePackageDescription testFile
 --                    ParseOk _ x -> putStrLn $ show x
 --                    _ -> return ()
 
@@ -1625,9 +1625,9 @@ testFile = unlines $
 test_compatParsing = 
     let ParseOk ws (p, pold) = do 
           fs <- readFields testPkgDesc 
-          ppd <- parseDescription' fs
+          ppd <- parsePackageDescription' fs
           let Right (pd,_) = finalizePackageDescription [] (Just pkgs) os arch ppd
-          pdold <- parseDescription testPkgDesc
+          pdold <- parsePackageDescription testPkgDesc
           return (pd, pdold)
     in do putStrLn $ unlines $ map show ws
           putStrLn "==========="
@@ -1645,7 +1645,7 @@ test_compatParsing =
     arch = (MkArchName "amd64")
 -}
 test_finalizePD =
-    case parseDescription testFile of
+    case parsePackageDescription testFile of
       ParseFailed err -> print err
       ParseOk _ ppd -> do
        case finalizePackageDescription [("debug",True)] (Just pkgs) os arch impl ppd of
