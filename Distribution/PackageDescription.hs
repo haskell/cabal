@@ -808,8 +808,6 @@ readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
 
 -- |Parse the given package file.
--- readPackageDescription :: Int -> FilePath -> IO PackageDescription
--- readPackageDescription verbosity = readAndParseFile verbosity parsePackageDescription 
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription verbosity =
     readAndParseFile verbosity parsePackageDescription
