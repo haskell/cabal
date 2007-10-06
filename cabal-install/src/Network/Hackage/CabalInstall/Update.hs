@@ -15,7 +15,6 @@ module Network.Hackage.CabalInstall.Update
     ) where
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo(..), Repo(..))
-import Network.Hackage.CabalInstall.TarUtils (extractTarFile, tarballGetFiles)
 import Network.Hackage.CabalInstall.Utils (isVerbose)
 import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
