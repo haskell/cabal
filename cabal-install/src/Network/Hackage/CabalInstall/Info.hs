@@ -12,15 +12,18 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Info where
 
+import Network.Hackage.CabalInstall.Config (pkgURL)
 import Network.Hackage.CabalInstall.Dependency 
     (resolveDependencies, fulfillDependency, listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), ResolvedPackage(..)
-                                      ,UnresolvedDependency(..), OutputGen(..))
+                                      ,UnresolvedDependency(..))
 
-import Distribution.Package (PackageIdentifier)
+import Distribution.Package (PackageIdentifier, showPackageId)
+import Distribution.ParseUtils (showDependency)
 
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, fromMaybe)
+import Text.Printf (printf)
 
 info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 info cfg globalArgs deps
@@ -36,14 +39,31 @@ info cfg globalArgs deps
 infoPkg :: ConfigFlags -> [PackageIdentifier] -> [String] -> ResolvedPackage -> IO ()
 infoPkg cfg ipkgs _ (ResolvedPackage { fulfilling = dep
                                      , resolvedData = Nothing })
-    = showOtherPackageInfo output installedPkg dep
+    = showOtherPkg installedPkg dep
     where installedPkg = listToMaybe (filter (fulfillDependency dep) ipkgs)
-          output = configOutputGen cfg
 infoPkg cfg ipkgs globalArgs (ResolvedPackage { fulfilling = dep
                                               , pkgOptions = ops
                                               , resolvedData = (Just (pkg,repo,deps)) })
     = do fetched <- isFetched cfg pkg repo
          let pkgFile = if fetched then Just (packageFile cfg pkg repo) else Nothing
-         showPackageInfo output pkgFile isInstalled (globalArgs ++ ops) dep (pkg,repo,deps)
-    where output = configOutputGen cfg
-          isInstalled = pkg `elem` ipkgs
+         showPkgInfo pkgFile isInstalled (globalArgs ++ ops) dep (pkg,repo,deps)
+    where isInstalled = pkg `elem` ipkgs
+
+showPkgInfo mbPath installed ops dep (pkg,repo,deps)
+              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
+                   printf "    Using:     %s\n" (showPackageId pkg)
+                   printf "    Installed: %s\n" (if installed then "Yes" else "No")
+                   printf "    Depends:   %s\n" (showDeps deps)
+                   printf "    Options:   %s\n" (unwords ops)
+                   printf "    Location:  %s\n" (pkgURL pkg repo)
+                   printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
+    where
+          showDeps = show . map showDep
+          showDep dep = show (showDependency (fulfilling dep))
+
+showOtherPkg mbPkg dep
+              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
+                   case mbPkg of
+                     Nothing  -> printf "    Not available!\n\n"
+                     Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
+                                    printf "    Installed: Yes\n\n"

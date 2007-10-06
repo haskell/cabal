@@ -16,7 +16,7 @@ module Network.Hackage.CabalInstall.Config
     , packageFile
     , packageDir
     , getKnownPackages
-
+    , message
     , pkgURL
     , defaultConfigFile
     , loadConfig
@@ -26,6 +26,7 @@ module Network.Hackage.CabalInstall.Config
 
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException),evaluate)
+import Control.Monad (when)
 import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -56,32 +57,8 @@ import System.FilePath ((</>), takeExtension, (<.>))
 import System.Directory
 
 import Network.Hackage.CabalInstall.Tar (readTarArchive, tarFileName)
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo (..), Repo(..))
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
 import Network.Hackage.CabalInstall.Utils
-
-
--- FIXME: remove imports below, only for defaultOutputGen
-
-import Control.Monad (guard, mplus, when)
-
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..)
-                                          , ResolvedPackage (..))
-
-import qualified Distribution.Simple.Configure as Configure (configCompiler)
-import Distribution.Simple.Program
-import Distribution.ParseUtils (showDependency)
-import Distribution.Package (showPackageId)
-import Distribution.Version (VersionRange(..))
-import Distribution.Verbosity
-import System.FilePath ((</>))
-
-import Text.Printf (printf)
-import System.IO (openFile, IOMode (..))
-import System.Directory (doesFileExist, getHomeDirectory, getAppUserDataDirectory)
-import Data.Maybe (fromMaybe)
-
-
-
 
 
 -- |Name of the packages directory.
@@ -139,57 +116,8 @@ parseRepoIndex repo s =
                     _               -> error $ "Couldn't read cabal file " ++ show (tarFileName hdr)
          else fail "Not a .cabal file"
 
-{-|
-  Structure with default responses to various events.
--}
-defaultOutputGen :: Verbosity -> IO OutputGen
-defaultOutputGen verbosity
-    = do (outch,errch) <- do guard (verbosity <= normal)
-                             nullOut <- openFile ("/"</>"dev"</>"null") AppendMode
-                             nullErr <- openFile ("/"</>"dev"</>"null") AppendMode
-                             return (Just nullOut, Just nullErr)
-                         `mplus` return (Nothing,Nothing)
-         return OutputGen
-                { prepareInstall = \_pkgs -> return ()
-                , pkgIsPresent   = printf "'%s' is present.\n" . showPackageId
-                , downloadingPkg = printf "Downloading '%s'...\n" . showPackageId
-                , executingCmd   = \cmd args
-                                 -> when (verbosity > silent) $ printf "Executing: '%s %s'\n" cmd (unwords args)
-                , cmdFailed      = \cmd args errno
-                                 -> error (printf "Command failed: '%s %s'. Errno: %d\n" cmd (unwords args) errno)
-                , buildingPkg    = printf "Building '%s'\n" . showPackageId
-                , stepConfigPkg  = const (printf "  Configuring...\n")
-                , stepBuildPkg   = const (printf "  Building...\n")
-                , stepInstallPkg = const (printf "  Installing...\n")
-                , stepFinishedPkg= const (printf "  Done.\n")
-                , noSetupScript  = const (error "Couldn't find a setup script in the tarball.")
-                , noCabalFile    = const (error "Couldn't find a .cabal file in the tarball")
-                , gettingPkgList = \serv ->
-                                   when (verbosity > silent) (printf "Downloading package list from server '%s'\n" serv)
-                , showPackageInfo = showPkgInfo
-                , showOtherPackageInfo = showOtherPkg
-                , cmdStdout      = outch
-                , cmdStderr      = errch 
-                , message        = \v s -> when (verbosity >= v) (putStrLn s)
-                }
-    where showOtherPkg mbPkg dep
-              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-                   case mbPkg of
-                     Nothing  -> printf "    Not available!\n\n"
-                     Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
-                                    printf "    Installed: Yes\n\n"
-          showPkgInfo mbPath installed ops dep (pkg,repo,deps)
-              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-                   printf "    Using:     %s\n" (showPackageId pkg)
-                   printf "    Installed: %s\n" (if installed then "Yes" else "No")
-                   printf "    Depends:   %s\n" (showDeps deps)
-                   printf "    Options:   %s\n" (unwords ops)
-                   printf "    Location:  %s\n" (pkgURL pkg repo)
-                   printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
-          showDeps = show . map showDep
-          showDep dep = show (showDependency (fulfilling dep))
-
-
+message :: ConfigFlags -> Verbosity -> String -> IO ()
+message cfg v s = when (configVerbose cfg >= v) (putStrLn s)
 
 -- | Generate the URL of the tarball for a given package.
 pkgURL :: PackageIdentifier -> Repo -> String
@@ -234,13 +162,11 @@ defaultConfigFlags :: IO ConfigFlags
 defaultConfigFlags = 
     do installDirs <- defaultInstallDirs defaultCompiler True
        cacheDir    <- defaultCacheDir
-       outputGen <- defaultOutputGen normal -- FIXME: get rid of OutputGen
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
                , configInstallDirs = installDirs
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
-               , configOutputGen   = outputGen
                , configVerbose     = normal
                , configUserInstall = True
                }

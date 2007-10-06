@@ -34,8 +34,8 @@ import Data.Version
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL)
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
+import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL, message)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -92,7 +92,7 @@ downloadPackage cfg pkg repo
     = do let url = pkgURL pkg repo
              dir = packageDir cfg pkg repo
              path = packageFile cfg pkg repo
-         message (configOutputGen cfg) verbose $ "GET " ++ show url
+         message cfg verbose $ "GET " ++ show url
          createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
@@ -121,9 +121,9 @@ fetchPackage :: ConfigFlags -> PackageIdentifier -> Repo -> IO String
 fetchPackage cfg pkg repo
     = do fetched <- isFetched cfg pkg repo
          if fetched
-            then do pkgIsPresent (configOutputGen cfg) pkg
+            then do printf "'%s' is present.\n" (showPackageId pkg)
                     return (packageFile cfg pkg repo)
-            else do downloadingPkg (configOutputGen cfg) pkg
+            else do printf "Downloading '%s'...\n" (showPackageId pkg)
                     downloadPackage cfg pkg repo
 
 -- |Fetch a list of packages and their dependencies.
@@ -141,9 +141,8 @@ fetch cfg pkgs
                        , depOptions = [] }
           isNotFetched (pkg,repo)
               = do fetched <- isFetched cfg pkg repo
-                   pkgIsPresent output pkg
+                   printf "'%s' is present.\n" (showPackageId pkg)
                    return (not fetched)
-          output = configOutputGen cfg
 
 withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
 withBinaryFile name mode = bracket (openBinaryFile name mode) hClose

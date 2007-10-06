@@ -14,7 +14,7 @@ module Network.Hackage.CabalInstall.Update
     ( update
     ) where
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo(..), Repo(..))
+import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo(..), Repo(..))
 import Network.Hackage.CabalInstall.Utils (isVerbose)
 import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
 
@@ -39,6 +39,6 @@ updateRepo :: ConfigFlags
            -> Repo
            -> IO ()
 updateRepo cfg repo =
-    do gettingPkgList (configOutputGen cfg) (repoURL repo)
+    do printf "Downloading package list from server '%s'\n" (repoURL repo)
        indexPath <- downloadIndex cfg repo
        BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . decompress
