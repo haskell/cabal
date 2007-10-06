@@ -16,7 +16,6 @@ Build-depends: base, mtl, network, regex-compat,
                Cabal>=1.3,
                HTTP >= 3000.0 && < 3000.1, 
                zlib >= 0.3
-data-files: serv.list
 Extra-Source-Files: copyright README
 
 Executable: cabal-install
@@ -27,7 +26,6 @@ Other-Modules:
     Network.Hackage.CabalInstall.BuildDep
     Network.Hackage.CabalInstall.Clean
     Network.Hackage.CabalInstall.Config
-    Network.Hackage.CabalInstall.Configure
     Network.Hackage.CabalInstall.Dependency
     Network.Hackage.CabalInstall.Fetch
     Network.Hackage.CabalInstall.Info

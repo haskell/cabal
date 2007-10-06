@@ -12,6 +12,7 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Install
     ( install    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
+    , installPackages
     , installPkg -- :: ConfigFlags -> (PackageIdentifier,[String],String) -> IO ()
     ) where
 
@@ -20,6 +21,7 @@ import Data.Maybe (fromJust)
 import Debug.Trace
 import Control.Exception (bracket_)
 
+import Network.Hackage.CabalInstall.Config (programConfiguration, findCompiler)
 import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
                                                , listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
@@ -27,7 +29,10 @@ import Network.Hackage.CabalInstall.Tar (extractTarGzFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency(..)
                                       ,OutputGen(..), Repo(..))
 
+import Distribution.Simple.Compiler (Compiler(..))
+import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
 import Distribution.Simple.SetupWrapper (setupWrapper)
+import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Verbosity
 
@@ -50,7 +55,7 @@ install cfg globalArgs deps
          let apkgs = getPackages resolvedDeps
          if null apkgs
            then putStrLn "All requested packages already installed. Nothing to do."
-           else mapM_ (installPkg cfg globalArgs) apkgs
+           else installPackages cfg globalArgs apkgs
 
 -- Fetch a package and output nice messages.
 downloadPkg :: ConfigFlags -> PackageIdentifier -> Repo -> IO FilePath
@@ -63,16 +68,39 @@ downloadPkg cfg pkg repo
 
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
-mkPkgOps :: ConfigFlags -> String -> [String] -> [String]
-mkPkgOps cfg cmd ops = verbosity ++
+mkPkgOps :: ConfigFlags -> Compiler -> PackageIdentifier -> String -> [String] -> [String]
+mkPkgOps cfg comp pkgId cmd ops = verbosity ++
   case cmd of
-    "configure" -> user ++ prefix ++ ops
+    "configure" -> user ++ installDirFlags installDirs ++ ops
     "install"   -> user
     _ -> []
  where verbosity = ["--verbose=" ++ showForCabal (configVerbose cfg)]
-       user = if configUserIns cfg then ["--user"] else []
-       prefix = maybeToList (fmap ("--prefix=" ++) (configPrefix cfg))
+       user = if configUserInstall cfg then ["--user"] else []
+       installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest (configInstallDirs cfg)
        showForCabal v = show$ fromJust$ elemIndex v [silent,normal,verbose,deafening]
+
+installDirFlags :: InstallDirs FilePath -> [String]
+installDirFlags dirs =
+    [flag "prefix" prefix,
+     flag "bindir" bindir,
+     flag "libdir" libdir,
+--     flag "dynlibdir" dynlibdir, -- not accepted as argument by cabal?
+     flag "libexecdir" libexecdir,
+--     flag "progdir" progdir, -- not accepted as argument by cabal?
+--     flag "includedir" includedir, -- not accepted as argument by cabal?
+     flag "datadir" datadir,
+     flag "docdir" docdir,
+     flag "htmldir" htmldir]
+  where flag s f = "--" ++ s ++ "=" ++ f dirs
+
+installPackages :: ConfigFlags
+                -> [String] -- ^Options which will be parse to every package.
+                -> [(PackageIdentifier,[String],Repo)] -- ^(Package, list of configure options, package location)
+                -> IO ()
+installPackages cfg globalArgs pkgs =
+    do (comp, _) <- findCompiler cfg
+       mapM_ (installPkg cfg comp globalArgs) pkgs
+
 {-|
   Download, build and install a given package with some given flags.
 
@@ -84,36 +112,36 @@ mkPkgOps cfg cmd ops = verbosity ++
 
     * setupWrapper (equivalent to cabal-setup) is called with the options
       \'configure\' and the user specified options, \'--user\'
-      if the 'configUser' flag is @True@ and \'--prefix=[PREFIX]\' if 'configPrefix' is not @Nothing@.
+      if the 'configUser' flag is @True@ and install directory flags depending on @configInstallDirs@.
 
     * setupWrapper \'build\' is called with no options.
 
-    * setupWrapper \'install\' is called with the \'--user\' flag if 'configUserIns' is @True@.
+    * setupWrapper \'install\' is called with the \'--user\' flag if 'configUserInstall' is @True@.
 
     * The installation finishes by deleting the unpacked tarball.
 -} 
 installPkg :: ConfigFlags
+           -> Compiler
            -> [String] -- ^Options which will be parse to every package.
            -> (PackageIdentifier,[String],Repo) -- ^(Package, list of configure options, package location)
            -> IO ()
-installPkg cfg globalArgs (pkg,ops,repo)
+installPkg cfg comp globalArgs (pkg,ops,repo)
     = do pkgPath <- downloadPkg cfg pkg repo
          tmp <- getTemporaryDirectory
          let tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId pkg)
              setup cmd
-                 = let cmdOps = mkPkgOps cfg cmd (globalArgs++ops)
-                       path = tmpDirPath </> showPackageId pkg
-                   in do message output deafening $ 
+                 = do let cmdOps = mkPkgOps cfg comp pkg cmd (globalArgs++ops)
+                          path = tmpDirPath </> showPackageId pkg
+                      message output deafening $ 
                                  unwords ["setupWrapper", show (cmd:cmdOps), show path]
-                         setupWrapper (cmd:cmdOps) (Just path)
+                      setupWrapper (cmd:cmdOps) (Just path)
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
                   (do message output deafening (printf "Extracting %s..." pkgPath)
                       extractTarGzFile (Just tmpDirPath) pkgPath
                       installUnpackedPkg cfg pkg setup
                       return ())
-    where tarProg = configTarPath cfg
-          output = configOutputGen cfg
+    where output = configOutputGen cfg
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier
                    -> (String -> IO ()) -> IO ()

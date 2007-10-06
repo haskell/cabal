@@ -11,77 +11,100 @@
 --
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Setup
-    ( emptyTempFlags
-    , parsePackageArgs
+    ( parsePackageArgs
     , parseGlobalArgs
+    , configFromOptions
     ) where
 
 import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Distribution.ParseUtils (parseDependency)
 import Distribution.Compiler (defaultCompilerFlavor, CompilerFlavor(..))
+import Distribution.Simple.InstallDirs (InstallDirTemplates(..))
 import Distribution.Verbosity
 import Data.List (find)
 import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usageInfo, getOpt')
 import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
-import Network.Hackage.CabalInstall.Types (TempFlags (..), Action (..)
+import Network.Hackage.CabalInstall.Types (Action (..), Option(..), ConfigFlags(..)
                                       , UnresolvedDependency (..))
 import Network.Hackage.CabalInstall.Utils (readPToMaybe)
 
-emptyTempFlags :: TempFlags
-emptyTempFlags = TempFlags {
-        tempHcFlavor    = defaultCompilerFlavor, -- Nothing,
-        tempHcPath      = Nothing,
-        tempConfDir     = Nothing,
-        tempCacheDir    = Nothing,
-        tempHcPkg       = Nothing,
-        tempPrefix      = Nothing,
-        tempTarPath     = Nothing,
-        tempVerbose     = normal,
---        tempUpgradeDeps = False,
-        tempUserIns     = True,
-        tempHelp        = False
-   }
 
-cmd_verbose :: OptDescr (TempFlags -> TempFlags)
-cmd_verbose = Option "v" ["verbose"] (OptArg verboseFlag "n")
-              "Control verbosity (n is 0--3, normal verbosity level is 1, -v alone is equivalent to -v2)"
-  where
-    verboseFlag mb_s t = t { tempVerbose = fromMaybe deafening $ 
-                                           maybe (Just verbose) (intToVerbosity . read) mb_s}
-
-globalOptions :: [OptDescr (TempFlags -> TempFlags)]
+globalOptions :: [OptDescr Option]
 globalOptions =
-    [ Option "h?" ["help"] (NoArg (\t -> t { tempHelp = True })) "Show this help text"
-    , cmd_verbose 
-    , Option "g" ["ghc"] (NoArg (\t -> t { tempHcFlavor = Just GHC }))  "compile with GHC"
-    , Option "n" ["nhc"] (NoArg (\t -> t { tempHcFlavor = Just NHC }))  "compile with NHC"
-    , Option "" ["hugs"] (NoArg (\t -> t { tempHcFlavor = Just Hugs })) "compile with hugs"
-    , Option "c" ["config-dir"] (ReqArg (\path t -> t { tempConfDir = Just path }) "PATH")
-                 ("override the path to the config dir.")
-    , Option "" ["cache-dir"] (ReqArg (\path t -> t { tempCacheDir = Just path }) "PATH")
-                 ("override the path to the package cache dir.")
-    , Option "" ["tar-path"] (ReqArg (\path t -> t { tempTarPath = Just path }) "PATH")
-                 "give the path to tar"
-    , Option "w" ["with-compiler"] (ReqArg (\path t -> t { tempHcPath = Just path }) "PATH")
-                 "give the path to a particular compiler"
-    , Option "" ["with-hc-pkg"] (ReqArg (\path t -> t { tempHcPkg = Just path }) "PATH")
-                 "give the path to the package tool"
---    , Option "" ["upgrade-deps"] (NoArg (\t -> t { tempUpgradeDeps = True }))
---                 "Upgrade all dependencies which depend on the newly installed packages"
-    , Option "" ["user-install"] (NoArg (\t -> t { tempUserIns     = True }))
-                 "upon registration, register this package in the user's local package database"
-    , Option "" ["global-install"] (NoArg (\t -> t { tempUserIns     = False }))
-                 "upon registration, register this package in the system-wide package database"
+    [ Option "g" ["ghc"] (NoArg (OptCompilerFlavor GHC)) "Compile with GHC"
+    , Option "n" ["nhc"] (NoArg (OptCompilerFlavor NHC))  "Compile with NHC"
+    , Option "" ["hugs"] (NoArg (OptCompilerFlavor Hugs)) "Compile with hugs"
+    , Option "w" ["with-compiler"] (reqPathArg OptCompiler)
+                 "Give the path to a particular compiler"
+    , Option "" ["with-hc-pkg"] (reqPathArg OptHcPkg)
+                 "Give the path to the package tool"
+    , Option "c" ["config-file"] (reqPathArg OptConfigFile)
+                 ("Override the path to the config dir.")
+    , Option "" ["cache-dir"] (reqPathArg OptCacheDir)
+                 ("Override the path to the package cache dir.")
+    , Option "" ["prefix"] (reqDirArg OptPrefix)
+                 "Bake this prefix in preparation of installation"
+    , Option "" ["bindir"] (reqDirArg OptBinDir)
+		"Installation directory for executables"
+    , Option "" ["libdir"] (reqDirArg OptLibDir)
+		"Installation directory for libraries"
+    , Option "" ["libsubdir"] (reqDirArg OptLibSubDir)
+		"Subdirectory of libdir in which libs are installed"
+    , Option "" ["libexecdir"] (reqDirArg OptLibExecDir)
+		"Installation directory for program executables"
+    , Option "" ["datadir"] (reqDirArg OptDataDir)
+		"Installation directory for read-only data"
+    , Option "" ["datasubdir"] (reqDirArg OptDataSubDir)
+                 "Subdirectory of datadir in which data files are installed"
+    , Option "" ["docdir"] (reqDirArg OptDocDir)
+		 "Installation directory for documentation"
+    , Option "" ["htmldir"] (reqDirArg OptHtmlDir)
+		 "Installation directory for HTML documentation"
+    , Option "" ["user"] (NoArg (OptUserInstall True))
+                 "Upon registration, register this package in the user's local package database"
+    , Option "" ["global"] (NoArg (OptUserInstall False))
+                 "Upon registration, register this package in the system-wide package database"
+    , Option "h?" ["help"] (NoArg OptHelp) "Show this help text"
+    , Option "v" ["verbose"] (OptArg (OptVerbose . flagToVerbosity) "n")
+                 "Control verbosity (n is 0--3, normal verbosity level is 1, -v alone is equivalent to -v2)"
     ]
+
+reqPathArg :: (FilePath -> a) -> ArgDescr a
+reqPathArg constr = ReqArg constr "PATH"
+
+reqDirArg :: (FilePath -> a) -> ArgDescr a
+reqDirArg constr = ReqArg constr "DIR"
+
+configFromOptions :: ConfigFlags -> [Option] -> ConfigFlags
+configFromOptions = foldr f
+  where f o cfg = case o of
+                    OptCompilerFlavor c -> cfg { configCompiler = c}
+                    OptCompiler p       -> cfg -- FIXME: where do we store this?
+                    OptHcPkg p          -> cfg -- FIXME: where do we store this?
+                    OptConfigFile _     -> cfg
+                    OptCacheDir d       -> cfg { configCacheDir = d }
+                    OptPrefix     d     -> lib (\ds x -> ds { prefixDirTemplate  = x }) d
+                    OptBinDir     d     -> lib (\ds x -> ds { binDirTemplate     = x }) d
+	            OptLibDir     d     -> lib (\ds x -> ds { libDirTemplate     = x }) d
+	            OptLibSubDir  d     -> lib (\ds x -> ds { libSubdirTemplate  = x }) d
+                    OptLibExecDir d     -> lib (\ds x -> ds { libexecDirTemplate = x }) d
+                    OptDataDir    d     -> lib (\ds x -> ds { dataDirTemplate    = x }) d
+                    OptDataSubDir d     -> lib (\ds x -> ds { dataSubdirTemplate = x }) d
+                    OptDocDir     d     -> lib (\ds x -> ds { docDirTemplate     = x }) d
+                    OptHtmlDir    d     -> lib (\ds x -> ds { htmlDirTemplate    = x }) d
+                    OptUserInstall u    -> cfg { configUserInstall = u }
+                    OptHelp             -> error "Got to setFlagsFromOptions OptHelp"
+                    OptVerbose v        -> cfg { configVerbose = v }
+         where lib g d = cfg { configInstallDirs = g (configInstallDirs cfg) (read $ show d) } -- FIXME: Read PathTemplate seems to require quotes
 
 data Cmd = Cmd {
         cmdName         :: String,
         cmdHelp         :: String, -- Short description
         cmdDescription  :: String, -- Long description
-        cmdOptions      :: [OptDescr (TempFlags -> TempFlags)],
+        cmdOptions      :: [OptDescr Option],
         cmdAction       :: Action
         }
 
@@ -114,18 +137,20 @@ printActionHelp action =
        putStrLn (usageInfo syntax_line (cmdOptions cmd))
        putStrLn (cmdDescription cmd)
 
-parseGlobalArgs :: [String] -> IO (Action,TempFlags,[String])
+parseGlobalArgs :: [String] -> IO (Action,[Option],[String])
 parseGlobalArgs opts =
-  do let (fs, args, unrec, errs) = getOpt' RequireOrder globalOptions opts
-         flags = foldl (flip ($)) emptyTempFlags fs
-     when (tempHelp flags) $ do printGlobalHelp
-                                exitWith ExitSuccess
-     when (not (null errs)) $ do putStrLn "Errors:"
-                                 mapM_ putStrLn errs
-                                 exitWith (ExitFailure 1)
-     when (not (null unrec)) $ do putStrLn "Unrecognized options:"
-                                  mapM_ putStrLn unrec
-                                  exitWith (ExitFailure 1)
+  do let (flags, args, unrec, errs) = getOpt' RequireOrder globalOptions opts
+     when (OptHelp `elem` flags) $ 
+          do printGlobalHelp
+             exitWith ExitSuccess
+     when (not (null errs)) $ 
+          do putStrLn "Errors:"
+             mapM_ putStrLn errs
+             exitWith (ExitFailure 1)
+     when (not (null unrec)) $ 
+          do putStrLn "Unrecognized options:"
+             mapM_ putStrLn unrec
+             exitWith (ExitFailure 1)
      case args of
        []          -> do putStrLn $ "No command given (try --help)"
                          exitWith (ExitFailure 1)

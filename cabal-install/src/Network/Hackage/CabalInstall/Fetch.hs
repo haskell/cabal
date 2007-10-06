@@ -16,7 +16,6 @@ module Network.Hackage.CabalInstall.Fetch
      fetch
     , -- * Utilities
       fetchPackage
-    , pkgURL
     , packageFile
     , packagesDirectory
     , isFetched
@@ -36,7 +35,7 @@ import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir)
+import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -99,12 +98,6 @@ downloadPackage cfg pkg repo
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
-
--- | Generate the URL of the tarball for a given package.
-pkgURL :: PackageIdentifier -> Repo -> String
-pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
-                           ++ ".tar.gz"
-                      where joinWith tok = concat . intersperse tok
 
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: ConfigFlags -> Repo -> IO FilePath
