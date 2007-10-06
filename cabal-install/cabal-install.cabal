@@ -36,7 +36,6 @@ Other-Modules:
     Network.Hackage.CabalInstall.Main
     Network.Hackage.CabalInstall.Setup
     Network.Hackage.CabalInstall.Tar
-    Network.Hackage.CabalInstall.TarUtils
     Network.Hackage.CabalInstall.Types
     Network.Hackage.CabalInstall.Update
     Network.Hackage.CabalInstall.Utils
