@@ -16,6 +16,7 @@ module Network.Hackage.CabalInstall.Fetch
      fetch
     , -- * Utilities
       fetchPackage
+    , pkgURL
     , packageFile
     , packagesDirectory
     , isFetched
@@ -29,12 +30,13 @@ import Network.HTTP (ConnError(..), Request (..), simpleHTTP
 
 import Control.Exception (bracket)
 import Control.Monad (filterM)
+import Data.List (intersperse)
 import Data.Version
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir)
+import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -86,17 +88,23 @@ downloadFile path url
 
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
-downloadPackage cfg pkg url
-    = do let dir = packageDir cfg pkg
-             path = packageFile cfg pkg
+downloadPackage :: ConfigFlags -> PackageIdentifier -> Repo -> IO String
+downloadPackage cfg pkg repo
+    = do let url = pkgURL pkg repo
+             dir = packageDir cfg pkg repo
+             path = packageFile cfg pkg repo
          message (configOutputGen cfg) verbose $ "GET " ++ show url
          createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
            Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
            Nothing -> return path
-    where 
+
+-- | Generate the URL of the tarball for a given package.
+pkgURL :: PackageIdentifier -> Repo -> String
+pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
+                           ++ ".tar.gz"
+                      where joinWith tok = concat . intersperse tok
 
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: ConfigFlags -> Repo -> IO FilePath
@@ -110,42 +118,27 @@ downloadIndex cfg repo
            Just err -> fail $ printf "Failed to download index '%s'" (show err)
            Nothing  -> return path
 
--- |Generate the full path to the locally cached copy of
--- the tarball for a given @PackageIdentifer@.
-packageFile :: ConfigFlags -> PackageIdentifier -> FilePath
-packageFile cfg pkg = packageDir cfg pkg
-                      </> showPackageId pkg 
-                      <.> "tar.gz"
-
--- |Generate the full path to the directory where the local cached copy of
--- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: ConfigFlags -> PackageIdentifier -> FilePath
-packageDir cfg pkg = packagesDirectory cfg 
-                      </> pkgName pkg
-                      </> showVersion (pkgVersion pkg)
-
 -- |Returns @True@ if the package has already been fetched.
-isFetched :: ConfigFlags -> PackageIdentifier -> IO Bool
-isFetched cfg pkg
-    = doesFileExist (packageFile cfg pkg)
+isFetched :: ConfigFlags -> PackageIdentifier -> Repo -> IO Bool
+isFetched cfg pkg repo
+    = doesFileExist (packageFile cfg pkg repo)
 
 -- |Fetch a package if we don't have it already.
-fetchPackage :: ConfigFlags -> PackageIdentifier -> String -> IO String
-fetchPackage cfg pkg location
-    = do createDirectoryIfMissing True (packagesDirectory cfg)
-         fetched <- isFetched cfg pkg
+fetchPackage :: ConfigFlags -> PackageIdentifier -> Repo -> IO String
+fetchPackage cfg pkg repo
+    = do fetched <- isFetched cfg pkg repo
          if fetched
             then do pkgIsPresent (configOutputGen cfg) pkg
-                    return (packageFile cfg pkg)
+                    return (packageFile cfg pkg repo)
             else do downloadingPkg (configOutputGen cfg) pkg
-                    downloadPackage cfg pkg location
+                    downloadPackage cfg pkg repo
 
 -- |Fetch a list of packages and their dependencies.
 fetch :: ConfigFlags -> [String] -> IO ()
 fetch cfg pkgs
     = do apkgs <- fmap filterFetchables (resolveDependencies cfg [] (map parseDep pkgs))
-         mapM_ (\(pkg,location)
-                    -> fetchPackage cfg pkg location
+         mapM_ (\(pkg,repo)
+                    -> fetchPackage cfg pkg repo
                ) =<< filterM isNotFetched apkgs
     where parseDep dep
               = case readP_to_S parseDependency dep of
@@ -153,8 +146,8 @@ fetch cfg pkgs
                  x  -> UnresolvedDependency
                        { dependency = (fst (last x))
                        , depOptions = [] }
-          isNotFetched (pkg,_location)
-              = do fetched <- isFetched cfg pkg
+          isNotFetched (pkg,repo)
+              = do fetched <- isFetched cfg pkg repo
                    pkgIsPresent output pkg
                    return (not fetched)
           output = configOutputGen cfg

@@ -41,9 +41,9 @@ infoPkg cfg ipkgs _ (ResolvedPackage { fulfilling = dep
           output = configOutputGen cfg
 infoPkg cfg ipkgs globalArgs (ResolvedPackage { fulfilling = dep
                                               , pkgOptions = ops
-                                              , resolvedData = (Just (pkg,location,deps)) })
-    = do fetched <- isFetched cfg pkg
-         let pkgFile = if fetched then Just (packageFile cfg pkg) else Nothing
-         showPackageInfo output pkgFile isInstalled (globalArgs ++ ops) dep (pkg,location,deps)
+                                              , resolvedData = (Just (pkg,repo,deps)) })
+    = do fetched <- isFetched cfg pkg repo
+         let pkgFile = if fetched then Just (packageFile cfg pkg repo) else Nothing
+         showPackageInfo output pkgFile isInstalled (globalArgs ++ ops) dep (pkg,repo,deps)
     where output = configOutputGen cfg
           isInstalled = pkg `elem` ipkgs

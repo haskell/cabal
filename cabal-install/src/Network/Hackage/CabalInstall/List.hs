@@ -38,17 +38,19 @@ list cfg pats = do
     findInPkgs pkgs pat = let rx = mkRegexWithOpts pat False False in
         filter (isJust . matchRegex rx . showInfo) pkgs
     showInfo :: PkgInfo -> String
-    showInfo pkg = showPackageId (package (packageDescription pkg)) 
-                   ++ "\n" ++ synopsis (packageDescription pkg)
+    showInfo pkg = showPackageId (package d) ++ "\n" ++ synopsis d
+         where d = packageDescription (pkgDesc pkg)
     nameAndVersion p = (map Char.toLower name, name, version)
-        where name = pkgName (package (packageDescription p))
-              version = pkgVersion (package (packageDescription p))
+        where d = packageDescription (pkgDesc p)
+              name = pkgName (package d)
+              version = pkgVersion (package d)
     samePackage a b = nameAndVersion a == nameAndVersion b
 
 doList :: PkgInfo -> IO ()
-doList info = do
-    putStr . (if null syn then id else padTo 25) . showPackageId . package . packageDescription $ info
+doList info = do   
+    putStr . (if null syn then id else padTo 25) . showPackageId . package $ d
     putStrLn syn
     where
-    syn = synopsis $ packageDescription info
+    d = packageDescription (pkgDesc info)
+    syn = synopsis d
     padTo n s = s ++ (replicate (n - length s) ' ')
