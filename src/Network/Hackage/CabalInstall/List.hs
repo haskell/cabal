@@ -23,8 +23,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
 import Network.Hackage.CabalInstall.Dependency (finalizePackage, listInstalledPackages)
-import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..)
-                                      ,OutputGen(..))
+import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..))
 
 -- |Show information about packages
 list :: ConfigFlags -> [String] -> IO ()
