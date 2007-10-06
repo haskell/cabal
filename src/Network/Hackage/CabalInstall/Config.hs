@@ -18,7 +18,6 @@ module Network.Hackage.CabalInstall.Config
     , getDefaultConfigDir
     , getLocalConfigDir
     , getLocalCacheDir
-    , getLocalPkgListDir
     , getKnownServers
     , getKnownPackages
     , selectValidConfigDir
@@ -63,9 +62,6 @@ getLocalConfigDir
 
 getLocalCacheDir :: IO FilePath
 getLocalCacheDir = getLocalConfigDir
-
-getLocalPkgListDir :: IO FilePath
-getLocalPkgListDir = getLocalConfigDir
 
 pkgListFile :: FilePath
 pkgListFile = "pkg.list"
