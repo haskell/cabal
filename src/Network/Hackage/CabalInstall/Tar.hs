@@ -1,41 +1,119 @@
 -- | Simplistic TAR archive reading. Only gets the file names and file contents.
-module Network.Hackage.CabalInstall.Tar (readTarArchive) where
+module Network.Hackage.CabalInstall.Tar (TarHeader(..), TarFileType(..),
+                                         readTarArchive, extractTarArchive) where
 
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
+import Data.Bits ((.&.))
 import Data.Char (ord)
 import Data.Int (Int8, Int64)
 import Data.List (unfoldr)
 import Data.Maybe (catMaybes)
 import Numeric (readOct)
+import System.Directory (Permissions(..), setPermissions, createDirectoryIfMissing, copyFile)
+import System.FilePath ((</>), isValid, isAbsolute)
+import System.Posix.Types (FileMode)
 
+data TarHeader = TarHeader {
+                            tarFileName   :: FilePath,
+                            tarFileMode   :: FileMode,
+                            tarFileType   :: TarFileType,
+                            tarLinkTarget :: FilePath
+                           }
 
-readTarArchive :: ByteString -> [(FilePath,ByteString)]
+data TarFileType = 
+   TarNormalFile
+ | TarHardLink
+ | TarSymbolicLink
+ | TarDirectory
+ | TarOther Char
+  deriving (Eq,Show)
+
+readTarArchive :: ByteString -> [(TarHeader,ByteString)]
 readTarArchive = catMaybes . unfoldr getTarEntry
 
-getTarEntry :: ByteString -> Maybe (Maybe (FilePath,ByteString), ByteString)
+extractTarArchive :: Maybe FilePath -> [(TarHeader,ByteString)] -> IO ()
+extractTarArchive mdir = mapM_ (uncurry (extractEntry mdir))
+
+--
+-- * Extracting
+--
+
+extractEntry :: Maybe FilePath -> TarHeader -> ByteString -> IO ()
+extractEntry mdir hdr cnt
+    = do path <- relativizePath mdir (tarFileName hdr)
+         let setPerms   = setPermissions path (fileModeToPermissions (tarFileMode hdr))
+             copyLinked = relativizePath mdir (tarLinkTarget hdr) >>= copyFile path
+         case tarFileType hdr of
+           TarNormalFile   -> BS.writeFile path cnt >> setPerms
+           TarHardLink     -> copyLinked >> setPerms
+           TarSymbolicLink -> copyLinked
+           TarDirectory    -> createDirectoryIfMissing False path >> setPerms
+           TarOther _      -> return () -- FIXME: warning?
+
+relativizePath :: Monad m => Maybe FilePath -> FilePath -> m FilePath
+relativizePath mdir file
+    | isAbsolute file    = fail $ "Absolute file name in TAR archive: " ++ show file
+    | not (isValid file) = fail $ "Invalid file name in TAR archive: " ++ show file
+    | otherwise          = return $ maybe file (</> file) mdir
+
+fileModeToPermissions :: FileMode -> Permissions
+fileModeToPermissions m = 
+    Permissions {
+                 readable   = m .&. ownerReadMode    /= 0,
+                 writable   = m .&. ownerWriteMode   /= 0,
+                 executable = m .&. ownerExecuteMode /= 0,
+                 searchable = m .&. ownerExecuteMode /= 0
+                }
+
+ownerReadMode    :: FileMode
+ownerReadMode    = 0o000400
+
+ownerWriteMode   :: FileMode
+ownerWriteMode   = 0o000200
+
+ownerExecuteMode :: FileMode
+ownerExecuteMode = 0o000100
+
+--
+-- * Reading
+--
+
+getTarEntry :: ByteString -> Maybe (Maybe (TarHeader,ByteString), ByteString)
 getTarEntry bs | endBlock = Nothing
                | BS.length hdr < 512 = error "Truncated TAR archive."
                | not (checkChkSum hdr chkSum) = error "TAR checksum error."
-               | not normalFile = Just (Nothing, bs''')
-               | otherwise = Just (Just (path, cnt), bs''')
+               | otherwise = Just (Just (info, cnt), bs''')
 
    where (hdr,bs') = BS.splitAt 512 bs
 
          endBlock  = getByte 0 hdr == '\0'
 
          fileSuffix = getString   0 100 hdr
+         mode       = getOct    100   8 hdr
          chkSum     = getOct    148   8 hdr
          typ        = getByte   156     hdr
          size       = getOct    124  12 hdr
+         linkTarget = getString 157 100 hdr
          filePrefix = getString 345 155 hdr
-
-         normalFile = typ == '0' || typ == '\0'
-         path       = filePrefix ++ fileSuffix
 
          padding    = (512 - size) `mod` 512
          (cnt,bs'') = BS.splitAt size bs'
          bs'''      = BS.drop padding bs''
+
+         fileType   = case typ of
+                        '\0'-> TarNormalFile
+                        '0' -> TarNormalFile
+                        '1' -> TarHardLink
+                        '2' -> TarSymbolicLink
+                        '5' -> TarDirectory
+                        c   -> TarOther c
+                        
+         path       = filePrefix ++ fileSuffix
+         info       = TarHeader { tarFileName   = path, 
+                                  tarFileMode   = mode,
+                                  tarFileType   = fileType,
+                                  tarLinkTarget = linkTarget }
 
 checkChkSum :: ByteString -> Int -> Bool
 checkChkSum hdr s = s == chkSum hdr' || s == signedChkSum hdr'

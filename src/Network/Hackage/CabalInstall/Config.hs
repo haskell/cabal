@@ -45,7 +45,7 @@ import Distribution.Verbosity
 import System.FilePath ((</>), takeExtension, (<.>))
 import System.Directory
 
-import Network.Hackage.CabalInstall.Tar (readTarArchive)
+import Network.Hackage.CabalInstall.Tar (readTarArchive, tarFileName)
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), OutputGen(..), PkgInfo (..), Repo(..))
 
 import Paths_cabal_install (getDataDir)
@@ -118,14 +118,14 @@ readRepoIndex cfg repo =
 
 parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =
-    do (name, content) <- readTarArchive s
-       if takeExtension name == ".cabal"
+    do (hdr, content) <- readTarArchive s
+       if takeExtension (tarFileName hdr) == ".cabal"
          then case parsePackageDescription (BS.unpack content) of
                     ParseOk _ descr -> return $ PkgInfo { 
                                                          pkgRepo = repo,
                                                          pkgDesc = descr
                                                         }
-                    _               -> error $ "Couldn't read cabal file " ++ show name
+                    _               -> error $ "Couldn't read cabal file " ++ show (tarFileName hdr)
          else fail "Not a .cabal file"
 
 getKnownServers :: ConfigFlags -> IO [Repo]
