@@ -18,7 +18,6 @@ module Network.Hackage.CabalInstall.Setup
 
 import Control.Monad (when)
 import Data.Maybe (fromMaybe)
-import Text.ParserCombinators.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 import Distribution.Compiler (defaultCompilerFlavor, CompilerFlavor(..))
 import Distribution.Verbosity
@@ -29,6 +28,7 @@ import System.Environment (getProgName)
 
 import Network.Hackage.CabalInstall.Types (TempFlags (..), Action (..)
                                       , UnresolvedDependency (..))
+import Network.Hackage.CabalInstall.Utils (readPToMaybe)
 
 emptyTempFlags :: TempFlags
 emptyTempFlags = TempFlags {
@@ -177,9 +177,9 @@ parsePackageArgs _ args
     = return (globalArgs,parsePkgArgs pkgs)
     where (globalArgs,pkgs) = break (not.(==)'-'.head) args
           parseDep dep
-              = case readP_to_S parseDependency dep of
-                 [] -> error ("Failed to parse package dependency: " ++ show dep)
-                 x  -> fst (last x)
+              = case readPToMaybe parseDependency dep of
+                  Nothing -> error ("Failed to parse package dependency: " ++ show dep)
+                  Just x  -> x
           parsePkgArgs [] = []
           parsePkgArgs (x:xs)
               = let (args,rest) = break (not.(==) '-'.head) xs

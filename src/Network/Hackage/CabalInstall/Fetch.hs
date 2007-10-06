@@ -44,7 +44,7 @@ import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
-import Text.ParserCombinators.ReadP (readP_to_S)
+import Distribution.Compat.ReadP (readP_to_S)
 import Distribution.ParseUtils (parseDependency)
 
 
