@@ -44,7 +44,7 @@ import qualified System.Info (arch,os)
 
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
 import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
-                                      , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..))
+                                      , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..), Repo(..))
 import Text.Printf (printf)
 
 
@@ -112,21 +112,21 @@ resolvedDepToResolvedPkg (dep,rDep)
       { fulfilling = dep
       , resolvedData = rData
       , pkgOptions = [] }
-    where rData = do ResolvedDependency pkg location subDeps <- rDep
+    where rData = do ResolvedDependency pkg repo subDeps <- rDep
                      return ( pkg
-                            , location
+                            , repo
                             , map resolvedDepToResolvedPkg subDeps )
 
 
 -- |Locates a @PkgInfo@ which satisfies a given @Dependency@.
 --  Fails with "cannot satisfy dependency: %s." where %s == the given dependency.
-getLatestPkg :: (Monad m) => [GenericPackageDescription] -> Dependency -> m GenericPackageDescription
+getLatestPkg :: (Monad m) => [PkgInfo] -> Dependency -> m PkgInfo
 getLatestPkg ps dep
     = case filter (fulfillDependency dep . pkdId) ps of
         [] -> fail $ printf "cannot satisfy dependency: %s." (show (showDependency dep))
         qs -> return $ maximumBy compareVersions qs
   where compareVersions a b = pkgVersion (pkdId a) `compare` pkgVersion (pkdId b)
-        pkdId = package . packageDescription
+        pkdId = package . packageDescription . pkgDesc
 
 -- |Evaluates to @True@ if the given @Dependency@ is satisfied by the given @PackageIdentifer@.
 fulfillDependency :: Dependency -> PackageIdentifier -> Bool
@@ -142,16 +142,16 @@ isInstalled ps dep = any (fulfillDependency dep) ps
 
 getDependency :: ConfigFlags 
               -> [PackageIdentifier]
-              -> [GenericPackageDescription]
+              -> [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
 getDependency cfg installed available (UnresolvedDependency { dependency=dep, depOptions=opts})
     = ResolvedPackage { fulfilling = dep
                       , resolvedData = fmap pkgData (getLatestPkg available dep)
                       , pkgOptions = opts }
-    where pkgData p = ( package p'
-                      , pkgUrl p'
-                      , map (getDependency cfg installed available . depToUnresolvedDep) (buildDepends p'))
-             where p' = finalizePackage cfg installed available (configurationsFlags opts) p
+    where pkgData p = ( package d
+                      , pkgRepo p
+                      , map (getDependency cfg installed available . depToUnresolvedDep) (buildDepends d))
+             where d = finalizePackage cfg installed available (configurationsFlags opts) p
 
 configurationsFlags :: [String] -> [(String, Bool)]
 configurationsFlags opts = 
@@ -166,26 +166,26 @@ configurationsFlags opts =
 
 -- |Get the PackageIdentifier, build options and location from a list of resolved packages.
 --  Throws an exception if a package couldn't be resolved.
-getPackages :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
+getPackages :: [ResolvedPackage] -> [(PackageIdentifier,[String],Repo)]
 getPackages = map worker
     where worker dep
               = case resolvedData dep of
                   Nothing
                       -> error $ printf "Couldn't satisfy dependency: '%s'." (show $ showDependency (fulfilling dep))
-                  Just (pkg,location,_)
-                      -> (pkg,pkgOptions dep,location)
+                  Just (pkg,repo,_)
+                      -> (pkg,pkgOptions dep,repo)
 
 -- |List all packages which can be fetched.
-filterFetchables :: [ResolvedPackage] -> [(PackageIdentifier,String)]
+filterFetchables :: [ResolvedPackage] -> [(PackageIdentifier,Repo)]
 filterFetchables = mapMaybe worker
-    where worker dep = do (pkg,location,_) <- resolvedData dep
-                          return (pkg,location)
+    where worker dep = do (pkg,repo,_) <- resolvedData dep
+                          return (pkg,repo)
 
 finalizePackage :: ConfigFlags 
                 -> [PackageIdentifier] -- ^ All installed packages
-                -> [GenericPackageDescription] -- ^  All available packages
+                -> [PkgInfo] -- ^  All available packages
                 -> [(String,Bool)] -- ^ Configurations flags
-                -> GenericPackageDescription
+                -> PkgInfo
                 -> PackageDescription
 finalizePackage cfg installed available flags desc
     = case e of
@@ -194,11 +194,11 @@ finalizePackage cfg installed available flags desc
   where 
     e = finalizePackageDescription 
           flags
-          (Just $ nub $ installed ++ map (package . packageDescription) available) 
+          (Just $ nub $ installed ++ map (package . packageDescription . pkgDesc) available) 
           System.Info.os
           System.Info.arch
           (showCompilerId (configCompiler cfg), compilerVersion (configCompiler cfg))
-          desc
+          (pkgDesc desc)
 
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result hasn't been modified to put the dependencies in front of the packages.
