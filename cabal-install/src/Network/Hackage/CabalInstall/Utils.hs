@@ -10,6 +10,7 @@ import Control.Monad (foldM, guard)
 import Data.Char (isSpace)
 import Data.Maybe (listToMaybe)
 import System.IO.Error (isDoesNotExistError)
+import Text.PrettyPrint.HughesPJ
 
 
 isVerbose cfg = configVerbose cfg >= verbose
@@ -59,3 +60,7 @@ setField _ x s =
 
 lookupFieldDescr :: [FieldDescr a] -> String -> Maybe (FieldDescr a)
 lookupFieldDescr fs n = listToMaybe [f | f@(FieldDescr name _ _) <- fs, name == n]
+
+
+showFields :: [FieldDescr a] -> a -> String
+showFields fs x = render $ vcat [ text name <> text ":" <+> get x | FieldDescr name get _ <- fs]
