@@ -194,7 +194,10 @@ loadConfig configFile =
                               case parseBasicStanza configFieldDescrs conf inp of
                                 ParseOk _ conf' -> return conf'
                        ParseFailed err -> 
-                           fail $ "Error parsing config file " ++ configFile ++ ": " ++ showPError err
+                           do hPutStrLn stderr $ "Error parsing config file " 
+                                            ++ configFile ++ ": " ++ showPError err
+                              hPutStrLn stderr $ "Using default configuration."
+                              return defaultConf
 
 -- FIXME: finish this
 writeDefaultConfigFile :: FilePath -> IO ()
