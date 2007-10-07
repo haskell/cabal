@@ -1,4 +1,4 @@
-module Network.Hackage.CabalInstall.Utils where
+module Network.Hackage.Cabal.Utils where
 
 import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice)
 import Distribution.ParseUtils
