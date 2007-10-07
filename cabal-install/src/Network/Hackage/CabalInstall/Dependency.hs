@@ -72,35 +72,6 @@ getBuildDeps ps
                   Just (_,_,subDeps) -> flattenDepList ps subDeps
                   Nothing            -> []
 
-{-
-getReverseDeps :: [PackageIdentifier] -- All installed packages.
-               -> [(PackageIdentifier,[Dependency],String)] -- Known packages.
-               -> [(PackageIdentifier,[Dependency],String)] -- Resolved and installed packages.
-               -> [(PackageIdentifier,[String],String)] -- Packages to be installed.
-               -> [(PackageIdentifier,[String],String)]
-getReverseDeps ps knownPkgs ipkgs toBeInstalled
-    = nub $ concatMap resolve $ filter depends ipkgs
-    where depends (_pkg,deps,_location)
-              = or (map (\dep -> or (map (\(p,_,_) -> fulfillDependency dep p) toBeInstalled)) deps)
-          resolve (pkg,deps,location)
-              = let resolveDep dep
-                        = case find (\(p,_,_) -> fulfillDependency dep p) knownPkgs of
-                            Just (pkg,_,location) -> Just (pkg,[],location)
-                            Nothing
-                                | pkg `elem` ps -> Nothing
-                                | otherwise     -> error "Urk!"
-                in mapMaybe resolveDep deps ++ [(pkg,[],location)]
-
--- |Find the dependencies and location for installed packages.
---  Packages not located on a Hackage server will be filtered out.
-filterInstalledPkgs :: [PackageIdentifier] -> [(PackageIdentifier,[Dependency],String)]
-                    -> [(PackageIdentifier,[Dependency],String)]
-filterInstalledPkgs ipkgs knownPkgs
-    = filter worker knownPkgs
-    where worker (pkg,_deps,_location)
-              = pkg `elem` ipkgs
--}
-
 depToUnresolvedDep :: Dependency -> UnresolvedDependency
 depToUnresolvedDep dep
     = UnresolvedDependency
