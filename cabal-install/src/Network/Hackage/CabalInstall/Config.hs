@@ -25,20 +25,17 @@ module Network.Hackage.CabalInstall.Config
     ) where
 
 import Prelude hiding (catch)
-import Control.Exception (catch, Exception(IOException),evaluate)
+import Control.Exception (catch, Exception(IOException))
 import Control.Monad (when)
-import Control.Monad.Error (mplus, filterM) -- Using Control.Monad.Error to get the Error instance for IO.
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Char (isAlphaNum, toLower)
 import Data.List (intersperse)
-import Data.Maybe (mapMaybe, fromMaybe)
-import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
-                            ,getTemporaryDirectory)
-import System.FilePath (takeDirectory)
+import Data.Maybe (fromMaybe)
+import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
+import System.FilePath ((</>), takeDirectory, takeExtension, (<.>))
 import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
-import System.IO.Unsafe
 import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
@@ -53,9 +50,7 @@ import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, defaultInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Version (Dependency, showVersion)
-import Distribution.Verbosity
-import System.FilePath ((</>), takeExtension, (<.>))
-import System.Directory
+import Distribution.Verbosity (Verbosity, normal)
 
 import Network.Hackage.CabalInstall.Tar (readTarArchive, tarFileName)
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..), Repo(..))

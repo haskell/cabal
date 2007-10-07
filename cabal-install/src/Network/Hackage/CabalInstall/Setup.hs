@@ -17,9 +17,8 @@ module Network.Hackage.CabalInstall.Setup
     ) where
 
 import Control.Monad (when)
-import Data.Maybe (fromMaybe)
 import Distribution.ParseUtils (parseDependency)
-import Distribution.Compiler (defaultCompilerFlavor, CompilerFlavor(..))
+import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..))
 import Distribution.Verbosity
 import Data.List (find)
