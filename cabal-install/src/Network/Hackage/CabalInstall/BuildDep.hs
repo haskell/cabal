@@ -12,9 +12,8 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.BuildDep where
 
-import Network.Hackage.CabalInstall.Config (findCompiler, getKnownPackages)
+import Network.Hackage.CabalInstall.Config (findCompiler, getKnownPackages, listInstalledPackages)
 import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps
-                                               , listInstalledPackages
                                                , depToUnresolvedDep, resolveDependenciesAux)
 import Network.Hackage.CabalInstall.Install (install, installPackages)
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency)

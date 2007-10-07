@@ -16,8 +16,6 @@ module Network.Hackage.CabalInstall.Dependency
       resolveDependencies
     , resolveDependenciesAux 
     , finalizePackage
-    -- * Installed packages
-    , listInstalledPackages
     -- * Utilities
     , depToUnresolvedDep
     , getPackages            -- :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
@@ -33,7 +31,6 @@ import Distribution.PackageDescription
     , GenericPackageDescription(packageDescription)
     , finalizePackageDescription)
 import Distribution.ParseUtils (showDependency)
-import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler  (PackageDB(..), Compiler, showCompilerId, compilerVersion)
 import Distribution.Simple.Program (ProgramConfiguration)
 
@@ -41,7 +38,7 @@ import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
 import qualified System.Info (arch,os)
 
-import Network.Hackage.CabalInstall.Config (getKnownPackages, findCompiler)
+import Network.Hackage.CabalInstall.Config (listInstalledPackages, getKnownPackages, findCompiler)
 import Network.Hackage.CabalInstall.Types ( ResolvedPackage(..), UnresolvedDependency(..)
                                       , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..), Repo(..))
 import Text.Printf (printf)
@@ -197,12 +194,3 @@ resolveDependencies cfg comp conf deps
     = do installed <- listInstalledPackages cfg comp conf
          available <- getKnownPackages cfg
          return $ flattenDepList installed $ resolveDependenciesAux cfg comp conf installed available deps
-
-listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
-listInstalledPackages cfg comp conf =
-    do Just ipkgs <- getInstalledPackages
-                         (configVerbose cfg) comp
-                         (if configUserInstall cfg then UserPackageDB
-                                               else GlobalPackageDB)
-                         conf
-       return ipkgs

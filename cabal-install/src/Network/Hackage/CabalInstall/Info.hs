@@ -12,9 +12,9 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Info where
 
-import Network.Hackage.CabalInstall.Config (pkgURL, findCompiler)
+import Network.Hackage.CabalInstall.Config (pkgURL, findCompiler, listInstalledPackages)
 import Network.Hackage.CabalInstall.Dependency 
-    (resolveDependencies, fulfillDependency, listInstalledPackages)
+    (resolveDependencies, fulfillDependency)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), ResolvedPackage(..)
                                       ,UnresolvedDependency(..))
