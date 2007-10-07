@@ -20,7 +20,6 @@ module Network.Hackage.CabalInstall.Config
     , pkgURL
     , defaultConfigFile
     , loadConfig
-    , programConfiguration
     , findCompiler
     ) where
 
@@ -121,17 +120,11 @@ pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersi
 -- * Compiler and programs
 --
 
--- FIXME: should look at config
-programConfiguration :: ConfigFlags -> IO ProgramConfiguration
-programConfiguration cfg = return defaultProgramConfiguration 
-
+-- FIXME: should use --with flags
 findCompiler :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
-findCompiler cfg = 
-    do conf <- programConfiguration cfg
-       Configure.configCompiler 
-                    (Just (configCompiler cfg)) 
-                    Nothing Nothing conf (configVerbose cfg)
-
+findCompiler cfg = Configure.configCompiler 
+                     (Just (configCompiler cfg)) 
+                     Nothing Nothing defaultProgramConfiguration (configVerbose cfg)
 
 --
 -- * Default config
