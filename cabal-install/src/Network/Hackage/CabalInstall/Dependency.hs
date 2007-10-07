@@ -175,16 +175,6 @@ resolveDependency comp installed available dep
                     _ -> rDep
 
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
---  The result hasn't been modified to put the dependencies in front of the packages.
-resolveDependenciesAux :: Compiler 
-                       -> [PackageIdentifier] -- ^Installed packages.
-                       -> [PkgInfo] -- ^ Installable packages
-                       -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
-                       -> [ResolvedPackage]
-resolveDependenciesAux comp installed available =
-    map (resolveDependency comp installed available)
-
--- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result has been modified to put the dependencies in front of the packages.
 resolveDependencies :: ConfigFlags
                     -> Compiler
@@ -194,4 +184,6 @@ resolveDependencies :: ConfigFlags
 resolveDependencies cfg comp conf deps
     = do installed <- listInstalledPackages cfg comp conf
          available <- getKnownPackages cfg
-         return $ flattenDepList installed $ resolveDependenciesAux comp installed available deps
+         return $ flattenDepList installed $ 
+                map (resolveDependency comp installed available) $
+                filter (not . isInstalled installed . dependency) deps
