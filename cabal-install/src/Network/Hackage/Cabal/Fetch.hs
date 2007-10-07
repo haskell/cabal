@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalInstall.Fetch
+-- Module      :  Network.Hackage.Cabal.Fetch
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalInstall.Fetch
+module Network.Hackage.Cabal.Fetch
     (
      -- * Commands
      fetch
@@ -31,9 +31,9 @@ import Control.Monad (filterM)
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
-import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
+import Network.Hackage.Cabal.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
+import Network.Hackage.Cabal.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
+import Network.Hackage.Cabal.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Verbosity

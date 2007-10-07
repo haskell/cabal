@@ -1,5 +1,5 @@
 -- | Simplistic TAR archive reading. Only gets the file names and file contents.
-module Network.Hackage.CabalInstall.Tar (TarHeader(..), TarFileType(..),
+module Network.Hackage.Cabal.Tar (TarHeader(..), TarFileType(..),
                                          readTarArchive, extractTarArchive, 
                                          extractTarGzFile, gunzip) where
 
@@ -15,24 +15,28 @@ import System.Directory (Permissions(..), setPermissions, createDirectoryIfMissi
 import System.FilePath ((</>), isValid, isAbsolute)
 import System.Posix.Types (FileMode)
 
---import Codec.Compression.GZip (decompress)
-import Codec.Compression.GZip.GUnZip (gunzip)
+-- GNU gzip
+import Codec.Compression.GZip (decompress)
+
+-- Or use Ian's gunzip:
+-- import Codec.Compression.GZip.GUnZip (gunzip)
+
+gunzip :: ByteString -> ByteString
+gunzip = decompress
 
 data TarHeader = TarHeader {
-                            tarFileName   :: FilePath,
-                            tarFileMode   :: FileMode,
-                            tarFileType   :: TarFileType,
-                            tarLinkTarget :: FilePath
-                           }
-               deriving (Show)
+                    tarFileName   :: FilePath,
+                    tarFileMode   :: FileMode,
+                    tarFileType   :: TarFileType,
+                    tarLinkTarget :: FilePath
+                   } deriving Show
 
-data TarFileType = 
-   TarNormalFile
- | TarHardLink
- | TarSymbolicLink
- | TarDirectory
- | TarOther Char
-  deriving (Eq,Show)
+data TarFileType = TarNormalFile
+                 | TarHardLink
+                 | TarSymbolicLink
+                 | TarDirectory
+                 | TarOther Char
+                  deriving (Eq,Show)
 
 readTarArchive :: ByteString -> [(TarHeader,ByteString)]
 readTarArchive = catMaybes . unfoldr getTarEntry
@@ -44,7 +48,7 @@ extractTarGzFile :: Maybe FilePath -- ^ Destination directory
                -> FilePath -- ^ Tarball
                -> IO ()
 extractTarGzFile mdir file = 
-    BS.readFile file >>= extractTarArchive mdir . readTarArchive . gunzip
+    BS.readFile file >>= extractTarArchive mdir . readTarArchive .  decompress {- gunzip -}
 
 --
 -- * Extracting

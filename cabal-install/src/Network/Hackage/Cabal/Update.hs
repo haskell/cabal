@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalInstall.Update
+-- Module      :  Network.Hackage.Cabal.Update
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,13 +10,13 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalInstall.Update
+module Network.Hackage.Cabal.Update
     ( update
     ) where
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo(..), Repo(..))
-import Network.Hackage.CabalInstall.Fetch (downloadIndex)
-import Network.Hackage.CabalInstall.Tar (gunzip)
+import Network.Hackage.Cabal.Types (ConfigFlags (..), PkgInfo(..), Repo(..))
+import Network.Hackage.Cabal.Fetch (downloadIndex)
+import Network.Hackage.Cabal.Tar (gunzip)
 
 
 import qualified Data.ByteString.Lazy.Char8 as BS
