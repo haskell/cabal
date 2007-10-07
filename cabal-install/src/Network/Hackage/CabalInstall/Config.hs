@@ -46,10 +46,10 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (GenericPackageDescription(..)
                                        , PackageDescription(..)
                                        , parsePackageDescription, ParseResult(..))
-import Distribution.ParseUtils (FieldDescr, simpleField, listField)
+import Distribution.ParseUtils (FieldDescr, simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
-import Distribution.Simple.InstallDirs (InstallDirTemplates(..), defaultInstallDirs)
+import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, defaultInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity
@@ -208,8 +208,14 @@ writeDefaultConfigFile file cfg =
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr ConfigFlags]
 configFieldDescrs =
-    [ 
+    [ installDirField "bindir" binDirTemplate (\d ds -> ds { binDirTemplate = d })
+    , installDirField "libdir" libDirTemplate (\d ds -> ds { libDirTemplate = d })
+    , installDirField "libexecdir" libexecDirTemplate (\d ds -> ds { libexecDirTemplate = d })
+    , installDirField "datadir" dataDirTemplate (\d ds -> ds { dataDirTemplate = d })
+    , installDirField "docdir" docDirTemplate (\d ds -> ds { docDirTemplate = d })
+    , installDirField "htmldir" htmlDirTemplate (\d ds -> ds { htmlDirTemplate = d })
     ] ++ configWriteFieldDescrs
+
 
 -- | The subset of the config file fields that we write out
 -- if the config file is missing.
@@ -225,14 +231,17 @@ configWriteFieldDescrs =
                 (text . show)                  (readS_to_P reads)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
-    , simpleField "prefix"
-                (text . show)  (readS_to_P reads) 
-                (prefixDirTemplate . configInstallDirs) (\d -> setInstallDir (\ds -> ds { prefixDirTemplate = d }))
+    , installDirField "prefix" prefixDirTemplate (\d ds -> ds { prefixDirTemplate = d })
     ] 
 
-setInstallDir :: (InstallDirTemplates -> InstallDirTemplates) -> ConfigFlags -> ConfigFlags
-setInstallDir f cfg = cfg { configInstallDirs = f (configInstallDirs cfg) }
-
+installDirField :: String 
+                -> (InstallDirTemplates -> PathTemplate) 
+                -> (PathTemplate -> InstallDirTemplates -> InstallDirTemplates)
+                -> FieldDescr ConfigFlags
+installDirField name get set = 
+    liftField (get . configInstallDirs) 
+               (\d cfg -> cfg { configInstallDirs = set d (configInstallDirs cfg) }) $
+               field name (text . show) (readS_to_P reads)
 
 parseCompilerFlavor :: ReadP r CompilerFlavor
 parseCompilerFlavor = 
