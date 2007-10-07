@@ -15,7 +15,6 @@ module Network.Hackage.CabalInstall.Dependency
     -- * Dependency resolution
       resolveDependencies
     , resolveDependenciesAux 
-    , finalizePackage
     -- * Utilities
     , depToUnresolvedDep
     , getPackages            -- :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
