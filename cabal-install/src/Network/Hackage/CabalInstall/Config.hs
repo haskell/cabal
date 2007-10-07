@@ -181,7 +181,8 @@ loadConfig configFile =
        minp <- readFileIfExists configFile
        case minp of
          Nothing -> do hPutStrLn stderr $ "Config file " ++ configFile ++ " not found."
-                       writeDefaultConfigFile configFile
+                       hPutStrLn stderr $ "Writing default configuration to " ++ configFile ++ "."
+                       writeDefaultConfigFile configFile defaultConf
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
                        ParseOk ws dummyConf -> 
@@ -200,12 +201,20 @@ loadConfig configFile =
                               return defaultConf
 
 -- FIXME: finish this
-writeDefaultConfigFile :: FilePath -> IO ()
-writeDefaultConfigFile file = 
-    do writeFile file ""
+writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()
+writeDefaultConfigFile file cfg = 
+    writeFile file $ showFields configWriteFieldDescrs cfg
 
+-- | All config file fields.
 configFieldDescrs :: [FieldDescr ConfigFlags]
 configFieldDescrs =
+    [ 
+    ] ++ configWriteFieldDescrs
+
+-- | The subset of the config file fields that we write out
+-- if the config file is missing.
+configWriteFieldDescrs :: [FieldDescr ConfigFlags]
+configWriteFieldDescrs =
     [  simpleField "compiler"
                 (text . show)   parseCompilerFlavor
                 configCompiler (\c cfg -> cfg { configCompiler = c })
@@ -215,7 +224,7 @@ configFieldDescrs =
     , simpleField "prefix"
                 (text . show)  (readS_to_P reads) 
                 (prefixDirTemplate . configInstallDirs) (\d -> setInstallDir (\ds -> ds { prefixDirTemplate = d }))
-    ]
+    ] 
 
 setInstallDir :: (InstallDirTemplates -> InstallDirTemplates) -> ConfigFlags -> ConfigFlags
 setInstallDir f cfg = cfg { configInstallDirs = f (configInstallDirs cfg) }
