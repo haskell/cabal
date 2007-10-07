@@ -1,8 +1,3 @@
-#!/usr/local/bin/runghc
-
-> module Main where
-
+#!/usr/bin/env runhaskell
 > import Distribution.Simple
-
-> main :: IO ()
 > main = defaultMain
