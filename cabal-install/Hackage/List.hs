@@ -22,7 +22,7 @@ import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
 import Hackage.Config (getKnownPackages)
-import Hackage.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..))
+import Hackage.Types (PkgInfo(..), ConfigFlags(..), {- UnresolvedDependency(..)-} )
 
 -- |Show information about packages
 list :: ConfigFlags -> [String] -> IO ()

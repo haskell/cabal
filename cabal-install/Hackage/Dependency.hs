@@ -22,21 +22,21 @@ module Hackage.Dependency
     , fulfillDependency      -- :: Dependency -> PackageIdentifier -> Bool
     ) where
 
-import Distribution.Version (Version, Dependency(..), withinRange)
+import Distribution.Version (Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
     (PackageDescription(package, buildDepends)
     , GenericPackageDescription(packageDescription)
     , finalizePackageDescription)
 import Distribution.ParseUtils (showDependency)
-import Distribution.Simple.Compiler  (PackageDB(..), Compiler, showCompilerId, compilerVersion)
+import Distribution.Simple.Compiler  (Compiler, showCompilerId, compilerVersion)
 import Distribution.Simple.Program (ProgramConfiguration)
 
 import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
 import qualified System.Info (arch,os)
 
-import Hackage.Config (listInstalledPackages, getKnownPackages, findCompiler)
+import Hackage.Config (listInstalledPackages, getKnownPackages)
 import Hackage.Types ( ResolvedPackage(..), UnresolvedDependency(..)
                                       , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..), Repo(..))
 import Text.Printf (printf)
@@ -153,7 +153,7 @@ finalizePackage :: Compiler
 finalizePackage comp installed available flags desc
     = case e of
         Left missing -> error $ "Can't resolve dependencies: " ++ show missing
-        Right (d,flags) -> d
+        Right (d,_flags) -> d
   where 
     e = finalizePackageDescription 
           flags
