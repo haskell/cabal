@@ -12,6 +12,7 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.BuildDep where
 
+import Network.Hackage.CabalInstall.Config (findCompiler)
 import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps
                                                , listInstalledPackages
                                                , depToUnresolvedDep, resolveDependenciesAux)
@@ -27,10 +28,11 @@ import Distribution.PackageDescription (readPackageDescription, buildDepends,
 -}
 buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 buildDep cfg globalArgs deps
-    = do ipkgs <- listInstalledPackages cfg
+    = do (comp,conf) <- findCompiler cfg
+         ipkgs <- listInstalledPackages cfg comp conf
          apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs)
-                                         (resolveDependenciesAux cfg ipkgs deps))
-         installPackages cfg globalArgs apkgs
+                                         (resolveDependenciesAux cfg comp conf ipkgs deps))
+         installPackages cfg comp globalArgs apkgs
 
 -- | Takes the path to a .cabal file, and installs the build-dependencies listed there.
 -- FIXME: what if the package uses hooks which modify the build-dependencies?

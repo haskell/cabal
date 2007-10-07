@@ -32,7 +32,7 @@ import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL, message)
+import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -126,7 +126,8 @@ fetchPackage cfg pkg repo
 -- |Fetch a list of packages and their dependencies.
 fetch :: ConfigFlags -> [String] -> IO ()
 fetch cfg pkgs
-    = do apkgs <- fmap filterFetchables (resolveDependencies cfg [] (map parseDep pkgs))
+    = do (comp,conf) <- findCompiler cfg
+         apkgs <- fmap filterFetchables (resolveDependencies cfg comp conf [] (map parseDep pkgs))
          mapM_ (\(pkg,repo)
                     -> fetchPackage cfg pkg repo
                ) =<< filterM isNotFetched apkgs

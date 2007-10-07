@@ -35,6 +35,7 @@ import Distribution.PackageDescription
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler  (PackageDB(..), Compiler, showCompilerId, compilerVersion)
+import Distribution.Simple.Program (ProgramConfiguration)
 
 import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
@@ -109,7 +110,7 @@ isInstalled :: [PackageIdentifier] -- ^Installed packages.
 isInstalled ps dep = any (fulfillDependency dep) ps
 
 
-getDependency :: Compiler 
+getDependency :: Compiler
               -> [PackageIdentifier]
               -> [PkgInfo]
               -> UnresolvedDependency -> ResolvedPackage
@@ -170,12 +171,13 @@ finalizePackage comp installed available flags desc
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result hasn't been modified to put the dependencies in front of the packages.
 resolveDependenciesAux :: ConfigFlags
+                       -> Compiler
+                       -> ProgramConfiguration
                        -> [PackageIdentifier] -- ^Installed packages.
                        -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
                        -> IO [ResolvedPackage]
-resolveDependenciesAux cfg ps deps
-    = do (comp,_) <- findCompiler cfg
-         installed <- listInstalledPackages cfg
+resolveDependenciesAux cfg comp conf ps deps
+    = do installed <- listInstalledPackages cfg comp conf
          knownPkgs <- getKnownPackages cfg
          let resolve dep
               = let rDep = getDependency comp installed knownPkgs dep
@@ -187,17 +189,18 @@ resolveDependenciesAux cfg ps deps
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result has been modified to put the dependencies in front of the packages.
 resolveDependencies :: ConfigFlags
+                    -> Compiler
+                    -> ProgramConfiguration
                     -> [PackageIdentifier] -- ^Installed packages.
                     -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
                     -> IO [ResolvedPackage]
-resolveDependencies cfg ps deps
-    = fmap (flattenDepList ps) (resolveDependenciesAux cfg ps deps)
+resolveDependencies cfg comp conf ps deps
+    = fmap (flattenDepList ps) (resolveDependenciesAux cfg comp conf ps deps)
 
 
-listInstalledPackages :: ConfigFlags -> IO [PackageIdentifier]
-listInstalledPackages cfg =
-    do (comp, conf) <- findCompiler cfg
-       Just ipkgs <- getInstalledPackages
+listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
+listInstalledPackages cfg comp conf =
+    do Just ipkgs <- getInstalledPackages
                          (configVerbose cfg) comp
                          (if configUserInstall cfg then UserPackageDB
                                                else GlobalPackageDB)
