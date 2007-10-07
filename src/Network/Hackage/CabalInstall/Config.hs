@@ -62,13 +62,9 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..), Repo(
 import Network.Hackage.CabalInstall.Utils
 
 
--- |Name of the packages directory.
-packagesDirectoryName :: FilePath
-packagesDirectoryName = "packages"
-
 -- | Full path to the packages directory.
 packagesDirectory :: ConfigFlags -> FilePath
-packagesDirectory cfg = configCacheDir cfg </> packagesDirectoryName
+packagesDirectory cfg = configCacheDir cfg </> "packages"
 
 -- | Full path to the local cache directory for a repository.
 repoCacheDir :: ConfigFlags -> Repo -> FilePath

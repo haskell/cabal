@@ -149,9 +149,7 @@ getPackages = map worker
 
 -- |List all packages which can be fetched.
 filterFetchables :: [ResolvedPackage] -> [(PackageIdentifier,Repo)]
-filterFetchables = mapMaybe worker
-    where worker dep = do (pkg,repo,_) <- resolvedData dep
-                          return (pkg,repo)
+filterFetchables pkgs = [(pkg,repo) | Just (pkg,repo,_) <- map resolvedData pkgs]
 
 finalizePackage :: Compiler 
                 -> [PackageIdentifier] -- ^ All installed packages
@@ -188,7 +186,7 @@ resolveDependenciesAux cfg ps deps
                     Nothing -> resolvedDepToResolvedPkg (dependency dep,Nothing)
                     _ -> rDep
          return $ map resolve (filter (not . isInstalled ps . dependency) deps)
-    where 
+
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result has been modified to put the dependencies in front of the packages.
 resolveDependencies :: ConfigFlags
