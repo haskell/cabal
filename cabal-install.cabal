@@ -1,39 +1,45 @@
-Name: cabal-install
-Version: 0.3.0
-Synopsis: Automatic installer for Cabal packages.
-Description: apt-get like tool.
-License: BSD3
-License-File: LICENSE
-Author: Lemmih <lemmih@gmail.com>, Paolo Martini <paolo@nemail.it>
-Maintainer: Lemmih <lemmih@gmail.com>, Paolo Martini <paolo@nemail.it>
-Copyright: 2005 Lemmih <lemmih@gmail.com>, 2006 Paolo Martini <paolo@nemail.it>
-Stability: Experimental
-Category: Distribution
-Build-type: Simple
--- For GHC <6.6, remove regex-compat
-Build-depends: base, mtl, network, regex-compat,
-               filepath >= 1.0,
-               Cabal>=1.3,
-               HTTP >= 3000.0 && < 3000.1, 
-               compression >= 0.1
+Name:               cabal-install
+Version:            0.3.0
+Synopsis:           Automatic package handling for Haskell
+Description:        
+    apt-get like tool for Haskell. 'cabal' simplifies the process of
+    managing Haskell software by automating the fetching, configuration,
+    compilation and installation of Haskell libraries and packages.
+License:            BSD3
+License-File:       LICENSE
+Author:             Lemmih <lemmih@gmail.com>, Paolo Martini <paolo@nemail.it>
+Maintainer:         cabal-devel@haskell.org
+Copyright:          2005 Lemmih <lemmih@gmail.com>, 2006 Paolo Martini <paolo@nemail.it>
+Stability:          Experimental
+Category:           Distribution
+Build-type:         Simple
 Extra-Source-Files: copyright README
+Cabal-Version:      >= 1.2
 
-Executable: cabal
-Main-Is: CabalInstall.hs
-Hs-Source-Dirs: src
-Ghc-Options: -Wall
-Other-Modules:
-    Network.Hackage.CabalInstall.Clean
-    Network.Hackage.CabalInstall.Config
-    Network.Hackage.CabalInstall.Dependency
-    Network.Hackage.CabalInstall.Fetch
-    Network.Hackage.CabalInstall.Info
-    Network.Hackage.CabalInstall.Install
-    Network.Hackage.CabalInstall.List
-    Network.Hackage.CabalInstall.Main
-    Network.Hackage.CabalInstall.Setup
-    Network.Hackage.CabalInstall.Tar
-    Network.Hackage.CabalInstall.Types
-    Network.Hackage.CabalInstall.Update
-    Network.Hackage.CabalInstall.Utils
-    Network.Hackage.Version
+flag old-base
+  description: Old, monolithic base
+
+Executable cabal
+    Main-Is:            Cabal.hs
+    Hs-Source-Dirs:     src
+    Ghc-Options:        -Wall
+    Other-Modules:
+        Network.Hackage.Cabal.Clean
+        Network.Hackage.Cabal.Config
+        Network.Hackage.Cabal.Dependency
+        Network.Hackage.Cabal.Fetch
+        Network.Hackage.Cabal.Info
+        Network.Hackage.Cabal.Install
+        Network.Hackage.Cabal.List
+        Network.Hackage.Cabal.Main
+        Network.Hackage.Cabal.Setup
+        Network.Hackage.Cabal.Tar
+        Network.Hackage.Cabal.Types
+        Network.Hackage.Cabal.Update
+        Network.Hackage.Cabal.Utils
+        Network.Hackage.Version
+
+    build-depends: mtl, network, regex-compat, unix, Cabal>=1.3,
+                   zlib >= 0.4, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
+
+    build-depends: base >= 2.1, process, directory, pretty, bytestring >= 0.9
