@@ -21,7 +21,6 @@ flag old-base
 
 Executable cabal
     Main-Is:            Cabal.hs
-    Hs-Source-Dirs:     src
     Ghc-Options:        -Wall
     Other-Modules:
         Network.Hackage.Cabal.Clean
