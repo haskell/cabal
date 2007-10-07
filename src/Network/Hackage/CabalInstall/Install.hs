@@ -16,12 +16,15 @@ module Network.Hackage.CabalInstall.Install
     , installPkg -- :: ConfigFlags -> (PackageIdentifier,[String],String) -> IO ()
     ) where
 
-import Data.List  (elemIndex)
-import Data.Maybe (fromJust)
-import Debug.Trace
 import Control.Exception (bracket_)
+import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
+                        ,removeDirectoryRecursive)
+import System.FilePath ((</>))
 
-import Network.Hackage.CabalInstall.Config (programConfiguration, findCompiler, message)
+import Text.Printf (printf)
+
+
+import Network.Hackage.CabalInstall.Config (findCompiler, message)
 import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
                                                , listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
@@ -36,16 +39,8 @@ import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Package (showPackageId, PackageIdentifier)
 import Distribution.Verbosity
 
-import System.FilePath ((</>), splitFileName)
 
-import Data.Maybe (fromMaybe, maybeToList)
-import Text.Printf (printf, PrintfType)
-import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
-                        ,removeDirectoryRecursive, copyFile)
-import System.IO (hPutStrLn, stderr)
-import System.Process (runProcess, waitForProcess, terminateProcess)
-import System.Exit (ExitCode(..))
-import System.Posix.Signals
+
 
 -- |Installs the packages needed to satisfy a list of dependencies.
 install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
@@ -77,7 +72,6 @@ mkPkgOps cfg comp pkgId cmd ops = verbosity ++
  where verbosity = ["--verbose=" ++ showForCabal (configVerbose cfg)]
        user = if configUserInstall cfg then ["--user"] else []
        installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest (configInstallDirs cfg)
-       showForCabal v = show$ fromJust$ elemIndex v [silent,normal,verbose,deafening]
 
 installDirFlags :: InstallDirs FilePath -> [String]
 installDirFlags dirs =

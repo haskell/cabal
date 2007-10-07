@@ -15,7 +15,7 @@ module Network.Hackage.CabalInstall.Clean
     ) where
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags)
-import Network.Hackage.CabalInstall.Fetch (packagesDirectory)
+import Network.Hackage.CabalInstall.Config (packagesDirectory)
 
 import System.Directory (removeDirectoryRecursive)
 

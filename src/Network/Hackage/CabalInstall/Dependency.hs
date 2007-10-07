@@ -29,18 +29,15 @@ module Network.Hackage.CabalInstall.Dependency
 import Distribution.Version (Version, Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
-    (PackageDescription(package, buildDepends, pkgUrl, synopsis)
+    (PackageDescription(package, buildDepends)
     , GenericPackageDescription(packageDescription)
     , finalizePackageDescription)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler  (PackageDB(..), Compiler, showCompilerId, compilerVersion)
-import Distribution.Simple.Program  (defaultProgramConfiguration)
 
 import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
-import Data.Maybe (mapMaybe)
-import Control.Monad (guard)
 import qualified System.Info (arch,os)
 
 import Network.Hackage.CabalInstall.Config (getKnownPackages, findCompiler)

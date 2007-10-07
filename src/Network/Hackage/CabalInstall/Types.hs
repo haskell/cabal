@@ -19,8 +19,6 @@ import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
 
-import System.IO (Handle)
-
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
 data PkgInfo = PkgInfo {

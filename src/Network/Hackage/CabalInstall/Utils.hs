@@ -1,19 +1,14 @@
 module Network.Hackage.CabalInstall.Utils where
 
-import Distribution.Compat.ReadP (ReadP, readP_to_S, readS_to_P, pfail, get, look, choice)
+import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice)
 import Distribution.ParseUtils
-import Distribution.Verbosity
-import Network.Hackage.CabalInstall.Types
 
 import Control.Exception
 import Control.Monad (foldM, guard)
-import Data.Char (isSpace, isAlphaNum, toLower)
+import Data.Char (isSpace, toLower)
 import Data.Maybe (listToMaybe)
 import System.IO.Error (isDoesNotExistError)
 import Text.PrettyPrint.HughesPJ (Doc, render, vcat, text, (<>), (<+>))
-
-
-isVerbose cfg = configVerbose cfg >= verbose
 
 
 readFileIfExists :: FilePath -> IO (Maybe String)
@@ -62,7 +57,7 @@ lookupFieldDescr :: [FieldDescr a] -> String -> Maybe (FieldDescr a)
 lookupFieldDescr fs n = listToMaybe [f | f@(FieldDescr name _ _) <- fs, name == n]
 
 boolField :: String -> (a -> Bool) -> (Bool -> a -> a) -> FieldDescr a
-boolField name get set = liftField get set $ field name showBool readBool
+boolField name g s = liftField g s $ field name showBool readBool
   where
     showBool :: Bool -> Doc
     showBool True = text "true"
@@ -75,7 +70,7 @@ boolField name get set = liftField get set $ field name showBool readBool
                       , stringNoCase "no"    >> return False]
 
 showFields :: [FieldDescr a] -> a -> String
-showFields fs x = render $ vcat [ text name <> text ":" <+> get x | FieldDescr name get _ <- fs]
+showFields fs x = render $ vcat [ text name <> text ":" <+> g x | FieldDescr name g _ <- fs]
 
 
 stringNoCase :: String -> ReadP r String
