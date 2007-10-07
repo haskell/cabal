@@ -24,7 +24,6 @@ import Network.Hackage.CabalInstall.Info (info)
 import Network.Hackage.CabalInstall.Update (update)
 import Network.Hackage.CabalInstall.Fetch (fetch)
 import Network.Hackage.CabalInstall.Clean (clean)
-import Network.Hackage.CabalInstall.BuildDep (buildDep, buildDepLocalPkg)
 
 
 main :: IO ()
@@ -39,9 +38,6 @@ main = do args <- getArgs
                             f config globalArgs pkgs
           case action of
             InstallCmd  -> runCmd install
-            BuildDepCmd -> case args of
-                             [file] | ".cabal" `isSuffixOf` file -> buildDepLocalPkg config file
-                             _ -> runCmd buildDep
             InfoCmd     -> runCmd info
             ListCmd     -> list config args
             UpdateCmd   -> update config
