@@ -174,16 +174,17 @@ resolveDependenciesAux :: ConfigFlags
                        -> Compiler
                        -> ProgramConfiguration
                        -> [PackageIdentifier] -- ^Installed packages.
+                       -> [PkgInfo] -- ^ Installable packages
                        -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
-                       -> IO [ResolvedPackage]
-resolveDependenciesAux cfg comp conf installed deps
-    = do knownPkgs <- getKnownPackages cfg
-         let resolve dep
-              = let rDep = getDependency comp installed knownPkgs dep
+                       -> [ResolvedPackage]
+resolveDependenciesAux cfg comp conf installed available deps
+    = map resolve (filter (not . isInstalled installed . dependency) deps)
+  where resolve dep
+              = let rDep = getDependency comp installed available dep
                 in case resolvedData rDep of
                     Nothing -> resolvedDepToResolvedPkg (dependency dep,Nothing)
                     _ -> rDep
-         return $ map resolve (filter (not . isInstalled installed . dependency) deps)
+
 
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result has been modified to put the dependencies in front of the packages.
@@ -194,7 +195,8 @@ resolveDependencies :: ConfigFlags
                     -> IO [ResolvedPackage]
 resolveDependencies cfg comp conf deps
     = do installed <- listInstalledPackages cfg comp conf
-         fmap (flattenDepList installed) (resolveDependenciesAux cfg comp conf installed deps)
+         available <- getKnownPackages cfg
+         return $ flattenDepList installed $ resolveDependenciesAux cfg comp conf installed available deps
 
 listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
 listInstalledPackages cfg comp conf =
