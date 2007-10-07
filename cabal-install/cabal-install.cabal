@@ -18,7 +18,7 @@ Build-depends: base, mtl, network, regex-compat,
                compression >= 0.1
 Extra-Source-Files: copyright README
 
-Executable: cabal-install
+Executable: cabal
 Main-Is: CabalInstall.hs
 Hs-Source-Dirs: src
 Ghc-Options: -Wall
