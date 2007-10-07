@@ -1,7 +1,7 @@
 -- | Simplistic TAR archive reading. Only gets the file names and file contents.
 module Network.Hackage.CabalInstall.Tar (TarHeader(..), TarFileType(..),
                                          readTarArchive, extractTarArchive, 
-                                         extractTarGzFile) where
+                                         extractTarGzFile, gunzip) where
 
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -15,7 +15,8 @@ import System.Directory (Permissions(..), setPermissions, createDirectoryIfMissi
 import System.FilePath ((</>), isValid, isAbsolute)
 import System.Posix.Types (FileMode)
 
-import Codec.Compression.GZip (decompress)
+--import Codec.Compression.GZip (decompress)
+import Codec.Compression.GZip.GUnZip (gunzip)
 
 data TarHeader = TarHeader {
                             tarFileName   :: FilePath,
@@ -43,7 +44,7 @@ extractTarGzFile :: Maybe FilePath -- ^ Destination directory
                -> FilePath -- ^ Tarball
                -> IO ()
 extractTarGzFile mdir file = 
-    BS.readFile file >>= extractTarArchive mdir . readTarArchive . decompress
+    BS.readFile file >>= extractTarArchive mdir . readTarArchive . gunzip
 
 --
 -- * Extracting
