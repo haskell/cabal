@@ -181,7 +181,7 @@ loadConfig configFile =
        minp <- readFileIfExists configFile
        case minp of
          Nothing -> do hPutStrLn stderr $ "Config file " ++ configFile ++ " not found."
-                       -- FIXME: write config file with defaults
+                       writeDefaultConfigFile configFile
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
                        ParseOk ws dummyConf -> 
@@ -195,6 +195,11 @@ loadConfig configFile =
                                 ParseOk _ conf' -> return conf'
                        ParseFailed err -> 
                            fail $ "Error parsing config file " ++ configFile ++ ": " ++ showPError err
+
+-- FIXME: finish this
+writeDefaultConfigFile :: FilePath -> IO ()
+writeDefaultConfigFile file = 
+    do writeFile file ""
 
 configFieldDescrs :: [FieldDescr ConfigFlags]
 configFieldDescrs =
