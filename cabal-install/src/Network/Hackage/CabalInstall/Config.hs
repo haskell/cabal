@@ -221,6 +221,7 @@ configWriteFieldDescrs =
     , listField "repos"
                 (text . showRepo)                  parseRepo
                 configRepos    (\rs cfg -> cfg { configRepos = rs })
+    , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
     , simpleField "prefix"
                 (text . show)  (readS_to_P reads) 
                 (prefixDirTemplate . configInstallDirs) (\d -> setInstallDir (\ds -> ds { prefixDirTemplate = d }))
