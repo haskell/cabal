@@ -29,7 +29,7 @@ info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 info cfg globalArgs deps
     = do (comp,conf) <- findCompiler cfg
          ipkgs <- listInstalledPackages cfg comp conf
-         apkgs <- resolveDependencies cfg comp conf [] deps
+         apkgs <- resolveDependencies cfg comp conf deps
          mapM_ (infoPkg cfg ipkgs globalArgs) apkgs
 
 {-|

@@ -127,7 +127,7 @@ fetchPackage cfg pkg repo
 fetch :: ConfigFlags -> [String] -> IO ()
 fetch cfg pkgs
     = do (comp,conf) <- findCompiler cfg
-         apkgs <- fmap filterFetchables (resolveDependencies cfg comp conf [] (map parseDep pkgs))
+         apkgs <- fmap filterFetchables (resolveDependencies cfg comp conf (map parseDep pkgs))
          mapM_ (\(pkg,repo)
                     -> fetchPackage cfg pkg repo
                ) =<< filterM isNotFetched apkgs
