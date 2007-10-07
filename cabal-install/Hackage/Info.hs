@@ -17,57 +17,50 @@ import Hackage.Dependency
 import Hackage.Fetch
 import Hackage.Types 
 
-import Distribution.Package (PackageIdentifier, showPackageId)
+import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Version (Dependency)
 
-import Data.Maybe (listToMaybe, fromMaybe)
+import Data.List (intersperse, nubBy)
 import Text.Printf (printf)
 
 info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
-info cfg globalArgs deps
+info cfg _globalArgs deps
     = do (comp,conf) <- findCompiler cfg
-         ipkgs <- listInstalledPackages cfg comp conf
          apkgs <- resolveDependencies cfg comp conf deps
-         mapM_ (infoPkg cfg ipkgs globalArgs) apkgs
+         mapM_ (infoPkg cfg) $ flattenResolvedPackages apkgs
+         case packagesToInstall apkgs of
+           Left missing -> 
+               do putStrLn "The requested packages cannot be installed, because of missing dependencies:"
+                  putStrLn $ showDependencies missing
+           Right pkgs  ->
+               do putStrLn "These packages would be installed:"
+                  putStrLn $ concat $ intersperse ", " [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
+                           
 
-{-|
-  'infoPkg' displays various information about a package.
-  This information can be used to figure out what packages will be installed, from where they'll be downloaded
-  and what options will be parsed to them.
--}
-infoPkg :: ConfigFlags -> [PackageIdentifier] -> [String] -> ResolvedPackage -> IO ()
-infoPkg _cfg ipkgs _ (ResolvedPackage { fulfilling = dep
-                                     , resolvedData = Nothing })
-    = showOtherPkg installedPkg dep
-      where installedPkg = listToMaybe (filter (fulfillDependency dep) ipkgs)
+flattenResolvedPackages :: [ResolvedPackage] -> [ResolvedPackage]
+flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
+    where flatten p@(Available _ _ _ deps) = p : flattenResolvedPackages deps
+          flatten p = [p]
+          fulfillSame a b = fulfills a == fulfills b
 
-infoPkg cfg ipkgs globalArgs (ResolvedPackage { fulfilling = dep
-                                              , pkgOptions = ops
-                                              , resolvedData = (Just (pkg,repo,deps)) })
-    = do fetched <- isFetched cfg pkg repo
-         let pkgFile = if fetched then Just (packageFile cfg pkg repo) else Nothing
-         showPkgInfo pkgFile isInstalled (globalArgs ++ ops) dep (pkg,repo,deps)
+infoPkg :: ConfigFlags -> ResolvedPackage -> IO ()
+infoPkg _ (Installed dep p)
+    = do printf "  Requested:    %s\n" (show $ showDependency dep)
+         printf "    Installed:  %s\n\n" (showPackageId p)
+infoPkg cfg (Available dep pkg opts deps)
+    = do fetched <- isFetched cfg pkg
+         let pkgFile = if fetched then packageFile cfg pkg
+                                  else  "*Not downloaded"
+         printf "  Requested:    %s\n" (show $ showDependency dep)
+         printf "    Using:      %s\n" (showPackageId (pkgInfoId pkg))
+         printf "    Depends:    %s\n" (showDependencies $ map fulfills deps)
+         printf "    Options:    %s\n" (unwords opts)
+         printf "    Location:   %s\n" (pkgURL pkg)
+         printf "    Local:      %s\n\n" pkgFile
+infoPkg _ (Unavailable dep)
+    = do printf "  Requested:    %s\n" (show $ showDependency dep)
+         printf "    Not available!\n\n"
 
-      where isInstalled = pkg `elem` ipkgs
-
-showPkgInfo :: Maybe [Char] -> Bool -> [String] -> Dependency -> (PackageIdentifier, Repo, [ResolvedPackage]) -> IO ()
-showPkgInfo mbPath installed ops dep (pkg,repo,deps)
-          = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-               printf "    Using:     %s\n" (showPackageId pkg)
-               printf "    Installed: %s\n" (if installed then "Yes" else "No")
-               printf "    Depends:   %s\n" (showDeps deps)
-               printf "    Options:   %s\n" (unwords ops)
-               printf "    Location:  %s\n" (pkgURL pkg repo)
-               printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
-    where
-      showDeps = show . map showDep
-      showDep = show . showDependency . fulfilling
-
-showOtherPkg :: Maybe PackageIdentifier -> Dependency -> IO ()
-showOtherPkg mbPkg dep
-          = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-               case mbPkg of
-                 Nothing  -> printf "    Not available!\n\n"
-                 Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
-                                printf "    Installed: Yes\n\n"
+showDependencies :: [Dependency] -> String
+showDependencies = concat . intersperse ", " . map (show . showDependency)

@@ -48,6 +48,6 @@ main = do
         ListCmd     -> list   config args
         UpdateCmd   -> update config
         CleanCmd    -> clean  config
-        FetchCmd    -> fetch  config args
+        FetchCmd    -> runCmd fetch
         _           -> error "Unhandled command."
 
