@@ -201,7 +201,6 @@ loadConfig configFile =
                               hPutStrLn stderr $ "Using default configuration."
                               return defaultConf
 
--- FIXME: finish this
 writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()
 writeDefaultConfigFile file cfg = 
     do createDirectoryIfMissing True (takeDirectory file)
