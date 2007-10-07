@@ -29,7 +29,7 @@ buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 buildDep cfg globalArgs deps
     = do ipkgs <- listInstalledPackages cfg
          apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs)
-	                                 (resolveDependenciesAux cfg ipkgs deps))
+                                         (resolveDependenciesAux cfg ipkgs deps))
          installPackages cfg globalArgs apkgs
 
 -- | Takes the path to a .cabal file, and installs the build-dependencies listed there.

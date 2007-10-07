@@ -34,7 +34,7 @@ import Data.Char (isAlphaNum, toLower)
 import Data.List (intersperse)
 import Data.Maybe (mapMaybe, fromMaybe)
 import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
-	                    ,getTemporaryDirectory)
+                            ,getTemporaryDirectory)
 import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe
