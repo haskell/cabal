@@ -26,11 +26,11 @@ import Text.Printf (printf)
 
 
 import Hackage.Config (findCompiler, message)
-import Hackage.Dependency (getPackages, resolveDependencies)
-import Hackage.Fetch (isFetched, packageFile, fetchPackage)
+import Hackage.Dependency (resolveDependencies, packagesToInstall)
+import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                                      , Repo(..))
+                     , PkgInfo(..), pkgInfoId)
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
@@ -47,19 +47,9 @@ install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg globalArgs deps
     = do (comp,conf) <- findCompiler cfg
          resolvedDeps <- resolveDependencies cfg comp conf deps
-         let apkgs = getPackages resolvedDeps
-         if null apkgs
-           then putStrLn "All requested packages already installed. Nothing to do."
-           else installPackages cfg comp globalArgs apkgs
-
--- Fetch a package and output nice messages.
-downloadPkg :: ConfigFlags -> PackageIdentifier -> Repo -> IO FilePath
-downloadPkg cfg pkg repo
-    = do fetched <- isFetched cfg pkg repo
-         if fetched
-            then do printf "'%s' is present.\n" (showPackageId pkg)
-                    return (packageFile cfg pkg repo)
-            else fetchPackage cfg pkg repo
+         case packagesToInstall resolvedDeps of
+           Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+           Right pkgs   -> installPackages cfg comp globalArgs pkgs
 
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
@@ -90,10 +80,11 @@ installDirFlags dirs =
 installPackages :: ConfigFlags
                 -> Compiler
                 -> [String] -- ^Options which will be parse to every package.
-                -> [(PackageIdentifier,[String],Repo)] -- ^(Package, list of configure options, package location)
+                -> [(PkgInfo,[String])] -- ^ (Package, list of configure options)
                 -> IO ()
-installPackages cfg comp globalArgs pkgs =
-       mapM_ (installPkg cfg comp globalArgs) pkgs
+installPackages cfg comp globalArgs pkgs 
+    | null pkgs = putStrLn "All requested packages already installed. Nothing to do."
+    | otherwise = mapM_ (installPkg cfg comp globalArgs) pkgs
 
 {-|
   Download, build and install a given package with some given flags.
@@ -117,15 +108,16 @@ installPackages cfg comp globalArgs pkgs =
 installPkg :: ConfigFlags
            -> Compiler
            -> [String] -- ^Options which will be parse to every package.
-           -> (PackageIdentifier,[String],Repo) -- ^(Package, list of configure options, package location)
+           -> (PkgInfo,[String]) -- ^(Package, list of configure options)
            -> IO ()
-installPkg cfg comp globalArgs (pkg,ops,repo)
-    = do pkgPath <- downloadPkg cfg pkg repo
+installPkg cfg comp globalArgs (pkg,opts)
+    = do pkgPath <- fetchPackage cfg pkg
          tmp <- getTemporaryDirectory
-         let tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId pkg)
+         let p = pkgInfoId pkg
+             tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId p)
              setup cmd
-                 = do let cmdOps = mkPkgOps cfg comp pkg cmd (globalArgs++ops)
-                          path = tmpDirPath </> showPackageId pkg
+                 = do let cmdOps = mkPkgOps cfg comp p cmd (globalArgs++opts)
+                          path = tmpDirPath </> showPackageId p
                       message cfg deafening $ 
                                  unwords ["setupWrapper", show (cmd:cmdOps), show path]
                       setupWrapper (cmd:cmdOps) (Just path)
@@ -133,10 +125,10 @@ installPkg cfg comp globalArgs (pkg,ops,repo)
                   (removeDirectoryRecursive tmpDirPath)
                   (do message cfg deafening (printf "Extracting %s..." pkgPath)
                       extractTarGzFile (Just tmpDirPath) pkgPath
-                      let descFilePath = tmpDirPath </> showPackageId pkg </> pkgName pkg <.> "cabal"
+                      let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
                       when (not e) $ fail $ "Package .cabal file not found: " ++ show descFilePath
-                      installUnpackedPkg cfg pkg setup
+                      installUnpackedPkg cfg p setup
                       return ())
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier
