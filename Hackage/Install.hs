@@ -141,7 +141,7 @@ installPkg cfg comp globalArgs (pkg,ops,repo)
 
 installUnpackedPkg :: ConfigFlags -> PackageIdentifier
                    -> (String -> IO ()) -> IO ()
-installUnpackedPkg cfg pkgId setup
+installUnpackedPkg _cfg pkgId setup
     = do printf "Building '%s'\n" (showPackageId pkgId)
          printf "  Configuring...\n"
          setup "configure"

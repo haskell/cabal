@@ -14,10 +14,9 @@ module Hackage.Update
     ( update
     ) where
 
-import Hackage.Types (ConfigFlags (..), PkgInfo(..), Repo(..))
-import Hackage.Fetch (downloadIndex)
-import Hackage.Tar (gunzip)
-
+import Hackage.Types
+import Hackage.Fetch
+import Hackage.Tar
 
 import qualified Data.ByteString.Lazy.Char8 as BS
 import System.FilePath (dropExtension)

@@ -40,16 +40,16 @@ import Text.PrettyPrint.HughesPJ (text)
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.PackageDescription (GenericPackageDescription(..)
-                                       , PackageDescription(..)
-                                       , parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription ({- GenericPackageDescription(..), -}
+                                        {-PackageDescription(..), -}
+                                         parsePackageDescription, ParseResult(..))
 import Distribution.ParseUtils (FieldDescr, simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, toPathTemplate, defaultInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
-import Distribution.Version (Dependency, showVersion)
+import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
 import Hackage.Tar (readTarArchive, tarFileName)
@@ -187,6 +187,7 @@ loadConfig configFile =
                               let conf = defaultConf { configInstallDirs = installDirs }
                               case parseBasicStanza configFieldDescrs conf inp of
                                 ParseOk _ conf' -> return conf'
+                                ParseFailed err -> error $ "LoadConfig: can't happen: " ++ show err
                        ParseFailed err -> 
                            do hPutStrLn stderr $ "Error parsing config file " 
                                             ++ configFile ++ ": " ++ showPError err

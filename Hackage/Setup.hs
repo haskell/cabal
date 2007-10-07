@@ -81,8 +81,8 @@ configFromOptions :: ConfigFlags -> [Option] -> ConfigFlags
 configFromOptions = foldr f
   where f o cfg = case o of
                     OptCompilerFlavor c -> cfg { configCompiler = c}
-                    OptCompiler p       -> cfg -- FIXME: where do we store this?
-                    OptHcPkg p          -> cfg -- FIXME: where do we store this?
+                    OptCompiler _       -> cfg -- FIXME: where do we store this?
+                    OptHcPkg _          -> cfg -- FIXME: where do we store this?
                     OptConfigFile _     -> cfg
                     OptCacheDir d       -> cfg { configCacheDir = d }
                     OptPrefix     d     -> lib (\ds x -> ds { prefixDirTemplate  = x }) d
@@ -199,9 +199,9 @@ parsePackageArgs _ args
                   Just x  -> x
           parsePkgArgs [] = []
           parsePkgArgs (x:xs)
-              = let (args,rest) = break (not.(==) '-'.head) xs
+              = let (args',rest) = break (not.(==) '-'.head) xs
                 in (UnresolvedDependency
                     { dependency = parseDep x
-                    , depOptions = args }
+                    , depOptions = args' }
                    ):parsePkgArgs rest
 
