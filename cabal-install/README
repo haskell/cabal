@@ -13,18 +13,15 @@
     Installed packages are determined, and dependencies of the to-be-installed packages
     are resolved and fetched.
     The fetched tarballs are moved to a temporary directory (usually /tmp) and extracted.
-    Then cabal-install finds any files with a ".cabal" extension and picks the shortest (eg.
-    "myPkg/pkg.cabal" will be chosen over "myPkg/subdir/somefile.cabal"). Cabal-get looks
-    for "Setup.lhs" and "Setup.hs" (in that order) in the directory where the .cabal file
-    was found. Runhaskell is then called with user specified arguments. The user can
-    only pass arguments to the 'configure' phase of the installation. '--user' is only passed
-    to 'runhaskell install' when the '--user' flag is given to cabal-install.
+    Distribution.Simple.SetupWrapper is used to configure, build and install the
+    unpacked package. The user can
+    only pass arguments to the 'configure' phase of the installation. '--user' is used
+    by default.
   InfoCmd:
     To be written.
 
 
   Files used by cabal-install:
-    [cfg-dir]/serv.list        list of servers in the format of :: [String]
-    [cfg-dir]/pkg.list         list of packages available from the servers.
-                               Format: [(ServerURL,[(PackageIdentifier,[Dependency])])] where ServerURL = String
+    [cfg-dir]/config        configuration file
+    [cfg-dir]/00-index.tar         list of packages available from the servers.
     [cfg-dir]/packages/        directory containing all fetched packages.
