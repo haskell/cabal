@@ -14,6 +14,7 @@ module Network.Hackage.CabalInstall.Config
     ( repoCacheDir
     , packageFile
     , packageDir
+    , listInstalledPackages
     , getKnownPackages
     , message
     , pkgURL
@@ -43,7 +44,8 @@ import Distribution.PackageDescription (GenericPackageDescription(..)
                                        , PackageDescription(..)
                                        , parsePackageDescription, ParseResult(..))
 import Distribution.ParseUtils (FieldDescr, simpleField, listField, liftField, field)
-import Distribution.Simple.Compiler (Compiler)
+import Distribution.Simple.Compiler (Compiler, PackageDB(..))
+import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, toPathTemplate, defaultInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
@@ -72,6 +74,15 @@ packageDir :: ConfigFlags -> PackageIdentifier -> Repo -> FilePath
 packageDir cfg pkg repo = repoCacheDir cfg repo
                       </> pkgName pkg
                       </> showVersion (pkgVersion pkg)
+
+listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
+listInstalledPackages cfg comp conf =
+    do Just ipkgs <- getInstalledPackages
+                         (configVerbose cfg) comp
+                         (if configUserInstall cfg then UserPackageDB
+                                               else GlobalPackageDB)
+                         conf
+       return ipkgs
 
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
