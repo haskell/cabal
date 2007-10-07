@@ -7,5 +7,3 @@
 - Overhaul verbosity
 
 - Figure out command-line interface
-
-- Get rid of zlib dependency
