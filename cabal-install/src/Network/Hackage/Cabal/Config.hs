@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalInstall.Config
+-- Module      :  Network.Hackage.Cabal.Config
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalInstall.Config
+module Network.Hackage.Cabal.Config
     ( repoCacheDir
     , packageFile
     , packageDir
@@ -52,9 +52,9 @@ import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfigur
 import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
-import Network.Hackage.CabalInstall.Tar (readTarArchive, tarFileName)
-import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
-import Network.Hackage.CabalInstall.Utils
+import Network.Hackage.Cabal.Tar (readTarArchive, tarFileName)
+import Network.Hackage.Cabal.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
+import Network.Hackage.Cabal.Utils
 
 
 -- | Full path to the local cache directory for a repository.

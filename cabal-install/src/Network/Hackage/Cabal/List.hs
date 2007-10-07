@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalInstall.Install
+-- Module      :  Network.Hackage.Cabal.Install
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalInstall.List
+module Network.Hackage.Cabal.List
     ( list    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
     ) where
 
@@ -21,8 +21,8 @@ import Data.Char as Char (toLower)
 import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
-import Network.Hackage.CabalInstall.Config (getKnownPackages)
-import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..))
+import Network.Hackage.Cabal.Config (getKnownPackages)
+import Network.Hackage.Cabal.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..))
 
 -- |Show information about packages
 list :: ConfigFlags -> [String] -> IO ()

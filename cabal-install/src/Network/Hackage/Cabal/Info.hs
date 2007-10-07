@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.CabalInstall.Info
+-- Module      :  Network.Hackage.Cabal.Info
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,13 +10,13 @@
 --
 -- High level interface to a dry-run package installation.
 -----------------------------------------------------------------------------
-module Network.Hackage.CabalInstall.Info where
+module Network.Hackage.Cabal.Info where
 
-import Network.Hackage.CabalInstall.Config (pkgURL, findCompiler, listInstalledPackages)
-import Network.Hackage.CabalInstall.Dependency 
+import Network.Hackage.Cabal.Config (pkgURL, findCompiler, listInstalledPackages)
+import Network.Hackage.Cabal.Dependency 
     (resolveDependencies, fulfillDependency)
-import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile)
-import Network.Hackage.CabalInstall.Types (ConfigFlags(..), ResolvedPackage(..)
+import Network.Hackage.Cabal.Fetch (isFetched, packageFile)
+import Network.Hackage.Cabal.Types (ConfigFlags(..), ResolvedPackage(..)
                                       ,UnresolvedDependency(..))
 
 import Distribution.Package (PackageIdentifier, showPackageId)
