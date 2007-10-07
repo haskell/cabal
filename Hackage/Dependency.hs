@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Dependency
+-- Module      :  Hackage.Dependency
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Various kinds of dependency resolution and utilities.
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Dependency
+module Hackage.Dependency
     (
     -- * Dependency resolution
       resolveDependencies
@@ -36,8 +36,8 @@ import Data.Char (toLower)
 import Data.List (nub, maximumBy, isPrefixOf)
 import qualified System.Info (arch,os)
 
-import Network.Hackage.Cabal.Config (listInstalledPackages, getKnownPackages, findCompiler)
-import Network.Hackage.Cabal.Types ( ResolvedPackage(..), UnresolvedDependency(..)
+import Hackage.Config (listInstalledPackages, getKnownPackages, findCompiler)
+import Hackage.Types ( ResolvedPackage(..), UnresolvedDependency(..)
                                       , ConfigFlags (..), PkgInfo (..), ResolvedDependency(..), Repo(..))
 import Text.Printf (printf)
 

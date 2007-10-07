@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Clean
+-- Module      :  Hackage.Clean
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,11 +10,11 @@
 --
 -- 
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Clean
+module Hackage.Clean
     ( clean
     ) where
 
-import Network.Hackage.Cabal.Types (ConfigFlags(..))
+import Hackage.Types (ConfigFlags(..))
 
 import System.Directory (removeDirectoryRecursive)
 

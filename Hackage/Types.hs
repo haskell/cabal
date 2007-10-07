@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Types
+-- Module      :  Hackage.Types
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- All data types for the entire cabal-install system gathered here to avoid some .hs-boot files.
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Types where
+module Hackage.Types where
 
 import Distribution.Simple.Compiler (CompilerFlavor)
 import Distribution.Simple.InstallDirs (InstallDirTemplates)

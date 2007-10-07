@@ -1,5 +1,5 @@
 -- | Simplistic TAR archive reading. Only gets the file names and file contents.
-module Network.Hackage.Cabal.Tar (TarHeader(..), TarFileType(..),
+module Hackage.Tar (TarHeader(..), TarFileType(..),
                                          readTarArchive, extractTarArchive, 
                                          extractTarGzFile, gunzip) where
 
