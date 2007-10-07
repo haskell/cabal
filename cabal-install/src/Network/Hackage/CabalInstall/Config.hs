@@ -11,8 +11,7 @@
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Config
-    ( packagesDirectory
-    , repoCacheDir
+    ( repoCacheDir
     , packageFile
     , packageDir
     , getKnownPackages
@@ -46,7 +45,7 @@ import Distribution.PackageDescription (GenericPackageDescription(..)
 import Distribution.ParseUtils (FieldDescr, simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
-import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, defaultInstallDirs)
+import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, toPathTemplate, defaultInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Version (Dependency, showVersion)
 import Distribution.Verbosity (Verbosity, normal)
@@ -56,13 +55,9 @@ import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo (..), Repo(
 import Network.Hackage.CabalInstall.Utils
 
 
--- | Full path to the packages directory.
-packagesDirectory :: ConfigFlags -> FilePath
-packagesDirectory cfg = configCacheDir cfg </> "packages"
-
 -- | Full path to the local cache directory for a repository.
 repoCacheDir :: ConfigFlags -> Repo -> FilePath
-repoCacheDir cfg repo = packagesDirectory cfg </> repoName repo
+repoCacheDir cfg repo = configCacheDir cfg </> repoName repo
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.
@@ -130,26 +125,28 @@ findCompiler cfg = Configure.configCompiler
 -- * Default config
 --
 
-defaultConfigDir :: IO FilePath
-defaultConfigDir = getAppUserDataDirectory "cabal"
+defaultCabalDir :: IO FilePath
+defaultCabalDir = getAppUserDataDirectory "cabal"
 
 defaultConfigFile :: IO FilePath
-defaultConfigFile = do dir <- defaultConfigDir
+defaultConfigFile = do dir <- defaultCabalDir
                        return $ dir </> "config"
 
 defaultCacheDir :: IO FilePath
-defaultCacheDir = defaultConfigDir
+defaultCacheDir = do dir <- defaultCabalDir
+                     return $ dir </> "packages"
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
 defaultConfigFlags :: IO ConfigFlags
 defaultConfigFlags = 
-    do installDirs <- defaultInstallDirs defaultCompiler True
+    do defaultPrefix <- defaultCabalDir
+       installDirs <- defaultInstallDirs defaultCompiler True
        cacheDir    <- defaultCacheDir
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
-               , configInstallDirs = installDirs
+               , configInstallDirs = installDirs { prefixDirTemplate = toPathTemplate defaultPrefix }
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
                , configVerbose     = normal

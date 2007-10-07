@@ -19,7 +19,7 @@ module Network.Hackage.CabalInstall.Setup
 import Control.Monad (when)
 import Distribution.ParseUtils (parseDependency)
 import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.Simple.InstallDirs (InstallDirTemplates(..))
+import Distribution.Simple.InstallDirs (InstallDirTemplates(..), toPathTemplate)
 import Distribution.Verbosity
 import Data.List (find)
 import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usageInfo, getOpt')
@@ -97,7 +97,7 @@ configFromOptions = foldr f
                     OptUserInstall u    -> cfg { configUserInstall = u }
                     OptHelp             -> error "Got to setFlagsFromOptions OptHelp"
                     OptVerbose v        -> cfg { configVerbose = v }
-         where lib g d = cfg { configInstallDirs = g (configInstallDirs cfg) (read $ show d) } -- FIXME: Read PathTemplate seems to require quotes
+         where lib g d = cfg { configInstallDirs = g (configInstallDirs cfg) (toPathTemplate d) }
 
 data Cmd = Cmd {
         cmdName         :: String,
