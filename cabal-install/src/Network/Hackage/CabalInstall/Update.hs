@@ -15,20 +15,12 @@ module Network.Hackage.CabalInstall.Update
     ) where
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), PkgInfo(..), Repo(..))
-import Network.Hackage.CabalInstall.Utils (isVerbose)
-import Network.Hackage.CabalInstall.Fetch (downloadIndex, packagesDirectory)
+import Network.Hackage.CabalInstall.Fetch (downloadIndex)
 import Network.Hackage.CabalInstall.Tar (gunzip)
 
-import Distribution.Package (PackageIdentifier(..), pkgName, showPackageId)
-import Distribution.PackageDescription (PackageDescription(..), readPackageDescription, GenericPackageDescription(..))
-import Distribution.Verbosity
-import System.FilePath ((</>), joinPath, addExtension, takeExtension, dropExtension)
 
-import Control.Monad (liftM, when)
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.ByteString.Lazy.Char8 (ByteString)
-import Data.Version (showVersion)
-
+import System.FilePath (dropExtension)
 import Text.Printf
 
 -- | 'update' downloads the package list from all known servers

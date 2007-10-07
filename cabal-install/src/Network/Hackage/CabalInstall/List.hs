@@ -15,14 +15,13 @@ module Network.Hackage.CabalInstall.List
     ) where
 
 import Text.Regex
-import Data.Maybe (catMaybes, isJust)
-import Data.List (find, nubBy, sortBy)
+import Data.Maybe (isJust)
+import Data.List (nubBy, sortBy)
 import Data.Char as Char (toLower)
 import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
 import Network.Hackage.CabalInstall.Config (getKnownPackages)
-import Network.Hackage.CabalInstall.Dependency (finalizePackage, listInstalledPackages)
 import Network.Hackage.CabalInstall.Types (PkgInfo(..), ConfigFlags(..), UnresolvedDependency(..))
 
 -- |Show information about packages
