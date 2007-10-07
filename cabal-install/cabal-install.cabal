@@ -23,7 +23,6 @@ Main-Is: CabalInstall.hs
 Hs-Source-Dirs: src
 Ghc-Options: -Wall
 Other-Modules:
-    Network.Hackage.CabalInstall.BuildDep
     Network.Hackage.CabalInstall.Clean
     Network.Hackage.CabalInstall.Config
     Network.Hackage.CabalInstall.Dependency

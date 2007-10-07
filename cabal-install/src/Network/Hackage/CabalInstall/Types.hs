@@ -29,7 +29,6 @@ data PkgInfo = PkgInfo {
 data Action
     = FetchCmd
     | InstallCmd
-    | BuildDepCmd
     | CleanCmd
     | UpdateCmd
     | InfoCmd
