@@ -14,13 +14,12 @@ module Network.Hackage.CabalInstall.Clean
     ( clean
     ) where
 
-import Network.Hackage.CabalInstall.Types (ConfigFlags)
-import Network.Hackage.CabalInstall.Config (packagesDirectory)
+import Network.Hackage.CabalInstall.Types (ConfigFlags(..))
 
 import System.Directory (removeDirectoryRecursive)
 
 -- | 'clean' removes all downloaded packages from the {config-dir}\/packages\/ directory.
 clean :: ConfigFlags -> IO ()
 clean cfg
-    = removeDirectoryRecursive (packagesDirectory cfg)
+    = removeDirectoryRecursive (configCacheDir cfg)
 
