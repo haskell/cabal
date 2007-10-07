@@ -53,7 +53,7 @@ import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
 import Hackage.Tar (readTarArchive, tarFileName)
-import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
+import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..), pkgInfoId)
 import Hackage.Utils
 
 
@@ -63,17 +63,18 @@ repoCacheDir cfg repo = configCacheDir cfg </> repoName repo
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.
-packageFile :: ConfigFlags -> PackageIdentifier -> Repo -> FilePath
-packageFile cfg pkg repo = packageDir cfg pkg repo
-                           </> showPackageId pkg 
-                           <.> "tar.gz"
+packageFile :: ConfigFlags -> PkgInfo -> FilePath
+packageFile cfg pkg = packageDir cfg pkg
+                      </> showPackageId (pkgInfoId pkg)
+                      <.> "tar.gz"
 
 -- |Generate the full path to the directory where the local cached copy of
 -- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: ConfigFlags -> PackageIdentifier -> Repo -> FilePath
-packageDir cfg pkg repo = repoCacheDir cfg repo
-                      </> pkgName pkg
-                      </> showVersion (pkgVersion pkg)
+packageDir :: ConfigFlags -> PkgInfo -> FilePath
+packageDir cfg pkg = repoCacheDir cfg (pkgRepo pkg)
+                     </> pkgName p
+                     </> showVersion (pkgVersion p)
+  where p = pkgInfoId pkg
 
 listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
 listInstalledPackages cfg comp conf =
@@ -117,10 +118,11 @@ message :: ConfigFlags -> Verbosity -> String -> IO ()
 message cfg v s = when (configVerbose cfg >= v) (putStrLn s)
 
 -- | Generate the URL of the tarball for a given package.
-pkgURL :: PackageIdentifier -> Repo -> String
-pkgURL pkg repo = joinWith "/" [repoURL repo, pkgName pkg, showVersion (pkgVersion pkg), showPackageId pkg] 
-                           ++ ".tar.gz"
-                      where joinWith tok = concat . intersperse tok
+pkgURL :: PkgInfo -> String
+pkgURL pkg = joinWith "/" [repoURL (pkgRepo pkg), pkgName p, showVersion (pkgVersion p), 
+                           showPackageId p ++ ".tar.gz"]              
+    where joinWith tok = concat . intersperse tok
+          p = pkgInfoId pkg
 
 --
 -- * Compiler and programs

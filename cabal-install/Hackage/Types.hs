@@ -15,7 +15,7 @@ module Hackage.Types where
 import Distribution.Simple.Compiler (CompilerFlavor)
 import Distribution.Simple.InstallDirs (InstallDirTemplates)
 import Distribution.Package (PackageIdentifier)
-import Distribution.PackageDescription (GenericPackageDescription)
+import Distribution.PackageDescription (GenericPackageDescription, packageDescription, package)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
 
@@ -25,6 +25,9 @@ data PkgInfo = PkgInfo {
                         pkgRepo :: Repo,
                         pkgDesc :: GenericPackageDescription
                        }
+
+pkgInfoId :: PkgInfo -> PackageIdentifier
+pkgInfoId = package . packageDescription . pkgDesc
 
 data Action
     = FetchCmd
@@ -70,22 +73,17 @@ data Repo = Repo {
                  }
           deriving (Show,Eq)
 
-data ResolvedPackage
-    = ResolvedPackage
-    { fulfilling :: Dependency
-    , resolvedData :: Maybe ( PackageIdentifier -- pkg id
-                            , Repo            -- pkg location
-                            , [ResolvedPackage] -- pkg dependencies
-                            )
-    , pkgOptions :: [String]
-    } deriving Eq
+data ResolvedPackage = Installed Dependency PackageIdentifier
+                     | Available Dependency PkgInfo [String] [ResolvedPackage]
+                     | Unavailable Dependency
+
+fulfills :: ResolvedPackage -> Dependency
+fulfills (Installed d _) = d
+fulfills (Available d _ _ _) = d
+fulfills (Unavailable d) = d
 
 data UnresolvedDependency
     = UnresolvedDependency
     { dependency :: Dependency
     , depOptions :: [String]
     }
-
-data ResolvedDependency
-    = ResolvedDependency PackageIdentifier Repo [(Dependency,Maybe ResolvedDependency)]
-      deriving (Eq,Show)

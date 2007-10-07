@@ -16,7 +16,6 @@ module Hackage.Fetch
      fetch
     , -- * Utilities
       fetchPackage
-    , packageFile
     , isFetched
     , readURI
     , downloadIndex
@@ -31,17 +30,15 @@ import Control.Monad (filterM)
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
-import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
+import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..), PkgInfo, pkgInfoId)
 import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
-import Hackage.Dependency (filterFetchables, resolveDependencies)
+import Hackage.Dependency (resolveDependencies, packagesToInstall)
 
-import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Package (showPackageId)
 import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
-import Distribution.Compat.ReadP (readP_to_S)
-import Distribution.ParseUtils (parseDependency)
 
 
 readURI :: URI -> IO String
@@ -84,16 +81,16 @@ downloadFile path url
 
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: ConfigFlags -> PackageIdentifier -> Repo -> IO String
-downloadPackage cfg pkg repo
-    = do let url = pkgURL pkg repo
-             dir = packageDir cfg pkg repo
-             path = packageFile cfg pkg repo
+downloadPackage :: ConfigFlags -> PkgInfo -> IO String
+downloadPackage cfg pkg
+    = do let url = pkgURL pkg
+             dir = packageDir cfg pkg
+             path = packageFile cfg pkg
          message cfg verbose $ "GET " ++ show url
          createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
-           Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId pkg) (show err)
+           Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId (pkgInfoId pkg)) (show err)
            Nothing -> return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
@@ -109,38 +106,28 @@ downloadIndex cfg repo
            Nothing  -> return path
 
 -- |Returns @True@ if the package has already been fetched.
-isFetched :: ConfigFlags -> PackageIdentifier -> Repo -> IO Bool
-isFetched cfg pkg repo
-    = doesFileExist (packageFile cfg pkg repo)
+isFetched :: ConfigFlags -> PkgInfo -> IO Bool
+isFetched cfg pkg = doesFileExist (packageFile cfg pkg)
 
 -- |Fetch a package if we don't have it already.
-fetchPackage :: ConfigFlags -> PackageIdentifier -> Repo -> IO String
-fetchPackage cfg pkg repo
-    = do fetched <- isFetched cfg pkg repo
+fetchPackage :: ConfigFlags -> PkgInfo -> IO String
+fetchPackage cfg pkg
+    = do fetched <- isFetched cfg pkg
          if fetched
-            then do printf "'%s' is present.\n" (showPackageId pkg)
-                    return (packageFile cfg pkg repo)
-            else do printf "Downloading '%s'...\n" (showPackageId pkg)
-                    downloadPackage cfg pkg repo
+            then do printf "'%s' is present.\n" (showPackageId (pkgInfoId pkg))
+                    return (packageFile cfg pkg)
+            else do printf "Downloading '%s'...\n" (showPackageId (pkgInfoId pkg))
+                    downloadPackage cfg pkg
 
 -- |Fetch a list of packages and their dependencies.
-fetch :: ConfigFlags -> [String] -> IO ()
-fetch cfg pkgs
+fetch :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
+fetch cfg _globalArgs deps
     = do (comp,conf) <- findCompiler cfg
-         apkgs <- fmap filterFetchables (resolveDependencies cfg comp conf (map parseDep pkgs))
-         mapM_ (\(pkg,repo)
-                    -> fetchPackage cfg pkg repo
-               ) =<< filterM isNotFetched apkgs
-    where parseDep dep
-              = case readP_to_S parseDependency dep of
-                 [] -> error ("Failed to parse package dependency: " ++ show dep)
-                 x  -> UnresolvedDependency
-                       { dependency = (fst (last x))
-                       , depOptions = [] }
-          isNotFetched (pkg,repo)
-              = do fetched <- isFetched cfg pkg repo
-                   printf "'%s' is present.\n" (showPackageId pkg)
-                   return (not fetched)
+         depTree <- resolveDependencies cfg comp conf deps
+         case packagesToInstall depTree of
+           Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+           Right pkgs   -> do ps <- filterM (fmap not . isFetched cfg) $ map fst pkgs
+                              mapM_ (fetchPackage cfg) ps
 
 withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
 withBinaryFile name mode = bracket (openBinaryFile name mode) hClose
