@@ -7,3 +7,7 @@
 - Overhaul verbosity
 
 - Figure out command-line interface
+
+-- darcs like interface:
+
+    cabal install xmonad
