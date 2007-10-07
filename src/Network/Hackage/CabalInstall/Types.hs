@@ -50,9 +50,9 @@ data Option = OptCompilerFlavor CompilerFlavor
             | OptLibSubDir FilePath
             | OptLibExecDir FilePath
             | OptDataDir FilePath
-	    | OptDataSubDir FilePath
-	    | OptDocDir FilePath
-	    | OptHtmlDir FilePath
+            | OptDataSubDir FilePath
+            | OptDocDir FilePath
+            | OptHtmlDir FilePath
             | OptUserInstall Bool
             | OptHelp
             | OptVerbose Verbosity
