@@ -23,15 +23,14 @@ import Hackage.Update           (update)
 import Hackage.Fetch            (fetch)
 import Hackage.Clean            (clean)
 
-import Data.List                (isSuffixOf)
 import System.Environment       (getArgs)
 
 -- | Entry point
 --
 main :: IO ()
 main = do
-    args       <- getArgs
-    (action, flags, args) <- parseGlobalArgs args
+    rawArgs    <- getArgs
+    (action, flags, args) <- parseGlobalArgs rawArgs
     configFile <- case [f | OptConfigFile f <- flags] of
                         [] -> defaultConfigFile
                         fs -> return (last fs)

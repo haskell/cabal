@@ -12,15 +12,14 @@
 -----------------------------------------------------------------------------
 module Hackage.Info where
 
-import Hackage.Config (pkgURL, findCompiler, listInstalledPackages)
+import Hackage.Config
 import Hackage.Dependency 
-    (resolveDependencies, fulfillDependency)
-import Hackage.Fetch (isFetched, packageFile)
-import Hackage.Types (ConfigFlags(..), ResolvedPackage(..)
-                                      ,UnresolvedDependency(..))
+import Hackage.Fetch
+import Hackage.Types 
 
 import Distribution.Package (PackageIdentifier, showPackageId)
 import Distribution.ParseUtils (showDependency)
+import Distribution.Version (Dependency)
 
 import Data.Maybe (listToMaybe, fromMaybe)
 import Text.Printf (printf)
@@ -38,33 +37,37 @@ info cfg globalArgs deps
   and what options will be parsed to them.
 -}
 infoPkg :: ConfigFlags -> [PackageIdentifier] -> [String] -> ResolvedPackage -> IO ()
-infoPkg cfg ipkgs _ (ResolvedPackage { fulfilling = dep
+infoPkg _cfg ipkgs _ (ResolvedPackage { fulfilling = dep
                                      , resolvedData = Nothing })
     = showOtherPkg installedPkg dep
-    where installedPkg = listToMaybe (filter (fulfillDependency dep) ipkgs)
+      where installedPkg = listToMaybe (filter (fulfillDependency dep) ipkgs)
+
 infoPkg cfg ipkgs globalArgs (ResolvedPackage { fulfilling = dep
                                               , pkgOptions = ops
                                               , resolvedData = (Just (pkg,repo,deps)) })
     = do fetched <- isFetched cfg pkg repo
          let pkgFile = if fetched then Just (packageFile cfg pkg repo) else Nothing
          showPkgInfo pkgFile isInstalled (globalArgs ++ ops) dep (pkg,repo,deps)
-    where isInstalled = pkg `elem` ipkgs
 
+      where isInstalled = pkg `elem` ipkgs
+
+showPkgInfo :: Maybe [Char] -> Bool -> [String] -> Dependency -> (PackageIdentifier, Repo, [ResolvedPackage]) -> IO ()
 showPkgInfo mbPath installed ops dep (pkg,repo,deps)
-              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-                   printf "    Using:     %s\n" (showPackageId pkg)
-                   printf "    Installed: %s\n" (if installed then "Yes" else "No")
-                   printf "    Depends:   %s\n" (showDeps deps)
-                   printf "    Options:   %s\n" (unwords ops)
-                   printf "    Location:  %s\n" (pkgURL pkg repo)
-                   printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
+          = do printf "  Package:     '%s'\n" (show $ showDependency dep)
+               printf "    Using:     %s\n" (showPackageId pkg)
+               printf "    Installed: %s\n" (if installed then "Yes" else "No")
+               printf "    Depends:   %s\n" (showDeps deps)
+               printf "    Options:   %s\n" (unwords ops)
+               printf "    Location:  %s\n" (pkgURL pkg repo)
+               printf "    Local:     %s\n\n" (fromMaybe "*Not downloaded" mbPath)
     where
-          showDeps = show . map showDep
-          showDep dep = show (showDependency (fulfilling dep))
+      showDeps = show . map showDep
+      showDep = show . showDependency . fulfilling
 
+showOtherPkg :: Maybe PackageIdentifier -> Dependency -> IO ()
 showOtherPkg mbPkg dep
-              = do printf "  Package:     '%s'\n" (show $ showDependency dep)
-                   case mbPkg of
-                     Nothing  -> printf "    Not available!\n\n"
-                     Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
-                                    printf "    Installed: Yes\n\n"
+          = do printf "  Package:     '%s'\n" (show $ showDependency dep)
+               case mbPkg of
+                 Nothing  -> printf "    Not available!\n\n"
+                 Just pkg -> do printf "    Using:     %s\n" (showPackageId pkg)
+                                printf "    Installed: Yes\n\n"
