@@ -35,6 +35,7 @@ import Data.List (intersperse)
 import Data.Maybe (mapMaybe, fromMaybe)
 import System.Directory (Permissions (..), getPermissions, createDirectoryIfMissing
                             ,getTemporaryDirectory)
+import System.FilePath (takeDirectory)
 import System.IO.Error (isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe
@@ -203,7 +204,8 @@ loadConfig configFile =
 -- FIXME: finish this
 writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()
 writeDefaultConfigFile file cfg = 
-    writeFile file $ showFields configWriteFieldDescrs cfg
+    do createDirectoryIfMissing True (takeDirectory file)
+       writeFile file $ showFields configWriteFieldDescrs cfg
 
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr ConfigFlags]
