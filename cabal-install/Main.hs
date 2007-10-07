@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Main
+-- Module      :  Main
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,20 +10,20 @@
 --
 -- Entry point to the default cabal-install front-end.
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Main where
+module Main where
 
 import Data.List (isSuffixOf)
 import System.Environment (getArgs)
-import Network.Hackage.Cabal.Types (Action (..), Option(..))
-import Network.Hackage.Cabal.Setup (parseGlobalArgs, parsePackageArgs, configFromOptions)
-import Network.Hackage.Cabal.Config (defaultConfigFile, loadConfig)
+import Hackage.Types (Action (..), Option(..))
+import Hackage.Setup (parseGlobalArgs, parsePackageArgs, configFromOptions)
+import Hackage.Config (defaultConfigFile, loadConfig)
 
-import Network.Hackage.Cabal.List (list)
-import Network.Hackage.Cabal.Install (install)
-import Network.Hackage.Cabal.Info (info)
-import Network.Hackage.Cabal.Update (update)
-import Network.Hackage.Cabal.Fetch (fetch)
-import Network.Hackage.Cabal.Clean (clean)
+import Hackage.List (list)
+import Hackage.Install (install)
+import Hackage.Info (info)
+import Hackage.Update (update)
+import Hackage.Fetch (fetch)
+import Hackage.Clean (clean)
 
 
 main :: IO ()

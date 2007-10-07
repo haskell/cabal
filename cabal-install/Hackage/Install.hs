@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Install
+-- Module      :  Hackage.Install
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Install
+module Hackage.Install
     ( install    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
     , installPackages
     , installPkg -- :: ConfigFlags -> (PackageIdentifier,[String],String) -> IO ()
@@ -25,11 +25,11 @@ import System.FilePath ((</>),(<.>))
 import Text.Printf (printf)
 
 
-import Network.Hackage.Cabal.Config (findCompiler, message)
-import Network.Hackage.Cabal.Dependency (getPackages, resolveDependencies)
-import Network.Hackage.Cabal.Fetch (isFetched, packageFile, fetchPackage)
-import Network.Hackage.Cabal.Tar (extractTarGzFile)
-import Network.Hackage.Cabal.Types (ConfigFlags(..), UnresolvedDependency(..)
+import Hackage.Config (findCompiler, message)
+import Hackage.Dependency (getPackages, resolveDependencies)
+import Hackage.Fetch (isFetched, packageFile, fetchPackage)
+import Hackage.Tar (extractTarGzFile)
+import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
                                       , Repo(..))
 
 import Distribution.Simple.Compiler (Compiler(..))

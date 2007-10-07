@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Fetch
+-- Module      :  Hackage.Fetch
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Fetch
+module Hackage.Fetch
     (
      -- * Commands
      fetch
@@ -31,9 +31,9 @@ import Control.Monad (filterM)
 import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
-import Network.Hackage.Cabal.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.Cabal.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
-import Network.Hackage.Cabal.Dependency (filterFetchables, resolveDependencies)
+import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
+import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
+import Hackage.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Verbosity
