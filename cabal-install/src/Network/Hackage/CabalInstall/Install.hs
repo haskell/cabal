@@ -17,16 +17,16 @@ module Network.Hackage.CabalInstall.Install
     ) where
 
 import Control.Exception (bracket_)
+import Control.Monad (when)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
-                        ,removeDirectoryRecursive)
-import System.FilePath ((</>))
+                        ,removeDirectoryRecursive, doesFileExist)
+import System.FilePath ((</>),(<.>))
 
 import Text.Printf (printf)
 
 
 import Network.Hackage.CabalInstall.Config (findCompiler, message)
-import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies
-                                               , listInstalledPackages)
+import Network.Hackage.CabalInstall.Dependency (getPackages, resolveDependencies)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile, fetchPackage)
 import Network.Hackage.CabalInstall.Tar (extractTarGzFile)
 import Network.Hackage.CabalInstall.Types (ConfigFlags(..), UnresolvedDependency(..)
@@ -46,8 +46,7 @@ import Distribution.Verbosity
 install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg globalArgs deps
     = do (comp,conf) <- findCompiler cfg
-         ipkgs <- listInstalledPackages cfg comp conf
-         resolvedDeps <- resolveDependencies cfg comp conf ipkgs deps
+         resolvedDeps <- resolveDependencies cfg comp conf deps
          let apkgs = getPackages resolvedDeps
          if null apkgs
            then putStrLn "All requested packages already installed. Nothing to do."
