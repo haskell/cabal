@@ -36,7 +36,7 @@ import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Setup (CopyDest(..))
-import Distribution.Package (showPackageId, PackageIdentifier)
+import Distribution.Package (showPackageId, PackageIdentifier(..))
 import Distribution.Verbosity
 
 
@@ -133,6 +133,9 @@ installPkg cfg comp globalArgs (pkg,ops,repo)
                   (removeDirectoryRecursive tmpDirPath)
                   (do message cfg deafening (printf "Extracting %s..." pkgPath)
                       extractTarGzFile (Just tmpDirPath) pkgPath
+                      let descFilePath = tmpDirPath </> showPackageId pkg </> pkgName pkg <.> "cabal"
+                      e <- doesFileExist descFilePath
+                      when (not e) $ fail $ "Package .cabal file not found: " ++ show descFilePath
                       installUnpackedPkg cfg pkg setup
                       return ())
 
