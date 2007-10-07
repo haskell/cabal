@@ -1,6 +1,6 @@
 module Network.Hackage.CabalInstall.Utils where
 
-import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice)
+import Distribution.Compat.ReadP (ReadP, readP_to_S, readS_to_P, pfail, get, look, choice)
 import Distribution.ParseUtils
 import Distribution.Verbosity
 import Network.Hackage.CabalInstall.Types
