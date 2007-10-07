@@ -32,7 +32,7 @@ import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Network.Hackage.CabalInstall.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..))
-import Network.Hackage.CabalInstall.Config (packagesDirectory, repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
+import Network.Hackage.CabalInstall.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
 import Network.Hackage.CabalInstall.Dependency (filterFetchables, resolveDependencies)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
