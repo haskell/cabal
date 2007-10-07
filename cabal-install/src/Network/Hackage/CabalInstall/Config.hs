@@ -221,6 +221,9 @@ configWriteFieldDescrs =
     , listField "repos"
                 (text . showRepo)                  parseRepo
                 configRepos    (\rs cfg -> cfg { configRepos = rs })
+    , simpleField "cachedir"
+                (text . show)                  (readS_to_P reads)
+                configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
     , simpleField "prefix"
                 (text . show)  (readS_to_P reads) 
