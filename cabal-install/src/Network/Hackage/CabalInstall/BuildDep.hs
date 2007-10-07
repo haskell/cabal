@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.BuildDep where
 
-import Network.Hackage.CabalInstall.Config (findCompiler)
+import Network.Hackage.CabalInstall.Config (findCompiler, getKnownPackages)
 import Network.Hackage.CabalInstall.Dependency (getPackages, getBuildDeps
                                                , listInstalledPackages
                                                , depToUnresolvedDep, resolveDependenciesAux)
@@ -30,8 +30,9 @@ buildDep :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 buildDep cfg globalArgs deps
     = do (comp,conf) <- findCompiler cfg
          ipkgs <- listInstalledPackages cfg comp conf
-         apkgs <- fmap getPackages (fmap (getBuildDeps ipkgs)
-                                         (resolveDependenciesAux cfg comp conf ipkgs deps))
+         available <- getKnownPackages cfg
+         let apkgs = getPackages $ getBuildDeps ipkgs $
+                     resolveDependenciesAux cfg comp conf ipkgs available deps
          installPackages cfg comp globalArgs apkgs
 
 -- | Takes the path to a .cabal file, and installs the build-dependencies listed there.
