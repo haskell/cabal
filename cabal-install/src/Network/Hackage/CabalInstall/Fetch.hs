@@ -71,7 +71,7 @@ downloadURI path uri
            Left err -> return (Just err)
            Right rsp
                | rspCode rsp == (2,0,0) -> withBinaryFile path WriteMode (`hPutStr` rspBody rsp) 
-				                          >> return Nothing
+                                                          >> return Nothing
                | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
     where request = Request uri GET [] ""
 

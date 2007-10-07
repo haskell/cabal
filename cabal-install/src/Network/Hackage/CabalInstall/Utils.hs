@@ -44,9 +44,9 @@ parseBasicStanza fields empty inp =
     readFields inp >>= foldM (setField fields) empty
 
 setField :: [FieldDescr a]
-	 -> a
-	 -> Field
-	 -> ParseResult a
+         -> a
+         -> Field
+         -> ParseResult a
 setField fs x (F line f val) =
     case lookupFieldDescr fs f of
       Nothing -> 
