@@ -45,12 +45,13 @@ import Distribution.Verbosity
 -- |Installs the packages needed to satisfy a list of dependencies.
 install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg globalArgs deps
-    = do ipkgs <- listInstalledPackages cfg
-         resolvedDeps <- resolveDependencies cfg ipkgs deps
+    = do (comp,conf) <- findCompiler cfg
+         ipkgs <- listInstalledPackages cfg comp conf
+         resolvedDeps <- resolveDependencies cfg comp conf ipkgs deps
          let apkgs = getPackages resolvedDeps
          if null apkgs
            then putStrLn "All requested packages already installed. Nothing to do."
-           else installPackages cfg globalArgs apkgs
+           else installPackages cfg comp globalArgs apkgs
 
 -- Fetch a package and output nice messages.
 downloadPkg :: ConfigFlags -> PackageIdentifier -> Repo -> IO FilePath
@@ -88,11 +89,11 @@ installDirFlags dirs =
   where flag s f = "--" ++ s ++ "=" ++ f dirs
 
 installPackages :: ConfigFlags
+                -> Compiler
                 -> [String] -- ^Options which will be parse to every package.
                 -> [(PackageIdentifier,[String],Repo)] -- ^(Package, list of configure options, package location)
                 -> IO ()
-installPackages cfg globalArgs pkgs =
-    do (comp, _) <- findCompiler cfg
+installPackages cfg comp globalArgs pkgs =
        mapM_ (installPkg cfg comp globalArgs) pkgs
 
 {-|

@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Network.Hackage.CabalInstall.Info where
 
-import Network.Hackage.CabalInstall.Config (pkgURL)
+import Network.Hackage.CabalInstall.Config (pkgURL, findCompiler)
 import Network.Hackage.CabalInstall.Dependency 
     (resolveDependencies, fulfillDependency, listInstalledPackages)
 import Network.Hackage.CabalInstall.Fetch (isFetched, packageFile)
@@ -27,8 +27,9 @@ import Text.Printf (printf)
 
 info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
 info cfg globalArgs deps
-    = do ipkgs <- listInstalledPackages cfg
-         apkgs <- resolveDependencies cfg [] deps
+    = do (comp,conf) <- findCompiler cfg
+         ipkgs <- listInstalledPackages cfg comp conf
+         apkgs <- resolveDependencies cfg comp conf [] deps
          mapM_ (infoPkg cfg ipkgs globalArgs) apkgs
 
 {-|
