@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Network.Hackage.Cabal.Setup
+-- Module      :  Hackage.Setup
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Network.Hackage.Cabal.Setup
+module Hackage.Setup
     ( parsePackageArgs
     , parseGlobalArgs
     , configFromOptions
@@ -26,9 +26,9 @@ import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), usage
 import System.Exit (exitWith, ExitCode (..))
 import System.Environment (getProgName)
 
-import Network.Hackage.Cabal.Types (Action (..), Option(..), ConfigFlags(..)
+import Hackage.Types (Action (..), Option(..), ConfigFlags(..)
                                       , UnresolvedDependency (..))
-import Network.Hackage.Cabal.Utils (readPToMaybe)
+import Hackage.Utils (readPToMaybe)
 
 
 globalOptions :: [OptDescr Option]

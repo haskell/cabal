@@ -20,23 +20,22 @@ flag old-base
   description: Old, monolithic base
 
 Executable cabal
-    Main-Is:            Cabal.hs
+    Main-Is:            Main.hs
     Ghc-Options:        -Wall
     Other-Modules:
-        Network.Hackage.Cabal.Clean
-        Network.Hackage.Cabal.Config
-        Network.Hackage.Cabal.Dependency
-        Network.Hackage.Cabal.Fetch
-        Network.Hackage.Cabal.Info
-        Network.Hackage.Cabal.Install
-        Network.Hackage.Cabal.List
-        Network.Hackage.Cabal.Main
-        Network.Hackage.Cabal.Setup
-        Network.Hackage.Cabal.Tar
-        Network.Hackage.Cabal.Types
-        Network.Hackage.Cabal.Update
-        Network.Hackage.Cabal.Utils
-        Network.Hackage.Version
+        Hackage.Clean
+        Hackage.Config
+        Hackage.Dependency
+        Hackage.Fetch
+        Hackage.Info
+        Hackage.Install
+        Hackage.List
+        Hackage.Setup
+        Hackage.Tar
+        Hackage.Types
+        Hackage.Update
+        Hackage.Utils
+        Hackage.Version
 
     build-depends: mtl, network, regex-compat, unix, Cabal>=1.3,
                    zlib >= 0.4, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
