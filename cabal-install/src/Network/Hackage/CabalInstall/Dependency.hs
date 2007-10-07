@@ -14,7 +14,6 @@ module Network.Hackage.CabalInstall.Dependency
     (
     -- * Dependency resolution
       resolveDependencies
-    , resolveDependenciesAux 
     -- * Utilities
     , depToUnresolvedDep
     , getPackages            -- :: [ResolvedPackage] -> [(PackageIdentifier,[String],String)]
@@ -164,23 +163,26 @@ finalizePackage comp installed available flags desc
           (showCompilerId comp, compilerVersion comp)
           (pkgDesc desc)
 
--- |Resolve some dependencies from the known packages while filtering out installed packages.
---  The result hasn't been modified to put the dependencies in front of the packages.
-resolveDependenciesAux :: ConfigFlags
-                       -> Compiler
-                       -> ProgramConfiguration
-                       -> [PackageIdentifier] -- ^Installed packages.
-                       -> [PkgInfo] -- ^ Installable packages
-                       -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
-                       -> [ResolvedPackage]
-resolveDependenciesAux cfg comp conf installed available deps
-    = map resolve (filter (not . isInstalled installed . dependency) deps)
-  where resolve dep
-              = let rDep = getDependency comp installed available dep
+resolveDependency :: Compiler 
+                  -> [PackageIdentifier] -- ^ Installed packages.
+                  -> [PkgInfo] -- ^ Installable packages
+                  -> UnresolvedDependency
+                  -> ResolvedPackage
+resolveDependency comp installed available dep
+    = let rDep = getDependency comp installed available dep
                 in case resolvedData rDep of
                     Nothing -> resolvedDepToResolvedPkg (dependency dep,Nothing)
                     _ -> rDep
 
+-- |Resolve some dependencies from the known packages while filtering out installed packages.
+--  The result hasn't been modified to put the dependencies in front of the packages.
+resolveDependenciesAux :: Compiler 
+                       -> [PackageIdentifier] -- ^Installed packages.
+                       -> [PkgInfo] -- ^ Installable packages
+                       -> [UnresolvedDependency] -- ^Dependencies in need of resolution.
+                       -> [ResolvedPackage]
+resolveDependenciesAux comp installed available =
+    map (resolveDependency comp installed available)
 
 -- |Resolve some dependencies from the known packages while filtering out installed packages.
 --  The result has been modified to put the dependencies in front of the packages.
@@ -192,4 +194,4 @@ resolveDependencies :: ConfigFlags
 resolveDependencies cfg comp conf deps
     = do installed <- listInstalledPackages cfg comp conf
          available <- getKnownPackages cfg
-         return $ flattenDepList installed $ resolveDependenciesAux cfg comp conf installed available deps
+         return $ flattenDepList installed $ resolveDependenciesAux comp installed available deps
