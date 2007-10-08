@@ -30,7 +30,7 @@ import Distribution.Simple.Program (ProgramConfiguration)
 
 import Control.Monad (mplus)
 import Data.Char (toLower)
-import Data.List (nubBy, maximumBy, isPrefixOf)
+import Data.List (nub, nubBy, maximumBy, isPrefixOf)
 import Data.Maybe (fromMaybe)
 import qualified System.Info (arch,os)
 
@@ -93,16 +93,19 @@ getDependencies :: Compiler
                 -> [PkgInfo] -- ^ Available packages
                 -> PkgInfo
                 -> [String] -- ^ Options
-                -> [Dependency]
-getDependencies comp _installed _available pkg opts
+                -> [Dependency] 
+                   -- ^ If successful, this is the list of dependencies.
+                   -- If flag assignment failed, this is the list of
+                   -- missing dependencies.
+getDependencies comp installed available pkg opts
     = case e of
-        Left missing   -> error $ "finalizePackage complained about missing dependencies " ++ show missing
+        Left missing   -> missing
         Right (desc,_) -> buildDepends desc
     where 
       flags = configurationsFlags opts
       e = finalizePackageDescription 
                 flags
-                Nothing --(Just $ nub $ installed ++ map pkgInfoId available) 
+                (Just $ nub $ installed ++ map pkgInfoId available) 
                 System.Info.os
                 System.Info.arch
                 (showCompilerId comp, compilerVersion comp)
