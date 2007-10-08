@@ -110,15 +110,15 @@ getDependencies comp _installed _available pkg opts
 
 -- | Extracts configurations flags from a list of options.
 configurationsFlags :: [String] -> [(String, Bool)]
-configurationsFlags opts = 
-    case filter ("--flags=" `isPrefixOf`) opts of
-      [] -> []
-      xs -> flagList $ removeQuotes $ drop 8 $ last xs
-  where removeQuotes ('"':s) = take (length s - 1) s
-        removeQuotes s = s
-        flagList = map tagWithValue . words
-            where tagWithValue ('-':name) = (map toLower name, False)
-                  tagWithValue name       = (map toLower name, True)
+configurationsFlags = concatMap flag
+    where
+      flag o | "--flags=" `isPrefixOf` o = map tagWithValue $ words $ removeQuotes $ drop 8 o
+             | "-f" `isPrefixOf` o = [tagWithValue $ drop 2 o]
+             | otherwise = []
+      removeQuotes (c:s) | c == '"' || c == '\'' = take (length s - 1) s
+      removeQuotes s = s
+      tagWithValue ('-':name) = (map toLower name, False)
+      tagWithValue name       = (map toLower name, True)
 
 packagesToInstall :: [ResolvedPackage] 
                   -> Either [Dependency] [(PkgInfo, [String])]
