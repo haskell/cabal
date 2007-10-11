@@ -545,6 +545,7 @@ ghcCcOptions lbi bi odir
      =  ["-I" ++ dir | dir <- includeDirs bi]
      ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
+     ++ (if withOptimization lbi then ["-optc-O2"] else [])
      ++ ["-odir", odir]
 
 mkGHCiLibName :: FilePath -- ^file Prefix
