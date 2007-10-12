@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="US-ASCII"?>
 <!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
-  "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
+  [
     <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution-Simple.html">Distribution.Simple</ulink>'>
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution-Make.html">Distribution.Make</ulink>'>
     <!ENTITY License   '<ulink url="../libraries/Cabal/Distribution-License.html#t:License"><literal>License</literal></ulink>'>
@@ -137,13 +137,13 @@ Homepage:	http://hunit.sourceforge.net/
 Category:	Testing
 Synopsis:	A unit testing framework for Haskell
 
-Library {
+Library
   Build-Depends:	base
   Exposed-modules:
     Test.HUnit.Base, Test.HUnit.Lang, Test.HUnit.Terminal,
     Test.HUnit.Text, Test.HUnit
   Extensions:	CPP
-}</programlisting>
+</programlisting>
       <para>and the following <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
@@ -161,18 +161,17 @@ Author:         Angela Author
 Synopsis:       Small package with two programs
 Build-Type:     Simple
 
-Executable program1 {
+Executable program1
   Build-Depends:  HUnit
   Main-Is:        Main.hs
   Hs-Source-Dirs: prog1
-}
 
-Executable program2 {
+Executable program2
   Main-Is:        Main.hs
   Build-Depends:  HUnit
   Hs-Source-Dirs: prog2
   Other-Modules:  Utils
-}</programlisting>
+</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.</para>
     </example>
 
@@ -187,22 +186,20 @@ Author:          Angela Author
 Synopsis:        Package with library and two programs
 Build-Type:      Simple
 
-Library {
+Library
   Build-Depends:   HUnit
   Exposed-Modules: A, B, C
-}
 
-Executable program1 {
+Executable program1
   Main-Is:         Main.hs
   Hs-Source-Dirs:  prog1
   Other-Modules:   A, B
-}
 
-Executable program2 {
+Executable program2
   Main-Is:         Main.hs
   Hs-Source-Dirs:  prog2
   Other-Modules:   A, C, Utils
-}</programlisting>
+</programlisting>
       <para>with <filename>Setup.hs</filename> the same as above.
       Note that any library modules required (directly or indirectly)
       by an executable must be listed again.</para>
@@ -427,8 +424,11 @@ Executable program2 {
                 Build types are the constructors of the &BuildType; type,
                 defaulting to <literal>Custom</literal>.
                 If this field is given a value other than
-                <literal>Custom</literal>, some tools will be able to
-                build the package without using the setup script.</para>
+                <literal>Custom</literal>, some tools such as
+                <literal>cabal-setup</literal> will be able to
+                build the package without using the setup script. So if you are
+                just using the default <literal>Setup.hs</literal> then set
+                the build type as <literal>Simple</literal>.</para>
             </listitem>
           </varlistentry>
 
@@ -451,7 +451,8 @@ Executable program2 {
             </term>
             <listitem>
               <para>The name of a file containing the precise license
-                for this package.</para>
+                for this package. It will be installed with the package.
+              </para>
             </listitem>
           </varlistentry>
 
@@ -464,6 +465,9 @@ Executable program2 {
               <para>The content of a copyright notice, typically the
                 name of the holder of the copyright on the package and
                 the year(s) from which copyright is claimed.</para>
+              <para>For example:
+              <literal>Copyright: (c) 2006-2007 Joe Bloggs</literal>
+              </para>
             </listitem>
           </varlistentry>
 
@@ -1034,7 +1038,66 @@ Executable program2 {
 
 	<programlisting>Name: Test1
 Version: 0.0.1
-Cabal-Version: >= 1.1.7
+Cabal-Version: >= 1.2
+License: BSD3
+Author:  Jane Doe
+Synopsis: Test package to test configurations
+Category: Example
+
+Flag Debug
+  Description: Enable debug support
+  Default:     False
+
+Flag WebFrontend
+  Description: Include API for web frontend.
+  -- Cabal checks if the configuration is possible, first
+  -- with this flag set to True and if not it tries with False
+
+Library
+  Build-Depends:   base
+  Exposed-Modules: Testing.Test1
+  Extensions:      CPP
+
+  if flag(debug)
+    GHC-Options: -DDEBUG
+    if !os(win32)
+      CC-Options: "-DDEBUG"
+    else
+      CC-Options: "-DNDEBUG"
+
+  if flag(webfrontend)
+    Build-Depends: cgi > 0.42
+    Other-Modules: Testing.WebStuff
+
+Executable test1
+  Main-is: T1.hs
+  Other-Modules: Testing.Test1
+  Build-Depends: base
+
+  if flag(debug)
+    CC-Options: "-DDEBUG"
+    GHC-Options: -DDEBUG
+</programlisting>
+	</example>
+	<sect4>
+	 <title>Layout</title>
+	 <para>Flags, conditionals, library and executable sections use layout to
+     indicate structure. This is very similar to the Haskell layout rule.
+     Entries in a section have to all be indented to the same level which must
+     be more than the section header. Tabs are not allowed to be used for
+     indentation.</para>
+
+	 <para>As an alternative to using layout you can also use explicit braces
+     <literal>{}</literal>. In this case the indentation of entries in a
+     section does not matter, though different fields within a block must be
+     on different lines. Here is a bit of the above example again, using
+     braces:</para>
+   <example id="configurations-with-braces-example">
+	  <title>Using explicit braces rather than indentation for layout</title>
+
+	  <programlisting>Name: Test1
+Version: 0.0.1
+Cabal-Version: >= 1.2
 License: BSD3
 Author:  Jane Doe
 Synopsis: Test package to test configurations
@@ -1045,17 +1108,10 @@ Flag Debug {
   Default:     False
 }
 
-Flag WebFrontend {
-  Description: Include API for web frontend.
-  -- defaults to True
-}
-
 Library {
   Build-Depends:   base
   Exposed-Modules: Testing.Test1
   Extensions:      CPP
-
-
   if flag(debug) {
     GHC-Options: -DDEBUG
     if !os(win32) {
@@ -1064,24 +1120,10 @@ Library {
       CC-Options: "-DNDEBUG"
     }
   }
-
-  if flag(webfrontend) {
-    Build-Depends: cgi > 0.42
-    Exposed-Modules: Testing.WebStuff
-  }
 }
-
-Executable test1 {
-  Main-is: T1.hs
-  Other-Modules: Testing.Test1
-  Build-Depends: base
-
-  if flag(debug) {
-    CC-Options: "-DDEBUG"
-    GHC-Options: -DDEBUG
-  }
-}</programlisting>
-	</example>
+</programlisting>
+	  </example>
+	</sect4>
 	<sect4>
 	 <title>Configuration Flags</title>
 	 <para>A flag section takes the flag name as an argument and
@@ -1123,28 +1165,18 @@ Executable test1 {
 	  strict formatting rules.</para>
 	  <para>Conditional blocks must always be of the shape
 	  <literallayout>
-	    <literal>if </literal><replaceable>condition</replaceable><literal> {</literal>
-	    <replaceable>  property-descriptions-or-conditionals*</replaceable>
-	    <literal>}</literal>
-	    </literallayout> or
-	    <literallayout>
-	      <literal>if </literal><replaceable>condition</replaceable><literal> {</literal>
-	      <replaceable>  property-descriptions-or-conditionals*</replaceable>
-	      <literal>} else {</literal>
-	      <replaceable>  property-descriptions-or-conditionals*</replaceable>
-	      <literal>}</literal>
+	    <literal>if </literal><replaceable>condition</replaceable>
+	         <replaceable>property-descriptions-or-conditionals*</replaceable>
+    </literallayout>or
+	  <literallayout>
+	    <literal>if </literal><replaceable>condition</replaceable>
+	         <replaceable>property-descriptions-or-conditionals*</replaceable>
+	    <literal>else</literal>
+	         <replaceable>property-descriptions-or-conditionals*</replaceable>
 	  </literallayout></para>
 
-	  <para>Note that the condition and the opening brace have to
-	  be all on the same line.  Similar for the closing brace and
-	  a possible <literal>else</literal> part.  In particular, it
-	  is <emphasis>not</emphasis> possible to have multiple
-	  closing braces on one line or to have the
-	  <literal>else</literal> followed directly by an
-	  <literal>if</literal>.</para>
-	  <para>Properties inside an if block must be indented at
-	  least as much as the opening <literal>if</literal>
-	  (preferably more).</para>
+	  <para>Note that the <literal>if</literal> and the condition have to
+	  be all on the same line.</para>
 
 	</sect4>
 	<sect4 id="conditions">
@@ -1170,10 +1202,14 @@ Executable test1 {
             <listitem>
               <para>Tests if the current operating system is
               <replaceable>name</replaceable>.  The argument is tested
-              against the result of calling
-              <literal>System.Info.os</literal> on the target system.
-              If both are the same, this test evaluates to true,
-              otherwise false.</para>
+              against <literal>System.Info.os</literal> on 
+              the target system. There is unfortunately some disagreement
+              between Haskell implementations about the standard values of
+              <literal>System.Info.os</literal>. Cabal canonicalises it so
+              that in particular <literal>os(windows)</literal> works on all
+              implementations. If the canonicalised os names match, this test
+              evaluates to true, otherwise false. The match is
+              case-insensitive. </para>
             </listitem>
           </varlistentry>
 	    <varlistentry>
@@ -1184,11 +1220,10 @@ Executable test1 {
 	      </term>
             <listitem>
               <para>Tests if the current architecture is
-              <replaceable>name</replaceable>.  The argument is tested
-              against the result of calling
-              <literal>System.Info.arch</literal> on the target system.
-              If both are the same, this test evaluates to true,
-              otherwise false.</para>
+              <replaceable>name</replaceable>.  The argument is matched
+              against <literal>System.Info.arch</literal> on the target system.
+              If the arch names match, this test evaluates to true,
+              otherwise false. The match is case-insensitive. </para>
             </listitem>
           </varlistentry>
 	  <varlistentry>
@@ -1198,12 +1233,12 @@ Executable test1 {
 		<literal>)</literal>
 	      </term>
             <listitem>
-              <para>Tests for the configured compiler.  An optional
+              <para>Tests for the configured Haskell implementation. An optional
               version constraint may be specified (for example
               <literal>impl(ghc >= 6.6.1)</literal>).  If the
-              configured compiler is of the right type and matches the
+              configured implementation is of the right type and matches the
               version constraint, then this evaluates to true,
-              otherwise false.</para>
+              otherwise false. The match is case-insensitive.</para>
             </listitem>
           </varlistentry>
 	  <varlistentry>
@@ -1224,7 +1259,7 @@ Executable test1 {
 		<literal>true</literal>
 	      </term>
             <listitem>
-              <para>Always evaluates to true.</para>
+              <para>Constant value true.</para>
             </listitem>
           </varlistentry>
 	  <varlistentry>
@@ -1232,20 +1267,62 @@ Executable test1 {
 		<literal>false</literal>
 	      </term>
             <listitem>
-              <para>Always evaluates to false.</para>
+              <para>Constant value false.</para>
             </listitem>
           </varlistentry>
         </variablelist>
 
 	</sect4>
+	<sect4 id="conditional-resolution">
+	  <title>Resolution of Conditions and Flags</title>
+	  <para>If a package descriptions specifies configuration flags
+	  the package user can control these in several ways (see
+          <xref linkend="flag-control"/>). If the user does not fix the
+          value of a flag, Cabal will try to find a flag assignment in the
+	  following way.</para>
+	  <itemizedlist>
+	    <listitem>
+	      <para>For each flag specified, it will assign its default
+	      value, evaluate all conditions with this flag assignment,
+	      and check if all dependencies can be satisfied.  If this
+	      check succeeded, the package will be configured with those
+	      flag assignments.</para>
+	    </listitem>
+	    <listitem>
+	      <para>If dependencies were missing, the last flag (as by
+	      the order in which the flags were introduced in the
+	      package description) is tried with its alternative value
+	      and so on.  This continues until either an assignment is
+	      found where all dependencies can be satisfied, or all
+	      possible flag assignments have been tried.</para>
+	    </listitem>
+	  </itemizedlist>
+
+          <para>To put it another way, Cabal does a complete backtracking
+          search to find a satisfiable packge configuration. It is only the
+          dependencies specified in the <literal>build-depends</literal> field
+          in conditional blocks that determine if a particular flag assignment
+          is satisfiable (<literal>build-tools</literal> are not considered).
+          The order of the declaration and the default value of the flags
+          determines the search order. Flags overriden on the command line fix
+          the assignment of that flag, so no backtracking will be tried for
+          that flag.</para>
+
+	  <para>If no suitable flag assignment could be found, the
+	  configuration phase will fail and a list of missing
+	  dependencies will be printed.  Note that this resolution
+	  process is exponential in the worst case (i.e., in the case
+	  where dependencies cannot be satisfied).  There are some
+	  optimizations applied internally, but the overall complexity
+	  remains unchanged.</para>
+	</sect4>
 	<sect4 id="prop-combine">
-	  <title>Conditional Resolution</title>
+          <title>Meaning of field values when using conditionals</title>
 	  <para>During the configuration phase, a flag assignment is
-	  chosen (see <xref linkend="flag-control"/>), all
-	  conditionals are evaluated, and the package description is
-	  combined into a flat package descriptions.  If property
-	  descriptions occur both inside a conditional and outside
-	  are combined, using the following rules.</para>
+	  chosen, all conditionals are evaluated, and the package description
+          is combined into a flat package descriptions. If the same field
+	  both inside a conditional and outside then they are combined using
+          the following rules.</para>
 	  <itemizedlist>
 	    <listitem>
 	      <para>Boolean fields are combined using conjunction
@@ -1255,11 +1332,11 @@ Executable test1 {
 	      <para>List fields are combined by appending the inner
 	      items to the outer items, for example
 	      <programlisting>Extensions: CPP
-if impl(ghc) || impl(hugs) {
+if impl(ghc) || impl(hugs)
   Extensions: MultiParamTypeClasses
-}</programlisting>
+</programlisting>
 	    when compiled using Hugs or GHC will be combined to
-	    <programlisting>Extensions: CPP MultiParamTypeClasses</programlisting>
+	    <programlisting>Extensions: CPP, MultiParamTypeClasses</programlisting>
 	    </para>
 	    <para>Similarly, if two conditional sections appear at the
 	    same nesting level, properties specified in the latter
@@ -1268,15 +1345,15 @@ if impl(ghc) || impl(hugs) {
 	    <listitem>
 	      <para>All other fields must not be specified in ambiguous ways.  For example
 	      <programlisting>Main-is: Main.hs
-if flag(useothermain) {
+if flag(useothermain)
   Main-is: OtherMain.hs
-}</programlisting>
+</programlisting>
 	      will lead to an error.  Instead use
-	      <programlisting>if flag(useothermain) {
+	      <programlisting>if flag(useothermain)
   Main-is: OtherMain.hs
-} else {
+else
   Main-is: Main.hs
-}</programlisting></para>
+</programlisting></para>
 	    </listitem>
 	  </itemizedlist>
 	</sect4>
@@ -1455,7 +1532,8 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
         <listitem>
           <para>You could delegate all the work to <command>make</command>,
             though this is unlikely to be very portable.
-            Cabal supports this with a trivial setup library &Make;,
+            Cabal supports this with the <literal>build-type</literal>
+            <literal>Make</literal> and a trivial setup library &Make;,
             which simply parses the command line arguments and invokes
             <command>make</command>.  Here <filename>Setup.hs</filename>
             looks like</para>
@@ -1607,16 +1685,15 @@ runhaskell Setup.hs unregister --gen-script</screen>
           <option>-v</option><replaceable>n</replaceable>
         </term>
         <listitem>
-          <para>Set the verbosity level (0-5).  The normal level is 1;
-            a missing <replaceable>n</replaceable> defaults to 3.</para>
+          <para>Set the verbosity level (0-3).  The normal level is 1;
+            a missing <replaceable>n</replaceable> defaults to 2.</para>
         </listitem>
       </varlistentry>
     </variablelist>
 
     <para>The various commands and the additional options they support
       are described below.  In the simple build infrastructure, any
-      other options will be reported as errors, except in the case of
-      the <literal>configure</literal> command.</para>
+      other options will be reported as errors.</para>
 
     <sect2 id="setup-configure">
       <title>setup configure</title>
@@ -2163,38 +2240,8 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
       <sect3 id="flag-control">
 	<title>Controlling Flag Assignments</title>
-	<para>If a package descriptions specifies configuration flags
-	(see <xref linkend="configurations"/>) the package user can
-	control these in several ways.  If none of the options below
-	are given, Cabal will try to find a flag assignment in the
-	following way.</para>
-	<itemizedlist>
-	  <listitem>
-	    <para>For each flag specified, it will assign its default
-	    value, evaluate all conditions with this flag assignment,
-	    and check if all dependencies can be satisfied.  If this
-	    check succeeded, the package will be configured with those
-	    flag assignments.</para>
-	  </listitem>
-	  <listitem>
-	    <para>If dependencies were missing, the last flag (as by
-	    the order in which the flags were introduced in the
-	    package description) is tried with its alternative value
-	    and so on.  This continues until either an assignment is
-	    found where all dependencies can be satisfied, or all
-	    possible flag assignments have been tried.</para>
-	  </listitem>
-	</itemizedlist>
-	<para>If no suitable flag assignment could be found, the
-	configuration phase will fail and a list of missing
-	dependencies will be printed.  Note that this resolution
-	process is exponential in the worst case (i.e., in the case
-	where dependencies cannot be satisfied).  There are some
-	optimizations applied internally, but the overall complexity
-	remains unchanged.</para>
-
-	<para>Flag assignments can be controlled with the following
-	command line options.</para>
+	<para>Flag assignments (see <xref linkend="conditional-resolution"/>) can be
+  controlled with the following	command line options.</para>
 	<variablelist>
 	  <varlistentry>
 	    <term><option>-f</option><replaceable>flagname</replaceable> or
@@ -2420,7 +2467,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	        <term><option>--<replaceable>prog</replaceable>-options</option>=<replaceable>options</replaceable></term>
 	        <term><option>--<replaceable>prog</replaceable>-option</option>=<replaceable>option</replaceable></term>
 	        <listitem>
-	          <para>These are the mostly same as the options configure step (see
+	          <para>These are mostly the same as the options configure step (see
               <xref linkend="setup-configure-programs"/>). Unlike the options
               specified at the configure step, any program options specified at
               the build step are not persistent but are used for that
