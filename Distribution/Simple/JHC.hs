@@ -63,13 +63,12 @@ import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, exeExtension, die )
+                                  copyFileVerbose, exeExtension, die, info )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 
-import Control.Monad		( when )
 import Data.List		( nub, intersperse )
 import Data.Char		( isSpace )
 
@@ -122,7 +121,7 @@ build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   withLib pkg_descr () $ \lib -> do
-      when (verbosity >= verbose) (putStrLn "Building library...")
+      info verbosity "Building library..."
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
       rawSystemProgram verbosity jhcProg (["-c"] ++ args ++ libModules pkg_descr)
@@ -132,8 +131,7 @@ build pkg_descr lbi verbosity = do
       writeFile pfile $ jhcPkgConf pkg_descr
       rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
-      when (verbosity >= verbose)
-           (putStrLn ("Building executable "++exeName exe))
+      info verbosity ("Building executable "++exeName exe)
       let exeBi = buildInfo exe
       let out   = buildDir lbi </> exeName exe
       let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity

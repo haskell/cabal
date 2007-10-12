@@ -93,7 +93,7 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils (die, currentDir, moduleToFilePath,
                                   defaultPackageDesc, defaultHookedPackageDesc)
 
-import Distribution.Simple.Utils (rawSystemPathExit)
+import Distribution.Simple.Utils (rawSystemPathExit, notice, info)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
@@ -461,8 +461,8 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
 -- Cleaning
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi _ (CleanFlags saveConfigure _verbosity) = do
-    putStrLn "cleaning..."
+clean pkg_descr maybeLbi _ (CleanFlags saveConfigure verbosity) = do
+    notice verbosity "cleaning..."
 
     maybeConfig <- if saveConfigure then maybeGetPersistBuildConfig
                                     else return Nothing
@@ -631,8 +631,7 @@ autoconfUserHooks
                   Nothing       -> return emptyHookedBuildInfo
                   Just infoFile -> do
                       let verbosity = get_verbosity flags
-                      when (verbosity >= normal) $
-                          putStrLn $ "Reading parameters from " ++ infoFile
+                      info verbosity $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo verbosity infoFile
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
