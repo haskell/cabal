@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Utils (
         die,
         dieWithLocation,
-        warn,
+        warn, notice, info, debug,
         breaks,
 	wrapText,
         rawSystemExit,
@@ -150,11 +150,45 @@ die msg = do
   hPutStrLn stderr (pname ++ ": " ++ msg)
   exitWith (ExitFailure 1)
 
+-- | Non fatal conditions that may be indicative of an error or problem.
+--
+-- We display these at the 'normal' verbosity level.
+--
 warn :: Verbosity -> String -> IO ()
-warn verbosity msg = do
-  hFlush stdout
-  pname <- getProgName
-  when (verbosity >= normal) $ hPutStrLn stderr (pname ++ ": Warning: " ++ msg)
+warn verbosity msg = 
+  when (verbosity >= normal) $ do
+    hFlush stdout
+    hPutStrLn stderr ("Warning: " ++ msg)
+
+-- | Useful status messages.
+--
+-- We display these at the 'normal' verbosity level.
+--
+-- This is for the ordinary helpful status messages that users see. Just
+-- enough information to know that things are working but not floods of detail.
+--
+notice :: Verbosity -> String -> IO ()
+notice verbosity msg =
+  when (verbosity >= normal) $
+    putStrLn msg
+
+-- | More detail on the operation of some action.
+-- 
+-- We display these messages when the verbosity level is 'verbose'
+--
+info :: Verbosity -> String -> IO ()
+info verbosity msg =
+  when (verbosity >= verbose) $
+    putStrLn msg
+
+-- | Detailed internal debugging information
+--
+-- We display these messages when the verbosity level is 'deafening'
+--
+debug :: Verbosity -> String -> IO ()
+debug verbosity msg =
+  when (verbosity >= deafening) $
+    putStrLn msg
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
@@ -366,22 +400,19 @@ smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone p
 
 createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
 createDirectoryIfMissingVerbose verbosity parentsToo dir = do
-  when (verbosity >= verbose) $
-    let msgParents = if parentsToo then " (and its parents)" else ""
-    in putStrLn ("Creating " ++ dir ++ msgParents)
+  let msgParents = if parentsToo then " (and its parents)" else ""
+  info verbosity ("Creating " ++ dir ++ msgParents)
   createDirectoryIfMissing parentsToo dir
 
 copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileVerbose verbosity src dest = do
-  when (verbosity >= verbose) $
-    putStrLn ("copy " ++ src ++ " to " ++ dest)
+  info verbosity ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
 -- adaptation of removeDirectoryRecursive
 copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
-  when (verbosity >= verbose) $
-    putStrLn ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
+  info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   let aux src dest =
          let cp :: FilePath -> IO ()
              cp f = let srcFile  = src  </> f

@@ -63,8 +63,8 @@ import Distribution.PackageDescription
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  smartCopySources, die, findPackageDesc,
-                                  findFile, copyFileVerbose)
+                                  smartCopySources, die, warn, notice,
+                                  findPackageDesc, findFile, copyFileVerbose)
 import Distribution.Simple.Setup (SDistFlags(..))
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -163,8 +163,8 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
     case mb_lbi of
       Just lbi -> preprocessSources pkg_descr (lbi { buildDir = targetDir }) 
                                     True verbosity pps
-      Nothing -> putStrLn $ 
-          "Warning: Cannot run preprocessors.  Run 'configure' command first."
+      Nothing -> warn verbosity
+          "Cannot run preprocessors.  Run 'configure' command first."
 
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
@@ -224,8 +224,7 @@ createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
            ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
       -- XXX this should be done back where tmpDir is made, not here
       `finally` removeDirectoryRecursive tmpDir
-  when (verbosity >= normal) $
-    putStrLn $ "Source tarball created: " ++ tarBallFilePath
+  notice verbosity $ "Source tarball created: " ++ tarBallFilePath
   return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo

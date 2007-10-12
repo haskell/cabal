@@ -81,7 +81,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, die)
+                                  copyFileVerbose, die, info)
 import Distribution.Simple.GHC.PackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
 import qualified Distribution.Simple.GHC.PackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
@@ -164,8 +164,7 @@ register pkg_descr lbi regFlags
 		     | otherwise  = installedPkgConfigFile
 
         when (genPkgConf || not genScript) $ do
-          when (verbosity >= verbose) $
-            putStrLn ("create " ++ instConf)
+          info verbosity ("create " ++ instConf)
           writeInstalledConfig pkg_descr lbi inplace (Just instConf)
 
         let register_flags

@@ -120,7 +120,7 @@ import Distribution.Version(Dependency(..))
 import Distribution.Verbosity
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.Configuration
-import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn)
+import Distribution.Simple.Utils(currentDir, die, dieWithLocation, warn, notice)
 import Language.Haskell.Extension(Extension(..))
 
 import Distribution.Compat.ReadP as ReadP hiding (get)
@@ -783,8 +783,7 @@ haddockName pkg_descr = pkgName (package pkg_descr) <.> "haddock"
 
 setupMessage :: Verbosity -> String -> PackageDescription -> IO ()
 setupMessage verbosity msg pkg_descr =
-    when (verbosity >= normal) $
-        putStrLn (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
+    notice verbosity (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
 
 -- ---------------------------------------------------------------
 -- Parsing
