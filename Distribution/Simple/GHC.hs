@@ -166,13 +166,11 @@ guessGhcPkgFromGhcPath ghcProg verbosity
            guessVersioned  = dir </> ("ghc-pkg" ++ versionSuffix) <.> exeExtension 
            guesses | null versionSuffix = [guessNormal]
                    | otherwise          = [guessVersioned, guessNormal]
-       when (verbosity >= verbose) $
-         putStrLn $ "looking for package tool: ghc-pkg near compiler in " ++ dir
+       info verbosity $ "looking for package tool: ghc-pkg near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
          [] -> return Nothing
-         (pkgtool:_) -> do when (verbosity >= verbose) $
-                             putStrLn $ "found package tool in " ++ pkgtool
+         (pkgtool:_) -> do info verbosity $ "found package tool in " ++ pkgtool
                            return (Just pkgtool)
 
   where takeVersionSuffix :: FilePath -> String
@@ -275,7 +273,7 @@ build pkg_descr lbi verbosity = do
 	       
   -- Build lib
   withLib pkg_descr () $ \lib -> do
-      when (verbosity >= verbose) (putStrLn "Building library...")
+      info verbosity "Building library..."
       let libBi = libBuildInfo lib
           libTargetDir = pref
 	  forceVanillaLib = TemplateHaskell `elem` extensions libBi
@@ -314,7 +312,7 @@ build pkg_descr lbi verbosity = do
 
       -- build any C sources
       unless (null (cSources libBi)) $ do
-         when (verbosity >= verbose) (putStrLn "Building C Sources...")
+         info verbosity "Building C Sources..."
          sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref 
                                                             filename verbosity
                        createDirectoryIfMissingVerbose verbosity True odir
@@ -323,7 +321,7 @@ build pkg_descr lbi verbosity = do
                    | filename <- cSources libBi]
 
       -- link:
-      when (verbosity > verbose) (putStrLn "cabal-linking...")
+      info verbosity "Linking..."
       let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
 	  cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
 	  libName  = mkLibName pref (showPackageId (package pkg_descr))
@@ -424,8 +422,7 @@ build pkg_descr lbi verbosity = do
 
   -- build any executables
   withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
-                 when (verbosity >= verbose)
-                      (putStrLn $ "Building executable: " ++ exeName' ++ "...")
+                 info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
                  let exeNameReal = exeName' <.>
@@ -442,7 +439,7 @@ build pkg_descr lbi verbosity = do
 
                  -- build executables
                  unless (null (cSources exeBi)) $ do
-                  when (verbosity >= verbose) (putStrLn "Building C Sources.")
+                  info verbosity "Building C Sources."
 		  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
                                                          exeDir filename verbosity
                                 createDirectoryIfMissingVerbose verbosity True odir

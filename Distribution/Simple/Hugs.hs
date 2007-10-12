@@ -60,8 +60,8 @@ import Distribution.Simple.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..), autogenModulesDir )
-import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die,
-				  dotToSep, moduleToFilePath,
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, dotToSep,
+				  moduleToFilePath, die, info, notice,
 				  smartCopySources, findFile, dllExtension )
 import Language.Haskell.Extension
 				( Extension(..) )
@@ -168,8 +168,7 @@ build pkg_descr lbi verbosity = do
 	    -- Pass 1: copy or cpp files from build directory to scratch directory
 	    let useCpp = CPP `elem` extensions bi
 	    let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
-            when (verbosity >= verbose)
-                 (putStrLn $ "Source directories: " ++ show srcDirs)
+            info verbosity $ "Source directories: " ++ show srcDirs
             flip mapM_ mods $ \ m -> do
                 fs <- moduleToFilePath srcDirs m suffixes
                 case fs of
@@ -202,7 +201,7 @@ build pkg_descr lbi verbosity = do
         compileFiles bi modDir fileList = do
 	    ffiFileList <- filterM testFFI fileList
             unless (null ffiFileList) $ do
-                when (verbosity >= normal) (putStrLn "Compiling FFI stubs")
+                notice verbosity "Compiling FFI stubs"
                 mapM_ (compileFFI bi modDir) ffiFileList
 
         -- Only compile FFI stubs for a file if it contains some FFI stuff

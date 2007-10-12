@@ -92,7 +92,7 @@ import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
-    ( die, warn )
+    ( die, warn, info )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -101,7 +101,7 @@ import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..), showVersion, readVersion
     , showVersionRange, orLaterVersion, withinRange )
 import Distribution.Verbosity
-    ( Verbosity, verbose, lessVerbose )
+    ( Verbosity, lessVerbose )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -220,8 +220,8 @@ configure (pkg_descr0, pbi) cfg
             Right pd -> return (pd,[])
               
 
-        when (not (null flags) && verbosity >= verbose) $
-          message $ "Flags chosen: " ++ (concat . intersperse ", " .
+        when (not (null flags)) $
+          info verbosity $ "Flags chosen: " ++ (concat . intersperse ", " .
                       map (\(n,b) -> n ++ "=" ++ show b) $ flags)
 
         (warns, ers) <- sanityCheckPackage $
@@ -304,29 +304,28 @@ configure (pkg_descr0, pbi) cfg
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs pkg_descr lbi
 
-        when (verbosity >= verbose) $ do
-          message $ "Using compiler: " ++ showCompilerId comp
-          message $ "Using install prefix: " ++ prefix dirs
+        info verbosity $ "Using compiler: " ++ showCompilerId comp
+        info verbosity $ "Using install prefix: " ++ prefix dirs
 
-          messageDir "Binaries"         pkg_descr (bindir dirs)    (bindir relative)
-          messageDir "Libraries"        pkg_descr (libdir dirs)    (libdir relative)
-          messageDir "Private binaries" pkg_descr (libexecdir dirs)(libexecdir relative)
-          messageDir "Data files"       pkg_descr (datadir dirs)   (datadir relative)
-          messageDir "Documentation"    pkg_descr (docdir dirs)    (docdir relative)
+        let dirinfo name dir isPrefixRelative =
+              info verbosity $ name ++ " installed in: " ++ dir ++ relNote
+              where relNote = case os of
+                      Windows MingW | not (hasLibs pkg_descr)
+                                   && isNothing isPrefixRelative
+                                   -> "  (fixed location)"
+                      _            -> ""
 
-          sequence_ [ reportProgram prog configuredProg
-                    | (prog, configuredProg) <- knownPrograms programsConfig' ]
+        dirinfo "Binaries"         (bindir dirs)     (bindir relative)
+        dirinfo "Libraries"        (libdir dirs)     (libdir relative)
+        dirinfo "Private binaries" (libexecdir dirs) (libexecdir relative)
+        dirinfo "Data files"       (datadir dirs)    (datadir relative)
+        dirinfo "Documentation"    (docdir dirs)     (docdir relative)
+
+        sequence_ [ reportProgram verbosity prog configuredProg
+                  | (prog, configuredProg) <- knownPrograms programsConfig' ]
 
 	return lbi
 
-messageDir :: String -> PackageDescription -> FilePath -> Maybe FilePath -> IO ()
-messageDir name pkg_descr dir isPrefixRelative
- = message (name ++ " installed in: " ++ dir ++ rel_note)
-  where
-    rel_note = case os of
-      Windows MingW | not (hasLibs pkg_descr)
-                   && isNothing isPrefixRelative -> "  (fixed location)"
-      _                                          -> ""
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
@@ -341,11 +340,11 @@ setDepByVersion (Dependency s (ThisVersion v)) = PackageIdentifier s v
 -- otherwise, just set it to empty
 setDepByVersion (Dependency s _) = PackageIdentifier s (Version [] [])
 
-reportProgram :: Program -> Maybe ConfiguredProgram -> IO ()
-reportProgram prog Nothing
-    = message $ "No " ++ programName prog ++ " found"
-reportProgram prog (Just configuredProg)
-    = message $ "Using " ++ programName prog ++ version ++ location
+reportProgram :: Verbosity -> Program -> Maybe ConfiguredProgram -> IO ()
+reportProgram verbosity prog Nothing
+    = info verbosity $ "No " ++ programName prog ++ " found"
+reportProgram verbosity prog (Just configuredProg)
+    = info verbosity $ "Using " ++ programName prog ++ version ++ location
     where location = case programLocation configuredProg of
             FoundOnSystem p -> " found on system at: " ++ p
             UserSpecified p -> " given by user at: " ++ p
@@ -364,8 +363,7 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
                       ++ pkgname ++ showVersionRange vrange ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ pkgname ++ "?"
-        Just pkg -> do when (verbosity >= verbose) $
-                         message $ "Dependency " ++ pkgname
+        Just pkg -> do info verbosity $ "Dependency " ++ pkgname
                                 ++ showVersionRange vrange
                                 ++ ": using " ++ showPackageId pkg
                        return pkg
@@ -373,7 +371,7 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
                      -> IO (Maybe [PackageIdentifier])
 getInstalledPackages verbosity comp packageDb progconf = do
-  when (verbosity >= verbose) $ message "Reading installed packages..."
+  info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC | compilerVersion comp >= Version [6,3] []
         -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
@@ -421,8 +419,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
       case readVersion version of
         Nothing -> die "parsing output of pkg-config --modversion failed"
         Just v | not (withinRange v range) -> die (badVersion v)
-               | verbosity >= verbose      -> message (depSatisfied v)
-               | otherwise                 -> return ()
+               | otherwise                 -> info verbosity (depSatisfied v)
       where 
         notFound     = "The pkg-config package " ++ pkg ++ versionRequirement
                     ++ " is required but it could not be found."
@@ -486,9 +483,6 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       Hugs -> Hugs.configure verbosity hcPath hcPkg conf
       NHC  -> NHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
-
-message :: String -> IO ()
-message s = putStrLn $ "configure: " ++ s
 
 
 -- |Output warnings and errors. Exit if any errors.

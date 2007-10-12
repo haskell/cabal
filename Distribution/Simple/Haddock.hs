@@ -64,7 +64,7 @@ import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
                                             haddockPref, distPref )
-import Distribution.Simple.Utils (die, warn, createDirectoryIfMissingVerbose,
+import Distribution.Simple.Utils (die, warn, notice, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
 
 import Distribution.Simple.Utils (rawSystemStdout)
@@ -86,10 +86,11 @@ import Distribution.Version
 
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
-  | not (hasLibs pkg_descr) && not (haddockExecutables haddockFlags) = do
-      when (haddockVerbose haddockFlags >= normal) $
-        putStrLn $ "No documentation was generated as this package does not contain a library.\n"
-                ++ "Perhaps you want to use the haddock command with the --executables flag."
+  | not (hasLibs pkg_descr) && not (haddockExecutables haddockFlags) =
+      warn (haddockVerbose haddockFlags) $
+           "No documentation was generated as this package does not contain "
+        ++ "a\nlibrary. Perhaps you want to use the haddock command with the "
+        ++ "--executables flag."
 
 haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
       haddockExecutables = doExes,
@@ -204,9 +205,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ map ("--hide=" ++) (otherModules bi)
                 )
         removeFile prologName
-        when (verbosity >= normal) $
-          putStrLn $ "Documentation created: "
-                  ++ (haddockPref pkg_descr </> "index.html")
+        notice verbosity $ "Documentation created: "
+                        ++ (haddockPref pkg_descr </> "index.html")
 
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
@@ -235,9 +235,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ outFiles
                 )
         removeFile prologName
-        when (verbosity >= normal) $
-          putStrLn $ "Documentation created: "
-                  ++ (exeTargetDir </> "index.html")
+        notice verbosity $ "Documentation created: "
+                       ++ (exeTargetDir </> "index.html")
 
     removeDirectoryRecursive tmpDir
   where
