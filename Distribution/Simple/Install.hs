@@ -71,7 +71,7 @@ import Distribution.PackageDescription (
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs, haddockPref)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, die,
+                                  copyFileVerbose, die, info, notice,
                                   copyDirectoryRecursiveVerbose)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..))
@@ -110,9 +110,8 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
-  when (verbosity >= verbose)
-       (putStrLn ("directory " ++ haddockPref pkg_descr ++
-                  " does exist: " ++ show docExists))
+  info verbosity ("directory " ++ haddockPref pkg_descr ++
+                  " does exist: " ++ show docExists)
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
@@ -128,10 +127,10 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
     copyFileVerbose verbosity lfile (docPref </> lfile)
 
   let buildPref = buildDir lbi
-  when (hasLibs pkg_descr && verbosity >= normal) $
-    putStrLn ("Installing: " ++ libPref)
-  when (hasExes pkg_descr && verbosity >= normal) $
-    putStrLn ("Installing: " ++ binPref)
+  when (hasLibs pkg_descr) $
+    notice verbosity ("Installing: " ++ libPref)
+  when (hasExes pkg_descr) $
+    notice verbosity ("Installing: " ++ binPref)
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)

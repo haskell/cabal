@@ -85,12 +85,12 @@ module Distribution.Simple.Program (
 
 import qualified Distribution.Compat.Map as Map
 import Distribution.Compat.Directory (findExecutable)
-import Distribution.Simple.Utils (die, rawSystemExit, rawSystemStdout)
+import Distribution.Simple.Utils (die, debug, warn, rawSystemExit, rawSystemStdout)
 import Distribution.Version (Version, readVersion, showVersion,
                              VersionRange(..), withinRange, showVersionRange)
 import Distribution.Verbosity
 import System.Directory (doesFileExist)
-import Control.Monad (when, join, foldM)
+import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
 
 -- | Represents a program which can be configured.
@@ -157,12 +157,11 @@ simpleProgram name =
 -- | Look for a program on the path.
 findProgramOnPath :: FilePath -> Verbosity -> IO (Maybe FilePath)
 findProgramOnPath prog verbosity = do
-  when (verbosity >= deafening) $
-      putStrLn $ "searching for " ++ prog ++ " in path."
+  debug verbosity $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
-  when (verbosity >= deafening) $ case res of
-      Nothing   -> putStrLn ("Cannot find " ++ prog ++ " on the path")
-      Just path -> putStrLn ("found " ++ prog ++ " at "++ path)
+  case res of
+      Nothing   -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
+      Just path -> debug verbosity ("found " ++ prog ++ " at "++ path)
   return res
 
 -- | Look for a program and try to find it's version number. It can accept
@@ -180,11 +179,9 @@ findProgramVersion versionArg selectVersion verbosity path = do
          `Exception.catch` \_ -> return ""
   let version = readVersion (selectVersion str)
   case version of
-      Nothing -> when (verbosity >= normal) $
-                   putStrLn $ "cannot determine version of " ++ path ++ " :\n"
-                           ++ show str
-      Just v  -> when (verbosity >= deafening) $
-                   putStrLn $ path ++ " is version " ++ showVersion v
+      Nothing -> warn verbosity $ "cannot determine version of " ++ path
+                               ++ " :\n" ++ show str
+      Just v  -> debug verbosity $ path ++ " is version " ++ showVersion v
   return version
 
 -- ------------------------------------------------------------
@@ -425,7 +422,7 @@ rawSystemProgramConf :: Verbosity            -- ^verbosity
                      -> IO ()
 rawSystemProgramConf verbosity prog programConf extraArgs =
   case lookupProgram prog programConf of
-    Nothing -> die (programName prog ++ " command not found")
+    Nothing -> die ("The program " ++ programName prog ++ " is required but it could not be found")
     Just configuredProg -> rawSystemProgram verbosity configuredProg extraArgs
 
 -- | Looks up the given program in the program configuration and runs it.
@@ -436,7 +433,7 @@ rawSystemProgramStdoutConf :: Verbosity            -- ^verbosity
                            -> IO String
 rawSystemProgramStdoutConf verbosity prog programConf extraArgs =
   case lookupProgram prog programConf of
-    Nothing -> die (programName prog ++ " command not found")
+    Nothing -> die ("The program " ++ programName prog ++ " is required but it could not be found")
     Just configuredProg -> rawSystemProgramStdout verbosity configuredProg extraArgs
 
 -- ------------------------------------------------------------

@@ -92,8 +92,7 @@ import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
 -- >   PreProcessor {
 -- >     platformIndependent = True,
 -- >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
--- >       do when (verbosity >= normal) $
--- >            putStrLn (inFile++" has been preprocessed to "++outFile)
+-- >       do info verbosity (inFile++" has been preprocessed to "++outFile)
 -- >          stuff <- readFile inFile
 -- >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
 -- >          return ExitSuccess
