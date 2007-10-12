@@ -1,29 +1,25 @@
+preConf does not have a program configuration available so we cannot run
+programs! But that's often exactly what we need to do to help generate the
+config. We need a Config monad.
+
 OLD TODOS:
 
 * Parsing
-** Allow quoting in the options fields, to allow things like
-  -f"something with spaces"
+** Make the parsing functions pure.
+** Enable access to the x- extension fields, as simple [(String, String)]
+    name-value pairs.
 
 * Doc
-** do comments have to start in the first column?
-** clarify relationship between other-modules and modules, etc.
-** add preprocessor explanation (see bottom of this TODO).
-** Fix example for angela, expose Data.Set, etc, not A, B, etc.b
-** add information about executable stanzas
 ** elimintate need for cpphs in haddock makefile rule.
 ** add info about deb packages to web page at least check out the
    manpage for dh_haskell, section "How to package a haskell library"
 
 * Misc
-** HC-PKG (see "Depends on HC-PKG" below)
-** add more layered tools to appendix?
-** make reference to "layered tools" appendix where approprote
-** integrate hscpp, use it for preprocessing step.
 ** SDist for windows machines, or machines without tar.
-** add sanity checking command?
+** add sanity checking / QA command?
 
 * testing
-** find a real test case that uses preprocessors
+** find a real test case that uses preprocessors: gtk2hs
 ** add a make target or command for tests we know will fail?
 ** setup test suite to run on --push?
 ** redirect non-hunit outputs to a file?
@@ -31,13 +27,9 @@ OLD TODOS:
 ** error cases for parsing command-line args
 ** reading & writing configuration-dropping
 ** use-cases based on SimonPJ's doc
-** discovering the location of the given flavor of compiler and pkg tool
 
 ------------------------------------------------------------
 -= Future Releases =-
-
-* Depends on HC-PKG
-** configure: check for presence of build dependencies
 
 * NHC Support
 ** look carefully at "rawSystem" and error handing stuff for nhc.
@@ -57,8 +49,8 @@ OLD TODOS:
 
 ** sign flag?
 
-** for fields like allModules, allow user to specify "Foo.Bar.*" or
-   something to indicate all haskell modules under that?
+** for fields like data-files or extra-source-files, allow user to specify
+   "foo/bar/*.baz" or something to indicate all files matching that?
 
 ** Get function from hmake that creates a directory based on arch.
 
@@ -67,11 +59,7 @@ OLD TODOS:
    else.
 - give to John Goerzen?
 
-** writePersistBuildConfig robustify + diagnostics
-** elaborate command-line help text
 ** configure should check for 'ar' args + properties (see fptools/aclocal.m4)
-** most commands should accept a -v flag to show command lines?
-** configure should check version of compiler
 
 ** hat support
 ** per-system source database
@@ -79,42 +67,3 @@ OLD TODOS:
 ** helium
 ** hbc
 
-
-------------------------------------------------------------
-
-* Orthogonal (layered?) tools
-
-** visual studio support
-
-** hackage
-
-** downloadable public database of packages (wget filename;tar xf
-   filename;cd filename;./setup install)
-
-   NOTE: such an interface might be implemented w/ xml-rpc, which is
-   there for Haskell now, though in general we'll probabliy want to be
-   careful here about dependencies.
-
-** debian package building (boilerplate) tool.  Other debian support
-   w/ rebuild-all-packages?
-
-------------------------------------------------------------
-[1] Foo.y is a happy grammer which, when processed, will produce Foo.hs.
-
-The description file should include the module Foo.
-
-./setup sdist (source distribution): Include Foo.y, not Foo.hs.  Maybe
-we could add a flag to include Foo.hs as well.  This makes sense for
-some preprocessors and not for others, but I'm wary of including too
-much preprocessor-specific behavior.
-
-./setup clean: Removes Foo.hs if Foo.y exists.
-
-./setup build: Preprocesses Foo.y to Create Foo.hs before any
-compilation.
-
-The issue with cpp is that we can't go by extensions as we do with the
-rest of the preprocessors... There is a function in HMake which tests
-to see if a file needs to be cpp'd, so we can employ that.  I think
-we'll probably have to just treat cpp a little differently from the
-others, unfortunitely, and I haven't gotten around to it.
