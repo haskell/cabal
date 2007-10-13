@@ -135,7 +135,7 @@ installPkg cfg comp globalArgs (pkg,opts)
              path = tmpDirPath </> showPackageId p
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
-                  (do message cfg deafening (printf "Extracting %s..." pkgPath)
+                  (do message cfg verbose (printf "Extracting %s to %s..." pkgPath tmpDirPath)
                       extractTarGzFile (Just tmpDirPath) pkgPath
                       let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
@@ -156,6 +156,6 @@ installUnpackedPkg cfg comp globalArgs pkgId opts mpath
   where
     setup cmd 
         = do let cmdOps = mkPkgOps cfg comp pkgId cmd (globalArgs++opts)
-             message cfg deafening $ 
+             message cfg verbose $ 
                      unwords ["setupWrapper", show (cmd:cmdOps), show mpath]
              setupWrapper (cmd:cmdOps) mpath
