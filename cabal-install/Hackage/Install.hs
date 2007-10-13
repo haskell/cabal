@@ -150,15 +150,9 @@ installUnpackedPkg :: ConfigFlags -> Compiler
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> IO ()
 installUnpackedPkg cfg comp globalArgs pkgId opts mpath
-    = do printf "Building '%s'\n" (showPackageId pkgId)
-         printf "  Configuring...\n"
-         setup "configure"
-         printf "  Building...\n"
+    = do setup "configure"
          setup "build"
-         printf "  Installing...\n"
          setup "install"
-         printf "  Done.\n"
-         return ()
   where
     setup cmd 
         = do let cmdOps = mkPkgOps cfg comp pkgId cmd (globalArgs++opts)
