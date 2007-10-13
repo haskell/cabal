@@ -15,7 +15,7 @@ module Main where
 
 import Hackage.Types            (Action (..), Option(..))
 import Hackage.Setup            (parseGlobalArgs, parsePackageArgs, configFromOptions)
-import Hackage.Config           (defaultConfigFile, loadConfig)
+import Hackage.Config           (defaultConfigFile, loadConfig, findCompiler)
 import Hackage.List             (list)
 import Hackage.Install          (install)
 import Hackage.Info             (info)
@@ -40,7 +40,8 @@ main = do
     let config = configFromOptions conf0 flags
 
         runCmd f = do (globalArgs, pkgs) <- parsePackageArgs action args
-                      f config globalArgs pkgs
+                      (comp, conf) <- findCompiler config
+                      f config comp conf globalArgs pkgs
 
     case action of
         InstallCmd  -> runCmd install

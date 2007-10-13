@@ -31,10 +31,12 @@ import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..), PkgInfo, pkgInfoId)
-import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message, findCompiler)
+import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 
 import Distribution.Package (showPackageId)
+import Distribution.Simple.Compiler (Compiler)
+import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
@@ -120,10 +122,9 @@ fetchPackage cfg pkg
                     downloadPackage cfg pkg
 
 -- |Fetch a list of packages and their dependencies.
-fetch :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
-fetch cfg _globalArgs deps
-    = do (comp,conf) <- findCompiler cfg
-         depTree <- resolveDependencies cfg comp conf deps
+fetch :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
+fetch cfg comp conf _globalArgs deps
+    = do depTree <- resolveDependencies cfg comp conf deps
          case packagesToInstall depTree of
            Left missing -> fail $ "Unresolved dependencies: " ++ show missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched cfg) $ map fst pkgs
