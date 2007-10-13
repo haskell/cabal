@@ -128,11 +128,13 @@ pkgURL pkg = joinWith "/" [repoURL (pkgRepo pkg), pkgName p, showVersion (pkgVer
 -- * Compiler and programs
 --
 
--- FIXME: should use --with flags
 findCompiler :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
 findCompiler cfg = Configure.configCompiler 
                      (Just (configCompiler cfg)) 
-                     Nothing Nothing defaultProgramConfiguration (configVerbose cfg)
+                     (configCompilerPath cfg)
+                     (configHcPkgPath cfg)
+                     defaultProgramConfiguration 
+                     (configVerbose cfg)
 
 --
 -- * Default config
@@ -159,6 +161,8 @@ defaultConfigFlags =
        cacheDir    <- defaultCacheDir
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
+               , configCompilerPath = Nothing
+               , configHcPkgPath   = Nothing
                , configInstallDirs = installDirs { prefixDirTemplate = toPathTemplate defaultPrefix }
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]

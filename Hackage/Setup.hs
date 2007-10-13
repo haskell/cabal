@@ -81,8 +81,8 @@ configFromOptions :: ConfigFlags -> [Option] -> ConfigFlags
 configFromOptions = foldr f
   where f o cfg = case o of
                     OptCompilerFlavor c -> cfg { configCompiler = c}
-                    OptCompiler _       -> cfg -- FIXME: where do we store this?
-                    OptHcPkg _          -> cfg -- FIXME: where do we store this?
+                    OptCompiler p       -> cfg { configCompilerPath = Just p }
+                    OptHcPkg p          -> cfg { configHcPkgPath = Just p }
                     OptConfigFile _     -> cfg
                     OptCacheDir d       -> cfg { configCacheDir = d }
                     OptPrefix     d     -> lib (\ds x -> ds { prefixDirTemplate  = x }) d
