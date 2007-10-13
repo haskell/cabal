@@ -128,14 +128,6 @@ printGlobalHelp = do pname <- getProgName
                                | cmd <- commandList ]
   where align n str = str ++ replicate (n - length str) ' '
 
-printActionHelp :: Action -> IO ()
-printActionHelp action = 
-    do let [cmd] = [c | c <- commandList, cmdAction c == action]
-       pname <- getProgName
-       let syntax_line = "Usage: " ++ pname ++ " " ++ cmdName cmd ++ " [FLAGS]\n\nFlags for " ++ cmdName cmd ++ ":"
-       putStrLn (usageInfo syntax_line (cmdOptions cmd))
-       putStrLn (cmdDescription cmd)
-
 parseGlobalArgs :: [String] -> IO (Action,[Option],[String])
 parseGlobalArgs opts =
   do let (flags, args, unrec, errs) = getOpt' RequireOrder globalOptions opts
@@ -187,9 +179,6 @@ infoCmd = mkCmd "info" "Emit some info"
            "Emits information about dependency resolution" InfoCmd
 
 parsePackageArgs :: Action -> [String] -> IO ([String],[UnresolvedDependency])
-parsePackageArgs action [] = do 
-  printActionHelp action
-  exitWith ExitSuccess
 parsePackageArgs _ args
     = return (globalArgs,parsePkgArgs pkgs)
     where (globalArgs,pkgs) = break (not.(==)'-'.head) args
