@@ -13,6 +13,7 @@
 module Hackage.Dependency
     (
       resolveDependencies
+    , resolveDependenciesLocal
     , packagesToInstall
     ) where
 
@@ -24,6 +25,7 @@ import Distribution.Version (Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
+    , GenericPackageDescription
     , finalizePackageDescription)
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
 import Distribution.Simple.Program (ProgramConfiguration)
@@ -46,6 +48,20 @@ resolveDependencies cfg comp conf deps
          return [resolveDependency comp installed available dep opts 
                      | UnresolvedDependency dep opts <- deps]
 
+-- | Resolve dependencies of a local package description. This is used
+-- when the top-level package does not come from hackage.
+resolveDependenciesLocal :: ConfigFlags
+                         -> Compiler
+                         -> ProgramConfiguration
+                         -> GenericPackageDescription
+                         -> [String]
+                         -> IO [ResolvedPackage]
+resolveDependenciesLocal cfg comp conf desc opts
+    =  do installed <- listInstalledPackages cfg comp conf
+          available <- getKnownPackages cfg
+          return [resolveDependency comp installed available dep []
+                     | dep <- getDependencies comp installed available desc opts]
+
 resolveDependency :: Compiler
                   -> [PackageIdentifier] -- ^ Installed packages.
                   -> [PkgInfo] -- ^ Installable packages
@@ -58,7 +74,7 @@ resolveDependency comp installed available dep opts
     resolveFromInstalled = fmap (Installed dep) $ latestInstalledSatisfying installed dep
     resolveFromAvailable = 
         do pkg <- latestAvailableSatisfying available dep
-           let deps = getDependencies comp installed available pkg opts
+           let deps = getDependencies comp installed available (pkgDesc pkg) opts
                resolved = map (\d -> resolveDependency comp installed available d []) deps
            return $ Available dep pkg opts resolved
 
@@ -91,7 +107,7 @@ satisfies pkg (Dependency depName vrange)
 getDependencies :: Compiler 
                 -> [PackageIdentifier] -- ^ Installed packages.
                 -> [PkgInfo] -- ^ Available packages
-                -> PkgInfo
+                -> GenericPackageDescription
                 -> [String] -- ^ Options
                 -> [Dependency] 
                    -- ^ If successful, this is the list of dependencies.
@@ -109,7 +125,7 @@ getDependencies comp installed available pkg opts
                 System.Info.os
                 System.Info.arch
                 (showCompilerId comp, compilerVersion comp)
-                (pkgDesc pkg)
+                pkg
 
 -- | Extracts configurations flags from a list of options.
 configurationsFlags :: [String] -> [(String, Bool)]

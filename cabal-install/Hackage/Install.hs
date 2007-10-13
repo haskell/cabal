@@ -26,18 +26,20 @@ import Text.Printf (printf)
 
 
 import Hackage.Config (message)
-import Hackage.Dependency (resolveDependencies, packagesToInstall)
+import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                     , PkgInfo(..), pkgInfoId)
+                     , PkgInfo(..), pkgInfoId, ResolvedPackage)
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Setup (CopyDest(..))
+import Distribution.Simple.Utils (defaultPackageDesc)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
+import Distribution.PackageDescription (packageDescription, readPackageDescription, package)
 import Distribution.Verbosity
 
 
@@ -46,8 +48,23 @@ import Distribution.Verbosity
 -- |Installs the packages needed to satisfy a list of dependencies.
 install :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg comp conf globalArgs deps
-    = do resolvedDeps <- resolveDependencies cfg comp conf deps
-         case packagesToInstall resolvedDeps of
+    | null deps = installLocalPackage cfg comp conf globalArgs
+    | otherwise = do resolvedDeps <- resolveDependencies cfg comp conf deps
+                     installResolvedDeps cfg comp globalArgs resolvedDeps
+
+-- | Install the unpacked package in the current directory, and all its dependencies.
+installLocalPackage :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> IO ()
+installLocalPackage cfg comp conf globalArgs =
+   do cabalFile <- defaultPackageDesc (configVerbose cfg)
+      desc <- readPackageDescription (configVerbose cfg) cabalFile
+      resolvedDeps <- resolveDependenciesLocal cfg comp conf desc globalArgs
+      installResolvedDeps cfg comp globalArgs resolvedDeps
+      let pkgId = package (packageDescription desc)
+      installUnpackedPkg cfg comp globalArgs pkgId [] Nothing
+
+installResolvedDeps :: ConfigFlags -> Compiler -> [String] -> [ResolvedPackage] -> IO ()
+installResolvedDeps cfg comp globalArgs resolvedDeps =
+    case packagesToInstall resolvedDeps of
            Left missing -> fail $ "Unresolved dependencies: " ++ show missing
            Right pkgs   -> installPackages cfg comp globalArgs pkgs
 
@@ -115,12 +132,7 @@ installPkg cfg comp globalArgs (pkg,opts)
          tmp <- getTemporaryDirectory
          let p = pkgInfoId pkg
              tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId p)
-             setup cmd
-                 = do let cmdOps = mkPkgOps cfg comp p cmd (globalArgs++opts)
-                          path = tmpDirPath </> showPackageId p
-                      message cfg deafening $ 
-                                 unwords ["setupWrapper", show (cmd:cmdOps), show path]
-                      setupWrapper (cmd:cmdOps) (Just path)
+             path = tmpDirPath </> showPackageId p
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
                   (do message cfg deafening (printf "Extracting %s..." pkgPath)
@@ -128,12 +140,16 @@ installPkg cfg comp globalArgs (pkg,opts)
                       let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
                       when (not e) $ fail $ "Package .cabal file not found: " ++ show descFilePath
-                      installUnpackedPkg cfg p setup
+                      installUnpackedPkg cfg comp globalArgs p opts (Just path)
                       return ())
 
-installUnpackedPkg :: ConfigFlags -> PackageIdentifier
-                   -> (String -> IO ()) -> IO ()
-installUnpackedPkg _cfg pkgId setup
+installUnpackedPkg :: ConfigFlags -> Compiler 
+                   -> [String] -- ^ Arguments for all packages
+                   -> PackageIdentifier
+                   -> [String] -- ^ Arguments for this package
+                   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
+                   -> IO ()
+installUnpackedPkg cfg comp globalArgs pkgId opts mpath
     = do printf "Building '%s'\n" (showPackageId pkgId)
          printf "  Configuring...\n"
          setup "configure"
@@ -143,3 +159,9 @@ installUnpackedPkg _cfg pkgId setup
          setup "install"
          printf "  Done.\n"
          return ()
+  where
+    setup cmd 
+        = do let cmdOps = mkPkgOps cfg comp pkgId cmd (globalArgs++opts)
+             message cfg deafening $ 
+                     unwords ["setupWrapper", show (cmd:cmdOps), show mpath]
+             setupWrapper (cmd:cmdOps) mpath
