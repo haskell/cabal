@@ -11,9 +11,7 @@
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
 module Hackage.Install
-    ( install    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
-    , installPackages
-    , installPkg -- :: ConfigFlags -> (PackageIdentifier,[String],String) -> IO ()
+    ( install
     ) where
 
 import Control.Exception (bracket_)
@@ -30,7 +28,7 @@ import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packag
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                     , PkgInfo(..), pkgInfoId, ResolvedPackage)
+                     , PkgInfo(..), pkgInfoId)
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
@@ -49,8 +47,7 @@ import Distribution.Verbosity
 install :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
 install cfg comp conf globalArgs deps
     | null deps = installLocalPackage cfg comp conf globalArgs
-    | otherwise = do resolvedDeps <- resolveDependencies cfg comp conf deps
-                     installResolvedDeps cfg comp globalArgs resolvedDeps
+    | otherwise = installRepoPackages cfg comp conf globalArgs deps
 
 -- | Install the unpacked package in the current directory, and all its dependencies.
 installLocalPackage :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> IO ()
@@ -58,15 +55,19 @@ installLocalPackage cfg comp conf globalArgs =
    do cabalFile <- defaultPackageDesc (configVerbose cfg)
       desc <- readPackageDescription (configVerbose cfg) cabalFile
       resolvedDeps <- resolveDependenciesLocal cfg comp conf desc globalArgs
-      installResolvedDeps cfg comp globalArgs resolvedDeps
+      case packagesToInstall resolvedDeps of
+        Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+        Right pkgs   -> installPackages cfg comp globalArgs pkgs
       let pkgId = package (packageDescription desc)
       installUnpackedPkg cfg comp globalArgs pkgId [] Nothing
 
-installResolvedDeps :: ConfigFlags -> Compiler -> [String] -> [ResolvedPackage] -> IO ()
-installResolvedDeps cfg comp globalArgs resolvedDeps =
-    case packagesToInstall resolvedDeps of
-           Left missing -> fail $ "Unresolved dependencies: " ++ show missing
-           Right pkgs   -> installPackages cfg comp globalArgs pkgs
+installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
+installRepoPackages cfg comp conf globalArgs deps =
+    do resolvedDeps <- resolveDependencies cfg comp conf deps
+       case packagesToInstall resolvedDeps of
+         Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+         Right []     -> message cfg normal "All requested packages already installed. Nothing to do."
+         Right pkgs   -> installPackages cfg comp globalArgs pkgs
 
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
@@ -99,9 +100,9 @@ installPackages :: ConfigFlags
                 -> [String] -- ^Options which will be parse to every package.
                 -> [(PkgInfo,[String])] -- ^ (Package, list of configure options)
                 -> IO ()
-installPackages cfg comp globalArgs pkgs 
-    | null pkgs = putStrLn "All requested packages already installed. Nothing to do."
-    | otherwise = mapM_ (installPkg cfg comp globalArgs) pkgs
+installPackages cfg comp globalArgs pkgs =
+    mapM_ (installPkg cfg comp globalArgs) pkgs
+
 
 {-|
   Download, build and install a given package with some given flags.
