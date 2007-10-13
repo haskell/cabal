@@ -116,7 +116,7 @@ fetchPackage :: ConfigFlags -> PkgInfo -> IO String
 fetchPackage cfg pkg
     = do fetched <- isFetched cfg pkg
          if fetched
-            then do printf "'%s' is present.\n" (showPackageId (pkgInfoId pkg))
+            then do printf "'%s' is cached.\n" (showPackageId (pkgInfoId pkg))
                     return (packageFile cfg pkg)
             else do printf "Downloading '%s'...\n" (showPackageId (pkgInfoId pkg))
                     downloadPackage cfg pkg
