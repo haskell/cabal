@@ -76,7 +76,7 @@ mkPkgOps cfg comp pkgId cmd ops = verbosity ++
     "configure" -> user ++ installDirFlags installDirs ++ ops
     "install"   -> user
     _ -> []
- where verbosity = ["--verbose=" ++ showForCabal (configVerbose cfg)]
+ where verbosity = ["-v" ++ showForCabal (configVerbose cfg)]
        user = if configUserInstall cfg then ["--user"] else []
        installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest (configInstallDirs cfg)
 
