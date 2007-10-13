@@ -60,6 +60,8 @@ data Option = OptCompilerFlavor CompilerFlavor
 
 data ConfigFlags = ConfigFlags {
         configCompiler    :: CompilerFlavor,
+        configCompilerPath :: Maybe FilePath,
+        configHcPkgPath   :: Maybe FilePath,
         configInstallDirs :: InstallDirTemplates,
         configCacheDir    :: FilePath,
         configRepos       :: [Repo],       -- ^Available Hackage servers.
