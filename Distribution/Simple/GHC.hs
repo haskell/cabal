@@ -349,13 +349,16 @@ build pkg_descr lbi verbosity = do
         Try.try (removeFile sharedLibName) -- first remove library if it exists
 	Try.try (removeFile ghciLibName) -- first remove library if it exists
 
-        let arArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
+        let arVerbosity | verbosity >= deafening = "v"
+                        | verbosity >= normal = ""
+                        | otherwise = "c"
+            arArgs = ["q"++ arVerbosity]
                 ++ [libName]
             arObjArgs =
 		   hObjs
                 ++ map (pref </>) cObjs
                 ++ stubObjs
-            arProfArgs = ["q"++ (if verbosity >= deafening then "v" else "")]
+            arProfArgs = ["q"++ arVerbosity]
                 ++ [profLibName]
             arProfObjArgs =
 		   hProfObjs
