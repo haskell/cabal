@@ -19,15 +19,16 @@ import Hackage.Types
 
 import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
+import Distribution.Simple.Compiler (Compiler)
+import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Version (Dependency)
 
 import Data.List (intersperse, nubBy)
 import Text.Printf (printf)
 
-info :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
-info cfg _globalArgs deps
-    = do (comp,conf) <- findCompiler cfg
-         apkgs <- resolveDependencies cfg comp conf deps
+info :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
+info cfg comp conf _globalArgs deps
+    = do apkgs <- resolveDependencies cfg comp conf deps
          mapM_ (infoPkg cfg) $ flattenResolvedPackages apkgs
          case packagesToInstall apkgs of
            Left missing -> 

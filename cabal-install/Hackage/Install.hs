@@ -25,7 +25,7 @@ import System.FilePath ((</>),(<.>))
 import Text.Printf (printf)
 
 
-import Hackage.Config (findCompiler, message)
+import Hackage.Config (message)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
@@ -34,6 +34,7 @@ import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
+import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Package (showPackageId, PackageIdentifier(..))
@@ -43,10 +44,9 @@ import Distribution.Verbosity
 
 
 -- |Installs the packages needed to satisfy a list of dependencies.
-install :: ConfigFlags -> [String] -> [UnresolvedDependency] -> IO ()
-install cfg globalArgs deps
-    = do (comp,conf) <- findCompiler cfg
-         resolvedDeps <- resolveDependencies cfg comp conf deps
+install :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
+install cfg comp conf globalArgs deps
+    = do resolvedDeps <- resolveDependencies cfg comp conf deps
          case packagesToInstall resolvedDeps of
            Left missing -> fail $ "Unresolved dependencies: " ++ show missing
            Right pkgs   -> installPackages cfg comp globalArgs pkgs
