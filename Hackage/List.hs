@@ -48,7 +48,7 @@ list cfg pats = do
 
 doList :: [PkgInfo] -> IO ()
 doList ps = do   
-    putStr $ padTo 35 $ pkgName (package d) ++ " [" ++ concat (intersperse "," versions) ++ "]"
+    putStr $ padTo 35 $ pkgName (package d) ++ " [" ++ concat (intersperse ", " versions) ++ "]"
     putStrLn syn
     where
     info = last ps
