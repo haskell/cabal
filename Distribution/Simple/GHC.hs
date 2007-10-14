@@ -44,7 +44,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-	configure, getInstalledPackages, build, makefile, installLib, installExe
+        configure, getInstalledPackages, build, makefile, installLib, installExe,
+        ghcVerbosityOptions
  ) where
 
 import Distribution.Simple.GHC.Makefile
@@ -505,11 +506,15 @@ constructGHCCmdLine
         -> [String]
 constructGHCCmdLine lbi bi odir verbosity =
         ["--make"]
-     ++ (     if verbosity >= deafening then ["-v"]
-         else if verbosity >= normal    then []
-         else                                ["-w", "-v0"])
+     ++ ghcVerbosityOptions verbosity
         -- Unsupported extensions have already been checked by configure
      ++ ghcOptions lbi bi odir
+
+ghcVerbosityOptions :: Verbosity -> [String]
+ghcVerbosityOptions verbosity
+     | verbosity >= deafening = ["-v"]
+     | verbosity >= normal    = []
+     | otherwise              = ["-w", "-v0"]
 
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir

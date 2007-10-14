@@ -31,6 +31,7 @@ import Distribution.Simple.LocalBuildInfo ( distPref )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
+import Distribution.Simple.GHC (ghcVerbosityOptions)
 import Distribution.GetOpt
 import System.Directory
 import Distribution.Compat.Exception ( finally )
@@ -90,7 +91,7 @@ setupWrapper args mdir = inDir mdir $ do
                 cabal_flag
              ++ ["--make", f, "-o", setupProg
 	        ,"-odir", setupDir, "-hidir", setupDir]
-	     ++ ghcVerbosity verbosity
+	     ++ ghcVerbosityOptions verbosity
          rawSystemExit verbosity setupProg args
 
   case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
@@ -105,12 +106,6 @@ setupWrapper args mdir = inDir mdir $ do
       trySetupScript "Setup.hs"  $
       trySetupScript "Setup.lhs" $
       die "no special Build-Type, but lacks Setup.hs or Setup.lhs"
-
-ghcVerbosity :: Verbosity -> [String]
-ghcVerbosity verbosity
-    | verbosity >= deafening = ["-v"]
-    | verbosity >= normal = []
-    | otherwise = ["-w", "-v0"]
 
 buildTypes :: [(BuildType, ([String] -> IO (), String))]
 buildTypes = [
