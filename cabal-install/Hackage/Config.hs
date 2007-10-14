@@ -93,14 +93,11 @@ readRepoIndex :: ConfigFlags -> Repo -> IO [PkgInfo]
 readRepoIndex cfg repo =
     do let indexFile = repoCacheDir cfg repo </> "00-index.tar"
        fmap (parseRepoIndex repo) (BS.readFile indexFile)
-          `catch` (\e
-                 -> do hPutStrLn stderr ("Warning: Problem opening package list '"
-                                          ++ indexFile ++ "'.")
-                       case e of
-                         IOException ioe | isDoesNotExistError ioe ->
-                           hPutStrLn stderr "File doesn't exist. Run 'cabal-install update' to create the package list."
-                         _ -> hPutStrLn stderr ("Error: " ++ (show e))
-                       return [])
+          `catch` (\e -> do case e of
+                              IOException ioe | isDoesNotExistError ioe ->
+                                hPutStrLn stderr "The package list does not exist. Run 'cabal update' to download it."
+                              _ -> hPutStrLn stderr ("Error: " ++ show e)
+                            return [])
 
 parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =
