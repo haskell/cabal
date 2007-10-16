@@ -226,8 +226,9 @@ getInstalledPackages verbosity packagedb conf = do
    --TODO: use --simple-output flag for easier parsing
    str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
             [packageDbGhcPkgFlag packagedb, "list"]
-   let keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
-       str1 = unlines (filter keep_line (lines str))
+   let str1 = case packagedb of
+                UserPackageDB -> allFiles str
+                _             -> firstFile str
        str2 = filter (`notElem` ",(){}") str1
        --
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
@@ -240,6 +241,13 @@ getInstalledPackages verbosity packagedb conf = do
 
     pCheck :: [(a, [Char])] -> [a]
     pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
+
+    allFiles str = unlines $ filter keep_line $ lines str
+        where keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
+
+    firstFile str = unlines $ takeWhile (not . file_line) $
+                    drop 1 $ dropWhile (not . file_line) $ lines str
+        where file_line s = ':' `elem` s && not ("Creating" `isPrefixOf` s)
 
 -- -----------------------------------------------------------------------------
 -- Building
