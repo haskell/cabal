@@ -25,6 +25,7 @@ data PkgInfo = PkgInfo {
                         pkgRepo :: Repo,
                         pkgDesc :: GenericPackageDescription
                        }
+               deriving (Show)
 
 pkgInfoId :: PkgInfo -> PackageIdentifier
 pkgInfoId = package . packageDescription . pkgDesc
@@ -37,7 +38,7 @@ data Action
     | InfoCmd
     | HelpCmd
     | ListCmd
- deriving (Eq)
+ deriving (Show,Eq)
 
 data Option = OptCompilerFlavor CompilerFlavor
             | OptCompiler FilePath
@@ -68,6 +69,7 @@ data ConfigFlags = ConfigFlags {
         configVerbose     :: Verbosity,
         configUserInstall :: Bool            -- ^--user-install flag
    }
+  deriving (Show)
 
 data Repo = Repo {
                   repoName :: String,
@@ -78,6 +80,7 @@ data Repo = Repo {
 data ResolvedPackage = Installed Dependency PackageIdentifier
                      | Available Dependency PkgInfo [String] [ResolvedPackage]
                      | Unavailable Dependency
+                       deriving (Show)
 
 fulfills :: ResolvedPackage -> Dependency
 fulfills (Installed d _) = d
@@ -89,3 +92,4 @@ data UnresolvedDependency
     { dependency :: Dependency
     , depOptions :: [String]
     }
+  deriving (Show)
