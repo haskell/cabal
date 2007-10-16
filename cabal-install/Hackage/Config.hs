@@ -44,7 +44,7 @@ import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription ({- GenericPackageDescription(..), -}
                                         {-PackageDescription(..), -}
                                          parsePackageDescription, ParseResult(..))
-import Distribution.ParseUtils (FieldDescr, simpleField, listField, liftField, field)
+import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
@@ -152,24 +152,26 @@ defaultCacheDir = do dir <- defaultCabalDir
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
-defaultInstallDirs' :: CompilerFlavor -> Bool -> IO InstallDirTemplates
-defaultInstallDirs' compiler userInstall =
+defaultUserInstallDirs :: CompilerFlavor -> IO InstallDirTemplates
+defaultUserInstallDirs compiler =
     do installDirs <- defaultInstallDirs compiler True
-       if userInstall 
-        then do userPrefix <- defaultCabalDir
-                return $ installDirs { prefixDirTemplate = toPathTemplate userPrefix }
-        else return installDirs
+       userPrefix <- defaultCabalDir
+       return $ installDirs { prefixDirTemplate = toPathTemplate userPrefix }
 
+defaultGlobalInstallDirs :: CompilerFlavor -> IO InstallDirTemplates
+defaultGlobalInstallDirs compiler = defaultInstallDirs compiler True
 
 defaultConfigFlags :: IO ConfigFlags
 defaultConfigFlags = 
-    do installDirs <- defaultInstallDirs' defaultCompiler True
+    do userInstallDirs   <- defaultUserInstallDirs defaultCompiler
+       globalInstallDirs <- defaultGlobalInstallDirs defaultCompiler
        cacheDir    <- defaultCacheDir
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
                , configCompilerPath = Nothing
                , configHcPkgPath   = Nothing
-               , configInstallDirs = installDirs
+               , configUserInstallDirs = userInstallDirs
+               , configGlobalInstallDirs = globalInstallDirs
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
                , configVerbose     = normal
@@ -190,17 +192,9 @@ loadConfig configFile =
                        writeDefaultConfigFile configFile defaultConf
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
-                       ParseOk ws dummyConf -> 
+                       ParseOk ws conf -> 
                            do mapM_ (hPutStrLn stderr . ("Config file warning: " ++)) ws
-                              -- There is a data dependency within the config file.
-                              -- The default installation paths depend on the compiler
-                              -- and on whether this is a user or global installation.
-                              -- Hence we need to do two passes through the config file.
-                              installDirs <- defaultInstallDirs' (configCompiler dummyConf) (configUserInstall dummyConf)
-                              let conf = defaultConf { configInstallDirs = installDirs }
-                              case parseBasicStanza configFieldDescrs conf inp of
-                                ParseOk _ conf' -> return conf'
-                                ParseFailed err -> error $ "LoadConfig: can't happen: " ++ show err
+                              return conf
                        ParseFailed err -> 
                            do hPutStrLn stderr $ "Error parsing config file " 
                                             ++ configFile ++ ": " ++ showPError err
@@ -217,16 +211,10 @@ showConfig = showFields configFieldDescrs
 
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr ConfigFlags]
-configFieldDescrs = configWriteFieldDescrs ++
-    [ installDirField "bindir" binDirTemplate (\d ds -> ds { binDirTemplate = d })
-    , installDirField "libdir" libDirTemplate (\d ds -> ds { libDirTemplate = d })
-    , installDirField "libexecdir" libexecDirTemplate (\d ds -> ds { libexecDirTemplate = d })
-    , installDirField "datadir" dataDirTemplate (\d ds -> ds { dataDirTemplate = d })
-    , installDirField "docdir" docDirTemplate (\d ds -> ds { docDirTemplate = d })
-    , installDirField "htmldir" htmlDirTemplate (\d ds -> ds { htmlDirTemplate = d })
-    , installDirField "prefix" prefixDirTemplate (\d ds -> ds { prefixDirTemplate = d })
-    ]
-
+configFieldDescrs = 
+    configWriteFieldDescrs
+    ++ map userInstallDirField installDirDescrs
+    ++ map globalInstallDirField installDirDescrs
 
 -- | The subset of the config file fields that we write out
 -- if the config file is missing.
@@ -244,14 +232,39 @@ configWriteFieldDescrs =
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
     ] 
 
+installDirDescrs :: [FieldDescr InstallDirTemplates]
+installDirDescrs =
+    [ installDirField "prefix"     prefixDirTemplate  (\d ds -> ds { prefixDirTemplate  = d })
+    , installDirField "bindir"     binDirTemplate     (\d ds -> ds { binDirTemplate     = d })
+    , installDirField "libdir"     libDirTemplate     (\d ds -> ds { libDirTemplate     = d })
+    , installDirField "libexecdir" libexecDirTemplate (\d ds -> ds { libexecDirTemplate = d })
+    , installDirField "datadir"    dataDirTemplate    (\d ds -> ds { dataDirTemplate    = d })
+    , installDirField "docdir"     docDirTemplate     (\d ds -> ds { docDirTemplate     = d })
+    , installDirField "htmldir"    htmlDirTemplate    (\d ds -> ds { htmlDirTemplate    = d })
+    ]
+
+
+userInstallDirField :: FieldDescr InstallDirTemplates -> FieldDescr ConfigFlags
+userInstallDirField f = modifyFieldName ("user-"++) $
+    liftField configUserInstallDirs 
+              (\d cfg -> cfg { configUserInstallDirs = d }) 
+              f
+
+globalInstallDirField :: FieldDescr InstallDirTemplates -> FieldDescr ConfigFlags
+globalInstallDirField f = modifyFieldName ("global-"++) $
+    liftField configGlobalInstallDirs 
+              (\d cfg -> cfg { configGlobalInstallDirs = d }) 
+              f
+
 installDirField :: String 
                 -> (InstallDirTemplates -> PathTemplate) 
                 -> (PathTemplate -> InstallDirTemplates -> InstallDirTemplates)
-                -> FieldDescr ConfigFlags
+                -> FieldDescr InstallDirTemplates
 installDirField name get set = 
-    liftField (get . configInstallDirs) 
-               (\d cfg -> cfg { configInstallDirs = set d (configInstallDirs cfg) }) $
-               field name (text . show) (readS_to_P reads)
+    liftField get set $ field name (text . show) (readS_to_P reads)
+
+modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
+modifyFieldName f d = d { fieldName = f (fieldName d) }
 
 parseCompilerFlavor :: ReadP r CompilerFlavor
 parseCompilerFlavor = 
