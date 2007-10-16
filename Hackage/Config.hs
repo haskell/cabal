@@ -20,6 +20,7 @@ module Hackage.Config
     , pkgURL
     , defaultConfigFile
     , loadConfig
+    , showConfig
     , findCompiler
     ) where
 
@@ -151,16 +152,24 @@ defaultCacheDir = do dir <- defaultCabalDir
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
+defaultInstallDirs' :: CompilerFlavor -> Bool -> IO InstallDirTemplates
+defaultInstallDirs' compiler userInstall =
+    do installDirs <- defaultInstallDirs compiler True
+       if userInstall 
+        then do userPrefix <- defaultCabalDir
+                return $ installDirs { prefixDirTemplate = toPathTemplate userPrefix }
+        else return installDirs
+
+
 defaultConfigFlags :: IO ConfigFlags
 defaultConfigFlags = 
-    do defaultPrefix <- defaultCabalDir
-       installDirs <- defaultInstallDirs defaultCompiler True
+    do installDirs <- defaultInstallDirs' defaultCompiler True
        cacheDir    <- defaultCacheDir
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
                , configCompilerPath = Nothing
                , configHcPkgPath   = Nothing
-               , configInstallDirs = installDirs { prefixDirTemplate = toPathTemplate defaultPrefix }
+               , configInstallDirs = installDirs
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
                , configVerbose     = normal
@@ -184,9 +193,10 @@ loadConfig configFile =
                        ParseOk ws dummyConf -> 
                            do mapM_ (hPutStrLn stderr . ("Config file warning: " ++)) ws
                               -- There is a data dependency within the config file.
-                              -- The default installation paths depend on the compiler.
+                              -- The default installation paths depend on the compiler
+                              -- and on whether this is a user or global installation.
                               -- Hence we need to do two passes through the config file.
-                              installDirs <- defaultInstallDirs (configCompiler dummyConf) True
+                              installDirs <- defaultInstallDirs' (configCompiler dummyConf) (configUserInstall dummyConf)
                               let conf = defaultConf { configInstallDirs = installDirs }
                               case parseBasicStanza configFieldDescrs conf inp of
                                 ParseOk _ conf' -> return conf'
@@ -202,16 +212,20 @@ writeDefaultConfigFile file cfg =
     do createDirectoryIfMissing True (takeDirectory file)
        writeFile file $ showFields configWriteFieldDescrs cfg
 
+showConfig :: ConfigFlags -> String
+showConfig = showFields configFieldDescrs
+
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr ConfigFlags]
-configFieldDescrs =
+configFieldDescrs = configWriteFieldDescrs ++
     [ installDirField "bindir" binDirTemplate (\d ds -> ds { binDirTemplate = d })
     , installDirField "libdir" libDirTemplate (\d ds -> ds { libDirTemplate = d })
     , installDirField "libexecdir" libexecDirTemplate (\d ds -> ds { libexecDirTemplate = d })
     , installDirField "datadir" dataDirTemplate (\d ds -> ds { dataDirTemplate = d })
     , installDirField "docdir" docDirTemplate (\d ds -> ds { docDirTemplate = d })
     , installDirField "htmldir" htmlDirTemplate (\d ds -> ds { htmlDirTemplate = d })
-    ] ++ configWriteFieldDescrs
+    , installDirField "prefix" prefixDirTemplate (\d ds -> ds { prefixDirTemplate = d })
+    ]
 
 
 -- | The subset of the config file fields that we write out
@@ -228,7 +242,6 @@ configWriteFieldDescrs =
                 (text . show)                  (readS_to_P reads)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
-    , installDirField "prefix" prefixDirTemplate (\d ds -> ds { prefixDirTemplate = d })
     ] 
 
 installDirField :: String 
