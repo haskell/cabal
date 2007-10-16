@@ -60,12 +60,13 @@ import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
+import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
                                   moduleToFilePath, moduleToFilePath2)
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
-                             lookupProgram,
+                             lookupProgram, programPath,
                              rawSystemProgramConf, rawSystemProgram,
                              greencardProgram, cpphsProgram, hsc2hsProgram,
                              c2hsProgram, happyProgram, alexProgram,
@@ -307,7 +308,7 @@ ppCpp' extraArgs bi lbi =
     GHC -> ppGhcCpp (cppArgs ++ extraArgs) bi lbi
     _   -> ppCpphs  (cppArgs ++ extraArgs) bi lbi
 
-  where cppArgs = sysDefines ++ cppOptions bi lbi
+  where cppArgs = sysDefines ++ getCppOptions bi lbi
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
@@ -357,20 +358,28 @@ use_optP_P lbi
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi = pp
   where pp = standardPP lbi hsc2hsProgram flags
-        flags = hcDefines (compiler lbi)
-             ++ map ("--cflag=" ++) (getCcFlags bi)
-             ++ map ("--lflag=" ++) (getLdFlags bi)
+        flags = case compilerFlavor (compiler lbi) of
+	  -- Just to make things complicated, the hsc2hs bundled with
+	  -- ghc uses ghc as the C compiler, so to pass C flags we
+	  -- have to use an additional layer of escaping. Grrr.
+	  GHC ->
+             let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+              in [ "--cc=" ++ programPath ghcProg
+                 , "--ld=" ++ programPath ghcProg ]
+              ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi ]
+              ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
+                                          , opt <- ["-package"
+                                                   ,showPackageId pkg] ]
+              ++ [ "--cflag=-I"    ++ dir | dir <- includeDirs bi]
+              ++ [ "--lflag=-optl" ++ opt | opt <- getLdOptions bi ]
 
--- XXX This should probably be in a utils place, and used more widely
-getCcFlags :: BuildInfo -> [String]
-getCcFlags bi = map ("-I" ++) (includeDirs bi)
-             ++ ccOptions bi
+          _   -> [ "--cflag=" ++ opt | opt <- getCcOptions bi lbi ]
+              ++ [ "--lflag=" ++ opt | opt <- getLdOptions bi     ]
 
--- XXX This should probably be in a utils place, and used more widely
-getLdFlags :: BuildInfo -> [String]
-getLdFlags bi = map ("-L" ++) (extraLibDirs bi)
-             ++ map ("-l" ++) (extraLibs bi)
-             ++ ldOptions bi
+getLdOptions :: BuildInfo -> [String]
+getLdOptions bi = map ("-L" ++) (extraLibDirs bi)
+               ++ map ("-l" ++) (extraLibs bi)
+               ++ ldOptions bi
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi
@@ -380,17 +389,23 @@ ppC2hs bi lbi
                            (outBaseDir, outRelativeFile) verbosity ->
           rawSystemProgramConf verbosity c2hsProgram (withPrograms lbi) $
                ["--include=" ++ outBaseDir]
-            ++ ["--cppopts=" ++ opt | opt <- cppOptions bi lbi]
+            ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
             ++ ["--output-dir=" ++ outBaseDir,
                 "--output=" ++ outRelativeFile,
                 inBaseDir </> inRelativeFile]
       }
 
-cppOptions :: BuildInfo -> LocalBuildInfo -> [String]
-cppOptions bi lbi
-    = hcDefines (compiler lbi) ++
-            ["-I" ++ dir | dir <- includeDirs bi] ++
-            [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
+getCcOptions :: BuildInfo -> LocalBuildInfo -> [String]
+getCcOptions bi lbi
+    = hcDefines (compiler lbi)
+   ++ ["-I" ++ dir | dir <- includeDirs bi]
+   ++ ccOptions bi
+
+getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
+getCppOptions bi lbi
+    = hcDefines (compiler lbi)
+   ++ ["-I" ++ dir | dir <- includeDirs bi]
+   ++ [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
 
 hcDefines :: Compiler -> [String]
 hcDefines comp =
