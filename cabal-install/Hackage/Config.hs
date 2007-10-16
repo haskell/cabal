@@ -250,6 +250,6 @@ showRepo repo = repoName repo ++ ":" ++ repoURL repo
 parseRepo :: ReadP r Repo
 parseRepo = do name <- munch1 (\c -> isAlphaNum c || c `elem` "_-.")
                char ':'
-               url <- munch1 (const True)
+               url <- munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
                return $ Repo { repoName = name, repoURL = url }
 
