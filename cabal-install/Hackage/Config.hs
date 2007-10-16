@@ -15,7 +15,6 @@ module Hackage.Config
     , packageFile
     , packageDir
     , listInstalledPackages
-    , getKnownPackages
     , message
     , pkgURL
     , defaultConfigFile
@@ -25,25 +24,19 @@ module Hackage.Config
     ) where
 
 import Prelude hiding (catch)
-import Control.Exception (catch, Exception(IOException))
 import Control.Monad (when)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Char (isAlphaNum, toLower)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
-import System.FilePath ((</>), takeDirectory, takeExtension, (<.>))
-import System.IO.Error (isDoesNotExistError)
+import System.FilePath ((</>), takeDirectory, (<.>))
 import System.IO (hPutStrLn, stderr)
 import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.PackageDescription ({- GenericPackageDescription(..), -}
-                                        {-PackageDescription(..), -}
-                                         parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Configure (getInstalledPackages)
@@ -53,7 +46,6 @@ import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfigur
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Tar (readTarArchive, tarFileName)
 import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..), pkgInfoId)
 import Hackage.Utils
 
@@ -85,32 +77,6 @@ listInstalledPackages cfg comp conf =
                                                else GlobalPackageDB)
                          conf
        return ipkgs
-
-getKnownPackages :: ConfigFlags -> IO [PkgInfo]
-getKnownPackages cfg
-    = fmap concat $ mapM (readRepoIndex cfg) $ configRepos cfg
-
-readRepoIndex :: ConfigFlags -> Repo -> IO [PkgInfo]
-readRepoIndex cfg repo =
-    do let indexFile = repoCacheDir cfg repo </> "00-index.tar"
-       fmap (parseRepoIndex repo) (BS.readFile indexFile)
-          `catch` (\e -> do case e of
-                              IOException ioe | isDoesNotExistError ioe ->
-                                hPutStrLn stderr "The package list does not exist. Run 'cabal update' to download it."
-                              _ -> hPutStrLn stderr ("Error: " ++ show e)
-                            return [])
-
-parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
-parseRepoIndex repo s =
-    do (hdr, content) <- readTarArchive s
-       if takeExtension (tarFileName hdr) == ".cabal"
-         then case parsePackageDescription (BS.unpack content) of
-                    ParseOk _ descr -> return $ PkgInfo { 
-                                                         pkgRepo = repo,
-                                                         pkgDesc = descr
-                                                        }
-                    _               -> error $ "Couldn't read cabal file " ++ show (tarFileName hdr)
-         else fail "Not a .cabal file"
 
 message :: ConfigFlags -> Verbosity -> String -> IO ()
 message cfg v s = when (configVerbose cfg >= v) (putStrLn s)
