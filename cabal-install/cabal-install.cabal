@@ -38,7 +38,7 @@ Executable cabal
         Hackage.Utils
 
     build-depends: mtl, network, regex-compat, unix, Cabal>=1.2,
-                   zlib >= 0.4, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
+                   zlib >= 0.3, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
 
     if flag(old-base) {
       build-depends: base == 2.0 || == 2.1.1
