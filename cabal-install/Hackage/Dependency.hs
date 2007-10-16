@@ -17,7 +17,8 @@ module Hackage.Dependency
     , packagesToInstall
     ) where
 
-import Hackage.Config (listInstalledPackages, getKnownPackages)
+import Hackage.Config (listInstalledPackages)
+import Hackage.Index (getKnownPackages)
 import Hackage.Types 
     (ResolvedPackage(..), UnresolvedDependency(..), ConfigFlags (..), PkgInfo (..), pkgInfoId)
 
