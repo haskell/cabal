@@ -78,8 +78,11 @@ reqDirArg :: (FilePath -> a) -> ArgDescr a
 reqDirArg constr = ReqArg constr "DIR"
 
 configFromOptions :: ConfigFlags -> [Option] -> ConfigFlags
-configFromOptions = foldr f
-  where f o cfg = case o of
+configFromOptions conf opts = foldr f conf opts
+  where 
+    -- figure out up front if this is a user or global install
+    userInstall = last $ configUserInstall conf : [u | OptUserInstall u <- opts]
+    f o cfg = case o of
                     OptCompilerFlavor c -> cfg { configCompiler = c}
                     OptCompiler p       -> cfg { configCompilerPath = Just p }
                     OptHcPkg p          -> cfg { configHcPkgPath = Just p }
@@ -97,7 +100,13 @@ configFromOptions = foldr f
                     OptUserInstall u    -> cfg { configUserInstall = u }
                     OptHelp             -> error "Got to setFlagsFromOptions OptHelp"
                     OptVerbose v        -> cfg { configVerbose = v }
-         where lib g d = cfg { configInstallDirs = g (configInstallDirs cfg) (toPathTemplate d) }
+         where 
+           -- This is a bit of a hack to allow just one set of installdir command-line
+           -- options. Settings on the comman-line are for a single install session only,
+           -- which will be either a user or global install.
+           lib g d | userInstall = cfg { configUserInstallDirs   = g (configUserInstallDirs   cfg) d' }
+                   | otherwise   = cfg { configGlobalInstallDirs = g (configGlobalInstallDirs cfg) d' }
+               where d' = toPathTemplate d
 
 data Cmd = Cmd {
         cmdName         :: String,

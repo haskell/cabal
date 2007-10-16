@@ -79,7 +79,9 @@ mkPkgOps cfg comp pkgId cmd ops = verbosity ++
     _ -> []
  where verbosity = ["-v" ++ showForCabal (configVerbose cfg)]
        user = if configUserInstall cfg then ["--user"] else []
-       installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest (configInstallDirs cfg)
+       installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
+                           | otherwise             = configGlobalInstallDirs cfg
+       installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest installDirTemplates
 
 installDirFlags :: InstallDirs FilePath -> [String]
 installDirFlags dirs =
@@ -115,7 +117,8 @@ installPackages cfg comp globalArgs pkgs =
 
     * setupWrapper (equivalent to cabal-setup) is called with the options
       \'configure\' and the user specified options, \'--user\'
-      if the 'configUser' flag is @True@ and install directory flags depending on @configInstallDirs@.
+      if the 'configUser' flag is @True@ and install directory flags depending on 
+      @configUserInstallDirs@ or @configGlobalInstallDirs@.
 
     * setupWrapper \'build\' is called with no options.
 

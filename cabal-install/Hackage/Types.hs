@@ -63,7 +63,8 @@ data ConfigFlags = ConfigFlags {
         configCompiler    :: CompilerFlavor,
         configCompilerPath :: Maybe FilePath,
         configHcPkgPath   :: Maybe FilePath,
-        configInstallDirs :: InstallDirTemplates,
+        configUserInstallDirs   :: InstallDirTemplates,
+        configGlobalInstallDirs :: InstallDirTemplates,
         configCacheDir    :: FilePath,
         configRepos       :: [Repo],       -- ^Available Hackage servers.
         configVerbose     :: Verbosity,
