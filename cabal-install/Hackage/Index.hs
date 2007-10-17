@@ -20,13 +20,13 @@ import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Lazy.Char8 (ByteString)
-import System.FilePath ((</>), takeExtension)
+import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
 
 import Distribution.PackageDescription (parsePackageDescription, ParseResult(..))
-
-
+import Distribution.Package (PackageIdentifier(..))
+import Distribution.Version (readVersion)
 
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
@@ -46,10 +46,19 @@ parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =
     do (hdr, content) <- readTarArchive s
        if takeExtension (tarFileName hdr) == ".cabal"
-         then case parsePackageDescription (BS.unpack content) of
-                    ParseOk _ descr -> return $ PkgInfo { 
-                                                         pkgRepo = repo,
-                                                         pkgDesc = descr
-                                                        }
-                    _               -> error $ "Couldn't read cabal file " ++ show (tarFileName hdr)
-         else fail "Not a .cabal file"
+         then case splitDirectories (normalise (tarFileName hdr)) of
+                [pkgname,vers,_] ->
+                  let descr = case parsePackageDescription (BS.unpack content) of
+                        ParseOk _ d -> d
+                        _           -> error $ "Couldn't read cabal file "
+                                            ++ show (tarFileName hdr)
+                   in case readVersion vers of
+                        Just ver ->
+                         return $ PkgInfo {
+                                 pkgInfoId = PackageIdentifier pkgname ver,
+                                 pkgRepo = repo,
+                                 pkgDesc = descr
+                               }
+                        _ -> []
+                _ -> []
+         else []
