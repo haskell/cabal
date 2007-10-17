@@ -14,11 +14,8 @@ module Hackage.List
     ( list    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
     ) where
 
-import Text.Regex
-import Data.Maybe (isJust)
-import Data.List (nubBy, sortBy, groupBy, intersperse)
+import Data.List (nubBy, sortBy, groupBy, intersperse, isPrefixOf, tails)
 import Data.Char as Char (toLower)
-import Data.Ord  (comparing)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version (showVersion)
@@ -59,3 +56,9 @@ showPkgVersions pkgs =
     pkg = last pkgs
     versions = map (showVersion . pkgVersion . package) pkgs
     padTo n s = s ++ (replicate (n - length s) ' ')
+
+comparing :: (Ord a) => (b -> a) -> b -> b -> Ordering
+comparing p x y = compare (p x) (p y)
+
+isInfixOf :: String -> String -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)

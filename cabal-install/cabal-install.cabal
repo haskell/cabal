@@ -20,6 +20,8 @@ flag old-base
   description: Old, monolithic base
   default: False
 
+flag bytestring-in-base
+
 Executable cabal
     Main-Is:            Main.hs
     Ghc-Options:        -Wall
@@ -38,11 +40,15 @@ Executable cabal
         Hackage.Update
         Hackage.Utils
 
-    build-depends: network, regex-compat, Cabal>=1.2,
-                   zlib >= 0.3, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
+    build-depends: Cabal >= 1.2, filepath >= 1.0, network,
+                   zlib >= 0.3, HTTP >= 3000.0 && < 3000.1
 
-    if flag(old-base) {
-      build-depends: base == 2.0 || == 2.1.1
-    } else {
-      build-depends: base >= 2.1, process, directory, pretty, bytestring >= 0.9
-    }
+    if flag(old-base)
+      build-depends: base < 3
+    else
+      build-depends: base >= 3, process, directory, pretty
+
+    if flag(bytestring-in-base)
+      build-depends: base >= 2.0 && < 2.2
+    else
+      build-depends: base < 2.0 || >= 3.0, bytestring >= 0.9
