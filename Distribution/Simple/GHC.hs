@@ -528,6 +528,7 @@ ghcOptions lbi bi odir
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
      ++ ["-I" ++ odir]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
+     ++ ["-optP" ++ opt | opt <- cppOptions bi]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]

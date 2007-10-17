@@ -558,6 +558,7 @@ unionExecutable e1 e2 =
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
         buildTools        :: [Dependency], -- ^ tools needed to build this bit
+	cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
@@ -581,6 +582,7 @@ nullBuildInfo :: BuildInfo
 nullBuildInfo = BuildInfo {
                       buildable         = True,
                       buildTools        = [],
+                      cppOptions        = [],
                       ccOptions         = [],
                       ldOptions         = [],
                       pkgconfigDepends  = [],
@@ -632,6 +634,9 @@ binfoFieldDescrs =
  , commaListField  "build-tools"
            showDependency     parseDependency
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
+ , listField "cpp-options"
+           showToken          parseTokenQ
+           cppOptions          (\val binfo -> binfo{cppOptions=val})
  , listField "cc-options"
            showToken          parseTokenQ
            ccOptions          (\val binfo -> binfo{ccOptions=val})
@@ -748,6 +753,7 @@ unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
     = b1{buildable         = buildable b1 && buildable b2,
          buildTools        = combine buildTools,
+         cppOptions         = combine cppOptions,
          ccOptions         = combine ccOptions,
          ldOptions         = combine ldOptions,
          pkgconfigDepends  = combine pkgconfigDepends,
