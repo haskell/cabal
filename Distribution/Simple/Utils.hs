@@ -49,6 +49,7 @@ module Distribution.Simple.Utils (
 	wrapText,
         rawSystemExit,
         rawSystemStdout,
+	rawSystemStdout',
         maybeExit,
         xargs,
         matchesDescFile,
@@ -247,6 +248,12 @@ rawSystemPathExit verbosity prog args = do
 -- Run a command and return its output
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
+  (output, exitCode) <- rawSystemStdout' verbosity path args
+  unless (exitCode == ExitSuccess) $ exitWith exitCode
+  return output
+
+rawSystemStdout' :: Verbosity -> FilePath -> [String] -> IO (String, ExitCode)
+rawSystemStdout' verbosity path args = do
   printRawCommandAndArgs verbosity path args
 
 #if __GLASGOW_HASKELL__ >= 604
@@ -265,16 +272,16 @@ rawSystemStdout verbosity path args = do
          $ \((tmpName, tmpHandle), nullHandle) -> do
     cmdHandle <- runProcess path args Nothing Nothing
                    Nothing (Just tmpHandle) (Just nullHandle)
-    maybeExit (waitForProcess cmdHandle)
+    exitCode <- waitForProcess cmdHandle
     output <- readFile tmpName
     evaluate (length output)
-    return output
+    return (output, exitCode)
 #else
   withTempFile "." "" $ \tmpName -> do
     let quote name = "'" ++ name ++ "'"
-    maybeExit $ system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+    exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     output <- readFile tmpName
-    length output `seq` return output
+    length output `seq` return (output, exitCode)
 #endif
 
 -- | Like the unix xargs program. Useful for when we've got very long command
