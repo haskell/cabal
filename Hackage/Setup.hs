@@ -17,7 +17,6 @@ module Hackage.Setup
     ) where
 
 import Control.Monad (when)
-import Distribution.ParseUtils (parseDependency)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..), toPathTemplate)
 import Distribution.Verbosity
@@ -28,7 +27,7 @@ import System.Environment (getProgName)
 
 import Hackage.Types (Action (..), Option(..), ConfigFlags(..)
                                       , UnresolvedDependency (..))
-import Hackage.Utils (readPToMaybe)
+import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
 
 
 globalOptions :: [OptDescr Option]
@@ -192,7 +191,7 @@ parsePackageArgs _ args
     = return (globalArgs,parsePkgArgs pkgs)
     where (globalArgs,pkgs) = break (not.(==)'-'.head) args
           parseDep dep
-              = case readPToMaybe parseDependency dep of
+              = case readPToMaybe parseDependencyOrPackageId dep of
                   Nothing -> error ("Failed to parse package dependency: " ++ show dep)
                   Just x  -> x
           parsePkgArgs [] = []
