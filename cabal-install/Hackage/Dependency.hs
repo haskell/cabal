@@ -20,7 +20,7 @@ module Hackage.Dependency
 import Hackage.Config (listInstalledPackages)
 import Hackage.Index (getKnownPackages)
 import Hackage.Types 
-    (ResolvedPackage(..), UnresolvedDependency(..), ConfigFlags (..), PkgInfo (..), pkgInfoId)
+    (ResolvedPackage(..), UnresolvedDependency(..), ConfigFlags (..), PkgInfo (..))
 
 import Distribution.Version (Dependency(..), withinRange)
 import Distribution.Package (PackageIdentifier(..))

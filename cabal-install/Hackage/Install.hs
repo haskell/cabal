@@ -28,7 +28,7 @@ import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packag
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                     , PkgInfo(..), pkgInfoId)
+                     , PkgInfo(..))
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
