@@ -75,11 +75,13 @@ installRepoPackages cfg comp conf globalArgs deps =
 mkPkgOps :: ConfigFlags -> Compiler -> PackageIdentifier -> String -> [String] -> [String]
 mkPkgOps cfg comp pkgId cmd ops = verbosity ++
   case cmd of
-    "configure" -> user ++ installDirFlags installDirs ++ ops
+    "configure" -> user ++ hcPath ++ hcPkgPath ++ installDirFlags installDirs ++ ops
     "install"   -> user
     _ -> []
  where verbosity = ["-v" ++ showForCabal (configVerbose cfg)]
        user = if configUserInstall cfg then ["--user"] else []
+       hcPath    = maybe [] (\path -> ["--with-compiler=" ++ path]) (configCompilerPath cfg)
+       hcPkgPath = maybe [] (\path -> ["--with-hc-pkg="   ++ path]) (configHcPkgPath    cfg)
        installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
                            | otherwise             = configGlobalInstallDirs cfg
        installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest installDirTemplates
