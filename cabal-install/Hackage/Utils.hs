@@ -1,11 +1,12 @@
 module Hackage.Utils where
 
-import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice)
+import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (+++))
+import Distribution.Package (PackageIdentifier(..), parsePackageId)
 import Distribution.ParseUtils
 import Distribution.Version
 
 import Control.Exception
-import Control.Monad (foldM, guard)
+import Control.Monad (foldM, liftM, guard)
 import Data.Char (isSpace, toLower)
 import Data.List (intersperse)
 import Data.Maybe (listToMaybe)
@@ -85,3 +86,7 @@ stringNoCase this = look >>= scan this
 
 showDependencies :: [Dependency] -> String
 showDependencies = concat . intersperse ", " . map (show . showDependency)
+
+parseDependencyOrPackageId :: ReadP r Dependency
+parseDependencyOrPackageId = parseDependency +++ liftM pkgToDep parsePackageId
+  where pkgToDep p = Dependency (pkgName p) (ThisVersion (pkgVersion p))
