@@ -16,12 +16,12 @@ import Hackage.Config
 import Hackage.Dependency 
 import Hackage.Fetch
 import Hackage.Types 
+import Hackage.Utils
 
 import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Compiler (Compiler)
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Version (Dependency)
 
 import Data.List (intersperse, nubBy)
 import Text.Printf (printf)
@@ -62,6 +62,3 @@ infoPkg cfg (Available dep pkg opts deps)
 infoPkg _ (Unavailable dep)
     = do printf "  Requested:    %s\n" (show $ showDependency dep)
          printf "    Not available!\n\n"
-
-showDependencies :: [Dependency] -> String
-showDependencies = concat . intersperse ", " . map (show . showDependency)

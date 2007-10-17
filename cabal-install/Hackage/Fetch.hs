@@ -33,6 +33,7 @@ import System.Directory (doesFileExist, createDirectoryIfMissing)
 import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..), PkgInfo, pkgInfoId)
 import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
+import Hackage.Utils
 
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (Compiler)
@@ -126,7 +127,7 @@ fetch :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [Unresol
 fetch cfg comp conf _globalArgs deps
     = do depTree <- resolveDependencies cfg comp conf deps
          case packagesToInstall depTree of
-           Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+           Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched cfg) $ map fst pkgs
                               mapM_ (fetchPackage cfg) ps
 
