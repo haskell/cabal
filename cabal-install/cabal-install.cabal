@@ -41,7 +41,7 @@ Executable cabal
         Hackage.Utils
 
     build-depends: Cabal >= 1.2, filepath >= 1.0, network,
-                   zlib >= 0.3, HTTP >= 3000.0 && < 3000.1
+                   zlib >= 0.3, HTTP >= 3000.0 && < 3001.1
 
     if flag(old-base)
       build-depends: base < 3
