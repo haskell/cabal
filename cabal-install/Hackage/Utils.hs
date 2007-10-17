@@ -7,7 +7,7 @@ import Distribution.ParseUtils
     , field, liftField, readFields
     , showDependency, parseDependency
     , warning, lineNo, locatedErrorMsg)
-import Distribution.Version (Dependency(..), VersionRange(..))
+import Distribution.Version (Version(..), Dependency(..), VersionRange(..))
 
 import Control.Exception
 import Control.Monad (foldM, liftM, guard)
@@ -93,4 +93,6 @@ showDependencies = concat . intersperse ", " . map (show . showDependency)
 
 parseDependencyOrPackageId :: ReadP r Dependency
 parseDependencyOrPackageId = parseDependency +++ liftM pkgToDep parsePackageId
-  where pkgToDep p = Dependency (pkgName p) (ThisVersion (pkgVersion p))
+  where pkgToDep p = case pkgVersion p of
+          Version [] _ -> Dependency (pkgName p) AnyVersion
+          version      -> Dependency (pkgName p) (ThisVersion version)
