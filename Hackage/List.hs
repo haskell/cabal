@@ -23,7 +23,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version (showVersion)
 import Hackage.Index (getKnownPackages)
-import Hackage.Types (PkgInfo(..), pkgInfoId, ConfigFlags(..), {- UnresolvedDependency(..)-} )
+import Hackage.Types (PkgInfo(..), ConfigFlags(..), {- UnresolvedDependency(..)-} )
 
 -- |Show information about packages
 list :: ConfigFlags -> [String] -> IO ()
