@@ -2,8 +2,12 @@ module Hackage.Utils where
 
 import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (+++))
 import Distribution.Package (PackageIdentifier(..), parsePackageId)
-import Distribution.ParseUtils
-import Distribution.Version
+import Distribution.ParseUtils 
+    (Field(..), FieldDescr(..), ParseResult(..), PError
+    , field, liftField, readFields
+    , showDependency, parseDependency
+    , warning, lineNo, locatedErrorMsg)
+import Distribution.Version (Dependency(..), VersionRange(..))
 
 import Control.Exception
 import Control.Monad (foldM, liftM, guard)
