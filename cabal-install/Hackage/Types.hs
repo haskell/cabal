@@ -15,20 +15,18 @@ module Hackage.Types where
 import Distribution.Simple.Compiler (CompilerFlavor)
 import Distribution.Simple.InstallDirs (InstallDirTemplates)
 import Distribution.Package (PackageIdentifier)
-import Distribution.PackageDescription (GenericPackageDescription, packageDescription, package)
+import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
 import Distribution.Verbosity
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
 data PkgInfo = PkgInfo {
+                        pkgInfoId :: PackageIdentifier,
                         pkgRepo :: Repo,
                         pkgDesc :: GenericPackageDescription
                        }
                deriving (Show)
-
-pkgInfoId :: PkgInfo -> PackageIdentifier
-pkgInfoId = package . packageDescription . pkgDesc
 
 data Action
     = FetchCmd
