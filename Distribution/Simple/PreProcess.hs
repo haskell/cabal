@@ -367,15 +367,18 @@ ppHsc2hs bi lbi = pp
              let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
               in [ "--cc=" ++ programPath ghcProg
                  , "--ld=" ++ programPath ghcProg ]
-              ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi ]
+              ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
+	                                        ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
                                           , opt <- ["-package"
                                                    ,showPackageId pkg] ]
               ++ [ "--cflag=-I"    ++ dir | dir <- includeDirs bi]
               ++ [ "--lflag=-optl" ++ opt | opt <- getLdOptions bi ]
 
-          _   -> [ "--cflag=" ++ opt | opt <- getCcOptions bi lbi ]
-              ++ [ "--lflag=" ++ opt | opt <- getLdOptions bi     ]
+          _   -> [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
+	      ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi ]
+	      ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
+              ++ [ "--lflag="   ++ opt | opt <- getLdOptions bi ]
 
 getLdOptions :: BuildInfo -> [String]
 getLdOptions bi = map ("-L" ++) (extraLibDirs bi)
@@ -395,12 +398,6 @@ ppC2hs bi lbi
                 "--output=" ++ outRelativeFile,
                 inBaseDir </> inRelativeFile]
       }
-
-getCcOptions :: BuildInfo -> LocalBuildInfo -> [String]
-getCcOptions bi lbi
-    = hcDefines (compiler lbi)
-   ++ ["-I" ++ dir | dir <- includeDirs bi]
-   ++ ccOptions bi
 
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi
