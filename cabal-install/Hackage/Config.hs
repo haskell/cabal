@@ -46,7 +46,7 @@ import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfigur
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..), pkgInfoId)
+import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
 import Hackage.Utils
 
 
