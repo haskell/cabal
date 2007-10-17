@@ -30,29 +30,32 @@ list :: ConfigFlags -> [String] -> IO ()
 list cfg pats = do
     pkgs <- getKnownPackages cfg
     let pkgs' | null pats = pkgs
-              | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats)
-    mapM_ doList (groupBy sameName (sortBy (comparing nameAndVersion) pkgs'))
-    where
+              | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats')
+        pats' = map lcase pats
+    putStrLn
+      . unlines
+      . map (showPkgVersions . map (packageDescription . pkgDesc))
+      . groupBy sameName
+      . sortBy (comparing nameAndVersion)
+      $ pkgs'
+
+  where
     findInPkgs :: [PkgInfo] -> String -> [PkgInfo]
-    findInPkgs pkgs pat = let rx = mkRegexWithOpts pat False False in
-        filter (isJust . matchRegex rx . showInfo) pkgs
-    showInfo :: PkgInfo -> String
-    showInfo pkg = showPackageId (package d) ++ "\n" ++ synopsis d
-         where d = packageDescription (pkgDesc pkg)
-    nameAndVersion p = (map Char.toLower name, name, version)
-        where d = packageDescription (pkgDesc p)
-              name = pkgName (package d)
-              version = pkgVersion (package d)
+    findInPkgs pkgs pat =
+        filter (isInfixOf pat . lcase . pkgName . pkgInfoId) pkgs
+    lcase = map Char.toLower
+    nameAndVersion p = (lcase name, name, version)
+        where name = pkgName (pkgInfoId p)
+              version = pkgVersion (pkgInfoId p)
     samePackage a b = nameAndVersion a == nameAndVersion b
     sameName a b = pkgName (pkgInfoId a) == pkgName (pkgInfoId b)
 
-doList :: [PkgInfo] -> IO ()
-doList ps = do   
-    putStr $ padTo 35 $ pkgName (package d) ++ " [" ++ concat (intersperse ", " versions) ++ "]"
-    putStrLn syn
-    where
-    info = last ps
-    d = packageDescription (pkgDesc info)
-    syn = synopsis d
-    versions = map (showVersion . pkgVersion . package . packageDescription . pkgDesc) ps
+showPkgVersions :: [PackageDescription] -> String
+showPkgVersions pkgs =
+    padTo 35 (pkgName (package pkg)
+          ++ " [" ++ concat (intersperse ", " versions) ++ "] ")
+    ++ synopsis pkg
+  where
+    pkg = last pkgs
+    versions = map (showVersion . pkgVersion . package) pkgs
     padTo n s = s ++ (replicate (n - length s) ' ')
