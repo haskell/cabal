@@ -74,7 +74,7 @@ import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (removeFile, getModificationTime)
@@ -358,11 +358,12 @@ use_optP_P lbi
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi = pp
   where pp = standardPP lbi hsc2hsProgram flags
-        flags = case compilerFlavor (compiler lbi) of
+        flags = case fmap versionTags . join . fmap programVersion
+                   . lookupProgram hsc2hsProgram . withPrograms $ lbi of
 	  -- Just to make things complicated, the hsc2hs bundled with
 	  -- ghc uses ghc as the C compiler, so to pass C flags we
 	  -- have to use an additional layer of escaping. Grrr.
-	  GHC ->
+	  Just ["ghc"] ->
              let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
               in [ "--cc=" ++ programPath ghcProg
                  , "--ld=" ++ programPath ghcProg ]
