@@ -29,6 +29,7 @@ import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
                      , PkgInfo(..))
+import Hackage.Utils
 
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
@@ -56,7 +57,7 @@ installLocalPackage cfg comp conf globalArgs =
       desc <- readPackageDescription (configVerbose cfg) cabalFile
       resolvedDeps <- resolveDependenciesLocal cfg comp conf desc globalArgs
       case packagesToInstall resolvedDeps of
-        Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+        Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> installPackages cfg comp globalArgs pkgs
       let pkgId = package (packageDescription desc)
       installUnpackedPkg cfg comp globalArgs pkgId [] Nothing
@@ -65,7 +66,7 @@ installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> [Strin
 installRepoPackages cfg comp conf globalArgs deps =
     do resolvedDeps <- resolveDependencies cfg comp conf deps
        case packagesToInstall resolvedDeps of
-         Left missing -> fail $ "Unresolved dependencies: " ++ show missing
+         Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
          Right []     -> message cfg normal "All requested packages already installed. Nothing to do."
          Right pkgs   -> installPackages cfg comp globalArgs pkgs
 
