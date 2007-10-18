@@ -165,7 +165,7 @@ simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
     flags = [ fname | ConfFlag fname <- fvs ]
 
     --FIXME: use Distribution.System.OS type and alias list:
-    osAliases "ming32"   = ["windows"]
+    osAliases "mingw32"  = ["windows"]
     osAliases "solaris2" = ["solaris"]
     osAliases _          = []
     lcase = map toLower
