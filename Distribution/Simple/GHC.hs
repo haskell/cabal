@@ -408,7 +408,8 @@ build pkg_descr lbi verbosity = do
             runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
              --TODO: discover this at configure time on unix
-            maxCommandLineSize = 30 * 1024
+            -- used to be 30k, but Solaris needs 2k (see GHC bug #1785)
+            maxCommandLineSize = 2048
 
         ifVanillaLib False $ xargs maxCommandLineSize
           runAr arArgs arObjArgs
