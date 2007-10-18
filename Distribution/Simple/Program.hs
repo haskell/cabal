@@ -93,6 +93,7 @@ import Distribution.Version (Version(..), readVersion, showVersion,
 import Distribution.Verbosity
 import System.Directory (doesFileExist, removeFile)
 import System.FilePath  (dropExtension)
+import System.IO.Error (try)
 import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
 
@@ -564,7 +565,7 @@ hsc2hsProgram = (simpleProgram "hsc2hs") {
           withTempFile "." "hsc" $ \hsc -> do
 	    writeFile hsc ""
 	    (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
-	    removeFile (dropExtension hsc ++ "_hsc_make.c")
+	    try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
 	    case words str of
 	      (_:"Glorious":"Glasgow":"Haskell":_)
 	        -> return $ Just version { versionTags = ["ghc"] }
