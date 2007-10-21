@@ -14,7 +14,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>, 2006 Paolo Martini <paolo@ne
 Stability:          Experimental
 Category:           Distribution
 Build-type:         Simple
-Extra-Source-Files: copyright README
+Extra-Source-Files: README
 Cabal-Version:      >= 1.2
 
 flag old-base
