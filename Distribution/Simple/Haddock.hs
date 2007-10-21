@@ -53,7 +53,8 @@ import Distribution.PackageDescription
 import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
 import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, 
                             lookupProgram, programPath, ghcPkgProgram,
-			    hscolourProgram, haddockProgram, rawSystemProgram)
+			    hscolourProgram, haddockProgram, rawSystemProgram, rawSystemProgramStdoutConf,
+          ghcProgram)
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
@@ -63,7 +64,7 @@ import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
                                         substPathTemplate,
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
-                                            haddockPref, distPref )
+                                            haddockPref, distPref, autogenModulesDir )
 import Distribution.Simple.Utils (die, warn, notice, createDirectoryIfMissingVerbose,
                                   moduleToFilePath, findFile)
 
@@ -74,12 +75,15 @@ import Language.Haskell.Extension
 import System.Directory(removeFile, doesFileExist)
 
 import Control.Monad (liftM, when, join)
-import Data.Maybe    ( isJust, catMaybes )
+import Data.Maybe    ( isJust, catMaybes, fromJust )
+import Data.List     (nub)
+import Data.Char     (isSpace)
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        replaceExtension)
 import Distribution.Version
+import Distribution.Simple.Compiler (compilerVersion, extensionsToFlags)
 
 -- --------------------------------------------------------------------------
 -- Haddock support
@@ -118,8 +122,9 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                      then "--hoogle"
                      else "--html"
     let Just version = programVersion confHaddock
-    let have_src_hyperlink_flags = version >= Version [0,8] []
-        have_new_flags           = version >  Version [0,8] []
+    let have_src_hyperlink_flags = version >= Version [0,8] [] && version < Version [2,0] []
+        have_new_flags           = version >  Version [0,8] [] && version < Version [2,0] []
+        isVersion2               = version >= Version [2,0] []
     let comp = compiler lbi
         Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
     let ghcpkgFlags = if have_new_flags
@@ -174,6 +179,24 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
     packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
 
+    when isVersion2 $ do
+      strHadGhcVers <- rawSystemProgramStdoutConf verbosity haddockProgram (withPrograms lbi) ["--ghc-version"]
+      let mHadGhcVers = readVersion strHadGhcVers
+      when (mHadGhcVers == Nothing) $ die "Could not get GHC version from Haddock"
+      when (fromJust mHadGhcVers /= compilerVersion comp) $
+        die "Haddock's internal GHC version must match the configured GHC version"
+
+    ghcLibDir0 <- rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi) ["--print-libdir"]
+    let ghcLibDir = reverse $ dropWhile isSpace $ reverse ghcLibDir0
+
+    let packageName = if isVersion2
+          then ["--optghc=-package-name", "--optghc=" ++ showPkg]
+          else ["--package=" ++ showPkg]
+
+    let haddock2options bi = if isVersion2
+          then ("-B" ++ ghcLibDir) : map ("--optghc=" ++) (ghcSimpleOptions lbi bi)
+          else []
+
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
         inFiles <- getModulePaths lbi bi (exposedModules lib ++ otherModules bi)
@@ -191,9 +214,9 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                 ([outputFlag,
                   "--odir=" ++ haddockPref pkg_descr,
                   "--title=" ++ showPkg ++ subtitle,
-                  "--package=" ++ showPkg,
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
+                 ++ packageName
                  ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
 		 ++ cssFileFlag
@@ -201,8 +224,9 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
-                 ++ outFiles
                  ++ map ("--hide=" ++) (otherModules bi)
+                 ++ haddock2options bi
+                 ++ outFiles
                 )
         removeFile prologName
         notice verbosity $ "Documentation created: "
@@ -232,6 +256,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
+                 ++ haddock2options bi
                  ++ outFiles
                 )
         removeFile prologName
@@ -256,6 +281,18 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                        return ()
         needsCpp :: BuildInfo -> Bool
         needsCpp bi = CPP `elem` extensions bi
+
+
+ghcSimpleOptions :: LocalBuildInfo -> BuildInfo -> [String]
+ghcSimpleOptions lbi bi
+  =  ["-hide-all-packages"]
+  ++ ["-i" ++ autogenModulesDir lbi]
+  ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+  ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+  ++ hcOptions GHC (options bi)
+  ++ extensionsToFlags c (extensions bi)
+  where c = compiler lbi
+
 
 -- --------------------------------------------------------------------------
 -- hscolour support
