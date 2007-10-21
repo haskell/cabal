@@ -2,9 +2,10 @@ Name:               cabal-install
 Version:            0.3.0
 Synopsis:           Automatic package handling for Haskell
 Description:        
-    apt-get like tool for Haskell. 'cabal' simplifies the process of
-    managing Haskell software by automating the fetching, configuration,
-    compilation and installation of Haskell libraries and packages.
+    apt-get like tool for Haskell. The \'cabal\' command-line program
+    simplifies the process of managing Haskell software by automating the
+    fetching, configuration, compilation and installation of Haskell
+    libraries and programs.
 License:            BSD3
 License-File:       LICENSE
 Author:             Lemmih <lemmih@gmail.com>, Paolo Martini <paolo@nemail.it>
