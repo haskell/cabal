@@ -18,8 +18,9 @@ import Hackage.Tar
 
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.ByteString.Lazy.Char8 (ByteString)
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import Data.ByteString.Lazy (ByteString)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
@@ -48,7 +49,7 @@ parseRepoIndex repo s =
        if takeExtension (tarFileName hdr) == ".cabal"
          then case splitDirectories (normalise (tarFileName hdr)) of
                 [pkgname,vers,_] ->
-                  let descr = case parsePackageDescription (BS.unpack content) of
+                  let descr = case parsePackageDescription (BS.Char8.unpack content) of
                         ParseOk _ d -> d
                         _           -> error $ "Couldn't read cabal file "
                                             ++ show (tarFileName hdr)
