@@ -17,7 +17,7 @@ Description:
         and tools.
 Category: Distribution
 Build-Type: Custom
--- Even though we do use the default Setup.lhs it's vital to bootstraping
+-- Even though we do use the default Setup.lhs it's vital to bootstrapping
 -- that we build Setup.lhs using our own local Cabal source code.
 
 Extra-Source-Files:
