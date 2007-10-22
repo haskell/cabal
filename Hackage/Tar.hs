@@ -3,8 +3,9 @@ module Hackage.Tar (TarHeader(..), TarFileType(..),
                                          readTarArchive, extractTarArchive, 
                                          extractTarGzFile, gunzip) where
 
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.ByteString.Lazy.Char8 (ByteString)
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import Data.ByteString.Lazy (ByteString)
 import Data.Bits ((.&.))
 import Data.Char (ord)
 import Data.Int (Int8, Int64)
@@ -134,11 +135,11 @@ checkChkSum :: ByteString -> Int -> Bool
 checkChkSum hdr s = s == chkSum hdr' || s == signedChkSum hdr'
   where 
     -- replace the checksum with spaces
-    hdr' = BS.concat [BS.take 148 hdr, BS.replicate 8 ' ', BS.drop 156 hdr]
+    hdr' = BS.concat [BS.take 148 hdr, BS.Char8.replicate 8 ' ', BS.drop 156 hdr]
     -- tar.info says that Sun tar is buggy and 
     -- calculates the checksum using signed chars
-    chkSum = BS.foldl' (\x y -> x + ord y) 0
-    signedChkSum = BS.foldl' (\x y -> x + (ordSigned y)) 0
+    chkSum = BS.Char8.foldl' (\x y -> x + ord y) 0
+    signedChkSum = BS.Char8.foldl' (\x y -> x + (ordSigned y)) 0
 
 ordSigned :: Char -> Int
 ordSigned c = fromIntegral (fromIntegral (ord c) :: Int8)
@@ -156,7 +157,7 @@ getBytes :: Int64 -> Int64 -> ByteString -> ByteString
 getBytes off len = BS.take len . BS.drop off
 
 getByte :: Int64 -> ByteString -> Char
-getByte off bs = BS.index bs off
+getByte off bs = BS.Char8.index bs off
 
 getString :: Int64 -> Int64 -> ByteString -> String
-getString off len = BS.unpack . BS.takeWhile (/='\0') . getBytes off len
+getString off len = BS.Char8.unpack . BS.Char8.takeWhile (/='\0') . getBytes off len
