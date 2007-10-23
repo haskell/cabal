@@ -73,7 +73,7 @@ all ::  $(GHCI_LIB)
 
 $(GHCI_LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
-	$(LD) -r -x -o $@ $(EXTRA_LD_OPTS) $(HS_OBJS) `$(MKSTUBOBJS)` $(C_OBJS)
+	$(LD) -r -o $@ $(EXTRA_LD_OPTS) $(HS_OBJS) `$(MKSTUBOBJS)` $(C_OBJS)
 endif
 endif
 
