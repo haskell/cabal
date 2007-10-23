@@ -308,7 +308,7 @@ ppCpp' extraArgs bi lbi =
     GHC -> ppGhcCpp (cppArgs ++ extraArgs) bi lbi
     _   -> ppCpphs  (cppArgs ++ extraArgs) bi lbi
 
-  where cppArgs = sysDefines ++ getCppOptions bi lbi
+  where cppArgs = sysDefines ++ cppOptions bi ++ getCppOptions bi lbi
         sysDefines =
                 ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
                 ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
