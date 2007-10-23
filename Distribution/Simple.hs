@@ -84,7 +84,9 @@ import Distribution.Simple.Register	( register, unregister,
                                           removeRegScripts
                                         )
 
-import Distribution.Simple.Configure(getPersistBuildConfig, maybeGetPersistBuildConfig,
+import Distribution.Simple.Configure(getPersistBuildConfig, 
+                                     maybeGetPersistBuildConfig,
+                                     checkPersistBuildConfig,
                                      configure, writePersistBuildConfig)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPref)
@@ -305,7 +307,7 @@ defaultMainWorker mdescr action all_args hooks prog_conf
 			parseConfigureArgs prog_conf flags all_args [scratchDirOpt]
                 pbi <- preConf hooks args flags'
 
-                pkg_descr0 <- maybe (confPkgDescr flags') (return . Right) mdescr
+                (mb_pd_file, pkg_descr0) <- confPkgDescr flags'
 
                 --    get_pkg_descr (configVerbose flags')
                 --let pkg_descr = updatePackageDescription pbi pkg_descr0
@@ -314,26 +316,33 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                 --(warns, ers) <- sanityCheckPackage pkg_descr
                 --errorOut (configVerbose flags') warns ers
 
-		localbuildinfo <- confHook hooks epkg_descr flags'
+		localbuildinfo0 <- confHook hooks epkg_descr flags'
 
+                -- remember the .cabal filename if we know it
+                let localbuildinfo = localbuildinfo0{ pkgDescrFile = mb_pd_file }
                 writePersistBuildConfig (foldr id localbuildinfo optFns)
                 
 		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags' pkg_descr localbuildinfo
               where
-                confPkgDescr :: ConfigFlags -> IO (Either GenericPackageDescription
-                                                          PackageDescription)
-                confPkgDescr cfgflags = do
-                  mdescr' <- readDesc hooks
-                  case mdescr' of
-                    Just descr -> return $ Right descr
-                    Nothing -> do
-                      pdfile <- defaultPackageDesc (configVerbose cfgflags)
-                      ppd <- readPackageDescription (configVerbose cfgflags) pdfile
-                      return (Left ppd)
+                confPkgDescr :: ConfigFlags
+                             -> IO (Maybe FilePath,
+                                    Either GenericPackageDescription
+                                           PackageDescription)
+                confPkgDescr cfgflags =
+                   case mdescr of
+                     Just ppd -> return (Nothing, Right ppd)
+                     Nothing  -> do
+                       mdescr' <- readDesc hooks
+                       case mdescr' of
+                         Just descr -> return (Nothing, Right descr)
+                         Nothing -> do
+                           pdfile <- defaultPackageDesc (configVerbose cfgflags)
+                           ppd <- readPackageDescription (configVerbose cfgflags) pdfile
+                           return (Just pdfile, Left ppd)
 
             BuildCmd -> do
-                lbi <- getPersistBuildConfig
+                lbi <- getBuildConfigIfUpToDate
                 res@(flags, _, _) <-
                   parseBuildArgs prog_conf
                                  (emptyBuildFlags (withPrograms lbi)) all_args []
@@ -344,22 +353,22 @@ defaultMainWorker mdescr action all_args hooks prog_conf
             MakefileCmd ->
                 command (parseMakefileArgs emptyMakefileFlags) makefileVerbose
                         preMakefile makefileHook postMakefile
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             HscolourCmd ->
                 command (parseHscolourArgs emptyHscolourFlags) hscolourVerbose
                         preHscolour hscolourHook postHscolour
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
         
             HaddockCmd -> 
                 command (parseHaddockArgs emptyHaddockFlags) haddockVerbose
                         preHaddock haddockHook postHaddock
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             ProgramaticaCmd -> do
                 command parseProgramaticaArgs pfeVerbose
                         prePFE pfeHook postPFE
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             CleanCmd -> do
                 (flags, _, args) <- parseCleanArgs emptyCleanFlags all_args []
@@ -378,12 +387,12 @@ defaultMainWorker mdescr action all_args hooks prog_conf
             CopyCmd mprefix -> do
                 command (parseCopyArgs (emptyCopyFlags mprefix)) copyVerbose
                         preCopy copyHook postCopy
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             InstallCmd -> do
                 command (parseInstallArgs emptyInstallFlags) installVerbose
                         preInst instHook postInst
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             SDistCmd -> do
                 (flags, _, args) <- parseSDistArgs all_args []
@@ -401,19 +410,19 @@ defaultMainWorker mdescr action all_args hooks prog_conf
 
             TestCmd -> do
                 (_verbosity,_, args) <- parseTestArgs all_args []
-                localbuildinfo <- getPersistBuildConfig
+                localbuildinfo <- getBuildConfigIfUpToDate
                 let pkg_descr = localPkgDescr localbuildinfo
                 runTests hooks args False pkg_descr localbuildinfo
 
             RegisterCmd  -> do
                 command (parseRegisterArgs emptyRegisterFlags) regVerbose
                         preReg regHook postReg
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             UnregisterCmd -> do
                 command (parseUnregisterArgs emptyRegisterFlags) regVerbose
                         preUnreg unregHook postUnreg
-                        getPersistBuildConfig
+                        getBuildConfigIfUpToDate
 
             HelpCmd -> return () -- this is handled elsewhere
         where
@@ -437,6 +446,14 @@ getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
 getModulePaths lbi bi =
    fmap concat .
       mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
+
+getBuildConfigIfUpToDate :: IO LocalBuildInfo
+getBuildConfigIfUpToDate = do
+   lbi <- getPersistBuildConfig
+   case pkgDescrFile lbi of
+     Nothing -> return ()
+     Just pkg_descr_file -> checkPersistBuildConfig pkg_descr_file
+   return lbi
 
 -- --------------------------------------------------------------------------
 -- Programmatica support

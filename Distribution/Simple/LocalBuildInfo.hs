@@ -87,6 +87,8 @@ data LocalBuildInfo = LocalBuildInfo {
 		-- that must be satisfied in terms of version ranges.  This
 		-- field fixes those dependencies to the specific versions
 		-- available on this machine for this compiler.
+        pkgDescrFile  :: Maybe FilePath,
+                -- ^ the filename containing the .cabal file, if available
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
