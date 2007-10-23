@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
                                       getPersistBuildConfig,
+                                      checkPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
 --                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
@@ -119,7 +120,7 @@ import Data.List
 import Data.Maybe
     ( fromMaybe, isNothing )
 import System.Directory
-    ( doesFileExist )
+    ( doesFileExist, getModificationTime )
 import System.Environment
     ( getProgName )
 import System.Exit
@@ -154,7 +155,9 @@ tryGetConfigStateFile filename = do
 tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
 tryGetPersistBuildConfig = tryGetConfigStateFile localBuildInfoFile
 
--- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.
+-- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.  Also
+-- fail if the file containing LocalBuildInfo is older than the .cabal
+-- file, indicating that a re-configure is required.
 getPersistBuildConfig :: IO LocalBuildInfo
 getPersistBuildConfig = do
   lbi <- tryGetPersistBuildConfig
@@ -173,10 +176,18 @@ writePersistBuildConfig lbi = do
   createDirectoryIfMissing False distPref
   writeFile localBuildInfoFile (show lbi)
 
+-- |Check that localBuildInfoFile is up-to-date with respect to the
+-- .cabal file.
+checkPersistBuildConfig :: FilePath -> IO ()
+checkPersistBuildConfig pkg_descr_file = do
+  t0 <- getModificationTime pkg_descr_file
+  t1 <- getModificationTime localBuildInfoFile
+  when (t0 > t1) $
+    die (pkg_descr_file ++ " has been changed, please re-configure.")
+
 -- |@dist\/setup-config@
 localBuildInfoFile :: FilePath
 localBuildInfoFile = distPref </> "setup-config"
-
 
 -- -----------------------------------------------------------------------------
 -- * Configuration
@@ -289,6 +300,7 @@ configure (pkg_descr0, pbi) cfg
 		    buildDir            = distPref </> "build",
 		    scratchDir          = distPref </> "scratch",
 		    packageDeps         = dep_pkgs,
+                    pkgDescrFile        = Nothing,
 		    localPkgDescr       = pkg_descr',
 		    withPrograms        = programsConfig'',
 		    withVanillaLib      = configVanillaLib cfg,
