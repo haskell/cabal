@@ -33,8 +33,8 @@ classify ("\\begin{code}":rest) = Blank : allProg rest
          allProg (x:xs) = Program x:allProg xs
 classify (('>':x):xs)      = Program (' ':x) : classify xs
 classify (('#':x):xs)      = (case words x of
-                                (line:file:_) | all isDigit line
-                                   -> Include (read line) file
+                                (line:rest) | all isDigit line
+                                   -> Include (read line) (unwords rest)
                                 _  -> Pre x
                              ) : classify xs
 classify (x:xs) | all isSpace x = Blank:classify xs
