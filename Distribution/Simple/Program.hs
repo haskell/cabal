@@ -562,7 +562,7 @@ hsc2hsProgram = (simpleProgram "hsc2hs") {
       case maybeVersion of
         Nothing -> return Nothing
 	Just version ->
-          withTempFile "." "hsc" $ \hsc -> do
+          withTempFile "dist" "hsc" $ \hsc -> do
 	    writeFile hsc ""
 	    (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
 	    try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
