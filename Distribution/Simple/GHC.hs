@@ -140,14 +140,14 @@ configure verbosity hcPath hcPkgPath conf = do
   (ldProg, conf'''') <- requireProgram verbosity ldProgram AnyVersion conf'''
   let testfile   = distPref </> "Conftest"
       testfile'  = testfile ++ "2"
-  writeFile (testfile <.> "hs") "module Foo where"
-  rawSystemProgram          verbosity ghcProg ["-c", testfile <.> "hs"]
+  writeFile (testfile <.> "c") "int foo() {}\n"
+  rawSystemProgram          verbosity ghcProg ["-c", testfile <.> "c"]
   ldx <-
     (rawSystemProgramStdout verbosity ldProg  ["-x", "-r", testfile  <.> "o",
                                                      "-o", testfile' <.> "o"]
     >> return True) `Exception.catch` \_ -> return False
-  mapM_ (try . removeFile) [testfile <.> "hs", testfile <.> ".hi"
-                           ,testfile <.> "o",  testfile' <.> "o"]
+  mapM_ (try . removeFile) [testfile <.> "c", testfile  <.> "o"
+                                            , testfile' <.> "o"]
   let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
 		} conf''''
