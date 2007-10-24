@@ -93,7 +93,7 @@ import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
-    ( die, warn, info )
+    ( die, warn, info, createDirectoryIfMissingVerbose )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -204,6 +204,8 @@ configure (pkg_descr0, pbi) cfg
 
 	setupMessage verbosity "Configuring"
                      (either packageDescription id pkg_descr0)
+
+	createDirectoryIfMissingVerbose verbosity True distPref
 
 	-- detect compiler
 	(comp, programsConfig) <- configCompilerAux cfg'
