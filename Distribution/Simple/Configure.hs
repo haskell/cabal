@@ -205,7 +205,7 @@ configure (pkg_descr0, pbi) cfg
 	setupMessage verbosity "Configuring"
                      (either packageDescription id pkg_descr0)
 
-	createDirectoryIfMissingVerbose verbosity True distPref
+	createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
 	-- detect compiler
 	(comp, programsConfig) <- configCompilerAux cfg'
