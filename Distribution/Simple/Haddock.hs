@@ -123,7 +123,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                      else "--html"
     let Just version = programVersion confHaddock
     let have_src_hyperlink_flags = version >= Version [0,8] [] && version < Version [2,0] []
-        have_new_flags           = version >  Version [0,8] [] && version < Version [2,0] []
         isVersion2               = version >= Version [2,0] []
     let comp = compiler lbi
         Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
@@ -131,9 +130,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                         Nothing -> []
                         Just cssFile -> ["--css=" ++ cssFile]
     let verboseFlags = if verbosity > deafening then ["--verbose"] else []
-    let allowMissingHtmlFlags = if have_new_flags
-                                then ["--allow-missing-html"]
-                                else []
     when (hsColour && not have_src_hyperlink_flags) $
          die "haddock --hyperlink-source requires Haddock version 0.8 or later"
     let linkToHscolour = if hsColour
@@ -214,7 +210,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
                  ++ packageName
-                 ++ allowMissingHtmlFlags
 		 ++ cssFileFlag
                  ++ linkToHscolour
                  ++ packageFlags
@@ -246,7 +241,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe,
                   "--prologue=" ++ prologName]
-                 ++ allowMissingHtmlFlags
                  ++ linkToHscolour
                  ++ packageFlags
                  ++ programArgs confHaddock
