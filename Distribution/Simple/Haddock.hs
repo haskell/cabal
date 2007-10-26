@@ -127,9 +127,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
         isVersion2               = version >= Version [2,0] []
     let comp = compiler lbi
         Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
-    let ghcpkgFlags = if have_new_flags
-                      then ["--ghc-pkg=" ++ programPath pkgTool]
-                      else []
     let cssFileFlag = case haddockCss haddockFlags of
                         Nothing -> []
                         Just cssFile -> ["--css=" ++ cssFile]
@@ -217,7 +214,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                   "--dump-interface=" ++ haddockFile,
                   "--prologue=" ++ prologName]
                  ++ packageName
-                 ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
 		 ++ cssFileFlag
                  ++ linkToHscolour
@@ -250,7 +246,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                   "--odir=" ++ exeTargetDir,
                   "--title=" ++ exeName exe,
                   "--prologue=" ++ prologName]
-                 ++ ghcpkgFlags
                  ++ allowMissingHtmlFlags
                  ++ linkToHscolour
                  ++ packageFlags
