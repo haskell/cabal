@@ -538,7 +538,7 @@ configureCmd progConf = Cmd {
 
 programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
-     "The flags --with-PROG and --PROG-arg(s) can be used with"
+     "The flags --with-PROG and --PROG-option(s) can be used with"
   ++ " the following programs:"
   ++ (concatMap ("\n  "++) . wrapText 77 . sort)
      [ programName prog | (prog, _) <- knownPrograms progConf ]
