@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="US-ASCII"?>
 <!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+  "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
   [
     <!ENTITY Simple    '<ulink url="../libraries/Cabal/Distribution-Simple.html">Distribution.Simple</ulink>'>
     <!ENTITY Make      '<ulink url="../libraries/Cabal/Distribution-Make.html">Distribution.Make</ulink>'>
