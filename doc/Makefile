@@ -16,6 +16,7 @@ else # boilerplate.mk exists
 
 include $(TOP)/mk/boilerplate.mk
 
+DOC_SUBDIR=libraries/Cabal/doc
 XML_DOC = Cabal
 INSTALL_XML_DOC = $(XML_DOC)
 
