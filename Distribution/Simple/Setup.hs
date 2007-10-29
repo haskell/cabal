@@ -141,6 +141,8 @@ data ConfigFlags = ConfigFlags {
 		-- ^installation dir for documentation
 	configHtmlDir   :: Maybe FilePath,
 		-- ^installation dir for HTML documentation
+	configInterfaceDir :: Maybe FilePath,
+		-- ^installation dir for haddock interfaces
 
         configVerbose  :: Verbosity,      -- ^verbosity level
 	configPackageDB:: PackageDB,	  -- ^ the --user flag?
@@ -173,6 +175,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDataSubDir = Nothing,
 	configDocDir = Nothing,
 	configHtmlDir = Nothing,
+	configInterfaceDir = Nothing,
         configVerbose  = normal,
 	configPackageDB = GlobalPackageDB,
 	configGHCiLib  = True,
@@ -302,6 +305,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DataSubDir FilePath
 	  | DocDir FilePath
 	  | HtmlDir FilePath
+	  | InterfaceDir FilePath
           | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
@@ -495,6 +499,8 @@ configureCmd progConf = Cmd {
 		"installation directory for documentation",
 	   Option "" ["htmldir"] (reqDirArg HtmlDir)
 		"installation directory for HTML documentation",
+	   Option "" ["interfacedir"] (reqDirArg InterfaceDir)
+		"installation directory for haddock interfaces",
            Option "" ["enable-library-vanilla"] (NoArg WithVanillaLib)
                "Enable vanilla libraries",
            Option "" ["disable-library-vanilla"] (NoArg WithoutVanillaLib)
@@ -631,6 +637,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
         updateCfg t (DocDir path)        = t { configDocDir  = Just path }
         updateCfg t (HtmlDir path)       = t { configHtmlDir  = Just path }
+        updateCfg t (InterfaceDir path)  = t { configInterfaceDir  = Just path }
         updateCfg t (Verbose n)          = t { configVerbose  = n }
         updateCfg t UserFlag             = t { configPackageDB = UserPackageDB }
         updateCfg t GlobalFlag           = t { configPackageDB = GlobalPackageDB }
