@@ -52,7 +52,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.InstallDirs (
-	InstallDirs(..), haddockdir,
+        InstallDirs(..), haddockdir, haddockinterfacedir,
         InstallDirTemplates(..),
         defaultInstallDirs,
         absoluteInstallDirs,
@@ -99,16 +99,17 @@ import Foreign.C
 -- unix style systems.
 --
 data InstallDirs dir = InstallDirs {
-        prefix     :: dir,
-        bindir     :: dir,
-        libdir     :: dir,
-        dynlibdir  :: dir,
-        libexecdir :: dir,
-        progdir    :: dir,
-        includedir :: dir,
-        datadir    :: dir,
-        docdir     :: dir,
-        htmldir    :: dir
+        prefix       :: dir,
+        bindir       :: dir,
+        libdir       :: dir,
+        dynlibdir    :: dir,
+        libexecdir   :: dir,
+        progdir      :: dir,
+        includedir   :: dir,
+        datadir      :: dir,
+        docdir       :: dir,
+        htmldir      :: dir,
+        interfacedir :: dir
     } deriving (Read, Show)
 
 -- | The installation dirctories in terms of 'PathTemplate's that contain
@@ -134,17 +135,18 @@ data InstallDirs dir = InstallDirs {
 -- systems which support such things, like Windows.
 --
 data InstallDirTemplates = InstallDirTemplates {
-        prefixDirTemplate  :: PathTemplate,
-        binDirTemplate     :: PathTemplate,
-        libDirTemplate     :: PathTemplate,
-        libSubdirTemplate  :: PathTemplate,
-        libexecDirTemplate :: PathTemplate,
-        progDirTemplate    :: PathTemplate,
-        includeDirTemplate :: PathTemplate,
-        dataDirTemplate    :: PathTemplate,
-        dataSubdirTemplate :: PathTemplate,
-        docDirTemplate     :: PathTemplate,
-        htmlDirTemplate    :: PathTemplate
+        prefixDirTemplate    :: PathTemplate,
+        binDirTemplate       :: PathTemplate,
+        libDirTemplate       :: PathTemplate,
+        libSubdirTemplate    :: PathTemplate,
+        libexecDirTemplate   :: PathTemplate,
+        progDirTemplate      :: PathTemplate,
+        includeDirTemplate   :: PathTemplate,
+        dataDirTemplate      :: PathTemplate,
+        dataSubdirTemplate   :: PathTemplate,
+        docDirTemplate       :: PathTemplate,
+        htmlDirTemplate      :: PathTemplate,
+        interfaceDirTemplate :: PathTemplate
     } deriving (Read, Show)
 
 -- ---------------------------------------------------------------------------
@@ -178,23 +180,29 @@ defaultInstallDirs comp hasLibs = do
         Windows _ -> "$prefix"  </> "doc" </> "$pkgid"
 	_other    -> "$datadir" </> "doc" </> "$pkgid"
       htmlDir      = "$docdir"  </> "html"
+      interfaceDir = "$docdir"  </> "html"
   return InstallDirTemplates {
-      prefixDirTemplate  = toPathTemplate prefixDir,
-      binDirTemplate     = toPathTemplate binDir,
-      libDirTemplate     = toPathTemplate libDir,
-      libSubdirTemplate  = toPathTemplate libSubdir,
-      libexecDirTemplate = toPathTemplate libexecDir,
-      progDirTemplate    = toPathTemplate progDir,
-      includeDirTemplate = toPathTemplate includeDir,
-      dataDirTemplate    = toPathTemplate dataDir,
-      dataSubdirTemplate = toPathTemplate dataSubdir,
-      docDirTemplate     = toPathTemplate docDir,
-      htmlDirTemplate    = toPathTemplate htmlDir
+      prefixDirTemplate    = toPathTemplate prefixDir,
+      binDirTemplate       = toPathTemplate binDir,
+      libDirTemplate       = toPathTemplate libDir,
+      libSubdirTemplate    = toPathTemplate libSubdir,
+      libexecDirTemplate   = toPathTemplate libexecDir,
+      progDirTemplate      = toPathTemplate progDir,
+      includeDirTemplate   = toPathTemplate includeDir,
+      dataDirTemplate      = toPathTemplate dataDir,
+      dataSubdirTemplate   = toPathTemplate dataSubdir,
+      docDirTemplate       = toPathTemplate docDir,
+      htmlDirTemplate      = toPathTemplate htmlDir,
+      interfaceDirTemplate = toPathTemplate interfaceDir
     }
 
 haddockdir :: InstallDirs FilePath -> PackageDescription -> FilePath
 haddockdir installDirs pkg_descr =
   htmldir installDirs
+
+haddockinterfacedir :: InstallDirs FilePath -> PackageDescription -> FilePath
+haddockinterfacedir installDirs pkg_descr =
+  interfacedir installDirs
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative
@@ -229,6 +237,8 @@ substituteTemplates pkgId compilerId dirs = dirs'
       docDirTemplate     = subst docDirTemplate   $ prefixBinLibVars
                              ++ [dataDirVar, dataSubdirVar],
       htmlDirTemplate    = subst htmlDirTemplate  $ prefixBinLibVars
+                             ++ [dataDirVar, dataSubdirVar, docDirVar],
+      interfaceDirTemplate = subst interfaceDirTemplate  $ prefixBinLibVars
                              ++ [dataDirVar, dataSubdirVar, docDirVar]
     }
     -- The initial environment has all the static stuff but no paths
@@ -251,16 +261,17 @@ absoluteInstallDirs :: PackageIdentifier -> PackageIdentifier -> CopyDest
                     -> InstallDirTemplates -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
   InstallDirs {
-    prefix     = copy $ path prefixDirTemplate,
-    bindir     = copy $ path binDirTemplate,
-    libdir     = copy $ path libDirTemplate </> path libSubdirTemplate,
-    dynlibdir  = copy $ path libDirTemplate,
-    libexecdir = copy $ path libexecDirTemplate,
-    progdir    = copy $ path progDirTemplate,
-    includedir = copy $ path includeDirTemplate,
-    datadir    = copy $ path dataDirTemplate </> path dataSubdirTemplate,
-    docdir     = copy $ path docDirTemplate,
-    htmldir    = copy $ path htmlDirTemplate
+    prefix       = copy $ path prefixDirTemplate,
+    bindir       = copy $ path binDirTemplate,
+    libdir       = copy $ path libDirTemplate </> path libSubdirTemplate,
+    dynlibdir    = copy $ path libDirTemplate,
+    libexecdir   = copy $ path libexecDirTemplate,
+    progdir      = copy $ path progDirTemplate,
+    includedir   = copy $ path includeDirTemplate,
+    datadir      = copy $ path dataDirTemplate </> path dataSubdirTemplate,
+    docdir       = copy $ path docDirTemplate,
+    htmldir      = copy $ path htmlDirTemplate,
+    interfacedir = copy $ path interfaceDirTemplate
   }
   where
     dirs' = substituteTemplates pkgId compilerId dirs {
@@ -286,16 +297,17 @@ prefixRelativeInstallDirs :: PackageIdentifier -> PackageIdentifier
                           -> InstallDirs (Maybe FilePath)
 prefixRelativeInstallDirs pkgId compilerId dirs =
   InstallDirs {
-    prefix     = relative prefixDirTemplate,
-    bindir     = relative binDirTemplate,
-    libdir     = (flip fmap) (relative libDirTemplate) (</> path libSubdirTemplate),
-    dynlibdir  = (relative libDirTemplate),
-    libexecdir = relative libexecDirTemplate,
-    progdir    = relative progDirTemplate,
-    includedir = relative includeDirTemplate,
-    datadir    = (flip fmap) (relative dataDirTemplate) (</> path dataSubdirTemplate),
-    docdir     = relative docDirTemplate,
-    htmldir    = relative htmlDirTemplate
+    prefix       = relative prefixDirTemplate,
+    bindir       = relative binDirTemplate,
+    libdir       = (flip fmap) (relative libDirTemplate) (</> path libSubdirTemplate),
+    dynlibdir    = (relative libDirTemplate),
+    libexecdir   = relative libexecDirTemplate,
+    progdir      = relative progDirTemplate,
+    includedir   = relative includeDirTemplate,
+    datadir      = (flip fmap) (relative dataDirTemplate) (</> path dataSubdirTemplate),
+    docdir       = relative docDirTemplate,
+    htmldir      = relative htmlDirTemplate,
+    interfacedir = relative interfaceDirTemplate
   }
   where
     -- substitute the path template into each other, except that we map
