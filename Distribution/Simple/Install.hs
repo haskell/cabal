@@ -67,7 +67,7 @@ module Distribution.Simple.Install (
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
-	hasLibs, withLib, hasExes, withExe )
+	hasLibs, withLib, hasExes, withExe, haddockName )
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs, haddockPref)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
@@ -107,6 +107,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
          progdir    = progPref,
          docdir     = docPref,
          htmldir    = htmlPref,
+         interfacedir = interfacePref,
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
@@ -120,6 +121,14 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) htmlPref
       -- setPermissionsRecursive [Read] htmlPref
+      -- The haddock interface file actually already got installed
+      -- in the recursive copy, but now we install it where we actually
+      -- want it to be (normally the same place). We could remove the
+      -- copy in htmlPref first.
+      createDirectoryIfMissingVerbose verbosity True interfacePref
+      copyFileVerbose verbosity
+                      (haddockPref pkg_descr </> haddockName pkg_descr)
+                      (interfacePref </> haddockName pkg_descr)
 
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
