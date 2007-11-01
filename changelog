@@ -1,5 +1,15 @@
 -*-change-log-*-
 
+1.2.2.0 Duncan Coutts <duncan@haskell.org> Nov 2007
+	* Released with GHC 6.8.1
+	* Support haddock-2.0
+	* Support building DSOs with GHC
+	* Require reconfiguring if the .cabal file has changed
+	* Fix os(windows) configuration test
+	* Fix building documentation
+	* Fix building packages on Solaris
+	* Other minor bug fixes
+
 1.2.1 Duncan Coutts <duncan@haskell.org> Oct 2007
 	* To be included in GHC 6.8.1
 	* New field "cpp-options" used when preprocessing Haskell modules
