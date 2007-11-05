@@ -146,7 +146,7 @@ configure verbosity hcPath hcPkgPath conf = do
     (rawSystemProgramStdout verbosity ldProg  ["-x", "-r", testfile  <.> "o",
                                                      "-o", testfile' <.> "o"]
     >> return True) `Exception.catch` \_ -> return False
-  mapM_ (try . removeFile) [testfile <.> "c", testfile  <.> "o"
+  mapM_ (Try.try . removeFile) [testfile <.> "c", testfile  <.> "o"
                                             , testfile' <.> "o"]
   let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
