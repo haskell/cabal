@@ -92,4 +92,22 @@ data Extension
   | MagicHash
   | TypeFamilies
   | StandaloneDeriving
+
+  | UnicodeSyntax
+  | PatternSignatures
+  | UnliftedFFITypes
+  | LiberalTypeSynonyms
+  | TypeOperators
+--PArr -- not ready yet, and will probably be renamed to ParallelArrays
+  | RecordWildCards
+  | RecordPuns
+  | DisambiguateRecordFields
+  | OverloadedStrings
+  | GADTs
+  | MonoPatBinds
+  | RelaxedPolyRec
+  | ExtendedDefaultRules
+  | UnboxedTuples
+  | DeriveDataTypeable
+  | ConstrainedClassMethods
   deriving (Show, Read, Eq)
