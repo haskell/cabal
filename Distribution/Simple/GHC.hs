@@ -56,7 +56,7 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir, distPref )
+				( LocalBuildInfo(..), autogenModulesDir )
 import Distribution.Simple.Utils
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId )
@@ -85,11 +85,13 @@ import Control.Monad		( unless, when )
 import Data.Char
 import Data.List		( nub, isPrefixOf )
 import System.Directory		( removeFile, renameFile,
-				  getDirectoryContents, doesFileExist )
+				  getDirectoryContents, doesFileExist,
+				  getTemporaryDirectory )
+import Distribution.Compat.TempFile ( withTempFile )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO
-import Control.Exception as Exception (catch)
+import Control.Exception as Exception (handle)
 
 -- System.IO used to export a different try, so we can't use try unqualified
 #ifndef __NHC__
@@ -138,16 +140,17 @@ configure verbosity hcPath hcPkgPath conf = do
 
   -- we need to find out if ld supports the -x flag
   (ldProg, conf'''') <- requireProgram verbosity ldProgram AnyVersion conf'''
-  let testfile   = distPref </> "Conftest"
-      testfile'  = testfile ++ "2"
-  writeFile (testfile <.> "c") "int foo() {}\n"
-  rawSystemProgram          verbosity ghcProg ["-c", testfile <.> "c"]
-  ldx <-
-    (rawSystemProgramStdout verbosity ldProg  ["-x", "-r", testfile  <.> "o",
-                                                     "-o", testfile' <.> "o"]
-    >> return True) `Exception.catch` \_ -> return False
-  mapM_ (Try.try . removeFile) [testfile <.> "c", testfile  <.> "o"
-                                            , testfile' <.> "o"]
+  tempDir <- getTemporaryDirectory
+  ldx <- withTempFile tempDir "c" $ \testcfile ->
+         withTempFile tempDir "o" $ \testofile -> do
+           writeFile testcfile "int foo() {}\n"
+           rawSystemProgram verbosity ghcProg ["-c", testcfile,
+                                               "-o", testofile]
+           withTempFile tempDir "o" $ \testofile' ->
+             Exception.handle (\_ -> return False) $ do
+               rawSystemProgramStdout verbosity ldProg
+                 ["-x", "-r", testofile, "-o", testofile']
+               return True
   let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
 		} conf''''
