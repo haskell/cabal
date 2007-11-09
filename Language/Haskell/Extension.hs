@@ -104,7 +104,7 @@ data Extension
   | DisambiguateRecordFields
   | OverloadedStrings
   | GADTs
-  | MonoPatBinds
+  | NoMonoPatBinds
   | RelaxedPolyRec
   | ExtendedDefaultRules
   | UnboxedTuples
