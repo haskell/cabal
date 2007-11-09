@@ -43,7 +43,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
-	build, makefile
+	build, makefile, initialBuildSteps
 #ifdef DEBUG        
         ,hunitTests
 #endif

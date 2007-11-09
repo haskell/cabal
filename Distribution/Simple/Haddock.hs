@@ -58,6 +58,7 @@ import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram,
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
+import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,
@@ -74,10 +75,10 @@ import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist)
 
-import Control.Monad (liftM, when, join)
+import Control.Monad (liftM, when, unless, join)
 import Data.Maybe    ( isJust, catMaybes, fromJust )
-import Data.List     (nub)
 import Data.Char     (isSpace)
+import Data.List     (nub)
 
 import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
@@ -116,7 +117,6 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     setupMessage verbosity "Running Haddock for" pkg_descr
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
-    let mockAll bi = mapM_ (mockPP ["-D__HADDOCK__"] bi tmpDir)
     let showPkg    = showPackageId (package pkg_descr)
     let outputFlag = if haddockHoogle haddockFlags
                      then "--hoogle"
@@ -124,6 +124,13 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
     let Just version = programVersion confHaddock
     let have_src_hyperlink_flags = version >= Version [0,8] [] && version < Version [2,0] []
         isVersion2               = version >= Version [2,0] []
+
+    let mockFlags
+          | isVersion2 = []
+          | otherwise  = ["-D__HADDOCK__"]
+
+    let mockAll bi = mapM_ (mockPP mockFlags bi tmpDir)
+
     let comp = compiler lbi
         Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
     let cssFileFlag = case haddockCss haddockFlags of
@@ -186,21 +193,26 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
           then ["--optghc=-package-name", "--optghc=" ++ showPkg]
           else ["--package=" ++ showPkg]
 
-    let haddock2options bi = if isVersion2
-          then ("-B" ++ ghcLibDir) : map ("--optghc=" ++) (ghcSimpleOptions lbi bi)
+    let haddock2options bi preprocessDir = if isVersion2
+          then ("-B" ++ ghcLibDir) : map ("--optghc=" ++) (ghcSimpleOptions lbi bi preprocessDir)
           else []
+
+    when isVersion2 $ initialBuildSteps pkg_descr lbi verbosity suffixes
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
-        inFiles <- getModulePaths lbi bi (exposedModules lib ++ otherModules bi)
-        mockAll bi inFiles
+            modules = exposedModules lib ++ otherModules bi
+        inFiles <- getModulePaths lbi bi modules
+        unless isVersion2 $ mockAll bi inFiles
         let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
             prolog | null (description pkg_descr) = synopsis pkg_descr
                    | otherwise                    = description pkg_descr
             subtitle | null (synopsis pkg_descr) = ""
                      | otherwise                 = ": " ++ synopsis pkg_descr
         writeFile prologName (prolog ++ "\n")
-        let outFiles = replaceLitExts inFiles
+        let targets
+              | isVersion2 = modules
+              | otherwise  = replaceLitExts inFiles
         let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
         -- FIX: replace w/ rawSystemProgramConf?
         rawSystemProgram verbosity confHaddock
@@ -216,8 +228,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ programArgs confHaddock
                  ++ verboseFlags
                  ++ map ("--hide=" ++) (otherModules bi)
-                 ++ haddock2options bi
-                 ++ outFiles
+                 ++ haddock2options bi (buildDir lbi)
+                 ++ targets
                 )
         removeFile prologName
         notice verbosity $ "Documentation created: "
@@ -235,7 +247,10 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
             prolog | null (description pkg_descr) = synopsis pkg_descr
                    | otherwise                    = description pkg_descr
         writeFile prologName (prolog ++ "\n")
-        let outFiles = replaceLitExts inFiles
+        let targets
+              | isVersion2 = srcMainPath : otherModules bi
+              | otherwise = replaceLitExts inFiles
+        let preprocessDir = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
         rawSystemProgram verbosity confHaddock
                 ([outputFlag,
                   "--odir=" ++ exeTargetDir,
@@ -245,8 +260,8 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                  ++ packageFlags
                  ++ programArgs confHaddock
                  ++ verboseFlags
-                 ++ haddock2options bi
-                 ++ outFiles
+                 ++ haddock2options bi preprocessDir
+                 ++ targets
                 )
         removeFile prologName
         notice verbosity $ "Documentation created: "
@@ -272,13 +287,18 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
         needsCpp bi = CPP `elem` extensions bi
 
 
-ghcSimpleOptions :: LocalBuildInfo -> BuildInfo -> [String]
-ghcSimpleOptions lbi bi
+ghcSimpleOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
+ghcSimpleOptions lbi bi mockDir
   =  ["-hide-all-packages"]
+  ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+  ++ ["-i"]
+  ++ hcOptions GHC (options bi)
   ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
-  ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
-  ++ hcOptions GHC (options bi)
+  ++ ["-i" ++ mockDir]
+  ++ ["-I" ++ dir | dir <- includeDirs bi]
+  ++ ["-odir", mockDir]
+  ++ ["-hidir", mockDir]
   ++ extensionsToFlags c (extensions bi)
   where c = compiler lbi
 
