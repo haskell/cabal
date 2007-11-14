@@ -268,7 +268,8 @@ configure (pkg_descr0, pbi) cfg
 		dataDirTemplate    = maybeDefault configDataDir    dataDirTemplate,
 		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate,
 		docDirTemplate     = maybeDefault configDocDir     docDirTemplate,
-		htmlDirTemplate    = maybeDefault configHtmlDir    htmlDirTemplate
+		htmlDirTemplate    = maybeDefault configHtmlDir    htmlDirTemplate,
+                interfaceDirTemplate = maybeDefault configInterfaceDir interfaceDirTemplate
 	      }
 
         -- check extensions
