@@ -458,9 +458,8 @@ getBuildConfigIfUpToDate = do
 -- --------------------------------------------------------------------------
 -- Programmatica support
 
-pfe :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO ()
-pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
-    let pps = allSuffixHandlers hooks
+pfe :: PackageDescription -> [PPSuffixHandler] -> PFEFlags -> IO ()
+pfe pkg_descr pps (PFEFlags verbosity) = do
     unless (hasLibs pkg_descr) $
         die "no libraries found in this project"
     withLib pkg_descr () $ \lib -> do
@@ -477,8 +476,8 @@ pfe pkg_descr _lbi hooks (PFEFlags verbosity) = do
 -- --------------------------------------------------------------------------
 -- Cleaning
 
-clean :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi _ (CleanFlags saveConfigure verbosity) = do
+clean :: PackageDescription -> Maybe LocalBuildInfo -> CleanFlags -> IO ()
+clean pkg_descr maybeLbi (CleanFlags saveConfigure verbosity) = do
     notice verbosity "cleaning..."
 
     maybeConfig <- if saveConfigure then maybeGetPersistBuildConfig
@@ -592,10 +591,10 @@ simpleUserHooks =
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
-       pfeHook   = pfe,
-       cleanHook = clean,
-       hscolourHook = defaultHscolourHook,
-       haddockHook = defaultHaddockHook,
+       pfeHook   = \p _ h f -> pfe   p (allSuffixHandlers h) f,
+       cleanHook = \p l _ f -> clean p l f,
+       hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f,
+       haddockHook  = \p l h f -> haddock  p l (allSuffixHandlers h) f,
        regHook   = defaultRegHook,
        unregHook = \p l _ f -> unregister p l f
       }
@@ -681,21 +680,6 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
     else setupMessage (regVerbose flags)
                       "Package contains no library to register:"
                       pkg_descr
-
-defaultHaddockHook :: PackageDescription -> LocalBuildInfo
-        -> UserHooks -> HaddockFlags -> IO ()
-defaultHaddockHook pkg_descr localbuildinfo hooks flags = do
-  haddock pkg_descr localbuildinfo (allSuffixHandlers hooks) flags
-
-defaultHscolourHook :: PackageDescription -> LocalBuildInfo
-        -> UserHooks -> HscolourFlags -> IO ()
-defaultHscolourHook pkg_descr localbuildinfo hooks flags =
-  hscolour pkg_descr localbuildinfo (allSuffixHandlers hooks) flags
-
--- ------------------------------------------------------------
--- * Utils
--- ------------------------------------------------------------
-
 
 -- ------------------------------------------------------------
 -- * Testing
