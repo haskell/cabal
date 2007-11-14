@@ -67,9 +67,10 @@ module Distribution.Simple (
 
 -- local
 import Distribution.Simple.Compiler
+import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Simple.Program(Program(..), ProgramConfiguration,
+import Distribution.Simple.Program(ProgramConfiguration,
                             defaultProgramConfiguration, addKnownProgram,
                             pfesetupProgram, rawSystemProgramConf)
 import Distribution.Simple.PreProcess (knownSuffixHandlers,
@@ -117,114 +118,6 @@ import Distribution.Version hiding (hunitTests)
 #else
 import Distribution.Version
 #endif
-
-type Args = [String]
-
--- | WARNING: The hooks interface is under rather constant flux as we
--- try to understand users needs.  Setup files that depend on this
--- interface may break in future releases.  Hooks allow authors to add
--- specific functionality before and after a command is run, and also
--- to specify additional preprocessors.
-data UserHooks = UserHooks
-    {
-     runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (), -- ^Used for @.\/setup test@
-     readDesc :: IO (Maybe PackageDescription), -- ^Read the description file
-     hookedPreProcessors :: [ PPSuffixHandler ],
-        -- ^Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
-     hookedPrograms :: [Program],
-        -- ^These programs are detected at configure time.  Arguments for them are added to the configure command.
-
-      -- |Hook to run before configure command
-     preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during configure.
-     confHook :: ( Either GenericPackageDescription PackageDescription
-                 , HookedBuildInfo)
-              -> ConfigFlags -> IO LocalBuildInfo,
-      -- |Hook to run after configure command
-     postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before build command.  Second arg indicates verbosity level.
-     preBuild  :: Args -> BuildFlags -> IO HookedBuildInfo,
-
-     -- |Over-ride this hook to gbet different behavior during build.
-     buildHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO (),
-      -- |Hook to run after build command.  Second arg indicates verbosity level.
-     postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before makefile command.  Second arg indicates verbosity level.
-     preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
-
-     -- |Over-ride this hook to get different behavior during makefile.
-     makefileHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> MakefileFlags -> IO (),
-      -- |Hook to run after makefile command.  Second arg indicates verbosity level.
-     postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before clean command.  Second arg indicates verbosity level.
-     preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during clean.
-     cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO (),
-      -- |Hook to run after clean command.  Second arg indicates verbosity level.
-     postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
-
-      -- |Hook to run before copy command
-     preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during copy.
-     copyHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO (),
-      -- |Hook to run after copy command
-     postCopy :: Args -> CopyFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before install command
-     preInst  :: Args -> InstallFlags -> IO HookedBuildInfo,
-
-     -- |Over-ride this hook to get different behavior during install.
-     instHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO (),
-      -- |Hook to run after install command.  postInst should be run
-      -- on the target, not on the build machine.
-     postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before sdist command.  Second arg indicates verbosity level.
-     preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during sdist.
-     sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> SDistFlags -> IO (),
-      -- |Hook to run after sdist command.  Second arg indicates verbosity level.
-     postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
-
-      -- |Hook to run before register command
-     preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during pfe.
-     regHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
-      -- |Hook to run after register command
-     postReg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before unregister command
-     preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
-      -- |Over-ride this hook to get different behavior during pfe.
-     unregHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
-      -- |Hook to run after unregister command
-     postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before hscolour command.  Second arg indicates verbosity level.
-     preHscolour  :: Args -> HscolourFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during hscolour.
-     hscolourHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HscolourFlags -> IO (),
-      -- |Hook to run after hscolour command.  Second arg indicates verbosity level.
-     postHscolour :: Args -> HscolourFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before haddock command.  Second arg indicates verbosity level.
-     preHaddock  :: Args -> HaddockFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during haddock.
-     haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
-      -- |Hook to run after haddock command.  Second arg indicates verbosity level.
-     postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-      -- |Hook to run before pfe command.  Second arg indicates verbosity level.
-     prePFE  :: Args -> PFEFlags -> IO HookedBuildInfo,
-     -- |Over-ride this hook to get different behavior during pfe.
-     pfeHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO (),
-      -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
-     postPFE :: Args -> PFEFlags -> PackageDescription -> LocalBuildInfo -> IO ()
-
-    }
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -530,55 +423,6 @@ scratchDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
 scratchDirOpt = Option "b" ["scratchdir"] (reqDirArg setScratchDir)
 		"directory to receive the built package [dist/scratch]"
   where setScratchDir dir lbi = lbi { scratchDir = dir }
-
--- |Empty 'UserHooks' which do nothing.
-emptyUserHooks :: UserHooks
-emptyUserHooks
-    = UserHooks
-      {
-       runTests  = ru,
-       readDesc  = return Nothing,
-       hookedPreProcessors = [],
-       hookedPrograms      = [],
-       preConf   = rn,
-       confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
-       postConf  = ru,
-       preBuild  = rn,
-       buildHook = ru,
-       postBuild = ru,
-       preMakefile = rn,
-       makefileHook = ru,
-       postMakefile = ru,
-       preClean  = rn,
-       cleanHook = ru,
-       postClean = ru,
-       preCopy   = rn,
-       copyHook  = ru,
-       postCopy  = ru,
-       preInst   = rn,
-       instHook  = ru,
-       postInst  = ru,
-       preSDist  = rn,
-       sDistHook = ru,
-       postSDist = ru,
-       preReg    = rn,
-       regHook   = ru,
-       postReg   = ru,
-       preUnreg  = rn,
-       unregHook = ru,
-       postUnreg = ru,
-       prePFE    = rn,
-       pfeHook   = ru,
-       postPFE   = ru,
-       preHscolour  = rn,
-       hscolourHook = ru,
-       postHscolour = ru,
-       preHaddock   = rn,
-       haddockHook  = ru,
-       postHaddock  = ru
-      }
-    where rn  args _   = no_extra_flags args >> return emptyHookedBuildInfo
-          ru _ _ _ _ = return ()
 
 -- | Hooks that correspond to a plain instantiation of the 
 -- \"simple\" build system

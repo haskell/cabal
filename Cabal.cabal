@@ -71,6 +71,7 @@ Library
         Distribution.Simple.Setup,
         Distribution.Simple.SetupWrapper,
         Distribution.Simple.SrcDist,
+        Distribution.Simple.UserHooks,
         Distribution.Simple.Utils,
         Distribution.System,
         Distribution.Verbosity,
