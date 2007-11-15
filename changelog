@@ -1,5 +1,11 @@
 -*-change-log-*-
 
+1.2.2.1 Duncan Coutts <duncan@haskell.org> Nov 2007
+	* Released with GHC 6.8.2
+	* Includes full list of GHC language extensions
+	* Fix infamous "dist/conftest.c" bug
+	* Fix configure --interfacedir=
+
 1.2.2.0 Duncan Coutts <duncan@haskell.org> Nov 2007
 	* Released with GHC 6.8.1
 	* Support haddock-2.0
