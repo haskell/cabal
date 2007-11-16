@@ -196,8 +196,8 @@ defaultMainWorker :: (Maybe PackageDescription)
 defaultMainWorker mdescr action all_args hooks prog_conf
     = do case action of
             ConfigCmd flags -> do
-                (flags', optFns, args) <-
-			parseConfigureArgs prog_conf flags all_args [scratchDirOpt]
+                (flags', _, args) <-
+			parseConfigureArgs prog_conf flags all_args []
                 pbi <- preConf hooks args flags'
 
                 (mb_pd_file, pkg_descr0) <- confPkgDescr flags'
@@ -213,7 +213,7 @@ defaultMainWorker mdescr action all_args hooks prog_conf
 
                 -- remember the .cabal filename if we know it
                 let localbuildinfo = localbuildinfo0{ pkgDescrFile = mb_pd_file }
-                writePersistBuildConfig (foldr id localbuildinfo optFns)
+                writePersistBuildConfig localbuildinfo
                 
 		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags' pkg_descr localbuildinfo
@@ -418,11 +418,6 @@ no_extra_flags [] = return ()
 no_extra_flags extra_flags =
  die $ concat
      $ intersperse "\n" ("Unrecognised flags:" : map (' ' :) extra_flags)
-
-scratchDirOpt :: OptDescr (LocalBuildInfo -> LocalBuildInfo)
-scratchDirOpt = Option "b" ["scratchdir"] (reqDirArg setScratchDir)
-		"directory to receive the built package [dist/scratch]"
-  where setScratchDir dir lbi = lbi { scratchDir = dir }
 
 -- | Hooks that correspond to a plain instantiation of the 
 -- \"simple\" build system
