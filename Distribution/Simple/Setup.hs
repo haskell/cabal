@@ -143,6 +143,7 @@ data ConfigFlags = ConfigFlags {
 		-- ^installation dir for HTML documentation
 	configInterfaceDir :: Maybe FilePath,
 		-- ^installation dir for haddock interfaces
+        configScratchDir :: Maybe FilePath,
 
         configVerbose  :: Verbosity,      -- ^verbosity level
 	configPackageDB:: PackageDB,	  -- ^ the --user flag?
@@ -176,6 +177,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDocDir = Nothing,
 	configHtmlDir = Nothing,
 	configInterfaceDir = Nothing,
+        configScratchDir = Nothing,
         configVerbose  = normal,
 	configPackageDB = GlobalPackageDB,
 	configGHCiLib  = True,
@@ -306,6 +308,7 @@ data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
 	  | DocDir FilePath
 	  | HtmlDir FilePath
 	  | InterfaceDir FilePath
+          | ScratchDir FilePath
           | ConfigurationsFlags [(String, Bool)]
 
           | ProgramArgs String String   -- program name, arguments
@@ -491,6 +494,8 @@ configureCmd progConf = Cmd {
 		"subdirectory of libdir in which libs are installed",
 	   Option "" ["libexecdir"] (reqDirArg LibExecDir)
 		"installation directory for program executables",
+           Option "b" ["scratchdir"] (reqDirArg ScratchDir)
+		"directory to receive the built package [dist/scratch]",
 	   Option "" ["datadir"] (reqDirArg DataDir)
 		"installation directory for read-only data",
 	   Option "" ["datasubdir"] (reqDirArg DataSubDir)
@@ -633,6 +638,7 @@ parseConfigureArgs progConf = parseArgs (configureCmd progConf) updateCfg
         updateCfg t (LibDir path)        = t { configLibDir   = Just path }
         updateCfg t (LibSubDir path)     = t { configLibSubDir= Just path }
         updateCfg t (LibExecDir path)    = t { configLibExecDir = Just path }
+        updateCfg t (ScratchDir path)    = t { configScratchDir = Just path }
         updateCfg t (DataDir path)       = t { configDataDir  = Just path }
         updateCfg t (DataSubDir path)    = t { configDataSubDir = Just path }
         updateCfg t (DocDir path)        = t { configDocDir  = Just path }
