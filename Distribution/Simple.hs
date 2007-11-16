@@ -123,35 +123,33 @@ import Distribution.Version
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
 defaultMain :: IO ()
-defaultMain = defaultMain__ Nothing Nothing Nothing
+defaultMain = getArgs >>= defaultMain__ simpleUserHooks
 
 -- | A version of 'defaultMain' that is passed the command line
 -- arguments, rather than getting them from the environment.
 defaultMainArgs :: [String] -> IO ()
-defaultMainArgs args = defaultMain__ (Just args) Nothing Nothing
+defaultMainArgs = defaultMain__ simpleUserHooks
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
-defaultMainWithHooks hooks = defaultMain__ Nothing (Just hooks) Nothing
+defaultMainWithHooks hooks = getArgs >>= defaultMain__ hooks
 
 -- | A customizable version of 'defaultMain' that also takes the command
 -- line arguments.
 defaultMainWithHooksArgs :: UserHooks -> [String] -> IO ()
-defaultMainWithHooksArgs hooks args
-   = defaultMain__ (Just args) (Just hooks) Nothing
+defaultMainWithHooksArgs = defaultMain__
 
 -- | Like 'defaultMain', but accepts the package description as input
 -- rather than using IO to read it.
 defaultMainNoRead :: PackageDescription -> IO ()
-defaultMainNoRead pkg_descr = defaultMain__ Nothing Nothing (Just pkg_descr)
+defaultMainNoRead pkg_descr =
+  getArgs >>=
+  defaultMain__ simpleUserHooks { readDesc = return (Just pkg_descr) }
 
-defaultMain__    :: Maybe [String]
-	         -> Maybe UserHooks
-		 -> Maybe PackageDescription
-		 -> IO ()
-defaultMain__ margs mhooks mdescr = do
-   args <- maybe getArgs return margs
-   let hooks = maybe simpleUserHooks id mhooks
+defaultMain__ :: UserHooks
+              -> [String]
+              -> IO ()
+defaultMain__ hooks args = do
    let prog_conf = allPrograms hooks
    (action, args') <- parseGlobalArgs prog_conf args
    -- let get_pkg_descr verbosity = case mdescr of
@@ -166,7 +164,7 @@ defaultMain__ margs mhooks mdescr = do
 --              -- FIXME: add compat mode or flag to enable configs
 --              pkg_descr_file <- defaultPackageDesc verbosity 
 --              readPackageDescription verbosity pkg_descr_file
-   defaultMainWorker mdescr action args' hooks prog_conf
+   defaultMainWorker action args' hooks prog_conf
 
 -- | Combine the programs in the given hooks with the programs built
 -- into cabal.
@@ -187,13 +185,12 @@ allSuffixHandlers hooks
       overridesPP = unionBy (\x y -> fst x == fst y)
 
 -- | Helper function for /defaultMain/
-defaultMainWorker :: (Maybe PackageDescription)
-                  -> Action
+defaultMainWorker :: Action
                   -> [String]
                   -> UserHooks
                   -> ProgramConfiguration
                   -> IO ()
-defaultMainWorker mdescr action all_args hooks prog_conf
+defaultMainWorker action all_args hooks prog_conf
     = do case action of
             ConfigCmd flags -> do
                 (flags', _, args) <-
@@ -222,17 +219,14 @@ defaultMainWorker mdescr action all_args hooks prog_conf
                              -> IO (Maybe FilePath,
                                     Either GenericPackageDescription
                                            PackageDescription)
-                confPkgDescr cfgflags =
-                   case mdescr of
-                     Just ppd -> return (Nothing, Right ppd)
-                     Nothing  -> do
-                       mdescr' <- readDesc hooks
-                       case mdescr' of
-                         Just descr -> return (Nothing, Right descr)
-                         Nothing -> do
-                           pdfile <- defaultPackageDesc (configVerbose cfgflags)
-                           ppd <- readPackageDescription (configVerbose cfgflags) pdfile
-                           return (Just pdfile, Left ppd)
+                confPkgDescr cfgflags = do
+                  mdescr <- readDesc hooks
+                  case mdescr of
+                    Just descr -> return (Nothing, Right descr)
+                    Nothing -> do
+                      pdfile <- defaultPackageDesc (configVerbose cfgflags)
+                      ppd <- readPackageDescription (configVerbose cfgflags) pdfile
+                      return (Just pdfile, Left ppd)
 
             BuildCmd -> do
                 lbi <- getBuildConfigIfUpToDate
