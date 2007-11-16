@@ -301,7 +301,8 @@ configure (pkg_descr0, pbi) cfg
 		    installDirTemplates = installDirs,
 		    compiler            = comp,
 		    buildDir            = distPref </> "build",
-		    scratchDir          = distPref </> "scratch",
+		    scratchDir          = fromMaybe (distPref </> "scratch")
+                                                    (configScratchDir cfg),
 		    packageDeps         = dep_pkgs,
                     pkgDescrFile        = Nothing,
 		    localPkgDescr       = pkg_descr',
