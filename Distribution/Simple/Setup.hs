@@ -51,10 +51,10 @@ module Distribution.Simple.Setup (--parseArgs,
                            HscolourFlags(..), emptyHscolourFlags,
                            BuildFlags(..), emptyBuildFlags,
                            CleanFlags(..), emptyCleanFlags,
-                           PFEFlags(..),
+                           PFEFlags(..), emptyPFEFlags,
                            MakefileFlags(..), emptyMakefileFlags,
                            RegisterFlags(..), emptyRegisterFlags,
-			   SDistFlags(..),
+			   SDistFlags(..), emptySDistFlags,
 			   --optionHelpString,
 #ifdef DEBUG
                            hunitTests,
@@ -215,6 +215,10 @@ data SDistFlags = SDistFlags {sDistSnapshot :: Bool
                              ,sDistVerbose :: Verbosity}
     deriving Show
 
+emptySDistFlags :: SDistFlags
+emptySDistFlags = SDistFlags {sDistSnapshot = False
+                             ,sDistVerbose = normal}
+
 -- | Flags to @register@ and @unregister@: (user package, gen-script,
 -- in-place, verbosity)
 data RegisterFlags = RegisterFlags { regPackageDB :: Maybe PackageDB
@@ -285,6 +289,9 @@ emptyMakefileFlags = MakefileFlags {makefileVerbose = normal,
 
 data PFEFlags     = PFEFlags     {pfeVerbose     :: Verbosity}
     deriving Show
+
+emptyPFEFlags :: PFEFlags
+emptyPFEFlags = PFEFlags { pfeVerbose = normal }
 
 -- | All the possible flags
 data Flag a = GhcFlag | NhcFlag | HugsFlag | JhcFlag
