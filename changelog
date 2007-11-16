@@ -1,5 +1,34 @@
 -*-change-log-*-
 
+1.2.2.1 Duncan Coutts <duncan@haskell.org> Nov 2007
+	* Released with GHC 6.8.2
+	* Includes full list of GHC language extensions
+	* Fix infamous "dist/conftest.c" bug
+	* Fix configure --interfacedir=
+
+1.2.2.0 Duncan Coutts <duncan@haskell.org> Nov 2007
+	* Released with GHC 6.8.1
+	* Support haddock-2.0
+	* Support building DSOs with GHC
+	* Require reconfiguring if the .cabal file has changed
+	* Fix os(windows) configuration test
+	* Fix building documentation
+	* Fix building packages on Solaris
+	* Other minor bug fixes
+
+1.2.1 Duncan Coutts <duncan@haskell.org> Oct 2007
+	* To be included in GHC 6.8.1
+	* New field "cpp-options" used when preprocessing Haskell modules
+	* Fixes for hsc2hs when using ghc
+	* C source code gets compiled with -O2 by default
+	* OS aliases, to allow os(windows) rather than requiring os(mingw32)
+	* Fix cleaning of 'stub' files
+	* Fix cabal-setup, command line ui that replaces "runhaskell Setup.hs"
+	* Build docs even when dependent packages docs are missing
+	* Allow the --html-dir to be specified at configure time
+	* Fix building with ghc-6.2
+	* Other minor bug fixes and build fixes
+
 1.2.0  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Sept 2007
 	* To be included in GHC 6.8.x
 	* New configurations feature
