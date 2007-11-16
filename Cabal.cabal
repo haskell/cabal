@@ -52,6 +52,7 @@ Library
         Distribution.ParseUtils,
         Distribution.Simple,
         Distribution.Simple.Build,
+        Distribution.Simple.Command,
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
         Distribution.Simple.GHC,
