@@ -47,8 +47,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
-                                ppSuffixes, PPSuffixHandler, PreProcessor,
-                                runSimplePreProcessor,
+                                ppSuffixes, PPSuffixHandler, PreProcessor(..),
+                                mkSimplePreProcessor, runSimplePreProcessor,
                                 removePreprocessed, removePreprocessedPackage,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
 				ppHappy, ppAlex, ppUnlit
