@@ -21,7 +21,6 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
 				( configCompiler, getInstalledPackages,
 		  	  	  configDependency )
-import Distribution.Simple.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
                                   GenericPackageDescription(packageDescription),
@@ -146,9 +145,9 @@ setVerbosity v flags = flags{ withVerbosity=v }
 
 opts :: [OptDescr (Flags -> Flags)]
 opts = [
-           Option "w" ["with-setup-compiler"] (reqPathArg (setWithCompiler.Just))
+           Option "w" ["with-setup-compiler"] (ReqArg (setWithCompiler.Just) "PATH")
                "give the path to a particular compiler to use on setup",
-           Option "" ["with-setup-hc-pkg"] (reqPathArg (setWithHcPkg.Just))
+           Option "" ["with-setup-hc-pkg"] (ReqArg (setWithHcPkg.Just) "PATH")
                "give the path to the package tool to use on setup",
 	   Option "v" ["verbose"] (OptArg (setVerbosity . flagToVerbosity) "n")
 	       "Control verbosity (n is 0--3, default verbosity level is 1)"
