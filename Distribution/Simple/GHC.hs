@@ -64,7 +64,7 @@ import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
 				  rawSystemProgramStdoutConf,
                                   rawSystemProgramStdout,
 				  Program(..), ConfiguredProgram(..),
-                                  ProgramConfiguration, addKnownProgram,
+                                  ProgramConfiguration,
                                   userMaybeSpecifyPath, requireProgram,
                                   programPath, lookupProgram, updateProgram,
                                   ghcProgram, ghcPkgProgram,
@@ -128,18 +128,18 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcPkgProg ++ " is version " ++ showVersion ghcPkgVersion
 
   -- finding ghc's local ld is a bit tricky as it's not on the path:
-  let conf''' = case os of
+  let ldProgram' = case os of
         Windows _ ->
           let compilerDir  = takeDirectory (programPath ghcProg)
               baseDir      = takeDirectory compilerDir
               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
-           in addKnownProgram ldProgram {
+           in ldProgram {
                   programFindLocation = \_ -> return (Just binInstallLd)
-                } conf''
-        _ -> conf''
+                }
+        _ -> ldProgram
 
   -- we need to find out if ld supports the -x flag
-  (ldProg, conf'''') <- requireProgram verbosity ldProgram AnyVersion conf'''
+  (ldProg, conf''') <- requireProgram verbosity ldProgram' AnyVersion conf''
   tempDir <- getTemporaryDirectory
   ldx <- withTempFile tempDir "c" $ \testcfile ->
          withTempFile tempDir "o" $ \testofile -> do
@@ -151,9 +151,9 @@ configure verbosity hcPath hcPkgPath conf = do
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
-  let conf''''' = updateProgram ldProg {
+  let conf'''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
-		} conf''''
+		} conf'''
   -- Yeah yeah, so obviously conf''''' is totally rediculious and the program
   -- configuration needs to be in a state monad. That is exactly the plan
   -- (along with some other stuff to give Cabal a better DSL).
@@ -173,7 +173,7 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerId             = PackageIdentifier "ghc" ghcVersion,
         compilerExtensions     = languageExtensions
       }
-  return (comp, conf''''')
+  return (comp, conf'''')
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding ghc-pkg, we try looking for both a versioned and unversioned
