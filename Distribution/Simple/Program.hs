@@ -51,6 +51,7 @@ module Distribution.Simple.Program (
     , userSpecifyPath
     , userMaybeSpecifyPath
     , userSpecifyArgs
+    , userSpecifiedArgs
     , lookupProgram
     , updateProgram
     , configureAllKnownPrograms
