@@ -88,123 +88,120 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.Simple.Program(defaultProgramConfiguration)
 import Distribution.PackageDescription
 import Distribution.Simple.Setup
+import Distribution.Simple.Command
 
-import Distribution.Simple.Utils (die, maybeExit)
+import Distribution.Simple.Utils (die, rawSystemExit)
 
 import Distribution.License (License(..))
-import Distribution.Version (Version(..))
-import Distribution.Verbosity
+import Distribution.Version (Version(..), showVersion)
 
-import System.Environment(getArgs)
-import Data.List  ( intersperse )
-import System.Cmd
+import System.Environment (getArgs, getProgName)
+import Data.List  (intersperse)
 import System.Exit
-
-exec :: String -> IO ExitCode
-exec cmd = (putStrLn $ "-=-= Cabal executing: " ++ cmd ++ "=-=-")
-           >> system cmd
 
 defaultMain :: IO ()
 defaultMain = getArgs >>= defaultMainArgs
 
 defaultMainArgs :: [String] -> IO ()
-defaultMainArgs args =
-    defaultMainHelper args $ \ _verbosity ->
-        error "Package Descripion was promised not be used here"
-    --defaultPackageDesc verbosity >>=
-    --    readPackageDescription verbosity 
+defaultMainArgs = defaultMainHelper
 
+{-# DEPRECATED defaultMainNoRead "it ignores its PackageDescription arg" #-}
 defaultMainNoRead :: PackageDescription -> IO ()
-defaultMainNoRead pkg_descr = do
-    args <- getArgs
-    defaultMainHelper args $ \ _ -> return pkg_descr 
+defaultMainNoRead = const defaultMain
 
-defaultMainHelper :: [String] -> (Verbosity -> IO PackageDescription) -> IO ()
-defaultMainHelper globalArgs _get_pkg_descr
-    = do (action, args) <- parseGlobalArgs defaultProgramConfiguration globalArgs
-         case action of
-            ConfigCmd flags -> do
-                (configFlags, _, extraArgs) <- parseConfigureArgs defaultProgramConfiguration flags args []
-                retVal <- exec $ unwords $
-                  "./configure" : configureArgs configFlags ++ extraArgs
-                if (retVal == ExitSuccess)
-                  then putStrLn "Configure Succeeded."
-                  else putStrLn "Configure failed."
-                exitWith retVal
+defaultMainHelper :: [String] -> IO ()
+defaultMainHelper args =
+  case commandsRun globalCommand commands args of
+    CommandHelp   help                 -> printHelp help
+    CommandErrors errs                 -> printErrors errs
+    CommandReadyToGo (flags, commandParse)  ->
+      case commandParse of
+        _ | globalVersion flags        -> printVersion
+          | globalNumericVersion flags -> printNumericVersion
+        CommandHelp     help           -> printHelp help
+        CommandErrors   errs           -> printErrors errs
+        CommandReadyToGo action        -> action
 
-            CopyCmd copydest0 -> do
-                ((CopyFlags copydest _), _, extraArgs) <- parseCopyArgs (CopyFlags copydest0 normal) args []
-                no_extra_flags extraArgs
-		let cmd = case copydest of 
-				NoCopyDest      -> "install"
-				CopyTo path     -> "copy destdir=" ++ path
-				CopyPrefix path -> "install prefix=" ++ path
-					-- CopyPrefix is backwards compat, DEPRECATED
-                maybeExit $ system $ ("make " ++ cmd)
+  where
+    printHelp help = getProgName >>= putStr . help
+    printErrors errs = do
+      putStr (concat (intersperse "\n" errs))
+      exitWith (ExitFailure 1)
+    printNumericVersion = putStrLn $ showVersion cabalVersion
+    printVersion        = putStrLn $ "Cabal library version "
+                                  ++ showVersion cabalVersion
 
-            InstallCmd -> do
-                ((InstallFlags _ _), _, extraArgs) <- parseInstallArgs emptyInstallFlags args []
-                no_extra_flags extraArgs
-                maybeExit $ system $ "make install"
-                retVal <- exec "make register"
-                if (retVal == ExitSuccess)
-                  then putStrLn "Install Succeeded."
-                  else putStrLn "Install failed."
-                exitWith retVal
+    progs = defaultProgramConfiguration
+    commands =
+      [configureCommand progs `commandAddAction` configureAction
+      ,buildCommand     progs `commandAddAction` buildAction
+      ,installCommand         `commandAddAction` installAction
+      ,copyCommand            `commandAddAction` copyAction
+      ,haddockCommand         `commandAddAction` haddockAction
+      ,cleanCommand           `commandAddAction` cleanAction
+      ,sdistCommand           `commandAddAction` sdistAction
+      ,registerCommand        `commandAddAction` registerAction
+      ,unregisterCommand      `commandAddAction` unregisterAction
+      ,programaticaCommand    `commandAddAction` programaticaAction
+      ]
 
-            HaddockCmd -> do 
-                (_, _, extraArgs) <- parseHaddockArgs emptyHaddockFlags args []
-                no_extra_flags extraArgs
-                retVal <- exec "make docs"
-                case retVal of
-                 ExitSuccess -> do putStrLn "Haddock Succeeded"
-                                   exitWith ExitSuccess
-                 _ -> do retVal' <- exec "make doc"
-                         case retVal' of
-                          ExitSuccess -> do putStrLn "Haddock Succeeded"
-                                            exitWith ExitSuccess
-                          _ -> do putStrLn "Haddock Failed."
-                                  exitWith retVal'
+configureAction :: ConfigFlags -> [String] -> IO ()
+configureAction flags args = do
+  no_extra_flags args
+  rawSystemExit (configVerbose flags) "./configure" (configureArgs flags)
 
-            BuildCmd -> basicCommand "Build" "make"
-                                     (parseBuildArgs defaultProgramConfiguration
-				        (emptyBuildFlags defaultProgramConfiguration)
-					args [])
+copyAction :: CopyFlags -> [String] -> IO ()
+copyAction flags args = do
+  no_extra_flags args
+  let destArgs = case copyDest flags of 
+        NoCopyDest      -> ["install"]
+        CopyTo path     -> ["copy", "destdir=" ++ path]
+        CopyPrefix path -> ["install", "prefix=" ++ path]
+	        -- CopyPrefix is backwards compat, DEPRECATED
+  rawSystemExit (copyVerbose flags) "make" destArgs
 
-            MakefileCmd -> exitWith ExitSuccess -- presumably nothing to do
+installAction :: InstallFlags -> [String] -> IO ()
+installAction flags args = do
+  no_extra_flags args
+  rawSystemExit (installVerbose flags) "make" ["install"]
+  rawSystemExit (installVerbose flags) "make" ["register"]
 
-            CleanCmd -> basicCommand "Clean" "make clean"
-                                     (parseCleanArgs emptyCleanFlags args [])
+haddockAction :: HaddockFlags -> [String] -> IO ()
+haddockAction flags args = do 
+  no_extra_flags args
+  rawSystemExit (haddockVerbose flags) "make" ["docs"]
+    `catch` \_ ->
+    rawSystemExit (haddockVerbose flags) "make" ["doc"]
 
-            SDistCmd -> basicCommand "SDist" "make dist" (parseSDistArgs args [])
+buildAction :: BuildFlags -> [String] -> IO ()
+buildAction flags args = do
+  no_extra_flags args
+  rawSystemExit (buildVerbose flags) "make" []
 
-            RegisterCmd  -> basicCommand "Register" "make register"
-                                           (parseRegisterArgs emptyRegisterFlags args [])
+cleanAction :: CleanFlags -> [String] -> IO ()
+cleanAction flags args = do
+  no_extra_flags args
+  rawSystemExit (cleanVerbose flags) "make" ["clean"]
 
-            UnregisterCmd -> basicCommand "Unregister" "make unregister"
-                                           (parseUnregisterArgs emptyRegisterFlags args [])
-            ProgramaticaCmd -> basicCommand "Programatica" "make programatica"
-                                        (parseProgramaticaArgs args [])
+sdistAction :: SDistFlags -> [String] -> IO ()
+sdistAction flags args = do
+  no_extra_flags args
+  rawSystemExit (sDistVerbose flags) "make" ["dist"]
 
-            HelpCmd -> exitWith ExitSuccess -- this is handled elsewhere
-            
-            _ -> do putStrLn "Command not implemented for makefiles."
-                    exitWith (ExitFailure 1)
+registerAction :: RegisterFlags -> [String] -> IO ()
+registerAction  flags args = do
+  no_extra_flags args
+  rawSystemExit (regVerbose flags) "make" ["register"]
 
--- |convinience function for repetitions above
-basicCommand :: String  -- ^Command name
-             -> String  -- ^Command command
-             -> (IO (b, [a], [String]))   -- ^Command parser function
-             -> IO ()
-basicCommand commandName commandCommand commandParseFun = do 
-                (_, _, args) <- commandParseFun
-                no_extra_flags args
-                retVal <- exec commandCommand
-                putStrLn $ commandName ++ 
-                    if (retVal == ExitSuccess)
-                       then " Succeeded."
-                       else " Failed."
-                exitWith retVal
+unregisterAction :: RegisterFlags -> [String] -> IO ()
+unregisterAction flags args = do
+  no_extra_flags args
+  rawSystemExit (regVerbose flags) "make" ["unregister"]
+
+programaticaAction :: PFEFlags -> [String] -> IO ()
+programaticaAction flags args = do
+  no_extra_flags args
+  rawSystemExit (pfeVerbose flags) "make" ["programatica"]
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()
