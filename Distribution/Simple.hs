@@ -126,31 +126,31 @@ import System.Exit
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
 defaultMain :: IO ()
-defaultMain = getArgs >>= defaultMain__ simpleUserHooks
+defaultMain = getArgs >>= defaultMainHelper simpleUserHooks
 
 -- | A version of 'defaultMain' that is passed the command line
 -- arguments, rather than getting them from the environment.
 defaultMainArgs :: [String] -> IO ()
-defaultMainArgs = defaultMain__ simpleUserHooks
+defaultMainArgs = defaultMainHelper simpleUserHooks
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
-defaultMainWithHooks hooks = getArgs >>= defaultMain__ hooks
+defaultMainWithHooks hooks = getArgs >>= defaultMainHelper hooks
 
 -- | A customizable version of 'defaultMain' that also takes the command
 -- line arguments.
 defaultMainWithHooksArgs :: UserHooks -> [String] -> IO ()
-defaultMainWithHooksArgs = defaultMain__
+defaultMainWithHooksArgs = defaultMainHelper
 
 -- | Like 'defaultMain', but accepts the package description as input
 -- rather than using IO to read it.
 defaultMainNoRead :: PackageDescription -> IO ()
 defaultMainNoRead pkg_descr =
   getArgs >>=
-  defaultMain__ simpleUserHooks { readDesc = return (Just pkg_descr) }
+  defaultMainHelper simpleUserHooks { readDesc = return (Just pkg_descr) }
 
-defaultMain__ :: UserHooks -> Args -> IO ()
-defaultMain__ hooks args =
+defaultMainHelper :: UserHooks -> Args -> IO ()
+defaultMainHelper hooks args =
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printHelp help
     CommandErrors errs                 -> printErrors errs
