@@ -4,7 +4,7 @@ module Distribution.Compat.Directory (
         module System.Directory,
 #if (__GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ <= 602)
  	findExecutable, copyFile, getHomeDirectory, createDirectoryIfMissing,
-        removeDirectoryRecursive,
+        removeDirectoryRecursive, getTemporaryDirectory,
 #endif
         getDirectoryContentsWithoutSpecial
   ) where
@@ -134,8 +134,65 @@ removeDirectoryRecursive startLoc = do
                               removeDirectoryRecursive f
                 Right _ -> return ()
 
+{- | Returns the current directory for temporary files.
+
+On Unix, 'getTemporaryDirectory' returns the value of the @TMPDIR@
+environment variable or \"\/tmp\" if the variable isn\'t defined.
+On Windows, the function checks for the existence of environment variables in 
+the following order and uses the first path found:
+
+* 
+TMP environment variable. 
+
+*
+TEMP environment variable. 
+
+*
+USERPROFILE environment variable. 
+
+*
+The Windows directory
+
+The operation may fail with:
+
+* 'UnsupportedOperation'
+The operating system has no notion of temporary directory.
+
+The function doesn\'t verify whether the path exists.
+-}
+getTemporaryDirectory :: IO FilePath
+getTemporaryDirectory = do
+#if defined(mingw32_HOST_OS)
+  allocaBytes long_path_size $ \pPath -> do
+     r <- c_GetTempPath (fromIntegral long_path_size) pPath
+     peekCString pPath
+#else
+  catch (getEnv "TMPDIR") (\ex -> return "/tmp")
+#endif
+
+#if defined(mingw32_HOST_OS)
+foreign import ccall unsafe "__hscore_getFolderPath"
+            c_SHGetFolderPath :: Ptr () 
+                              -> CInt 
+                              -> Ptr () 
+                              -> CInt 
+                              -> CString 
+                              -> IO CInt
+foreign import ccall unsafe "__hscore_CSIDL_PROFILE"  csidl_PROFILE  :: CInt
+foreign import ccall unsafe "__hscore_CSIDL_APPDATA"  csidl_APPDATA  :: CInt
+foreign import ccall unsafe "__hscore_CSIDL_WINDOWS"  csidl_WINDOWS  :: CInt
+foreign import ccall unsafe "__hscore_CSIDL_PERSONAL" csidl_PERSONAL :: CInt
+
+foreign import stdcall unsafe "GetTempPathA" c_GetTempPath :: CInt -> CString -> IO CInt
+
+raiseUnsupported loc = 
+   ioException (IOError Nothing UnsupportedOperation loc "unsupported operation" Nothing)
+
+#endif
+
 #endif
 
 getDirectoryContentsWithoutSpecial :: FilePath -> IO [FilePath]
 getDirectoryContentsWithoutSpecial =
    fmap (filter (not . flip elem [".", ".."])) . getDirectoryContents
+
