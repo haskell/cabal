@@ -23,7 +23,7 @@ import Distribution.Simple.Configure
 		  	  	  configDependency )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
-                                  packageDescription,
+                                  GenericPackageDescription(packageDescription),
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
 import Distribution.Simple.LocalBuildInfo ( distPref )
