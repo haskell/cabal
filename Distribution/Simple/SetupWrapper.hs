@@ -24,7 +24,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Setup	( reqPathArg )
 import Distribution.PackageDescription	 
 				( readPackageDescription,
-                                  packageDescription,
+                                  GenericPackageDescription(packageDescription),
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
 import Distribution.Simple.LocalBuildInfo ( distPref )
