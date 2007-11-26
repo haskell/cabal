@@ -429,7 +429,7 @@ no_extra_flags extra_flags =
      $ intersperse "\n" ("Unrecognised flags:" : map (' ' :) extra_flags)
 
 -- | Hooks that correspond to a plain instantiation of the 
--- "simple" build system
+-- \"simple\" build system
 simpleUserHooks :: UserHooks
 simpleUserHooks = 
     emptyUserHooks {
