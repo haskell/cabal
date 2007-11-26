@@ -373,7 +373,7 @@ simplifyCondTree env (CondNode a d ifs) =
 
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
---  choices this may not result in a "sane" result.
+--  choices this may not result in a \"sane\" result.
 ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
   where f (_, t, me) = ignoreConditions t 
