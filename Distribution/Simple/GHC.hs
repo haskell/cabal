@@ -9,7 +9,7 @@
 -- Portability :  portable
 --
 -- Build and Install implementations for GHC.  See
--- 'Distribution.Simple.GHCPackageConfig.GHCPackageConfig' for
+-- 'Distribution.Simple.GHC.PackageConfig.GHCPackageConfig' for
 -- registration-related stuff.
 
 {- Copyright (c) 2003-2005, Isaac Jones
