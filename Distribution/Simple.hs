@@ -582,7 +582,7 @@ emptyUserHooks
           ru _ _ _ _ = return ()
 
 -- | Hooks that correspond to a plain instantiation of the 
--- "simple" build system
+-- \"simple\" build system
 simpleUserHooks :: UserHooks
 simpleUserHooks = 
     emptyUserHooks {
