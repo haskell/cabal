@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.NHC
   ( configure
   , build
-{-, install -}
+  , installLib, installExe
   ) where
 
 import Distribution.Package
@@ -224,3 +224,33 @@ getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
 getModulePaths lbi bi =
    fmap (map normalise . concat) .
       mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
+
+-- -----------------------------------------------------------------------------
+-- Installing
+
+-- |Install executables for GHC.
+installExe :: Verbosity -- ^verbosity
+           -> FilePath  -- ^install location
+           -> FilePath  -- ^Build location
+           -> Executable
+           -> IO ()
+installExe verbosity pref buildPref exe
+    = do createDirectoryIfMissingVerbose verbosity True pref
+         let exeFileName = exeName exe <.> exeExtension
+         copyFileVerbose verbosity (buildPref </> exeName exe </> exeFileName)
+                                   (pref </> exeFileName)
+
+-- |Install for nhc98: .hi and .a files
+installLib    :: Verbosity -- ^verbosity
+              -> FilePath  -- ^install location
+              -> FilePath  -- ^Build location
+              -> PackageIdentifier
+              -> Library
+              -> IO ()
+installLib verbosity pref buildPref pkgid lib
+    = do let bi = libBuildInfo lib
+             modules = exposedModules lib ++ otherModules bi
+         smartCopySources verbosity [buildPref] pref modules ["hi"] True False
+         let name = pkgName pkgid
+             libTargetLoc = mkLibName pref name
+         copyFileVerbose verbosity (mkLibName buildPref name) libTargetLoc
