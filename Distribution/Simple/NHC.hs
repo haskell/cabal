@@ -119,14 +119,14 @@ build pkg_descr lbi verbosity = do
         -- Unsupported extensions have already been checked by configure
         extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
     inFiles <- getModulePaths lbi bi modules
-    let srcDirs = nub (map takeDirectory inFiles)
-        destDirs = map (buildDir lbi </>) srcDirs
-    print destDirs
+    let targetDir = buildDir lbi
+        srcDirs  = nub (map takeDirectory inFiles)
+        destDirs = map (targetDir </>) srcDirs
     mapM_ (createDirectoryIfMissingVerbose verbosity True) destDirs
     rawSystemProgramConf verbosity hmakeProgram conf $
          ["-hc=" ++ programPath nhcProg]
       ++ nhcVerbosityOptions verbosity
-      ++ ["-d", buildDir lbi]
+      ++ ["-d", targetDir, "-hidir", targetDir]
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . options . libBuildInfo)
                              (library pkg_descr)
@@ -151,7 +151,7 @@ build pkg_descr lbi verbosity = do
     rawSystemProgramConf verbosity hmakeProgram conf $
          ["-hc=" ++ programPath nhcProg]
       ++ nhcVerbosityOptions verbosity
-      ++ ["-d", targetDir]
+      ++ ["-d", targetDir, "-hidir", targetDir]
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . options . libBuildInfo)
                              (library pkg_descr)
