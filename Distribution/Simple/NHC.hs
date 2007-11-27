@@ -59,16 +59,29 @@ import Language.Haskell.Extension
 import Distribution.Simple.Program 
         ( ProgramConfiguration, userMaybeSpecifyPath, requireProgram,
           lookupProgram, ConfiguredProgram(programVersion), programPath,
-          nhcProgram, hmakeProgram, rawSystemProgramConf )
+          nhcProgram, hmakeProgram, ldProgram, arProgram,
+          rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, createDirectoryIfMissingVerbose, moduleToFilePath )
+        ( die, info, moduleToFilePath, dotToSep,
+          mkLibName, objExtension, exeExtension,
+          createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
 import Distribution.Version
-        ( Version(..), orLaterVersion )
+        ( Version(..), VersionRange(..), orLaterVersion )
 import Distribution.Verbosity
 import System.FilePath
-        ( (</>), normalise, takeDirectory, dropExtension )
+        ( (</>), (<.>), normalise, takeDirectory, dropExtension )
+import System.Directory
+        ( removeFile )
+
+-- System.IO used to export a different try, so we can't use try unqualified
+#ifndef __NHC__
+import Control.Exception as Try
+#else
+import IO as Try
+#endif
+
 import Data.List ( nub )
-import Control.Monad ( when )
+import Control.Monad ( when, unless )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -84,13 +97,21 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   (_hmakeProg, conf'') <- requireProgram verbosity hmakeProgram
                           (orLaterVersion (Version [3,13] [])) conf'
+  (_ldProg, conf''')   <- requireProgram verbosity ldProgram AnyVersion conf''
+  (_arProg, conf'''')  <- requireProgram verbosity arProgram AnyVersion conf'''
+
+  --TODO: put this stuff in a monad so we can say just:
+  -- requireProgram hmakeProgram (orLaterVersion (Version [3,13] []))
+  -- requireProgram ldProgram AnyVersion
+  -- requireProgram ldPrograrProgramam AnyVersion
+  -- unless (null (cSources bi)) $ requireProgram ccProgram AnyVersion
 
   let comp = Compiler {
         compilerFlavor  = NHC,
         compilerId      = PackageIdentifier "nhc98" nhcVersion,
         compilerExtensions = nhcLanguageExtensions
       }
-  return (comp, conf'')
+  return (comp, conf'''')
 
 -- | The flags for the supported extensions
 nhcLanguageExtensions :: [(Extension, Flag)]
@@ -132,6 +153,39 @@ build pkg_descr lbi verbosity = do
                              (library pkg_descr)
       ++ concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ]
       ++ inFiles
+{-
+    -- build any C sources
+    unless (null (cSources bi)) $ do
+       info verbosity "Building C Sources..."
+       let commonCcArgs = (if verbosity > deafening then ["-v"] else [])
+                       ++ ["-I" ++ dir | dir <- includeDirs bi]
+                       ++ [opt | opt <- ccOptions bi]
+                       ++ (if withOptimization lbi then ["-O2"] else [])
+       flip mapM_ (cSources bi) $ \cfile -> do
+         let ofile = targetDir </> cfile `replaceExtension` objExtension
+         createDirectoryIfMissingVerbose verbosity True (takeDirectory ofile)
+         rawSystemProgramConf verbosity hmakeProgram conf
+           (commonCcArgs ++ ["-c", cfile, "-o", ofile])
+-}
+    -- link:
+    info verbosity "Linking..."
+    let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
+        --        | cFile <- cSources bi ]
+	libName  = mkLibName targetDir (pkgName (package pkg_descr))
+        hObjs = [ targetDir </> dotToSep m <.> objExtension
+                | m <- modules ]
+
+    unless (null hObjs {-&& null cObjs-}) $ do
+      Try.try (removeFile libName) -- first remove library if it exists
+
+      let arVerbosity | verbosity >= deafening = "v"
+                      | verbosity >= normal = ""
+                      | otherwise = "c"
+
+      rawSystemProgramConf verbosity arProgram (withPrograms lbi) $
+           ["q"++ arVerbosity, libName]
+        ++ hObjs
+--        ++ cObjs
 
   withExe pkg_descr $ \exe -> do
     when (dropExtension (modulePath exe) /= exeName exe) $
