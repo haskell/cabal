@@ -77,6 +77,7 @@ import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..))
 
 import qualified Distribution.Simple.GHC  as GHC
+import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
@@ -156,8 +157,9 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref pkg_descr
-     NHC  -> die ("installing with nhc98 is not yet implemented")
-     _    -> die ("only installing with GHC, JHC or Hugs is implemented")
+     NHC  -> do withLib pkg_descr () $ NHC.installLib verbosity libPref buildPref (package pkg_descr)
+                withExe pkg_descr $ NHC.installExe verbosity binPref buildPref
+     _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
   -- register step should be performed by caller.
 
