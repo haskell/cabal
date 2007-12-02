@@ -93,6 +93,7 @@ import Data.List
 
 import System.Directory
     ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
+    , getTemporaryDirectory
     , doesFileExist, removeFile )
 import System.Environment
     ( getProgName )
@@ -255,6 +256,7 @@ rawSystemStdout verbosity path args = do
 rawSystemStdout' :: Verbosity -> FilePath -> [String] -> IO (String, ExitCode)
 rawSystemStdout' verbosity path args = do
   printRawCommandAndArgs verbosity path args
+  tmpDir <- getTemporaryDirectory
 
 #if __GLASGOW_HASKELL__ >= 604
   -- TODO Ideally we'd use runInteractiveProcess and not have to make any
@@ -263,7 +265,7 @@ rawSystemStdout' verbosity path args = do
   --      connect to all three since then we'd need threads to pull on stdout
   --      and stderr simultaniously to avoid deadlock, and using threads like
   --      that would not be portable to Hugs for example.
-  bracket (liftM2 (,) (openTempFile "." "tmp") (openFile devNull WriteMode))
+  bracket (liftM2 (,) (openTempFile tmpDir "cmdstdout") (openFile devNull WriteMode))
           -- We need to close tmpHandle or the file removal fails on Windows
           (\((tmpName, tmpHandle), nullHandle) -> do
              hClose tmpHandle
@@ -277,7 +279,7 @@ rawSystemStdout' verbosity path args = do
     evaluate (length output)
     return (output, exitCode)
 #else
-  withTempFile "." "" $ \tmpName -> do
+  withTempFile tmpDir "cmdstdout" $ \tmpName -> do
     let quote name = "'" ++ name ++ "'"
     exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     output <- readFile tmpName
