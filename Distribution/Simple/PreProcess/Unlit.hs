@@ -9,72 +9,87 @@
 --
 -- Remove the \"literal\" markups from a Haskell source file, including
 -- \"@>@\", \"@\\begin{code}@\", \"@\\end{code}@\", and \"@#@\"
---
--- Part of the following code is from
--- /Report on the Programming Language Haskell/,
---   version 1.2, appendix C.
 
-module Distribution.Simple.PreProcess.Unlit(unlit,plain) where
+module Distribution.Simple.PreProcess.Unlit (unlit,plain) where
 
 import Data.Char
+import Data.List
 
-data Classified = Program String | Blank | Comment
-                | Include Int String | Pre String
-
-plain :: String -> String -> String    -- no unliteration
+-- | No unliteration.
+plain :: String -> String -> String
 plain _ hs = hs
-
-classify :: [String] -> [Classified]
-classify []                = []
-classify ("\\begin{code}":rest) = Blank : allProg rest
-   where allProg [] = []  -- Should give an error message,
-                          -- but I have no good position information.
-         allProg ("\\end{code}":xs) = Blank : classify xs
-         allProg (x:xs) = Program x:allProg xs
-classify (('>':x):xs)      = Program (' ':x) : classify xs
-classify (('#':x):xs)      = (case words x of
-                                (line:rest) | all isDigit line
-                                   -> Include (read line) (unwords rest)
-                                _  -> Pre x
-                             ) : classify xs
-classify (x:xs) | all isSpace x = Blank:classify xs
-classify (_:xs)                 = Comment:classify xs
-
-unclassify :: Classified -> String
-unclassify (Program s) = s
-unclassify (Pre s)     = '#':s
-unclassify (Include i f) = '#':' ':show i ++ ' ':f
-unclassify Blank       = ""
-unclassify Comment     = ""
 
 -- | 'unlit' takes a filename (for error reports), and transforms the
 --   given string, to eliminate the literate comments from the program text.
 unlit :: FilePath -> String -> String
-unlit file lhs = (unlines
-                 . map unclassify
-                 . adjacent file (0::Int) Blank
-                 . classify) (inlines lhs)
+unlit file lhs = (unlines . classify file) (inlines lhs)
 
--- Third argument is Comment, Blank or Program _
-adjacent :: FilePath -> Int -> Classified -> [Classified] -> [Classified]
-adjacent file n y             xs
- | file `seq` n `seq` y `seq` xs `seq` False = undefined
--- Include (# 123 "foo") lines are always OK and are treated as blank
--- The change our idea of filename and line number
-adjacent _    _ _             (x@(Include i f):xs) = x: adjacent f    i     Blank xs
--- Other preprocessor lines (# ...) are always OK and are treated as blank
-adjacent file n _             (x@(Pre _)      :xs) = x: adjacent file (n+1) Blank xs
--- Program and comment lines can't be adjacent
-adjacent file n   (Program _) (  Comment      :_ ) = error (message file n "program" "comment")
-adjacent file n   Comment     (  (Program _)  :_ ) = error (message file n "comment" "program")
--- Anything else is fine, and x is an allowable value for the third argument
-adjacent file n _             (x              :xs) = x: adjacent file (n+1) x xs
-adjacent _    _ _             []                   = []
 
-message :: String -> Int -> String -> String -> String
-message "\"\"" n p c = "Line "++show n++": "++p++ " line before "++c++" line.\n"
-message []     n p c = "Line "++show n++": "++p++ " line before "++c++" line.\n"
-message file   n p c = "In file " ++ file ++ " at line "++show n++": "++p++ " line before "++c++" line.\n"
+isBirdTrack = isPrefixOf ">"
+isCpp = isPrefixOf "#"
+isCodeStart = isPrefixOf "\\begin{code}"
+isCodeEnd = isPrefixOf "\\end{code}"
+isEmptyLine = all isSpace
+
+-- Here we model a state machine, with each state represented by
+-- a local function. We only have four states (well, five,
+-- if you count the error state), but the rules
+-- to transition between then are not so simple.
+-- Would it be simpler to have more states?
+--
+-- Each state represents the type of line that was last read
+-- i.e. are we in a comment section, or a latex-code section,
+-- or a bird-code section, etc?
+classify :: String -> [String] -> [String]
+classify file [] = []
+classify file lines = blank lines 1  -- begin in blank state
+  where
+    err n msg = error ("In file "++file++" at line "++show n++": "++msg++".")
+    dropBird _ ('>':' ':x) = x
+    dropBird _ ('>':x) = x
+    dropBird n _ = err n "expecting '>' at start of line"
+    mkComment x = "-- " ++ x
+
+    transition classification [] _ _ = [classification]
+    -- First case guarantee that xs is never null,
+    -- so state functions can assume that too.
+    transition classification xs n state = classification : state xs (n+1)
+
+    latex (x:xs) n
+      | isCodeEnd x = transition "" xs n comment
+      | isCodeStart x = err n "\\begin{code} in code section"
+      | otherwise = transition x xs n latex
+
+    blank (x:xs) n
+      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
+      | isCodeStart x = transition "" xs n latex
+      | isCpp x = transition x xs n blank
+      | isBirdTrack x = transition (dropBird n x) xs n bird
+      | isEmptyLine x = transition "" xs n blank
+      | otherwise = transition (mkComment x) xs n comment
+
+    bird (x:xs) n
+      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
+      | isCodeStart x = transition "" xs n latex
+      | isCpp x = transition x xs n bird
+      | isBirdTrack x = transition (dropBird n x) xs n bird
+      | isEmptyLine x = transition "" xs n blank
+      | otherwise = err n "program line before comment line"
+
+    comment (x:xs) n
+      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
+      | isCodeStart x = transition "" xs n latex
+      | isCpp x = transition x xs n comment
+      | isBirdTrack x = err n "comment line before program line"
+      -- special case here: a truly empty line will terminate
+      -- a comment section (and send us into the "blank" state)
+      -- but a line containing whitespace will be treated as a
+      -- comment (prefixed with "-- "), unless it is followed by
+      -- a program line, in which case it is really blank.
+      | null x = transition "" xs n blank
+      | isEmptyLine x && null xs = transition (mkComment x) xs n comment
+      | isEmptyLine x && isBirdTrack (head xs) = transition "" xs n blank
+      | otherwise = transition (mkComment x) xs n comment
 
 
 -- Re-implementation of 'lines', for better efficiency (but decreased laziness).
@@ -83,8 +98,7 @@ inlines :: String -> [String]
 inlines xs = lines' xs id
   where
   lines' []             acc = [acc []]
-  lines' ('\^M':'\n':s) acc = acc [] : lines' s id	-- DOS
-  lines' ('\^M':s)      acc = acc [] : lines' s id	-- MacOS
-  lines' ('\n':s)       acc = acc [] : lines' s id	-- Unix
+  lines' ('\^M':'\n':s) acc = acc [] : lines' s id    -- DOS
+  lines' ('\^M':s)      acc = acc [] : lines' s id    -- MacOS
+  lines' ('\n':s)       acc = acc [] : lines' s id    -- Unix
   lines' (c:s)          acc = lines' s (acc . (c:))
-
