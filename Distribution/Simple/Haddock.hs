@@ -274,15 +274,19 @@ haddock pkg_descr lbi suffixes flags = do
                  let targetDir  = pref </> filePref
                  let targetFile = targetDir </> fileName
                  let (targetFileNoext, targetFileExt) = splitExtension targetFile
+                 let cppOutput = targetFileNoext <.> "hspp"
+                 let hsFile = targetFileNoext <.> "hs"
                  createDirectoryIfMissingVerbose verbosity True targetDir
-                 if needsCpp bi
-                    then runSimplePreProcessor (ppCpp' inputArgs bi lbi)
-                           file targetFile verbosity
-                    else copyFile file targetFile
-                 when (targetFileExt == ".lhs") $ do
-                       runSimplePreProcessor ppUnlit
-                         targetFile (targetFileNoext <.> "hs") verbosity
-                       return ()
+                 -- Run unlit first, then CPP
+                 if (targetFileExt == ".lhs")
+                     then runSimplePreProcessor ppUnlit file hsFile verbosity
+                     else copyFile file hsFile
+                 when (needsCpp bi) $ do
+                     runSimplePreProcessor (ppCpp' inputArgs bi lbi)
+                       hsFile cppOutput verbosity
+                     removeFile hsFile
+                     copyFile cppOutput hsFile
+                     removeFile cppOutput
         needsCpp :: BuildInfo -> Bool
         needsCpp bi = CPP `elem` extensions bi
 
