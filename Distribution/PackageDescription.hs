@@ -76,6 +76,7 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         allBuildInfo,
+	unionBuildInfo,
 
         -- ** Supplementary build information
         HookedBuildInfo,
