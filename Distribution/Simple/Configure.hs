@@ -51,6 +51,7 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
 				      configDependency,
                                       configCompiler, configCompilerAux,
+                                      ccLdOptionsBuildInfo,
 #ifdef DEBUG
                                       hunitTests
 #endif
@@ -76,7 +77,8 @@ import Distribution.PackageDescription
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), Executable(..), BuildInfo(..), finalizePackageDescription
     , HookedBuildInfo, sanityCheckPackage, updatePackageDescription
-    , setupMessage, satisfyDependency, hasLibs, allBuildInfo )
+    , setupMessage, satisfyDependency, hasLibs
+    , allBuildInfo, emptyBuildInfo, unionBuildInfo )
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
@@ -451,32 +453,42 @@ configurePkgconfigPackages verbosity pkg_descr conf
 
     updateLibrary Nothing    = return Nothing
     updateLibrary (Just lib) = do
-      let bi = libBuildInfo lib
-      bi' <- updateBuildInfo bi
-      return $ Just lib { libBuildInfo = bi' }
+      bi <- pkgconfigBuildInfo (pkgconfigDepends (libBuildInfo lib))
+      return $ Just lib { libBuildInfo = libBuildInfo lib `unionBuildInfo` bi }
 
     updateExecutable exe = do
-      let bi = buildInfo exe
-      bi' <- updateBuildInfo bi
-      return exe { buildInfo = bi' }
+      bi <- pkgconfigBuildInfo (pkgconfigDepends (buildInfo exe))
+      return exe { buildInfo = buildInfo exe `unionBuildInfo` bi }
 
-    updateBuildInfo :: BuildInfo -> IO BuildInfo
-    updateBuildInfo bi
-      | not (buildable bi) = return bi
-      | otherwise = do
-      let pkgs = nub [ pkg | Dependency pkg _ <- pkgconfigDepends bi ]
-      cflags  <- words `fmap` pkgconfig ("--cflags" : pkgs)
-      ldflags <- words `fmap` pkgconfig ("--libs"   : pkgs)
-      let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
-          (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
-          (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
-      return bi {
-        includeDirs  = includeDirs  bi ++ map (drop 2) includeDirs',
-        extraLibs    = extraLibs    bi ++ map (drop 2) extraLibs',
-        extraLibDirs = extraLibDirs bi ++ map (drop 2) extraLibDirs',
-        ccOptions    = ccOptions    bi ++ cflags',
-        ldOptions    = ldOptions    bi ++ ldflags''
-      }
+    pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
+    pkgconfigBuildInfo pkgdeps = do
+      let pkgs = nub [ pkg | Dependency pkg _ <- pkgdeps ]
+      ccflags <- pkgconfig ("--cflags" : pkgs)
+      ldflags <- pkgconfig ("--libs"   : pkgs)
+      return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))
+
+-- | Makes a 'BuildInfo' from C compiler and linker flags.
+--
+-- This can be used with the output from configuration programs like pkg-config
+-- and similar package-specific programs like mysql-config, freealut-config etc.
+-- For example:
+--
+-- > ccflags <- rawSystemProgramStdoutConf verbosity prog conf ["--cflags"]
+-- > ldflags <- rawSystemProgramStdoutConf verbosity prog conf ["--libs"]
+-- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags))
+--
+ccLdOptionsBuildInfo :: [String] -> [String] -> BuildInfo
+ccLdOptionsBuildInfo cflags ldflags =
+  let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
+      (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
+      (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
+  in emptyBuildInfo {
+       includeDirs  = map (drop 2) includeDirs',
+       extraLibs    = map (drop 2) extraLibs',
+       extraLibDirs = map (drop 2) extraLibDirs',
+       ccOptions    = cflags',
+       ldOptions    = ldflags''
+     }
 
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
