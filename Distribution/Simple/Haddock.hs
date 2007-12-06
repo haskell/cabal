@@ -308,7 +308,7 @@ ghcSimpleOptions lbi bi mockDir
 
 hscolour :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HscolourFlags -> IO ()
 hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
-    (confHscolour, _) <- requireProgram verbosity hscolourProgram
+    (hscolourProg, _) <- requireProgram verbosity hscolourProgram
                          (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
 
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
@@ -325,8 +325,8 @@ hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
             let outputDir = hscolourPref pkg_descr </> "src"
             let outFile = outputDir </> replaceDot mo <.> "html"
             createDirectoryIfMissingVerbose verbosity True outputDir
-            copyCSS outputDir
-            rawSystemProgram verbosity confHscolour
+            copyCSS hscolourProg outputDir
+            rawSystemProgram verbosity hscolourProg
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
 
     withExe pkg_descr $ \exe -> when doExes $ do
@@ -334,16 +334,19 @@ hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
         let modules = "Main" : otherModules bi
         let outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
         createDirectoryIfMissingVerbose verbosity True outputDir
-        copyCSS outputDir
+        copyCSS hscolourProg outputDir
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         inFiles <- liftM (srcMainPath :) $ getModulePaths lbi bi (otherModules bi)
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
             let outFile = outputDir </> replaceDot mo <.> "html"
-            rawSystemProgram verbosity confHscolour
+            rawSystemProgram verbosity hscolourProg
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
-  where copyCSS dir = case stylesheet of
-                      Nothing -> return ()
-                      Just s -> copyFile s (dir </> "hscolour.css")
+  where copyCSS hscolourProg dir = case stylesheet of
+          Nothing | programVersion hscolourProg >= Just (Version [1,9] []) ->
+                    rawSystemProgram verbosity hscolourProg
+                      ["-print-css", "-o" ++ dir </> "hscolour.css"]
+                  | otherwise -> return ()
+          Just s -> copyFile s (dir </> "hscolour.css")
 
 
 --TODO: where to put this? it's duplicated in .Simple too
