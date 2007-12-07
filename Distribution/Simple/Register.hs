@@ -63,7 +63,6 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirs(..),
-                                           haddockinterfacedir, haddockdir,
                                            InstallDirTemplates(..),
 					   absoluteInstallDirs, toPathTemplate)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
@@ -272,18 +271,18 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                           dataSubdirTemplate = toPathTemplate distPref,
                           docDirTemplate     = toPathTemplate (pwd </> distPref </> "doc"),
                           htmlDirTemplate    = toPathTemplate (pwd </> distPref </> "doc" </> "html" </> pkgName (package pkg_descr)),
-                          interfaceDirTemplate = toPathTemplate (pwd </> distPref </> "doc" </> "html" </> pkgName (package pkg_descr))
+                          haddockDirTemplate = toPathTemplate (pwd </> distPref </> "doc" </> "html" </> pkgName (package pkg_descr))
                         }
                       } NoCopyDest
         (absinc,relinc) = partition isAbsolute (includeDirs bi)
         installIncludeDir | null (installIncludes bi) = []
                           | otherwise = [includedir installDirs]
         haddockInterfaceDir
-         | inplace   = haddockinterfacedir inplaceDirs pkg_descr
-         | otherwise = haddockinterfacedir installDirs pkg_descr
-        haddockDir
-         | inplace   = haddockdir inplaceDirs pkg_descr
-         | otherwise = haddockdir installDirs pkg_descr
+         | inplace   = haddockdir inplaceDirs
+         | otherwise = haddockdir installDirs
+        haddockHtmlDir
+         | inplace   = htmldir inplaceDirs
+         | otherwise = htmldir installDirs
         libraryDir
          | inplace   = build_dir
          | otherwise = libdir installDirs
@@ -317,7 +316,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
 	IPI.haddockInterfaces = [haddockInterfaceDir </> haddockName pkg_descr],
-	IPI.haddockHTMLs      = [haddockDir]
+	IPI.haddockHTMLs      = [haddockHtmlDir]
         }
 
 -- -----------------------------------------------------------------------------
