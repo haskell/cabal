@@ -506,6 +506,8 @@ nhcProgram = (simpleProgram "nhc98") {
 hmakeProgram :: Program
 hmakeProgram = (simpleProgram "hmake") {
     programFindVersion = findProgramVersion "--version" $ \str ->
+    -- Invoking "hmake --version" gives a string line
+    -- "/usr/local/bin/hmake: 3.13 (2006-11-01)"
       case words str of
         (_:ver:_) -> ver
         _         -> ""
