@@ -258,24 +258,39 @@ oldLanguageExtensions =
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
                      -> IO [PackageIdentifier]
 getInstalledPackages verbosity packagedb conf = do
-   --TODO: use --simple-output flag for easier parsing
-   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
-            [packageDbGhcPkgFlag packagedb, "list"]
-   let str1 = case packagedb of
-                UserPackageDB -> allFiles str
-                _             -> firstFile str
-       str2 = filter (`notElem` ",(){}") str1
-       --
-   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str2) of
-     [ps] -> return ps
-     _    -> die "cannot parse package list"
-  where
-    packageDbGhcPkgFlag GlobalPackageDB          = "--global"
-    packageDbGhcPkgFlag UserPackageDB            = "--user"
-    packageDbGhcPkgFlag (SpecificPackageDB path) = "--package-conf=" ++ path
 
-    pCheck :: [(a, [Char])] -> [a]
+   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf $
+              ["list"]
+	    ++ (if useSimpleOutput then ["--simple-output"] else [])
+	    ++ packageDbGhcPkgFlag packagedb
+   case parse (munge str) of
+     [ps] -> return ps
+     _    -> die "cannot parse ghc package list"
+  where
+    useSimpleOutput = ghcVersion >= Version [6,9] []
+      where Just ghcProg = lookupProgram ghcProgram conf
+            Just ghcVersion = programVersion ghcProg
+
+    packageDbGhcPkgFlag GlobalPackageDB          = ["--global"]
+    packageDbGhcPkgFlag UserPackageDB            = ["--global", "--user"]
+    packageDbGhcPkgFlag (SpecificPackageDB path) = ["--global",
+                                                    "--package-conf=" ++ path]
+    parse = pCheck . readP_to_S (many (skipSpaces >> parsePackageId))
     pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
+
+    munge | useSimpleOutput = id
+
+    -- All the remaining nonsense is to deal with having to parse the
+    -- human-readable output of ghc-pkg rather than the --simple-output.
+    -- This was necessary in ghc-6.8 and before because previously we
+    -- could not specify with --simple-output exactly which package dbs
+    -- to query so the global and user were mixed up together.
+
+          | otherwise = case packagedb of
+              GlobalPackageDB -> stripFluff . firstFile
+              _               -> stripFluff . allFiles
+
+    stripFluff = filter (`notElem` ",(){}")
 
     allFiles str = unlines $ filter keep_line $ lines str
         where keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
