@@ -108,6 +108,7 @@ data InstallDirs dir = InstallDirs {
         includedir   :: dir,
         datadir      :: dir,
         docdir       :: dir,
+	mandir       :: dir,
         htmldir      :: dir,
         interfacedir :: dir
     } deriving (Read, Show)
@@ -145,6 +146,7 @@ data InstallDirTemplates = InstallDirTemplates {
         dataDirTemplate      :: PathTemplate,
         dataSubdirTemplate   :: PathTemplate,
         docDirTemplate       :: PathTemplate,
+        manDirTemplate       :: PathTemplate,
         htmlDirTemplate      :: PathTemplate,
         interfaceDirTemplate :: PathTemplate
     } deriving (Read, Show)
@@ -179,6 +181,7 @@ defaultInstallDirs comp hasLibs = do
       docDir       = case os of
         Windows _ -> "$prefix"  </> "doc" </> "$pkgid"
 	_other    -> "$datadir" </> "doc" </> "$pkgid"
+      manDir       = "$datadir" </> "man"
       htmlDir      = "$docdir"  </> "html"
       interfaceDir = "$docdir"  </> "html"
   return InstallDirTemplates {
@@ -192,6 +195,7 @@ defaultInstallDirs comp hasLibs = do
       dataDirTemplate      = toPathTemplate dataDir,
       dataSubdirTemplate   = toPathTemplate dataSubdir,
       docDirTemplate       = toPathTemplate docDir,
+      manDirTemplate       = toPathTemplate manDir,
       htmlDirTemplate      = toPathTemplate htmlDir,
       interfaceDirTemplate = toPathTemplate interfaceDir
     }
@@ -236,6 +240,8 @@ substituteTemplates pkgId compilerId dirs = dirs'
       dataSubdirTemplate = subst dataSubdirTemplate [],
       docDirTemplate     = subst docDirTemplate   $ prefixBinLibVars
                              ++ [dataDirVar, dataSubdirVar],
+      manDirTemplate     = subst docDirTemplate   $ prefixBinLibVars
+                             ++ [dataDirVar],
       htmlDirTemplate    = subst htmlDirTemplate  $ prefixBinLibVars
                              ++ [dataDirVar, dataSubdirVar, docDirVar],
       interfaceDirTemplate = subst interfaceDirTemplate  $ prefixBinLibVars
@@ -270,6 +276,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
     includedir   = copy $ path includeDirTemplate,
     datadir      = copy $ path dataDirTemplate </> path dataSubdirTemplate,
     docdir       = copy $ path docDirTemplate,
+    mandir       = copy $ path manDirTemplate,
     htmldir      = copy $ path htmlDirTemplate,
     interfacedir = copy $ path interfaceDirTemplate
   }
