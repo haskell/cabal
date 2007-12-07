@@ -52,7 +52,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.InstallDirs (
-        InstallDirs(..), haddockdir, haddockinterfacedir,
+        InstallDirs(..),
         InstallDirTemplates(..),
         defaultInstallDirs,
         absoluteInstallDirs,
@@ -110,7 +110,7 @@ data InstallDirs dir = InstallDirs {
         docdir       :: dir,
 	mandir       :: dir,
         htmldir      :: dir,
-        interfacedir :: dir
+        haddockdir   :: dir
     } deriving (Read, Show)
 
 -- | The installation dirctories in terms of 'PathTemplate's that contain
@@ -148,7 +148,7 @@ data InstallDirTemplates = InstallDirTemplates {
         docDirTemplate       :: PathTemplate,
         manDirTemplate       :: PathTemplate,
         htmlDirTemplate      :: PathTemplate,
-        interfaceDirTemplate :: PathTemplate
+        haddockDirTemplate   :: PathTemplate
     } deriving (Read, Show)
 
 -- ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ defaultInstallDirs comp hasLibs = do
 	_other    -> "$datadir" </> "doc" </> "$pkgid"
       manDir       = "$datadir" </> "man"
       htmlDir      = "$docdir"  </> "html"
-      interfaceDir = "$docdir"  </> "html"
+      haddockDir   = "$htmldir"
   return InstallDirTemplates {
       prefixDirTemplate    = toPathTemplate prefixDir,
       binDirTemplate       = toPathTemplate binDir,
@@ -197,16 +197,8 @@ defaultInstallDirs comp hasLibs = do
       docDirTemplate       = toPathTemplate docDir,
       manDirTemplate       = toPathTemplate manDir,
       htmlDirTemplate      = toPathTemplate htmlDir,
-      interfaceDirTemplate = toPathTemplate interfaceDir
+      haddockDirTemplate   = toPathTemplate haddockDir
     }
-
-haddockdir :: InstallDirs FilePath -> PackageDescription -> FilePath
-haddockdir installDirs pkg_descr =
-  htmldir installDirs
-
-haddockinterfacedir :: InstallDirs FilePath -> PackageDescription -> FilePath
-haddockinterfacedir installDirs pkg_descr =
-  interfacedir installDirs
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative
@@ -244,8 +236,9 @@ substituteTemplates pkgId compilerId dirs = dirs'
                              ++ [dataDirVar],
       htmlDirTemplate    = subst htmlDirTemplate  $ prefixBinLibVars
                              ++ [dataDirVar, dataSubdirVar, docDirVar],
-      interfaceDirTemplate = subst interfaceDirTemplate  $ prefixBinLibVars
-                             ++ [dataDirVar, dataSubdirVar, docDirVar]
+      haddockDirTemplate = subst haddockDirTemplate  $ prefixBinLibVars
+                             ++ [dataDirVar, dataSubdirVar,
+			         docDirVar, htmlDirVar]
     }
     -- The initial environment has all the static stuff but no paths
     env = initialPathTemplateEnv pkgId compilerId
@@ -258,6 +251,7 @@ substituteTemplates pkgId compilerId dirs = dirs'
     dataDirVar       = (DataDirVar,    dataDirTemplate    dirs')
     dataSubdirVar    = (DataSubdirVar, dataSubdirTemplate dirs')
     docDirVar        = (DocDirVar,     docDirTemplate     dirs')
+    htmlDirVar       = (HtmlDirVar,    htmlDirTemplate    dirs')
     prefixBinLibVars = [prefixDirVar, binDirVar, libDirVar, libSubdirVar]
 
 -- | Convert from abstract install directories to actual absolute ones by
@@ -278,7 +272,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
     docdir       = copy $ path docDirTemplate,
     mandir       = copy $ path manDirTemplate,
     htmldir      = copy $ path htmlDirTemplate,
-    interfacedir = copy $ path interfaceDirTemplate
+    haddockdir   = copy $ path haddockDirTemplate
   }
   where
     dirs' = substituteTemplates pkgId compilerId dirs {
@@ -314,7 +308,7 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
     datadir      = (flip fmap) (relative dataDirTemplate) (</> path dataSubdirTemplate),
     docdir       = relative docDirTemplate,
     htmldir      = relative htmlDirTemplate,
-    interfacedir = relative interfaceDirTemplate
+    haddockdir   = relative haddockDirTemplate
   }
   where
     -- substitute the path template into each other, except that we map
@@ -353,6 +347,7 @@ data PathTemplateVariable =
      | DataDirVar    -- ^ The @$datadir@ path variable
      | DataSubdirVar -- ^ The @$datasubdir@ path variable
      | DocDirVar     -- ^ The @$docdir@ path variable
+     | HtmlDirVar    -- ^ The @$htmldir@ path variable
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
@@ -407,6 +402,7 @@ instance Show PathTemplateVariable where
   show DataDirVar    = "datadir"
   show DataSubdirVar = "datasubdir"
   show DocDirVar     = "docdir"
+  show HtmlDirVar    = "htmldir"
   show PkgNameVar    = "pkg"
   show PkgVerVar     = "version"
   show PkgIdVar      = "pkgid"
@@ -425,6 +421,7 @@ instance Read PathTemplateVariable where
 	         ,("datadir",    DataDirVar)
 	         ,("datasubdir", DataSubdirVar)
 	         ,("docdir",     DocDirVar)
+		 ,("htmldir",    HtmlDirVar)
 	         ,("pkgid",      PkgIdVar)
 	         ,("pkg",        PkgNameVar)
 	         ,("version",    PkgVerVar)
