@@ -496,8 +496,7 @@ nhcProgram :: Program
 nhcProgram = (simpleProgram "nhc98") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "nhc98 --version" gives a string like
-      -- /usr/local/bin/nhc98: v1.20 (2007-11-22)
-      -- [ config: ix86-Linux/ghc by user@host on Fri Nov 23 14:11:17 GMT 2007 ]
+      -- "/usr/local/bin/nhc98: v1.20 (2007-11-22)"
       case words str of
         (_:('v':ver):_) -> ver
         _               -> ""
