@@ -319,28 +319,29 @@ hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
 
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
         let bi = libBuildInfo lib
-        let modules = exposedModules lib ++ otherModules bi
+            modules = exposedModules lib ++ otherModules bi
+	    outputDir = hscolourPref pkg_descr </> "src"
+	createDirectoryIfMissingVerbose verbosity True outputDir
+	copyCSS hscolourProg outputDir
         inFiles <- getModulePaths lbi bi modules
-        flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
-            let outputDir = hscolourPref pkg_descr </> "src"
+        flip mapM_ (zip modules inFiles) $ \(mo, inFile) ->
             let outFile = outputDir </> replaceDot mo <.> "html"
-            createDirectoryIfMissingVerbose verbosity True outputDir
-            copyCSS hscolourProg outputDir
-            rawSystemProgram verbosity hscolourProg
+             in rawSystemProgram verbosity hscolourProg
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
 
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
-        let modules = "Main" : otherModules bi
-        let outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
+            modules = "Main" : otherModules bi
+            outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
         createDirectoryIfMissingVerbose verbosity True outputDir
         copyCSS hscolourProg outputDir
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         inFiles <- liftM (srcMainPath :) $ getModulePaths lbi bi (otherModules bi)
-        flip mapM_ (zip modules inFiles) $ \(mo, inFile) -> do
+        flip mapM_ (zip modules inFiles) $ \(mo, inFile) ->
             let outFile = outputDir </> replaceDot mo <.> "html"
-            rawSystemProgram verbosity hscolourProg
+            in rawSystemProgram verbosity hscolourProg
                      ["-css", "-anchor", "-o" ++ outFile, inFile]
+
   where copyCSS hscolourProg dir = case stylesheet of
           Nothing | programVersion hscolourProg >= Just (Version [1,9] []) ->
                     rawSystemProgram verbosity hscolourProg
