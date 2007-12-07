@@ -125,7 +125,7 @@ data ConfigFlags = ConfigFlags {
 		-- ^installation dir for documentation
 	configHtmlDir   :: Maybe FilePath,
 		-- ^installation dir for HTML documentation
-	configInterfaceDir :: Maybe FilePath,
+	configHaddockDir :: Maybe FilePath,
 		-- ^installation dir for haddock interfaces
         configScratchDir :: Maybe FilePath,
 
@@ -160,7 +160,7 @@ emptyConfigFlags progConf = ConfigFlags {
 	configDataSubDir = Nothing,
 	configDocDir = Nothing,
 	configHtmlDir = Nothing,
-	configInterfaceDir = Nothing,
+	configHaddockDir = Nothing,
         configScratchDir = Nothing,
         configVerbose  = normal,
 	configPackageDB = GlobalPackageDB,
@@ -375,9 +375,9 @@ configureCommand progConf = makeCommand name shortDesc longDesc emptyFlags optio
 	 "installation directory for HTML documentation"
          (reqArg "DIR" $ \path flags -> flags { configHtmlDir = Just path })
 
-      ,option "" ["interfacedir"]
+      ,option "" ["haddockdir"]
 	 "installation directory for haddock interfaces"
-         (reqArg "DIR" $ \path flags -> flags { configInterfaceDir = Just path })
+         (reqArg "DIR" $ \path flags -> flags { configHaddockDir = Just path })
 
       ,option "b" ["scratchdir"]
          "directory to receive the built package [dist/scratch]"
