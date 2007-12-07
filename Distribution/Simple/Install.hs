@@ -108,7 +108,7 @@ install pkg_descr lbi (CopyFlags copydest verbosity) = do
          progdir    = progPref,
          docdir     = docPref,
          htmldir    = htmlPref,
-         interfacedir = interfacePref,
+         haddockdir = interfacePref,
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
   docExists <- doesDirectoryExist $ haddockPref pkg_descr

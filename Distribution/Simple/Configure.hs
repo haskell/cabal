@@ -271,7 +271,7 @@ configure (pkg_descr0, pbi) cfg
 		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate,
 		docDirTemplate     = maybeDefault configDocDir     docDirTemplate,
 		htmlDirTemplate    = maybeDefault configHtmlDir    htmlDirTemplate,
-                interfaceDirTemplate = maybeDefault configInterfaceDir interfaceDirTemplate
+                haddockDirTemplate = maybeDefault configHaddockDir haddockDirTemplate
 	      }
 
         -- check extensions
