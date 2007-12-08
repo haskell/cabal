@@ -48,6 +48,7 @@ module Distribution.Simple.InstallDirs (
         InstallDirs(..),
         InstallDirTemplates,
         defaultInstallDirs,
+        combineInstallDirs,
         absoluteInstallDirs,
         CopyDest(..),
         prefixRelativeInstallDirs,
