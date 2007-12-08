@@ -78,6 +78,7 @@ import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
 import Distribution.Simple.Utils (wrapText)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms, userSpecifyPath, userSpecifyArgs)
+import Distribution.Simple.InstallDirs (CopyDest(..), InstallDirs(..))
 import Data.List (sort)
 import Data.Char( toLower, isSpace )
 import Distribution.GetOpt as GetOpt
@@ -174,16 +175,9 @@ data CopyFlags = CopyFlags {copyDest :: CopyDest
                            ,copyVerbose :: Verbosity}
     deriving Show
 
--- |The location prefix for the /copy/ command.
-data CopyDest
-  = NoCopyDest
-  | CopyTo FilePath
-  | CopyPrefix FilePath		-- DEPRECATED
-  deriving (Eq, Show)
-
-emptyCopyFlags :: CopyDest -> CopyFlags
-emptyCopyFlags mprefix = CopyFlags{ copyDest = mprefix,
-                                    copyVerbose = normal }
+emptyCopyFlags :: CopyFlags
+emptyCopyFlags = CopyFlags{ copyDest = NoCopyDest,
+                            copyVerbose = normal }
 
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags {installPackageDB :: Maybe PackageDB
@@ -662,7 +656,7 @@ copyCommand = makeCommand name shortDesc longDesc emptyFlags options
     longDesc   = Just $ \_ ->
           "Does not call register, and allows a prefix at install time\n"
        ++ "Without the --destdir flag, configure determines location.\n"
-    emptyFlags = emptyCopyFlags NoCopyDest
+    emptyFlags = emptyCopyFlags
     options _  =
       [optionVerbose
          (\v flags -> flags { copyVerbose = v })
