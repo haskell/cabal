@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.InstallDirs (
         InstallDirs(..),
-        InstallDirTemplates(..),
+        InstallDirTemplates,
         defaultInstallDirs,
         absoluteInstallDirs,
         CopyDest(..),
@@ -63,7 +63,8 @@ module Distribution.Simple.InstallDirs (
 
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
-import System.FilePath ((</>), isPathSeparator)
+import Data.Monoid (Monoid(..))
+import System.FilePath ((</>), isPathSeparator, pathSeparator)
 #if __HUGS__ || __GLASGOW_HASKELL__ > 606
 import System.FilePath (dropDrive)
 #endif
@@ -93,16 +94,84 @@ data InstallDirs dir = InstallDirs {
         prefix       :: dir,
         bindir       :: dir,
         libdir       :: dir,
+	libsubdir    :: dir,
         dynlibdir    :: dir,
         libexecdir   :: dir,
         progdir      :: dir,
         includedir   :: dir,
         datadir      :: dir,
+	datasubdir   :: dir,
         docdir       :: dir,
 	mandir       :: dir,
         htmldir      :: dir,
         haddockdir   :: dir
     } deriving (Read, Show)
+
+instance Functor InstallDirs where
+  fmap f dirs = InstallDirs {
+    prefix       = f (prefix dirs),
+    bindir       = f (bindir dirs),
+    libdir       = f (libdir dirs),
+    libsubdir    = f (libsubdir dirs),
+    dynlibdir    = f (dynlibdir dirs),
+    libexecdir   = f (libexecdir dirs),
+    progdir      = f (progdir dirs),
+    includedir   = f (includedir dirs),
+    datadir      = f (datadir dirs),
+    datasubdir   = f (datasubdir dirs),
+    docdir       = f (docdir dirs),
+    mandir       = f (mandir dirs),
+    htmldir      = f (htmldir dirs),
+    haddockdir   = f (haddockdir dirs)
+  }
+
+instance Monoid dir => Monoid (InstallDirs dir) where
+  mempty = InstallDirs {
+      prefix       = mempty,
+      bindir       = mempty,
+      libdir       = mempty,
+      libsubdir    = mempty,
+      dynlibdir    = mempty,
+      libexecdir   = mempty,
+      progdir      = mempty,
+      includedir   = mempty,
+      datadir      = mempty,
+      datasubdir   = mempty,
+      docdir       = mempty,
+      mandir       = mempty,
+      htmldir      = mempty,
+      haddockdir   = mempty
+  }
+  mappend = combineInstallDirs mappend
+
+combineInstallDirs :: (a -> b -> c)
+                   -> InstallDirs a
+		   -> InstallDirs b
+		   -> InstallDirs c
+combineInstallDirs combine a b = InstallDirs {
+    prefix       = prefix a     `combine` prefix b,
+    bindir       = bindir a     `combine` bindir b,
+    libdir       = libdir a     `combine` libdir b,
+    libsubdir    = libsubdir a  `combine` libsubdir b,
+    dynlibdir    = dynlibdir a  `combine` dynlibdir b,
+    libexecdir   = libexecdir a `combine` libexecdir b,
+    progdir      = progdir a    `combine` progdir b,
+    includedir   = includedir a `combine` includedir b,
+    datadir      = datadir a    `combine` datadir b,
+    datasubdir   = datasubdir a `combine` datasubdir b,
+    docdir       = docdir a     `combine` docdir b,
+    mandir       = mandir a     `combine` mandir b,
+    htmldir      = htmldir a    `combine` htmldir b,
+    haddockdir   = haddockdir a `combine` haddockdir b
+  }
+
+appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
+appendSubdirs append dirs = dirs {
+    libdir     = libdir dirs `append` libsubdir dirs,
+    datadir    = datadir dirs `append` datasubdir dirs,
+    libsubdir  = error "internal error InstallDirs.libsubdir",
+    datasubdir = error "internal error InstallDirs.datasubdir"
+  }
 
 -- | The installation dirctories in terms of 'PathTemplate's that contain
 -- variables.
@@ -121,26 +190,12 @@ data InstallDirs dir = InstallDirs {
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
 -- because by default we want to support installing multiplve versions of
 -- packages and building the same package for multiple compilers we append the
--- libdubdir to get: @\/usr\/lib64\/$pkgid\/$compiler@.
+-- libsubdir to get: @\/usr\/lib64\/$pkgid\/$compiler@.
 --
 -- An additional complication is the need to support relocatable packages on
 -- systems which support such things, like Windows.
 --
-data InstallDirTemplates = InstallDirTemplates {
-        prefixDirTemplate    :: PathTemplate,
-        binDirTemplate       :: PathTemplate,
-        libDirTemplate       :: PathTemplate,
-        libSubdirTemplate    :: PathTemplate,
-        libexecDirTemplate   :: PathTemplate,
-        progDirTemplate      :: PathTemplate,
-        includeDirTemplate   :: PathTemplate,
-        dataDirTemplate      :: PathTemplate,
-        dataSubdirTemplate   :: PathTemplate,
-        docDirTemplate       :: PathTemplate,
-        manDirTemplate       :: PathTemplate,
-        htmlDirTemplate      :: PathTemplate,
-        haddockDirTemplate   :: PathTemplate
-    } deriving (Read, Show)
+type InstallDirTemplates = InstallDirs PathTemplate
 
 -- ---------------------------------------------------------------------------
 -- Default installation directories
@@ -148,48 +203,36 @@ data InstallDirTemplates = InstallDirTemplates {
 defaultInstallDirs :: CompilerFlavor -> Bool -> IO InstallDirTemplates
 defaultInstallDirs comp hasLibs = do
   windowsProgramFilesDir <- getWindowsProgramFilesDir
-  let prefixDir    = case os of
+  return $ fmap toPathTemplate $ InstallDirs {
+      prefix       = case os of
         Windows _ -> windowsProgramFilesDir </> "Haskell"
-        _other    -> "/usr/local"
-      binDir       = "$prefix" </> "bin"
-      libDir       = case os of
+        _other    -> "/usr/local",
+      bindir       = "$prefix" </> "bin",
+      libdir       = case os of
         Windows _ -> "$prefix"
-        _other    -> "$prefix" </> "lib"
-      libSubdir    = case comp of
+        _other    -> "$prefix" </> "lib",
+      libsubdir    = case comp of
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
-           _other -> "$pkgid" </> "$compiler"
-      libexecDir   = case os of
+           _other -> "$pkgid" </> "$compiler",
+      dynlibdir    = "FIXME: who knows!?!!",
+      libexecdir   = case os of
         Windows _ -> "$prefix" </> "$pkgid"
-        _other    -> "$prefix" </> "libexec"
-      progDir      = "$libdir" </> "hugs" </> "programs"
-      includeDir   = "$libdir" </> "$libsubdir" </> "include"
-      dataDir      = case os of
+        _other    -> "$prefix" </> "libexec",
+      progdir      = "$libdir" </> "hugs" </> "programs",
+      includedir   = "$libdir" </> "$libsubdir" </> "include",
+      datadir      = case os of
         Windows _  | hasLibs   -> windowsProgramFilesDir </> "Haskell"
                    | otherwise -> "$prefix"
-        _other    -> "$prefix" </> "share"
-      dataSubdir   = "$pkgid"
-      docDir       = case os of
+        _other    -> "$prefix" </> "share",
+      datasubdir   = "$pkgid",
+      docdir       = case os of
         Windows _ -> "$prefix"  </> "doc" </> "$pkgid"
-	_other    -> "$datadir" </> "doc" </> "$pkgid"
-      manDir       = "$datadir" </> "man"
-      htmlDir      = "$docdir"  </> "html"
-      haddockDir   = "$htmldir"
-  return InstallDirTemplates {
-      prefixDirTemplate    = toPathTemplate prefixDir,
-      binDirTemplate       = toPathTemplate binDir,
-      libDirTemplate       = toPathTemplate libDir,
-      libSubdirTemplate    = toPathTemplate libSubdir,
-      libexecDirTemplate   = toPathTemplate libexecDir,
-      progDirTemplate      = toPathTemplate progDir,
-      includeDirTemplate   = toPathTemplate includeDir,
-      dataDirTemplate      = toPathTemplate dataDir,
-      dataSubdirTemplate   = toPathTemplate dataSubdir,
-      docDirTemplate       = toPathTemplate docDir,
-      manDirTemplate       = toPathTemplate manDir,
-      htmlDirTemplate      = toPathTemplate htmlDir,
-      haddockDirTemplate   = toPathTemplate haddockDir
-    }
+	_other    -> "$datadir" </> "doc" </> "$pkgid",
+      mandir       = "$datadir" </> "man",
+      htmldir      = "$docdir"  </> "html",
+      haddockdir   = "$htmldir"
+  }
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative
@@ -202,7 +245,7 @@ defaultInstallDirs comp hasLibs = do
 -- as a subsequent operation.
 --
 -- The reason it is done this way is so that in 'prefixRelativeInstallDirs' we
--- can replace 'prefixDirTemplate' with the 'PrefixVar' and get resulting
+-- can replace 'prefix' with the 'PrefixVar' and get resulting
 -- 'PathTemplate's that still have the 'PrefixVar' in them. Doing this makes it
 -- each to check which paths are relative to the $prefix.
 --
@@ -210,40 +253,38 @@ substituteTemplates :: PackageIdentifier -> PackageIdentifier
                     -> InstallDirTemplates -> InstallDirTemplates
 substituteTemplates pkgId compilerId dirs = dirs'
   where
-    dirs' = InstallDirTemplates {
+    dirs' = InstallDirs {
       -- So this specifies exactly which vars are allowed in each template
-      prefixDirTemplate  = subst prefixDirTemplate  [],
-      binDirTemplate     = subst binDirTemplate     [prefixDirVar],
-      libDirTemplate     = subst libDirTemplate     [prefixDirVar, binDirVar],
-      libSubdirTemplate  = subst libSubdirTemplate  [],
-      libexecDirTemplate = subst libexecDirTemplate prefixBinLibVars,
-      progDirTemplate    = subst progDirTemplate    prefixBinLibVars,
-      includeDirTemplate = subst includeDirTemplate prefixBinLibVars,
-      dataDirTemplate    = subst dataDirTemplate    prefixBinLibVars,
-      dataSubdirTemplate = subst dataSubdirTemplate [],
-      docDirTemplate     = subst docDirTemplate   $ prefixBinLibVars
-                             ++ [dataDirVar, dataSubdirVar],
-      manDirTemplate     = subst docDirTemplate   $ prefixBinLibVars
-                             ++ [dataDirVar],
-      htmlDirTemplate    = subst htmlDirTemplate  $ prefixBinLibVars
-                             ++ [dataDirVar, dataSubdirVar, docDirVar],
-      haddockDirTemplate = subst haddockDirTemplate  $ prefixBinLibVars
-                             ++ [dataDirVar, dataSubdirVar,
-			         docDirVar, htmlDirVar]
+      prefix     = subst prefix     [],
+      bindir     = subst bindir     [prefixVar],
+      libdir     = subst libdir     [prefixVar, bindirVar],
+      libsubdir  = subst libsubdir  [],
+      dynlibdir  = subst dynlibdir  [prefixVar, bindirVar],
+      libexecdir = subst libexecdir prefixBinLibVars,
+      progdir    = subst progdir    prefixBinLibVars,
+      includedir = subst includedir prefixBinLibVars,
+      datadir    = subst datadir    prefixBinLibVars,
+      datasubdir = subst datasubdir [],
+      docdir     = subst docdir     prefixBinLibDataVars,
+      mandir     = subst docdir     (prefixBinLibDataVars ++ [docdirVar]),
+      htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
+      haddockdir = subst haddockdir (prefixBinLibDataVars ++
+                                      [docdirVar, htmldirVar])
     }
     -- The initial environment has all the static stuff but no paths
     env = initialPathTemplateEnv pkgId compilerId
     subst dir env' = substPathTemplate (env'++env) (dir dirs)
 
-    prefixDirVar     = (PrefixVar,     prefixDirTemplate  dirs')
-    binDirVar        = (BinDirVar,     binDirTemplate     dirs')
-    libDirVar        = (LibDirVar,     libDirTemplate     dirs')
-    libSubdirVar     = (LibSubdirVar,  libSubdirTemplate  dirs')
-    dataDirVar       = (DataDirVar,    dataDirTemplate    dirs')
-    dataSubdirVar    = (DataSubdirVar, dataSubdirTemplate dirs')
-    docDirVar        = (DocDirVar,     docDirTemplate     dirs')
-    htmlDirVar       = (HtmlDirVar,    htmlDirTemplate    dirs')
-    prefixBinLibVars = [prefixDirVar, binDirVar, libDirVar, libSubdirVar]
+    prefixVar        = (PrefixVar,     prefix     dirs')
+    bindirVar        = (BindirVar,     bindir     dirs')
+    libdirVar        = (LibdirVar,     libdir     dirs')
+    libsubdirVar     = (LibsubdirVar,  libsubdir  dirs')
+    datadirVar       = (DatadirVar,    datadir    dirs')
+    datasubdirVar    = (DatasubdirVar, datasubdir dirs')
+    docdirVar        = (DocdirVar,     docdir     dirs')
+    htmldirVar       = (HtmldirVar,    htmldir    dirs')
+    prefixBinLibVars = [prefixVar, bindirVar, libdirVar, libsubdirVar]
+    prefixBinLibDataVars = prefixBinLibVars ++ [datadirVar, datasubdirVar]
 
 -- | Convert from abstract install directories to actual absolute ones by
 -- substituting for all the variables in the abstract paths, to get real
@@ -251,32 +292,17 @@ substituteTemplates pkgId compilerId dirs = dirs'
 absoluteInstallDirs :: PackageIdentifier -> PackageIdentifier -> CopyDest
                     -> InstallDirTemplates -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
-  InstallDirs {
-    prefix       = copy $ path prefixDirTemplate,
-    bindir       = copy $ path binDirTemplate,
-    libdir       = copy $ path libDirTemplate </> path libSubdirTemplate,
-    dynlibdir    = copy $ path libDirTemplate,
-    libexecdir   = copy $ path libexecDirTemplate,
-    progdir      = copy $ path progDirTemplate,
-    includedir   = copy $ path includeDirTemplate,
-    datadir      = copy $ path dataDirTemplate </> path dataSubdirTemplate,
-    docdir       = copy $ path docDirTemplate,
-    mandir       = copy $ path manDirTemplate,
-    htmldir      = copy $ path htmlDirTemplate,
-    haddockdir   = copy $ path haddockDirTemplate
-  }
-  where
-    dirs' = substituteTemplates pkgId compilerId dirs {
-              prefixDirTemplate = case copydest of
-                -- possibly override the prefix
-	        CopyPrefix p -> toPathTemplate p
-                _            -> prefixDirTemplate dirs
-            }
-    path dir = case dir dirs' of
-                 PathTemplate cs -> concat [ c | Ordinary c <- cs ]
-    copy dir = case copydest of
-      CopyTo destdir -> destdir </> dropDrive dir
-      _              ->                       dir
+    (case copydest of
+       CopyTo destdir -> fmap ((destdir </>) . dropDrive)
+       _              -> id)
+  . appendSubdirs (</>)
+  . fmap fromPathTemplate
+  $ substituteTemplates pkgId compilerId dirs {
+      prefix = case copydest of
+        -- possibly override the prefix
+	CopyPrefix p -> toPathTemplate p
+        _            -> prefix dirs
+    }
 
 -- |The location prefix for the /copy/ command.
 data CopyDest
@@ -295,35 +321,23 @@ prefixRelativeInstallDirs :: PackageIdentifier -> PackageIdentifier
                           -> InstallDirTemplates
                           -> InstallDirs (Maybe FilePath)
 prefixRelativeInstallDirs pkgId compilerId dirs =
-  InstallDirs {
-    prefix       = relative prefixDirTemplate,
-    bindir       = relative binDirTemplate,
-    libdir       = (flip fmap) (relative libDirTemplate) (</> path libSubdirTemplate),
-    dynlibdir    = (relative libDirTemplate),
-    libexecdir   = relative libexecDirTemplate,
-    progdir      = relative progDirTemplate,
-    includedir   = relative includeDirTemplate,
-    datadir      = (flip fmap) (relative dataDirTemplate) (</> path dataSubdirTemplate),
-    docdir       = relative docDirTemplate,
-    htmldir      = relative htmlDirTemplate,
-    haddockdir   = relative haddockDirTemplate
-  }
-  where
-    -- substitute the path template into each other, except that we map
+    fmap relative
+  . appendSubdirs combinePathTemplate
+  $ -- substitute the path template into each other, except that we map
     -- $prefix back to $prefix. We're trying to end up with templates that
     -- mention no vars except $prefix.
-    dirs' = substituteTemplates pkgId compilerId dirs {
-              prefixDirTemplate = PathTemplate [Variable PrefixVar]
-            }
+    substituteTemplates pkgId compilerId dirs {
+      prefix = PathTemplate [Variable PrefixVar]
+    }
+  where
     -- If it starts with $prefix then it's relative and produce the relative
     -- path by stripping off $prefix/ or $prefix
-    relative dir = case dir dirs' of
+    relative dir = case dir of
       PathTemplate cs -> fmap (fromPathTemplate . PathTemplate) (relative' cs)
     relative' (Variable PrefixVar : Ordinary (s:rest) : rest')
                       | isPathSeparator s = Just (Ordinary rest : rest')
     relative' (Variable PrefixVar : rest) = Just rest
     relative' _                           = Nothing
-    path dir = fromPathTemplate (dir dirs')
 
 -- ---------------------------------------------------------------------------
 -- Path templates
@@ -339,13 +353,13 @@ data PathComponent =
 
 data PathTemplateVariable =
        PrefixVar     -- ^ The @$prefix@ path variable
-     | BinDirVar     -- ^ The @$bindir@ path variable
-     | LibDirVar     -- ^ The @$libdir@ path variable
-     | LibSubdirVar  -- ^ The @$libsubdir@ path variable
-     | DataDirVar    -- ^ The @$datadir@ path variable
-     | DataSubdirVar -- ^ The @$datasubdir@ path variable
-     | DocDirVar     -- ^ The @$docdir@ path variable
-     | HtmlDirVar    -- ^ The @$htmldir@ path variable
+     | BindirVar     -- ^ The @$bindir@ path variable
+     | LibdirVar     -- ^ The @$libdir@ path variable
+     | LibsubdirVar  -- ^ The @$libsubdir@ path variable
+     | DatadirVar    -- ^ The @$datadir@ path variable
+     | DatasubdirVar -- ^ The @$datasubdir@ path variable
+     | DocdirVar     -- ^ The @$docdir@ path variable
+     | HtmldirVar    -- ^ The @$htmldir@ path variable
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
@@ -361,6 +375,10 @@ toPathTemplate = PathTemplate . read
 --
 fromPathTemplate :: PathTemplate -> FilePath
 fromPathTemplate (PathTemplate template) = show template
+
+combinePathTemplate :: PathTemplate -> PathTemplate -> PathTemplate
+combinePathTemplate (PathTemplate t1) (PathTemplate t2) =
+  PathTemplate (t1 ++ [Ordinary [pathSeparator]] ++ t2)
 
 substPathTemplate :: [(PathTemplateVariable, PathTemplate)]
                   -> PathTemplate -> PathTemplate
@@ -394,13 +412,13 @@ initialPathTemplateEnv pkgId compilerId =
 
 instance Show PathTemplateVariable where
   show PrefixVar     = "prefix"
-  show BinDirVar     = "bindir"
-  show LibDirVar     = "libdir"
-  show LibSubdirVar  = "libsubdir"
-  show DataDirVar    = "datadir"
-  show DataSubdirVar = "datasubdir"
-  show DocDirVar     = "docdir"
-  show HtmlDirVar    = "htmldir"
+  show BindirVar     = "bindir"
+  show LibdirVar     = "libdir"
+  show LibsubdirVar  = "libsubdir"
+  show DatadirVar    = "datadir"
+  show DatasubdirVar = "datasubdir"
+  show DocdirVar     = "docdir"
+  show HtmldirVar    = "htmldir"
   show PkgNameVar    = "pkg"
   show PkgVerVar     = "version"
   show PkgIdVar      = "pkgid"
@@ -413,13 +431,13 @@ instance Read PathTemplateVariable where
     | (varStr, var) <- vars
     , varStr `isPrefixOf` s ]
     where vars = [("prefix",     PrefixVar)
-	         ,("bindir",     BinDirVar)
-	         ,("libdir",     LibDirVar)
-	         ,("libsubdir",  LibSubdirVar)
-	         ,("datadir",    DataDirVar)
-	         ,("datasubdir", DataSubdirVar)
-	         ,("docdir",     DocDirVar)
-		 ,("htmldir",    HtmlDirVar)
+	         ,("bindir",     BindirVar)
+	         ,("libdir",     LibdirVar)
+	         ,("libsubdir",  LibsubdirVar)
+	         ,("datadir",    DatadirVar)
+	         ,("datasubdir", DatasubdirVar)
+	         ,("docdir",     DocdirVar)
+		 ,("htmldir",    HtmldirVar)
 	         ,("pkgid",      PkgIdVar)
 	         ,("pkg",        PkgNameVar)
 	         ,("version",    PkgVerVar)
