@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Command (
   
   -- * Constructing commands
-  CommandUI,
+  CommandUI(..),
   ShowOrParseArgs(..),
   makeCommand,
   
@@ -64,25 +64,28 @@ data CommandUI flags = CommandUI {
     commandName        :: String,
     -- | A short, one line description of the command to use in help texts.
     commandSynopsis :: String,
+    -- | The useage line summary for this command
     commandUsage    :: String -> String,
     -- | Additional explanation of the command to use in help texts.
     commandDescription :: Maybe (String -> String),
-    -- | The help text for this command with descriptions of all the options.
-    commandHelp        :: String,
-    -- | Initial / empty flags
+    -- | Initial \/ empty flags
     commandEmptyFlags  :: flags,
     -- | All the GetOpt options for this command
-    commandOptions     :: ShowOrParseArgs
-                       -> [OptDescr (Either CommonFlag (flags -> flags))]
+    commandOptions     :: ShowOrParseArgs -> [OptDescr (flags -> flags)]
   }
 
 data ShowOrParseArgs = ShowArgs | ParseArgs
+
+-- | The help text for this command with descriptions of all the options.
+commandHelp :: CommandUI flags -> String
+commandHelp command =
+  usageInfo "" (addCommonFlags (commandOptions command ShowArgs))
 
 -- | Make a Command from standard 'GetOpt' options.
 makeCommand :: String                         -- ^ name
             -> String                         -- ^ short description
             -> Maybe (String -> String)       -- ^ long description
-            -> flags                          -- ^ initial/empty flags
+            -> flags                          -- ^ initial\/empty flags
             -> (ShowOrParseArgs
               -> [OptDescr (flags -> flags)]) -- ^ options
             -> CommandUI flags
@@ -92,13 +95,13 @@ makeCommand name shortDesc longDesc emptyFlags options =
     commandSynopsis    = shortDesc,
     commandDescription = longDesc,
     commandUsage       = usage,
-    commandHelp        = usageInfo "" (alloptions ShowArgs),
     commandEmptyFlags  = emptyFlags,
-    commandOptions     = alloptions
+    commandOptions     = options
   }
-  where alloptions = addCommonFlags . options
-        usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
-                   ++ "Flags for " ++ "name" ++ ":"
+  where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
+                   ++ "Flags for " ++ name ++ ":"
+
+-- | Common flags that apply to every command
 data CommonFlag = HelpFlag
 
 commonFlags :: [OptDescr CommonFlag]
@@ -117,7 +120,8 @@ addCommonFlags options = map (fmapOptDesc Left)  commonFlags
 
 commandParseArgs :: CommandUI flags -> [String] -> CommandParse (flags, [String])
 commandParseArgs command args =
-  case getOpt RequireOrder (commandOptions command ParseArgs) args of
+  let options = addCommonFlags (commandOptions command ParseArgs) in
+  case getOpt RequireOrder options args of
     (flags, _,    [])
       | not (null [ () | Left HelpFlag <- flags ])
                       -> CommandHelp help
