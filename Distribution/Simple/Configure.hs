@@ -89,8 +89,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
-    ( InstallDirs(..), InstallDirTemplates(..), defaultInstallDirs
-    , toPathTemplate )
+    ( InstallDirs(..), defaultInstallDirs, toPathTemplate )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
@@ -262,16 +261,16 @@ configure (pkg_descr0, pbi) cfg
 	let maybeDefault confField dirField =
 	      maybe (dirField defaultDirs) toPathTemplate (confField cfg)
 	    installDirs = defaultDirs {
-	        prefixDirTemplate  = maybeDefault configPrefix     prefixDirTemplate,
-		binDirTemplate     = maybeDefault configBinDir     binDirTemplate,
-		libDirTemplate     = maybeDefault configLibDir     libDirTemplate,
-		libSubdirTemplate  = maybeDefault configLibSubDir  libSubdirTemplate,
-		libexecDirTemplate = maybeDefault configLibExecDir libexecDirTemplate,
-		dataDirTemplate    = maybeDefault configDataDir    dataDirTemplate,
-		dataSubdirTemplate = maybeDefault configDataSubDir dataSubdirTemplate,
-		docDirTemplate     = maybeDefault configDocDir     docDirTemplate,
-		htmlDirTemplate    = maybeDefault configHtmlDir    htmlDirTemplate,
-                haddockDirTemplate = maybeDefault configHaddockDir haddockDirTemplate
+	        prefix     = maybeDefault configPrefix     prefix,
+		bindir     = maybeDefault configBinDir     bindir,
+		libdir     = maybeDefault configLibDir     libdir,
+		libsubdir  = maybeDefault configLibSubDir  libsubdir,
+		libexecdir = maybeDefault configLibExecDir libexecdir,
+		datadir    = maybeDefault configDataDir    datadir,
+		datasubdir = maybeDefault configDataSubDir datasubdir,
+		docdir     = maybeDefault configDocDir     docdir,
+		htmldir    = maybeDefault configHtmlDir    htmldir,
+                haddockdir = maybeDefault configHaddockDir haddockdir
 	      }
 
         -- check extensions

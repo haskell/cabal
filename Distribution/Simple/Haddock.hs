@@ -59,7 +59,7 @@ import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
 import Distribution.Simple.Build (initialBuildSteps)
-import Distribution.Simple.InstallDirs (InstallDirTemplates(..),
+import Distribution.Simple.InstallDirs (InstallDirs(..),
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,
                                         substPathTemplate,
@@ -161,7 +161,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                 Nothing -> getField pkgId "haddock-html"
                 Just htmlStrTemplate ->
                   let env0 = initialPathTemplateEnv pkgId (compilerId comp)
-                      prefixSubst = prefixDirTemplate (installDirTemplates lbi)
+                      prefixSubst = prefix (installDirTemplates lbi)
                       env = (PrefixVar, prefixSubst) : env0
                       expandTemplateVars = fromPathTemplate
                                          . substPathTemplate env
