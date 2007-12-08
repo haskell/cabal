@@ -81,6 +81,7 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs (CopyDest(..), InstallDirs(..))
 import Data.List (sort)
 import Data.Char( toLower, isSpace )
+import Data.Monoid (Monoid(..))
 import Distribution.GetOpt as GetOpt
 import Distribution.Verbosity
 
@@ -108,26 +109,7 @@ data ConfigFlags = ConfigFlags {
         configProfExe  :: Bool,           -- ^Enable profiling in the executables.
         configConfigureArgs :: [String],  -- ^Extra arguments to @configure@
         configOptimization :: Bool,       -- ^Enable optimization.
-        configPrefix   :: Maybe FilePath,
-		-- ^installation prefix
-	configBinDir   :: Maybe FilePath, 
-		-- ^installation dir for binaries,
-	configLibDir   :: Maybe FilePath, 
-		-- ^installation dir for object code libraries, 
-	configLibSubDir :: Maybe FilePath,
-		-- ^subdirectory of libdir in which libs are installed
-	configLibExecDir :: Maybe FilePath,
-		-- ^installation dir for program executables,
-	configDataDir  :: Maybe FilePath,
-		-- ^installation dir for read-only arch-independent data,
-	configDataSubDir :: Maybe FilePath,
-		-- ^subdirectory of datadir in which data files are installed
-	configDocDir   :: Maybe FilePath,
-		-- ^installation dir for documentation
-	configHtmlDir   :: Maybe FilePath,
-		-- ^installation dir for HTML documentation
-	configHaddockDir :: Maybe FilePath,
-		-- ^installation dir for haddock interfaces
+        configInstallDirs   :: InstallDirs (Maybe FilePath), -- ^Installation paths
         configScratchDir :: Maybe FilePath,
 
         configVerbose  :: Verbosity,      -- ^verbosity level
@@ -152,16 +134,7 @@ emptyConfigFlags progConf = ConfigFlags {
         configProfExe  = False,
         configConfigureArgs = [],
         configOptimization = True,
-        configPrefix   = Nothing,
-	configBinDir   = Nothing,
-	configLibDir   = Nothing,
-	configLibSubDir = Nothing,
-	configLibExecDir = Nothing,
-	configDataDir  = Nothing,
-	configDataSubDir = Nothing,
-	configDocDir = Nothing,
-	configHtmlDir = Nothing,
-	configHaddockDir = Nothing,
+        configInstallDirs = mempty,
         configScratchDir = Nothing,
         configVerbose  = normal,
 	configPackageDB = GlobalPackageDB,
@@ -335,43 +308,43 @@ configureCommand progConf = makeCommand name shortDesc longDesc emptyFlags optio
 
       ,option "" ["prefix"]
          "bake this prefix in preparation of installation"
-         (reqArg "DIR" $ \path flags -> flags { configPrefix = Just path })
+         (dirArg $ \path flags -> flags { prefix = Just path })
 
       ,option "" ["bindir"]
          "installation directory for executables"
-         (reqArg "DIR" $ \path flags -> flags { configBinDir = Just path })
+         (dirArg $ \path flags -> flags { bindir = Just path })
 
       ,option "" ["libdir"]
          "installation directory for libraries"
-         (reqArg "DIR" $ \path flags -> flags { configLibDir = Just path })
+         (dirArg $ \path flags -> flags { libdir = Just path })
 
       ,option "" ["libsubdir"]
 	 "subdirectory of libdir in which libs are installed"
-         (reqArg "DIR" $ \path flags -> flags { configLibSubDir = Just path })
+         (dirArg $ \path flags -> flags { libsubdir = Just path })
 
       ,option "" ["libexecdir"]
 	 "installation directory for program executables"
-         (reqArg "DIR" $ \path flags -> flags { configLibExecDir = Just path })
+         (dirArg $ \path flags -> flags { libexecdir = Just path })
 
       ,option "" ["datadir"]
 	 "installation directory for read-only data"
-         (reqArg "DIR" $ \path flags -> flags { configDataDir = Just path })
+         (dirArg $ \path flags -> flags { datadir = Just path })
 
       ,option "" ["datasubdir"]
 	 "subdirectory of datadir in which data files are installed"
-         (reqArg "DIR" $ \path flags -> flags { configDataSubDir = Just path })
+         (dirArg $ \path flags -> flags { datasubdir = Just path })
 
       ,option "" ["docdir"]
 	 "installation directory for documentation"
-         (reqArg "DIR" $ \path flags -> flags { configDocDir = Just path })
+         (dirArg $ \path flags -> flags { docdir = Just path })
 
       ,option "" ["htmldir"]
 	 "installation directory for HTML documentation"
-         (reqArg "DIR" $ \path flags -> flags { configHtmlDir = Just path })
+         (dirArg $ \path flags -> flags { htmldir = Just path })
 
       ,option "" ["haddockdir"]
 	 "installation directory for haddock interfaces"
-         (reqArg "DIR" $ \path flags -> flags { configHaddockDir = Just path })
+         (dirArg $ \path flags -> flags { haddockdir = Just path })
 
       ,option "b" ["scratchdir"]
          "directory to receive the built package [dist/scratch]"
@@ -462,6 +435,10 @@ configureCommand progConf = makeCommand name shortDesc longDesc emptyFlags optio
 
     liftUpdatePrograms update flags = flags {
         configPrograms = update (configPrograms flags)
+      }
+
+    dirArg update = reqArg "DIR" $ \path flags -> flags {
+        configInstallDirs = update path (configInstallDirs flags)
       }
 
 programFlagsDescription :: ProgramConfiguration -> String
@@ -784,11 +761,11 @@ configureArgs :: ConfigFlags -> [String]
 configureArgs flags
   = hc_flag ++
         optFlag "with-hc-pkg" configHcPkg ++
-        optFlag "prefix" configPrefix ++
-        optFlag "bindir" configBinDir ++
-        optFlag "libdir" configLibDir ++
-        optFlag "libexecdir" configLibExecDir ++
-        optFlag "datadir" configDataDir ++
+        optFlag "prefix" (prefix . configInstallDirs) ++
+        optFlag "bindir" (bindir . configInstallDirs) ++
+        optFlag "libdir" (libdir . configInstallDirs) ++
+        optFlag "libexecdir" (libexecdir . configInstallDirs) ++
+        optFlag "datadir" (datadir . configInstallDirs) ++
         reverse (configConfigureArgs flags)
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
