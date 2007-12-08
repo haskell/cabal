@@ -63,8 +63,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirs(..),
-                                           InstallDirTemplates(..),
-					   absoluteInstallDirs, toPathTemplate)
+					   absoluteInstallDirs)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
                                      compilerVersion, PackageDB(..))
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
@@ -265,15 +264,16 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
         bi = libBuildInfo lib
 	build_dir = pwd </> buildDir lbi
         installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-        inplaceDirs = absoluteInstallDirs pkg_descr lbi {
-                        installDirTemplates = (installDirTemplates lbi) {
-                          dataDirTemplate    = toPathTemplate pwd,
-                          dataSubdirTemplate = toPathTemplate distPref,
-                          docDirTemplate     = toPathTemplate (pwd </> distPref </> "doc"),
-                          htmlDirTemplate    = toPathTemplate (pwd </> distPref </> "doc" </> "html" </> pkgName (package pkg_descr)),
-                          haddockDirTemplate = toPathTemplate (pwd </> distPref </> "doc" </> "html" </> pkgName (package pkg_descr))
-                        }
-                      } NoCopyDest
+	inplaceDirs = (absoluteInstallDirs pkg_descr lbi NoCopyDest) {
+                        datadir    = pwd,
+                        datasubdir = distPref,
+                        docdir     = inplaceDocdir,
+                        htmldir    = inplaceHtmldir,
+                        haddockdir = inplaceHtmldir
+                      }
+	  where inplaceDocdir  = pwd </> distPref </> "doc"
+	        inplaceHtmldir = inplaceDocdir </> "html"
+		                               </> pkgName (package pkg_descr)
         (absinc,relinc) = partition isAbsolute (includeDirs bi)
         installIncludeDir | null (installIncludes bi) = []
                           | otherwise = [includedir installDirs]
