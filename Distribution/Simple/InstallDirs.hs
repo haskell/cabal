@@ -1,11 +1,4 @@
 {-# OPTIONS -cpp -fffi #-}
-{-# OPTIONS -w #-}
--- The above warning supression flag is a temporary kludge.
--- While working on this module you are encouraged to remove it and fix
--- any warnings in the module. See
---     http://hackage.haskell.org/trac/ghc/wiki/WorkingConventions#Warnings
--- for details
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.InstallDirs
@@ -76,7 +69,6 @@ import System.FilePath (dropDrive)
 #endif
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.PackageDescription (PackageDescription(package))
 import Distribution.Version (showVersion)
 import Distribution.System (OS(..), os)
 import Distribution.Simple.Compiler (CompilerFlavor(..))

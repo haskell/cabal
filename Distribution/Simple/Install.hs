@@ -1,11 +1,4 @@
 {-# OPTIONS -cpp #-}
-{-# OPTIONS -w #-}
--- The above warning supression flag is a temporary kludge.
--- While working on this module you are encouraged to remove it and fix
--- any warnings in the module. See
---     http://hackage.haskell.org/trac/ghc/wiki/WorkingConventions#Warnings
--- for details
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -64,7 +57,6 @@ module Distribution.Simple.Install (
 #endif
 #endif
 
-import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
 	hasLibs, withLib, hasExes, withExe, haddockName )
