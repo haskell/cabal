@@ -56,6 +56,7 @@ module Distribution.Simple.InstallDirs (
         InstallDirTemplates(..),
         defaultInstallDirs,
         absoluteInstallDirs,
+        CopyDest(..),
         prefixRelativeInstallDirs,
 
         PathTemplate,
@@ -79,8 +80,6 @@ import Distribution.PackageDescription (PackageDescription(package))
 import Distribution.Version (showVersion)
 import Distribution.System (OS(..), os)
 import Distribution.Simple.Compiler (CompilerFlavor(..))
--- TODO: move CopyDest to this module
-import Distribution.Simple.Setup (CopyDest(..))
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign
@@ -286,6 +285,13 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
     copy dir = case copydest of
       CopyTo destdir -> destdir </> dropDrive dir
       _              ->                       dir
+
+-- |The location prefix for the /copy/ command.
+data CopyDest
+  = NoCopyDest
+  | CopyTo FilePath
+  | CopyPrefix FilePath         -- DEPRECATED
+  deriving (Eq, Show)
 
 -- | Check which of the paths are relative to the installation $prefix.
 --
