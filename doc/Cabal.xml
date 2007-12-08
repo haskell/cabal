@@ -24,12 +24,80 @@
   <subtitle>User's Guide</subtitle>
 
   <abstract>
-    <para>The <firstterm>Cabal</firstterm> aims to simplify the
+    <para><firstterm>Cabal</firstterm> aims to simplify the
       distribution of <ulink url="http://www.haskell.org/">Haskell</ulink>
       software.  It does this by specifying a number of interfaces between
       package authors, builders and users, as well as providing a library
       implementing these interfaces.</para>
   </abstract>
+
+  <sect1 id="intro">
+    <title>Introduction</title>
+    <para>
+      Developers write Cabal packages. These can be for libraries or
+      executables. This involves writing the code obviously and also creating a
+      <literal>.cabal</literal> file. The .cabal file contains some information
+      about the package. Some of this information is needed to actually build
+      the package and some is just useful for identifying the package when it
+      comes to distribution.
+    </para>
+    <programlisting>
+name:     Foo
+version:  1.0
+
+library
+  build-depends:   base
+  exposed-modules: Foo
+    </programlisting>
+    <para>
+      Users install Cabal packages so they can use them. It is not expected
+      that users will have to modify any of the information in the
+      <literal>.cabal</literal> file. Cabal does provide a number of ways for
+      a user to customise how and where a package is installed. They can decide
+      where a package will be installed, which Haskell implementation to use
+      and whether to build optimised code or build with the ability to profile
+      code.
+    </para>
+    <programlisting>
+tar -xzf Foo-1.0.tar.gz
+cd Foo-1.0
+cabal-setup configure --with-compiler=ghc-6.4.2 --prefix=$HOME --user
+cabal-setup build
+cabal-setup install
+    </programlisting>
+    <para>
+      One of the purposes of Cabal is to make it easier to build a package with
+      different Haskell implementations. So it provides abstractions of
+      features present in different Haskell implementations and wherever
+      possible it is best to take advantage of these to increase portability.
+      Where necessary however it is possible to use specific features of
+      specific implementations. For example one of the pieces of information a
+      package author can put in the package's <literal>.cabal</literal> file is
+      what language extensions the code uses. This is far preferable to
+      specifying flags for a specific compiler as it allows Cabal to pick the
+      right flags for the Haskell implementation that the user picks. It also
+      allows Cabal to figure out if the language extension is even supported by
+      the Haskell implementation that the user picks. Where compiler-specific
+      options are needed however, there is an "escape hatch" available. The
+      developer can specify implementation-specific options and more generally
+      there is a configuration mechanism to custoimise many aspects of how a
+      package is built depending on the Haskell implementation, the Operating
+      system, computer architecture and user-specified configuration flags.
+    </para>
+    <programlisting>
+name:     Foo
+version:  1.0
+
+library
+  build-depends:   base
+  exposed-modules: Foo
+  extensions:	   ForeignFunctionInterface
+  ghc-options:     -Wall
+  nhc98-options:   -K4m
+  if os(windows)
+    build-depends: Win32
+    </programlisting>
+  </sect1>
 
   <sect1 id="packages">
     <title>Packages</title>
@@ -2928,6 +2996,26 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
 
     <para>Please report any other flaws to
       <email>libraries@haskell.org</email>.</para>
+  </sect1>
+
+  <sect1 id="stability">
+    <title>Stability of Cabal interfaces</title>
+
+    <para>The Cabal library and related infrastructure is still under active
+      development. New features are being added and limitations and bugs are
+      being fixed. This requires internal changes and often user visible
+      changes as well. We therefor cannot promise complete future-proof
+      stability, at least not without halting all development work.</para>
+
+    <para>This section documents the aspects of the Cabal interface that we can
+      promise to keep stable and which bits are subject to change.</para>
+
+    <itemizedlist>
+      <listitem>
+        <para></para>
+      </listitem>
+    </itemizedlist>
+
   </sect1>
 
 </article>
