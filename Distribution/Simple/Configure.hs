@@ -89,7 +89,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..) )
 import Distribution.Simple.InstallDirs
-    ( InstallDirs(..), defaultInstallDirs, toPathTemplate )
+    ( InstallDirs(..), defaultInstallDirs, combineInstallDirs, toPathTemplate )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
@@ -258,20 +258,8 @@ configure (pkg_descr0, pbi) cfg
 
 	-- installation directories
 	defaultDirs <- defaultInstallDirs flavor (hasLibs pkg_descr)
-	let maybeDefault confField dirField =
-	      maybe (dirField defaultDirs) toPathTemplate (confField cfg)
-	    installDirs = defaultDirs {
-	        prefix     = maybeDefault configPrefix     prefix,
-		bindir     = maybeDefault configBinDir     bindir,
-		libdir     = maybeDefault configLibDir     libdir,
-		libsubdir  = maybeDefault configLibSubDir  libsubdir,
-		libexecdir = maybeDefault configLibExecDir libexecdir,
-		datadir    = maybeDefault configDataDir    datadir,
-		datasubdir = maybeDefault configDataSubDir datasubdir,
-		docdir     = maybeDefault configDocDir     docdir,
-		htmldir    = maybeDefault configHtmlDir    htmldir,
-                haddockdir = maybeDefault configHaddockDir haddockdir
-	      }
+	let installDirs = combineInstallDirs fromMaybe defaultDirs
+                            (fmap (fmap toPathTemplate) (configInstallDirs cfg))
 
         -- check extensions
         let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
