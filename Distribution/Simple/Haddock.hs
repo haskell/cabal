@@ -122,7 +122,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                      then "--hoogle"
                      else "--html"
     let Just version = programVersion confHaddock
-    let have_src_hyperlink_flags = version >= Version [0,8] [] && version < Version [2,0] []
+    let have_src_hyperlink_flags = version >= Version [0,8] []
         isVersion2               = version >= Version [2,0] []
 
     let mockFlags
