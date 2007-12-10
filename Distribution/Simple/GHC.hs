@@ -497,6 +497,7 @@ build pkg_descr lbi verbosity = do
 			 ++ ldOptions exeBi
 			 ++ ["-l"++lib | lib <- extraLibs exeBi]
 			 ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
+                         ++ concat [["-framework", f] | f <- frameworks exeBi]
                          ++ if profExe
                                then ["-prof",
                                      "-hisuf", "p_hi",
