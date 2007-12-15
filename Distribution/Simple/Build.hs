@@ -55,8 +55,8 @@ import Distribution.PackageDescription
 				  setupMessage, Executable(..), Library(..), 
                                   autogenModuleName )
 import Distribution.Package 	( PackageIdentifier(..), showPackageId )
-import Distribution.Simple.Setup	( CopyDest(..), BuildFlags(..), 
-                                  MakefileFlags(..) )
+import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
+                                  MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..),
@@ -94,7 +94,7 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
-  let verbosity = buildVerbose flags
+  let verbosity = fromFlag (buildVerbose flags)
   initialBuildSteps pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" pkg_descr
   case compilerFlavor (compiler lbi) of
@@ -110,11 +110,11 @@ makefile :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 makefile pkg_descr lbi flags suffixes = do
-  let verb = makefileVerbose flags
-  initialBuildSteps pkg_descr lbi verb suffixes
+  let verbosity = fromFlag (makefileVerbose flags)
+  initialBuildSteps pkg_descr lbi verbosity suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")
-  setupMessage verb "Generating Makefile" pkg_descr
+  setupMessage verbosity "Generating Makefile" pkg_descr
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.makefile  pkg_descr lbi flags
     _    -> die ("Generating a Makefile is not supported for this compiler.")

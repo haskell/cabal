@@ -41,22 +41,28 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Command (
-  
-  -- * Constructing commands
+
+  -- * Command interface
   CommandUI(..),
+  commandShowOptions,
+    
+  -- * Constructing commands
   ShowOrParseArgs(..),
   makeCommand,
+  Option, option, ArgDescr, noArg, reqArg, optArg,
   
   -- * Associating actions with commands
   Command,
   commandAddAction,
+  commandAddActionWithEmptyFlags,
   
   -- * Running commands
   CommandParse(..),
   commandsRun,
   ) where
 
-import Distribution.GetOpt
+import qualified Distribution.GetOpt as GetOpt
+import Data.Monoid (Monoid(..))
 
 data CommandUI flags = CommandUI {
     -- | The name of the command as it would be entered on the command line.
@@ -69,34 +75,86 @@ data CommandUI flags = CommandUI {
     -- | Additional explanation of the command to use in help texts.
     commandDescription :: Maybe (String -> String),
     -- | Initial \/ empty flags
-    commandEmptyFlags  :: flags,
+    commandDefaultFlags :: flags,
     -- | All the GetOpt options for this command
-    commandOptions     :: ShowOrParseArgs -> [OptDescr (flags -> flags)]
+    commandOptions     :: ShowOrParseArgs -> [Option flags]
   }
 
 data ShowOrParseArgs = ShowArgs | ParseArgs
 
+data Option a = Option [Char] [String] String (ArgDescr a)
+
+option :: [Char] -> [String] -> String -> c -> d
+       -> (c -> d -> ArgDescr a) -> Option a
+option ss ls d get set arg = Option ss ls d (arg get set)
+
+data ArgDescr a = NoArg         (                a -> a) (a ->           Bool)
+                | ReqArg String (      String -> a -> a) (a ->       [String])
+                | OptArg String (Maybe String -> a -> a) (a -> [Maybe String])
+
+optionToGetOpt :: Option a -> GetOpt.OptDescr (a -> a)
+optionToGetOpt (Option cs ss d arg) = GetOpt.Option cs ss (argDescrToGetOpt arg) d
+
+argDescrToGetOpt :: ArgDescr a -> GetOpt.ArgDescr (a -> a)
+argDescrToGetOpt (NoArg    f _) = GetOpt.NoArg f
+argDescrToGetOpt (ReqArg d f _) = GetOpt.ReqArg f d
+argDescrToGetOpt (OptArg d f _) = GetOpt.OptArg f d
+
+noArg :: Monoid a => a -> (a -> Bool)
+      ->(b -> a) -> (a -> (b -> b)) -> ArgDescr b
+noArg flag showflag get set = NoArg (\b -> set (get b `mappend` flag) b) (showflag . get)
+
+reqArg :: Monoid a => String -> (String -> a) -> (a -> [String])
+       -> (b -> a) -> (a -> (b -> b)) -> ArgDescr b
+reqArg name mkflag showflag get set =
+  ReqArg name (\v b -> set (get b `mappend` mkflag v) b) (showflag . get)
+
+optArg :: Monoid a => String -> (Maybe String -> a) -> (a -> [Maybe String])
+       -> (b -> a) -> (a -> (b -> b)) -> ArgDescr b
+optArg name mkflag showflag get set =
+  OptArg name (\v b -> set (get b `mappend` mkflag v) b) (showflag . get)
+
+-- | Show flags in the standard long option command line format
+commandShowOptions :: CommandUI flags -> flags -> [String]
+commandShowOptions command v =
+  concatMap (showOption v) (commandOptions command ParseArgs)
+  where 
+    showOption :: a -> Option a -> [String]
+    showOption x (Option _ (name:_) _ (NoArg _ showflag)) | showflag x
+      = ["--"++name]
+    showOption x (Option _ (name:_) _ (ReqArg _ _ showflag))
+      = [ "--"++name++"="++flag
+        | flag <- showflag x ]
+    showOption x (Option _ (name:_) _ (OptArg _ _ showflag))
+      = [ case flag of
+            Just s  -> "--"++name++"="++s
+            Nothing -> "--"++name
+        | flag <- showflag x ]
+    showOption _ _ = []
+
 -- | The help text for this command with descriptions of all the options.
 commandHelp :: CommandUI flags -> String
 commandHelp command =
-  usageInfo "" (addCommonFlags (commandOptions command ShowArgs))
+    GetOpt.usageInfo ""
+  . addCommonFlags
+  . map optionToGetOpt
+  $ commandOptions command ShowArgs
 
 -- | Make a Command from standard 'GetOpt' options.
 makeCommand :: String                         -- ^ name
             -> String                         -- ^ short description
             -> Maybe (String -> String)       -- ^ long description
             -> flags                          -- ^ initial\/empty flags
-            -> (ShowOrParseArgs
-              -> [OptDescr (flags -> flags)]) -- ^ options
+            -> (ShowOrParseArgs -> [Option flags]) -- ^ options
             -> CommandUI flags
-makeCommand name shortDesc longDesc emptyFlags options =
+makeCommand name shortDesc longDesc defaultFlags options =
   CommandUI {
-    commandName        = name,
-    commandSynopsis    = shortDesc,
-    commandDescription = longDesc,
-    commandUsage       = usage,
-    commandEmptyFlags  = emptyFlags,
-    commandOptions     = options
+    commandName         = name,
+    commandSynopsis     = shortDesc,
+    commandDescription  = longDesc,
+    commandUsage        = usage,
+    commandDefaultFlags = defaultFlags,
+    commandOptions      = options
   }
   where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
                    ++ "Flags for " ++ name ++ ":"
@@ -104,24 +162,29 @@ makeCommand name shortDesc longDesc emptyFlags options =
 -- | Common flags that apply to every command
 data CommonFlag = HelpFlag
 
-commonFlags :: [OptDescr CommonFlag]
+commonFlags :: [GetOpt.OptDescr CommonFlag]
 commonFlags =
-  [Option ['h', '?'] ["help"] (NoArg HelpFlag) "Show this help text"]
+  [GetOpt.Option ['h', '?'] ["help"] (GetOpt.NoArg HelpFlag) "Show this help text"]
 
-addCommonFlags :: [OptDescr a]
-               -> [OptDescr (Either CommonFlag a)]
+addCommonFlags :: [GetOpt.OptDescr a]
+               -> [GetOpt.OptDescr (Either CommonFlag a)]
 addCommonFlags options = map (fmapOptDesc Left)  commonFlags
                       ++ map (fmapOptDesc Right) options
-  where fmapOptDesc f (Option s l d m) = Option s l (fmapArgDesc f d) m
-        fmapArgDesc f (NoArg a) = NoArg (f a)
-        fmapArgDesc f (ReqArg s d) = ReqArg (f . s) d
-        fmapArgDesc f (OptArg s d) = OptArg (f . s) d
+  where fmapOptDesc f (GetOpt.Option s l d m) = GetOpt.Option s l (fmapArgDesc f d) m
+        fmapArgDesc f (GetOpt.NoArg a)    = GetOpt.NoArg (f a)
+        fmapArgDesc f (GetOpt.ReqArg s d) = GetOpt.ReqArg (f . s) d
+        fmapArgDesc f (GetOpt.OptArg s d) = GetOpt.OptArg (f . s) d
 
 
-commandParseArgs :: CommandUI flags -> [String] -> CommandParse (flags, [String])
-commandParseArgs command args =
-  let options = addCommonFlags (commandOptions command ParseArgs) in
-  case getOpt RequireOrder options args of
+commandParseArgs :: CommandUI flags -> Bool -> [String]
+                 -> CommandParse (flags -> flags, [String])
+commandParseArgs command ordered args =
+  let options = addCommonFlags
+              . map optionToGetOpt
+              $ commandOptions command ParseArgs
+      order | ordered   = GetOpt.RequireOrder
+            | otherwise = GetOpt.Permute
+  in case GetOpt.getOpt order options args of
     (flags, _,    [])
       | not (null [ () | Left HelpFlag <- flags ])
                       -> CommandHelp help
@@ -133,8 +196,10 @@ commandParseArgs command args =
                   ++ case commandDescription command of
                        Nothing   -> ""
                        Just desc -> '\n': desc pname
-        accumFlags flags = foldr (.) id [ f | Right f <- flags ]
-                             (commandEmptyFlags command)
+        -- Note: It is crucial to use reverse function composition here or to
+        -- reverse the flags here as we want to process the flags left to right
+        -- but data flow in function compsition is right to left.
+        accumFlags flags = foldr (flip (.)) id [ f | Right f <- flags ]
 
 data CommandParse flags = CommandHelp (String -> String)
                         | CommandErrors [String]
@@ -153,21 +218,42 @@ commandAddAction :: CommandUI flags
 commandAddAction command action =
   Command (commandName command)
           (commandSynopsis command)
-          (fmap (uncurry action) . commandParseArgs command)
+          (fmap (uncurry applyDefaultArgs)
+         . commandParseArgs command False)
+
+  where applyDefaultArgs mkflags args =
+          let flags = mkflags (commandDefaultFlags command)
+           in action flags args
+
+commandAddActionWithEmptyFlags
+                 :: Monoid flags
+                 => CommandUI flags
+                 -> (flags -> [String] -> action)
+                 -> Command action
+commandAddActionWithEmptyFlags command action =
+  Command (commandName command)
+          (commandSynopsis command)
+          (fmap (uncurry applyEmptyArgs)
+         . commandParseArgs command False)
+
+  where applyEmptyArgs mkflags args =
+          let flags = mkflags mempty
+           in action flags args
 
 commandsRun :: CommandUI a
             -> [Command action]
             -> [String]
             -> CommandParse (a, CommandParse action)
 commandsRun globalCommand commands args =
-  case commandParseArgs globalCommand args of
+  case commandParseArgs globalCommand True args of
     CommandHelp      _             -> CommandHelp globalHelp
     CommandErrors    errs          -> CommandErrors errs
-    CommandReadyToGo (flags, name:args') ->
-      case lookupCommand name of
-        [Command _ _ action]       -> CommandReadyToGo (flags, action args')
-        _                          -> CommandReadyToGo (flags, badCommand name)
-    (CommandReadyToGo (flags, [])) -> CommandReadyToGo (flags, noCommand)
+    CommandReadyToGo (mkflags, args') -> case args' of
+      (name:cmdArgs) -> case lookupCommand name of
+        [Command _ _ action] -> CommandReadyToGo (flags, action cmdArgs)
+        _                    -> CommandReadyToGo (flags, badCommand name)
+      []                     -> CommandReadyToGo (flags, noCommand)
+      where flags = mkflags (commandDefaultFlags globalCommand)
 
   where
     lookupCommand cname = [ cmd | cmd@(Command cname' _ _) <- commands

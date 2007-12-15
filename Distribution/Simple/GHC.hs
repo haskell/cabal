@@ -49,7 +49,8 @@ module Distribution.Simple.GHC (
  ) where
 
 import Distribution.Simple.GHC.Makefile
-import Distribution.Simple.Setup       ( MakefileFlags(..) )
+import Distribution.Simple.Setup ( MakefileFlags(..),
+                                   fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  withLib, setupMessage,
@@ -624,9 +625,8 @@ mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
 
 makefile :: PackageDescription -> LocalBuildInfo -> MakefileFlags -> IO ()
 makefile pkg_descr lbi flags = do
-  let file = case makefileFile flags of
-                Just f ->  f
-                _otherwise -> "Makefile"
+  let file = fromFlagOrDefault "Makefile"(makefileFile flags)
+      verbosity = fromFlag (makefileVerbose flags)
   targetExists <- doesFileExist file
   when targetExists $
     die ("Not overwriting existing copy of " ++ file)
@@ -639,9 +639,9 @@ makefile pkg_descr lbi flags = do
       packageId | versionBranch ghc_vers >= [6,4]
                                 = showPackageId (package pkg_descr)
                  | otherwise = pkgName (package pkg_descr)
-  (arProg, _) <- requireProgram (makefileVerbose flags) arProgram AnyVersion
+  (arProg, _) <- requireProgram verbosity arProgram AnyVersion
                    (withPrograms lbi)
-  (ldProg, _) <- requireProgram (makefileVerbose flags) ldProgram AnyVersion
+  (ldProg, _) <- requireProgram verbosity ldProgram AnyVersion
                    (withPrograms lbi)
   let builddir = buildDir lbi
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)

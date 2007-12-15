@@ -84,12 +84,13 @@ import Distribution.ParseUtils
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
+    , userSpecifyArgs, userSpecifyPath
     , lookupKnownProgram, requireProgram, pkgConfigProgram
     , rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..) )
+    ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
-    ( InstallDirs(..), defaultInstallDirs, combineInstallDirs, toPathTemplate )
+    ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), distPref, absoluteInstallDirs
     , prefixRelativeInstallDirs )
@@ -200,22 +201,30 @@ configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  let verbosity = configVerbose cfg
-            cfg' = cfg { configVerbose = lessVerbose verbosity }
+  = do  let verbosity = fromFlag (configVerbose cfg)
 
 	setupMessage verbosity "Configuring"
                      (either packageDescription id pkg_descr0)
 
 	createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
+        let programsConfig = 
+                flip (foldr (uncurry userSpecifyArgs)) (configProgramArgs cfg)
+              . flip (foldr (uncurry userSpecifyPath)) (configProgramPaths cfg)
+              $ configPrograms cfg
+            packageDb = fromFlagOrDefault GlobalPackageDB (configPackageDB cfg)
+
 	-- detect compiler
-	(comp, programsConfig) <- configCompilerAux cfg'
+	(comp, programsConfig') <- configCompiler
+          (flagToMaybe $ configHcFlavor cfg)
+          (flagToMaybe $ configHcPath cfg) (flagToMaybe $ configHcPkg cfg)
+          programsConfig (lessVerbose verbosity)
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
         mipkgs <- getInstalledPackages (lessVerbose verbosity) comp
-                    (configPackageDB cfg) programsConfig
+                    packageDb programsConfig'
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
@@ -258,8 +267,8 @@ configure (pkg_descr0, pbi) cfg
 
 	-- installation directories
 	defaultDirs <- defaultInstallDirs flavor (hasLibs pkg_descr)
-	let installDirs = combineInstallDirs fromMaybe defaultDirs
-                            (fmap (fmap toPathTemplate) (configInstallDirs cfg))
+	let installDirs = combineInstallDirs fromFlagOrDefault
+                            defaultDirs (configInstallDirs cfg)
 
         -- check extensions
         let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
@@ -269,15 +278,15 @@ configure (pkg_descr0, pbi) cfg
             concat (intersperse ", " (map show exts))
 
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
-        programsConfig' <-
-              configureAllKnownPrograms (lessVerbose verbosity) programsConfig
+        programsConfig'' <-
+              configureAllKnownPrograms (lessVerbose verbosity) programsConfig'
           >>= configureRequiredPrograms verbosity requiredBuildTools
         
-        (pkg_descr', programsConfig'') <- configurePkgconfigPackages verbosity
-                                            pkg_descr programsConfig'
+        (pkg_descr', programsConfig''') <- configurePkgconfigPackages verbosity
+                                            pkg_descr programsConfig''
 
 	split_objs <- 
-	   if not (configSplitObjs cfg)
+	   if not (fromFlag $ configSplitObjs cfg)
 		then return False
 		else case flavor of
 			    GHC | version >= Version [6,5] [] -> return True
@@ -290,20 +299,21 @@ configure (pkg_descr0, pbi) cfg
 		    installDirTemplates = installDirs,
 		    compiler            = comp,
 		    buildDir            = distPref </> "build",
-		    scratchDir          = fromMaybe (distPref </> "scratch")
-                                                    (configScratchDir cfg),
+		    scratchDir          = fromFlagOrDefault
+                                            (distPref </> "scratch")
+                                            (configScratchDir cfg),
 		    packageDeps         = dep_pkgs,
                     pkgDescrFile        = Nothing,
 		    localPkgDescr       = pkg_descr',
-		    withPrograms        = programsConfig'',
-		    withVanillaLib      = configVanillaLib cfg,
-		    withProfLib         = configProfLib cfg,
-		    withSharedLib       = configSharedLib cfg,
-		    withProfExe         = configProfExe cfg,
-		    withOptimization    = configOptimization cfg,
-		    withGHCiLib         = configGHCiLib cfg,
+		    withPrograms        = programsConfig''',
+		    withVanillaLib      = fromFlag $ configVanillaLib cfg,
+		    withProfLib         = fromFlag $ configProfLib cfg,
+		    withSharedLib       = fromFlag $ configSharedLib cfg,
+		    withProfExe         = fromFlag $ configProfExe cfg,
+		    withOptimization    = fromFlag $ configOptimization cfg,
+		    withGHCiLib         = fromFlag $ configGHCiLib cfg,
 		    splitObjs           = split_objs,
-		    withPackageDB       = configPackageDB cfg
+		    withPackageDB       = packageDb
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
@@ -480,12 +490,13 @@ ccLdOptionsBuildInfo cflags ldflags =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
+{-# DEPRECATED configCompilerAux "use configCompiler" #-}
 configCompilerAux :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
-configCompilerAux cfg = configCompiler (configHcFlavor cfg)
-                                       (configHcPath cfg)
-                                       (configHcPkg cfg)
+configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
+                                       (flagToMaybe $ configHcPath cfg)
+                                       (flagToMaybe $ configHcPkg cfg)
                                        (configPrograms cfg)
-                                       (configVerbose cfg)
+                                       (fromFlag (configVerbose cfg))
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramConfiguration -> Verbosity

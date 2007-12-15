@@ -66,7 +66,7 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   copyFileVerbose, die, info, notice,
                                   copyDirectoryRecursiveVerbose)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
-import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..))
+import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.NHC  as NHC
@@ -91,8 +91,10 @@ install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
-install pkg_descr lbi (CopyFlags copydest verbosity) = do
-  let InstallDirs {
+install pkg_descr lbi flags = do
+  let verbosity = fromFlag (copyVerbose flags)
+      copydest  = fromFlag (copyDest flags)
+      InstallDirs {
          bindir     = binPref,
          libdir     = libPref,
          dynlibdir  = dynlibPref,

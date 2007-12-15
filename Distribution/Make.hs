@@ -116,8 +116,8 @@ defaultMainHelper args =
     CommandErrors errs                 -> printErrors errs
     CommandReadyToGo (flags, commandParse)  ->
       case commandParse of
-        _ | globalVersion flags        -> printVersion
-          | globalNumericVersion flags -> printNumericVersion
+        _ | fromFlag (globalVersion flags)        -> printVersion
+          | fromFlag (globalNumericVersion flags) -> printNumericVersion
         CommandHelp     help           -> printHelp help
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> action
@@ -148,60 +148,61 @@ defaultMainHelper args =
 configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
   no_extra_flags args
-  rawSystemExit (configVerbose flags) "./configure" (configureArgs flags)
+  let verbosity = fromFlag (configVerbose flags)
+  rawSystemExit verbosity "./configure" (configureArgs flags)
 
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   no_extra_flags args
-  let destArgs = case copyDest flags of 
+  let destArgs = case fromFlag $ copyDest flags of 
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
         CopyPrefix path -> ["install", "prefix=" ++ path]
 	        -- CopyPrefix is backwards compat, DEPRECATED
-  rawSystemExit (copyVerbose flags) "make" destArgs
+  rawSystemExit (fromFlag $ copyVerbose flags) "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
 installAction flags args = do
   no_extra_flags args
-  rawSystemExit (installVerbose flags) "make" ["install"]
-  rawSystemExit (installVerbose flags) "make" ["register"]
+  rawSystemExit (fromFlag $ installVerbose flags) "make" ["install"]
+  rawSystemExit (fromFlag $ installVerbose flags) "make" ["register"]
 
 haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do 
   no_extra_flags args
-  rawSystemExit (haddockVerbose flags) "make" ["docs"]
+  rawSystemExit (fromFlag $ haddockVerbose flags) "make" ["docs"]
     `catch` \_ ->
-    rawSystemExit (haddockVerbose flags) "make" ["doc"]
+    rawSystemExit (fromFlag $ haddockVerbose flags) "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
   no_extra_flags args
-  rawSystemExit (buildVerbose flags) "make" []
+  rawSystemExit (fromFlag $ buildVerbose flags) "make" []
 
 cleanAction :: CleanFlags -> [String] -> IO ()
 cleanAction flags args = do
   no_extra_flags args
-  rawSystemExit (cleanVerbose flags) "make" ["clean"]
+  rawSystemExit (fromFlag $ cleanVerbose flags) "make" ["clean"]
 
 sdistAction :: SDistFlags -> [String] -> IO ()
 sdistAction flags args = do
   no_extra_flags args
-  rawSystemExit (sDistVerbose flags) "make" ["dist"]
+  rawSystemExit (fromFlag $ sDistVerbose flags) "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
 registerAction  flags args = do
   no_extra_flags args
-  rawSystemExit (regVerbose flags) "make" ["register"]
+  rawSystemExit (fromFlag $ regVerbose flags) "make" ["register"]
 
 unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
   no_extra_flags args
-  rawSystemExit (regVerbose flags) "make" ["unregister"]
+  rawSystemExit (fromFlag $ regVerbose flags) "make" ["unregister"]
 
 programaticaAction :: PFEFlags -> [String] -> IO ()
 programaticaAction flags args = do
   no_extra_flags args
-  rawSystemExit (pfeVerbose flags) "make" ["programatica"]
+  rawSystemExit (fromFlag $ pfeVerbose flags) "make" ["programatica"]
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()

@@ -69,7 +69,8 @@ import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
-import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..))
+import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
+                                  fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
@@ -96,7 +97,7 @@ import System.Directory( removeFile, getCurrentDirectory)
 import System.IO.Error (try)
 
 import Control.Monad (when)
-import Data.Maybe (isNothing, fromJust, fromMaybe)
+import Data.Maybe (isNothing, isJust, fromJust, fromMaybe)
 import Data.List (partition)
 
 #ifdef DEBUG
@@ -121,25 +122,25 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
-    setupMessage (regVerbose regFlags) "No package to register" pkg_descr
+    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" pkg_descr
     return ()
   | otherwise = do
     let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
         isWindows = case os of Windows _ -> True; _ -> False
-        genScript = regGenScript regFlags
-        genPkgConf = regGenPkgConf regFlags
+        genScript = fromFlag (regGenScript regFlags)
+        genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
         genPkgConfigDefault = showPackageId (package pkg_descr) <.> "conf"
         genPkgConfigFile = fromMaybe genPkgConfigDefault
-                                     (regPkgConfFile regFlags)
-        verbosity = regVerbose regFlags
-        packageDB = fromMaybe (withPackageDB lbi) (regPackageDB regFlags)
-	inplace = regInPlace regFlags
+                                     (fromFlag (regGenPkgConf regFlags))
+        verbosity = fromFlag (regVerbose regFlags)
+        packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
+	inplace  = fromFlag (regInPlace regFlags)
         message | genPkgConf = "Writing package registration file: "
                             ++ genPkgConfigFile ++ " for"
                 | genScript = "Writing registration script: "
                            ++ regScriptLocation ++ " for"
                 | otherwise = "Registering"
-    setupMessage (regVerbose regFlags) message pkg_descr
+    setupMessage verbosity message pkg_descr
 
     case compilerFlavor (compiler lbi) of
       GHC -> do 
@@ -324,12 +325,12 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi regFlags = do
-  setupMessage (regVerbose regFlags) "Unregistering" pkg_descr
   let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
-      genScript = regGenScript regFlags
-      verbosity = regVerbose regFlags
-      packageDB = fromMaybe (withPackageDB lbi) (regPackageDB regFlags)
+      genScript = fromFlag (regGenScript regFlags)
+      verbosity = fromFlag (regVerbose regFlags)
+      packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+  setupMessage verbosity "Unregistering" pkg_descr
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <- case packageDB of
