@@ -91,20 +91,20 @@ import Distribution.Simple.Compiler (compilerVersion, extensionsToFlags)
 
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
-  | not (hasLibs pkg_descr) && not (haddockExecutables haddockFlags) =
-      warn (haddockVerbose haddockFlags) $
+  | not (hasLibs pkg_descr) && not (fromFlag $ haddockExecutables haddockFlags) =
+      warn (fromFlag $ haddockVerbose haddockFlags) $
            "No documentation was generated as this package does not contain "
         ++ "a\nlibrary. Perhaps you want to use the haddock command with the "
         ++ "--executables flag."
 
-haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
-      haddockExecutables = doExes,
-      haddockHscolour = hsColour,
-      haddockHscolourCss = hsColourCss,
-      haddockVerbose = verbosity
-    } = do
-    when hsColour $ hscolour pkg_descr lbi suffixes $
-             HscolourFlags hsColourCss doExes verbosity
+haddock pkg_descr lbi suffixes flags = do
+    let doExes   = fromFlag (haddockExecutables flags)
+        hsColour = fromFlag (haddockHscolour flags)
+    when hsColour $ hscolour pkg_descr lbi suffixes defaultHscolourFlags {
+      hscolourCSS         = haddockHscolourCss flags,
+      hscolourExecutables = haddockExecutables flags,
+      hscolourVerbose     = haddockVerbose flags
+    }
 
     (confHaddock, _) <- requireProgram verbosity haddockProgram
                         (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
@@ -118,7 +118,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let showPkg    = showPackageId (package pkg_descr)
-    let outputFlag = if haddockHoogle haddockFlags
+    let outputFlag = if fromFlag (haddockHoogle flags)
                      then "--hoogle"
                      else "--html"
     let Just version = programVersion confHaddock
@@ -133,7 +133,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
     let comp = compiler lbi
         Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
-    let cssFileFlag = case haddockCss haddockFlags of
+    let cssFileFlag = case flagToMaybe $ haddockCss flags of
                         Nothing -> []
                         Just cssFile -> ["--css=" ++ cssFile]
     let verboseFlags = if verbosity > deafening then ["--verbose"] else []
@@ -157,7 +157,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
                     return []
     let makeReadInterface pkgId = do
             interface <- getField pkgId "haddock-interfaces"
-            html <- case haddockHtmlLocation haddockFlags of
+            html <- case flagToMaybe $ haddockHtmlLocation flags of
                 Nothing -> getField pkgId "haddock-html"
                 Just htmlStrTemplate ->
                   let env0 = initialPathTemplateEnv pkgId (compilerId comp)
@@ -269,6 +269,7 @@ haddock pkg_descr lbi suffixes haddockFlags@HaddockFlags {
 
     removeDirectoryRecursive tmpDir
   where
+        verbosity = fromFlag (haddockVerbose flags)
         mockPP inputArgs bi pref file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir  = pref </> filePref
@@ -307,7 +308,7 @@ ghcSimpleOptions lbi bi mockDir
 -- hscolour support
 
 hscolour :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HscolourFlags -> IO ()
-hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
+hscolour pkg_descr lbi suffixes flags = do
     (hscolourProg, _) <- requireProgram verbosity hscolourProgram
                          (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
 
@@ -348,6 +349,9 @@ hscolour pkg_descr lbi suffixes (HscolourFlags stylesheet doExes verbosity) = do
                       ["-print-css", "-o" ++ dir </> "hscolour.css"]
                   | otherwise -> return ()
           Just s -> copyFile s (dir </> "hscolour.css")
+        doExes     = fromFlag (hscolourExecutables flags)
+        stylesheet = flagToMaybe (hscolourCSS flags)
+        verbosity  = fromFlag (hscolourVerbose flags)
 
 
 --TODO: where to put this? it's duplicated in .Simple too
