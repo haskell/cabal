@@ -66,14 +66,13 @@ module Distribution.Simple (
   ) where
 
 -- local
-import Distribution.Simple.Compiler
+import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-import Distribution.Simple.Program(ProgramConfiguration, Program(programName),
-                            defaultProgramConfiguration, addKnownProgram,
-                            knownPrograms, userSpecifyArgs, userSpecifiedArgs,
-                            pfesetupProgram, rawSystemProgramConf)
+import Distribution.Simple.Program
+         ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
+         , userSpecifyArgs, pfesetupProgram, rawSystemProgramConf )
 import Distribution.Simple.PreProcess (knownSuffixHandlers,
                                 removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
@@ -156,8 +155,8 @@ defaultMainHelper hooks args =
     CommandErrors errs                 -> printErrors errs
     CommandReadyToGo (flags, commandParse)  ->
       case commandParse of
-        _ | globalVersion flags        -> printVersion
-          | globalNumericVersion flags -> printNumericVersion
+        _ | fromFlag (globalVersion flags)        -> printVersion
+          | fromFlag (globalNumericVersion flags) -> printNumericVersion
         CommandHelp     help           -> printHelp help
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> action
@@ -210,7 +209,7 @@ configureAction :: UserHooks -> ConfigFlags -> Args -> IO ()
 configureAction hooks flags args = do
                 pbi <- preConf hooks args flags
 
-                (mb_pd_file, pkg_descr0) <- confPkgDescr flags
+                (mb_pd_file, pkg_descr0) <- confPkgDescr
 
                 --    get_pkg_descr (configVerbose flags')
                 --let pkg_descr = updatePackageDescription pbi pkg_descr0
@@ -228,36 +227,26 @@ configureAction hooks flags args = do
 		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags pkg_descr localbuildinfo
               where
-                confPkgDescr :: ConfigFlags
-                             -> IO (Maybe FilePath,
+                verbosity = fromFlag (configVerbose flags)
+                confPkgDescr :: IO (Maybe FilePath,
                                     Either GenericPackageDescription
                                            PackageDescription)
-                confPkgDescr cfgflags = do
+                confPkgDescr = do
                   mdescr <- readDesc hooks
                   case mdescr of
                     Just descr -> return (Nothing, Right descr)
                     Nothing -> do
-                      pdfile <- defaultPackageDesc (configVerbose cfgflags)
-                      ppd <- readPackageDescription (configVerbose cfgflags) pdfile
+                      pdfile <- defaultPackageDesc verbosity
+                      ppd <- readPackageDescription verbosity pdfile
                       return (Just pdfile, Left ppd)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
                 lbi <- getBuildConfigIfUpToDate
-                -- FIXME: this is a rather unpleasent hack to transfer all the
-                -- prog args specified on the build command line to the
-                -- program configuration in the local build info. Really the
-                -- build flags should not use a ProgramConfiguration but simply
-                -- a list of (progName, progArgs).
-                let progs  = buildPrograms flags
-                    progs' =
-                      foldr (.) id
-                      [ userSpecifyArgs (programName prog)
-                                        (userSpecifiedArgs prog progs)
-                      | (prog,_) <- knownPrograms progs ]
-                      (withPrograms lbi)
+                let progs = foldr (uncurry userSpecifyArgs)
+                                  (withPrograms lbi) (buildProgramArgs flags)
                 hookedAction preBuild buildHook postBuild
-                             (return lbi { withPrograms = progs' })
+                             (return lbi { withPrograms = progs })
                              hooks flags args
 
 makefileAction :: UserHooks -> MakefileFlags -> Args -> IO ()
@@ -281,13 +270,14 @@ cleanAction hooks flags args = do
                 pbi <- preClean hooks args flags
 
                 mlbi <- maybeGetPersistBuildConfig
-                pdfile <- defaultPackageDesc (cleanVerbose flags)
-                ppd <- readPackageDescription (cleanVerbose flags) pdfile
+                pdfile <- defaultPackageDesc verbosity
+                ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
 
                 cleanHook hooks pkg_descr mlbi hooks flags
                 postClean hooks args flags pkg_descr mlbi
+  where verbosity = fromFlag (cleanVerbose flags)
 
 copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
 copyAction = hookedAction preCopy copyHook postCopy
@@ -302,13 +292,14 @@ sdistAction hooks flags args = do
                 pbi <- preSDist hooks args flags
 
                 mlbi <- maybeGetPersistBuildConfig
-                pdfile <- defaultPackageDesc (sDistVerbose flags)
-                ppd <- readPackageDescription (sDistVerbose flags) pdfile
+                pdfile <- defaultPackageDesc verbosity
+                ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
 
                 sDistHook hooks pkg_descr mlbi hooks flags
                 postSDist hooks args flags pkg_descr mlbi
+  where verbosity = fromFlag (sDistVerbose flags)
 
 testAction :: UserHooks -> () -> Args -> IO ()
 testAction hooks _flags args = do
@@ -361,7 +352,7 @@ getBuildConfigIfUpToDate = do
 -- Programmatica support
 
 pfe :: PackageDescription -> [PPSuffixHandler] -> PFEFlags -> IO ()
-pfe pkg_descr pps (PFEFlags verbosity) = do
+pfe pkg_descr pps flags = do
     unless (hasLibs pkg_descr) $
         die "no libraries found in this project"
     withLib pkg_descr () $ \lib -> do
@@ -373,17 +364,18 @@ pfe pkg_descr pps (PFEFlags verbosity) = do
         let verbFlags = if verbosity >= deafening then ["-v"] else []
         rawSystemProgramConf verbosity pfesetupProgram (withPrograms lbi)
                              ("noplogic" : "cpp" : verbFlags ++ inFiles)
-
+  where verbosity = fromFlag (pfeVerbose flags)
 
 -- --------------------------------------------------------------------------
 -- Cleaning
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi (CleanFlags saveConfigure verbosity) = do
+clean pkg_descr maybeLbi flags = do
     notice verbosity "cleaning..."
 
-    maybeConfig <- if saveConfigure then maybeGetPersistBuildConfig
-                                    else return Nothing
+    maybeConfig <- if fromFlag (cleanSaveConf flags)
+                     then maybeGetPersistBuildConfig
+                     else return Nothing
 
     -- remove the whole dist/ directory rather than tracking exactly what files
     -- we created in there.
@@ -418,6 +410,7 @@ clean pkg_descr maybeLbi (CleanFlags saveConfigure verbosity) = do
             if isDir then removeDirectoryRecursive fname
               else if isFile then removeFile fname
               else return ()
+        verbosity = fromFlag (cleanVerbose flags)
 
 -- --------------------------------------------------------------------------
 -- Default hooks
@@ -480,31 +473,36 @@ autoconfUserHooks
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
-              = do let verbosity = configVerbose flags
+              = do let verbosity = fromFlag (configVerbose flags)
                    no_extra_flags args
                    confExists <- doesFileExist "configure"
                    when confExists $
                        rawSystemPathExit verbosity "sh" $
                            "configure" : configureArgs flags
 
-          readHook :: (a -> Verbosity) -> Args -> a -> IO HookedBuildInfo
+          readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
               no_extra_flags a
               maybe_infoFile <- defaultHookedPackageDesc
               case maybe_infoFile of
                   Nothing       -> return emptyHookedBuildInfo
                   Just infoFile -> do
-                      let verbosity = get_verbosity flags
+                      let verbosity = fromFlag (get_verbosity flags)
                       info verbosity $ "Reading parameters from " ++ infoFile
                       readHookedBuildInfo verbosity infoFile
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
-defaultInstallHook pkg_descr localbuildinfo _ (InstallFlags uInstFlag verbosity) = do
-  install pkg_descr localbuildinfo (CopyFlags NoCopyDest verbosity)
+defaultInstallHook pkg_descr localbuildinfo _ flags = do
+  install pkg_descr localbuildinfo defaultCopyFlags {
+    copyDest    = toFlag NoCopyDest,
+    copyVerbose = installVerbose flags
+  }
   when (hasLibs pkg_descr) $
-      register pkg_descr localbuildinfo
-           emptyRegisterFlags{ regPackageDB=uInstFlag, regVerbose=verbosity }
+      register pkg_descr localbuildinfo defaultRegisterFlags {
+        regPackageDB = installPackageDB flags,
+        regVerbose   = installVerbose flags
+      }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> BuildFlags -> IO ()
@@ -525,9 +523,9 @@ defaultRegHook :: PackageDescription -> LocalBuildInfo
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
-    else setupMessage (regVerbose flags)
-                      "Package contains no library to register:"
-                      pkg_descr
+    else setupMessage verbosity
+           "Package contains no library to register:" pkg_descr
+  where verbosity = fromFlag (regVerbose flags)
 
 -- ------------------------------------------------------------
 -- * Testing
