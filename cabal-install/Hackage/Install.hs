@@ -16,6 +16,7 @@ module Hackage.Install
 
 import Control.Exception (bracket_)
 import Control.Monad (when)
+import Data.Monoid (Monoid(mempty))
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
                         ,removeDirectoryRecursive, doesFileExist)
 import System.FilePath ((</>),(<.>))
@@ -28,85 +29,54 @@ import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packag
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                     , PkgInfo(..))
+                     , PkgInfo(..), FlagAssignment)
 import Hackage.Utils
 
-import Distribution.Simple.Compiler (Compiler(..))
-import Distribution.Simple.InstallDirs (InstallDirs(..), absoluteInstallDirs)
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Compiler (Compiler, PackageDB(..))
+import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
+import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
-import Distribution.Simple.Setup (CopyDest(..))
+import Distribution.Simple.Setup (toFlag)
+import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils (defaultPackageDesc)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
-import Distribution.PackageDescription (packageDescription, readPackageDescription, package)
+import Distribution.PackageDescription (readPackageDescription)
 import Distribution.Verbosity
 
 
 
 
 -- |Installs the packages needed to satisfy a list of dependencies.
-install :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
-install cfg comp conf globalArgs deps
-    | null deps = installLocalPackage cfg comp conf globalArgs
-    | otherwise = installRepoPackages cfg comp conf globalArgs deps
+install :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> [UnresolvedDependency] -> IO ()
+install cfg comp conf configFlags deps
+    | null deps = installLocalPackage cfg comp conf configFlags
+    | otherwise = installRepoPackages cfg comp conf configFlags deps
 
 -- | Install the unpacked package in the current directory, and all its dependencies.
-installLocalPackage :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> IO ()
-installLocalPackage cfg comp conf globalArgs =
+installLocalPackage :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> IO ()
+installLocalPackage cfg comp conf configFlags =
    do cabalFile <- defaultPackageDesc (configVerbose cfg)
       desc <- readPackageDescription (configVerbose cfg) cabalFile
-      resolvedDeps <- resolveDependenciesLocal cfg comp conf desc globalArgs
+      resolvedDeps <- resolveDependenciesLocal cfg comp conf desc
+                        (Cabal.configConfigurationsFlags configFlags)
       case packagesToInstall resolvedDeps of
         Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
-        Right pkgs   -> installPackages cfg comp globalArgs pkgs
-      let pkgId = package (packageDescription desc)
-      installUnpackedPkg cfg comp globalArgs pkgId [] Nothing
+        Right pkgs   -> installPackages cfg configFlags pkgs
+      installUnpackedPkg cfg configFlags Nothing
 
-installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
-installRepoPackages cfg comp conf globalArgs deps =
+installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> [UnresolvedDependency] -> IO ()
+installRepoPackages cfg comp conf configFlags deps =
     do resolvedDeps <- resolveDependencies cfg comp conf deps
        case packagesToInstall resolvedDeps of
          Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
          Right []     -> message cfg normal "All requested packages already installed. Nothing to do."
-         Right pkgs   -> installPackages cfg comp globalArgs pkgs
-
--- Attach the correct prefix flag to configure commands,
--- correct --user flag to install commands and no options to other commands.
-mkPkgOps :: ConfigFlags -> Compiler -> PackageIdentifier -> String -> [String] -> [String]
-mkPkgOps cfg comp pkgId cmd ops = verbosity ++
-  case cmd of
-    "configure" -> user ++ hcPath ++ hcPkgPath ++ installDirFlags installDirs ++ ops
-    "install"   -> user
-    _ -> []
- where verbosity = ["-v" ++ showForCabal (configVerbose cfg)]
-       user = if configUserInstall cfg then ["--user"] else []
-       hcPath    = maybe [] (\path -> ["--with-compiler=" ++ path]) (configCompilerPath cfg)
-       hcPkgPath = maybe [] (\path -> ["--with-hc-pkg="   ++ path]) (configHcPkgPath    cfg)
-       installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
-                           | otherwise             = configGlobalInstallDirs cfg
-       installDirs = absoluteInstallDirs pkgId (compilerId comp) NoCopyDest installDirTemplates
-
-installDirFlags :: InstallDirs FilePath -> [String]
-installDirFlags dirs =
-    [flag "prefix" prefix,
-     flag "bindir" bindir,
-     flag "libdir" libdir,
---     flag "dynlibdir" dynlibdir, -- not accepted as argument by cabal?
-     flag "libexecdir" libexecdir,
---     flag "progdir" progdir, -- not accepted as argument by cabal?
---     flag "includedir" includedir, -- not accepted as argument by cabal?
-     flag "datadir" datadir,
-     flag "docdir" docdir,
-     flag "htmldir" htmldir]
-  where flag s f = "--" ++ s ++ "=" ++ f dirs
+         Right pkgs   -> installPackages cfg configFlags pkgs
 
 installPackages :: ConfigFlags
-                -> Compiler
-                -> [String] -- ^Options which will be parse to every package.
-                -> [(PkgInfo,[String])] -- ^ (Package, list of configure options)
+                -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
+                -> [(PkgInfo,FlagAssignment)] -- ^ (Package, list of configure options)
                 -> IO ()
-installPackages cfg comp globalArgs pkgs =
-    mapM_ (installPkg cfg comp globalArgs) pkgs
+installPackages cfg configFlags = mapM_ (installPkg cfg configFlags)
 
 
 {-|
@@ -130,11 +100,10 @@ installPackages cfg comp globalArgs pkgs =
     * The installation finishes by deleting the unpacked tarball.
 -} 
 installPkg :: ConfigFlags
-           -> Compiler
-           -> [String] -- ^Options which will be parse to every package.
-           -> (PkgInfo,[String]) -- ^(Package, list of configure options)
+           -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
+           -> (PkgInfo,FlagAssignment) -- ^(Package, list of configure options)
            -> IO ()
-installPkg cfg comp globalArgs (pkg,opts)
+installPkg cfg configFlags (pkg,flags)
     = do pkgPath <- fetchPackage cfg pkg
          tmp <- getTemporaryDirectory
          let p = pkgInfoId pkg
@@ -147,22 +116,41 @@ installPkg cfg comp globalArgs (pkg,opts)
                       let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
                       when (not e) $ fail $ "Package .cabal file not found: " ++ show descFilePath
-                      installUnpackedPkg cfg comp globalArgs p opts (Just path)
-                      return ())
+                      let configFlags' = configFlags {
+                            Cabal.configConfigurationsFlags =
+                              Cabal.configConfigurationsFlags configFlags ++ flags }
+                      installUnpackedPkg cfg configFlags' (Just path))
 
-installUnpackedPkg :: ConfigFlags -> Compiler 
-                   -> [String] -- ^ Arguments for all packages
-                   -> PackageIdentifier
-                   -> [String] -- ^ Arguments for this package
+installUnpackedPkg :: ConfigFlags
+                   -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> IO ()
-installUnpackedPkg cfg comp globalArgs pkgId opts mpath
-    = do setup "configure"
-         setup "build"
-         setup "install"
+installUnpackedPkg cfg configFlags mpath
+    = do setup ("configure" : configureOptions)
+         setup ["build"]
+         setup ["install"]
   where
-    setup cmd 
-        = do let cmdOps = mkPkgOps cfg comp pkgId cmd (globalArgs++opts)
-             message cfg verbose $ 
-                     unwords ["setupWrapper", show (cmd:cmdOps), show mpath]
-             setupWrapper (cmd:cmdOps) mpath
+    configureOptions = mkPkgOps cfg configFlags
+    setup cmds
+        = do message cfg verbose $
+               "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
+             setupWrapper cmds mpath
+
+-- Attach the correct prefix flag to configure commands,
+-- correct --user flag to install commands and no options to other commands.
+mkPkgOps :: ConfigFlags -> Cabal.ConfigFlags -> [String]
+mkPkgOps cfg configFlags =
+  commandShowOptions (Cabal.configureCommand defaultProgramConfiguration) configFlags {
+    Cabal.configHcFlavor  = toFlag (configCompiler cfg),
+    Cabal.configHcPath    = maybe (Cabal.configHcPath configFlags)
+                                  toFlag (configCompilerPath cfg),
+    Cabal.configHcPkg     = maybe (Cabal.configHcPkg configFlags)
+                                  toFlag (configHcPkgPath cfg),
+    Cabal.configInstallDirs = fmap (maybe mempty toFlag) installDirTemplates,
+    Cabal.configVerbose   = toFlag (configVerbose cfg),
+    Cabal.configPackageDB = if configUserInstall cfg
+                              then toFlag UserPackageDB
+                              else toFlag GlobalPackageDB
+  }
+ where installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
+                           | otherwise             = configGlobalInstallDirs cfg

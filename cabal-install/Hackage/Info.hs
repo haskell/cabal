@@ -49,14 +49,15 @@ infoPkg :: ConfigFlags -> ResolvedPackage -> IO ()
 infoPkg _ (Installed dep p)
     = do printf "  Requested:    %s\n" (show $ showDependency dep)
          printf "    Installed:  %s\n\n" (showPackageId p)
-infoPkg cfg (Available dep pkg opts deps)
+infoPkg cfg (Available dep pkg flags deps)
     = do fetched <- isFetched cfg pkg
          let pkgFile = if fetched then packageFile cfg pkg
                                   else  "*Not downloaded"
          printf "  Requested:    %s\n" (show $ showDependency dep)
          printf "    Using:      %s\n" (showPackageId (pkgInfoId pkg))
          printf "    Depends:    %s\n" (showDependencies $ map fulfills deps)
-         printf "    Options:    %s\n" (unwords opts)
+         printf "    Options:    %s\n" (unwords [ if set then flag else '-':flag
+                                                | (flag, set) <- flags ])
          printf "    Location:   %s\n" (pkgURL pkg)
          printf "    Local:      %s\n\n" pkgFile
 infoPkg _ (Unavailable dep)
