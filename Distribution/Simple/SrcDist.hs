@@ -65,7 +65,7 @@ import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   smartCopySources, die, warn, notice,
                                   findPackageDesc, findFile, copyFileVerbose)
-import Distribution.Simple.Setup (SDistFlags(..))
+import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
@@ -100,7 +100,9 @@ sdist :: PackageDescription -- ^information from the tarball
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg_descr_orig mb_lbi (SDistFlags snapshot verbosity) tmpDir targetPref pps = do
+sdist pkg_descr_orig mb_lbi flags tmpDir targetPref pps = do
+    let snapshot  = fromFlag (sDistSnapshot flags)
+        verbosity = fromFlag (sDistVerbose flags)
     time <- getClockTime
     ct <- toCalendarTime time
     let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
