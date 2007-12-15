@@ -28,6 +28,7 @@ import Control.Monad (when)
 import Data.Char (isAlphaNum, toLower)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
+import Data.Monoid (mempty)
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory, (<.>))
 import System.IO (hPutStrLn, stderr)
@@ -41,7 +42,7 @@ import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftFiel
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
-import Distribution.Simple.InstallDirs (InstallDirTemplates(..), PathTemplate, toPathTemplate, defaultInstallDirs)
+import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
@@ -118,26 +119,26 @@ defaultCacheDir = do dir <- defaultCabalDir
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
-defaultUserInstallDirs :: CompilerFlavor -> IO InstallDirTemplates
-defaultUserInstallDirs compiler =
-    do installDirs <- defaultInstallDirs compiler True
-       userPrefix <- defaultCabalDir
-       return $ installDirs { prefixDirTemplate = toPathTemplate userPrefix }
+defaultUserInstallDirs :: IO (InstallDirs (Maybe PathTemplate))
+defaultUserInstallDirs =
+    do userPrefix <- defaultCabalDir
+       return $ defaultGlobalInstallDirs {
+         prefix = Just (toPathTemplate userPrefix)
+       }
 
-defaultGlobalInstallDirs :: CompilerFlavor -> IO InstallDirTemplates
-defaultGlobalInstallDirs compiler = defaultInstallDirs compiler True
+defaultGlobalInstallDirs :: InstallDirs (Maybe PathTemplate)
+defaultGlobalInstallDirs = fmap (\() -> Nothing) mempty
 
 defaultConfigFlags :: IO ConfigFlags
 defaultConfigFlags = 
-    do userInstallDirs   <- defaultUserInstallDirs defaultCompiler
-       globalInstallDirs <- defaultGlobalInstallDirs defaultCompiler
+    do userInstallDirs <- defaultUserInstallDirs
        cacheDir    <- defaultCacheDir
        return $ ConfigFlags 
                { configCompiler    = defaultCompiler
                , configCompilerPath = Nothing
                , configHcPkgPath   = Nothing
                , configUserInstallDirs = userInstallDirs
-               , configGlobalInstallDirs = globalInstallDirs
+               , configGlobalInstallDirs = defaultGlobalInstallDirs
                , configCacheDir    = cacheDir
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
                , configVerbose     = normal
@@ -198,34 +199,34 @@ configWriteFieldDescrs =
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
     ] 
 
-installDirDescrs :: [FieldDescr InstallDirTemplates]
+installDirDescrs :: [FieldDescr (InstallDirs (Maybe PathTemplate))]
 installDirDescrs =
-    [ installDirField "prefix"     prefixDirTemplate  (\d ds -> ds { prefixDirTemplate  = d })
-    , installDirField "bindir"     binDirTemplate     (\d ds -> ds { binDirTemplate     = d })
-    , installDirField "libdir"     libDirTemplate     (\d ds -> ds { libDirTemplate     = d })
-    , installDirField "libexecdir" libexecDirTemplate (\d ds -> ds { libexecDirTemplate = d })
-    , installDirField "datadir"    dataDirTemplate    (\d ds -> ds { dataDirTemplate    = d })
-    , installDirField "docdir"     docDirTemplate     (\d ds -> ds { docDirTemplate     = d })
-    , installDirField "htmldir"    htmlDirTemplate    (\d ds -> ds { htmlDirTemplate    = d })
+    [ installDirField "prefix"     prefix     (\d ds -> ds { prefix     = d })
+    , installDirField "bindir"     bindir     (\d ds -> ds { bindir     = d })
+    , installDirField "libdir"     libdir     (\d ds -> ds { libdir     = d })
+    , installDirField "libexecdir" libexecdir (\d ds -> ds { libexecdir = d })
+    , installDirField "datadir"    datadir    (\d ds -> ds { datadir    = d })
+    , installDirField "docdir"     docdir     (\d ds -> ds { docdir     = d })
+    , installDirField "htmldir"    htmldir    (\d ds -> ds { htmldir    = d })
     ]
 
 
-userInstallDirField :: FieldDescr InstallDirTemplates -> FieldDescr ConfigFlags
+userInstallDirField :: FieldDescr (InstallDirs (Maybe PathTemplate)) -> FieldDescr ConfigFlags
 userInstallDirField f = modifyFieldName ("user-"++) $
     liftField configUserInstallDirs 
               (\d cfg -> cfg { configUserInstallDirs = d }) 
               f
 
-globalInstallDirField :: FieldDescr InstallDirTemplates -> FieldDescr ConfigFlags
+globalInstallDirField :: FieldDescr (InstallDirs (Maybe PathTemplate)) -> FieldDescr ConfigFlags
 globalInstallDirField f = modifyFieldName ("global-"++) $
     liftField configGlobalInstallDirs 
               (\d cfg -> cfg { configGlobalInstallDirs = d }) 
               f
 
 installDirField :: String 
-                -> (InstallDirTemplates -> PathTemplate) 
-                -> (PathTemplate -> InstallDirTemplates -> InstallDirTemplates)
-                -> FieldDescr InstallDirTemplates
+                -> (InstallDirs (Maybe PathTemplate) -> Maybe PathTemplate) 
+                -> (Maybe PathTemplate -> InstallDirs (Maybe PathTemplate) -> InstallDirs (Maybe PathTemplate))
+                -> FieldDescr (InstallDirs (Maybe PathTemplate))
 installDirField name get set = 
     liftField get set $ field name (text . show) (readS_to_P reads)
 
