@@ -13,7 +13,7 @@
 module Hackage.Types where
 
 import Distribution.Simple.Compiler (CompilerFlavor)
-import Distribution.Simple.InstallDirs (InstallDirTemplates)
+import Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
 import Distribution.Package (PackageIdentifier)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
@@ -28,41 +28,12 @@ data PkgInfo = PkgInfo {
                        }
                deriving (Show)
 
-data Action
-    = FetchCmd
-    | InstallCmd
-    | CleanCmd
-    | UpdateCmd
-    | InfoCmd
-    | HelpCmd
-    | ListCmd
- deriving (Show,Eq)
-
-data Option = OptCompilerFlavor CompilerFlavor
-            | OptCompiler FilePath
-            | OptHcPkg FilePath
-            | OptConfigFile FilePath
-            | OptCacheDir FilePath
-            | OptPrefix FilePath
-            | OptBinDir FilePath
-            | OptLibDir FilePath
-            | OptLibSubDir FilePath
-            | OptLibExecDir FilePath
-            | OptDataDir FilePath
-            | OptDataSubDir FilePath
-            | OptDocDir FilePath
-            | OptHtmlDir FilePath
-            | OptUserInstall Bool
-            | OptHelp
-            | OptVerbose Verbosity
-  deriving (Eq,Show)
-
 data ConfigFlags = ConfigFlags {
         configCompiler    :: CompilerFlavor,
         configCompilerPath :: Maybe FilePath,
         configHcPkgPath   :: Maybe FilePath,
-        configUserInstallDirs   :: InstallDirTemplates,
-        configGlobalInstallDirs :: InstallDirTemplates,
+        configUserInstallDirs   :: InstallDirs (Maybe PathTemplate),
+        configGlobalInstallDirs :: InstallDirs (Maybe PathTemplate),
         configCacheDir    :: FilePath,
         configRepos       :: [Repo],       -- ^Available Hackage servers.
         configVerbose     :: Verbosity,
@@ -76,10 +47,16 @@ data Repo = Repo {
                  }
           deriving (Show,Eq)
 
-data ResolvedPackage = Installed Dependency PackageIdentifier
-                     | Available Dependency PkgInfo [String] [ResolvedPackage]
-                     | Unavailable Dependency
-                       deriving (Show)
+data ResolvedPackage
+       = Installed Dependency PackageIdentifier
+       | Available Dependency PkgInfo FlagAssignment [ResolvedPackage]
+       | Unavailable Dependency
+       deriving (Show)
+
+-- | Explicit user's assignment of configurations flags,
+-- eg --flags=foo --flags=-bar
+-- becomes [("foo", True), ("bar", False)]
+type FlagAssignment = [(String, Bool)]
 
 fulfills :: ResolvedPackage -> Dependency
 fulfills (Installed d _) = d
@@ -89,6 +66,6 @@ fulfills (Unavailable d) = d
 data UnresolvedDependency
     = UnresolvedDependency
     { dependency :: Dependency
-    , depOptions :: [String]
+    , depFlags   :: FlagAssignment
     }
   deriving (Show)
