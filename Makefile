@@ -1,9 +1,9 @@
 
-CABALVERSION=1.3.1
+CABALVERSION=1.3.2
 
 KIND=rc
 #KIND=latest
-GHCFLAGS= --make -cpp -Wall -DCABAL_VERSION=1,3,1
+GHCFLAGS= --make -cpp -Wall -DCABAL_VERSION=1,3,2
 # later: -Wall
 PREF=/usr/local
 USER_FLAG =
