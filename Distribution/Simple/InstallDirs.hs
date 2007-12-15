@@ -357,10 +357,10 @@ data PathTemplateVariable =
 toPathTemplate :: FilePath -> PathTemplate
 toPathTemplate = PathTemplate . read
 
--- | Convert back to a path, ingoring any remaining vars
+-- | Convert back to a path, any remaining vars are included
 --
 fromPathTemplate :: PathTemplate -> FilePath
-fromPathTemplate (PathTemplate cs) = concat [ c | Ordinary c <- cs ]
+fromPathTemplate (PathTemplate template) = show template
 
 substPathTemplate :: [(PathTemplateVariable, PathTemplate)]
                   -> PathTemplate -> PathTemplate
