@@ -43,17 +43,20 @@ mainWorker :: Args -> IO ()
 mainWorker args = 
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printHelp help
+    CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
     CommandReadyToGo (flags, commandParse)  ->
       case commandParse of
         _ | fromFlag (globalVersion flags)        -> printVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
         CommandHelp     help           -> printHelp help
+        CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> action
 
   where
     printHelp help = getProgName >>= putStr . help
+    printOptionsList = putStr . unlines
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
       exitWith (ExitFailure 1)
