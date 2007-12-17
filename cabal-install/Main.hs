@@ -17,7 +17,6 @@ import Hackage.Setup
 import Distribution.PackageDescription (cabalVersion)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup (fromFlag)
-import Distribution.Simple.Program
 import Distribution.Simple.Command
 import Distribution.Simple.UserHooks (Args)
 import Hackage.Config           (defaultConfigFile, loadConfig, findCompiler)
@@ -65,9 +64,8 @@ mainWorker args =
                                   ++ showVersion cabalVersion
                                   ++ " of the Cabal library "
 
-    progs = defaultProgramConfiguration
     commands =
-      [installCommand progs   `commandAddActionWithEmptyFlags` installAction
+      [installCommand         `commandAddActionWithEmptyFlags` installAction
       ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
