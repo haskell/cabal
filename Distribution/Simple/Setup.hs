@@ -67,6 +67,7 @@ module Distribution.Simple.Setup (
   fromFlag,
   fromFlagOrDefault,
   flagToMaybe,
+  flagToList,
 
 #ifdef DEBUG
                            hunitTests,
