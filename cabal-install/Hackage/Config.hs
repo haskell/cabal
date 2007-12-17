@@ -44,6 +44,7 @@ import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
+import Distribution.Simple.Setup (toFlag, fromFlagOrDefault)
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity, normal)
 
@@ -143,6 +144,8 @@ defaultConfigFlags =
                , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
                , configVerbose     = normal
                , configUserInstall = True
+               , configUploadUsername = mempty
+               , configUploadPassword = mempty
                }
 
 --
@@ -197,7 +200,17 @@ configWriteFieldDescrs =
                 (text . show)                  (readS_to_P reads)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
-    ] 
+    , simpleField "hackage-username"
+                (text . show . fromFlagOrDefault "")
+                (fmap emptyToNothing $ readS_to_P reads)
+                configUploadUsername    (\d cfg -> cfg { configUploadUsername = d })
+    , simpleField "hackage-password"
+                (text . show . fromFlagOrDefault "")
+                (fmap emptyToNothing $ readS_to_P reads)
+                configUploadPassword    (\d cfg -> cfg { configUploadPassword = d })
+    ]
+    where emptyToNothing "" = mempty
+          emptyToNothing f  = toFlag f
 
 installDirDescrs :: [FieldDescr (InstallDirs (Maybe PathTemplate))]
 installDirDescrs =
