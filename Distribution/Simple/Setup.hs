@@ -388,12 +388,16 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
          configProfExe (\v flags -> flags { configProfExe = v })
          falseArg
 
-      ,option "O" ["enable-optimization"]
+      ,option "O" ("enable-optimization": case showOrParseArgs of
+                      -- Allow British English spelling:
+                      ShowArgs -> []; ParseArgs -> ["enable-optimisation"])
          "Build with optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
          trueArg
 
-      ,option "" ["disable-optimization"]
+      ,option "" ("disable-optimization": case showOrParseArgs of
+                      -- Allow British English spelling:
+                      ShowArgs -> []; ParseArgs -> ["disable-optimisation"])
          "Build without optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
          falseArg
