@@ -17,6 +17,7 @@ module Hackage.Setup
     , updateCommand
     , infoCommand
     , fetchCommand
+    , uploadCommand, UploadFlags(..)
 
     , parsePackageArgs
     , updateConfig
@@ -48,6 +49,7 @@ import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..))
 import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
 
 import Control.Monad (MonadPlus(mplus))
+import Data.Monoid (Monoid(..))
 
 -- | This function updates the configuration with the cabal configure flags.
 updateConfig :: Cabal.ConfigFlags -> ConfigFlags -> ConfigFlags
@@ -145,6 +147,78 @@ infoCommand = CommandUI {
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbose id const]
   }
+
+-- ------------------------------------------------------------
+-- * Upload flags
+-- ------------------------------------------------------------
+
+type Username = String
+type Password = String
+
+data UploadFlags = UploadFlags {
+    uploadCheck     :: Flag Bool,
+    uploadUsername  :: Flag Username,
+    uploadPassword  :: Flag Password,
+    uploadVerbosity :: Flag Verbosity
+  } deriving (Show)
+
+defaultUploadFlags :: UploadFlags
+defaultUploadFlags = UploadFlags {
+    uploadCheck     = toFlag False,
+    uploadUsername  = mempty,
+    uploadPassword  = mempty,
+    uploadVerbosity = toFlag normal
+  }
+
+uploadCommand :: CommandUI UploadFlags
+uploadCommand = CommandUI {
+    commandName         = "upload",
+    commandSynopsis     = "Uploads source packages to Hackage",
+    commandDescription  = Just $ \_ ->
+         "You can store your Hackage login in " ++ "FIXME: configFile"
+      ++ "\nusing the format (\"username\",\"password\").\n",
+    commandUsage        = \pname ->
+         "Usage: " ++ pname ++ " upload [FLAGS] [TARFILES]\n\n"
+      ++ "Flags for upload:",
+    commandDefaultFlags = defaultUploadFlags,
+    commandOptions      = \_ ->
+      [optionVerbose uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
+
+      ,option ['c'] ["check"]
+         "Do not upload, just do QA checks."
+        uploadCheck (\v flags -> flags { uploadCheck = v })
+        (noArg (toFlag True) (fromFlagOrDefault False))
+
+      ,option ['u'] ["username"]
+        "Hackage username."
+        uploadUsername (\v flags -> flags { uploadUsername = v })
+        (reqArg "USERNAME" toFlag flagToList)
+
+      ,option ['p'] ["password"]
+        "Hackage password."
+        uploadPassword (\v flags -> flags { uploadPassword = v })
+        (reqArg "PASSWORD" toFlag flagToList)
+      ]
+  }
+
+instance Monoid UploadFlags where
+  mempty = UploadFlags {
+    uploadCheck     = mempty,
+    uploadUsername  = mempty,
+    uploadPassword  = mempty,
+    uploadVerbosity = mempty
+  }
+  mappend a b = UploadFlags {
+    uploadCheck     = combine uploadCheck,
+    uploadUsername  = combine uploadUsername,
+    uploadPassword  = combine uploadPassword,
+    uploadVerbosity = combine uploadVerbosity
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * GetOpt Utils
+-- ------------------------------------------------------------
 
 optionVerbose :: (flags -> Flag Verbosity)
               -> (Flag Verbosity -> flags -> flags)
