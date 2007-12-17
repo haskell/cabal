@@ -40,8 +40,9 @@ import qualified Distribution.Simple.Setup as Cabal
   RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    sdistCommand,
                                          testCommand-})
-import Distribution.Simple.Setup (fromFlagOrDefault, flagToMaybe)
---import System.Console.GetOpt (ArgDescr (..), OptDescr (..))
+import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault,
+                                  flagToMaybe, flagToList)
+import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
 
 import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..))
 import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
@@ -94,34 +95,34 @@ installCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandUsage    = usagePackages "install"
   }
 
-fetchCommand :: CommandUI ()
+fetchCommand :: CommandUI (Flag Verbosity)
 fetchCommand = CommandUI {
     commandName         = "fetch",
     commandSynopsis     = "Downloads packages for later installation or study.",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "fetch",
-    commandDefaultFlags = (),
-    commandOptions      = \_ -> []
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbose id const]
   }
 
-listCommand  :: CommandUI ()
+listCommand  :: CommandUI (Flag Verbosity)
 listCommand = CommandUI {
     commandName         = "list",
     commandSynopsis     = "List available packages on the server (cached).",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "list",
-    commandDefaultFlags = (),
-    commandOptions      = \_ -> []
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbose id const]
   }
 
-updateCommand  :: CommandUI ()
+updateCommand  :: CommandUI (Flag Verbosity)
 updateCommand = CommandUI {
     commandName         = "update",
     commandSynopsis     = "Updates list of known packages",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "update",
-    commandDefaultFlags = (),
-    commandOptions      = \_ -> []
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbose id const]
   }
 
 {-
@@ -135,15 +136,25 @@ cleanCommand = makeCommand name shortDesc longDesc emptyFlags options
     options _  = []
 -}
 
-infoCommand  :: CommandUI ()
+infoCommand  :: CommandUI (Flag Verbosity)
 infoCommand = CommandUI {
     commandName         = "info",
     commandSynopsis     = "Emit some info about dependency resolution",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "info",
-    commandDefaultFlags = (),
-    commandOptions      = \_ -> []
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbose id const]
   }
+
+optionVerbose :: (flags -> Flag Verbosity)
+              -> (Flag Verbosity -> flags -> flags)
+              -> Option flags
+optionVerbose get set =
+  option "v" ["verbose"]
+    "Control verbosity (n is 0--3, default verbosity level is 1)"
+    get set
+    (optArg "n" (toFlag . flagToVerbosity)
+                (fmap (Just . showForCabal) . flagToList))
 
 usagePackages :: String -> String -> String
 usagePackages pname name =

@@ -14,7 +14,9 @@
 module Main where
 
 import Hackage.Setup
+import Hackage.Types (ConfigFlags(..))
 import Distribution.PackageDescription (cabalVersion)
+import Distribution.Simple.Setup (Flag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.Command
@@ -27,6 +29,7 @@ import Hackage.Update           (update)
 import Hackage.Fetch            (fetch)
 --import Hackage.Clean            (clean)
 
+import Distribution.Verbosity   (Verbosity, normal)
 import Distribution.Version     (showVersion)
 import qualified Paths_cabal_install (version)
 
@@ -126,31 +129,35 @@ installAction flags extraArgs =
       (comp, conf) <- findCompiler config
       install config comp conf flags pkgs
 
-infoAction :: () -> Args -> IO ()
-infoAction _flags extraArgs = do
+infoAction :: Cabal.Flag Verbosity -> Args -> IO ()
+infoAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  config <- loadConfig configFile
+  config0 <- loadConfig configFile
+  let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   (comp, conf) <- findCompiler config
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
     Right pkgs -> info config comp conf [] pkgs
 
-listAction :: () -> Args -> IO ()
-listAction _flags extraArgs = do
+listAction :: Cabal.Flag Verbosity -> Args -> IO ()
+listAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  config <- loadConfig configFile
+  config0 <- loadConfig configFile
+  let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   list config extraArgs
 
-updateAction :: () -> Args -> IO ()
-updateAction _flags _extraArgs = do
+updateAction :: Flag Verbosity -> Args -> IO ()
+updateAction flags _extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  config <- loadConfig configFile
+  config0 <- loadConfig configFile
+  let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   update config
 
-fetchAction :: () -> Args -> IO ()
-fetchAction _flags extraArgs = do
+fetchAction :: Flag Verbosity -> Args -> IO ()
+fetchAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  config <- loadConfig configFile
+  config0 <- loadConfig configFile
+  let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   (comp, conf) <- findCompiler config
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
