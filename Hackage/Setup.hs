@@ -22,7 +22,7 @@ module Hackage.Setup
     , updateConfig
     ) where
 
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs (combineInstallDirs)
 import Distribution.Simple.Command
@@ -87,11 +87,11 @@ globalCommand = Cabal.globalCommand {
       ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
   }
 
-installCommand :: ProgramConfiguration -> CommandUI Cabal.ConfigFlags
-installCommand progConf = (Cabal.configureCommand progConf) {
+installCommand :: CommandUI Cabal.ConfigFlags
+installCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandName     = "install",
     commandSynopsis = "Installs a list of packages.",
-    commandUsage       = usagePackages "install"
+    commandUsage    = usagePackages "install"
   }
 
 fetchCommand :: CommandUI ()
