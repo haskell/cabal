@@ -4,6 +4,7 @@
 module Hackage.Upload (upload) where
 
 import Hackage.Setup (UploadFlags(..))
+import Hackage.Types (ConfigFlags(..))
 import Distribution.Simple.Utils (debug, notice)
 import Distribution.Simple.Setup (toFlag, fromFlag, flagToMaybe)
 
@@ -14,13 +15,11 @@ import Network.HTTP (Header(..), HeaderName(..), Request(..),
                      RequestMethod(..), Response(..))
 import Network.URI (URI, parseURI)
 
-import Control.Monad    (MonadPlus(mplus))
+import Data.Monoid      (Monoid(mappend))
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
-import System.Directory (doesFileExist, getAppUserDataDirectory)
 import System.IO        (hFlush, stdout)
 import System.Random    (randomRIO)
-import System.FilePath  ((</>))
 
 type Username = String
 type Password = String
@@ -34,9 +33,9 @@ Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/che
 
 
 
-upload :: UploadFlags -> [FilePath] -> IO ()
-upload flags paths = do
-          flags' <- if needsAuth flags then getAuth flags else return flags
+upload :: ConfigFlags -> UploadFlags -> [FilePath] -> IO ()
+upload cfg flags paths = do
+          flags' <- if needsAuth flags then getAuth cfg flags else return flags
           mapM_ (handlePackage flags') paths
 
 handlePackage :: UploadFlags -> FilePath -> IO ()
@@ -74,13 +73,14 @@ setAuth uri user pwd =
                                auPassword = pwd,
                                auSite     = uri }
 
-getAuth :: UploadFlags -> IO UploadFlags
-getAuth flags = 
-    do (mu, mp) <- readAuthFile
-       u <- case flagToMaybe (uploadUsername flags) `mplus` mu of
+getAuth :: ConfigFlags -> UploadFlags -> IO UploadFlags
+getAuth cfg flags =
+    do u <- case flagToMaybe $ configUploadUsername cfg
+                     `mappend` uploadUsername flags of
               Just u  -> return u
               Nothing -> promptUsername
-       p <- case flagToMaybe (uploadPassword flags) `mplus` mp of
+       p <- case flagToMaybe $ configUploadPassword cfg
+                     `mappend` uploadPassword flags of
               Just p  -> return p
               Nothing -> promptPassword
        return $ flags { uploadUsername = toFlag u,
@@ -97,19 +97,6 @@ promptPassword =
     do putStr "Hackage password: "
        hFlush stdout
        getLine
-
-authFile :: IO FilePath
-authFile = do dir <- getAppUserDataDirectory "cabal-upload"
-              return $ dir </> "auth"
-
-readAuthFile :: IO (Maybe Username, Maybe Password)
-readAuthFile = 
-    do file <- authFile
-       e <- doesFileExist file
-       if e then do s <- readFile file
-                    let (u,p) = read s
-                    return (Just u, Just p)
-            else return (Nothing, Nothing)
 
 ignoreMsg :: String -> IO ()
 ignoreMsg _ = return ()

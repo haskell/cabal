@@ -172,9 +172,8 @@ fetchAction flags extraArgs = do
 
 uploadAction :: UploadFlags -> [String] -> IO ()
 uploadAction flags extraArgs = do
---  configFile <- defaultConfigFile --FIXME
---  config0 <- loadConfig configFile
---  let config = config0 { configVerbose = fromFlag $ uploadVerbosity flags }
+  configFile <- defaultConfigFile --FIXME
+  config <- loadConfig configFile
   -- FIXME: check that the .tar.gz files exist and report friendly error message if not
   let tarfiles = extraArgs
-  upload flags tarfiles
+  upload config flags tarfiles
