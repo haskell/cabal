@@ -132,11 +132,20 @@ commandShowOptions command v =
         | flag <- showflag x ]
     showOption _ _ = []
 
+commandListOptions :: CommandUI flags -> [String]
+commandListOptions command =
+  concatMap listOption (commandOptions command ParseArgs)
+  where
+    listOption :: Option a -> [String]
+    listOption (Option shortNames longNames _ _) =
+         [ "-"  ++ [name] | name <- shortNames ]
+      ++ [ "--" ++  name  | name <- longNames ]
+
 -- | The help text for this command with descriptions of all the options.
 commandHelp :: CommandUI flags -> String
 commandHelp command =
     GetOpt.usageInfo ""
-  . addCommonFlags
+  . addCommonFlags ShowArgs
   . map optionToGetOpt
   $ commandOptions command ShowArgs
 
@@ -160,17 +169,26 @@ makeCommand name shortDesc longDesc defaultFlags options =
                    ++ "Flags for " ++ name ++ ":"
 
 -- | Common flags that apply to every command
-data CommonFlag = HelpFlag
+data CommonFlag = HelpFlag | ListOptionsFlag
 
-commonFlags :: [GetOpt.OptDescr CommonFlag]
-commonFlags =
-  [GetOpt.Option ['h', '?'] ["help"] (GetOpt.NoArg HelpFlag) "Show this help text"]
+commonFlags :: ShowOrParseArgs -> [GetOpt.OptDescr CommonFlag]
+commonFlags showOrParseArgs = case showOrParseArgs of
+  ShowArgs  -> [help]
+  ParseArgs -> [help, list]
+  where
+    help = GetOpt.Option ['h', '?'] ["help"] (GetOpt.NoArg HelpFlag)
+             "Show this help text"
+    list = GetOpt.Option [] ["list-options"] (GetOpt.NoArg ListOptionsFlag)
+             "Print a list of command line flags"
 
-addCommonFlags :: [GetOpt.OptDescr a]
+addCommonFlags :: ShowOrParseArgs
+               -> [GetOpt.OptDescr a]
                -> [GetOpt.OptDescr (Either CommonFlag a)]
-addCommonFlags options = map (fmapOptDesc Left)  commonFlags
-                      ++ map (fmapOptDesc Right) options
-  where fmapOptDesc f (GetOpt.Option s l d m) = GetOpt.Option s l (fmapArgDesc f d) m
+addCommonFlags showOrParseArgs options =
+     map (fmapOptDesc Left)  (commonFlags showOrParseArgs)
+  ++ map (fmapOptDesc Right) options
+  where fmapOptDesc f (GetOpt.Option s l d m) =
+                       GetOpt.Option s l (fmapArgDesc f d) m
         fmapArgDesc f (GetOpt.NoArg a)    = GetOpt.NoArg (f a)
         fmapArgDesc f (GetOpt.ReqArg s d) = GetOpt.ReqArg (f . s) d
         fmapArgDesc f (GetOpt.OptArg s d) = GetOpt.OptArg (f . s) d
@@ -179,7 +197,7 @@ addCommonFlags options = map (fmapOptDesc Left)  commonFlags
 commandParseArgs :: CommandUI flags -> Bool -> [String]
                  -> CommandParse (flags -> flags, [String])
 commandParseArgs command ordered args =
-  let options = addCommonFlags
+  let options = addCommonFlags ParseArgs
               . map optionToGetOpt
               $ commandOptions command ParseArgs
       order | ordered   = GetOpt.RequireOrder
@@ -188,6 +206,8 @@ commandParseArgs command ordered args =
     (flags, _,    [])
       | not (null [ () | Left HelpFlag <- flags ])
                       -> CommandHelp help
+      | not (null [ () | Left ListOptionsFlag <- flags ])
+                      -> CommandList (commandListOptions command)
     (flags, opts, []) -> CommandReadyToGo (accumFlags flags , opts)
     (_,     _,  errs) -> CommandErrors errs
 
@@ -202,12 +222,14 @@ commandParseArgs command ordered args =
         accumFlags flags = foldr (flip (.)) id [ f | Right f <- flags ]
 
 data CommandParse flags = CommandHelp (String -> String)
+                        | CommandList [String]
                         | CommandErrors [String]
                         | CommandReadyToGo flags
 instance Functor CommandParse where
   fmap _ (CommandHelp help)       = CommandHelp help
+  fmap _ (CommandList opts)       = CommandList opts
   fmap _ (CommandErrors errs)     = CommandErrors errs
-  fmap f (CommandReadyToGo flags) = (CommandReadyToGo (f flags))
+  fmap f (CommandReadyToGo flags) = CommandReadyToGo (f flags)
 
 
 data Command action = Command String String ([String] -> CommandParse action)
@@ -245,8 +267,9 @@ commandsRun :: CommandUI a
             -> [String]
             -> CommandParse (a, CommandParse action)
 commandsRun globalCommand commands args =
-  case commandParseArgs globalCommand True args of
-    CommandHelp      _             -> CommandHelp globalHelp
+  case commandParseArgs globalCommand' True args of
+    CommandHelp      help          -> CommandHelp help
+    CommandList      opts          -> CommandList (opts ++ commandNames)
     CommandErrors    errs          -> CommandErrors errs
     CommandReadyToGo (mkflags, args') -> case args' of
       (name:cmdArgs) -> case lookupCommand name of
@@ -261,17 +284,19 @@ commandsRun globalCommand commands args =
     noCommand        = CommandErrors ["no command given (try --help)\n"]
     badCommand cname = CommandErrors ["unrecognised command: " ++ cname
                                    ++ " (try --help)\n"]
-    globalHelp pname =
-          "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n"
-       ++ "   or: " ++ pname ++ " COMMAND [FLAGS]\n\n"
-       ++ "Global flags:"
-       ++ commandHelp globalCommand
-       ++ "\nCommands:\n"
-       ++ unlines [ "  " ++ align name ++ "    " ++ description
-                  | Command name description _ <- commands ]
-       ++ case commandDescription globalCommand of
-            Nothing   -> ""
-            Just desc -> '\n': desc pname
-
+    commandNames   = [ name | Command name _ _ <- commands ]
+    globalCommand' = globalCommand {
+      commandUsage = \pname ->
+           "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n"
+        ++ "   or: " ++ pname ++ " COMMAND [FLAGS]\n\n"
+        ++ "Global flags:",
+      commandDescription = Just $ \pname ->
+           "Commands:\n"
+        ++ unlines [ "  " ++ align name ++ "    " ++ description
+                   | Command name description _ <- commands ]
+        ++ case commandDescription globalCommand of
+             Nothing   -> ""
+             Just desc -> '\n': desc pname
+    }
       where maxlen = maximum [ length name | Command name _ _ <- commands]
             align str = str ++ replicate (maxlen - length str) ' '
