@@ -26,8 +26,8 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Data.List (intersperse, nubBy)
 import Text.Printf (printf)
 
-info :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
-info cfg comp conf _globalArgs deps
+info :: ConfigFlags -> Compiler -> ProgramConfiguration -> [UnresolvedDependency] -> IO ()
+info cfg comp conf deps
     = do apkgs <- resolveDependencies cfg comp conf deps
          mapM_ (infoPkg cfg) $ flattenResolvedPackages apkgs
          case packagesToInstall apkgs of

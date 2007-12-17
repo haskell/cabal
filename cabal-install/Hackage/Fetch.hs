@@ -123,8 +123,8 @@ fetchPackage cfg pkg
                     downloadPackage cfg pkg
 
 -- |Fetch a list of packages and their dependencies.
-fetch :: ConfigFlags -> Compiler -> ProgramConfiguration -> [String] -> [UnresolvedDependency] -> IO ()
-fetch cfg comp conf _globalArgs deps
+fetch :: ConfigFlags -> Compiler -> ProgramConfiguration -> [UnresolvedDependency] -> IO ()
+fetch cfg comp conf deps
     = do depTree <- resolveDependencies cfg comp conf deps
          case packagesToInstall depTree of
            Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing

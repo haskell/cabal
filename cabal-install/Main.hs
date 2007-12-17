@@ -143,7 +143,7 @@ infoAction flags extraArgs = do
   (comp, conf) <- findCompiler config
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
-    Right pkgs -> info config comp conf [] pkgs
+    Right pkgs -> info config comp conf pkgs
 
 listAction :: Cabal.Flag Verbosity -> Args -> IO ()
 listAction flags extraArgs = do
@@ -167,4 +167,4 @@ fetchAction flags extraArgs = do
   (comp, conf) <- findCompiler config
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
-    Right pkgs -> fetch config comp conf [] pkgs
+    Right pkgs -> fetch config comp conf pkgs
