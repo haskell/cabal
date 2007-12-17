@@ -21,7 +21,6 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.SetupWrapper (setupWrapper)
-import Distribution.Simple.UserHooks (Args)
 import Hackage.Config           (defaultConfigFile, loadConfig, findCompiler)
 import Hackage.List             (list)
 import Hackage.Install          (install)
@@ -44,7 +43,7 @@ import Data.List                (intersperse)
 main :: IO ()
 main = getArgs >>= mainWorker
 
-mainWorker :: Args -> IO ()
+mainWorker :: [String] -> IO ()
 mainWorker args = 
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printHelp help
@@ -126,7 +125,7 @@ commandAddActionWithEmptyFlagsDebug command action =
 --    action flags args
 -}
 
-installAction :: Cabal.ConfigFlags -> Args -> IO ()
+installAction :: Cabal.ConfigFlags -> [String] -> IO ()
 installAction flags extraArgs =
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
@@ -137,7 +136,7 @@ installAction flags extraArgs =
       (comp, conf) <- findCompiler config
       install config comp conf flags pkgs
 
-infoAction :: Cabal.Flag Verbosity -> Args -> IO ()
+infoAction :: Cabal.Flag Verbosity -> [String] -> IO ()
 infoAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   config0 <- loadConfig configFile
@@ -147,21 +146,21 @@ infoAction flags extraArgs = do
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
     Right pkgs -> info config comp conf pkgs
 
-listAction :: Cabal.Flag Verbosity -> Args -> IO ()
+listAction :: Cabal.Flag Verbosity -> [String] -> IO ()
 listAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   config0 <- loadConfig configFile
   let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   list config extraArgs
 
-updateAction :: Flag Verbosity -> Args -> IO ()
+updateAction :: Flag Verbosity -> [String] -> IO ()
 updateAction flags _extraArgs = do
   configFile <- defaultConfigFile --FIXME
   config0 <- loadConfig configFile
   let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   update config
 
-fetchAction :: Flag Verbosity -> Args -> IO ()
+fetchAction :: Flag Verbosity -> [String] -> IO ()
 fetchAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   config0 <- loadConfig configFile
