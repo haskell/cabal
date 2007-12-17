@@ -158,7 +158,7 @@ loadConfig configFile =
        minp <- readFileIfExists configFile
        case minp of
          Nothing -> do hPutStrLn stderr $ "Config file " ++ configFile ++ " not found."
-                       hPutStrLn stderr $ "Writing default configuration to " ++ configFile ++ "."
+                       hPutStrLn stderr $ "Writing default configuration to " ++ configFile
                        writeDefaultConfigFile configFile defaultConf
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
@@ -174,7 +174,7 @@ loadConfig configFile =
 writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()
 writeDefaultConfigFile file cfg = 
     do createDirectoryIfMissing True (takeDirectory file)
-       writeFile file $ showFields configWriteFieldDescrs cfg
+       writeFile file $ showFields configWriteFieldDescrs cfg ++ "\n"
 
 showConfig :: ConfigFlags -> String
 showConfig = showFields configFieldDescrs
