@@ -76,7 +76,15 @@ updateConfig flags conf = conf {
 
 globalCommand :: CommandUI Cabal.GlobalFlags
 globalCommand = Cabal.globalCommand {
-    commandDescription = Nothing
+    commandDescription = Just $ \pname ->
+         "Typical step for installing Cabal packages:\n"
+      ++ "  " ++ pname ++ " install [PACKAGES]\n"
+      ++ "\nOccasionally you need to update the list of available packages:\n"
+      ++ "  " ++ pname ++ " update\n"
+      ++ "\nFor more information about a command, try '"
+          ++ pname ++ " COMMAND --help'."
+      ++ "\nThis program is the command line interface to the Haskell Cabal Infrastructure."
+      ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
   }
 
 installCommand :: ProgramConfiguration -> CommandUI Cabal.ConfigFlags
