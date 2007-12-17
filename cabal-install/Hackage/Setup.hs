@@ -157,7 +157,7 @@ optionVerbose get set =
                 (fmap (Just . showForCabal) . flagToList))
 
 usagePackages :: String -> String -> String
-usagePackages pname name =
+usagePackages name pname =
      "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
   ++ "   or: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n\n"
   ++ "Flags for " ++ name ++ ":"
