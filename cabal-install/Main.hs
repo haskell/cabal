@@ -16,10 +16,11 @@ module Main where
 import Hackage.Setup
 import Hackage.Types (ConfigFlags(..))
 import Distribution.PackageDescription (cabalVersion)
-import Distribution.Simple.Setup (Flag, fromFlagOrDefault)
+import Distribution.Simple.Setup (Flag, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Simple.Setup (fromFlag)
+import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
+import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.UserHooks (Args)
 import Hackage.Config           (defaultConfigFile, loadConfig, findCompiler)
 import Hackage.List             (list)
@@ -76,21 +77,26 @@ mainWorker args =
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
       ,fetchCommand           `commandAddAction` fetchAction
-{-
-      ,configureCommand progs `commandAddAction` configureAction args
-      ,buildCommand     progs `commandAddAction` buildAction args
-      ,copyCommand            `commandAddAction` copyAction args
-      ,haddockCommand         `commandAddAction` haddockAction args
-      ,cleanCommand           `commandAddAction` cleanAction args
-      ,sdistCommand           `commandAddAction` sdistAction args
-      ,hscolourCommand        `commandAddAction` hscolourAction args
-      ,registerCommand        `commandAddAction` registerAction args
---      ,unregisterCommand      `commandAddAction` unregisterAction
-      ,testCommand            `commandAddAction` testAction args
---      ,programaticaCommand    `commandAddAction` programaticaAction
---      ,makefileCommand        `commandAddAction` makefileAction
--}
+
+      ,wrapperAction (Cabal.configureCommand defaultProgramConfiguration)
+      ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
+      ,wrapperAction Cabal.copyCommand
+      ,wrapperAction Cabal.haddockCommand
+      ,wrapperAction Cabal.cleanCommand
+      ,wrapperAction Cabal.sdistCommand
+      ,wrapperAction Cabal.hscolourCommand
+      ,wrapperAction Cabal.registerCommand
+--      ,wrapperAction unregisterCommand
+      ,wrapperAction Cabal.testCommand
+--      ,wrapperAction programaticaCommand
+--      ,wrapperAction makefileCommand
       ]
+
+wrapperAction :: CommandUI flags -> Command (IO ())
+wrapperAction command =
+  commandAddAction command $ \flags extraArgs ->
+  let args = commandName command : commandShowOptions command flags ++ extraArgs
+   in setupWrapper args Nothing
 
 {-
 commandAddActionDebug :: CommandUI flags
@@ -162,32 +168,3 @@ fetchAction flags extraArgs = do
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
     Right pkgs -> fetch config comp conf [] pkgs
-
-{-
-configureAction :: Args -> ConfigFlags -> Args -> IO ()
-configureAction allArgs flags extraArgs = return ()
-
-buildAction :: Args -> BuildFlags -> Args -> IO ()
-buildAction allArgs flags extraArgs = return ()
-
-copyAction :: Args -> CopyFlags -> Args -> IO ()
-copyAction allArgs flags extraArgs = return ()
-
-hscolourAction :: Args -> HscolourFlags -> Args -> IO ()
-hscolourAction allArgs flags extraArgs = return ()
-
-haddockAction :: Args -> HaddockFlags -> Args -> IO ()
-haddockAction allArgs flags extraArgs = return ()
-
-sdistAction :: Args -> SDistFlags -> Args -> IO ()
-sdistAction allArgs flags extraArgs = return ()
-
-cleanAction :: Args -> CleanFlags -> Args -> IO ()
-cleanAction allArgs flags extraArgs = return ()
-
-testAction :: Args -> () -> Args -> IO ()
-testAction allArgs flags extraArgs = return ()
-
-registerAction :: Args -> RegisterFlags -> Args -> IO ()
-registerAction flags extraArgs = return ()
--}
