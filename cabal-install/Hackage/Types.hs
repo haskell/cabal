@@ -14,6 +14,7 @@ module Hackage.Types where
 
 import Distribution.Simple.Compiler (CompilerFlavor)
 import Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
+import Distribution.Simple.Setup (Flag)
 import Distribution.Package (PackageIdentifier)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.Version (Dependency)
@@ -37,9 +38,14 @@ data ConfigFlags = ConfigFlags {
         configCacheDir    :: FilePath,
         configRepos       :: [Repo],       -- ^Available Hackage servers.
         configVerbose     :: Verbosity,
-        configUserInstall :: Bool            -- ^--user-install flag
+        configUserInstall :: Bool,           -- ^--user-install flag
+        configUploadUsername :: Flag Username,
+        configUploadPassword :: Flag Password
    }
   deriving (Show)
+
+type Username = String
+type Password = String
 
 data Repo = Repo {
                   repoName :: String,

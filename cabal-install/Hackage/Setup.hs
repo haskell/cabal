@@ -45,7 +45,8 @@ import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault,
                                   flagToMaybe, flagToList)
 import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
 
-import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..))
+import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..),
+                      Username, Password)
 import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
 
 import Control.Monad (MonadPlus(mplus))
@@ -151,9 +152,6 @@ infoCommand = CommandUI {
 -- ------------------------------------------------------------
 -- * Upload flags
 -- ------------------------------------------------------------
-
-type Username = String
-type Password = String
 
 data UploadFlags = UploadFlags {
     uploadCheck     :: Flag Bool,
