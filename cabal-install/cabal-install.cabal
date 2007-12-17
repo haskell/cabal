@@ -39,6 +39,7 @@ Executable cabal
         Hackage.Tar
         Hackage.Types
         Hackage.Update
+        Hackage.Upload
         Hackage.Utils
 
     build-depends: Cabal >= 1.3.2, filepath >= 1.0, network,

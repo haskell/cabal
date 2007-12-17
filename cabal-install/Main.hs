@@ -29,6 +29,7 @@ import Hackage.Info             (info)
 import Hackage.Update           (update)
 import Hackage.Fetch            (fetch)
 --import Hackage.Clean            (clean)
+import Hackage.Upload           (upload)
 
 import Distribution.Verbosity   (Verbosity, normal)
 import Distribution.Version     (showVersion)
@@ -77,6 +78,7 @@ mainWorker args =
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
       ,fetchCommand           `commandAddAction` fetchAction
+      ,uploadCommand          `commandAddAction` uploadAction
 
       ,wrapperAction (Cabal.configureCommand defaultProgramConfiguration)
       ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
@@ -168,3 +170,12 @@ fetchAction flags extraArgs = do
   case parsePackageArgs extraArgs of
     Left  err  -> putStrLn err >> exitWith (ExitFailure 1)
     Right pkgs -> fetch config comp conf pkgs
+
+uploadAction :: UploadFlags -> [String] -> IO ()
+uploadAction flags extraArgs = do
+--  configFile <- defaultConfigFile --FIXME
+--  config0 <- loadConfig configFile
+--  let config = config0 { configVerbose = fromFlag $ uploadVerbosity flags }
+  -- FIXME: check that the .tar.gz files exist and report friendly error message if not
+  let tarfiles = extraArgs
+  upload flags tarfiles
