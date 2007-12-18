@@ -27,18 +27,17 @@ import Network.HTTP (ConnError(..), Request (..), simpleHTTP
 
 import Control.Exception (bracket)
 import Control.Monad (filterM)
-import Text.Printf (printf)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
 
 import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..), PkgInfo, pkgInfoId)
-import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL, message)
+import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import Hackage.Utils
 
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (Compiler)
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Verbosity
+import Distribution.Simple.Utils (die, notice, debug)
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
@@ -50,10 +49,10 @@ readURI uri
     | otherwise = do
         eitherResult <- simpleHTTP (Request uri GET [] "")
         case eitherResult of
-           Left err -> fail $ printf "Failed to download '%s': %s" (show uri) (show err)
+           Left err -> die $ "Failed to download '" ++ show uri ++ "': " ++ show err
            Right rsp
                | rspCode rsp == (2,0,0) -> return (rspBody rsp)
-               | otherwise -> fail $ "Failed to download '" ++ show uri ++ "': Invalid HTTP code: " ++ show (rspCode rsp)
+               | otherwise -> die $ "Failed to download '" ++ show uri ++ "': Invalid HTTP code: " ++ show (rspCode rsp)
 
 downloadURI :: FilePath -- ^ Where to put it
             -> URI      -- ^ What to download
@@ -89,12 +88,13 @@ downloadPackage cfg pkg
     = do let url = pkgURL pkg
              dir = packageDir cfg pkg
              path = packageFile cfg pkg
-         message cfg verbose $ "GET " ++ show url
+         debug verbosity $ "GET " ++ show url
          createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
-           Just err -> fail $ printf "Failed to download '%s': %s" (showPackageId (pkgInfoId pkg)) (show err)
+           Just err -> die $ "Failed to download '" ++ showPackageId (pkgInfoId pkg) ++ "': " ++ show err
            Nothing -> return path
+  where verbosity = configVerbose cfg
 
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: ConfigFlags -> Repo -> IO FilePath
@@ -105,7 +105,7 @@ downloadIndex cfg repo
          createDirectoryIfMissing True dir
          mbError <- downloadFile path url
          case mbError of
-           Just err -> fail $ printf "Failed to download index '%s'" (show err)
+           Just err -> die $ "Failed to download index '" ++ show err ++ "'"
            Nothing  -> return path
 
 -- |Returns @True@ if the package has already been fetched.
@@ -117,17 +117,18 @@ fetchPackage :: ConfigFlags -> PkgInfo -> IO String
 fetchPackage cfg pkg
     = do fetched <- isFetched cfg pkg
          if fetched
-            then do printf "'%s' is cached.\n" (showPackageId (pkgInfoId pkg))
+            then do notice verbosity $ "'" ++ showPackageId (pkgInfoId pkg) ++ "' is cached."
                     return (packageFile cfg pkg)
-            else do printf "Downloading '%s'...\n" (showPackageId (pkgInfoId pkg))
+            else do notice verbosity $ "Downloading '" ++ showPackageId (pkgInfoId pkg) ++ "'..."
                     downloadPackage cfg pkg
+  where verbosity = configVerbose cfg
 
 -- |Fetch a list of packages and their dependencies.
 fetch :: ConfigFlags -> Compiler -> ProgramConfiguration -> [UnresolvedDependency] -> IO ()
 fetch cfg comp conf deps
     = do depTree <- resolveDependencies cfg comp conf deps
          case packagesToInstall depTree of
-           Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
+           Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched cfg) $ map fst pkgs
                               mapM_ (fetchPackage cfg) ps
 
