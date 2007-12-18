@@ -134,10 +134,13 @@ commandShowOptions command v =
 
 commandListOptions :: CommandUI flags -> [String]
 commandListOptions command =
-  concatMap listOption (commandOptions command ParseArgs)
+  concatMap listOption $
+    addCommonFlags ShowArgs $ -- This is a slight hack, we don't want
+                              -- "--list-options" showing up in the
+                              -- list options output, so use ShowArgs
+      map optionToGetOpt (commandOptions command ParseArgs)
   where
-    listOption :: Option a -> [String]
-    listOption (Option shortNames longNames _ _) =
+    listOption (GetOpt.Option shortNames longNames _ _) =
          [ "-"  ++ [name] | name <- shortNames ]
       ++ [ "--" ++  name  | name <- longNames ]
 
@@ -203,11 +206,11 @@ commandParseArgs command ordered args =
       order | ordered   = GetOpt.RequireOrder
             | otherwise = GetOpt.Permute
   in case GetOpt.getOpt order options args of
-    (flags, _,    [])
-      | not (null [ () | Left HelpFlag <- flags ])
-                      -> CommandHelp help
+    (flags, _,    _)
       | not (null [ () | Left ListOptionsFlag <- flags ])
                       -> CommandList (commandListOptions command)
+      | not (null [ () | Left HelpFlag <- flags ])
+                      -> CommandHelp help
     (flags, opts, []) -> CommandReadyToGo (accumFlags flags , opts)
     (_,     _,  errs) -> CommandErrors errs
 
