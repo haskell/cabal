@@ -36,6 +36,9 @@ info cfg comp conf deps
                 "The requested packages cannot be installed, because of missing dependencies:\n"
              ++ showDependencies missing
 
+           Right [] -> notice verbosity $
+                "All requested packages already installed. Nothing to do."
+
            Right pkgs -> notice verbosity $
                "These packages would be installed:\n"
              ++ unlines [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
