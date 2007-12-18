@@ -22,22 +22,24 @@ import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Compiler (Compiler)
 import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Utils as Utils (notice, info)
 
-import Data.List (intersperse, nubBy)
-import Text.Printf (printf)
+import Data.List (nubBy)
 
 info :: ConfigFlags -> Compiler -> ProgramConfiguration -> [UnresolvedDependency] -> IO ()
 info cfg comp conf deps
     = do apkgs <- resolveDependencies cfg comp conf deps
-         mapM_ (infoPkg cfg) $ flattenResolvedPackages apkgs
+         details <- mapM (infoPkg cfg) (flattenResolvedPackages apkgs)
+         Utils.info verbosity $ unlines (map ("  "++) (concat details))
          case packagesToInstall apkgs of
-           Left missing -> 
-               do putStrLn "The requested packages cannot be installed, because of missing dependencies:"
-                  putStrLn $ showDependencies missing
-           Right pkgs  ->
-               do putStrLn "These packages would be installed:"
-                  putStrLn $ concat $ intersperse ", " [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
-                           
+           Left missing -> notice verbosity $
+                "The requested packages cannot be installed, because of missing dependencies:\n"
+             ++ showDependencies missing
+
+           Right pkgs -> notice verbosity $
+               "These packages would be installed:\n"
+             ++ unlines [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
+  where verbosity = configVerbose cfg
 
 flattenResolvedPackages :: [ResolvedPackage] -> [ResolvedPackage]
 flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
@@ -45,21 +47,23 @@ flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
           flatten p = [p]
           fulfillSame a b = fulfills a == fulfills b
 
-infoPkg :: ConfigFlags -> ResolvedPackage -> IO ()
+infoPkg :: ConfigFlags -> ResolvedPackage -> IO [String]
 infoPkg _ (Installed dep p)
-    = do printf "  Requested:    %s\n" (show $ showDependency dep)
-         printf "    Installed:  %s\n\n" (showPackageId p)
+    = return ["Requested:    " ++ show (showDependency dep)
+             ,"  Installed:  " ++ showPackageId p]
 infoPkg cfg (Available dep pkg flags deps)
     = do fetched <- isFetched cfg pkg
-         let pkgFile = if fetched then packageFile cfg pkg
-                                  else  "*Not downloaded"
-         printf "  Requested:    %s\n" (show $ showDependency dep)
-         printf "    Using:      %s\n" (showPackageId (pkgInfoId pkg))
-         printf "    Depends:    %s\n" (showDependencies $ map fulfills deps)
-         printf "    Options:    %s\n" (unwords [ if set then flag else '-':flag
-                                                | (flag, set) <- flags ])
-         printf "    Location:   %s\n" (pkgURL pkg)
-         printf "    Local:      %s\n\n" pkgFile
+         return ["Requested:    " ++ show (showDependency dep)
+                ,"  Using:      " ++ showPackageId (pkgInfoId pkg)
+                ,"  Depends:    " ++ showDependencies (map fulfills deps)
+                ,"  Options:    " ++ unwords [ if set then flag else '-':flag
+                                             | (flag, set) <- flags ]
+                ,"  Location:   " ++ pkgURL pkg
+                ,"  Local:      " ++ if fetched
+                                        then packageFile cfg pkg
+                                        else  "*Not downloaded"
+                ]
 infoPkg _ (Unavailable dep)
-    = do printf "  Requested:    %s\n" (show $ showDependency dep)
-         printf "    Not available!\n\n"
+    = return ["Requested:    " ++ show (showDependency dep)
+             ,"  Not available!"
+             ]
