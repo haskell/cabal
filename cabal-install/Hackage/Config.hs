@@ -15,7 +15,6 @@ module Hackage.Config
     , packageFile
     , packageDir
     , listInstalledPackages
-    , message
     , pkgURL
     , defaultConfigFile
     , loadConfig
@@ -24,14 +23,13 @@ module Hackage.Config
     ) where
 
 import Prelude hiding (catch)
-import Control.Monad (when)
 import Data.Char (isAlphaNum, toLower)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
-import Data.Monoid (mempty)
+import Control.Monad (when)
+import Data.Monoid (Monoid(mempty))
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory, (<.>))
-import System.IO (hPutStrLn, stderr)
 import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
@@ -46,10 +44,11 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTem
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Setup (toFlag, fromFlagOrDefault)
 import Distribution.Version (showVersion)
-import Distribution.Verbosity (Verbosity, normal)
+import Distribution.Verbosity (normal)
 
 import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
 import Hackage.Utils
+import Distribution.Simple.Utils (notice, warn)
 
 
 -- | Full path to the local cache directory for a repository.
@@ -79,9 +78,6 @@ listInstalledPackages cfg comp conf =
                                                else GlobalPackageDB)
                          conf
        return ipkgs
-
-message :: ConfigFlags -> Verbosity -> String -> IO ()
-message cfg v s = when (configVerbose cfg >= v) (putStrLn s)
 
 -- | Generate the URL of the tarball for a given package.
 pkgURL :: PkgInfo -> String
@@ -155,20 +151,22 @@ defaultConfigFlags =
 loadConfig :: FilePath -> IO ConfigFlags
 loadConfig configFile = 
     do defaultConf <- defaultConfigFlags
+       let verbosity = configVerbose defaultConf
        minp <- readFileIfExists configFile
        case minp of
-         Nothing -> do hPutStrLn stderr $ "Config file " ++ configFile ++ " not found."
-                       hPutStrLn stderr $ "Writing default configuration to " ++ configFile
+         Nothing -> do notice verbosity $ "Config file " ++ configFile ++ " not found."
+                       notice verbosity $ "Writing default configuration to " ++ configFile
                        writeDefaultConfigFile configFile defaultConf
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
                        ParseOk ws conf -> 
-                           do mapM_ (hPutStrLn stderr . ("Config file warning: " ++)) ws
+                           do when (not $ null ws) $
+                                warn verbosity $ "Config file: " ++ unlines ws
                               return conf
                        ParseFailed err -> 
-                           do hPutStrLn stderr $ "Error parsing config file " 
+                           do warn verbosity $ "Error parsing config file " 
                                             ++ configFile ++ ": " ++ showPError err
-                              hPutStrLn stderr $ "Using default configuration."
+                              warn verbosity $ "Using default configuration."
                               return defaultConf
 
 writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()

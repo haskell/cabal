@@ -21,10 +21,6 @@ import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
                         ,removeDirectoryRecursive, doesFileExist)
 import System.FilePath ((</>),(<.>))
 
-import Text.Printf (printf)
-
-
-import Hackage.Config (message)
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
@@ -41,9 +37,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils (defaultPackageDesc)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
 import Distribution.PackageDescription (readPackageDescription)
-import Distribution.Verbosity
-
-
+import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 
 
 -- |Installs the packages needed to satisfy a list of dependencies.
@@ -60,7 +54,7 @@ installLocalPackage cfg comp conf configFlags =
       resolvedDeps <- resolveDependenciesLocal cfg comp conf desc
                         (Cabal.configConfigurationsFlags configFlags)
       case packagesToInstall resolvedDeps of
-        Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
+        Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> installPackages cfg configFlags pkgs
       installUnpackedPkg cfg configFlags Nothing
 
@@ -68,9 +62,10 @@ installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.
 installRepoPackages cfg comp conf configFlags deps =
     do resolvedDeps <- resolveDependencies cfg comp conf deps
        case packagesToInstall resolvedDeps of
-         Left missing -> fail $ "Unresolved dependencies: " ++ showDependencies missing
-         Right []     -> message cfg normal "All requested packages already installed. Nothing to do."
+         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
+         Right []     -> notice verbosity "All requested packages already installed. Nothing to do."
          Right pkgs   -> installPackages cfg configFlags pkgs
+  where verbosity = configVerbose cfg
 
 installPackages :: ConfigFlags
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
@@ -107,19 +102,20 @@ installPkg cfg configFlags (pkg,flags)
     = do pkgPath <- fetchPackage cfg pkg
          tmp <- getTemporaryDirectory
          let p = pkgInfoId pkg
-             tmpDirPath = tmp </> printf "TMP%sTMP" (showPackageId p)
+             tmpDirPath = tmp </> ("TMP" ++ showPackageId p)
              path = tmpDirPath </> showPackageId p
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
-                  (do message cfg verbose (printf "Extracting %s to %s..." pkgPath tmpDirPath)
+                  (do info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
                       extractTarGzFile (Just tmpDirPath) pkgPath
                       let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
-                      when (not e) $ fail $ "Package .cabal file not found: " ++ show descFilePath
+                      when (not e) $ die $ "Package .cabal file not found: " ++ show descFilePath
                       let configFlags' = configFlags {
                             Cabal.configConfigurationsFlags =
                               Cabal.configConfigurationsFlags configFlags ++ flags }
                       installUnpackedPkg cfg configFlags' (Just path))
+  where verbosity = configVerbose cfg
 
 installUnpackedPkg :: ConfigFlags
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
@@ -132,7 +128,7 @@ installUnpackedPkg cfg configFlags mpath
   where
     configureOptions = mkPkgOps cfg configFlags
     setup cmds
-        = do message cfg verbose $
+        = do debug (configVerbose cfg) $
                "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
              setupWrapper cmds mpath
 

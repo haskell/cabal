@@ -28,6 +28,7 @@ import System.IO.Error (isDoesNotExistError)
 import Distribution.PackageDescription (parsePackageDescription, ParseResult(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.Version (readVersion)
+import Distribution.Simple.Utils (warn)
 
 getKnownPackages :: ConfigFlags -> IO [PkgInfo]
 getKnownPackages cfg
@@ -39,9 +40,10 @@ readRepoIndex cfg repo =
        fmap (parseRepoIndex repo) (BS.readFile indexFile)
           `catch` (\e -> do case e of
                               IOException ioe | isDoesNotExistError ioe ->
-                                hPutStrLn stderr "The package list does not exist. Run 'cabal update' to download it."
-                              _ -> hPutStrLn stderr ("Error: " ++ show e)
+                                warn verbosity "The package list does not exist. Run 'cabal update' to download it."
+                              _ -> warn verbosity (show e)
                             return [])
+  where verbosity = configVerbose cfg
 
 parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =

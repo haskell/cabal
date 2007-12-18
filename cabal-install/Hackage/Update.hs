@@ -18,9 +18,10 @@ import Hackage.Types
 import Hackage.Fetch
 import Hackage.Tar
 
+import Distribution.Simple.Utils (notice)
+
 import qualified Data.ByteString.Lazy as BS
 import System.FilePath (dropExtension)
-import Text.Printf
 
 -- | 'update' downloads the package list from all known servers
 update :: ConfigFlags -> IO ()
@@ -30,6 +31,7 @@ updateRepo :: ConfigFlags
            -> Repo
            -> IO ()
 updateRepo cfg repo =
-    do printf "Downloading package list from server '%s'\n" (repoURL repo)
+    do notice verbosity $ "Downloading package list from server '" ++ repoURL repo ++ "'"
        indexPath <- downloadIndex cfg repo
        BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . gunzip
+  where verbosity = configVerbose cfg
