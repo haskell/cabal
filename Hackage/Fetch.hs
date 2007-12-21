@@ -22,8 +22,7 @@ module Hackage.Fetch
     ) where
 
 import Network.URI (URI,parseURI,uriScheme,uriPath)
-import Network.HTTP (ConnError(..), Request (..), simpleHTTP
-                           , Response(..), RequestMethod (..))
+import Network.HTTP (ConnError(..), Response(..))
 
 import Control.Exception (bracket)
 import Control.Monad (filterM)
@@ -33,6 +32,7 @@ import Hackage.Types (ConfigFlags (..), UnresolvedDependency (..), Repo(..), Pkg
 import Hackage.Config (repoCacheDir, packageFile, packageDir, pkgURL)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import Hackage.Utils
+import Hackage.HttpUtils (getHTTP)
 
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (Compiler)
@@ -47,7 +47,7 @@ readURI :: URI -> IO String
 readURI uri
     | uriScheme uri == "file:" = (readFile $ uriPath uri)
     | otherwise = do
-        eitherResult <- simpleHTTP (Request uri GET [] "")
+        eitherResult <- getHTTP uri 
         case eitherResult of
            Left err -> die $ "Failed to download '" ++ show uri ++ "': " ++ show err
            Right rsp
@@ -62,17 +62,14 @@ downloadURI path uri
         copyFile (uriPath uri) path
         return Nothing
     | otherwise = do
-        eitherResult <- simpleHTTP request
+        eitherResult <- getHTTP uri
         case eitherResult of
            Left err -> return (Just err)
            Right rsp
                | rspCode rsp == (2,0,0) -> withBinaryFile path WriteMode (`hPutStr` rspBody rsp) 
                                                           >> return Nothing
                | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
-    where request = Request uri GET [] ""
-
-
-
+ 
 downloadFile :: FilePath
              -> String
              -> IO (Maybe ConnError)

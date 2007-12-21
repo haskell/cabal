@@ -5,12 +5,13 @@ module Hackage.Upload (upload) where
 
 import Hackage.Setup (UploadFlags(..))
 import Hackage.Types (ConfigFlags(..))
+import Hackage.HttpUtils (proxy)
 import Distribution.Simple.Utils (debug, notice)
 import Distribution.Simple.Setup (toFlag, fromFlag, flagToMaybe)
 
 import Network.Browser (BrowserAction, browse, request, 
                         Authority(..), addAuthority,
-                        setOutHandler, setErrHandler)
+                        setOutHandler, setErrHandler, setProxy)
 import Network.HTTP (Header(..), HeaderName(..), Request(..),
                      RequestMethod(..), Response(..))
 import Network.URI (URI, parseURI)
@@ -49,8 +50,10 @@ handlePackage flags path =
                                                  (fromFlag (uploadUsername flags))
                                                  (fromFlag (uploadPassword flags)))
      req <- mkRequest uri path
+     p   <- proxy
      debug verbosity $ "\n" ++ show req
-     (_,resp) <- browse (setErrHandler ignoreMsg 
+     (_,resp) <- browse (setProxy p
+                      >> setErrHandler ignoreMsg 
                       >> setOutHandler ignoreMsg 
                       >> auth 
                       >> request req)
