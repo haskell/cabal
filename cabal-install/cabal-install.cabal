@@ -37,6 +37,7 @@ Executable cabal
         Hackage.Config
         Hackage.Dependency
         Hackage.Fetch
+        Hackage.HttpUtils
         Hackage.Index
         Hackage.Info
         Hackage.Install
@@ -61,3 +62,9 @@ Executable cabal
       build-depends: base >= 2.0 && < 2.2
     else
       build-depends: base < 2.0 || >= 3.0, bytestring >= 0.9
+
+    if os(windows)
+      build-depends: Win32 >= 2
+      cpp-options: -DWIN32
+    else
+      build-depends: unix >= 1
