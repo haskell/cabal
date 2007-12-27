@@ -325,7 +325,7 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
     fmap relative
   . appendSubdirs combinePathTemplate
   $ -- substitute the path template into each other, except that we map
-    -- $prefix back to $prefix. We're trying to end up with templates that
+    -- \$prefix back to $prefix. We're trying to end up with templates that
     -- mention no vars except $prefix.
     substituteTemplates pkgId compilerId dirs {
       prefix = PathTemplate [Variable PrefixVar]
