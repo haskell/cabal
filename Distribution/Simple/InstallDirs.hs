@@ -311,7 +311,7 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
   }
   where
     -- substitute the path template into each other, except that we map
-    -- $prefix back to $prefix. We're trying to end up with templates that
+    -- \$prefix back to $prefix. We're trying to end up with templates that
     -- mention no vars except $prefix.
     dirs' = substituteTemplates pkgId compilerId dirs {
               prefixDirTemplate = PathTemplate [Variable PrefixVar]
