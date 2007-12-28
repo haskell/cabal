@@ -216,7 +216,7 @@ defaultInstallDirs comp hasLibs = do
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
            _other -> "$pkgid" </> "$compiler",
-      dynlibdir    = "FIXME: who knows!?!!",
+      dynlibdir    = "$libdir",
       libexecdir   = case os of
         Windows _ -> "$prefix" </> "$pkgid"
         _other    -> "$prefix" </> "libexec",
@@ -260,7 +260,7 @@ substituteTemplates pkgId compilerId dirs = dirs'
       bindir     = subst bindir     [prefixVar],
       libdir     = subst libdir     [prefixVar, bindirVar],
       libsubdir  = subst libsubdir  [],
-      dynlibdir  = subst dynlibdir  [prefixVar, bindirVar],
+      dynlibdir  = subst dynlibdir  [prefixVar, bindirVar, libdirVar],
       libexecdir = subst libexecdir prefixBinLibVars,
       progdir    = subst progdir    prefixBinLibVars,
       includedir = subst includedir prefixBinLibVars,
