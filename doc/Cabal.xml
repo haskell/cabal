@@ -1129,7 +1129,7 @@ Library
 
   if flag(debug)
     GHC-Options: -DDEBUG
-    if !os(win32)
+    if !os(windows)
       CC-Options: "-DDEBUG"
     else
       CC-Options: "-DNDEBUG"
@@ -1183,7 +1183,7 @@ Library {
   Extensions:      CPP
   if flag(debug) {
     GHC-Options: -DDEBUG
-    if !os(win32) {
+    if !os(windows) {
       CC-Options: "-DDEBUG"
     } else {
       CC-Options: "-DNDEBUG"
