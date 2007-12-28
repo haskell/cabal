@@ -93,7 +93,6 @@ import Data.List
 
 import System.Directory
     ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
-    , getTemporaryDirectory
     , doesFileExist, removeFile )
 import System.Environment
     ( getProgName )
@@ -108,7 +107,7 @@ import System.IO.Error
 
 import Distribution.Compat.Directory
     ( copyFile, findExecutable, createDirectoryIfMissing
-    , getDirectoryContentsWithoutSpecial)
+    , getDirectoryContentsWithoutSpecial, getTemporaryDirectory )
 import Distribution.Compat.RawSystem
     ( rawSystem )
 import Distribution.Compat.Exception
