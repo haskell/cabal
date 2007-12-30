@@ -268,7 +268,7 @@ ppUnlit =
     platformIndependent = True,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity -> do
       contents <- readFile inFile
-      writeFile outFile (unlit inFile contents)
+      either (writeFile outFile) die (unlit inFile contents)
   }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
