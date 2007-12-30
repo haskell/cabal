@@ -255,7 +255,9 @@ build pkg_descr lbi verbosity = do
 	readHaskellFile :: FilePath -> IO String
 	readHaskellFile file = do
 	    text <- readFile file
-	    return $ if ".lhs" `isSuffixOf` file then unlit file text else text
+	    if ".lhs" `isSuffixOf` file
+              then either return die (unlit file text)
+              else return text
 
 -- ------------------------------------------------------------
 -- * options in source files
@@ -271,11 +273,13 @@ getOptionsFromSource
           )
 getOptionsFromSource file = do
     text <- readFile file
+    text' <- if ".lhs" `isSuffixOf` file
+               then either return die (unlit file text)
+               else return text
     return $ foldr appendOptions ([],[],[]) $ map getOptions $
 	takeWhileJust $ map getPragma $
 	filter textLine $ map (dropWhile isSpace) $ lines $
-	stripComments True $
-	if ".lhs" `isSuffixOf` file then unlit file text else text
+	stripComments True text'
   where textLine [] = False
 	textLine ('#':_) = False
 	textLine _ = True
