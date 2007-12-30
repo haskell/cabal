@@ -10,26 +10,70 @@
 -- Remove the \"literal\" markups from a Haskell source file, including
 -- \"@>@\", \"@\\begin{code}@\", \"@\\end{code}@\", and \"@#@\"
 
+-- This version is interesting because instead of striping comment lines, it
+-- turns them into "-- " style comments. This allows using haddock markup
+-- in literate scripts without having to use "> --" prefix.
+
 module Distribution.Simple.PreProcess.Unlit (unlit,plain) where
 
 import Data.Char
 import Data.List
 
+data Classified = BirdTrack String | Blank String | Ordinary String
+                | Line !Int String | CPP String
+                | BeginCode | EndCode
+                -- output only:
+                | Error String | Comment String
+
 -- | No unliteration.
 plain :: String -> String -> String
 plain _ hs = hs
 
+classify :: String -> Classified
+classify ('>':s) = BirdTrack s
+classify ('#':s) = case tokens s of
+                     (line:file:_) | all isDigit line
+                                  && length file >= 2
+                                  && head file == '"'
+                                  && last file == '"'
+                                -> Line (read line) (tail (init file))
+                     _          -> CPP s
+  where tokens = unfoldr $ \str -> case lex str of
+                                   (t@(_:_), str'):_ -> Just (t, str')
+                                   _                 -> Nothing
+classify ('\\':s)
+  | s `isPrefixOf` "begin{code}" = BeginCode
+  | s `isPrefixOf` "end{code}"   = EndCode
+classify s | all isSpace s       = Blank s
+classify s                       = Ordinary s
+
+unclassify :: Classified -> String
+unclassify (BirdTrack s) = ' ':s
+unclassify (Blank s)     = s
+unclassify (Ordinary s)  = s
+unclassify (Line n file) = "# " ++ show n ++ " " ++ show file
+unclassify (CPP s)       = '#':s
+unclassify (Comment s)   = "-- " ++ s
+
 -- | 'unlit' takes a filename (for error reports), and transforms the
 --   given string, to eliminate the literate comments from the program text.
-unlit :: FilePath -> String -> String
-unlit file lhs = (unlines . classify file) (inlines lhs)
+unlit :: FilePath -> String -> Either String String
+unlit file = either (Left . unlines
+                          . map unclassify)
+                     Right
+           . checkErrors
+           . reclassify
+           . map classify
+           . inlines
 
-
-isBirdTrack = isPrefixOf ">"
-isCpp = isPrefixOf "#"
-isCodeStart = isPrefixOf "\\begin{code}"
-isCodeEnd = isPrefixOf "\\end{code}"
-isEmptyLine = all isSpace
+  where checkErrors ls = case [ e | Error e <- ls ] of
+          []          -> Left  ls
+          (message:_) -> Right (f ++ ":" ++ show n ++ ": " ++ message)
+            where (f, n) = errorPos file 1 ls
+        errorPos f n []              = (f, n)
+        errorPos f n (Error _:_)     = (f, n)
+        errorPos _ _ (Line n' f':ls) = errorPos f' n' ls
+        errorPos f n (_         :ls) = errorPos f  (n+1) ls
 
 -- Here we model a state machine, with each state represented by
 -- a local function. We only have four states (well, five,
@@ -40,57 +84,44 @@ isEmptyLine = all isSpace
 -- Each state represents the type of line that was last read
 -- i.e. are we in a comment section, or a latex-code section,
 -- or a bird-code section, etc?
-classify :: String -> [String] -> [String]
-classify file [] = []
-classify file lines = blank lines 1  -- begin in blank state
+reclassify :: [Classified] -> [Classified]
+reclassify = blank -- begin in blank state
   where
-    err n msg = error ("In file "++file++" at line "++show n++": "++msg++".")
-    dropBird _ ('>':' ':x) = x
-    dropBird _ ('>':x) = x
-    dropBird n _ = err n "expecting '>' at start of line"
-    mkComment x = "-- " ++ x
+    latex []               = []
+    latex (EndCode    :ls) = Blank "" : comment ls
+    latex (BeginCode  :_ ) = [Error "\\begin{code} in code section"]
+    latex (BirdTrack l:ls) = Ordinary ('>':l) : bird ls
+    latex (          l:ls) = l : latex ls
 
-    transition classification [] _ _ = [classification]
-    -- First case guarantee that xs is never null,
-    -- so state functions can assume that too.
-    transition classification xs n state = classification : state xs (n+1)
+    blank []               = []
+    blank (EndCode    :_ ) = [Error "\\end{code} without \\begin{code}"]
+    blank (BeginCode  :ls) = Blank ""    : latex ls
+    blank (BirdTrack l:ls) = BirdTrack l : bird ls
+    blank (Ordinary  l:ls) = Comment   l : comment ls
+    blank (          l:ls) =           l : blank ls
 
-    latex (x:xs) n
-      | isCodeEnd x = transition "" xs n comment
-      | isCodeStart x = err n "\\begin{code} in code section"
-      | otherwise = transition x xs n latex
+    bird []              = []
+    bird (EndCode   :_ ) = [Error "\\end{code} without \\begin{code}"]
+    bird (BeginCode :ls) = Blank "" : latex ls
+    bird (Blank l   :ls) = Blank l  : blank ls
+    bird (Ordinary _:_ ) = [Error "program line before comment line"]
+    bird (         l:ls) = l : bird ls
 
-    blank (x:xs) n
-      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
-      | isCodeStart x = transition "" xs n latex
-      | isCpp x = transition x xs n blank
-      | isBirdTrack x = transition (dropBird n x) xs n bird
-      | isEmptyLine x = transition "" xs n blank
-      | otherwise = transition (mkComment x) xs n comment
-
-    bird (x:xs) n
-      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
-      | isCodeStart x = transition "" xs n latex
-      | isCpp x = transition x xs n bird
-      | isBirdTrack x = transition (dropBird n x) xs n bird
-      | isEmptyLine x = transition "" xs n blank
-      | otherwise = err n "program line before comment line"
-
-    comment (x:xs) n
-      | isCodeEnd x = err n "\\end{code} without \\begin{code}"
-      | isCodeStart x = transition "" xs n latex
-      | isCpp x = transition x xs n comment
-      | isBirdTrack x = err n "comment line before program line"
-      -- special case here: a truly empty line will terminate
-      -- a comment section (and send us into the "blank" state)
-      -- but a line containing whitespace will be treated as a
-      -- comment (prefixed with "-- "), unless it is followed by
-      -- a program line, in which case it is really blank.
-      | null x = transition "" xs n blank
-      | isEmptyLine x && null xs = transition (mkComment x) xs n comment
-      | isEmptyLine x && isBirdTrack (head xs) = transition "" xs n blank
-      | otherwise = transition (mkComment x) xs n comment
-
+    comment []               = []
+    comment (EndCode    :_ ) = [Error "\\end{code} without \\begin{code}"]
+    comment (BeginCode  :ls) = Blank "" : latex ls
+    comment (CPP l      :ls) = CPP l : comment ls
+    comment (BirdTrack _:_ ) = [Error "comment line before program line"]
+    -- special case here: a truly empty line will terminate
+    -- a comment section (and send us into the "blank" state)
+    comment (Blank ""   :ls) = Blank "" : blank ls
+    -- but a line containing whitespace will be treated as a
+    -- comment (prefixed with "-- "), unless it is followed by
+    -- a program line, in which case it is really blank.
+    comment (Blank     l:ls@(BirdTrack _:_)) = Blank l : blank ls
+    comment (Blank     l:ls) = Comment l : comment ls
+    comment (Line n f   :ls) = Line n f  : comment ls
+    comment (Ordinary  l:ls) = Comment l : comment ls
 
 -- Re-implementation of 'lines', for better efficiency (but decreased laziness).
 -- Also, importantly, accepts non-standard DOS and Mac line ending characters.
