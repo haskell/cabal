@@ -14,7 +14,7 @@ module Hackage.Install
     ( install
     ) where
 
-import Control.Exception (bracket_)
+import Control.Exception (bracket_, try)
 import Control.Monad (when)
 import Data.Monoid (Monoid(mempty))
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
@@ -71,7 +71,20 @@ installPackages :: ConfigFlags
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
                 -> [(PkgInfo,FlagAssignment)] -- ^ (Package, list of configure options)
                 -> IO ()
-installPackages cfg configFlags = mapM_ (installPkg cfg configFlags)
+installPackages cfg configFlags pkgs = do 
+  errorPackages <- installPackagesErrs pkgs []
+  case errorPackages of
+    [] -> return ()
+    pkgs -> do let errorMsg = concat $ "Error: some packages failed to install:"
+                             : ["\n  " ++ showPackageId (pkgInfoId x) | (x, _) <- pkgs]
+               die errorMsg
+
+  where installPackagesErrs (pkg:pkgs) errPkgs = do
+          maybeInstalled <- try (installPkg cfg configFlags pkg)
+          case maybeInstalled of
+            Left e ->  installPackagesErrs pkgs (pkg:errPkgs)
+            Right _ -> installPackagesErrs pkgs errPkgs
+        installPackagesErrs [] ers = return ers
 
 
 {-|
