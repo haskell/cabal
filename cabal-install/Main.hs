@@ -26,6 +26,7 @@ import Hackage.List             (list)
 import Hackage.Install          (install)
 import Hackage.Info             (info)
 import Hackage.Update           (update)
+import Hackage.Upgrade          (upgrade)
 import Hackage.Fetch            (fetch)
 --import Hackage.Clean            (clean)
 import Hackage.Upload           (upload)
@@ -76,6 +77,7 @@ mainWorker args =
       ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
+      ,upgradeCommand          `commandAddActionWithEmptyFlags` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
 
@@ -159,6 +161,14 @@ updateAction flags _extraArgs = do
   config0 <- loadConfig configFile
   let config = config0 { configVerbose = fromFlagOrDefault normal flags }
   update config
+
+upgradeAction :: Cabal.ConfigFlags -> [String] -> IO ()
+upgradeAction flags _extraArgs = do
+  configFile <- defaultConfigFile --FIXME
+  config0 <- loadConfig configFile
+  let config = updateConfig flags config0
+  (comp, conf) <- findCompiler config
+  upgrade config comp conf flags
 
 fetchAction :: Flag Verbosity -> [String] -> IO ()
 fetchAction flags extraArgs = do

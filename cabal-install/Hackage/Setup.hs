@@ -15,6 +15,7 @@ module Hackage.Setup
     , installCommand --Cabal.InstallFlags(..)
     , listCommand
     , updateCommand
+    , upgradeCommand
     , infoCommand
     , fetchCommand
     , uploadCommand, UploadFlags(..)
@@ -126,6 +127,14 @@ updateCommand = CommandUI {
     commandUsage        = usagePackages "update",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbose id const]
+  }
+
+upgradeCommand  :: CommandUI Cabal.ConfigFlags
+upgradeCommand = (Cabal.configureCommand defaultProgramConfiguration) {
+    commandName         = "upgrade",
+    commandSynopsis     = "Upgrades installed packages to the latest available version",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "upgrade"
   }
 
 {-
