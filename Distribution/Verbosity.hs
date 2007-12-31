@@ -98,8 +98,7 @@ flagToVerbosity (Just s)
        [(i, "")] ->
            case intToVerbosity i of
                Just v -> v
-               Nothing -> error ("Bad verbosity " ++ show i ++ 
-                                 " (maximum allowed is 3)")
+               Nothing -> error ("Bad verbosity " ++ show i)
        _ -> error ("Can't parse verbosity " ++ s)
 
 showForCabal, showForGHC :: Verbosity -> String
