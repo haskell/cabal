@@ -107,7 +107,7 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad   (when, unless)
 import Data.List       (intersperse, unionBy)
-import System.IO.Error (try)
+import System.IO.Error (catch)
 
 import Distribution.Compat.Directory(removeDirectoryRecursive)
 import System.FilePath((</>))
@@ -372,6 +372,15 @@ pfe pkg_descr pps flags = do
 -- --------------------------------------------------------------------------
 -- Cleaning
 
+-- | Perform an IO action, catching any IO exceptions and printing an error
+--   if one occurs.
+chattyTry :: String  -- ^ a description of the action we were attempting
+          -> IO ()  -- ^ the action itself
+          -> IO ()
+chattyTry desc action = do
+  catch action
+        (\e -> putStrLn $ "Error while " ++ desc ++ ": " ++ show e)
+
 clean :: PackageDescription -> Maybe LocalBuildInfo -> CleanFlags -> IO ()
 clean pkg_descr maybeLbi flags = do
     notice verbosity "cleaning..."
@@ -382,7 +391,7 @@ clean pkg_descr maybeLbi flags = do
 
     -- remove the whole dist/ directory rather than tracking exactly what files
     -- we created in there.
-    try $ removeDirectoryRecursive distPref
+    chattyTry "removing dist/" $ removeDirectoryRecursive distPref
 
     -- these live in the top level dir so must be removed separately
     removeRegScripts
@@ -404,7 +413,8 @@ clean pkg_descr maybeLbi flags = do
   where
         -- JHC FIXME remove exe-sources
         cleanJHCExtras lbi = do
-            try $ removeFile (buildDir lbi </> "jhc-pkg.conf")
+            chattyTry "removing jhc-pkg.conf" $
+                       removeFile (buildDir lbi </> "jhc-pkg.conf")
             removePreprocessedPackage pkg_descr currentDir ["ho"]
         removeFileOrDirectory :: FilePath -> IO ()
         removeFileOrDirectory fname = do
