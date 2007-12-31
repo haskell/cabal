@@ -15,6 +15,7 @@ module Hackage.Dependency
       resolveDependencies
     , resolveDependenciesLocal
     , packagesToInstall
+    , getUpgradableDeps
     ) where
 
 import Hackage.Config (listInstalledPackages)
@@ -34,8 +35,8 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 
 import Control.Monad (mplus)
-import Data.List (nub, nubBy, maximumBy)
-import Data.Maybe (fromMaybe)
+import Data.List (nub, nubBy, maximumBy, sort)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import qualified System.Info (arch,os)
 
 
@@ -143,3 +144,59 @@ packagesToInstall xs | null missing = Right toInstall
     flatten (Available _ p opts deps) = concatMap flatten deps ++ [Right (p,opts)]
     flatten (Unavailable dep) = [Left dep]
 
+
+-- |Given the list of installed packages and installable packages, figure
+-- out which packages can be upgraded.
+
+getUpgradableDeps :: ConfigFlags
+                  -> Compiler
+                  -> ProgramConfiguration
+                  -> IO [PkgInfo]
+getUpgradableDeps cfg comp conf
+    = do allInstalled <- listInstalledPackages cfg comp conf
+         -- we should only consider the latest version of each package:
+         let latestInstalled = getLatest allInstalled
+         available <- getKnownPackages cfg
+         let mNeedingUpgrade = map (\x -> newerAvailable x available)
+                                   latestInstalled
+         return $ catMaybes mNeedingUpgrade
+
+  where newerAvailable :: PackageIdentifier
+                       -> [PkgInfo] -- ^installable packages
+                       -> Maybe PkgInfo -- ^greatest available
+        newerAvailable pkgToUpdate pkgs
+            = foldl (newerThan pkgToUpdate) Nothing pkgs
+        newerThan :: PackageIdentifier 
+                  -> Maybe PkgInfo
+                  -> PkgInfo
+                  -> Maybe PkgInfo
+        newerThan pkgToUpdate mFound testPkg
+            = case (pkgName pkgToUpdate == (pkgName $ pkgInfoId testPkg), mFound) of
+               (False, _) -> mFound
+               (True, Nothing) -- compare to given package
+                   -> if ((pkgInfoId testPkg) `isNewer` pkgToUpdate)
+                      then Just testPkg
+                      else Nothing -- none found so far
+               (True, Just lastNewestPkg) -- compare to latest package
+                   -> if ((pkgInfoId testPkg) `isNewer` (pkgInfoId lastNewestPkg))
+                      then Just testPkg
+                      else mFound
+
+        -- trim out the old versions of packages with multiple versions installed
+        getLatest :: [PackageIdentifier]
+                  -> [PackageIdentifier]
+        getLatest pkgs = catMaybes [latestPkgVersion (pkgName pkg) pkgs | pkg <- pkgs]
+
+        isNewer :: PackageIdentifier -> PackageIdentifier -> Bool
+        isNewer p1 p2 = pkgVersion p1 > pkgVersion p2
+
+
+-- |Given a package and the list of installed packages, get the latest
+-- version of the given package.  That is, if multiple versions of
+-- this package are installed, figure out which is the lastest one.
+latestPkgVersion :: String -- ^Package name
+                 -> [PackageIdentifier] -- installed packages
+                 -> Maybe PackageIdentifier
+latestPkgVersion name pkgs =
+   let matches = [pkg | pkg <- pkgs, (pkgName pkg == name)] in
+   listToMaybe $ reverse $ sort matches

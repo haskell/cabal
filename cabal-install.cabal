@@ -11,10 +11,12 @@ License-File:       LICENSE
 Author:             Lemmih <lemmih@gmail.com>
                     Paolo Martini <paolo@nemail.it>
 		    Bjorn Bringert <bjorn@bringert.net>
+		    Isaac Potoczny-Jones <ijones@syntaxpolice.org>
 Maintainer:         cabal-devel@haskell.org
 Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2006 Paolo Martini <paolo@nemail.it>
 		    2007 Bjorn Bringert <bjorn@bringert.net>
+		    2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
 Stability:          Experimental
 Category:           Distribution
 Build-type:         Simple
@@ -43,6 +45,7 @@ Executable cabal
         Hackage.Tar
         Hackage.Types
         Hackage.Update
+        Hackage.Upgrade
         Hackage.Upload
         Hackage.Utils
 
