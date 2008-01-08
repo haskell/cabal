@@ -633,7 +633,7 @@ binfoFieldDescrs =
            (text . show)      parseReadS
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
-           showDependency     parseDependency
+           showDependency     parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , listField "cpp-options"
            showToken          parseTokenQ
