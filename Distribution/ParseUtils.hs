@@ -50,7 +50,7 @@ module Distribution.ParseUtils (
 	Field(..), fName, lineNo,
 	FieldDescr(..), readFields,
 	parseFilePathQ, parseTokenQ,
-	parseModuleNameQ, parseDependency, parsePkgconfigDependency,
+	parseModuleNameQ, parseDependency, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, 
 	parseSepList, parseCommaList, parseOptCommaList,
@@ -67,7 +67,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
-import Data.Char        (isSpace, isUpper, toLower, isAlphaNum)
+import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
 import Data.Maybe	( fromMaybe)
 import Data.List        (intersperse)
 
@@ -465,6 +465,24 @@ parseFilePathQ = parseTokenQ
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
+
+parseBuildTool :: ReadP r Dependency
+parseBuildTool = do name <- parseBuildToolNameQ
+                    skipSpaces
+                    ver <- parseVersionRangeQ <++ return AnyVersion
+                    skipSpaces
+                    return $ Dependency name ver
+
+parseBuildToolNameQ :: ReadP r String
+parseBuildToolNameQ = parseQuoted parseBuildToolName <++ parseBuildToolName
+
+-- like parsePackageName but accepts symbols in components
+parseBuildToolName :: ReadP r String
+parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
+                        return (concat (intersperse "-" ns))
+  where component = do
+          cs <- munch1 (\c -> isAlphaNum c || isSymbol c && c /= '-')
+          if all isDigit cs then pfail else return cs
 
 parseDependency :: ReadP r Dependency
 parseDependency = do name <- parsePackageNameQ
