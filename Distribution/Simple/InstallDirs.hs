@@ -65,6 +65,7 @@ module Distribution.Simple.InstallDirs (
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 #if __HUGS__ || __GLASGOW_HASKELL__ > 606
 import System.FilePath (dropDrive)
@@ -201,11 +202,14 @@ type InstallDirTemplates = InstallDirs PathTemplate
 -- ---------------------------------------------------------------------------
 -- Default installation directories
 
-defaultInstallDirs :: CompilerFlavor -> Bool -> IO InstallDirTemplates
-defaultInstallDirs comp hasLibs = do
+defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
+defaultInstallDirs comp userInstall hasLibs = do
   windowsProgramFilesDir <- getWindowsProgramFilesDir
+  userInstallPrefix <- getAppUserDataDirectory "cabal"
   return $ fmap toPathTemplate $ InstallDirs {
-      prefix       = case os of
+      prefix       = if userInstall
+                       then userInstallPrefix
+                       else case os of
         Windows _ -> windowsProgramFilesDir </> "Haskell"
         _other    -> "/usr/local",
       bindir       = "$prefix" </> "bin",
