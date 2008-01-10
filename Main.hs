@@ -81,7 +81,7 @@ mainWorker args =
       ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
---      ,upgradeCommand          `commandAddActionWithEmptyFlags` upgradeAction
+      ,upgradeCommand          `commandAddActionWithEmptyFlags` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
 
