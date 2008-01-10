@@ -213,7 +213,11 @@ configure (pkg_descr0, pbi) cfg
                 flip (foldr (uncurry userSpecifyArgs)) (configProgramArgs cfg)
               . flip (foldr (uncurry userSpecifyPath)) (configProgramPaths cfg)
               $ configPrograms cfg
-            packageDb = fromFlagOrDefault GlobalPackageDB (configPackageDB cfg)
+            userInstall = fromFlag (configUserInstall cfg)
+	    defaultPackageDB | userInstall = UserPackageDB
+	                     | otherwise   = GlobalPackageDB
+	    packageDb   = fromFlagOrDefault defaultPackageDB
+	                                    (configPackageDB cfg)
 
 	-- detect compiler
 	(comp, programsConfig') <- configCompiler
@@ -267,7 +271,7 @@ configure (pkg_descr0, pbi) cfg
 	removeInstalledConfig
 
 	-- installation directories
-	defaultDirs <- defaultInstallDirs flavor (hasLibs pkg_descr)
+	defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
 	let installDirs = combineInstallDirs fromFlagOrDefault
                             defaultDirs (configInstallDirs cfg)
 
