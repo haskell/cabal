@@ -83,7 +83,8 @@ import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
-    , ProgramConfiguration, configureAllKnownPrograms, knownPrograms
+    , ProgramConfiguration, defaultProgramConfiguration
+    , configureAllKnownPrograms, knownPrograms
     , userSpecifyArgs, userSpecifyPath
     , lookupKnownProgram, requireProgram, pkgConfigProgram
     , rawSystemProgramStdoutConf )
@@ -490,12 +491,11 @@ ccLdOptionsBuildInfo cflags ldflags =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-{-# DEPRECATED configCompilerAux "use configCompiler" #-}
 configCompilerAux :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
 configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
                                        (flagToMaybe $ configHcPath cfg)
                                        (flagToMaybe $ configHcPkg cfg)
-                                       (configPrograms cfg)
+                                       defaultProgramConfiguration
                                        (fromFlag (configVerbose cfg))
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
