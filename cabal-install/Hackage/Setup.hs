@@ -21,12 +21,10 @@ module Hackage.Setup
     , uploadCommand, UploadFlags(..)
 
     , parsePackageArgs
-    , updateConfig
     ) where
 
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Compiler (PackageDB(..))
-import Distribution.Simple.InstallDirs (combineInstallDirs)
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Setup as Cabal
   (GlobalFlags(..),  {-emptyGlobalFlags,-}   globalCommand,
@@ -42,42 +40,13 @@ import qualified Distribution.Simple.Setup as Cabal
   RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    sdistCommand,
                                          testCommand-})
-import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault,
-                                  flagToMaybe, flagToList)
+import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault, flagToList)
 import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
 
-import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..),
-                      Username, Password)
+import Hackage.Types (UnresolvedDependency(..), Username, Password)
 import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
 
-import Control.Monad (MonadPlus(mplus))
 import Data.Monoid (Monoid(..))
-
--- | This function updates the configuration with the cabal configure flags.
-updateConfig :: Cabal.ConfigFlags -> ConfigFlags -> ConfigFlags
-updateConfig flags conf = conf {
-      configCompiler          = override configCompiler Cabal.configHcFlavor,
-      configCompilerPath      = configCompilerPath conf
-                        `mplus` flagToMaybe (Cabal.configHcPath flags),
-      configHcPkgPath         = configHcPkgPath conf
-                        `mplus` flagToMaybe (Cabal.configHcPkg flags),
-      configUserInstallDirs   = overrideInstallDirs userInstall
-                                  (configUserInstallDirs conf),
-      configGlobalInstallDirs = overrideInstallDirs (not userInstall)
-                                  (configGlobalInstallDirs conf),
---    configCacheDir          =    :: FilePath,
---    configRepos             =    :: [Repo],
-      configVerbose           = override configVerbose Cabal.configVerbose,
-      configUserInstall       = userInstall
-  }
-  where override base over = fromFlagOrDefault (base conf) (over flags)
-        overrideInstallDirs False base = base
-        overrideInstallDirs True base = combineInstallDirs mplus base
-                      (fmap flagToMaybe (Cabal.configInstallDirs flags))
-        userInstall = case flagToMaybe $ Cabal.configPackageDB flags of
-                        Nothing              -> configUserInstall conf
-                        Just (UserPackageDB) -> True
-                        Just _               -> False
 
 globalCommand :: CommandUI Cabal.GlobalFlags
 globalCommand = Cabal.globalCommand {
