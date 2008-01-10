@@ -19,13 +19,14 @@ import Data.Char as Char (toLower)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version (showVersion)
+import Distribution.Verbosity (Verbosity)
 import Hackage.Index (getKnownPackages)
-import Hackage.Types (PkgInfo(..), ConfigFlags(..), {- UnresolvedDependency(..)-} )
+import Hackage.Types (PkgInfo(..), Repo)
 
 -- |Show information about packages
-list :: ConfigFlags -> [String] -> IO ()
-list cfg pats = do
-    pkgs <- getKnownPackages cfg
+list :: Verbosity -> [Repo] -> [String] -> IO ()
+list verbosity repos pats = do
+    pkgs <- getKnownPackages verbosity repos
     let pkgs' | null pats = pkgs
               | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats')
         pats' = map lcase pats

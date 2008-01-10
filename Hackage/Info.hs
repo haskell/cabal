@@ -12,7 +12,6 @@
 -----------------------------------------------------------------------------
 module Hackage.Info where
 
-import Hackage.Config
 import Hackage.Dependency 
 import Hackage.Fetch
 import Hackage.Types 
@@ -20,16 +19,23 @@ import Hackage.Utils
 
 import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
-import Distribution.Simple.Compiler (Compiler)
+import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils as Utils (notice, info)
+import Distribution.Verbosity (Verbosity)
 
 import Data.List (nubBy)
 
-info :: ConfigFlags -> Compiler -> ProgramConfiguration -> [UnresolvedDependency] -> IO ()
-info cfg comp conf deps
-    = do apkgs <- resolveDependencies cfg comp conf deps
-         details <- mapM (infoPkg cfg) (flattenResolvedPackages apkgs)
+info :: Verbosity
+     -> PackageDB
+     -> [Repo]
+     -> Compiler
+     -> ProgramConfiguration
+     -> [UnresolvedDependency]
+     -> IO ()
+info verbosity packageDB repos comp conf deps
+    = do apkgs <- resolveDependencies verbosity packageDB repos comp conf deps
+         details <- mapM infoPkg (flattenResolvedPackages apkgs)
          Utils.info verbosity $ unlines (map ("  "++) (concat details))
          case packagesToInstall apkgs of
            Left missing -> notice verbosity $
@@ -42,7 +48,6 @@ info cfg comp conf deps
            Right pkgs -> notice verbosity $
                "These packages would be installed:\n"
              ++ unlines [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
-  where verbosity = configVerbose cfg
 
 flattenResolvedPackages :: [ResolvedPackage] -> [ResolvedPackage]
 flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
@@ -50,23 +55,23 @@ flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
           flatten p = [p]
           fulfillSame a b = fulfills a == fulfills b
 
-infoPkg :: ConfigFlags -> ResolvedPackage -> IO [String]
-infoPkg _ (Installed dep p)
+infoPkg :: ResolvedPackage -> IO [String]
+infoPkg (Installed dep p)
     = return ["Requested:    " ++ show (showDependency dep)
              ,"  Installed:  " ++ showPackageId p]
-infoPkg cfg (Available dep pkg flags deps)
-    = do fetched <- isFetched cfg pkg
+infoPkg (Available dep pkg flags deps)
+    = do fetched <- isFetched pkg
          return ["Requested:    " ++ show (showDependency dep)
                 ,"  Using:      " ++ showPackageId (pkgInfoId pkg)
                 ,"  Depends:    " ++ showDependencies (map fulfills deps)
                 ,"  Options:    " ++ unwords [ if set then flag else '-':flag
                                              | (flag, set) <- flags ]
-                ,"  Location:   " ++ pkgURL pkg
+                ,"  Location:   " ++ packageURL pkg
                 ,"  Local:      " ++ if fetched
-                                        then packageFile cfg pkg
+                                        then packageFile pkg
                                         else  "*Not downloaded"
                 ]
-infoPkg _ (Unavailable dep)
+infoPkg (Unavailable dep)
     = return ["Requested:    " ++ show (showDependency dep)
              ,"  Not available!"
              ]

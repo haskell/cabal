@@ -1,13 +1,13 @@
 -- This is a quick hack for uploading packages to Hackage.
 -- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
 
-module Hackage.Upload (upload) where
+module Hackage.Upload (check, upload) where
 
-import Hackage.Setup (UploadFlags(..))
-import Hackage.Types (ConfigFlags(..))
+import Hackage.Types (Username, Password)
 import Hackage.HttpUtils (proxy)
+
 import Distribution.Simple.Utils (debug, notice)
-import Distribution.Simple.Setup (toFlag, fromFlag, flagToMaybe)
+import Distribution.Verbosity (Verbosity)
 
 import Network.Browser (BrowserAction, browse, request, 
                         Authority(..), addAuthority,
@@ -16,16 +16,15 @@ import Network.HTTP (Header(..), HeaderName(..), Request(..),
                      RequestMethod(..), Response(..))
 import Network.URI (URI, parseURI)
 
-import Data.Monoid      (Monoid(mappend))
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
 import System.IO        (hFlush, stdout)
 import System.Random    (randomRIO)
 
-type Username = String
-type Password = String
 
 
+--FIXME: how do we find this path for an arbitrary hackage server?
+-- is it always at some fixed location relative to the server root?
 uploadURI :: URI
 Just uploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
 
@@ -33,23 +32,36 @@ checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
 
 
+upload :: Verbosity -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
+upload verbosity mUsername mPassword paths = do
 
-upload :: ConfigFlags -> UploadFlags -> [FilePath] -> IO ()
-upload cfg flags paths = do
-          flags' <- if needsAuth flags then getAuth cfg flags else return flags
-          mapM_ (handlePackage flags') paths
+          username <- maybe (prompt "username") return mUsername
+          password <- maybe (prompt "password") return mPassword
+          let auth = addAuthority AuthBasic {
+                       auRealm    = "Hackage",
+                       auUsername = username,
+                       auPassword = password,
+                       auSite     = uploadURI
+                     }
 
-handlePackage :: UploadFlags -> FilePath -> IO ()
-handlePackage flags path =
-  do (uri, auth) <- if fromFlag (uploadCheck flags)
-                         then do notice verbosity $ "Checking " ++ path ++ "... "
-                                 return (checkURI, return ())
-                         else do notice verbosity $ "Uploading " ++ path ++ "... "
-                                 return (uploadURI, 
-                                         setAuth uploadURI 
-                                                 (fromFlag (uploadUsername flags))
-                                                 (fromFlag (uploadPassword flags)))
-     req <- mkRequest uri path
+          flip mapM_ paths $ \path -> do
+            notice verbosity $ "Uploading " ++ path ++ "... "
+            handlePackage verbosity uploadURI auth path
+
+  where prompt thing = do
+          putStr ("Hackage " ++ thing ++ ": ")
+          hFlush stdout
+          getLine
+
+check :: Verbosity -> [FilePath] -> IO ()
+check verbosity paths = do
+          flip mapM_ paths $ \path -> do
+            notice verbosity $ "Checking " ++ path ++ "... "
+            handlePackage verbosity checkURI (return ()) path
+
+handlePackage :: Verbosity -> URI -> BrowserAction () -> FilePath -> IO ()
+handlePackage verbosity uri auth path =
+  do req <- mkRequest uri path
      p   <- proxy
      debug verbosity $ "\n" ++ show req
      (_,resp) <- browse (setProxy p
@@ -64,45 +76,9 @@ handlePackage flags path =
                                      ++ map intToDigit [x,y,z] ++ " "
                                      ++ rspReason resp
                      debug verbosity $ rspBody resp
-  where verbosity = fromFlag (uploadVerbosity flags)
 
-needsAuth :: UploadFlags -> Bool
-needsAuth = not . fromFlag . uploadCheck
-
-setAuth :: URI -> Username -> Password -> BrowserAction ()
-setAuth uri user pwd = 
-    addAuthority $ AuthBasic { auRealm    = "Hackage",
-                               auUsername = user,
-                               auPassword = pwd,
-                               auSite     = uri }
-
-getAuth :: ConfigFlags -> UploadFlags -> IO UploadFlags
-getAuth cfg flags =
-    do u <- case flagToMaybe $ configUploadUsername cfg
-                     `mappend` uploadUsername flags of
-              Just u  -> return u
-              Nothing -> promptUsername
-       p <- case flagToMaybe $ configUploadPassword cfg
-                     `mappend` uploadPassword flags of
-              Just p  -> return p
-              Nothing -> promptPassword
-       return $ flags { uploadUsername = toFlag u,
-                        uploadPassword = toFlag p }
-       
-promptUsername :: IO Username
-promptUsername = 
-    do putStr "Hackage username: "
-       hFlush stdout
-       getLine
-
-promptPassword :: IO Password
-promptPassword = 
-    do putStr "Hackage password: "
-       hFlush stdout
-       getLine
-
-ignoreMsg :: String -> IO ()
-ignoreMsg _ = return ()
+  where ignoreMsg :: String -> IO ()
+        ignoreMsg _ = return ()
 
 mkRequest :: URI -> FilePath -> IO Request
 mkRequest uri path = 

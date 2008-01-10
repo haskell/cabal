@@ -11,92 +11,102 @@
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
 module Hackage.Config
-    ( repoCacheDir
-    , packageFile
-    , packageDir
+    ( SavedConfig(..)
+    , savedConfigToConfigFlags
+    , configRepos
+    , configPackageDB
     , listInstalledPackages
-    , pkgURL
     , defaultConfigFile
     , loadConfig
     , showConfig
-    , findCompiler
     ) where
 
 import Prelude hiding (catch)
 import Data.Char (isAlphaNum, toLower)
-import Data.List (intersperse)
 import Data.Maybe (fromMaybe)
 import Control.Monad (when)
-import Data.Monoid (Monoid(mempty))
+import Data.Monoid (Monoid(..))
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
-import System.FilePath ((</>), takeDirectory, (<.>))
+import System.FilePath ((</>), takeDirectory)
 import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
-import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Configure (getInstalledPackages)
-import qualified Distribution.Simple.Configure as Configure (configCompiler)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
-import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
-import Distribution.Simple.Setup (toFlag, fromFlagOrDefault)
-import Distribution.Version (showVersion)
-import Distribution.Verbosity (normal)
+import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
+import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Types (ConfigFlags (..), PkgInfo (..), Repo(..))
+import Hackage.Types (RemoteRepo(..), Repo(..), Username, Password)
 import Hackage.Utils
 import Distribution.Simple.Utils (notice, warn)
 
 
--- | Full path to the local cache directory for a repository.
-repoCacheDir :: ConfigFlags -> Repo -> FilePath
-repoCacheDir cfg repo = configCacheDir cfg </> repoName repo
-
--- |Generate the full path to the locally cached copy of
--- the tarball for a given @PackageIdentifer@.
-packageFile :: ConfigFlags -> PkgInfo -> FilePath
-packageFile cfg pkg = packageDir cfg pkg
-                      </> showPackageId (pkgInfoId pkg)
-                      <.> "tar.gz"
-
--- |Generate the full path to the directory where the local cached copy of
--- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: ConfigFlags -> PkgInfo -> FilePath
-packageDir cfg pkg = repoCacheDir cfg (pkgRepo pkg)
-                     </> pkgName p
-                     </> showVersion (pkgVersion p)
-  where p = pkgInfoId pkg
-
-listInstalledPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
-listInstalledPackages cfg comp conf =
-    do Just ipkgs <- getInstalledPackages
-                         (configVerbose cfg) comp
-                         (if configUserInstall cfg then UserPackageDB
-                                               else GlobalPackageDB)
-                         conf
+listInstalledPackages :: Verbosity -> PackageDB -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
+listInstalledPackages verbosity packageDB comp conf =
+    do Just ipkgs <- getInstalledPackages verbosity comp packageDB conf
        return ipkgs
 
--- | Generate the URL of the tarball for a given package.
-pkgURL :: PkgInfo -> String
-pkgURL pkg = joinWith "/" [repoURL (pkgRepo pkg), pkgName p, showVersion (pkgVersion p), 
-                           showPackageId p ++ ".tar.gz"]              
-    where joinWith tok = concat . intersperse tok
-          p = pkgInfoId pkg
-
 --
--- * Compiler and programs
+-- * Configuration saved in the config file
 --
 
-findCompiler :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
-findCompiler cfg = Configure.configCompiler 
-                     (Just (configCompiler cfg)) 
-                     (configCompilerPath cfg)
-                     (configHcPkgPath cfg)
-                     defaultProgramConfiguration 
-                     (configVerbose cfg)
+data SavedConfig = SavedConfig {
+    configCompiler          :: Flag CompilerFlavor,
+    configCompilerPath      :: Flag FilePath,
+    configHcPkgPath         :: Flag FilePath,
+    configUserInstallDirs   :: InstallDirs (Flag PathTemplate),
+    configGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
+    configCacheDir          :: Flag FilePath,
+    configRemoteRepos       :: [RemoteRepo],     -- ^Available Hackage servers.
+    configVerbose           :: Flag Verbosity,
+    configUserInstall       :: Flag Bool,        -- ^--user-install flag
+    configUploadUsername    :: Flag Username,
+    configUploadPassword    :: Flag Password
+  }
+  deriving (Show)
+
+configRepos :: SavedConfig -> [Repo]
+configRepos config =
+  [ let cacheDir = fromFlag (configCacheDir config)
+               </> remoteRepoName remote
+     in Repo remote cacheDir
+  | remote <- configRemoteRepos config ]
+
+configPackageDB :: SavedConfig -> Flag PackageDB
+configPackageDB config = case configUserInstall config of
+  NoFlag     -> NoFlag
+  Flag True  -> Flag UserPackageDB
+  Flag False -> Flag GlobalPackageDB
+
+savedConfigToConfigFlags :: Flag PackageDB -> SavedConfig -> Cabal.ConfigFlags
+savedConfigToConfigFlags packageDB config = mempty {
+    Cabal.configHcFlavor    = configCompiler config,
+    Cabal.configHcPath      = configCompilerPath config,
+    Cabal.configHcPkg       = configHcPkgPath config,
+    Cabal.configInstallDirs = if userInstall
+                                then configUserInstallDirs config
+                                else configGlobalInstallDirs config,
+    Cabal.configVerbose     = configVerbose config,
+
+    -- FIXME: Urk, all this complex stuff is a result of the mismatch between
+    -- userInstall :: Bool and packageDB :: PackageDB. We should use one or
+    -- the other consistently.
+    Cabal.configPackageDB   = if userInstall
+                                then toFlag UserPackageDB
+                                else toFlag GlobalPackageDB
+  }
+  where userInstall :: Bool
+        userInstall = fromFlag $ fmap (\p -> case p of
+                                               UserPackageDB -> True
+                                               _             -> False) packageDB
+                       `mappend` configUserInstall config
 
 --
 -- * Default config
@@ -116,42 +126,46 @@ defaultCacheDir = do dir <- defaultCabalDir
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
-defaultUserInstallDirs :: IO (InstallDirs (Maybe PathTemplate))
+defaultUserInstallDirs :: IO (InstallDirs (Flag PathTemplate))
 defaultUserInstallDirs =
     do userPrefix <- defaultCabalDir
        return $ defaultGlobalInstallDirs {
-         prefix = Just (toPathTemplate userPrefix)
+         prefix = toFlag (toPathTemplate userPrefix)
        }
 
-defaultGlobalInstallDirs :: InstallDirs (Maybe PathTemplate)
-defaultGlobalInstallDirs = fmap (\() -> Nothing) mempty
+defaultGlobalInstallDirs :: InstallDirs (Flag PathTemplate)
+defaultGlobalInstallDirs = mempty
 
-defaultConfigFlags :: IO ConfigFlags
-defaultConfigFlags = 
+defaultSavedConfig :: IO SavedConfig
+defaultSavedConfig =
     do userInstallDirs <- defaultUserInstallDirs
-       cacheDir    <- defaultCacheDir
-       return $ ConfigFlags 
-               { configCompiler    = defaultCompiler
-               , configCompilerPath = Nothing
-               , configHcPkgPath   = Nothing
-               , configUserInstallDirs = userInstallDirs
-               , configGlobalInstallDirs = defaultGlobalInstallDirs
-               , configCacheDir    = cacheDir
-               , configRepos       = [Repo "hackage.haskell.org" "http://hackage.haskell.org/packages/archive"]
-               , configVerbose     = normal
-               , configUserInstall = True
-               , configUploadUsername = mempty
-               , configUploadPassword = mempty
-               }
+       cacheDir        <- defaultCacheDir
+       return SavedConfig
+         { configCompiler          = toFlag defaultCompiler
+         , configCompilerPath      = mempty
+         , configHcPkgPath         = mempty
+         , configUserInstallDirs   = userInstallDirs
+         , configGlobalInstallDirs = defaultGlobalInstallDirs
+         , configCacheDir          = toFlag cacheDir
+         , configRemoteRepos       = [defaultRemoteRepo]
+         , configVerbose           = toFlag normal
+         , configUserInstall       = toFlag True
+         , configUploadUsername    = mempty
+         , configUploadPassword    = mempty
+         }
+
+defaultRemoteRepo :: RemoteRepo
+defaultRemoteRepo =
+  RemoteRepo "hackage.haskell.org"
+             "http://hackage.haskell.org/packages/archive"
 
 --
 -- * Config file reading
 --
 
-loadConfig :: FilePath -> IO ConfigFlags
-loadConfig configFile = 
-    do defaultConf <- defaultConfigFlags
-       let verbosity = configVerbose defaultConf
+loadConfig :: Verbosity -> FilePath -> IO SavedConfig
+loadConfig verbosity configFile = 
+    do defaultConf <- defaultSavedConfig
        minp <- readFileIfExists configFile
        case minp of
          Nothing -> do notice verbosity $ "Config file " ++ configFile ++ " not found."
@@ -169,16 +183,16 @@ loadConfig configFile =
                               warn verbosity $ "Using default configuration."
                               return defaultConf
 
-writeDefaultConfigFile :: FilePath -> ConfigFlags -> IO ()
+writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 
     do createDirectoryIfMissing True (takeDirectory file)
        writeFile file $ showFields configWriteFieldDescrs cfg ++ "\n"
 
-showConfig :: ConfigFlags -> String
+showConfig :: SavedConfig -> String
 showConfig = showFields configFieldDescrs
 
 -- | All config file fields.
-configFieldDescrs :: [FieldDescr ConfigFlags]
+configFieldDescrs :: [FieldDescr SavedConfig]
 configFieldDescrs = 
     configWriteFieldDescrs
     ++ map userInstallDirField installDirDescrs
@@ -186,18 +200,18 @@ configFieldDescrs =
 
 -- | The subset of the config file fields that we write out
 -- if the config file is missing.
-configWriteFieldDescrs :: [FieldDescr ConfigFlags]
+configWriteFieldDescrs :: [FieldDescr SavedConfig]
 configWriteFieldDescrs =
-    [  simpleField "compiler"
-                (text . show)   parseCompilerFlavor
+    [ simpleField "compiler"
+                (text . show . fromFlagOrDefault GHC) (fmap toFlag parseCompilerFlavor)
                 configCompiler (\c cfg -> cfg { configCompiler = c })
     , listField "repos"
                 (text . showRepo)                  parseRepo
-                configRepos    (\rs cfg -> cfg { configRepos = rs })
+                configRemoteRepos (\rs cfg -> cfg { configRemoteRepos = rs })
     , simpleField "cachedir"
-                (text . show)                  (readS_to_P reads)
+                (text . show . fromFlagOrDefault "") (fmap emptyToNothing $ readS_to_P reads)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
-    , boolField "user-install" configUserInstall (\u cfg -> cfg { configUserInstall = u })
+    , boolField "user-install" (fromFlag . configUserInstall) (\u cfg -> cfg { configUserInstall = toFlag u })
     , simpleField "hackage-username"
                 (text . show . fromFlagOrDefault "")
                 (fmap emptyToNothing $ readS_to_P reads)
@@ -210,7 +224,7 @@ configWriteFieldDescrs =
     where emptyToNothing "" = mempty
           emptyToNothing f  = toFlag f
 
-installDirDescrs :: [FieldDescr (InstallDirs (Maybe PathTemplate))]
+installDirDescrs :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirDescrs =
     [ installDirField "prefix"     prefix     (\d ds -> ds { prefix     = d })
     , installDirField "bindir"     bindir     (\d ds -> ds { bindir     = d })
@@ -222,24 +236,25 @@ installDirDescrs =
     ]
 
 
-userInstallDirField :: FieldDescr (InstallDirs (Maybe PathTemplate)) -> FieldDescr ConfigFlags
+userInstallDirField :: FieldDescr (InstallDirs (Flag PathTemplate)) -> FieldDescr SavedConfig
 userInstallDirField f = modifyFieldName ("user-"++) $
     liftField configUserInstallDirs 
               (\d cfg -> cfg { configUserInstallDirs = d }) 
               f
 
-globalInstallDirField :: FieldDescr (InstallDirs (Maybe PathTemplate)) -> FieldDescr ConfigFlags
+globalInstallDirField :: FieldDescr (InstallDirs (Flag PathTemplate)) -> FieldDescr SavedConfig
 globalInstallDirField f = modifyFieldName ("global-"++) $
     liftField configGlobalInstallDirs 
               (\d cfg -> cfg { configGlobalInstallDirs = d }) 
               f
 
 installDirField :: String 
-                -> (InstallDirs (Maybe PathTemplate) -> Maybe PathTemplate) 
-                -> (Maybe PathTemplate -> InstallDirs (Maybe PathTemplate) -> InstallDirs (Maybe PathTemplate))
-                -> FieldDescr (InstallDirs (Maybe PathTemplate))
+                -> (InstallDirs (Flag PathTemplate) -> Flag PathTemplate) 
+                -> (Flag PathTemplate -> InstallDirs (Flag PathTemplate) -> InstallDirs (Flag PathTemplate))
+                -> FieldDescr (InstallDirs (Flag PathTemplate))
 installDirField name get set = 
-    liftField get set $ field name (text . show) (readS_to_P reads)
+    liftField get set $ field name (text . show . fromFlag)
+                                   (fmap toFlag $ readS_to_P reads)
 
 modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
 modifyFieldName f d = d { fieldName = f (fieldName d) }
@@ -256,12 +271,12 @@ parseCompilerFlavor =
                   "jhc"    -> JHC
                   _        -> OtherCompiler s
 
-showRepo :: Repo -> String
-showRepo repo = repoName repo ++ ":" ++ repoURL repo
+showRepo :: RemoteRepo -> String
+showRepo repo = remoteRepoName repo ++ ":" ++ remoteRepoURL repo
 
-parseRepo :: ReadP r Repo
+parseRepo :: ReadP r RemoteRepo
 parseRepo = do name <- munch1 (\c -> isAlphaNum c || c `elem` "_-.")
                char ':'
                url <- munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
-               return $ Repo { repoName = name, repoURL = url }
+               return $ RemoteRepo { remoteRepoName = name, remoteRepoURL = url }
 
