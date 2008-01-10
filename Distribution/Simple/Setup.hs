@@ -232,7 +232,8 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
 
     configVerbose   :: Flag Verbosity, -- ^verbosity level
-    configPackageDB :: Flag PackageDB, -- ^ the --user flag?
+    configUserInstall :: Flag Bool,    -- ^The --user/--global flag
+    configPackageDB :: Flag PackageDB, -- ^Which package DB to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configConfigurationsFlags :: [(String, Bool)]
@@ -249,6 +250,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configProfExe      = Flag False,
     configOptimization = Flag True,
     configVerbose      = Flag normal,
+    configUserInstall  = Flag False,           --TODO: reverse this
     configPackageDB    = Flag GlobalPackageDB,
     configGHCiLib      = Flag True,
     configSplitObjs    = Flag False -- takes longer, so turn off by default
@@ -429,16 +431,14 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
          (reqArg "OPT" (\x -> [x]) id)
 
       ,option "" ["user"]
-         "allow dependencies to be satisfied from the user package database. also implies install --user"
-         configPackageDB (\v flags -> flags { configPackageDB = v })
-         (noArg (Flag UserPackageDB)
-                (\f -> case f of Flag UserPackageDB -> True; _ -> False))
+         "do a per-user installation"
+         configUserInstall (\v flags -> flags { configUserInstall = v })
+         trueArg
 
       ,option "" ["global"]
-         "(default) dependencies must be satisfied from the global package database"
-         configPackageDB (\v flags -> flags { configPackageDB = v })
-         (noArg (Flag GlobalPackageDB)
-                (\f -> case f of Flag GlobalPackageDB -> True; _ -> False))
+         "(default) do a system-wide installation"
+         configUserInstall (\v flags -> flags { configUserInstall = v })
+         falseArg
 
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
@@ -484,6 +484,7 @@ instance Monoid ConfigFlags where
     configInstallDirs   = mempty,
     configScratchDir    = mempty,
     configVerbose       = mempty,
+    configUserInstall   = mempty,
     configPackageDB     = mempty,
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
@@ -505,6 +506,7 @@ instance Monoid ConfigFlags where
     configInstallDirs   = combine configInstallDirs,
     configScratchDir    = combine configScratchDir,
     configVerbose       = combine configVerbose,
+    configUserInstall   = combine configUserInstall,
     configPackageDB     = combine configPackageDB,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
