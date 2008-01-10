@@ -12,46 +12,66 @@
 -----------------------------------------------------------------------------
 module Hackage.Types where
 
-import Distribution.Simple.Compiler (CompilerFlavor)
-import Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
-import Distribution.Simple.Setup (Flag)
-import Distribution.Package (PackageIdentifier)
+import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.Version (Dependency)
-import Distribution.Verbosity
+import Distribution.Version (Dependency, showVersion)
 
--- | We re-use @GenericPackageDescription@ and use the @package-url@
--- field to store the tarball URL.
-data PkgInfo = PkgInfo {
-                        pkgInfoId :: PackageIdentifier,
-                        pkgRepo :: Repo,
-                        pkgDesc :: GenericPackageDescription
-                       }
-               deriving (Show)
-
-data ConfigFlags = ConfigFlags {
-        configCompiler    :: CompilerFlavor,
-        configCompilerPath :: Maybe FilePath,
-        configHcPkgPath   :: Maybe FilePath,
-        configUserInstallDirs   :: InstallDirs (Maybe PathTemplate),
-        configGlobalInstallDirs :: InstallDirs (Maybe PathTemplate),
-        configCacheDir    :: FilePath,
-        configRepos       :: [Repo],       -- ^Available Hackage servers.
-        configVerbose     :: Verbosity,
-        configUserInstall :: Bool,           -- ^--user-install flag
-        configUploadUsername :: Flag Username,
-        configUploadPassword :: Flag Password
-   }
-  deriving (Show)
+import System.FilePath ((</>), (<.>))
+import Data.List (intersperse)
 
 type Username = String
 type Password = String
 
+-- | We re-use @GenericPackageDescription@ and use the @package-url@
+-- field to store the tarball URL.
+data PkgInfo = PkgInfo {
+    pkgInfoId :: PackageIdentifier,
+    pkgRepo   :: Repo,
+    pkgDesc   :: GenericPackageDescription
+  }
+  deriving (Show)
+
+-- |Generate the full path to the locally cached copy of
+-- the tarball for a given @PackageIdentifer@.
+packageFile :: PkgInfo -> FilePath
+packageFile pkg = packageDir pkg
+              </> showPackageId (pkgInfoId pkg)
+              <.> "tar.gz"
+
+-- |Generate the full path to the directory where the local cached copy of
+-- the tarball for a given @PackageIdentifer@ is stored.
+packageDir :: PkgInfo -> FilePath
+packageDir PkgInfo { pkgInfoId = p, pkgRepo = repo } = 
+                         repoCacheDir repo
+                     </> pkgName p
+                     </> showVersion (pkgVersion p)
+
+-- | Generate the URL of the tarball for a given package.
+packageURL :: PkgInfo -> String
+packageURL pkg = joinWith "/"
+    [repoURL (pkgRepo pkg),
+     pkgName p, showVersion (pkgVersion p),
+     showPackageId p ++ ".tar.gz"]
+    where joinWith tok = concat . intersperse tok
+          p = pkgInfoId pkg
+
+data RemoteRepo = RemoteRepo {
+    remoteRepoName :: String,
+    remoteRepoURL  :: String
+  }
+  deriving (Show,Eq)
+
 data Repo = Repo {
-                  repoName :: String,
-                  repoURL :: String
-                 }
-          deriving (Show,Eq)
+    repoRemote   :: RemoteRepo,
+    repoCacheDir :: FilePath
+  }
+  deriving (Show,Eq)
+
+repoName :: Repo -> String
+repoName = remoteRepoName . repoRemote
+
+repoURL :: Repo -> String
+repoURL = remoteRepoURL . repoRemote
 
 data ResolvedPackage
        = Installed Dependency PackageIdentifier

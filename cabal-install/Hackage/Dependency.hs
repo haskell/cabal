@@ -20,17 +20,17 @@ module Hackage.Dependency
 
 import Hackage.Config (listInstalledPackages)
 import Hackage.Index (getKnownPackages)
-import Hackage.Types 
-    (ResolvedPackage(..), UnresolvedDependency(..), ConfigFlags (..),
-     PkgInfo (..), FlagAssignment)
-
+import Hackage.Types (ResolvedPackage(..), UnresolvedDependency(..),
+                      PkgInfo(..), FlagAssignment, Repo)
 import Distribution.Version (Dependency(..), withinRange)
+import Distribution.Verbosity (Verbosity)
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
     , GenericPackageDescription
     , finalizePackageDescription)
-import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
+import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion,
+                                     PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 
@@ -40,28 +40,30 @@ import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import qualified System.Info (arch,os)
 
 
-resolveDependencies :: ConfigFlags
+resolveDependencies :: Verbosity
+                    -> PackageDB -> [Repo]
                     -> Compiler
                     -> ProgramConfiguration
                     -> [UnresolvedDependency]
                     -> IO [ResolvedPackage]
-resolveDependencies cfg comp conf deps 
-    = do installed <- listInstalledPackages cfg comp conf
-         available <- getKnownPackages cfg
+resolveDependencies verbosity packageDB repos comp conf deps 
+    = do installed <- listInstalledPackages verbosity packageDB comp conf
+         available <- getKnownPackages verbosity repos
          return [resolveDependency comp installed available dep flags
                      | UnresolvedDependency dep flags <- deps]
 
 -- | Resolve dependencies of a local package description. This is used
 -- when the top-level package does not come from hackage.
-resolveDependenciesLocal :: ConfigFlags
+resolveDependenciesLocal :: Verbosity
+                         -> PackageDB -> [Repo]
                          -> Compiler
                          -> ProgramConfiguration
                          -> GenericPackageDescription
                          -> FlagAssignment
                          -> IO [ResolvedPackage]
-resolveDependenciesLocal cfg comp conf desc flags
-    =  do installed <- listInstalledPackages cfg comp conf
-          available <- getKnownPackages cfg
+resolveDependenciesLocal verbosity packageDB repos comp conf desc flags
+    =  do installed <- listInstalledPackages verbosity packageDB comp conf
+          available <- getKnownPackages verbosity repos
           return [resolveDependency comp installed available dep []
                      | dep <- getDependencies comp installed available desc flags]
 
@@ -148,15 +150,16 @@ packagesToInstall xs | null missing = Right toInstall
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.
 
-getUpgradableDeps :: ConfigFlags
+getUpgradableDeps :: Verbosity
+                  -> PackageDB -> [Repo]
                   -> Compiler
                   -> ProgramConfiguration
                   -> IO [PkgInfo]
-getUpgradableDeps cfg comp conf
-    = do allInstalled <- listInstalledPackages cfg comp conf
+getUpgradableDeps verbosity packageDB repos comp conf
+    = do allInstalled <- listInstalledPackages verbosity packageDB comp conf
          -- we should only consider the latest version of each package:
          let latestInstalled = getLatest allInstalled
-         available <- getKnownPackages cfg
+         available <- getKnownPackages verbosity repos
          let mNeedingUpgrade = map (\x -> newerAvailable x available)
                                    latestInstalled
          return $ catMaybes mNeedingUpgrade

@@ -12,7 +12,6 @@
 -----------------------------------------------------------------------------
 module Hackage.Index (getKnownPackages) where
 
-import Hackage.Config
 import Hackage.Types
 import Hackage.Tar
 
@@ -22,28 +21,27 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
-import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
 
 import Distribution.PackageDescription (parsePackageDescription, ParseResult(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.Version (readVersion)
+import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (warn)
 
-getKnownPackages :: ConfigFlags -> IO [PkgInfo]
-getKnownPackages cfg
-    = fmap concat $ mapM (readRepoIndex cfg) $ configRepos cfg
+getKnownPackages :: Verbosity -> [Repo] -> IO [PkgInfo]
+getKnownPackages verbosity repos
+    = fmap concat $ mapM (readRepoIndex verbosity) repos
 
-readRepoIndex :: ConfigFlags -> Repo -> IO [PkgInfo]
-readRepoIndex cfg repo =
-    do let indexFile = repoCacheDir cfg repo </> "00-index.tar"
+readRepoIndex :: Verbosity -> Repo -> IO [PkgInfo]
+readRepoIndex verbosity repo =
+    do let indexFile = repoCacheDir repo </> "00-index.tar"
        fmap (parseRepoIndex repo) (BS.readFile indexFile)
           `catch` (\e -> do case e of
                               IOException ioe | isDoesNotExistError ioe ->
                                 warn verbosity "The package list does not exist. Run 'cabal update' to download it."
                               _ -> warn verbosity (show e)
                             return [])
-  where verbosity = configVerbose cfg
 
 parseRepoIndex :: Repo -> ByteString -> [PkgInfo]
 parseRepoIndex repo s =

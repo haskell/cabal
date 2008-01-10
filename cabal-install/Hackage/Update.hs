@@ -19,19 +19,19 @@ import Hackage.Fetch
 import Hackage.Tar
 
 import Distribution.Simple.Utils (notice)
+import Distribution.Verbosity (Verbosity)
 
 import qualified Data.ByteString.Lazy as BS
 import System.FilePath (dropExtension)
 
 -- | 'update' downloads the package list from all known servers
-update :: ConfigFlags -> IO ()
-update cfg = mapM_ (updateRepo cfg) (configRepos cfg)
+update :: Verbosity -> [Repo] -> IO ()
+update verbosity = mapM_ (updateRepo verbosity)
 
-updateRepo :: ConfigFlags 
+updateRepo :: Verbosity
            -> Repo
            -> IO ()
-updateRepo cfg repo =
+updateRepo verbosity repo =
     do notice verbosity $ "Downloading package list from server '" ++ repoURL repo ++ "'"
-       indexPath <- downloadIndex cfg repo
+       indexPath <- downloadIndex repo
        BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . gunzip
-  where verbosity = configVerbose cfg

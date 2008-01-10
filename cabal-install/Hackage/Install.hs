@@ -16,7 +16,6 @@ module Hackage.Install
 
 import Control.Exception (bracket_, try)
 import Control.Monad (when)
-import Data.Monoid (Monoid(mempty))
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
                         ,removeDirectoryRecursive, doesFileExist)
 import System.FilePath ((</>),(<.>))
@@ -24,68 +23,88 @@ import System.FilePath ((</>),(<.>))
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
-import Hackage.Types (ConfigFlags(..), UnresolvedDependency(..)
-                     , PkgInfo(..), FlagAssignment)
+import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
+                      Repo)
 import Hackage.Utils
 
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
-import Distribution.Simple.Setup (toFlag)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils (defaultPackageDesc)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
 import Distribution.PackageDescription (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
+import Distribution.Verbosity (Verbosity)
 
 
 -- |Installs the packages needed to satisfy a list of dependencies.
-install :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> [UnresolvedDependency] -> IO ()
-install cfg comp conf configFlags deps
-    | null deps = installLocalPackage cfg comp conf configFlags
-    | otherwise = installRepoPackages cfg comp conf configFlags deps
+install :: Verbosity
+        -> PackageDB
+        -> [Repo]
+        -> Compiler
+        -> ProgramConfiguration
+        -> Cabal.ConfigFlags
+        -> [UnresolvedDependency]
+        -> IO ()
+install verbosity packageDB repos comp conf configFlags deps
+    | null deps = installLocalPackage verbosity packageDB repos comp conf configFlags
+    | otherwise = installRepoPackages verbosity packageDB repos comp conf configFlags deps
 
 -- | Install the unpacked package in the current directory, and all its dependencies.
-installLocalPackage :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> IO ()
-installLocalPackage cfg comp conf configFlags =
-   do cabalFile <- defaultPackageDesc (configVerbose cfg)
-      desc <- readPackageDescription (configVerbose cfg) cabalFile
-      resolvedDeps <- resolveDependenciesLocal cfg comp conf desc
+installLocalPackage :: Verbosity
+                    -> PackageDB
+                    -> [Repo]
+                    -> Compiler
+                    -> ProgramConfiguration
+                    -> Cabal.ConfigFlags
+                    -> IO ()
+installLocalPackage verbosity packageDB repos comp conf configFlags =
+   do cabalFile <- defaultPackageDesc verbosity
+      desc <- readPackageDescription verbosity cabalFile
+      resolvedDeps <- resolveDependenciesLocal verbosity packageDB repos comp conf desc
                         (Cabal.configConfigurationsFlags configFlags)
       case packagesToInstall resolvedDeps of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-        Right pkgs   -> installPackages cfg configFlags pkgs
-      installUnpackedPkg cfg configFlags Nothing
+        Right pkgs   -> installPackages verbosity configFlags pkgs
+      installUnpackedPkg verbosity configFlags Nothing
 
-installRepoPackages :: ConfigFlags -> Compiler -> ProgramConfiguration -> Cabal.ConfigFlags -> [UnresolvedDependency] -> IO ()
-installRepoPackages cfg comp conf configFlags deps =
-    do resolvedDeps <- resolveDependencies cfg comp conf deps
+installRepoPackages :: Verbosity
+                    -> PackageDB
+                    -> [Repo]
+                    -> Compiler
+                    -> ProgramConfiguration
+                    -> Cabal.ConfigFlags
+                    -> [UnresolvedDependency]
+                    -> IO ()
+installRepoPackages verbosity packageDB repos comp conf configFlags deps =
+    do resolvedDeps <- resolveDependencies verbosity packageDB repos comp conf deps
        case packagesToInstall resolvedDeps of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right []     -> notice verbosity "All requested packages already installed. Nothing to do."
-         Right pkgs   -> installPackages cfg configFlags pkgs
-  where verbosity = configVerbose cfg
+         Right pkgs   -> installPackages verbosity configFlags pkgs
 
-installPackages :: ConfigFlags
+installPackages :: Verbosity
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
                 -> [(PkgInfo,FlagAssignment)] -- ^ (Package, list of configure options)
                 -> IO ()
-installPackages cfg configFlags pkgs = do 
+installPackages verbosity configFlags pkgs = do 
   errorPackages <- installPackagesErrs pkgs []
   case errorPackages of
     [] -> return ()
-    pkgs -> do let errorMsg = concat $ "Error: some packages failed to install:"
-                             : ["\n  " ++ showPackageId (pkgInfoId x) | (x, _) <- pkgs]
-               die errorMsg
+    errpkgs -> let errorMsg = concat $ "Error: some packages failed to install:"
+                            : ["\n  " ++ showPackageId (pkgInfoId pkg)
+                            | pkg <- errpkgs]
+                in die errorMsg
 
-  where installPackagesErrs (pkg:pkgs) errPkgs = do
-          maybeInstalled <- try (installPkg cfg configFlags pkg)
+  where installPackagesErrs :: [(PkgInfo,FlagAssignment)] -> [PkgInfo] -> IO [PkgInfo]
+        installPackagesErrs ((pkg,flags):pkgs') errPkgs = do
+          maybeInstalled <- try (installPkg verbosity configFlags pkg flags)
           case maybeInstalled of
-            Left e ->  installPackagesErrs pkgs (pkg:errPkgs)
-            Right _ -> installPackagesErrs pkgs errPkgs
+            Left e  -> installPackagesErrs pkgs' (pkg:errPkgs)
+            Right _ -> installPackagesErrs pkgs' errPkgs
         installPackagesErrs [] ers = return ers
-
 
 {-|
   Download, build and install a given package with some given flags.
@@ -107,12 +126,13 @@ installPackages cfg configFlags pkgs = do
 
     * The installation finishes by deleting the unpacked tarball.
 -} 
-installPkg :: ConfigFlags
+installPkg :: Verbosity
            -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
-           -> (PkgInfo,FlagAssignment) -- ^(Package, list of configure options)
+           -> PkgInfo
+           -> FlagAssignment
            -> IO ()
-installPkg cfg configFlags (pkg,flags)
-    = do pkgPath <- fetchPackage cfg pkg
+installPkg verbosity configFlags pkg flags
+    = do pkgPath <- fetchPackage verbosity pkg
          tmp <- getTemporaryDirectory
          let p = pkgInfoId pkg
              tmpDirPath = tmp </> ("TMP" ++ showPackageId p)
@@ -127,24 +147,25 @@ installPkg cfg configFlags (pkg,flags)
                       let configFlags' = configFlags {
                             Cabal.configConfigurationsFlags =
                               Cabal.configConfigurationsFlags configFlags ++ flags }
-                      installUnpackedPkg cfg configFlags' (Just path))
-  where verbosity = configVerbose cfg
+                      installUnpackedPkg verbosity configFlags' (Just path))
 
-installUnpackedPkg :: ConfigFlags
+installUnpackedPkg :: Verbosity
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> IO ()
-installUnpackedPkg cfg configFlags mpath
+installUnpackedPkg verbosity configFlags mpath
     = do setup ("configure" : configureOptions)
          setup ["build"]
          setup ["install"]
   where
-    configureOptions = mkPkgOps cfg configFlags
+    configureCommand = Cabal.configureCommand defaultProgramConfiguration
+    configureOptions = commandShowOptions configureCommand configFlags
     setup cmds
-        = do debug (configVerbose cfg) $
+        = do debug verbosity $
                "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
              setupWrapper cmds mpath
 
+{-
 -- Attach the correct prefix flag to configure commands,
 -- correct --user flag to install commands and no options to other commands.
 mkPkgOps :: ConfigFlags -> Cabal.ConfigFlags -> [String]
@@ -163,3 +184,4 @@ mkPkgOps cfg configFlags =
   }
  where installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
                            | otherwise             = configGlobalInstallDirs cfg
+-}
