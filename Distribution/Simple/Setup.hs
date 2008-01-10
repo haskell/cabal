@@ -62,7 +62,7 @@ module Distribution.Simple.Setup (
   CopyDest(..),
   configureArgs,
 
-  Flag,
+  Flag(..),
   toFlag,
   fromFlag,
   fromFlagOrDefault,
