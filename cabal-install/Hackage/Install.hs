@@ -164,24 +164,3 @@ installUnpackedPkg verbosity configFlags mpath
         = do debug verbosity $
                "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
              setupWrapper cmds mpath
-
-{-
--- Attach the correct prefix flag to configure commands,
--- correct --user flag to install commands and no options to other commands.
-mkPkgOps :: ConfigFlags -> Cabal.ConfigFlags -> [String]
-mkPkgOps cfg configFlags =
-  commandShowOptions (Cabal.configureCommand defaultProgramConfiguration) configFlags {
-    Cabal.configHcFlavor  = toFlag (configCompiler cfg),
-    Cabal.configHcPath    = maybe (Cabal.configHcPath configFlags)
-                                  toFlag (configCompilerPath cfg),
-    Cabal.configHcPkg     = maybe (Cabal.configHcPkg configFlags)
-                                  toFlag (configHcPkgPath cfg),
-    Cabal.configInstallDirs = fmap (maybe mempty toFlag) installDirTemplates,
-    Cabal.configVerbose   = toFlag (configVerbose cfg),
-    Cabal.configPackageDB = if configUserInstall cfg
-                              then toFlag UserPackageDB
-                              else toFlag GlobalPackageDB
-  }
- where installDirTemplates | configUserInstall cfg = configUserInstallDirs cfg
-                           | otherwise             = configGlobalInstallDirs cfg
--}
