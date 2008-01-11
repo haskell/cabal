@@ -169,7 +169,7 @@ data PackageDescription
         category       :: String,
         buildDepends   :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
-        buildType      :: BuildType,
+        buildType      :: Maybe BuildType,
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
@@ -185,7 +185,7 @@ emptyPackageDescription
                       license      = AllRightsReserved,
                       licenseFile  = "",
                       descCabalVersion = AnyVersion,
-                      buildType    = Custom,
+                      buildType    = Nothing,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",
@@ -363,7 +363,7 @@ pkgDescrFieldDescrs =
            (text . showVersionRange) parseVersionRange
            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
  , simpleField "build-type"
-           (text . show)          parseReadSQ
+           (text . maybe "" show) (fmap Just parseReadSQ)
            buildType              (\t pkg -> pkg{buildType=t})
  , simpleField "license"
            (text . show)          parseLicenseQ
@@ -1269,7 +1269,10 @@ sanityCheckPackage pkg_descr =
                     in checkSanity (not $ cabalVersion  `withinRange` v)
                            ("This package requires Cabal version: " 
                               ++ (showVersionRange v) ++ ".")
-    in return $ ( catMaybes [nothingToDo, noModules, noLicenseFile],
+        noBuildType = checkSanity (isNothing $ buildType pkg_descr)
+	                "No build-type specified. If possible use build-type: Simple"
+    in return $ ( catMaybes [nothingToDo, noModules, noLicenseFile,
+                             noBuildType],
                   catMaybes (libSane:goodCabal: checkMissingFields pkg_descr
 			     ++ map sanityCheckExe (executables pkg_descr)) )
 
@@ -1391,7 +1394,7 @@ compatTestPkgDescAnswer =
       description = "a really nice package!",
       category = "tools",
       descCabalVersion = LaterVersion (Version [1,1,1] []),
-      buildType = Custom,
+      buildType = Just Custom,
       buildDepends = [Dependency "haskell-src" AnyVersion,
                       Dependency "HUnit"
                         (UnionVersionRanges 
