@@ -15,7 +15,8 @@ module Main where
 
 import Hackage.Setup
 import Distribution.PackageDescription (cabalVersion)
-import Distribution.Simple.Setup (Flag, fromFlag, flagToMaybe)
+import Distribution.Simple.Setup (Flag, fromFlag, fromFlagOrDefault,
+                                  flagToMaybe)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
@@ -34,7 +35,7 @@ import Hackage.Fetch            (fetch)
 --import Hackage.Clean            (clean)
 import Hackage.Upload           (upload, check)
 
-import Distribution.Verbosity   (Verbosity)
+import Distribution.Verbosity   (Verbosity, normal)
 import Distribution.Version     (showVersion)
 import qualified Paths_cabal_install (version)
 
@@ -109,7 +110,7 @@ installAction :: Cabal.ConfigFlags -> [String] -> IO ()
 installAction flags extraArgs = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlag (Cabal.configVerbose flags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
   config <- loadConfig verbosity configFile
   let flags' = flags `mappend`
                savedConfigToConfigFlags (Cabal.configPackageDB flags) config
@@ -147,7 +148,7 @@ updateAction verbosityFlag _extraArgs = do
 upgradeAction :: Cabal.ConfigFlags -> [String] -> IO ()
 upgradeAction flags _extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlag (Cabal.configVerbose flags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
   config <- loadConfig verbosity configFile
   let flags' = flags `mappend`
                savedConfigToConfigFlags (Cabal.configPackageDB flags) config
