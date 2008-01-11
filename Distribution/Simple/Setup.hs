@@ -251,7 +251,6 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configOptimization = Flag True,
     configVerbose      = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
-    configPackageDB    = Flag GlobalPackageDB,
     configGHCiLib      = Flag True,
     configSplitObjs    = Flag False -- takes longer, so turn off by default
   }
