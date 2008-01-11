@@ -93,7 +93,8 @@ setupWrapper args mdir = inDir mdir $ do
 	     ++ ghcVerbosityOptions verbosity
          rawSystemExit verbosity setupProg args
 
-  case lookup (buildType (packageDescription ppkg_descr)) buildTypes of
+  let buildType' = fromMaybe Custom (buildType (packageDescription ppkg_descr))
+  case lookup buildType' buildTypes of
     Just (mainAction, mainText) ->
       if withinRange cabalVersion (descCabalVersion (packageDescription ppkg_descr))
 	then mainAction args -- current version is OK, so no need
