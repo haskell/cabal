@@ -428,6 +428,14 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
          configUserInstall (\v flags -> flags { configUserInstall = v })
          falseArg
 
+      ,option "" ["package-db"]
+         "Use a specific package database (to satisfy dependencies and register in)"
+         configPackageDB (\v flags -> flags { configPackageDB = v })
+         (reqArg "PATH" (Flag . SpecificPackageDB)
+                        (\f -> case f of
+                                 Flag (SpecificPackageDB db) -> [db]
+                                 _ -> []))
+
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
