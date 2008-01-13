@@ -8,62 +8,61 @@ import Network.HTTP (Request (..), Response (..), RequestMethod (..), Header(..)
 import Network.URI (URI (..), URIAuth (..), parseURI)
 import Network.Stream (Result)
 import Network.Browser (Proxy (..), Authority (..), browse, setProxy, request)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
+import Control.Monad (mplus)
+import Control.Exception (try)
 #ifdef WIN32
 import System.Win32.Registry (hKEY_CURRENT_USER, regOpenKey, regQueryValue, regCloseKey)
-#else
-import System.Posix.Env (getEnv)
 #endif
+import System.Environment (getEnvironment)
 
 -- try to read the system proxy settings on windows or unix
-proxyURI :: IO (Maybe URI)
+proxyString :: IO String
 #ifdef WIN32
 -- read proxy settings from the windows registry
-proxyURI = do hKey <- return key
-              uri  <- regOpenKey hKey path 
-                      >>= flip regQueryValue (Just "ProxyServer") 
-                      >>= return . parseURI
-              regCloseKey hKey
-              return uri
-    where {-some sources say proxy settings should be at 
-            HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer
-            but if the user sets them with IE connection panel they seem to end up in the 
-            following place within HKEY_CURRENT_USER. -}
-          key  = hKEY_CURRENT_USER
-          path = "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+proxyString = bracket (regOpenKey hive path) regCloseKey
+	     (flip regQueryValue (Just "ProxyServer"))
+  where
+    -- some sources say proxy settings should be at 
+    -- HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows
+    --                   \CurrentVersion\Internet Settings\ProxyServer
+    -- but if the user sets them with IE connection panel they seem to
+    -- end up in the following place:
+    hive  = hKEY_CURRENT_USER
+    path = "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 #else
 -- read proxy settings by looking for an env var
-proxyURI = getEnv "http_proxy" >>= maybe (getEnv "HTTP_PROXY" 
-                                          >>= parseURIM) (parseURIM . Just)
-    where parseURIM :: Maybe String -> IO (Maybe URI)
-          parseURIM = return . maybe Nothing parseURI
+proxyString = do
+  env <- getEnvironment
+  return (fromMaybe "" $ lookup "http_proxy" env
+                 `mplus` lookup "HTTP_PROXY" env)
 #endif
 
 -- |Get the local proxy settings  
 proxy :: IO Proxy
-proxy = proxyURI >>= return . uri2proxy
+proxy = try proxyString >>= return . maybe NoProxy uri2proxy
+                                   . either (const Nothing) parseURI
 
-mkRequest :: URI -> IO Request
-mkRequest uri = return Request{ rqURI     = uri
-                              , rqMethod  = GET
-                              , rqHeaders = [Header HdrUserAgent "Cabal"]
-                              , rqBody    = "" }
+mkRequest :: URI -> Request
+mkRequest uri = Request{ rqURI     = uri
+                       , rqMethod  = GET
+                       , rqHeaders = [Header HdrUserAgent "Cabal"]
+                       , rqBody    = "" }
 
-uri2proxy :: Maybe URI -> Proxy
-uri2proxy = maybe NoProxy (\uri ->
-                           let (URIAuth auth' host _) = fromJust $ uriAuthority uri
-                               auth = if null auth' then Nothing
-                                      else Just (AuthBasic "" usr pwd uri)
-                               (usr,pwd') = break (==':') auth'
-                               pwd        = case pwd' of
-                                              ':':cs -> cs
-                                              _      -> pwd'
-                               in
-                           Proxy host auth)
+uri2proxy :: URI -> Proxy
+uri2proxy uri = Proxy host auth
+  where (URIAuth auth' host _) = fromJust $ uriAuthority uri
+        auth = if null auth'
+                 then Nothing
+                 else Just (AuthBasic "" usr pwd uri)
+        (usr,pwd') = break (==':') auth'
+        pwd        = case pwd' of
+                       ':':cs -> cs
+                       _      -> pwd'
 
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: URI -> IO (Result Response)
 getHTTP uri = do p   <- proxy
-                 req <- mkRequest uri
+                 let req = mkRequest uri
                  (_, resp) <- browse (setProxy p >> request req)
                  return (Right resp)
