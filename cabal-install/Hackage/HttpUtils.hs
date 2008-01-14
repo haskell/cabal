@@ -13,6 +13,7 @@ import Control.Monad (mplus)
 import Control.Exception (try)
 #ifdef WIN32
 import System.Win32.Registry (hKEY_CURRENT_USER, regOpenKey, regQueryValue, regCloseKey)
+import Control.Exception (bracket)
 #endif
 import System.Environment (getEnvironment)
 
