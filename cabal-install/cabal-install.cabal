@@ -66,5 +66,3 @@ Executable cabal
     if os(windows)
       build-depends: Win32 >= 2
       cpp-options: -DWIN32
-    else
-      build-depends: unix >= 1
