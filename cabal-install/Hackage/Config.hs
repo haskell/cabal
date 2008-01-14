@@ -90,6 +90,7 @@ savedConfigToConfigFlags packageDB config = mempty {
     Cabal.configHcFlavor    = configCompiler config,
     Cabal.configHcPath      = configCompilerPath config,
     Cabal.configHcPkg       = configHcPkgPath config,
+    Cabal.configUserInstall = toFlag userInstall,
     Cabal.configInstallDirs = if userInstall
                                 then configUserInstallDirs config
                                 else configGlobalInstallDirs config,
