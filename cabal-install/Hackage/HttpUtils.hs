@@ -8,21 +8,23 @@ import Network.HTTP (Request (..), Response (..), RequestMethod (..), Header(..)
 import Network.URI (URI (..), URIAuth (..), parseURI)
 import Network.Stream (Result)
 import Network.Browser (Proxy (..), Authority (..), browse, setProxy, request)
-import Data.Maybe (fromJust, fromMaybe)
 import Control.Monad (mplus)
-import Control.Exception (try)
 #ifdef WIN32
 import System.Win32.Registry (hKEY_CURRENT_USER, regOpenKey, regQueryValue, regCloseKey)
-import Control.Exception (bracket)
+import Control.Exception (try, bracket)
 #endif
 import System.Environment (getEnvironment)
 
+import Distribution.Verbosity (Verbosity)
+import Distribution.Simple.Utils (warn)
+
 -- try to read the system proxy settings on windows or unix
-proxyString :: IO String
+proxyString :: IO (Maybe String)
 #ifdef WIN32
 -- read proxy settings from the windows registry
-proxyString = bracket (regOpenKey hive path) regCloseKey
-	     (flip regQueryValue (Just "ProxyServer"))
+proxyString = fmap (either (const Nothing) Just) $ try $
+                bracket (regOpenKey hive path) regCloseKey
+                  (\hkey -> regQueryValue hkey (Just "ProxyServer"))
   where
     -- some sources say proxy settings should be at 
     -- HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows
@@ -35,14 +37,36 @@ proxyString = bracket (regOpenKey hive path) regCloseKey
 -- read proxy settings by looking for an env var
 proxyString = do
   env <- getEnvironment
-  return (fromMaybe "" $ lookup "http_proxy" env
-                 `mplus` lookup "HTTP_PROXY" env)
+  return (lookup "http_proxy" env `mplus` lookup "HTTP_PROXY" env)
 #endif
 
 -- |Get the local proxy settings  
-proxy :: IO Proxy
-proxy = try proxyString >>= return . maybe NoProxy uri2proxy
-                                   . either (const Nothing) parseURI
+proxy :: Verbosity -> IO Proxy
+proxy verbosity = do
+  mstr <- proxyString
+  case mstr of
+    Nothing     -> return NoProxy
+    Just str    -> case parseURI str of
+      Nothing   -> do warn verbosity $ "invalid proxy uri: " ++ show str
+                      return NoProxy
+      Just uri  -> case uri2proxy uri of
+        Nothing -> do warn verbosity $ "invalid http proxy uri: " ++ show str
+                      warn verbosity $ "proxy uri must be http with a hostname"
+                      return NoProxy
+        Just p  -> return p
+
+uri2proxy :: URI -> Maybe Proxy
+uri2proxy uri@URI{ uriScheme = "http:"
+                 , uriAuthority = Just (URIAuth auth' host port)
+                 } = Just (Proxy host auth)
+  where auth = if null auth'
+                 then Nothing
+                 else Just (AuthBasic "" usr pwd uri)
+        (usr,pwd') = break (==':') auth'
+        pwd        = case pwd' of
+                       ':':cs -> cs
+                       _      -> pwd'
+uri2proxy _ = Nothing
 
 mkRequest :: URI -> Request
 mkRequest uri = Request{ rqURI     = uri
@@ -50,20 +74,10 @@ mkRequest uri = Request{ rqURI     = uri
                        , rqHeaders = [Header HdrUserAgent "Cabal"]
                        , rqBody    = "" }
 
-uri2proxy :: URI -> Proxy
-uri2proxy uri = Proxy host auth
-  where (URIAuth auth' host _) = fromJust $ uriAuthority uri
-        auth = if null auth'
-                 then Nothing
-                 else Just (AuthBasic "" usr pwd uri)
-        (usr,pwd') = break (==':') auth'
-        pwd        = case pwd' of
-                       ':':cs -> cs
-                       _      -> pwd'
-
 -- |Carry out a GET request, using the local proxy settings
-getHTTP :: URI -> IO (Result Response)
-getHTTP uri = do p   <- proxy
+getHTTP :: Verbosity -> URI -> IO (Result Response)
+getHTTP verbosity uri = do
+                 p   <- proxy verbosity
                  let req = mkRequest uri
                  (_, resp) <- browse (setProxy p >> request req)
                  return (Right resp)
