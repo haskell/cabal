@@ -102,7 +102,7 @@ installPackages verbosity configFlags pkgs = do
         installPackagesErrs ((pkg,flags):pkgs') errPkgs = do
           maybeInstalled <- try (installPkg verbosity configFlags pkg flags)
           case maybeInstalled of
-            Left e  -> installPackagesErrs pkgs' (pkg:errPkgs)
+            Left  _ -> installPackagesErrs pkgs' (pkg:errPkgs)
             Right _ -> installPackagesErrs pkgs' errPkgs
         installPackagesErrs [] ers = return ers
 
