@@ -62,7 +62,7 @@ check verbosity paths = do
 handlePackage :: Verbosity -> URI -> BrowserAction () -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
-     p   <- proxy
+     p   <- proxy verbosity
      debug verbosity $ "\n" ++ show req
      (_,resp) <- browse (setProxy p
                       >> setErrHandler ignoreMsg 
