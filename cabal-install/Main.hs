@@ -78,11 +78,11 @@ mainWorker args =
                                   ++ " of the Cabal library "
 
     commands =
-      [installCommand         `commandAddActionWithEmptyFlags` installAction
+      [installCommand         `commandAddAction` installAction
       ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
-      ,upgradeCommand          `commandAddActionWithEmptyFlags` upgradeAction
+      ,upgradeCommand         `commandAddAction` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
 
