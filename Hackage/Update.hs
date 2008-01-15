@@ -33,5 +33,5 @@ updateRepo :: Verbosity
            -> IO ()
 updateRepo verbosity repo =
     do notice verbosity $ "Downloading package list from server '" ++ repoURL repo ++ "'"
-       indexPath <- downloadIndex repo
+       indexPath <- downloadIndex verbosity repo
        BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . gunzip

@@ -44,26 +44,27 @@ import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
 
 
-readURI :: URI -> IO String
-readURI uri
+readURI :: Verbosity -> URI -> IO String
+readURI verbosity uri
     | uriScheme uri == "file:" = (readFile $ uriPath uri)
     | otherwise = do
-        eitherResult <- getHTTP uri 
+        eitherResult <- getHTTP verbosity uri
         case eitherResult of
            Left err -> die $ "Failed to download '" ++ show uri ++ "': " ++ show err
            Right rsp
                | rspCode rsp == (2,0,0) -> return (rspBody rsp)
                | otherwise -> die $ "Failed to download '" ++ show uri ++ "': Invalid HTTP code: " ++ show (rspCode rsp)
 
-downloadURI :: FilePath -- ^ Where to put it
+downloadURI :: Verbosity
+            -> FilePath -- ^ Where to put it
             -> URI      -- ^ What to download
             -> IO (Maybe ConnError)
-downloadURI path uri
+downloadURI verbosity path uri
     | uriScheme uri == "file:" = do
         copyFile (uriPath uri) path
         return Nothing
     | otherwise = do
-        eitherResult <- getHTTP uri
+        eitherResult <- getHTTP verbosity uri
         case eitherResult of
            Left err -> return (Just err)
            Right rsp
@@ -71,12 +72,13 @@ downloadURI path uri
                                                           >> return Nothing
                | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
 
-downloadFile :: FilePath
+downloadFile :: Verbosity
+             -> FilePath
              -> String
              -> IO (Maybe ConnError)
-downloadFile path url
+downloadFile verbosity path url
     = case parseURI url of
-        Just parsed -> downloadURI path parsed
+        Just parsed -> downloadURI verbosity path parsed
         Nothing -> return (Just (ErrorMisc ("Failed to parse url: " ++ show url)))
 
 
@@ -88,19 +90,19 @@ downloadPackage verbosity pkg
              path = packageFile pkg
          debug verbosity $ "GET " ++ show url
          createDirectoryIfMissing True dir
-         mbError <- downloadFile path url
+         mbError <- downloadFile verbosity path url
          case mbError of
            Just err -> die $ "Failed to download '" ++ showPackageId (pkgInfoId pkg) ++ "': " ++ show err
            Nothing -> return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
-downloadIndex :: Repo -> IO FilePath
-downloadIndex repo
+downloadIndex :: Verbosity -> Repo -> IO FilePath
+downloadIndex verbosity repo
     = do let url = repoURL repo ++ "/" ++ "00-index.tar.gz"
              dir = repoCacheDir repo
              path = dir </> "00-index" <.> "tar.gz"
          createDirectoryIfMissing True dir
-         mbError <- downloadFile path url
+         mbError <- downloadFile verbosity path url
          case mbError of
            Just err -> die $ "Failed to download index '" ++ show err ++ "'"
            Nothing  -> return path
