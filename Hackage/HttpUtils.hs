@@ -58,7 +58,7 @@ proxy verbosity = do
 uri2proxy :: URI -> Maybe Proxy
 uri2proxy uri@URI{ uriScheme = "http:"
                  , uriAuthority = Just (URIAuth auth' host port)
-                 } = Just (Proxy host auth)
+                 } = Just (Proxy (host ++ port) auth)
   where auth = if null auth'
                  then Nothing
                  else Just (AuthBasic "" usr pwd uri)
