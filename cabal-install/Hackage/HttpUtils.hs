@@ -7,7 +7,8 @@ module Hackage.HttpUtils (getHTTP, proxy) where
 import Network.HTTP (Request (..), Response (..), RequestMethod (..), Header(..), HeaderName(..))
 import Network.URI (URI (..), URIAuth (..), parseURI)
 import Network.Stream (Result)
-import Network.Browser (Proxy (..), Authority (..), browse, setProxy, request)
+import Network.Browser (Proxy (..), Authority (..), browse,
+                        setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad (mplus)
 #ifdef WIN32
 import System.Win32.Registry (hKEY_CURRENT_USER, regOpenKey, regQueryValue, regCloseKey)
@@ -16,7 +17,7 @@ import Control.Exception (try, bracket)
 import System.Environment (getEnvironment)
 
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (warn)
+import Distribution.Simple.Utils (warn, debug)
 
 -- try to read the system proxy settings on windows or unix
 proxyString :: IO (Maybe String)
@@ -48,10 +49,12 @@ proxy verbosity = do
     Nothing     -> return NoProxy
     Just str    -> case parseURI str of
       Nothing   -> do warn verbosity $ "invalid proxy uri: " ++ show str
+                      warn verbosity $ "ignoring http proxy, trying a direct connection"
                       return NoProxy
       Just uri  -> case uri2proxy uri of
         Nothing -> do warn verbosity $ "invalid http proxy uri: " ++ show str
                       warn verbosity $ "proxy uri must be http with a hostname"
+                      warn verbosity $ "ignoring http proxy, trying a direct connection"
                       return NoProxy
         Just p  -> return p
 
@@ -79,5 +82,9 @@ getHTTP :: Verbosity -> URI -> IO (Result Response)
 getHTTP verbosity uri = do
                  p   <- proxy verbosity
                  let req = mkRequest uri
-                 (_, resp) <- browse (setProxy p >> request req)
+                 (_, resp) <- browse $ do
+                                setErrHandler (warn verbosity . ("http error: "++))
+                                setOutHandler (debug verbosity)
+                                setProxy p
+                                request req
                  return (Right resp)

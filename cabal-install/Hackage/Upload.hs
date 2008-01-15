@@ -6,7 +6,7 @@ module Hackage.Upload (check, upload) where
 import Hackage.Types (Username, Password)
 import Hackage.HttpUtils (proxy)
 
-import Distribution.Simple.Utils (debug, notice)
+import Distribution.Simple.Utils (debug, notice, warn)
 import Distribution.Verbosity (Verbosity)
 
 import Network.Browser (BrowserAction, browse, request, 
@@ -64,11 +64,12 @@ handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
      p   <- proxy verbosity
      debug verbosity $ "\n" ++ show req
-     (_,resp) <- browse (setProxy p
-                      >> setErrHandler ignoreMsg 
-                      >> setOutHandler ignoreMsg 
-                      >> auth 
-                      >> request req)
+     (_,resp) <- browse $ do
+                   setProxy p
+                   setErrHandler (warn verbosity . ("http error: "++))
+                   setOutHandler (debug verbosity)
+                   auth
+                   request req
      debug verbosity $ show resp
      case rspCode resp of
        (2,0,0) -> do notice verbosity "OK"
@@ -76,9 +77,6 @@ handlePackage verbosity uri auth path =
                                      ++ map intToDigit [x,y,z] ++ " "
                                      ++ rspReason resp
                      debug verbosity $ rspBody resp
-
-  where ignoreMsg :: String -> IO ()
-        ignoreMsg _ = return ()
 
 mkRequest :: URI -> FilePath -> IO Request
 mkRequest uri path = 
