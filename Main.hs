@@ -112,8 +112,8 @@ installAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
   config <- loadConfig verbosity configFile
-  let flags' = flags `mappend`
-               savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+               `mappend` flags
   (comp, conf) <- configCompilerAux flags'
   install verbosity
           (fromFlag $ Cabal.configPackageDB flags') (configRepos config)
@@ -150,8 +150,8 @@ upgradeAction flags _extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
   config <- loadConfig verbosity configFile
-  let flags' = flags `mappend`
-               savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+               `mappend` flags
   (comp, conf) <- configCompilerAux flags'
   upgrade verbosity
           (fromFlag $ Cabal.configPackageDB flags') (configRepos config)
