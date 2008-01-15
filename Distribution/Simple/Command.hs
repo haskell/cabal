@@ -54,7 +54,6 @@ module Distribution.Simple.Command (
   -- * Associating actions with commands
   Command,
   commandAddAction,
-  commandAddActionWithEmptyFlags,
   
   -- * Running commands
   CommandParse(..),
@@ -248,21 +247,6 @@ commandAddAction command action =
 
   where applyDefaultArgs mkflags args =
           let flags = mkflags (commandDefaultFlags command)
-           in action flags args
-
-commandAddActionWithEmptyFlags
-                 :: Monoid flags
-                 => CommandUI flags
-                 -> (flags -> [String] -> action)
-                 -> Command action
-commandAddActionWithEmptyFlags command action =
-  Command (commandName command)
-          (commandSynopsis command)
-          (fmap (uncurry applyEmptyArgs)
-         . commandParseArgs command False)
-
-  where applyEmptyArgs mkflags args =
-          let flags = mkflags mempty
            in action flags args
 
 commandsRun :: CommandUI a
