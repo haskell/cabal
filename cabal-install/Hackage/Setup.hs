@@ -63,9 +63,10 @@ globalCommand = Cabal.globalCommand {
 
 installCommand :: CommandUI Cabal.ConfigFlags
 installCommand = (Cabal.configureCommand defaultProgramConfiguration) {
-    commandName     = "install",
-    commandSynopsis = "Installs a list of packages.",
-    commandUsage    = usagePackages "install"
+    commandName         = "install",
+    commandSynopsis     = "Installs a list of packages.",
+    commandUsage        = usagePackages "install",
+    commandDefaultFlags = mempty
   }
 
 fetchCommand :: CommandUI (Flag Verbosity)
@@ -103,7 +104,8 @@ upgradeCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandName         = "upgrade",
     commandSynopsis     = "Upgrades installed packages to the latest available version",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "upgrade"
+    commandUsage        = usagePackages "upgrade",
+    commandDefaultFlags = mempty
   }
 
 {-
