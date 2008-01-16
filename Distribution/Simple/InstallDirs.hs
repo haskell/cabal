@@ -508,9 +508,10 @@ shGetFolderPath n =
     long_path_size      = 1024
 # endif
 
-csidl_PROGRAM_FILES, csidl_PROGRAM_FILES_COMMON :: CInt
+csidl_PROGRAM_FILES :: CInt
 csidl_PROGRAM_FILES = 0x0026
-csidl_PROGRAM_FILES_COMMON = 0x002b
+-- csidl_PROGRAM_FILES_COMMON :: CInt
+-- csidl_PROGRAM_FILES_COMMON = 0x002b
 
 foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
             c_SHGetFolderPath :: Ptr ()
