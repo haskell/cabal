@@ -45,10 +45,9 @@ import Data.ByteString.Lazy (ByteString)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO.Error (isDoesNotExistError)
 
-import Distribution.PackageDescription
-         (PackageDescription(package),
-          GenericPackageDescription(packageDescription),
-          parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription (parsePackageDescription, ParseResult(..))
+--         PackageDescription(package),
+--          GenericPackageDescription(packageDescription))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.Version (readVersion, Dependency(Dependency), withinRange)
 import Distribution.Verbosity (Verbosity)
@@ -97,8 +96,8 @@ invariant (RepoIndex m) = all (uncurry goodBucket) (Map.toList m)
              lowercase name == name
           && not (null pkgs)
           && all ((lowercase name==) . lowercase . pkgName . pkgInfoId) pkgs
-          && all (\pkg -> pkgInfoId pkg
-                       == (package . packageDescription . pkgDesc) pkg) pkgs
+--          && all (\pkg -> pkgInfoId pkg
+--                       == (package . packageDescription . pkgDesc) pkg) pkgs
           && distinct (map pkgInfoId pkgs)
         
         distinct = all ((==1). length) . group . sort
