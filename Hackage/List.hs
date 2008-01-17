@@ -16,18 +16,20 @@ module Hackage.List
 
 import Data.List (nubBy, sortBy, groupBy, intersperse, isPrefixOf, tails)
 import Data.Char as Char (toLower)
+import Data.Monoid (Monoid(mconcat))
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity)
-import Hackage.Index (getKnownPackages)
+import qualified Hackage.Index as RepoIndex
 import Hackage.Types (PkgInfo(..), Repo)
 
 -- |Show information about packages
 list :: Verbosity -> [Repo] -> [String] -> IO ()
 list verbosity repos pats = do
-    pkgs <- getKnownPackages verbosity repos
-    let pkgs' | null pats = pkgs
+    indexes <- mapM (RepoIndex.read verbosity) repos
+    let pkgs = RepoIndex.allPackages (mconcat indexes)
+        pkgs' | null pats = pkgs
               | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats')
         pats' = map lcase pats
     putStrLn
