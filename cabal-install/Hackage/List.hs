@@ -10,58 +10,51 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Hackage.List
-    ( list    -- :: ConfigFlags -> [UnresolvedDependency] -> IO ()
-    ) where
+module Hackage.List (
+  list
+  ) where
 
-import Data.List (nubBy, sortBy, groupBy, intersperse, isPrefixOf, tails)
-import Data.Char as Char (toLower)
+import Data.List (nub, sortBy, groupBy)
 import Data.Monoid (Monoid(mconcat))
+
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity)
+
 import qualified Hackage.Index as RepoIndex
 import Hackage.Types (PkgInfo(..), Repo)
+import Hackage.Utils (equating, comparing, intercalate, lowercase)
 
 -- |Show information about packages
 list :: Verbosity -> [Repo] -> [String] -> IO ()
 list verbosity repos pats = do
     indexes <- mapM (RepoIndex.read verbosity) repos
-    let pkgs = RepoIndex.allPackages (mconcat indexes)
-        pkgs' | null pats = pkgs
-              | otherwise = nubBy samePackage (concatMap (findInPkgs pkgs) pats')
-        pats' = map lcase pats
+    let index = mconcat indexes
+        pkgs | null pats = pkgs
+             | otherwise =
+                 concatMap (RepoIndex.lookupPackageNameSubstring index) pats
     putStrLn
       . unlines
-      . map (showPkgVersions . map (packageDescription . pkgDesc))
-      . groupBy sameName
+      . map showPkgVersions
+      . groupBy (equating (pkgName . pkgInfoId))
       . sortBy (comparing nameAndVersion)
-      $ pkgs'
+      $ pkgs
 
   where
-    findInPkgs :: [PkgInfo] -> String -> [PkgInfo]
-    findInPkgs pkgs pat =
-        filter (isInfixOf pat . lcase . pkgName . pkgInfoId) pkgs
-    lcase = map Char.toLower
-    nameAndVersion p = (lcase name, name, version)
+    nameAndVersion p = (lowercase name, name, version)
         where name = pkgName (pkgInfoId p)
               version = pkgVersion (pkgInfoId p)
-    samePackage a b = nameAndVersion a == nameAndVersion b
-    sameName a b = pkgName (pkgInfoId a) == pkgName (pkgInfoId b)
 
-showPkgVersions :: [PackageDescription] -> String
+
+showPkgVersions :: [PkgInfo] -> String
 showPkgVersions pkgs =
-    padTo 35 (pkgName (package pkg)
-          ++ " [" ++ concat (intersperse ", " versions) ++ "] ")
-    ++ synopsis pkg
+    padTo 35 $ pkgName (pkgInfoId pkg)
+            ++ " ["
+            ++ intercalate ", " (map showVersion versions)
+            ++ "] "
+    ++ synopsis (packageDescription (pkgDesc pkg))
   where
     pkg = last pkgs
-    versions = map (showVersion . pkgVersion . package) pkgs
+    versions = nub (map (pkgVersion . pkgInfoId) pkgs)
     padTo n s = s ++ (replicate (n - length s) ' ')
-
-comparing :: (Ord a) => (b -> a) -> b -> b -> Ordering
-comparing p x y = compare (p x) (p y)
-
-isInfixOf :: String -> String -> Bool
-isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)

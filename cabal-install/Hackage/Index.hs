@@ -24,13 +24,14 @@ module Hackage.Index (
   -- * Queries
   allPackages,
   lookupPackageName,
+  lookupPackageNameSubstring,
   lookupPackageIdentifier,
   lookupDependency,
   ) where
 
 import Hackage.Types
 import Hackage.Tar
-import Hackage.Utils (lowercase, equating, comparing)
+import Hackage.Utils (lowercase, equating, comparing, isInfixOf)
 
 import Prelude hiding (catch, lookup)
 import Control.Exception (catch, Exception(IOException), assert)
@@ -38,7 +39,6 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List (nubBy, group, sort, groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
-import qualified Data.Char as Char (toLower)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
@@ -163,6 +163,18 @@ lookupPackageName index name =
                 Nothing   -> Ambiguous   pkgss
 
 data SearchResult a = None | Unambiguous a | Ambiguous [a]
+
+-- | Does a case-insensitive substring search by package name.
+--
+-- That is, all packages that contain the given string in their name.
+--
+lookupPackageNameSubstring :: RepoIndex -> String -> [PkgInfo]
+lookupPackageNameSubstring (RepoIndex m) searchterm =
+  [ pkg
+  | (name, pkgs) <- Map.toList m
+  , searchterm' `isInfixOf` name
+  , pkg <- pkgs ]
+  where searchterm' = lowercase searchterm
 
 -- | Does a case-sensitive search by package name, and also version.
 --
