@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PackageDescription.QA (
         -- * Quality Assurance
-        qualityAssurePackage
+        qaCheckPackage
   ) where
 
 import Control.Monad(when,unless)
@@ -57,8 +57,8 @@ import Distribution.PackageDescription
 -- ------------------------------------------------------------
 
 -- |Quality Assurance for package descriptions.
-qualityAssurePackage :: PackageDescription -> IO [String]
-qualityAssurePackage pkg_descr = fmap fst . runQA $ do
+qaCheckPackage :: PackageDescription -> IO [String]
+qaCheckPackage pkg_descr = fmap fst . runQA $ do
 
     flip mapM_ ghc_options $ \ flags -> do
         let has_Wall = "-Wall" `elem` flags
