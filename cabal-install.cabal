@@ -42,6 +42,7 @@ Executable cabal
         Hackage.Info
         Hackage.Install
         Hackage.List
+        Hackage.ParseUtils
         Hackage.Setup
         Hackage.Tar
         Hackage.Types
