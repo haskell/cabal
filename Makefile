@@ -73,6 +73,7 @@ clean: clean-cabal clean-hunit clean-test clean-doc
 
 clean-cabal:
 	-rm -f Distribution/*.o Distribution/*.hi
+	-rm -f Distribution/PackageDescription/*.o Distribution/PackageDescription/*.hi
 	-rm -f Distribution/Compat/*.o Distribution/Compat/*.hi
 	-rm -f Distribution/PreProcess/*.o Distribution/PreProcess/*.hi
 	-rm -f Distribution/Simple/*.o Distribution/Simple/*.hi
