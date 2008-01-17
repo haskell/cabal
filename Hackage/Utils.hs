@@ -6,7 +6,8 @@ import Distribution.Version (Dependency(..))
 import Control.Exception
 import Control.Monad (guard)
 import qualified Data.Char as Char (toLower)
-import Data.List (intersperse)
+import Data.List (intersperse, isPrefixOf, tails)
+
 import System.IO.Error (isDoesNotExistError)
 
 readFileIfExists :: FilePath -> IO (Maybe String)
@@ -27,6 +28,12 @@ equating p x y = p x == p y
 
 comparing :: Ord a => (b -> a) -> b -> b -> Ordering
 comparing p x y = p x `compare` p y
+
+isInfixOf :: String -> String -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate sep = concat . intersperse sep
 
 lowercase :: String -> String
 lowercase = map Char.toLower
