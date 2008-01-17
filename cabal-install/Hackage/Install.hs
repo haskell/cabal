@@ -25,7 +25,7 @@ import Hackage.Fetch (fetchPackage)
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
-import Hackage.Utils
+import Hackage.Utils (showDependencies)
 
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)

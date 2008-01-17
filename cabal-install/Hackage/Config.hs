@@ -44,7 +44,8 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
 
 import Hackage.Types (RemoteRepo(..), Repo(..), Username, Password)
-import Hackage.Utils
+import Hackage.ParseUtils
+import Hackage.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
 
