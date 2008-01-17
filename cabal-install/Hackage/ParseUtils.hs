@@ -4,17 +4,13 @@ import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (
 import Distribution.Package (PackageIdentifier(..), parsePackageId)
 import Distribution.ParseUtils 
     (Field(..), FieldDescr(..), ParseResult(..), PError
-    , field, liftField, readFields
-    , showDependency, parseDependency
+    , field, liftField, readFields, parseDependency
     , warning, lineNo, locatedErrorMsg)
 import Distribution.Version (Version(..), Dependency(..), VersionRange(..))
 
-import Control.Exception
-import Control.Monad (foldM, liftM, guard)
+import Control.Monad (foldM, liftM)
 import Data.Char (isSpace, toLower)
-import Data.List (intersperse)
 import Data.Maybe (listToMaybe)
-import System.IO.Error (isDoesNotExistError)
 import Text.PrettyPrint.HughesPJ (Doc, render, vcat, text, (<>), (<+>))
 
 
