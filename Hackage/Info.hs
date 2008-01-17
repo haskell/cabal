@@ -15,7 +15,7 @@ module Hackage.Info where
 import Hackage.Dependency 
 import Hackage.Fetch
 import Hackage.Types 
-import Hackage.Utils
+import Hackage.Utils (showDependencies)
 
 import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
