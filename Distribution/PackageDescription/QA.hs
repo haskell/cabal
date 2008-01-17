@@ -2,10 +2,9 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.QA
--- Copyright   :  Isaac Jones 2003-2008
+-- Copyright   :  Lennart Kolmodin 2008
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>,
---                Lennart Kolmodin <kolmodin@gentoo.org>
+-- Maintainer  :  Lennart Kolmodin <kolmodin@gentoo.org>
 -- Stability   :  alpha
 -- Portability :  portable
 --
