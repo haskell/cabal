@@ -31,7 +31,7 @@ import System.Directory (doesFileExist, createDirectoryIfMissing)
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
                       PkgInfo, packageURL, pkgInfoId, packageFile, packageDir)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
-import Hackage.Utils
+import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
 import Distribution.Package (showPackageId)

@@ -1,4 +1,4 @@
-module Hackage.Utils where
+module Hackage.ParseUtils where
 
 import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (+++))
 import Distribution.Package (PackageIdentifier(..), parsePackageId)
@@ -16,17 +16,6 @@ import Data.List (intersperse)
 import Data.Maybe (listToMaybe)
 import System.IO.Error (isDoesNotExistError)
 import Text.PrettyPrint.HughesPJ (Doc, render, vcat, text, (<>), (<+>))
-
-
-readFileIfExists :: FilePath -> IO (Maybe String)
-readFileIfExists path = 
-    catchJust fileNotFoundExceptions 
-                  (fmap Just (readFile path)) 
-                  (\_ -> return Nothing)
-
-fileNotFoundExceptions :: Exception -> Maybe IOError
-fileNotFoundExceptions e = 
-    ioErrors e >>= \ioe -> guard (isDoesNotExistError ioe) >> return ioe
 
 
 showPError :: PError -> String
@@ -86,10 +75,6 @@ stringNoCase this = look >>= scan this
   scan []     _                               = return this
   scan (x:xs) (y:ys) | toLower x == toLower y = get >> scan xs ys
   scan _      _                               = pfail
-
-
-showDependencies :: [Dependency] -> String
-showDependencies = concat . intersperse ", " . map (show . showDependency)
 
 parseDependencyOrPackageId :: ReadP r Dependency
 parseDependencyOrPackageId = parseDependency +++ liftM pkgToDep parsePackageId

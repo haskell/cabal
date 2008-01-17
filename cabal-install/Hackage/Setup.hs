@@ -44,7 +44,7 @@ import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault, flagToList)
 import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
 
 import Hackage.Types (UnresolvedDependency(..), Username, Password)
-import Hackage.Utils (readPToMaybe, parseDependencyOrPackageId)
+import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
 import Data.Monoid (Monoid(..))
 
