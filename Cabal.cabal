@@ -48,6 +48,7 @@ Library
         Distribution.Make,
         Distribution.Package,
         Distribution.PackageDescription,
+        Distribution.PackageDescription.QA,
         Distribution.Configuration,
         Distribution.ParseUtils,
         Distribution.Simple,
