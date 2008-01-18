@@ -1,14 +1,16 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Index
--- Copyright   :  (c) David Himmelstrup 2005, Bjorn Bringert 2007
+-- Module      :  Hackage.RepoIndex
+-- Copyright   :  (c) David Himmelstrup 2005,
+--                    Bjorn Bringert 2007,
+--                    Duncan Coutts 2008
 -- License     :  BSD-like
 --
 -- Maintainer  :  lemmih@gmail.com
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Reading the local package index.
+-- The downloaded package index of a remote repo.
 -----------------------------------------------------------------------------
 module Hackage.RepoIndex (
   -- * Repository index data type
