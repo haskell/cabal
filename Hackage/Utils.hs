@@ -21,7 +21,7 @@ fileNotFoundExceptions e =
     ioErrors e >>= \ioe -> guard (isDoesNotExistError ioe) >> return ioe
 
 showDependencies :: [Dependency] -> String
-showDependencies = concat . intersperse ", " . map (show . showDependency)
+showDependencies = intercalate ", " . map (show . showDependency)
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
