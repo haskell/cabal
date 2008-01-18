@@ -18,60 +18,51 @@ module Hackage.Dependency
     , getUpgradableDeps
     ) where
 
-import Hackage.Config (listInstalledPackages)
+import qualified Hackage.LocalIndex as LocalIndex
+import Hackage.LocalIndex (LocalIndex)
 import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.RepoIndex (RepoIndex)
 import Hackage.Types (ResolvedPackage(..), UnresolvedDependency(..),
-                      PkgInfo(..), FlagAssignment, Repo)
-import Hackage.Utils (comparing)
-import Distribution.Version (Dependency(..), withinRange)
-import Distribution.Verbosity (Verbosity)
+                      PkgInfo(..), FlagAssignment)
+import Hackage.Utils (comparing, equating)
+import Distribution.Version (Dependency(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
     , GenericPackageDescription
     , finalizePackageDescription)
-import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion,
-                                     PackageDB)
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
 import qualified Distribution.Simple.Setup as Cabal
 
 import Control.Monad (mplus)
-import Data.Monoid (Monoid(mconcat))
-import Data.List (nub, nubBy, maximumBy, sort)
-import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
+import Data.List (nub, nubBy, maximumBy, sortBy, groupBy)
+import Data.Maybe (fromMaybe, catMaybes)
 import qualified System.Info (arch,os)
 
 
-resolveDependencies :: Verbosity
-                    -> PackageDB -> [Repo]
-                    -> Compiler
-                    -> ProgramConfiguration
+resolveDependencies :: Compiler
+                    -> LocalIndex
+                    -> RepoIndex
                     -> [UnresolvedDependency]
-                    -> IO [ResolvedPackage]
-resolveDependencies verbosity packageDB repos comp conf deps 
-    = do installed <- listInstalledPackages verbosity packageDB comp conf
-         available <- mconcat `fmap` mapM (RepoIndex.read verbosity) repos
-         return [resolveDependency comp installed available dep flags
-                     | UnresolvedDependency dep flags <- deps]
+                    -> [ResolvedPackage]
+resolveDependencies comp installed available deps =
+  [ resolveDependency comp installed available dep flags
+  | UnresolvedDependency dep flags <- deps]
 
 -- | Resolve dependencies of a local package description. This is used
 -- when the top-level package does not come from hackage.
-resolveDependenciesLocal :: Verbosity
-                         -> PackageDB -> [Repo]
-                         -> Compiler
-                         -> ProgramConfiguration
+resolveDependenciesLocal :: Compiler
+                         -> LocalIndex
+                         -> RepoIndex
                          -> GenericPackageDescription
                          -> FlagAssignment
-                         -> IO [ResolvedPackage]
-resolveDependenciesLocal verbosity packageDB repos comp conf desc flags
-    =  do installed <- listInstalledPackages verbosity packageDB comp conf
-          available <- mconcat `fmap` mapM (RepoIndex.read verbosity) repos
-          return [resolveDependency comp installed available dep []
-                     | dep <- getDependencies comp installed available desc flags]
+                         -> [ResolvedPackage]
+resolveDependenciesLocal comp installed available desc flags =
+  [ resolveDependency comp installed available dep flags
+  | dep <- getDependencies comp installed available desc flags ]
 
 resolveDependency :: Compiler
-                  -> [PackageIdentifier] -- ^ Installed packages.
+                  -> LocalIndex -- ^ Installed packages.
                   -> RepoIndex -- ^ Installable packages
                   -> Dependency
                   -> FlagAssignment
@@ -87,18 +78,11 @@ resolveDependency comp installed available dep flags
            return $ Available dep pkg flags resolved
 
 -- | Gets the latest installed package satisfying a dependency.
-latestInstalledSatisfying :: [PackageIdentifier] 
-                          -> Dependency -> Maybe PackageIdentifier
-latestInstalledSatisfying installed dep =
-  case filter (`satisfies` dep) installed of
+latestInstalledSatisfying :: LocalIndex -> Dependency -> Maybe PackageIdentifier
+latestInstalledSatisfying  index dep =
+  case LocalIndex.lookupDependency index dep of
     []   -> Nothing
     pkgs -> Just (maximumBy (comparing pkgVersion) pkgs)
-
-  where
-    satisfies :: PackageIdentifier -> Dependency -> Bool
-    satisfies pkg (Dependency depName vrange)
-      = pkgName pkg == depName && pkgVersion pkg `withinRange` vrange
-
 
 -- | Gets the latest available package satisfying a dependency.
 latestAvailableSatisfying :: RepoIndex -> Dependency -> Maybe PkgInfo
@@ -109,7 +93,7 @@ latestAvailableSatisfying index dep =
 
 -- | Gets the dependencies of an available package.
 getDependencies :: Compiler 
-                -> [PackageIdentifier] -- ^ Installed packages.
+                -> LocalIndex -- ^ Installed packages.
                 -> RepoIndex -- ^ Available packages
                 -> GenericPackageDescription
                 -> FlagAssignment
@@ -124,7 +108,7 @@ getDependencies comp installed available pkg flags
     where 
       e = finalizePackageDescription 
                 flags
-                (Just $ nub $ installed
+                (Just $ nub $ LocalIndex.allPackages installed
                            ++ map pkgInfoId (RepoIndex.allPackages available))
                 System.Info.os
                 System.Info.arch
@@ -150,19 +134,13 @@ packagesToInstall xs | null missing = Right toInstall
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.
 
-getUpgradableDeps :: Verbosity
-                  -> PackageDB -> [Repo]
-                  -> Compiler
-                  -> ProgramConfiguration
-                  -> IO [PkgInfo]
-getUpgradableDeps verbosity packageDB repos comp conf
-    = do allInstalled <- listInstalledPackages verbosity packageDB comp conf
-         -- we should only consider the latest version of each package:
-         let latestInstalled = getLatest allInstalled
-         available <- mconcat `fmap` mapM (RepoIndex.read verbosity) repos
-         let mNeedingUpgrade = map (\x -> newerAvailable x available)
-                                   latestInstalled
-         return $ catMaybes mNeedingUpgrade
+getUpgradableDeps :: LocalIndex
+                  -> RepoIndex
+                  -> [PkgInfo]
+getUpgradableDeps installed available =
+  let latestInstalled = getLatestPackageVersions installed
+      mNeedingUpgrade = map (flip newerAvailable available) latestInstalled
+   in catMaybes mNeedingUpgrade
 
   where newerAvailable :: PackageIdentifier
                        -> RepoIndex -- ^installable packages
@@ -186,20 +164,18 @@ getUpgradableDeps verbosity packageDB repos comp conf
                       else mFound
 
         -- trim out the old versions of packages with multiple versions installed
-        getLatest :: [PackageIdentifier]
-                  -> [PackageIdentifier]
-        getLatest pkgs = catMaybes [latestPkgVersion (pkgName pkg) pkgs | pkg <- pkgs]
-
         isNewer :: PackageIdentifier -> PackageIdentifier -> Bool
         isNewer p1 p2 = pkgVersion p1 > pkgVersion p2
 
 
--- |Given a package and the list of installed packages, get the latest
--- version of the given package.  That is, if multiple versions of
--- this package are installed, figure out which is the lastest one.
-latestPkgVersion :: String -- ^Package name
-                 -> [PackageIdentifier] -- installed packages
-                 -> Maybe PackageIdentifier
-latestPkgVersion name pkgs =
-   let matches = [pkg | pkg <- pkgs, (pkgName pkg == name)] in
-   listToMaybe $ reverse $ sort matches
+-- | Given the index of installed packages, get the latest version of each
+-- package. That is, if multiple versions of this package are installed, figure
+-- out which is the lastest one.
+--
+getLatestPackageVersions :: LocalIndex -> [PackageIdentifier]
+getLatestPackageVersions index =
+  [ maximumBy (comparing pkgVersion) pkgs
+  | pkgGroup <- LocalIndex.allPackageGroups index
+  -- Each pkgGroup may contain packages with names that are not equal
+  -- case-insensitively, so we split into group by name case-sensitively:
+  , pkgs <- (groupBy (equating pkgName) . sortBy (comparing pkgName)) pkgGroup ]
