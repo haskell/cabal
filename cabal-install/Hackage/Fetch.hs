@@ -29,6 +29,7 @@ import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.RepoIndex  as RepoIndex
+import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
@@ -135,7 +136,8 @@ fetch :: Verbosity
 fetch verbosity packageDB repos comp conf deps
     = do installed <- LocalIndex.read verbosity comp conf packageDB 
          available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
-         let depTree = resolveDependencies comp installed available deps
+         deps' <- IndexUtils.disambiguateDependencies available deps
+         let depTree = resolveDependencies comp installed available deps'
          case packagesToInstall depTree of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched) $ map fst pkgs

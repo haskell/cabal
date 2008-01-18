@@ -26,6 +26,7 @@ import Hackage.Fetch (fetchPackage)
 import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.RepoIndex (RepoIndex)
 import qualified Hackage.LocalIndex as LocalIndex
+import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
@@ -87,7 +88,8 @@ installRepoPackages :: Verbosity
 installRepoPackages verbosity packageDB repos comp conf configFlags deps =
     do installed <- LocalIndex.read verbosity comp conf packageDB 
        available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
-       let resolvedDeps = resolveDependencies comp installed available deps
+       deps' <- IndexUtils.disambiguateDependencies available deps
+       let resolvedDeps = resolveDependencies comp installed available deps'
        case packagesToInstall resolvedDeps of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right []     -> notice verbosity "All requested packages already installed. Nothing to do."

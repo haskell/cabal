@@ -14,6 +14,7 @@ module Hackage.Info where
 
 import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.RepoIndex  as RepoIndex
+import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Dependency 
 import Hackage.Fetch
 import Hackage.Types 
@@ -39,7 +40,8 @@ info :: Verbosity
 info verbosity packageDB repos comp conf deps
     = do installed <- LocalIndex.read verbosity comp conf packageDB 
          available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
-         let apkgs = resolveDependencies comp installed available deps
+         deps' <- IndexUtils.disambiguateDependencies available deps
+         let apkgs = resolveDependencies comp installed available deps'
          details <- mapM infoPkg (flattenResolvedPackages apkgs)
          Utils.info verbosity $ unlines (map ("  "++) (concat details))
          case packagesToInstall apkgs of
