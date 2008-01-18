@@ -15,7 +15,6 @@ module Hackage.Config
     , savedConfigToConfigFlags
     , configRepos
     , configPackageDB
-    , listInstalledPackages
     , defaultConfigFile
     , loadConfig
     , showConfig
@@ -32,13 +31,10 @@ import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
-import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
-import Distribution.Simple.Compiler (Compiler, PackageDB(..))
-import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
-import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
@@ -48,11 +44,6 @@ import Hackage.ParseUtils
 import Hackage.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
-
-listInstalledPackages :: Verbosity -> PackageDB -> Compiler -> ProgramConfiguration -> IO [PackageIdentifier]
-listInstalledPackages verbosity packageDB comp conf =
-    do Just ipkgs <- getInstalledPackages verbosity comp packageDB conf
-       return ipkgs
 
 --
 -- * Configuration saved in the config file
