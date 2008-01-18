@@ -100,11 +100,12 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
         warnWhenFlag all_ghc_options flag ("ghc-options: " ++ msg)
 
 checkLicenseExists :: PackageDescription -> QA ()
-checkLicenseExists pkg = do
-    exists <- io $ doesFileExist file
-    unless exists $
-        qa $ "Cabal file refers to license file \"" ++ file
-             ++ "\" which does not exist."
+checkLicenseExists pkg =
+    unless (null file) $ do
+        exists <- io $ doesFileExist file
+        unless exists $
+            qa $ "Cabal file refers to license file \"" ++ file
+                 ++ "\" which does not exist."
     where
     file = licenseFile pkg
 
