@@ -22,7 +22,7 @@ import Distribution.PackageDescription
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity)
 
-import qualified Hackage.Index as RepoIndex
+import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.Types (PkgInfo(..), Repo)
 import Hackage.Utils (equating, comparing, intercalate, lowercase)
 

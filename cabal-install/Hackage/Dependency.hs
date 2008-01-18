@@ -19,8 +19,8 @@ module Hackage.Dependency
     ) where
 
 import Hackage.Config (listInstalledPackages)
-import qualified Hackage.Index as RepoIndex
-import Hackage.Index (RepoIndex)
+import qualified Hackage.RepoIndex as RepoIndex
+import Hackage.RepoIndex (RepoIndex)
 import Hackage.Types (ResolvedPackage(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment, Repo)
 import Hackage.Utils (comparing)

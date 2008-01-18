@@ -38,11 +38,11 @@ Executable cabal
         Hackage.Dependency
         Hackage.Fetch
         Hackage.HttpUtils
-        Hackage.Index
         Hackage.Info
         Hackage.Install
         Hackage.List
         Hackage.ParseUtils
+        Hackage.RepoIndex
         Hackage.Setup
         Hackage.Tar
         Hackage.Types
