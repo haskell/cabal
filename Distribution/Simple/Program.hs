@@ -219,12 +219,12 @@ defaultProgramConfiguration =
 -- internal helpers:
 updateUnconfiguredProgs :: (UnconfiguredProgs -> UnconfiguredProgs)
                         -> ProgramConfiguration -> ProgramConfiguration
-updateUnconfiguredProgs f conf =
-  conf { unconfiguredProgs = f (unconfiguredProgs conf) }
+updateUnconfiguredProgs update conf =
+  conf { unconfiguredProgs = update (unconfiguredProgs conf) }
 updateConfiguredProgs :: (ConfiguredProgs -> ConfiguredProgs)
                       -> ProgramConfiguration -> ProgramConfiguration
-updateConfiguredProgs f conf =
-  conf { configuredProgs = f (configuredProgs conf) }
+updateConfiguredProgs update conf =
+  conf { configuredProgs = update (configuredProgs conf) }
 
 -- Read & Show instances are based on listToFM
 -- Note that we only serialise the configured part of the database, this is
