@@ -41,6 +41,7 @@ Executable cabal
         Hackage.Info
         Hackage.Install
         Hackage.List
+        Hackage.LocalIndex
         Hackage.ParseUtils
         Hackage.RepoIndex
         Hackage.Setup
