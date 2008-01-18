@@ -14,6 +14,7 @@ module Hackage.Install
     ( install
     ) where
 
+import Data.Monoid (Monoid(mconcat))
 import Control.Exception (bracket_, try)
 import Control.Monad (when)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
@@ -22,6 +23,9 @@ import System.FilePath ((</>),(<.>))
 
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
+import qualified Hackage.RepoIndex as RepoIndex
+import Hackage.RepoIndex (RepoIndex)
+import qualified Hackage.LocalIndex as LocalIndex
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
@@ -63,8 +67,10 @@ installLocalPackage :: Verbosity
 installLocalPackage verbosity packageDB repos comp conf configFlags =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
-      resolvedDeps <- resolveDependenciesLocal verbosity packageDB repos comp conf desc
-                        (Cabal.configConfigurationsFlags configFlags)
+      installed <- LocalIndex.read verbosity comp conf packageDB 
+      available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+      let resolvedDeps = resolveDependenciesLocal comp installed available desc
+                           (Cabal.configConfigurationsFlags configFlags)
       case packagesToInstall resolvedDeps of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> installPackages verbosity configFlags pkgs
@@ -79,7 +85,9 @@ installRepoPackages :: Verbosity
                     -> [UnresolvedDependency]
                     -> IO ()
 installRepoPackages verbosity packageDB repos comp conf configFlags deps =
-    do resolvedDeps <- resolveDependencies verbosity packageDB repos comp conf deps
+    do installed <- LocalIndex.read verbosity comp conf packageDB 
+       available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+       let resolvedDeps = resolveDependencies comp installed available deps
        case packagesToInstall resolvedDeps of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right []     -> notice verbosity "All requested packages already installed. Nothing to do."

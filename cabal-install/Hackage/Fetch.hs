@@ -24,13 +24,11 @@ module Hackage.Fetch
 import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Network.HTTP (ConnError(..), Response(..))
 
-import Control.Exception (bracket)
-import Control.Monad (filterM)
-import System.Directory (doesFileExist, createDirectoryIfMissing)
-
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
                       PkgInfo, packageURL, pkgInfoId, packageFile, packageDir)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
+import qualified Hackage.LocalIndex as LocalIndex
+import qualified Hackage.RepoIndex  as RepoIndex
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
@@ -39,6 +37,11 @@ import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (die, notice, debug)
 import Distribution.Verbosity (Verbosity)
+
+import Data.Monoid (Monoid(mconcat))
+import Control.Exception (bracket)
+import Control.Monad (filterM)
+import System.Directory (doesFileExist, createDirectoryIfMissing)
 import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
@@ -130,7 +133,9 @@ fetch :: Verbosity
       -> [UnresolvedDependency]
       -> IO ()
 fetch verbosity packageDB repos comp conf deps
-    = do depTree <- resolveDependencies verbosity packageDB repos comp conf deps
+    = do installed <- LocalIndex.read verbosity comp conf packageDB 
+         available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+         let depTree = resolveDependencies comp installed available deps
          case packagesToInstall depTree of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched) $ map fst pkgs
