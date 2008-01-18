@@ -38,6 +38,7 @@ Executable cabal
         Hackage.Dependency
         Hackage.Fetch
         Hackage.HttpUtils
+        Hackage.IndexUtils
         Hackage.Info
         Hackage.Install
         Hackage.List

@@ -26,6 +26,7 @@ module Hackage.RepoIndex (
   -- * Queries
   allPackages,
   lookupPackageName,
+  SearchResult(..),
   lookupPackageNameSubstring,
   lookupPackageIdentifier,
   lookupDependency,
