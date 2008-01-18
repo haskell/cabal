@@ -10,12 +10,12 @@
 --
 -- Reading the local package index.
 -----------------------------------------------------------------------------
-module Hackage.Index (
+module Hackage.RepoIndex (
   -- * Repository index data type
   RepoIndex,
 
   -- * Reading from file or memory
-  Hackage.Index.read,
+  Hackage.RepoIndex.read,
   parse,
 
   -- * Merging indexes
