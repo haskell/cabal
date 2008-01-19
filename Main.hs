@@ -78,7 +78,8 @@ mainWorker args =
                                   ++ " of the Cabal library "
 
     commands =
-      [installCommand         `commandAddAction` installAction
+      [configureCommand       `commandAddAction` configureAction
+      ,installCommand         `commandAddAction` installAction
       ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
@@ -86,7 +87,6 @@ mainWorker args =
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
 
-      ,wrapperAction (Cabal.configureCommand defaultProgramConfiguration)
       ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
       ,wrapperAction Cabal.copyCommand
       ,wrapperAction Cabal.haddockCommand
@@ -105,6 +105,17 @@ wrapperAction command =
   commandAddAction command $ \flags extraArgs ->
   let args = commandName command : commandShowOptions command flags ++ extraArgs
    in setupWrapper args Nothing
+
+configureAction :: Cabal.ConfigFlags -> [String] -> IO ()
+configureAction flags extraArgs = do
+  configFile <- defaultConfigFile --FIXME
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
+  config <- loadConfig verbosity configFile
+  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+               `mappend` flags
+      args = commandName configureCommand
+           : commandShowOptions configureCommand flags' ++ extraArgs
+  setupWrapper args Nothing
 
 installAction :: Cabal.ConfigFlags -> [String] -> IO ()
 installAction flags extraArgs = do

@@ -12,6 +12,7 @@
 -----------------------------------------------------------------------------
 module Hackage.Setup
     ( globalCommand, Cabal.GlobalFlags(..)
+    , configureCommand
     , installCommand --Cabal.InstallFlags(..)
     , listCommand
     , updateCommand
@@ -59,6 +60,11 @@ globalCommand = Cabal.globalCommand {
           ++ pname ++ " COMMAND --help'."
       ++ "\nThis program is the command line interface to the Haskell Cabal Infrastructure."
       ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
+  }
+
+configureCommand :: CommandUI Cabal.ConfigFlags
+configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
+    commandDefaultFlags = mempty
   }
 
 installCommand :: CommandUI Cabal.ConfigFlags
