@@ -31,7 +31,7 @@ list :: Verbosity -> [Repo] -> [String] -> IO ()
 list verbosity repos pats = do
     indexes <- mapM (RepoIndex.read verbosity) repos
     let index = mconcat indexes
-        pkgs | null pats = pkgs
+        pkgs | null pats = RepoIndex.allPackages index
              | otherwise =
                  concatMap (RepoIndex.lookupPackageNameSubstring index) pats
     putStrLn
