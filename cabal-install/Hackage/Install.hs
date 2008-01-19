@@ -24,7 +24,6 @@ import System.FilePath ((</>),(<.>))
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import qualified Hackage.RepoIndex as RepoIndex
-import Hackage.RepoIndex (RepoIndex)
 import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Tar (extractTarGzFile)
