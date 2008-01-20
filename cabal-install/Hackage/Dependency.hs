@@ -22,7 +22,7 @@ import qualified Hackage.LocalIndex as LocalIndex
 import Hackage.LocalIndex (LocalIndex)
 import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.RepoIndex (RepoIndex)
-import Hackage.Types (ResolvedPackage(..), UnresolvedDependency(..),
+import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
 import Hackage.Utils (comparing, equating)
 import Distribution.Version (Dependency(..))
@@ -44,7 +44,7 @@ resolveDependencies :: Compiler
                     -> LocalIndex
                     -> RepoIndex
                     -> [UnresolvedDependency]
-                    -> [ResolvedPackage]
+                    -> [ResolvedDependency]
 resolveDependencies comp installed available deps =
   [ resolveDependency comp installed available dep flags
   | UnresolvedDependency dep flags <- deps]
@@ -56,7 +56,7 @@ resolveDependenciesLocal :: Compiler
                          -> RepoIndex
                          -> GenericPackageDescription
                          -> FlagAssignment
-                         -> [ResolvedPackage]
+                         -> [ResolvedDependency]
 resolveDependenciesLocal comp installed available desc flags =
   [ resolveDependency comp installed available dep flags
   | dep <- getDependencies comp installed available desc flags ]
@@ -66,16 +66,16 @@ resolveDependency :: Compiler
                   -> RepoIndex -- ^ Installable packages
                   -> Dependency
                   -> FlagAssignment
-                  -> ResolvedPackage
+                  -> ResolvedDependency
 resolveDependency comp installed available dep flags
-    = fromMaybe (Unavailable dep) $ resolveFromInstalled `mplus` resolveFromAvailable
+    = fromMaybe (UnavailableDependency dep) $ resolveFromInstalled `mplus` resolveFromAvailable
   where
-    resolveFromInstalled = fmap (Installed dep) $ latestInstalledSatisfying installed dep
+    resolveFromInstalled = fmap (InstalledDependency dep) $ latestInstalledSatisfying installed dep
     resolveFromAvailable = 
         do pkg <- latestAvailableSatisfying available dep
            let deps = getDependencies comp installed available (pkgDesc pkg) flags
                resolved = map (\d -> resolveDependency comp installed available d []) deps
-           return $ Available dep pkg flags resolved
+           return $ AvailableDependency dep pkg flags resolved
 
 -- | Gets the latest installed package satisfying a dependency.
 latestInstalledSatisfying :: LocalIndex -> Dependency -> Maybe PackageIdentifier
@@ -115,7 +115,7 @@ getDependencies comp installed available pkg flags
                 (showCompilerId comp, compilerVersion comp)
                 pkg
 
-packagesToInstall :: [ResolvedPackage] 
+packagesToInstall :: [ResolvedDependency]
                   -> Either [Dependency] [(PkgInfo, FlagAssignment)]
                      -- ^ Either a list of missing dependencies, or a list
                      -- of packages to install, with their options.
@@ -126,9 +126,9 @@ packagesToInstall xs | null missing = Right toInstall
     missing = [d | Left d <- flattened]
     toInstall = nubBy samePackage [x | Right x <- flattened]
     samePackage a b = pkgInfoId (fst a) == pkgInfoId (fst b)
-    flatten (Installed _ _) = []
-    flatten (Available _ p opts deps) = concatMap flatten deps ++ [Right (p,opts)]
-    flatten (Unavailable dep) = [Left dep]
+    flatten (InstalledDependency _ _) = []
+    flatten (AvailableDependency _ p opts deps) = concatMap flatten deps ++ [Right (p,opts)]
+    flatten (UnavailableDependency dep) = [Left dep]
 
 
 -- |Given the list of installed packages and installable packages, figure
