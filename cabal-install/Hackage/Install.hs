@@ -26,6 +26,7 @@ import Hackage.Fetch (fetchPackage)
 import qualified Hackage.RepoIndex as RepoIndex
 import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.IndexUtils as IndexUtils
+--import qualified Hackage.DepGraph as DepGraph
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
