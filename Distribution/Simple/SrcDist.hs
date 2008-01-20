@@ -60,6 +60,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          withLib, withExe, setupMessage)
+import Distribution.PackageDescription.QA
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
@@ -74,7 +75,7 @@ import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram
 #ifndef __NHC__
 import Control.Exception (finally)
 #endif
-import Control.Monad(when)
+import Control.Monad(when, unless)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
@@ -110,6 +111,20 @@ sdist pkg_descr_orig mb_lbi flags tmpDir targetPref pps = do
           | snapshot  = updatePackage (updatePkgVersion
                           (updateVersionBranch (++ [date]))) pkg_descr_orig
           | otherwise = pkg_descr_orig
+
+    -- do some QA
+    qas <- qaCheckPackage pkg_descr
+    let qfail = [ s | QAFailure s <- qas ]
+        qwarn = [ s | QAWarning s <- qas ]
+    unless (null qfail) $ do
+    	notice verbosity "QA errors:"
+    	notice verbosity $ unlines qfail
+    unless (null qwarn) $ do
+    	notice verbosity $ "QA warnings:"
+    	notice verbosity $ unlines qwarn
+    unless (null qfail) $
+    	notice verbosity "Notice that the public hackage server would reject this package due to QA issues."
+
     prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date
     createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
     return ()
