@@ -42,7 +42,7 @@ info verbosity packageDB repos comp conf deps
          available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let apkgs = resolveDependencies comp installed available deps'
-         details <- mapM infoPkg (flattenResolvedPackages apkgs)
+         details <- mapM infoPkg (flattenResolvedDependencies apkgs)
          Utils.info verbosity $ unlines (map ("  "++) (concat details))
          case packagesToInstall apkgs of
            Left missing -> notice verbosity $
@@ -56,17 +56,17 @@ info verbosity packageDB repos comp conf deps
                "These packages would be installed:\n"
              ++ unlines [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
 
-flattenResolvedPackages :: [ResolvedPackage] -> [ResolvedPackage]
-flattenResolvedPackages = nubBy fulfillSame. concatMap flatten
-    where flatten p@(Available _ _ _ deps) = p : flattenResolvedPackages deps
+flattenResolvedDependencies :: [ResolvedDependency] -> [ResolvedDependency]
+flattenResolvedDependencies = nubBy fulfillSame. concatMap flatten
+    where flatten p@(AvailableDependency _ _ _ deps) = p : flattenResolvedDependencies deps
           flatten p = [p]
           fulfillSame a b = fulfills a == fulfills b
 
-infoPkg :: ResolvedPackage -> IO [String]
-infoPkg (Installed dep p)
+infoPkg :: ResolvedDependency -> IO [String]
+infoPkg (InstalledDependency dep p)
     = return ["Requested:    " ++ show (showDependency dep)
              ,"  Installed:  " ++ showPackageId p]
-infoPkg (Available dep pkg flags deps)
+infoPkg (AvailableDependency dep pkg flags deps)
     = do fetched <- isFetched pkg
          return ["Requested:    " ++ show (showDependency dep)
                 ,"  Using:      " ++ showPackageId (pkgInfoId pkg)
@@ -78,7 +78,7 @@ infoPkg (Available dep pkg flags deps)
                                         then packageFile pkg
                                         else  "*Not downloaded"
                 ]
-infoPkg (Unavailable dep)
+infoPkg (UnavailableDependency dep)
     = return ["Requested:    " ++ show (showDependency dep)
              ,"  Not available!"
              ]
