@@ -9,6 +9,8 @@
 -- Portability :  portable
 --
 -- Quality Assurance for package descriptions.
+-- 
+-- This module provides functionality to check for common mistakes.
 
 {- All rights reserved.
 
@@ -42,11 +44,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PackageDescription.QA (
         -- * Quality Assurance
-        qaCheckPackage
+        qaCheckPackage,
+        QANotice(..)
   ) where
 
 import Control.Monad(when,unless)
-import Data.List(intersperse)
 import System.Directory(doesFileExist)
 
 import Distribution.Compiler(CompilerFlavor(..))
@@ -56,22 +58,59 @@ import Distribution.PackageDescription
 -- * Quality Assurance
 -- ------------------------------------------------------------
 
+-- TODO: give hints about old extentions. see Simple.GHC, reverse mapping
+-- TODO: and allmost ghc -X flags should be extensions
+-- TODO: Once we implement striping (ticket #88) we should also reject
+--       ghc-options: -optl-Wl,-s.
+-- TODO: check that either license or license-file is set
+
+data QANotice
+    = QAWarning { qaMessage :: String }
+    | QAFailure { qaMessage :: String }
+
+instance Show QANotice where
+    show notice = qaMessage notice
+
 -- |Quality Assurance for package descriptions.
-qaCheckPackage :: PackageDescription -> IO [String]
+qaCheckPackage :: PackageDescription -> IO [QANotice]
 qaCheckPackage pkg_descr = fmap fst . runQA $ do
+    ghcSpecific pkg_descr
+    cabalFormat pkg_descr
 
-    flip mapM_ ghc_options $ \ flags -> do
-        let has_Wall = "-Wall" `elem` flags
-            has_Werr = "-Werror" `elem` flags
-        when (has_Wall && has_Werr) $
-            qa $ "Using both -Wall and -Werror makes the package easy to "
-                 ++ "break with future GHC versions."
+    checkLicenseExists pkg_descr
 
-    ghcWarn "-fasm" $
+cabalFormat :: PackageDescription -> QA ()
+cabalFormat pkg_descr = do
+    when (null (category pkg_descr)) $
+        warn "No category field."
+    when (null (description pkg_descr)) $
+        warn "No description field."
+    when (null (maintainer pkg_descr)) $
+        warn "No maintainer field."
+    when (null (synopsis pkg_descr)) $
+        warn "No synopsis field."
+    when (length (synopsis pkg_descr) >= 80) $
+        warn "Over-long synopsis field"
+
+
+ghcSpecific :: PackageDescription -> QA ()
+ghcSpecific pkg_descr = do
+    let has_WerrorWall = flip any ghc_options $ \opts ->
+                               "-Werror" `elem` opts
+                           && ("-Wall"   `elem` opts || "-W" `elem` opts)
+        has_Werror     = any (\opts -> "-Werror" `elem` opts) ghc_options
+    when has_WerrorWall $
+        critical $ "ghc-options: -Wall -Werror makes the package "
+                 ++ "very easy to break with future GHC versions."
+    when (not has_WerrorWall && has_Werror) $
+        warn $ "ghc-options: -Werror makes the package easy to "
+            ++ "break with future GHC versions."
+
+    ghcFail "-fasm" $
         "flag -fasm is unnecessary and breaks on all "
         ++ "arches except for x86, x86-64 and ppc."
 
-    ghcWarn "-O" $
+    ghcFail "-O" $
         "Cabal automatically add the -O flag and setting it yourself "
         ++ "will disable the use of the --disable-optimization flag."
 
@@ -79,12 +118,10 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
         "-O2 is rarely needed as it often prolong the compile time "
         ++ "with usually with little benefit."
 
-    let ffi_msg = "Instead of using -ffi or -fffi, use extensions: ForeignFunctionInterface"
-
-    ghcWarn  "-ffi" ffi_msg
-    ghcWarn "-fffi" ffi_msg
-
-    checkLicenseExists pkg_descr
+    -- most important at this stage to get the framework right
+    when (any (`elem` all_ghc_options) ["-ffi", "-fffi"]) $
+    	critical $ "Instead of using -ffi or -fffi, use extensions: "
+    		 ++"ForeignFunctionInterface"
 
     -- TODO: keep an eye on #190 and implement when/if it's closed.
     -- warn for ghc-options: -fvia-C when ForeignFunctionInterface is set
@@ -95,26 +132,29 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
                          , (GHC, strs) <- options bi ]
     all_ghc_options = concat ghc_options
 
+
     ghcWarn :: String -> String -> QA ()
     ghcWarn flag msg =
-        warnWhenFlag all_ghc_options flag ("ghc-options: " ++ msg)
+        when (flag `elem` all_ghc_options) $
+            warn ("ghc-options: " ++ msg)
+
+    ghcFail :: String -> String -> QA ()
+    ghcFail flag msg =
+        when (flag `elem` all_ghc_options) $
+            critical ("ghc-options: " ++ msg)
+
 
 checkLicenseExists :: PackageDescription -> QA ()
-checkLicenseExists pkg =
+checkLicenseExists PackageDescription { licenseFile = file } =
     unless (null file) $ do
         exists <- io $ doesFileExist file
         unless exists $
-            qa $ "Cabal file refers to license file \"" ++ file
-                 ++ "\" which does not exist."
-    where
-    file = licenseFile pkg
+            critical $ "license-file field refers to file \"" ++ file
+                     ++ "\" which does not exist."
 
-warnWhenFlag :: [String] -> String -> String -> QA ()
-warnWhenFlag flags flag msg =
-    when (flag `elem` flags) (qa msg)
 
 -- the WriterT monad over IO
-data QA a = QA { runQA :: IO ([String], a) }
+data QA a = QA { runQA :: IO ([QANotice], a) }
 
 instance Monad QA where
     a >>= mb = QA $ do
@@ -123,13 +163,14 @@ instance Monad QA where
         return (warnings ++ warnings', x')
     return x = QA $ return ([], x)
 
-qa :: String -> QA ()
-qa msg = QA $ return ([withLines pretty msg], ())
-    where
-    -- like (unlines . f . lines) except no trailing \n
-    withLines f = concat . intersperse "\n" . f . lines
-    pretty [] = []
-    pretty (x:xs) = ("QA: " ++ x) : map ("    "++) xs
+qa :: QANotice -> QA ()
+qa notice = QA $ return ([notice], ())
+
+warn :: String -> QA ()
+warn = qa . QAWarning
+
+critical :: String -> QA ()
+critical = qa . QAFailure
 
 io :: IO a -> QA a
 io action = QA $ do
