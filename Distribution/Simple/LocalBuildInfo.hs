@@ -49,8 +49,6 @@ module Distribution.Simple.LocalBuildInfo (
 	-- * Installation directories
 	module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
-	-- ** Deprecated install dir functions
-	mkLibDir, mkBinDir, mkLibexecDir, mkDataDir,
 	-- * Build directories
 	distPref, srcPref,
 	hscolourPref, haddockPref,
@@ -147,25 +145,3 @@ prefixRelativeInstallDirs pkg_descr lbi =
     (compilerId (compiler lbi))
     (installDirTemplates lbi)
 
--- -----------------------------------------------------------------------------
--- Compatability aliases
-
-mkBinDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkBinDir pkg_descr lbi copydest = 
-  bindir (absoluteInstallDirs pkg_descr lbi copydest)
-{-# DEPRECATED mkBinDir "use bindir :: InstallDirs -> FilePath" #-}
-
-mkLibDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkLibDir pkg_descr lbi copydest = 
-  libdir (absoluteInstallDirs pkg_descr lbi copydest)
-{-# DEPRECATED mkLibDir "use libdir :: InstallDirs -> FilePath" #-}
-
-mkLibexecDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkLibexecDir pkg_descr lbi copydest = 
-  libexecdir (absoluteInstallDirs pkg_descr lbi copydest)
-{-# DEPRECATED mkLibexecDir "use libexecdir :: InstallDirs -> FilePath" #-}
-
-mkDataDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
-mkDataDir pkg_descr lbi copydest = 
-  datadir (absoluteInstallDirs pkg_descr lbi copydest)
-{-# DEPRECATED mkDataDir "use datadir :: InstallDirs -> FilePath" #-}
