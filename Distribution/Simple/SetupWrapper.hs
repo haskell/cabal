@@ -110,8 +110,8 @@ setupWrapper args mdir = inDir mdir $ do
 buildTypes :: [(BuildType, ([String] -> IO (), String))]
 buildTypes = [
   (Simple, (defaultMainArgs, "import Distribution.Simple; main=defaultMain")),
-  (Configure, (defaultMainWithHooksArgs defaultUserHooks,
-    "import Distribution.Simple; main=defaultMainWithHooks defaultUserHooks")),
+  (Configure, (defaultMainWithHooksArgs autoconfUserHooks,
+    "import Distribution.Simple; main=defaultMainWithHooks autoconfUserHooks")),
   (Make, (Make.defaultMainArgs, "import Distribution.Make; main=defaultMain"))]
 
 inDir :: Maybe FilePath -> IO () -> IO ()
