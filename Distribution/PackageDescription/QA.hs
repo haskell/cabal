@@ -47,6 +47,7 @@ module Distribution.PackageDescription.QA (
         QANotice(..)
   ) where
 
+import Data.Maybe (isNothing)
 import Control.Monad(when,unless)
 import System.Directory(doesFileExist)
 
@@ -83,6 +84,8 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
 
 cabalFormat :: PackageDescription -> QA ()
 cabalFormat pkg_descr = do
+    when (isNothing (buildType pkg_descr)) $
+        critical "No build-type specified."
     when (null (category pkg_descr)) $
         warn "No category field."
     when (null (description pkg_descr)) $
