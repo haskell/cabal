@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.QA
@@ -63,7 +62,9 @@ import Distribution.License (License(..))
 -- TODO: and allmost ghc -X flags should be extensions
 -- TODO: Once we implement striping (ticket #88) we should also reject
 --       ghc-options: -optl-Wl,-s.
--- TODO: check that either license or license-file is set
+-- TODO: keep an eye on #190 and implement when/if it's closed.
+-- warn for ghc-options: -fvia-C when ForeignFunctionInterface is set
+-- http://hackage.haskell.org/trac/hackage/ticket/190
 
 data QANotice
     = QAWarning { qaMessage :: String }
@@ -123,10 +124,6 @@ ghcSpecific pkg_descr = do
     when (any (`elem` all_ghc_options) ["-ffi", "-fffi"]) $
     	critical $ "Instead of using -ffi or -fffi, use extensions: "
     		 ++"ForeignFunctionInterface"
-
-    -- TODO: keep an eye on #190 and implement when/if it's closed.
-    -- warn for ghc-options: -fvia-C when ForeignFunctionInterface is set
-    -- http://hackage.haskell.org/trac/hackage/ticket/190
 
     where
     ghc_options = [ strs | bi <- allBuildInfo pkg_descr
