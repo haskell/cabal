@@ -123,7 +123,7 @@ sdist pkg_descr_orig mb_lbi flags tmpDir targetPref pps = do
     	notice verbosity $ "QA warnings:"
     	notice verbosity $ unlines qwarn
     unless (null qfail) $
-    	notice verbosity "Notice that the public hackage server would reject this package due to QA issues."
+    	notice verbosity "Note: the public hackage server would reject this package due to QA issues"
 
     prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date
     createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
