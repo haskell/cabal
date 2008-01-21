@@ -152,7 +152,9 @@ configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
   no_extra_flags args
   let verbosity = fromFlag (configVerbose flags)
-  rawSystemExit verbosity "./configure" (configureArgs flags)
+  rawSystemExit verbosity "./configure"
+    (configureArgs backwardsCompatHack flags)
+  where backwardsCompatHack = True
 
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
