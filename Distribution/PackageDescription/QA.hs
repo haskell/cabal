@@ -53,6 +53,7 @@ import System.Directory(doesFileExist)
 
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.PackageDescription
+import Distribution.License (License(..))
 
 -- ------------------------------------------------------------
 -- * Quality Assurance
@@ -77,7 +78,7 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
     ghcSpecific pkg_descr
     cabalFormat pkg_descr
 
-    checkLicenseExists pkg_descr
+    checkLicense pkg_descr
 
 cabalFormat :: PackageDescription -> QA ()
 cabalFormat pkg_descr = do
@@ -144,13 +145,20 @@ ghcSpecific pkg_descr = do
             critical ("ghc-options: " ++ msg)
 
 
-checkLicenseExists :: PackageDescription -> QA ()
-checkLicenseExists PackageDescription { licenseFile = file } =
-    unless (null file) $ do
+checkLicense :: PackageDescription -> QA ()
+checkLicense pkg
+    | license pkg == AllRightsReserved
+    = critical "license field missing or specified as AllRightsReserved"
+
+    | null (licenseFile pkg)
+    = warn "license-file not specified"
+
+    | otherwise = do
         exists <- io $ doesFileExist file
         unless exists $
-            critical $ "license-file field refers to file \"" ++ file
+            critical $ "license-file field refers to the file \"" ++ file
                      ++ "\" which does not exist."
+        where file = licenseFile pkg
 
 
 -- the WriterT monad over IO
