@@ -479,7 +479,8 @@ defaultUserHooks = autoconfUserHooks {
                    confExists <- doesFileExist "configure"
                    when confExists $
                        rawSystemPathExit verbosity "sh" $
-                       "configure" : configureArgs flags
+                       "configure" : configureArgs backwardsCompatHack flags
+          backwardsCompatHack = True
 
 autoconfUserHooks :: UserHooks
 autoconfUserHooks
@@ -503,8 +504,10 @@ autoconfUserHooks
                    confExists <- doesFileExist "configure"
                    if confExists
                      then rawSystemExit verbosity "sh" $
-                            "configure" : configureArgs flags
+                            "configure"
+			  : configureArgs backwardsCompatHack flags
                      else die "configure script not found."
+          backwardsCompatHack = False
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
