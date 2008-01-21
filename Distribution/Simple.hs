@@ -58,7 +58,11 @@ module Distribution.Simple (
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultMainWithHooksArgs,
-        simpleUserHooks, defaultUserHooks, emptyUserHooks,
+	-- ** Standard sets of hooks
+        simpleUserHooks,
+        autoconfUserHooks,
+        defaultUserHooks, emptyUserHooks,
+        -- ** Utils
         defaultHookedPackageDesc
 #ifdef DEBUG        
         ,simpleHunitTests
@@ -94,10 +98,10 @@ import Distribution.Simple.Configure(getPersistBuildConfig,
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPref)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
-import Distribution.Simple.Utils (die, currentDir, moduleToFilePath,
-                                  defaultPackageDesc, defaultHookedPackageDesc)
-
-import Distribution.Simple.Utils (rawSystemPathExit, notice, info)
+import Distribution.Simple.Utils
+         (die, notice, info, warn, currentDir, moduleToFilePath,
+          defaultPackageDesc, defaultHookedPackageDesc,
+          rawSystemPathExit, rawSystemExit)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
@@ -466,8 +470,26 @@ simpleUserHooks =
 
 -- FIXME: do something sensible for windows, or do nothing in postConf.
 
+{-# DEPRECATED defaultUserHooks "Use simpleUserHooks or autoconfUserHooks" #-}
 defaultUserHooks :: UserHooks
-defaultUserHooks = autoconfUserHooks
+defaultUserHooks = autoconfUserHooks {
+          confHook = \pkg flags -> do
+	               let verbosity = fromFlag (configVerbose flags)
+		       warn verbosity $
+		         "defaultUserHooks in Setup script is deprecated."
+	               confHook autoconfUserHooks pkg flags,
+          postConf = oldCompatPostConf
+    }
+    -- This is the annoying old version that only runs configure if it exists.
+    -- It's here for compatability with existing Setup.hs scripts. See:
+    -- http://hackage.haskell.org/trac/hackage/ticket/165
+    where oldCompatPostConf args flags _ _
+              = do let verbosity = fromFlag (configVerbose flags)
+                   no_extra_flags args
+                   confExists <- doesFileExist "configure"
+                   when confExists $
+                       rawSystemPathExit verbosity "sh" $
+                       "configure" : configureArgs flags
 
 autoconfUserHooks :: UserHooks
 autoconfUserHooks
@@ -489,9 +511,10 @@ autoconfUserHooks
               = do let verbosity = fromFlag (configVerbose flags)
                    no_extra_flags args
                    confExists <- doesFileExist "configure"
-                   when confExists $
-                       rawSystemPathExit verbosity "sh" $
-                           "configure" : configureArgs flags
+                   if confExists
+                     then rawSystemExit verbosity "sh" $
+                            "configure" : configureArgs flags
+                     else die "configure script not found."
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
