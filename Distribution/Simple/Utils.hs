@@ -45,6 +45,7 @@ module Distribution.Simple.Utils (
         die,
         dieWithLocation,
         warn, notice, info, debug,
+        chattyTry,
         breaks,
 	wrapText,
         rawSystemExit,
@@ -190,6 +191,15 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
   when (verbosity >= deafening) $
     putStrLn msg
+
+-- | Perform an IO action, catching any IO exceptions and printing an error
+--   if one occurs.
+chattyTry :: String  -- ^ a description of the action we were attempting
+          -> IO ()   -- ^ the action itself
+          -> IO ()
+chattyTry desc action =
+  catch action $ \exception ->
+    putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
