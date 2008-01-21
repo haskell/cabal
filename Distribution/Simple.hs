@@ -99,7 +99,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPre
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
-         (die, notice, info, warn, currentDir, moduleToFilePath,
+         (die, notice, info, warn, chattyTry, currentDir, moduleToFilePath,
           defaultPackageDesc, defaultHookedPackageDesc,
           rawSystemPathExit, rawSystemExit)
 import Distribution.Verbosity
@@ -111,7 +111,6 @@ import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
 import Distribution.License
 import Control.Monad   (when, unless)
 import Data.List       (intersperse, unionBy)
-import System.IO.Error (catch)
 
 import Distribution.Compat.Directory(removeDirectoryRecursive)
 import System.FilePath((</>))
@@ -375,15 +374,6 @@ pfe pkg_descr pps flags = do
 
 -- --------------------------------------------------------------------------
 -- Cleaning
-
--- | Perform an IO action, catching any IO exceptions and printing an error
---   if one occurs.
-chattyTry :: String  -- ^ a description of the action we were attempting
-          -> IO ()  -- ^ the action itself
-          -> IO ()
-chattyTry desc action = do
-  catch action
-        (\e -> putStrLn $ "Error while " ++ desc ++ ": " ++ show e)
 
 clean :: PackageDescription -> Maybe LocalBuildInfo -> CleanFlags -> IO ()
 clean pkg_descr maybeLbi flags = do
