@@ -66,8 +66,6 @@ module Distribution.Simple.Configure (configure,
 #endif
 #endif
 
-import Distribution.Compat.Directory
-    ( createDirectoryIfMissing )
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerVersion, showCompilerId
     , unsupportedExtensions, PackageDB(..) )
@@ -123,7 +121,7 @@ import Data.List
 import Data.Maybe
     ( fromMaybe, isNothing )
 import System.Directory
-    ( doesFileExist, getModificationTime )
+    ( doesFileExist, getModificationTime, createDirectoryIfMissing )
 import System.Environment
     ( getProgName )
 import System.Exit

@@ -106,13 +106,13 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Environment(getArgs,getProgName)
-import System.Directory(removeFile, doesFileExist, doesDirectoryExist)
+import System.Directory(removeFile, doesFileExist,
+                        doesDirectoryExist, removeDirectoryRecursive)
 
 import Distribution.License
 import Control.Monad   (when, unless)
 import Data.List       (intersperse, unionBy)
 
-import Distribution.Compat.Directory(removeDirectoryRecursive)
 import System.FilePath((</>))
 
 #ifdef DEBUG

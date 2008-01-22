@@ -84,15 +84,14 @@ module Distribution.Simple.Program (
     , pkgConfigProgram
     ) where
 
-import qualified Distribution.Compat.Map as Map
-import Distribution.Compat.Directory (findExecutable)
+import qualified Data.Map as Map
 import Distribution.Compat.TempFile (withTempFile)
 import Distribution.Simple.Utils (die, debug, warn, rawSystemExit,
                                   rawSystemStdout, rawSystemStdout')
 import Distribution.Version (Version(..), readVersion, showVersion,
                              VersionRange(..), withinRange, showVersionRange)
 import Distribution.Verbosity
-import System.Directory (doesFileExist, removeFile)
+import System.Directory (doesFileExist, removeFile, findExecutable)
 import System.FilePath  (dropExtension)
 import System.IO.Error (try)
 import Control.Monad (join, foldM)

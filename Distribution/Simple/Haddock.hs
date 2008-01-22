@@ -73,14 +73,14 @@ import Distribution.Simple.Utils (rawSystemStdout)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
-import System.Directory(removeFile, doesFileExist)
+import System.Directory(removeFile, doesFileExist,
+                        removeDirectoryRecursive, copyFile)
 
 import Control.Monad (liftM, when, unless, join)
 import Data.Maybe    ( isJust, catMaybes, fromJust )
 import Data.Char     (isSpace)
 import Data.List     (nub)
 
-import Distribution.Compat.Directory(removeDirectoryRecursive, copyFile)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        replaceExtension)
 import Distribution.Version

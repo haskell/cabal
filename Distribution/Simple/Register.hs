@@ -86,14 +86,12 @@ import Distribution.Simple.GHC.PackageConfig (mkGHCPackageConfig, showGHCPackage
 import qualified Distribution.Simple.GHC.PackageConfig
     as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 import Distribution.System
-import Distribution.Compat.Directory
-       (removeDirectoryRecursive,
-        setPermissions, getPermissions, Permissions(executable)
-       )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
-
-import System.Directory( removeFile, getCurrentDirectory)
+import System.Directory (removeFile, getCurrentDirectory,
+                         removeDirectoryRecursive,
+                         setPermissions, getPermissions,
+			 Permissions(executable))
 import System.IO.Error (try)
 
 import Control.Monad (when)

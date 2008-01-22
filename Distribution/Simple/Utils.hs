@@ -97,22 +97,22 @@ import System.Directory
     , doesFileExist, removeFile )
 import System.Environment
     ( getProgName )
+import System.Cmd
+    ( rawSystem )
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
     ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
+import System.Directory
+    ( copyFile, findExecutable, createDirectoryIfMissing
+    , getTemporaryDirectory )
 import System.IO
     ( hPutStrLn, stderr, hFlush, stdout, openFile, IOMode(WriteMode) )
 import System.IO.Error
     ( try )
-
-import Distribution.Compat.Directory
-    ( copyFile, findExecutable, createDirectoryIfMissing
-    , getDirectoryContentsWithoutSpecial, getTemporaryDirectory )
-import Distribution.Compat.RawSystem
-    ( rawSystem )
-import Distribution.Compat.Exception
+import Control.Exception
     ( bracket )
+
 import Distribution.System
     ( OS(..), os )
 import Distribution.Version
@@ -446,6 +446,9 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
                 getDirectoryContentsWithoutSpecial src >>= mapM_ cp
    in aux srcDir destDir
 
+  where getDirectoryContentsWithoutSpecial =
+            fmap (filter (not . flip elem [".", ".."]))
+          . getDirectoryContents
 
 
 

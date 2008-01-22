@@ -35,9 +35,9 @@ import IO (try)
 #endif
 import Control.Monad(unless)
 import Text.PrettyPrint.HughesPJ
-import System.Directory (doesFileExist, getPermissions, Permissions (..))
+import System.Directory (doesFileExist, getPermissions, Permissions (..),
+                         getHomeDirectory)
 import System.FilePath ((</>))
-import Distribution.Compat.Directory (getHomeDirectory)
 
 -- |Where ghc versions < 6.3 keeps the --user files.
 -- |return the file, whether it exists, and whether it's readable
