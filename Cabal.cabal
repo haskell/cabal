@@ -83,10 +83,6 @@ Library
 
   Other-Modules:
         Distribution.GetOpt,
-        Distribution.Compat.Map,
-        Distribution.Compat.Directory,
-        Distribution.Compat.Exception,
-        Distribution.Compat.RawSystem,
         Distribution.Compat.TempFile
 
   Extensions: CPP
