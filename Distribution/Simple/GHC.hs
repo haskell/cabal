@@ -73,9 +73,6 @@ import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
 import Distribution.Simple.Compiler
 import Distribution.Version	( Version(..), showVersion,
                                   VersionRange(..), orLaterVersion )
-import qualified Distribution.Simple.GHC.PackageConfig as GHC
-				( localPackageConfig,
-				  canReadLocalPackageConfig )
 import Distribution.System
 import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
@@ -314,16 +311,6 @@ build pkg_descr lbi verbosity = do
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi)
 
-  -- GHC versions prior to 6.4 didn't have the user package database,
-  -- so we fake it.  TODO: This can go away in due course.
-  pkg_conf <- if versionBranch (compilerVersion (compiler lbi)) >= [6,4]
-		then return []
-		else do  pkgConf <- GHC.localPackageConfig
-			 pkgConfReadable <- GHC.canReadLocalPackageConfig
-			 if pkgConfReadable 
-				then return ["-package-conf", pkgConf]
-				else return []
-	       
   -- Build lib
   withLib pkg_descr () $ \lib -> do
       info verbosity "Building library..."
@@ -342,8 +329,7 @@ build pkg_descr lbi verbosity = do
                     | otherwise = pkgName (package pkg_descr)
           -- Only use the version number with ghc-6.4 and later
           ghcArgs =
-                 pkg_conf
-              ++ ["-package-name", packageId ]
+                 ["-package-name", packageId ]
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -503,8 +489,7 @@ build pkg_descr lbi verbosity = do
 
                  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
                  let binArgs linkExe profExe =
-                            pkg_conf
-			 ++ (if linkExe
+			    (if linkExe
 			        then ["-o", targetDir </> exeNameReal]
                                 else ["-c"])
                          ++ constructGHCCmdLine lbi exeBi exeDir verbosity

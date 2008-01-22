@@ -65,7 +65,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
                                            InstallDirs(..),
 					   absoluteInstallDirs)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                                     compilerVersion, PackageDB(..))
+                                     PackageDB(..))
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
@@ -74,7 +74,6 @@ import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
 import Distribution.PackageDescription (setupMessage, PackageDescription(..),
 					BuildInfo(..), Library(..), haddockName)
 import Distribution.Package (PackageIdentifier(..), showPackageId)
-import Distribution.Version (Version(..))
 import Distribution.Verbosity
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
@@ -82,9 +81,6 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   copyFileVerbose, die, info)
-import Distribution.Simple.GHC.PackageConfig (mkGHCPackageConfig, showGHCPackageConfig)
-import qualified Distribution.Simple.GHC.PackageConfig
-    as GHC (localPackageConfig, canWriteLocalPackageConfig, maybeCreateLocalPackageConfig)
 import Distribution.System
 
 import System.FilePath ((</>), (<.>), isAbsolute)
@@ -123,8 +119,7 @@ register pkg_descr lbi regFlags
     setupMessage (fromFlag $ regVerbose regFlags) "No package to register" pkg_descr
     return ()
   | otherwise = do
-    let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
-        isWindows = case os of Windows _ -> True; _ -> False
+    let isWindows = case os of Windows _ -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
         genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
         genPkgConfigDefault = showPackageId (package pkg_descr) <.> "conf"
@@ -143,19 +138,9 @@ register pkg_descr lbi regFlags
     case compilerFlavor (compiler lbi) of
       GHC -> do 
 	config_flags <- case packageDB of
-          GlobalPackageDB -> return []
-          UserPackageDB
-            | ghc_63_plus -> return ["--user"]
-            | otherwise -> do
-	        GHC.maybeCreateLocalPackageConfig
-	        localConf <- GHC.localPackageConfig
-	        pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-	        when (not pkgConfWriteable && not genScript)
-                         $ userPkgConfErr localConf
-	        return ["--config-file=" ++ localConf]
-          SpecificPackageDB db
-            | ghc_63_plus -> return ["-package-conf", db]
-            | otherwise   -> return ["--config-file=" ++ db]
+          GlobalPackageDB      -> return []
+          UserPackageDB        -> return ["--user"]
+          SpecificPackageDB db -> return ["-package-conf", db]
 
 	let instConf | genPkgConf = genPkgConfigFile
                      | inplace    = inplacePkgConfigFile
@@ -165,15 +150,10 @@ register pkg_descr lbi regFlags
           info verbosity ("create " ++ instConf)
           writeInstalledConfig pkg_descr lbi inplace (Just instConf)
 
-        let register_flags
-                | ghc_63_plus = let conf = if genScript && not isWindows
+        let register_flags   = let conf = if genScript && not isWindows
 		                             then ["-"]
 		                             else [instConf]
                                 in "update" : conf
-                | otherwise   = let conf = if genScript && not isWindows
-		                              then []
-                                              else ["--input-file="++instConf]
-                                in "--update-package" : conf
 
         let allFlags = config_flags ++ register_flags
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
@@ -195,11 +175,6 @@ register pkg_descr lbi regFlags
       NHC -> when (verbosity >= normal) $ putStrLn "registering nhc98 (nothing to do)"
       _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
 
-userPkgConfErr :: String -> IO a
-userPkgConfErr local_conf = 
-  die ("--user flag passed, but cannot write to local package config: "
-    	++ local_conf )
-
 -- -----------------------------------------------------------------------------
 -- The installed package config
 
@@ -218,17 +193,8 @@ writeInstalledConfig pkg_descr lbi inplace instConfOverride = do
 showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
   -> IO String
 showInstalledConfig pkg_descr lbi inplace
-  | (case compilerFlavor hc of GHC -> True; _ -> False) &&
-    compilerVersion hc < Version [6,3] [] 
-    = if inplace then
-	  error "--inplace not supported for GHC < 6.3"
-      else
-	  return (showGHCPackageConfig (mkGHCPackageConfig pkg_descr lbi))
-  | otherwise 
     = do cfg <- mkInstalledPackageInfo pkg_descr lbi inplace
          return (showInstalledPackageInfo cfg)
-  where
-  	hc = compiler lbi
 
 removeInstalledConfig :: IO ()
 removeInstalledConfig = do
@@ -323,8 +289,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi regFlags = do
-  let ghc_63_plus = compilerVersion (compiler lbi) >= Version [6,3] []
-      genScript = fromFlag (regGenScript regFlags)
+  let genScript = fromFlag (regGenScript regFlags)
       verbosity = fromFlag (regVerbose regFlags)
       packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
@@ -332,23 +297,11 @@ unregister pkg_descr lbi regFlags = do
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <- case packageDB of
-          GlobalPackageDB -> return []
-          UserPackageDB
-            | ghc_63_plus -> return ["--user"]
-            | otherwise -> do
-	        GHC.maybeCreateLocalPackageConfig
-	        localConf <- GHC.localPackageConfig
-	        pkgConfWriteable <- GHC.canWriteLocalPackageConfig
-	        when (not pkgConfWriteable && not genScript)
-                         $ userPkgConfErr localConf
-	        return ["--config-file=" ++ localConf]
-          SpecificPackageDB db
-            | ghc_63_plus -> return ["-package-conf", db]
-            | otherwise   -> return ["--config-file=" ++ db]
+          GlobalPackageDB      -> return []
+          UserPackageDB        -> return ["--user"]
+          SpecificPackageDB db -> return ["-package-conf", db]
 
-        let removeCmd = if ghc_63_plus
-                        then ["unregister",showPackageId (package pkg_descr)]
-                        else ["--remove-package="++(pkgName $ package pkg_descr)]
+        let removeCmd = ["unregister",showPackageId (package pkg_descr)]
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
             allArgs      = removeCmd ++ config_flags
 	if genScript

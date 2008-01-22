@@ -58,7 +58,6 @@ Library
         Distribution.Simple.Configure,
         Distribution.Simple.GHC,
         Distribution.Simple.GHC.Makefile,
-        Distribution.Simple.GHC.PackageConfig,
         Distribution.Simple.Haddock,
         Distribution.Simple.Hugs,
         Distribution.Simple.Install,
