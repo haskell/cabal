@@ -79,7 +79,7 @@ import Control.Monad(when, unless)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
-import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
+import System.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, removeDirectoryRecursive)
 import Distribution.Verbosity
 import System.FilePath ((</>), takeDirectory, isAbsolute)

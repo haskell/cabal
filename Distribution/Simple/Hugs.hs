@@ -65,8 +65,6 @@ import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, dotToSep,
 				  smartCopySources, findFile, dllExtension )
 import Language.Haskell.Extension
 				( Extension(..) )
-import Distribution.Compat.Directory
-				( copyFile, removeDirectoryRecursive )
 import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.System
@@ -83,7 +81,8 @@ import IO			( try )
 #endif
 import Data.List		( nub, sort, isSuffixOf )
 import System.Directory		( Permissions(..), getPermissions,
-				  setPermissions )
+				  setPermissions, copyFile,
+				  removeDirectoryRecursive )
 
 
 -- -----------------------------------------------------------------------------

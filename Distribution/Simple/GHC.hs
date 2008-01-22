@@ -86,8 +86,8 @@ import Control.Monad		( unless, when )
 import Data.Char
 import Data.List		( nub, isPrefixOf )
 import System.Directory		( removeFile, renameFile,
-				  getDirectoryContents, doesFileExist )
-import Distribution.Compat.Directory ( getTemporaryDirectory )
+				  getDirectoryContents, doesFileExist,
+				  getTemporaryDirectory )
 import Distribution.Compat.TempFile ( withTempFile )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
