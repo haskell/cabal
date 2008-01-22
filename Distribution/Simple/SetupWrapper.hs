@@ -33,7 +33,7 @@ import Distribution.Simple.Program ( ProgramConfiguration,
 import Distribution.Simple.GHC (ghcVerbosityOptions)
 import Distribution.GetOpt
 import System.Directory
-import Distribution.Compat.Exception ( finally )
+import Control.Exception ( finally )
 import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import Control.Monad		( when, unless )

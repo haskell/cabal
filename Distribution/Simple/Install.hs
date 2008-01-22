@@ -74,7 +74,7 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad (when, unless)
-import Distribution.Compat.Directory(doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath(takeDirectory, (</>), isAbsolute)
 
 import Distribution.Verbosity
