@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LocalBuildInfo
