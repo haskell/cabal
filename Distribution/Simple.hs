@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -64,9 +63,6 @@ module Distribution.Simple (
         defaultUserHooks, emptyUserHooks,
         -- ** Utils
         defaultHookedPackageDesc
-#ifdef DEBUG        
-        ,simpleHunitTests
-#endif
   ) where
 
 -- local
@@ -104,25 +100,18 @@ import Distribution.Simple.Utils
           rawSystemPathExit, rawSystemExit)
 import Distribution.Verbosity
 import Language.Haskell.Extension
+import Distribution.Version
+import Distribution.License
+
 -- Base
 import System.Environment(getArgs,getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
+import System.FilePath((</>))
+import System.Exit
 
-import Distribution.License
 import Control.Monad   (when, unless)
 import Data.List       (intersperse, unionBy)
-
-import System.FilePath((</>))
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-import Distribution.Version hiding (hunitTests)
-#else
-import Distribution.Version
-#endif
-
-import System.Exit
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -555,11 +544,3 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
     else setupMessage verbosity
            "Package contains no library to register:" pkg_descr
   where verbosity = fromFlag (regVerbose flags)
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-#ifdef DEBUG
-simpleHunitTests :: [Test]
-simpleHunitTests = []
-#endif

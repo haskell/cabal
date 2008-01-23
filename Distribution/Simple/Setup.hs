@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Setup
@@ -68,17 +67,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-
-#ifdef DEBUG
-                           hunitTests,
-#endif
                            ) where
-
-
--- Misc:
-#ifdef DEBUG
-import Test.HUnit (Test(..))
-#endif
 
 import Distribution.Simple.Command
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
@@ -1254,10 +1243,8 @@ splitArgs  = space []
     word [] s = s
     word w  s = reverse w : s
 
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
 -- The test cases kinda have to be rewritten from the ground up... :/
+--hunitTests :: [Test]
 --hunitTests =
 --    let m = [("ghc", GHC), ("nhc98", NHC), ("hugs", Hugs)]
 --        (flags, commands', unkFlags, ers)
@@ -1293,12 +1280,9 @@ hunitTests = []
 --                                         ("register", RegisterCmd False)]
 --                  ]
 --               ]
-#endif
-
 
 {- Testing ideas:
    * IO to look for hugs and hugs-pkg (which hugs, etc)
    * quickCheck to test permutations of arguments
    * what other options can we over-ride with a command-line flag?
 -}
-

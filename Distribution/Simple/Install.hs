@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Install
@@ -44,9 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
 	install,
-#ifdef DEBUG        
-        hunitTests
-#endif
   ) where
 
 import Distribution.PackageDescription (
@@ -70,10 +66,6 @@ import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath(takeDirectory, (</>), isAbsolute)
 
 import Distribution.Verbosity
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
 -- actions.  Move files into place based on the prefix argument.  FIX:
@@ -168,11 +160,3 @@ installIncludeFiles verbosity PackageDescription{library=Just l} incdir
      b <- doesFileExist path
      if b then return (f,path) else findInc ds f
 installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif

@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Register
@@ -48,9 +47,6 @@ module Distribution.Simple.Register (
         writeInstalledConfig,
 	removeInstalledConfig,
         removeRegScripts,
-#ifdef DEBUG
-        hunitTests, installedPkgConfigFile
-#endif
   ) where
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
@@ -85,10 +81,6 @@ import System.IO.Error (try)
 import Control.Monad (when)
 import Data.Maybe (isNothing, isJust, fromJust, fromMaybe)
 import Data.List (partition)
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
 
 regScriptLocation :: FilePath
 regScriptLocation = case os of
@@ -348,12 +340,3 @@ rawSystemPipe prog scriptName pipeFrom extraArgs
         escapeForShell (c   :cs) = c        : escapeForShell cs
         args = programArgs prog ++ extraArgs
         path = programPath prog
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif
