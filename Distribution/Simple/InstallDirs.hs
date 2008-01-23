@@ -1,4 +1,7 @@
-{-# OPTIONS -cpp -fffi #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# OPTIONS_GHC -cpp -fffi #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.InstallDirs

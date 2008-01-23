@@ -1,4 +1,7 @@
-{-# OPTIONS -cpp #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Configuration

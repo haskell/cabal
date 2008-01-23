@@ -147,8 +147,9 @@ buildPathsModule pkg_descr lbi =
    let pragmas
 	| absolute || isHugs = ""
 	| otherwise =
-	  "{-# OPTIONS_GHC -fffi #-}\n"++
-	  "{-# LANGUAGE ForeignFunctionInterface #-}\n"
+          "{-# LANGUAGE ForeignFunctionInterface #-}\n" ++
+          "{-# OPTIONS_GHC -fffi #-}\n"++
+          "{-# OPTIONS_JHC -fffi #-}\n"
 
        foreign_imports
 	| absolute = ""
