@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Compiler
@@ -53,9 +52,6 @@ module Distribution.Simple.Compiler (
         Flag,
         extensionsToFlags,
         unsupportedExtensions
-#ifdef DEBUG
-        ,hunitTests
-#endif
   ) where
 
 import Distribution.Compiler
@@ -65,10 +61,6 @@ import Language.Haskell.Extension (Extension(..))
 
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
 
 data Compiler = Compiler {
         compilerFlavor          :: CompilerFlavor,
@@ -116,12 +108,3 @@ extensionsToFlags comp exts =
   nub $ filter (not . null) $ catMaybes
   [ lookup ext (compilerExtensions comp)
   | ext <- exts ]
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif

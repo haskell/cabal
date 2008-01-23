@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -52,9 +51,6 @@ module Distribution.Simple.Configure (configure,
 				      configDependency,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
-#ifdef DEBUG
-                                      hunitTests
-#endif
                                      )
     where
 
@@ -128,10 +124,6 @@ import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
     
 import Prelude hiding (catch)
-
-#ifdef DEBUG
-import Test.HUnit
-#endif
 
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
 tryGetConfigStateFile filename = do
@@ -521,11 +513,9 @@ errorOut verbosity warnings errors = do
 -- -----------------------------------------------------------------------------
 -- Tests
 
-#ifdef DEBUG
-
+{- Too specific:
 hunitTests :: [Test]
 hunitTests = []
-{- Too specific:
 packageID = PackageIdentifier "Foo" (Version [1] [])
     = [TestCase $
        do let simonMarGHCLoc = "/usr/bin/ghc"
@@ -540,4 +530,3 @@ packageID = PackageIdentifier "Foo" (Version [1] [])
              simonMarGHC
       ]
 -}
-#endif
