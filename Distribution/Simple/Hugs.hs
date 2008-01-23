@@ -74,11 +74,7 @@ import Distribution.Package	( PackageIdentifier(..) )
 import Data.Char		( isSpace )
 import Data.Maybe		( mapMaybe )
 import Control.Monad		( unless, when, filterM )
-#ifndef __NHC__
 import Control.Exception	( try )
-#else
-import IO			( try )
-#endif
 import Data.List		( nub, sort, isSuffixOf )
 import System.Directory		( Permissions(..), getPermissions,
 				  setPermissions, copyFile,

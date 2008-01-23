@@ -88,15 +88,8 @@ import System.Directory		( removeFile, renameFile,
 import Distribution.Compat.TempFile ( withTempFile )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
-import System.IO
-import Control.Exception as Exception (handle)
-
--- System.IO used to export a different try, so we can't use try unqualified
-#ifndef __NHC__
-import Control.Exception as Try
-#else
-import IO as Try
-#endif
+import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
+import Control.Exception (handle, try)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -145,7 +138,7 @@ configure verbosity hcPath hcPkgPath conf = do
            rawSystemProgram verbosity ghcProg ["-c", testcfile,
                                                "-o", testofile]
            withTempFile tempDir "o" $ \testofile' ->
-             Exception.handle (\_ -> return False) $ do
+             handle (\_ -> return False) $ do
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
@@ -389,10 +382,10 @@ build pkg_descr lbi verbosity = do
 		else return []
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
-        Try.try (removeFile libName) -- first remove library if it exists
-        Try.try (removeFile profLibName) -- first remove library if it exists
-        Try.try (removeFile sharedLibName) -- first remove library if it exists
-	Try.try (removeFile ghciLibName) -- first remove library if it exists
+        try (removeFile libName) -- first remove library if it exists
+        try (removeFile profLibName) -- first remove library if it exists
+        try (removeFile sharedLibName) -- first remove library if it exists
+        try (removeFile ghciLibName) -- first remove library if it exists
 
         let arVerbosity | verbosity >= deafening = "v"
                         | verbosity >= normal = ""

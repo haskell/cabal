@@ -74,13 +74,7 @@ import System.FilePath
 import System.Directory
         ( removeFile )
 
--- System.IO used to export a different try, so we can't use try unqualified
-#ifndef __NHC__
-import Control.Exception as Try
-#else
-import IO as Try
-#endif
-
+import Control.Exception (try)
 import Data.List ( nub )
 import Control.Monad ( when, unless )
 
@@ -177,7 +171,7 @@ build pkg_descr lbi verbosity = do
                 | m <- modules ]
 
     unless (null hObjs {-&& null cObjs-}) $ do
-      Try.try (removeFile libName) -- first remove library if it exists
+      try (removeFile libName) -- first remove library if it exists
 
       let arVerbosity | verbosity >= deafening = "v"
                       | verbosity >= normal = ""

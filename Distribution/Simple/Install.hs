@@ -49,14 +49,6 @@ module Distribution.Simple.Install (
 #endif
   ) where
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
-#if __GLASGOW_HASKELL__ < 603
-#include "config.h"
-#else
-#include "ghcconfig.h"
-#endif
-#endif
-
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
 	hasLibs, withLib, hasExes, withExe, haddockName )
