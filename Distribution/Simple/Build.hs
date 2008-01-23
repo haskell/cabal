@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Build
@@ -44,9 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
 	build, makefile, initialBuildSteps
-#ifdef DEBUG        
-        ,hunitTests
-#endif
   ) where
 
 import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
@@ -80,10 +76,6 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Distribution.PackageDescription (hasLibs)
 import Distribution.Verbosity
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -335,12 +327,3 @@ filename_stuff =
   (case os of
        Windows _ -> "isPathSeparator c = c == '/' || c == '\\\\'\n"
        _         -> "isPathSeparator c = c == '/'\n")
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif

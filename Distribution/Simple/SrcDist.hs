@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.SrcDist
@@ -52,9 +51,6 @@ module Distribution.Simple.SrcDist (
         ,prepareTree
         ,tarBallName
         ,copyFileTo
-#ifdef DEBUG        
-        ,hunitTests
-#endif
   )  where
 
 import Distribution.PackageDescription
@@ -81,10 +77,6 @@ import System.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, removeDirectoryRecursive)
 import Distribution.Verbosity
 import System.FilePath ((</>), takeDirectory, isAbsolute)
-
-#ifdef DEBUG
-import Test.HUnit (Test)
-#endif
 
 -- |Create a source distribution.
 sdist :: PackageDescription -- ^information from the tarball
@@ -263,12 +255,3 @@ tarBallName p = (nameVersion p) ++ ".tar.gz"
 
 nameVersion :: PackageDescription -> String
 nameVersion = showPackageId . package
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests = []
-#endif
