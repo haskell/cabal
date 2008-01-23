@@ -84,7 +84,6 @@ import Data.List		( nub, isPrefixOf )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist,
 				  getTemporaryDirectory )
-import Distribution.Compat.TempFile ( withTempFile )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
@@ -131,13 +130,15 @@ configure verbosity hcPath hcPkgPath conf = do
   -- we need to find out if ld supports the -x flag
   (ldProg, conf''') <- requireProgram verbosity ldProgram' AnyVersion conf''
   tempDir <- getTemporaryDirectory
-  ldx <- withTempFile tempDir "c" $ \testcfile ->
-         withTempFile tempDir "o" $ \testofile -> do
-           writeFile testcfile "int foo() {}\n"
+  ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
+         withTempFile tempDir ".o" $ \testofile testohnd -> do
+           hPutStrLn testchnd "int foo() {}"
+           hClose testchnd; hClose testohnd
            rawSystemProgram verbosity ghcProg ["-c", testcfile,
                                                "-o", testofile]
-           withTempFile tempDir "o" $ \testofile' ->
+           withTempFile tempDir ".o" $ \testofile' testohnd' ->
              handle (\_ -> return False) $ do
+               hClose testohnd'
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
