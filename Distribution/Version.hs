@@ -65,10 +65,10 @@ module Distribution.Version (
 #endif
  ) where
 
-import Data.Version	( Version(..), showVersion, parseVersion )
+import Data.Version	( Version(..), showVersion )
 
 import Control.Monad    ( liftM )
-import Data.Char	( isSpace )
+import Data.Char	( isSpace, isDigit, isAlphaNum )
 import Data.Maybe	( listToMaybe )
 
 import Distribution.Compat.ReadP
@@ -80,12 +80,17 @@ import Test.HUnit
 -- -----------------------------------------------------------------------------
 -- Version utils
 
-{-
 parseVersion :: ReadP r Version
-parseVersion = do branch <- sepBy1 (liftM read $ munch1 isDigit) (char '.')
+parseVersion = do branch <- sepBy1 digits (char '.')
                   tags   <- many (char '-' >> munch1 isAlphaNum)
                   return Version{versionBranch=branch, versionTags=tags}
--}
+  where
+    digits  :: ReadP r Int
+    digits   = do first <- satisfy isDigit
+                  if first == '0'
+		    then return 0
+		    else do rest <- munch isDigit
+                            return (read (first : rest))
 
 readVersion :: String -> Maybe Version
 readVersion str =
