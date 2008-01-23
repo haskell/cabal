@@ -72,9 +72,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
 
-#ifndef __NHC__
 import Control.Exception (finally)
-#endif
 import Control.Monad(when, unless)
 import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
@@ -86,11 +84,6 @@ import System.FilePath ((</>), takeDirectory, isAbsolute)
 
 #ifdef DEBUG
 import Test.HUnit (Test)
-#endif
-
-#ifdef __NHC__
-finally :: IO a -> IO b -> IO a
-x `finally` y = do { a <- x; y; return a }
 #endif
 
 -- |Create a source distribution.
