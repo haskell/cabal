@@ -106,7 +106,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
 configure verbosity hcPath hcPkgPath conf = do
 
   (ghcProg, conf') <- requireProgram verbosity ghcProgram 
-                        (orLaterVersion (Version [6,2] []))
+                        (orLaterVersion (Version [6,4] []))
                         (userMaybeSpecifyPath "ghc" hcPath conf)
   let Just ghcVersion = programVersion ghcProg
 
