@@ -79,14 +79,6 @@ module Distribution.Simple.Utils (
 #endif
   ) where
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 604
-#if __GLASGOW_HASKELL__ < 603
-#include "config.h"
-#else
-#include "ghcconfig.h"
-#endif
-#endif
-
 import Control.Monad
     ( when, filterM, unless, liftM2 )
 import Data.List
@@ -120,11 +112,11 @@ import Distribution.Version
 import Distribution.Package
     (PackageIdentifier(..))
 
-#if __GLASGOW_HASKELL__ >= 604
+#ifdef __NHC__
+import System.Cmd (system)
+#else
 import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
-#else
-import System.Cmd (system)
 #endif
 import System.IO (hClose)
 
