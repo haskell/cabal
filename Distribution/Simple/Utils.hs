@@ -70,6 +70,7 @@ module Distribution.Simple.Utils (
         currentDir,
         dotToSep,
 	findFile,
+        withTempFile,
         defaultPackageDesc,
         findPackageDesc,
 	defaultHookedPackageDesc,
@@ -121,13 +122,9 @@ import System.Cmd (system)
 import Control.Exception (evaluate)
 import System.Process (runProcess, waitForProcess)
 #endif
-import System.IO (hClose)
+import System.IO (Handle, hClose)
 
-#if __GLASGOW_HASKELL__ >= 604
 import Distribution.Compat.TempFile (openTempFile)
-#else
-import Distribution.Compat.TempFile (withTempFile)
-#endif
 import Distribution.Verbosity
 
 #ifdef DEBUG
@@ -445,7 +442,15 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
             fmap (filter (not . flip elem [".", ".."]))
           . getDirectoryContents
 
-
+-- | Use a temporary filename that doesn't already exist.
+--
+withTempFile :: FilePath -- ^ Temp dir to create the file in
+             -> String   -- ^ File name template. See 'openTempFile'.
+             -> (FilePath -> Handle -> IO a) -> IO a
+withTempFile tmpDir template action =
+  bracket (openTempFile tmpDir template)
+          (\(name, handle) -> hClose handle >> removeFile name)
+          (uncurry action)
 
 -- | The path name that represents the current directory.
 -- In Unix, it's @\".\"@, but this is system-specific.

@@ -84,14 +84,15 @@ module Distribution.Simple.Program (
     ) where
 
 import qualified Data.Map as Map
-import Distribution.Compat.TempFile (withTempFile)
 import Distribution.Simple.Utils (die, debug, warn, rawSystemExit,
-                                  rawSystemStdout, rawSystemStdout')
+                                  rawSystemStdout, rawSystemStdout',
+                                  withTempFile)
 import Distribution.Version (Version(..), readVersion, showVersion,
                              VersionRange(..), withinRange, showVersionRange)
 import Distribution.Verbosity
 import System.Directory (doesFileExist, removeFile, findExecutable)
 import System.FilePath  (dropExtension)
+import System.IO (hClose)
 import System.IO.Error (try)
 import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
@@ -570,8 +571,8 @@ hsc2hsProgram = (simpleProgram "hsc2hs") {
       case maybeVersion of
         Nothing -> return Nothing
 	Just version ->
-          withTempFile "dist" "hsc" $ \hsc -> do
-	    writeFile hsc ""
+          withTempFile "dist" ".hsc" $ \hsc hnd -> do
+	    hClose hnd
 	    (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
 	    try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
 	    case words str of
