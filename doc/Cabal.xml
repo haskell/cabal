@@ -61,7 +61,7 @@ library
     <programlisting>
 tar -xzf Foo-1.0.tar.gz
 cd Foo-1.0
-cabal-setup configure --with-compiler=ghc-6.4.2 --prefix=$HOME --user
+cabal-setup configure --with-compiler=ghc-6.4.2 --user
 cabal-setup build
 cabal-setup install
     </programlisting>
@@ -1701,12 +1701,10 @@ runhaskell Setup.hs install</screen>
     <example id="user-install-example">
       <title>Building and installing a user package</title>
       <screen>
-runhaskell Setup.hs configure --ghc --user --prefix=$HOME
+runhaskell Setup.hs configure --user
 runhaskell Setup.hs build
 runhaskell Setup.hs install</screen>
-      <para>The package may use packages from the user's package database
-        as well as the global one (<option>--user</option>), is installed
-        under the user's home directory (<option>--prefix</option>),
+      <para>The package is installed under the user's home directory
         and is registered in the user's package database
         (<option>--user</option>).</para>
     </example>
@@ -1717,10 +1715,10 @@ runhaskell Setup.hs install</screen>
         Debian) one needs to create a tarball that can be sent to
         another system for unpacking in the root directory:</para>
       <screen>
-runhaskell Setup.hs configure --ghc --prefix=/usr
+runhaskell Setup.hs configure --prefix=/usr
 runhaskell Setup.hs build
 runhaskell Setup.hs copy --destdir=/tmp/mypkg
-(cd /tmp/mypkg; tar cf - .) | gzip -9 >mypkg.tar.gz</screen>
+tar -czf mypkg.tar.gz /tmp/mypkg/</screen>
 
       <para>If the package contains a library, you need two additional
         steps:</para>
@@ -1900,7 +1898,8 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <varlistentry>
 	    <term><option>--prefix</option>=<replaceable>dir</replaceable></term>
 	    <listitem>
-	      <para>The root of the installation, for example
+	      <para>The root of the installation. For example for a global
+	      install you might use
 	      <filename>/usr/local</filename> on a Unix system, or
 	      <filename>C:\Program Files</filename> on a Windows system.
 	      The other installation paths are usually subdirectories of
@@ -2199,9 +2198,16 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      </thead>
 	      <tbody>
 		<row>
-		  <entry><literal>--prefix</literal></entry>
+		  <entry><literal>--prefix</literal> (global installs with the
+		         <literal>--global</literal> flag) </entry>
 		  <entry><filename>C:\Program Files\Haskell</filename></entry>
 		  <entry><filename>/usr/local</filename></entry>
+		</row>
+		<row>
+		  <entry><literal>--prefix</literal> (per-user installs with
+		         the<literal>--user</literal> flag)</entry>
+		  <entry><filename>C:\Documents And Settings\<replaceable>user</replaceable>\Application Data\cabal</filename></entry>
+		  <entry><filename><replaceable>$HOME</replaceable>/.cabal</filename></entry>
 		</row>
 
 		<row>
@@ -2349,8 +2355,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <varlistentry>
 	    <term><option>--user</option></term>
 	    <listitem>
-	      <para>Allow dependencies to be satisfied by the user package
-		database, in addition to the global database.</para>
+	      <para>Does a per-user installation. This changes the default
+		installation prefix (see <xref linkend="simple-paths"/>).
+		It also allow dependencies to be satisfied by the user's
+		package database, in addition to the global database.</para>
 
 	      <para>This also implies a default of <option>--user</option>
 		for any subsequent <literal>install</literal> command,
@@ -2362,8 +2370,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <varlistentry>
 	    <term><option>--global</option></term>
 	    <listitem>
-	      <para>(default) Dependencies must be satisfied by the global
-		package database.</para>
+	      <para>(default) Does a global installation. In this case
+		package dependencies must be satisfied by the global
+		package database. All packages in the user's package database
+		will be ignored. Typically the final instllation step will
+		require administrative privileges.</para>
 	    </listitem>
 	  </varlistentry>
 
