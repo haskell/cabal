@@ -2959,43 +2959,17 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
   </sect1>
 
   <sect1 id="bugs">
-    <title>Known bugs and deficiencies</title>
+    <title>Reporting bugs and deficiencies</title>
 
-    <para>All these should be fixed in future versions:</para>
+    <para>Please report any flaws or feature requests in the
+      <ulink url="http://hackage.haskell.org/trac/hackage/">bug
+      tracker</ulink>.
+    </para>
 
-    <itemizedlist>
-      <listitem>
-        <para>The scheme described in <xref linkend="system-dependent"/>
-          will not work on Windows without MSYS or Cygwin.</para>
-      </listitem>
-
-      <listitem>
-        <para>Cabal has some limitations both running under Hugs
-          and building packages for it:</para>
-        <itemizedlist>
-          <listitem>
-            <para>Cabal requires the latest release (Mar 2005).</para>
-          </listitem>
-
-          <listitem>
-            <para>It doesn't work with Windows.</para>
-          </listitem>
-
-          <listitem>
-            <para>There is no <literal>hugs-pkg</literal> tool.</para>
-          </listitem>
-        </itemizedlist>
-      </listitem>
-
-      <listitem>
-        <para>Though the library runs under Nhc98, it cannot build
-          packages for Nhc98.</para>
-      </listitem>
-
-    </itemizedlist>
-
-    <para>Please report any other flaws to
-      <email>libraries@haskell.org</email>.</para>
+    <para>For general disussion or queries email the libraries mailing list
+    <email>libraries@haskell.org</email>. There is also a development mailing
+    list <email>cabal-devel@haskell.org</email>.
+    </para>
   </sect1>
 
   <sect1 id="stability">
@@ -3010,11 +2984,124 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
     <para>This section documents the aspects of the Cabal interface that we can
       promise to keep stable and which bits are subject to change.</para>
 
-    <itemizedlist>
-      <listitem>
-        <para></para>
-      </listitem>
-    </itemizedlist>
+    <sect2>
+      <title>Cabal file format</title>
+      <para>
+        This is backwards compatible and mostly forwards compatible.
+        New fields can be added without breaking older versions of Cabal.
+        Fields can be deprecated without breaking older packages.
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Command-line interface</title>
+      <sect3>
+        <title>Very Stable Command-line interfaces</title>
+
+        <itemizedlist>
+          <listitem>
+            <para>
+              ./setup configure
+              <itemizedlist>
+                <listitem><para>--prefix</para></listitem>
+                <listitem><para>--user</para></listitem>
+                <listitem><para>--ghc, --hugs</para></listitem>
+                <listitem><para>--verbose</para></listitem>
+                <listitem><para>--prefix</para></listitem>
+              </itemizedlist>
+            </para>
+          </listitem>
+          <listitem><para>./setup build</para></listitem>
+          <listitem><para>./setup install</para></listitem>
+          <listitem><para>./setup register</para></listitem>
+          <listitem><para>./setup copy</para></listitem>
+        </itemizedlist>
+      </sect3>
+
+      <sect3>
+        <title>Stable Command-line interfaces</title>
+      </sect3>
+
+      <sect3>
+        <title>Unstable command-line</title>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Functions and Types</title>
+      <para>
+        The Cabal library follows the <ulink
+        url="http://haskell.org/haskellwiki/Package_versioning_policy">Package
+        Versioning Policy</ulink>. This means that within a stable major
+        release, for example 1.2.x, there will be no incompatible API changes.
+        But minor versions increments, for example 1.2.3, indicate compatable
+        API additions.
+      </para>
+
+      <para>
+        The Package Versioning Policy does not require any API guarantees
+        between major releases, for example between 1.2.x and 1.4.x. In
+        practise of course not everything changes between major releases. Some
+        parts of the API are more prone to change than others. The rest of this
+        section gives some informal advice on what level of API stability you
+        can expect between major releases.
+      </para>
+
+      <sect3>
+        <title>Very Stable API</title>
+        <itemizedlist>
+          <listitem><para><literal>defaultMain</literal></para></listitem>
+          <listitem>
+            <para>
+              <literal>defaultMainWithHooks defaultUserHooks</literal>
+            </para>
+            <para>
+              But regular <literal>defaultMainWithHooks</literal> isn't stable
+              since <literal>UserHooks</literal> changes.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </sect3>
+
+      <sect3>
+        <title>Semi-stable API</title>
+        <para>
+          <itemizedlist>
+            <listitem>
+              <para><literal>UserHooks</literal> The hooks api will change in the
+              future</para>
+            </listitem>
+            <listitem>
+              <para><literal>Distribution.<replaceable>*</replaceable></literal>
+              is mostly declarative information about packages and is somewhat
+              stable.</para>
+            </listitem>
+          </itemizedlist>
+        </para>
+      </sect3>
+
+      <sect3>
+        <title>Unstable API</title>
+        <para>
+          Everything under
+          <literal>Distribution.Simple.<replaceable>*</replaceable></literal>
+          has no stability guarantee.
+        </para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Hackage</title>
+      <para>
+        The index format is a partly stable interface. It consists of a tar.gz
+        file that contains directories with <filename>.cabal</filename> files
+        in. In future it may contain more kinds of files so do not assume every
+        file is a <filename>.cabal</filename> file. Incompatible revisions to
+        the format would involve bumping the name of the index file, ie
+        <filename>00-index.tar.gz</filename>,
+        <filename>01-index.tar.gz</filename> etc.
+      </para>
+    </sect2>
 
   </sect1>
 
