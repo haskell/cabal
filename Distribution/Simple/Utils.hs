@@ -237,6 +237,7 @@ printRawCommandAndArgs verbosity path args
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
   printRawCommandAndArgs verbosity path args
+  hFlush stdout
   maybeExit $ rawSystem path args
 
 -- Exit with the same exitcode if the subcommand fails
