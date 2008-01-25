@@ -84,7 +84,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( when, filterM, unless, liftM2 )
+    ( when, filterM, unless )
 import Data.List
     ( nub, unfoldr )
 
@@ -100,10 +100,9 @@ import System.Exit
 import System.FilePath
     ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
 import System.Directory
-    ( copyFile, findExecutable, createDirectoryIfMissing
-    , getTemporaryDirectory )
+    ( copyFile, findExecutable, createDirectoryIfMissing )
 import System.IO
-    ( hPutStrLn, stderr, hFlush, stdout, openFile, IOMode(WriteMode) )
+    ( hPutStrLn, stderr, hFlush, stdout )
 import System.IO.Error
     ( try )
 import Control.Exception
@@ -116,11 +115,14 @@ import Distribution.Version
 import Distribution.Package
     (PackageIdentifier(..))
 
-#ifdef __NHC__
-import System.Cmd (system)
-#else
+#ifdef __GLASGOW_HASKELL__
+import Control.Concurrent (forkIO)
 import Control.Exception (evaluate)
-import System.Process (runProcess, waitForProcess)
+import System.Process (runInteractiveProcess, waitForProcess)
+import System.IO (hGetContents)
+#else
+import System.Cmd (system)
+import System.Directory (getTemporaryDirectory)
 #endif
 import System.IO (Handle, hClose)
 
@@ -258,30 +260,28 @@ rawSystemStdout verbosity path args = do
 rawSystemStdout' :: Verbosity -> FilePath -> [String] -> IO (String, ExitCode)
 rawSystemStdout' verbosity path args = do
   printRawCommandAndArgs verbosity path args
-  tmpDir <- getTemporaryDirectory
 
-#if __GLASGOW_HASKELL__ >= 604
-  -- TODO Ideally we'd use runInteractiveProcess and not have to make any
-  --      silly temp files, however it is not possible to only connect pipes
-  --      to a subset of the process's stdin/out/err. We really cannot
-  --      connect to all three since then we'd need threads to pull on stdout
-  --      and stderr simultaniously to avoid deadlock, and using threads like
-  --      that would not be portable to Hugs for example.
-  bracket (liftM2 (,) (openTempFile tmpDir "cmdstdout") (openFile devNull WriteMode))
-          -- We need to close tmpHandle or the file removal fails on Windows
-          (\((tmpName, tmpHandle), nullHandle) -> do
-             hClose tmpHandle
-             removeFile tmpName
-             hClose nullHandle)
-         $ \((tmpName, tmpHandle), nullHandle) -> do
-    cmdHandle <- runProcess path args Nothing Nothing
-                   Nothing (Just tmpHandle) (Just nullHandle)
-    exitCode <- waitForProcess cmdHandle
-    output <- readFile tmpName
-    evaluate (length output)
-    return (output, exitCode)
+#ifdef __GLASGOW_HASKELL__
+  bracket (runInteractiveProcess path args Nothing Nothing)
+          (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
+    $ \(_,outh,errh,pid) -> do
+
+      -- fork off a thread to pull on (and discard) the stderr
+      -- so if the process writes to stderr we do not block.
+      forkIO $ hGetContents errh >>= evaluate . length >> return ()
+
+      -- wait for all the output
+      output <- hGetContents outh
+      evaluate (length output)
+
+      -- wait for the program to terminate
+      exitcode <- waitForProcess pid
+
+      return (output, exitcode)
 #else
-  withTempFile tmpDir "cmdstdout" $ \tmpName -> do
+  tmpDir <- getTemporaryDirectory
+  withTempFile tmpDir ".cmd.stdout" $ \tmpName tmpHandle -> do
+    hClose tmpHandle
     let quote name = "'" ++ name ++ "'"
     exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     output <- readFile tmpName
@@ -585,11 +585,6 @@ dllExtension = case os of
                    Windows _ -> "dll"
                    OSX       -> "dylib"
                    _         -> "so"
-
-devNull :: FilePath
-devNull = case os of
-                   Windows _ -> "NUL"
-                   _         -> "/dev/null"
 
 -- ------------------------------------------------------------
 -- * Testing
