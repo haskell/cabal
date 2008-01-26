@@ -1,6 +1,0 @@
-#!/bin/sh -e
-
-ghc-pkg -g --add-package \
-   < /usr/share/doc/libghc6-#PACKAGE#-dev/installed-pkg-config
-
-#DEBHELPER#
