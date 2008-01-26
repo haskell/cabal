@@ -109,7 +109,7 @@ module Distribution.PackageDescription (
 import Control.Monad(liftM, foldM, when)
 import Data.Char
 import Data.Maybe(isNothing, isJust, catMaybes, listToMaybe, maybeToList)
-import Data.List (nub, maximumBy, unfoldr, partition)
+import Data.List (nub, maximumBy, unfoldr, partition, (\\), intersperse)
 import Text.PrettyPrint.HughesPJ as Pretty
 import System.Directory(doesFileExist)
 
@@ -947,6 +947,7 @@ parsePackageDescription file = do
       warnIfRest
       when (not (oldSyntax fields0)) $
         maybeWarnCabalVersion pkg
+      checkForUndefinedFlags flags mlib exes
       return (GenericPackageDescription pkg flags mlib exes)
 
   where
@@ -1116,6 +1117,23 @@ parsePackageDescription file = do
 
     parseExeFields :: [Field] -> StT s ParseResult Executable
     parseExeFields = lift . parseFields executableFieldDescrs nullExecutable
+
+    checkForUndefinedFlags ::
+        [Flag] ->
+        Maybe (CondTree ConfVar [Dependency] Library) ->
+        [(String, CondTree ConfVar [Dependency] Executable)] ->
+        PM ()
+    checkForUndefinedFlags flags mlib exes = do
+        let definedFlags = map flagName flags
+        maybe (return ()) (checkCondTreeFlags definedFlags) mlib
+        mapM_ (checkCondTreeFlags definedFlags . snd) exes
+
+    checkCondTreeFlags :: [String] -> CondTree ConfVar c a -> PM ()
+    checkCondTreeFlags definedFlags ct = do
+        let fv = nub $ freeVars ct
+        when (not . all (`elem` definedFlags) $ fv) $
+            error $ "Undefined flag(s) encountered: " ++
+                    (concat . intersperse " " $ (fv \\ definedFlags))
 
 
 parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a

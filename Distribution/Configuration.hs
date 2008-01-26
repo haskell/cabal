@@ -47,7 +47,7 @@ module Distribution.Configuration (
     Flag(..),
     ConfVar(..),
     Condition(..), parseCondition, simplifyCondition,
-    CondTree(..), ppCondTree, mapTreeData,
+    CondTree(..), ppCondTree, mapTreeData, freeVars,
     --satisfyFlags, 
     resolveWithFlags, ignoreConditions,
     DepTestRslt(..)
@@ -381,6 +381,18 @@ ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
   where f (_, t, me) = ignoreConditions t 
                        : maybeToList (fmap ignoreConditions me)
+
+freeVars :: CondTree ConfVar c a  -> [String]
+freeVars t = [ s | Flag (ConfFlag s) <- freeVars' t ]
+  where
+    freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
+    compfv (c, ct, mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
+    condfv c = case c of
+      Var v      -> [v]
+      Lit _      -> []
+      CNot c'    -> condfv c'
+      COr c1 c2  -> condfv c1 ++ condfv c2
+      CAnd c1 c2 -> condfv c1 ++ condfv c2
 
 ------------------------------------------------------------------------------
 -- Testing
