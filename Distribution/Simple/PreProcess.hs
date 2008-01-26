@@ -49,7 +49,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
-                                removePreprocessed, removePreprocessedPackage,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
 				ppHappy, ppAlex, ppUnlit
                                )
@@ -247,33 +246,6 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
       where dirName = takeDirectory
             tailNotNull [] = []
             tailNotNull x  = tail x
-
-removePreprocessedPackage :: PackageDescription
-                          -> FilePath -- ^root of source tree (where to look for hsSources)
-                          -> [String] -- ^suffixes
-                          -> IO ()
-removePreprocessedPackage  pkg_descr r suff
-    = do withLib pkg_descr () (\lib -> do
-                     let bi = libBuildInfo lib
-                     removePreprocessed (map (r </>) (hsSourceDirs bi)) (libModules pkg_descr) suff)
-         withExe pkg_descr (\theExe -> do
-                     let bi = buildInfo theExe
-                     removePreprocessed (map (r </>) (hsSourceDirs bi)) (otherModules bi) suff)
-
--- |Remove the preprocessed .hs files. (do we need to get some .lhs files too?)
-removePreprocessed :: [FilePath] -- ^search Location
-                   -> [String] -- ^Modules
-                   -> [String] -- ^suffixes
-                   -> IO ()
-removePreprocessed searchLocs mods suffixesIn
-    = mapM_ removePreprocessedModule mods
-  where removePreprocessedModule m = do
-	    -- collect related files
-	    fs <- moduleToFilePath searchLocs m otherSuffixes
-	    -- does M.hs also exist?
-	    hs <- moduleToFilePath searchLocs m ["hs"]
-	    unless (null fs) (mapM_ removeFile hs)
-	otherSuffixes = filter (/= "hs") suffixesIn
 
 -- ------------------------------------------------------------
 -- * known preprocessors
