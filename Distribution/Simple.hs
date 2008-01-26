@@ -74,7 +74,6 @@ import Distribution.Simple.Program
          ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
          , userSpecifyArgs, pfesetupProgram, rawSystemProgramConf )
 import Distribution.Simple.PreProcess (knownSuffixHandlers,
-                                removePreprocessedPackage,
                                 preprocessSources, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
@@ -384,23 +383,10 @@ clean pkg_descr maybeLbi flags = do
     -- Any extra files the user wants to remove
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
-    -- FIXME: put all JHC's generated files under dist/ so they get cleaned
-    case maybeLbi of
-      Nothing  -> return ()
-      Just lbi -> do
-        case compilerFlavor (compiler lbi) of
-          JHC -> cleanJHCExtras lbi
-          _   -> return ()
-
     -- If the user wanted to save the config, write it back
     maybe (return ()) writePersistBuildConfig maybeConfig
 
   where
-        -- JHC FIXME remove exe-sources
-        cleanJHCExtras lbi = do
-            chattyTry "removing jhc-pkg.conf" $
-                       removeFile (buildDir lbi </> "jhc-pkg.conf")
-            removePreprocessedPackage pkg_descr currentDir ["ho"]
         removeFileOrDirectory :: FilePath -> IO ()
         removeFileOrDirectory fname = do
             isDir <- doesDirectoryExist fname
