@@ -57,7 +57,6 @@ module Distribution.Simple.Utils (
         maybeExit,
         xargs,
         matchesDescFile,
-	rawSystemPathExit,
         smartCopySources,
         createDirectoryIfMissingVerbose,
         copyFileVerbose,
@@ -100,7 +99,7 @@ import System.Exit
 import System.FilePath
     ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
 import System.Directory
-    ( copyFile, findExecutable, createDirectoryIfMissing )
+    ( copyFile, createDirectoryIfMissing )
 import System.IO
     ( hPutStrLn, stderr, hFlush, stdout )
 import System.IO.Error
@@ -242,14 +241,6 @@ rawSystemExit verbosity path args = do
   hFlush stdout
   maybeExit $ rawSystem path args
 
--- Exit with the same exitcode if the subcommand fails
-rawSystemPathExit :: Verbosity -> String -> [String] -> IO ()
-rawSystemPathExit verbosity prog args = do
-  r <- findExecutable prog
-  case r of
-    Nothing   -> die ("Cannot find: " ++ prog)
-    Just path -> rawSystemExit verbosity path args
-
 -- Run a command and return its output
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
@@ -294,7 +285,7 @@ rawSystemStdout' verbosity path args = do
 --
 -- Use it with either of the rawSystem variants above. For example:
 -- 
--- > xargs (32*1024) (rawSystemPathExit verbosity) prog fixedArgs bigArgs
+-- > xargs (32*1024) (rawSystemExit verbosity) prog fixedArgs bigArgs
 --
 xargs :: Int -> ([String] -> IO ())
       -> [String] -> [String] -> IO ()

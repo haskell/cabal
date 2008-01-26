@@ -96,7 +96,7 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
          (die, notice, info, warn, chattyTry, currentDir, moduleToFilePath,
           defaultPackageDesc, defaultHookedPackageDesc,
-          rawSystemPathExit, rawSystemExit)
+          rawSystemExit)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
@@ -455,7 +455,7 @@ defaultUserHooks = autoconfUserHooks {
                    no_extra_flags args
                    confExists <- doesFileExist "configure"
                    when confExists $
-                       rawSystemPathExit verbosity "sh" $
+                       rawSystemExit verbosity "sh" $
                        "configure" : configureArgs backwardsCompatHack flags
           backwardsCompatHack = True
 
