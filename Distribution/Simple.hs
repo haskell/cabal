@@ -374,7 +374,9 @@ clean pkg_descr maybeLbi flags = do
 
     -- remove the whole dist/ directory rather than tracking exactly what files
     -- we created in there.
-    chattyTry "removing dist/" $ removeDirectoryRecursive distPref
+    chattyTry "removing dist/" $ do
+      exists <- doesDirectoryExist distPref
+      when exists (removeDirectoryRecursive distPref)
 
     -- these live in the top level dir so must be removed separately
     removeRegScripts
