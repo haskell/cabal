@@ -79,7 +79,6 @@ module Distribution.Simple.Program (
     , ldProgram
     , tarProgram
     , cppProgram
-    , pfesetupProgram
     , pkgConfigProgram
     ) where
 
@@ -466,7 +465,6 @@ builtinPrograms =
     , c2hsProgram
     , cpphsProgram
     , greencardProgram
-    , pfesetupProgram
     -- platform toolchain
     , ranlibProgram
     , arProgram
@@ -627,9 +625,6 @@ tarProgram = simpleProgram "tar"
 
 cppProgram :: Program
 cppProgram = simpleProgram "cpp"
-
-pfesetupProgram :: Program
-pfesetupProgram = simpleProgram "pfesetup"
 
 pkgConfigProgram :: Program
 pkgConfigProgram = (simpleProgram "pkg-config") {

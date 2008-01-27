@@ -39,8 +39,6 @@
 -- [UnregisterCmd] We assume there is an @unregister@ target.
 -- 
 -- [HaddockCmd] We assume there is a @docs@ or @doc@ target.
--- 
--- [ProgramaticaCmd] We assume there is a @programatica@ target.
 
 
 --			copy :
@@ -145,7 +143,6 @@ defaultMainHelper args =
       ,sdistCommand           `commandAddAction` sdistAction
       ,registerCommand        `commandAddAction` registerAction
       ,unregisterCommand      `commandAddAction` unregisterAction
-      ,programaticaCommand    `commandAddAction` programaticaAction
       ]
 
 configureAction :: ConfigFlags -> [String] -> IO ()
@@ -203,11 +200,6 @@ unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
   no_extra_flags args
   rawSystemExit (fromFlag $ regVerbose flags) "make" ["unregister"]
-
-programaticaAction :: PFEFlags -> [String] -> IO ()
-programaticaAction flags args = do
-  no_extra_flags args
-  rawSystemExit (fromFlag $ pfeVerbose flags) "make" ["programatica"]
 
 no_extra_flags :: [String] -> IO ()
 no_extra_flags [] = return ()

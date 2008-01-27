@@ -52,7 +52,6 @@ module Distribution.Simple.Setup (
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
-  PFEFlags(..),      emptyPFEFlags,      defaultPFEFlags,      programaticaCommand,
   MakefileFlags(..), emptyMakefileFlags, defaultMakefileFlags, makefileCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
@@ -1050,42 +1049,6 @@ instance Monoid MakefileFlags where
   mappend a b = MakefileFlags {
     makefileFile    = combine makefileFile,
     makefileVerbose = combine makefileVerbose
-  }
-    where combine field = field a `mappend` field b
-
--- ------------------------------------------------------------
--- * Programatica flags
--- ------------------------------------------------------------
-
-data PFEFlags = PFEFlags {
-    pfeVerbose :: Flag Verbosity
-  }
-  deriving Show
-
-defaultPFEFlags :: PFEFlags
-defaultPFEFlags = PFEFlags {
-    pfeVerbose = Flag normal
-  }
-
-programaticaCommand :: CommandUI PFEFlags
-programaticaCommand = makeCommand name shortDesc longDesc defaultPFEFlags options
-  where
-    name       = "pfe"
-    shortDesc  = "Generate Programatica Project."
-    longDesc   = Nothing
-    options _  =
-      [optionVerbose pfeVerbose (\v flags -> flags { pfeVerbose = v })
-      ]
-
-emptyPFEFlags :: PFEFlags
-emptyPFEFlags = mempty
-
-instance Monoid PFEFlags where
-  mempty = PFEFlags {
-    pfeVerbose = mempty
-  }
-  mappend a b = PFEFlags {
-    pfeVerbose = combine pfeVerbose
   }
     where combine field = field a `mappend` field b
 
