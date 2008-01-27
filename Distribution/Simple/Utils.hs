@@ -56,7 +56,6 @@ module Distribution.Simple.Utils (
 	rawSystemStdout',
         maybeExit,
         xargs,
-        matchesDescFile,
         smartCopySources,
         createDirectoryIfMissingVerbose,
         copyFileVerbose,
@@ -479,49 +478,8 @@ mkSharedLibName pref lib (PackageIdentifier compilerName compilerVersion)
 -- * Finding the description file
 -- ------------------------------------------------------------
 
-oldDescFile :: String
-oldDescFile = "Setup.description"
-
-cabalExt :: String
-cabalExt = "cabal"
-
 buildInfoExt  :: String
 buildInfoExt = "buildinfo"
-
--- > matchesDescFile "blah.Cabal"
--- > not $ matchesDescFile "blag.bleg"
-matchesDescFile :: FilePath -> Bool
-matchesDescFile p = (takeExtension p) == '.':cabalExt
-                    || p == oldDescFile
-
-noDesc :: IO a
-noDesc = die $ "No description file found, please create a cabal-formatted description file with the name <pkgname>." ++ cabalExt
-
-multiDesc :: [String] -> IO a
-multiDesc l = die $ "Multiple description files found.  Please use only one of : "
-                      ++ show (filter (/= oldDescFile) l)
-
--- |A list of possibly correct description files.  Should be pre-filtered.
-descriptionCheck :: Verbosity -> [FilePath] -> IO FilePath
-descriptionCheck _ [] = noDesc
-descriptionCheck verbosity [x]
-    | x == oldDescFile
-        = do warn verbosity $ "The filename \"Setup.description\" is deprecated, please move to <pkgname>." ++ cabalExt
-             return x
-    | matchesDescFile x = return x
-    | otherwise = noDesc
-descriptionCheck verbosity [x,y]
-    | x == oldDescFile
-        = do warn verbosity $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
-                  ++ y ++ "\""
-             return y
-    | y == oldDescFile
-        = do warn verbosity $ "The filename \"Setup.description\" is deprecated.  Please move out of the way. Using \""
-                  ++ x ++ "\""
-             return x
-
-    | otherwise = multiDesc [x,y]
-descriptionCheck _ l = multiDesc l
 
 -- |Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: Verbosity -> IO FilePath
@@ -532,11 +490,23 @@ defaultPackageDesc verbosity
 -- @.cabal@ files.
 findPackageDesc :: Verbosity   -- ^Verbosity
                 -> FilePath    -- ^Where to look
-                -> IO FilePath -- <pkgname>.cabal
-findPackageDesc verbosity p
- = do ls <- getDirectoryContents p
-      let descs = filter matchesDescFile ls
-      descriptionCheck verbosity descs
+                -> IO FilePath -- ^<pkgname>.cabal
+findPackageDesc _verbosity dir
+ = do files <- getDirectoryContents dir
+      case filter ((==".cabal") . takeExtension) files of
+        []          -> noDesc
+        [cabalFile] -> return (dir </> cabalFile)
+        multiple    -> multiDesc multiple
+
+  where
+    noDesc :: IO a
+    noDesc = die $ "No cabal file found.\n"
+                ++ "Please create a package description file <pkgname>.cabal"
+
+    multiDesc :: [String] -> IO a
+    multiDesc l = die $ "Multiple cabal files found.\n"
+                    ++ "Please use only one of: "
+                    ++ show l
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
