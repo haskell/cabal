@@ -1132,7 +1132,7 @@ parsePackageDescription file = do
     checkCondTreeFlags definedFlags ct = do
         let fv = nub $ freeVars ct
         when (not . all (`elem` definedFlags) $ fv) $
-            error $ "Undefined flag(s) encountered: " ++
+            fail $ "These flags are used without having been defined: " ++
                     (concat . intersperse " " $ (fv \\ definedFlags))
 
 
