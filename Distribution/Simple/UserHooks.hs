@@ -59,7 +59,7 @@ import Distribution.Simple.PreProcess (PPSuffixHandler)
 import Distribution.Simple.Setup
          (ConfigFlags, BuildFlags, MakefileFlags, CleanFlags, CopyFlags,
           InstallFlags, SDistFlags, RegisterFlags, HscolourFlags,
-          HaddockFlags, PFEFlags)
+          HaddockFlags)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 import Distribution.Simple.Utils (die)
 
@@ -140,14 +140,14 @@ data UserHooks = UserHooks {
 
     -- |Hook to run before register command
     preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
-    -- |Over-ride this hook to get different behavior during pfe.
+    -- |Over-ride this hook to get different behavior during registration.
     regHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
     -- |Hook to run after register command
     postReg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
     -- |Hook to run before unregister command
     preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
-    -- |Over-ride this hook to get different behavior during pfe.
+    -- |Over-ride this hook to get different behavior during registration.
     unregHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
     -- |Hook to run after unregister command
     postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
@@ -164,15 +164,7 @@ data UserHooks = UserHooks {
     -- |Over-ride this hook to get different behavior during haddock.
     haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
     -- |Hook to run after haddock command.  Second arg indicates verbosity level.
-    postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-    -- |Hook to run before pfe command.  Second arg indicates verbosity level.
-    prePFE  :: Args -> PFEFlags -> IO HookedBuildInfo,
-    -- |Over-ride this hook to get different behavior during pfe.
-    pfeHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> PFEFlags -> IO (),
-    -- |Hook to run after  pfe command.  Second arg indicates verbosity level.
-    postPFE :: Args -> PFEFlags -> PackageDescription -> LocalBuildInfo -> IO ()
-
+    postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO ()
   }
 
 -- |Empty 'UserHooks' which do nothing.
@@ -210,9 +202,6 @@ emptyUserHooks
       preUnreg  = rn,
       unregHook = ru,
       postUnreg = ru,
-      prePFE    = rn,
-      pfeHook   = ru,
-      postPFE   = ru,
       preHscolour  = rn,
       hscolourHook = ru,
       postHscolour = ru,
