@@ -94,7 +94,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPre
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
-         (die, notice, info, warn, chattyTry, currentDir, moduleToFilePath,
+         (die, notice, info, warn, chattyTry, moduleToFilePath,
           defaultPackageDesc, defaultHookedPackageDesc,
           rawSystemExit)
 import Distribution.Verbosity
@@ -106,7 +106,6 @@ import Distribution.License
 import System.Environment(getArgs,getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
-import System.FilePath((</>))
 import System.Exit
 
 import Control.Monad   (when, unless)
@@ -363,8 +362,8 @@ pfe pkg_descr pps flags = do
 -- --------------------------------------------------------------------------
 -- Cleaning
 
-clean :: PackageDescription -> Maybe LocalBuildInfo -> CleanFlags -> IO ()
-clean pkg_descr maybeLbi flags = do
+clean :: PackageDescription -> CleanFlags -> IO ()
+clean pkg_descr flags = do
     notice verbosity "cleaning..."
 
     maybeConfig <- if fromFlag (cleanSaveConf flags)
@@ -417,7 +416,7 @@ simpleUserHooks =
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
        pfeHook   = \p _ h f -> pfe   p (allSuffixHandlers h) f,
-       cleanHook = \p l _ f -> clean p l f,
+       cleanHook = \p _ _ f -> clean p f,
        hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f,
        haddockHook  = \p l h f -> haddock  p l (allSuffixHandlers h) f,
        regHook   = defaultRegHook,
