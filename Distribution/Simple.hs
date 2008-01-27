@@ -72,9 +72,8 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.PackageDescription
 import Distribution.Simple.Program
          ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
-         , userSpecifyArgs, pfesetupProgram, rawSystemProgramConf )
-import Distribution.Simple.PreProcess (knownSuffixHandlers,
-                                preprocessSources, PPSuffixHandler)
+         , userSpecifyArgs )
+import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
@@ -94,7 +93,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPre
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
-         (die, notice, info, warn, chattyTry, moduleToFilePath,
+         (die, notice, info, warn, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
           rawSystemExit)
 import Distribution.Verbosity
@@ -108,7 +107,7 @@ import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
 
-import Control.Monad   (when, unless)
+import Control.Monad   (when)
 import Data.List       (intersperse, unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -176,7 +175,6 @@ defaultMainHelper hooks args =
       ,registerCommand        `commandAddAction` registerAction     hooks
       ,unregisterCommand      `commandAddAction` unregisterAction   hooks
       ,testCommand            `commandAddAction` testAction         hooks
-      ,programaticaCommand    `commandAddAction` programaticaAction hooks
       ,makefileCommand        `commandAddAction` makefileAction     hooks
       ]
 
@@ -254,10 +252,6 @@ haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction = hookedAction preHaddock haddockHook postHaddock
                              getBuildConfigIfUpToDate
 
-programaticaAction :: UserHooks -> PFEFlags -> Args -> IO ()
-programaticaAction = hookedAction prePFE pfeHook postPFE
-                                  getBuildConfigIfUpToDate
-
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
                 pbi <- preClean hooks args flags
@@ -326,13 +320,6 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
 
-
---TODO: where to put this? it's duplicated in .Haddock too
-getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
-getModulePaths lbi bi =
-   fmap concat .
-      mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
-
 getBuildConfigIfUpToDate :: IO LocalBuildInfo
 getBuildConfigIfUpToDate = do
    lbi <- getPersistBuildConfig
@@ -340,24 +327,6 @@ getBuildConfigIfUpToDate = do
      Nothing -> return ()
      Just pkg_descr_file -> checkPersistBuildConfig pkg_descr_file
    return lbi
-
--- --------------------------------------------------------------------------
--- Programmatica support
-
-pfe :: PackageDescription -> [PPSuffixHandler] -> PFEFlags -> IO ()
-pfe pkg_descr pps flags = do
-    unless (hasLibs pkg_descr) $
-        die "no libraries found in this project"
-    withLib pkg_descr () $ \lib -> do
-        lbi <- getPersistBuildConfig
-        let bi = libBuildInfo lib
-        let mods = exposedModules lib ++ otherModules (libBuildInfo lib)
-        preprocessSources pkg_descr lbi False verbosity pps
-        inFiles <- getModulePaths lbi bi mods
-        let verbFlags = if verbosity >= deafening then ["-v"] else []
-        rawSystemProgramConf verbosity pfesetupProgram (withPrograms lbi)
-                             ("noplogic" : "cpp" : verbFlags ++ inFiles)
-  where verbosity = fromFlag (pfeVerbose flags)
 
 -- --------------------------------------------------------------------------
 -- Cleaning
@@ -415,7 +384,6 @@ simpleUserHooks =
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
-       pfeHook   = \p _ h f -> pfe   p (allSuffixHandlers h) f,
        cleanHook = \p _ _ f -> clean p f,
        hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f,
        haddockHook  = \p l h f -> haddock  p l (allSuffixHandlers h) f,
