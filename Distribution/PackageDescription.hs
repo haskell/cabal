@@ -1276,7 +1276,7 @@ test_findIndentTabs = findIndentTabs $ unlines $
 
 sanityCheckPackage :: PackageDescription -> IO ([String] -- Warnings
                                                ,[String])-- Errors
-sanityCheckPackage pkg_descr = 
+sanityCheckPackage pkg_descr = do
     let libSane   = sanityCheckLib (library pkg_descr)
         nothingToDo = checkSanity
                         (null (executables pkg_descr) 
@@ -1290,9 +1290,14 @@ sanityCheckPackage pkg_descr =
                               ++ (showVersionRange v) ++ ".")
         noBuildType = checkSanity (isNothing $ buildType pkg_descr)
 	                "No build-type specified. If possible use build-type: Simple"
-    in return $ ( catMaybes [nothingToDo, noModules, noBuildType],
-                  catMaybes (libSane:goodCabal: checkMissingFields pkg_descr
-			     ++ map sanityCheckExe (executables pkg_descr)) )
+        lf = licenseFile pkg_descr
+        
+    noLicense <- checkSanityIO (licenseDoesNotExist lf)
+                   ("License file " ++ lf ++ " does not exist.")
+
+    return $ ( catMaybes [nothingToDo, noModules, noBuildType, noLicense],
+               catMaybes (libSane:goodCabal: checkMissingFields pkg_descr
+                 ++ map sanityCheckExe (executables pkg_descr)) )
 
 toMaybe :: Bool -> a -> Maybe a
 toMaybe b x = if b then Just x else Nothing
@@ -1328,10 +1333,19 @@ sanityCheckExe exe
 checkSanity :: Bool -> String -> Maybe String
 checkSanity = toMaybe
 
+checkSanityIO :: IO Bool -> String -> IO (Maybe String)
+checkSanityIO test str = do b <- test
+                            return $ toMaybe b str
+
 hasMods :: PackageDescription -> Bool
 hasMods pkg_descr =
    null (executables pkg_descr) &&
       maybe True (null . exposedModules) (library pkg_descr)
+
+licenseDoesNotExist :: FilePath -> IO Bool
+licenseDoesNotExist lf = do
+    b <- doesFileExist lf
+    return $ not (null lf || b)
 
 bug :: String -> a
 bug msg = error $ msg ++ ". Consider this a bug."
