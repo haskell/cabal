@@ -259,7 +259,11 @@ rawSystemStdout' verbosity path args = do
 
       -- fork off a thread to pull on (and discard) the stderr
       -- so if the process writes to stderr we do not block.
-      forkIO $ hGetContents errh >>= evaluate . length >> return ()
+      -- NB. do the hGetContents synchronously, otherwise the outer
+      -- bracket can exit before this thread has run, and hGetContents
+      -- will fail.
+      err <- hGetContents errh 
+      forkIO $ do evaluate (length err); return ()
 
       -- wait for all the output
       output <- hGetContents outh
