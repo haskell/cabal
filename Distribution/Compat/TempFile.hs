@@ -8,7 +8,7 @@ module Distribution.Compat.TempFile (openTempFile) where
 #if __NHC__ || __HUGS__
 import System.IO              (openFile, Handle, IOMode(ReadWriteMode))
 import System.Directory       (doesFileExist)
-import System.FilePath        ((</>))
+import System.FilePath        ((</>), (<.>), splitExtension)
 import System.Posix.Internals (c_getpid)
 #else
 import System.IO (openTempFile)
