@@ -338,6 +338,16 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
          configScratchDir (\v flags -> flags { configScratchDir = v })
          (reqArgFlag "DIR")
 
+      ,option "" ["program-prefix"]
+          "prefix to be applied to installed executables"
+          progprefix (\v flags -> flags { progprefix = v } )
+          (installDirArgTitle "PREFIX")
+
+      ,option "" ["program-suffix"]
+          "suffix to be applied to installed executables"
+          progsuffix (\v flags -> flags { progsuffix = v } )
+          (installDirArgTitle "SUFFIX")
+
       ,option "" ["enable-library-vanilla"]
          "Enable vanilla libraries"
          configVanillaLib (\v flags -> flags { configVanillaLib = v })
@@ -454,10 +464,12 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
     showFlagList :: [(String, Bool)] -> [String]
     showFlagList fs = [ if not set then '-':fname else fname | (fname, set) <- fs]
 
-    installDirArg get set = reqArgFlag "DIR"
+    installDirArgTitle title get set = reqArgFlag title
       (fmap fromPathTemplate.get.configInstallDirs)
       (\v flags -> flags { configInstallDirs =
                              set (fmap toPathTemplate v) (configInstallDirs flags)})
+      
+    installDirArg = installDirArgTitle "DIR"
 
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty

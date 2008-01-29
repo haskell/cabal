@@ -343,9 +343,10 @@ install
     -> FilePath  -- ^Executable install location
     -> FilePath  -- ^Program location on target system
     -> FilePath  -- ^Build location
+    -> (FilePath,FilePath)  -- ^Executable (prefix,suffix)
     -> PackageDescription
     -> IO ()
-install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr = do
+install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
     try $ removeDirectoryRecursive libDir
     smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes True False
     let buildProgDir = buildPref </> "programs"
@@ -362,9 +363,10 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref pkg_descr
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (options (buildInfo exe))
+        let baseExeFile = progprefix ++ (exeName exe) ++ progsuffix
         let exeFile = case os of
-                          Windows _ -> binDir </> exeName exe <.> ".bat"
-                          _         -> binDir </> exeName exe
+                          Windows _ -> binDir </> baseExeFile <.> ".bat"
+                          _         -> binDir </> baseExeFile
         let script = case os of
                          Windows _ ->
                              let args = hugsOptions ++ [targetName, "%*"]

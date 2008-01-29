@@ -87,7 +87,9 @@ install pkg_descr lbi flags = do
          docdir     = docPref,
          htmldir    = htmlPref,
          haddockdir = interfacePref,
-         includedir = incPref
+         includedir = incPref,
+         progprefix = progprefixPref,
+         progsuffix = progsuffixPref
       } = absoluteInstallDirs pkg_descr lbi copydest
   docExists <- doesDirectoryExist $ haddockPref pkg_descr
   info verbosity ("directory " ++ haddockPref pkg_descr ++
@@ -128,15 +130,15 @@ install pkg_descr lbi flags = do
      GHC  -> do withLib pkg_descr () $ \_ ->
                   GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
-		  GHC.installExe verbosity binPref buildPref pkg_descr
+		  GHC.installExe verbosity binPref buildPref (progprefixPref, progsuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
-                withExe pkg_descr $ JHC.installExe verbosity binPref buildPref pkg_descr
+                withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progprefixPref, progsuffixPref) pkg_descr
      Hugs -> do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
-       Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref pkg_descr
+       Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progprefixPref, progsuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr () $ NHC.installLib verbosity libPref buildPref (package pkg_descr)
-                withExe pkg_descr $ NHC.installExe verbosity binPref buildPref
+                withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progprefixPref, progsuffixPref)
      _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
   -- register step should be performed by caller.
