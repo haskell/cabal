@@ -164,9 +164,11 @@ installLib verb dest build_dir pkg_descr _ = do
     createDirectoryIfMissingVerbose verb True dest
     copyFileVerbose verb (build_dir </> p) (dest </> p)
 
-installExe :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Executable -> IO ()
-installExe verb dest build_dir _ exe = do
-    let out   = exeName exe </> exeExtension
+installExe :: Verbosity -> FilePath -> FilePath -> (FilePath,FilePath) -> PackageDescription -> Executable -> IO ()
+installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
+    let exe_name = exeName exe
+        src = exe_name </> exeExtension
+        out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension
     createDirectoryIfMissingVerbose verb True dest
-    copyFileVerbose verb (build_dir </> out) (dest </> out)
+    copyFileVerbose verb (build_dir </> src) (dest </> out)
 
