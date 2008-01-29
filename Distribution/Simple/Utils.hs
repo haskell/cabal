@@ -60,6 +60,7 @@ module Distribution.Simple.Utils (
         createDirectoryIfMissingVerbose,
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
+        copyFiles,
         moduleToFilePath,
         moduleToFilePath2,
         mkLibName,
@@ -68,6 +69,8 @@ module Distribution.Simple.Utils (
         currentDir,
         dotToSep,
 	findFile,
+        findFileWithExtension,
+        findFileWithExtension',
         withTempFile,
         defaultPackageDesc,
         findPackageDesc,
@@ -355,13 +358,39 @@ moduleToPossiblePaths searchPref s possibleSuffixes =
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
-findFile prefPathsIn locPath = do
-  let prefPaths = nub prefPathsIn -- ignore dups
-  paths <- filterM doesFileExist [prefPath </> locPath | prefPath <- prefPaths]
-  case nub paths of -- also ignore dups, though above nub should fix this.
-    [path] -> return path
-    []     -> die (locPath ++ " doesn't exist")
-    paths' -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths'))
+findFile searchPath fileName =
+  findFirstFile id
+    [ path </> fileName
+    | path <- nub searchPath]
+  >>= maybe (die $ fileName ++ " doesn't exist") return
+
+findFileWithExtension :: [String]
+                      -> [FilePath]
+                      -> FilePath
+                      -> IO (Maybe FilePath)
+findFileWithExtension extensions searchPath baseName =
+  findFirstFile id
+    [ path </> baseName <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+findFileWithExtension' :: [String]
+                       -> [FilePath]
+                       -> FilePath
+                       -> IO (Maybe (FilePath, FilePath))
+findFileWithExtension' extensions searchPath baseName =
+  findFirstFile (uncurry (</>))
+    [ (path, baseName <.> ext)
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
+findFirstFile file = findFirst
+  where findFirst []     = return Nothing
+        findFirst (x:xs) = do exists <- doesFileExist (file x)
+                              if exists
+                                then return (Just x)
+                                else findFirst xs
 
 dotToSep :: String -> String
 dotToSep = map dts
@@ -413,6 +442,40 @@ copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileVerbose verbosity src dest = do
   info verbosity ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
+
+-- | Copies a bunch of files to a target directory, preserving the directory
+-- structure in the target location. The target directories are created if they
+-- do not exist.
+--
+-- The files are identified by a pair of base directory and a path relative to
+-- that base. It is only the relative part that is preserved in the
+-- destination.
+--
+-- For example:
+--
+-- > copyFiles normal "dist/src"
+-- >    [("", "src/Foo.hs"), ("dist/build/", "src/Bar.hs")]
+--
+-- This would copy \"src\/Foo.hs\" to \"dist\/src\/src\/Foo.hs\" and
+-- copy \"dist\/build\/src\/Bar.hs\" to \"dist\/src\/src\/Bar.hs\".
+--
+-- This operation is not atomic. Any IO failure during the copy (including any
+-- missing source files) leaves the target in an unknown state so it is best to
+-- use it with a freshly created directory so that it can be simply deleted if
+-- anything goes wrong.
+--
+copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
+copyFiles verbosity targetDir srcFiles = do
+
+  -- Create parent directories for everything
+  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
+  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+
+  -- Copy all the files
+  sequence_ [ let src  = srcBase   </> srcFile
+                  dest = targetDir </> srcFile
+               in copyFileVerbose verbosity src dest
+            | (srcBase, srcFile) <- srcFiles ]
 
 -- adaptation of removeDirectoryRecursive
 copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
