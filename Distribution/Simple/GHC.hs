@@ -666,13 +666,15 @@ makefile pkg_descr lbi flags = do
 installExe :: Verbosity -- ^verbosity
            -> FilePath  -- ^install location
            -> FilePath  -- ^Build location
+           -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
            -> IO ()
-installExe verbosity pref buildPref pkg_descr
+installExe verbosity pref buildPref (progprefix, progsuffix) pkg_descr
     = do createDirectoryIfMissingVerbose verbosity True pref
          withExe pkg_descr $ \ (Executable e _ _) -> do
              let exeFileName = e <.> exeExtension
-             copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> exeFileName)
+                 fixedExeFileName = (progprefix ++ e ++ progsuffix) <.> exeExtension
+             copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> fixedExeFileName)
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity -- ^verbosity
