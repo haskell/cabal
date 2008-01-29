@@ -109,7 +109,9 @@ data InstallDirs dir = InstallDirs {
         docdir       :: dir,
 	mandir       :: dir,
         htmldir      :: dir,
-        haddockdir   :: dir
+        haddockdir   :: dir,
+        progprefix   :: dir,
+        progsuffix   :: dir
     } deriving (Read, Show)
 
 instance Functor InstallDirs where
@@ -127,7 +129,9 @@ instance Functor InstallDirs where
     docdir       = f (docdir dirs),
     mandir       = f (mandir dirs),
     htmldir      = f (htmldir dirs),
-    haddockdir   = f (haddockdir dirs)
+    haddockdir   = f (haddockdir dirs),
+    progprefix   = f (progprefix dirs),
+    progsuffix   = f (progsuffix dirs)
   }
 
 instance Monoid dir => Monoid (InstallDirs dir) where
@@ -145,7 +149,9 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       docdir       = mempty,
       mandir       = mempty,
       htmldir      = mempty,
-      haddockdir   = mempty
+      haddockdir   = mempty,
+      progprefix   = mempty,
+      progsuffix   = mempty
   }
   mappend = combineInstallDirs mappend
 
@@ -167,7 +173,9 @@ combineInstallDirs combine a b = InstallDirs {
     docdir       = docdir a     `combine` docdir b,
     mandir       = mandir a     `combine` mandir b,
     htmldir      = htmldir a    `combine` htmldir b,
-    haddockdir   = haddockdir a `combine` haddockdir b
+    haddockdir   = haddockdir a `combine` haddockdir b,
+    progprefix   = progprefix a `combine` progprefix b,
+    progsuffix   = progsuffix a `combine` progsuffix b
   }
 
 appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
@@ -239,7 +247,9 @@ defaultInstallDirs comp userInstall hasLibs = do
 	_other    -> "$datadir" </> "doc" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
-      haddockdir   = "$htmldir"
+      haddockdir   = "$htmldir",
+      progprefix   = "",
+      progsuffix   = ""
   }
 
 -- ---------------------------------------------------------------------------
@@ -277,7 +287,9 @@ substituteTemplates pkgId compilerId dirs = dirs'
       mandir     = subst docdir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
-                                      [docdirVar, htmldirVar])
+                                      [docdirVar, htmldirVar]),
+      progprefix = subst progprefix [],
+      progsuffix = subst progsuffix []
     }
     -- The initial environment has all the static stuff but no paths
     env = initialPathTemplateEnv pkgId compilerId

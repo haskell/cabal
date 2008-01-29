@@ -226,13 +226,16 @@ getModulePaths lbi bi =
 installExe :: Verbosity -- ^verbosity
            -> FilePath  -- ^install location
            -> FilePath  -- ^Build location
+           -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> Executable
            -> IO ()
-installExe verbosity pref buildPref exe
+installExe verbosity pref buildPref (progprefix,progsuffix) exe
     = do createDirectoryIfMissingVerbose verbosity True pref
-         let exeFileName = exeName exe <.> exeExtension
-         copyFileVerbose verbosity (buildPref </> exeName exe </> exeFileName)
-                                   (pref </> exeFileName)
+         let exeBaseName = exeName exe
+             exeFileName = exeBaseName <.> exeExtension
+             fixedExeFileName = (progprefix ++ exeBaseName ++ progsuffix) <.> exeExtension
+         copyFileVerbose verbosity (buildPref </> exeBaseName </> exeFileName)
+                                   (pref </> fixedExeFileName)
 
 -- |Install for nhc98: .hi and .a files
 installLib    :: Verbosity -- ^verbosity
