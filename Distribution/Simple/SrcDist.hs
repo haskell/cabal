@@ -238,7 +238,7 @@ prepareDir :: Verbosity -- ^verbosity
            -> IO ()
 prepareDir verbosity inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
     = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbosity srcDirs inPref (mods++mods') suff True True
+         smartCopySources verbosity srcDirs inPref (mods++mods') suff True
          mapM_ (copyFileTo verbosity inPref) cfiles
 
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
