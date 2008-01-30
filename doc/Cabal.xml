@@ -1907,9 +1907,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      to be.</para>
               <para>In the simple build system, <replaceable>dir</replaceable>
                 may contain the following path variables:
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -1921,10 +1921,10 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      <para>Executables that the user might invoke are installed here.</para>
               <para>In the simple build system, <replaceable>dir</replaceable>
                 may contain the following path variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -1936,11 +1936,11 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      <para>Object-code libraries are installed here.</para>
               <para>In the simple build system, <replaceable>dir</replaceable>
                 may contain the following path variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$bindir</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$bindir</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -1953,13 +1953,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      directly by the user are installed here.</para>
               <para>In the simple build system, <replaceable>dir</replaceable>
                 may contain the following path variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$bindir</replaceable>
-                <replaceable>$libdir</replaceable>
-                <replaceable>$libsubdir</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$bindir</replaceable>,
+                <replaceable>$libdir</replaceable>,
+                <replaceable>$libsubdir</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -1972,13 +1972,13 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      here.</para>
               <para>In the simple build system, <replaceable>dir</replaceable>
                 may contain the following path variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$bindir</replaceable>
-                <replaceable>$libdir</replaceable>
-                <replaceable>$libsubdir</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$bindir</replaceable>,
+                <replaceable>$libdir</replaceable>,
+                <replaceable>$libsubdir</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -2005,9 +2005,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
               </para>
               <para><replaceable>dir</replaceable> may contain the following path
                 variables:
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -2021,9 +2021,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
               </para>
               <para><replaceable>dir</replaceable> may contain the following path
                 variables:
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -2036,15 +2036,15 @@ runhaskell Setup.hs unregister --gen-script</screen>
               </para>
               <para><replaceable>dir</replaceable> may contain the following path
                 variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$bindir</replaceable>
-                <replaceable>$libdir</replaceable>
-                <replaceable>$libsubdir</replaceable>
-                <replaceable>$datadir</replaceable>
-                <replaceable>$datasubdir</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$bindir</replaceable>,
+                <replaceable>$libdir</replaceable>,
+                <replaceable>$libsubdir</replaceable>,
+                <replaceable>$datadir</replaceable>,
+                <replaceable>$datasubdir</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -2057,16 +2057,49 @@ runhaskell Setup.hs unregister --gen-script</screen>
               </para>
               <para><replaceable>dir</replaceable> may contain the following path
                 variables:
-                <replaceable>$prefix</replaceable>
-                <replaceable>$bindir</replaceable>
-                <replaceable>$libdir</replaceable>
-                <replaceable>$libsubdir</replaceable>
-                <replaceable>$datadir</replaceable>
-                <replaceable>$datasubdir</replaceable>
-                <replaceable>$docdir</replaceable>
-                <replaceable>$pkgid</replaceable>
-                <replaceable>$pkg</replaceable>
-                <replaceable>$version</replaceable>
+                <replaceable>$prefix</replaceable>,
+                <replaceable>$bindir</replaceable>,
+                <replaceable>$libdir</replaceable>,
+                <replaceable>$libsubdir</replaceable>,
+                <replaceable>$datadir</replaceable>,
+                <replaceable>$datasubdir</replaceable>,
+                <replaceable>$docdir</replaceable>,
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--program-prefix</option>=<replaceable>prefix</replaceable></term>
+	    <listitem>
+	      <para>Prepend <replaceable>prefix</replaceable> to installed program names.
+              </para>
+              <para><replaceable>prefix</replaceable> may contain the following path
+                variables:
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
+                <replaceable>$compiler</replaceable>
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--program-suffix</option>=<replaceable>suffix</replaceable></term>
+	    <listitem>
+	      <para>Append <replaceable>suffix</replaceable> to installed program names. The
+	      most obvious use for this is to append the program's version number to make it
+	      possible to install several versions of a program at once:
+	      <literal>--program-suffix='$version'</literal>.
+              </para>
+              <para><replaceable>suffix</replaceable> may contain the following path
+                variables:
+                <replaceable>$pkgid</replaceable>,
+                <replaceable>$pkg</replaceable>,
+                <replaceable>$version</replaceable>,
                 <replaceable>$compiler</replaceable>
               </para>
 	    </listitem>
@@ -2205,7 +2238,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		</row>
 		<row>
 		  <entry><literal>--prefix</literal> (per-user installs with
-		         the<literal>--user</literal> flag)</entry>
+		         the <literal>--user</literal> flag)</entry>
 		  <entry><filename>C:\Documents And Settings\<replaceable>user</replaceable>\Application Data\cabal</filename></entry>
 		  <entry><filename><replaceable>$HOME</replaceable>/.cabal</filename></entry>
 		</row>
@@ -2268,6 +2301,18 @@ runhaskell Setup.hs unregister --gen-script</screen>
 		  <entry><literal>--htmldir</literal></entry>
 		  <entry><literal>$docdir\html</literal></entry>
 		  <entry><literal>$docdir/html</literal></entry>
+		</row>
+
+		<row>
+		  <entry><literal>--program-prefix</literal></entry>
+		  <entry>(empty)</entry>
+		  <entry>(empty)</entry>
+		</row>
+
+		<row>
+		  <entry><literal>--program-suffix</literal></entry>
+		  <entry>(empty)</entry>
+		  <entry>(empty)</entry>
 		</row>
 	      </tbody>
 	    </tgroup>
