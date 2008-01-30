@@ -247,7 +247,7 @@ installLib    :: Verbosity -- ^verbosity
 installLib verbosity pref buildPref pkgid lib
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
-         smartCopySources verbosity [buildPref] pref modules ["hi"] True False
+         smartCopySources verbosity [buildPref] pref modules ["hi"] False
          let name = pkgName pkgid
              libTargetLoc = mkLibName pref name
          copyFileVerbose verbosity (mkLibName buildPref name) libTargetLoc
