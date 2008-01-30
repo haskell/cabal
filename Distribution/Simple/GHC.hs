@@ -313,9 +313,7 @@ build pkg_descr lbi verbosity = do
 	  -- TH always needs vanilla libs, even when building for profiling
 
       createDirectoryIfMissingVerbose verbosity True libTargetDir
-      -- put hi-boot files into place for mutually recurive modules
-      smartCopySources verbosity (hsSourceDirs libBi)
-                       libTargetDir (libModules pkg_descr) ["hi-boot"] False False
+      -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
       let ghc_vers = compilerVersion (compiler lbi)
           packageId | versionBranch ghc_vers >= [6,4]
                                 = showPackageId (package pkg_descr)
@@ -464,10 +462,8 @@ build pkg_descr lbi verbosity = do
                  let exeDir    = targetDir </> (exeName' ++ "-tmp")
                  createDirectoryIfMissingVerbose verbosity True targetDir
                  createDirectoryIfMissingVerbose verbosity True exeDir
-                 -- put hi-boot files into place for mutually recursive modules
+                 -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
                  -- FIX: what about exeName.hi-boot?
-                 smartCopySources verbosity (hsSourceDirs exeBi)
-                                  exeDir (otherModules exeBi) ["hi-boot"] False False
 
                  -- build executables
                  unless (null (cSources exeBi)) $ do
