@@ -412,25 +412,21 @@ smartCopySources :: Verbosity -- ^verbosity
             -> Bool     -- ^Preserve directory structure
             -> IO ()
 smartCopySources verbosity srcDirs targetDir sources searchSuffixes exitIfNone preserveDirs
-    = do createDirectoryIfMissingVerbose verbosity True targetDir
-         allLocations <- mapM moduleToFPErr sources
-         let copies = [(srcDir </> name,
+    = do allLocations <- mapM moduleToFPErr sources
+         let copies = [(srcDir,
                         if preserveDirs 
-                          then targetDir </> srcDir </> name
-                          else targetDir </> name) |
-                       (srcDir, name) <- concat allLocations]
-	 -- Create parent directories for everything:
-	 mapM_ (createDirectoryIfMissingVerbose verbosity True) $ nub $
-             [takeDirectory targetFile | (_, targetFile) <- copies]
-	 -- Put sources into place:
-	 sequence_ [copyFileVerbose verbosity srcFile destFile |
-                    (srcFile, destFile) <- copies]
+                          then srcDir </> name
+                          else name)
+                      | Just (srcDir, name) <- allLocations]
+	 copyFiles verbosity targetDir copies
+
     where moduleToFPErr m
-              = do p <- moduleToFilePath2 srcDirs m searchSuffixes
-                   when (null p && exitIfNone)
-                            (die ("Error: Could not find module: " ++ m
-                                       ++ " with any suffix: " ++ (show searchSuffixes)))
-                   return p
+              = do p <- findFileWithExtension' searchSuffixes srcDirs (dotToSep m)
+                   case p of
+                     Nothing | exitIfNone ->
+                       die $ "Error: Could not find module: " ++ m
+                          ++ " with any suffix: " ++ show searchSuffixes
+                     _ -> return p
 
 createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
 createDirectoryIfMissingVerbose verbosity parentsToo dir = do
