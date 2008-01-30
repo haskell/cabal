@@ -79,9 +79,6 @@ module Distribution.Simple.Utils (
         exeExtension,
         objExtension,
         dllExtension,
-#ifdef DEBUG
-        hunitTests
-#endif
   ) where
 
 import Control.Monad
@@ -129,10 +126,6 @@ import System.IO (Handle, hClose)
 
 import Distribution.Compat.TempFile (openTempFile)
 import Distribution.Verbosity
-
-#ifdef DEBUG
-import Test.HUnit ((~:), (~=?), Test(..), assertEqual)
-#endif
 
 -- ------------------------------------------------------------------------------- Utils for setup
 
@@ -609,41 +602,3 @@ dllExtension = case os of
                    Windows _ -> "dll"
                    OSX       -> "dylib"
                    _         -> "so"
-
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
-#ifdef DEBUG
-hunitTests :: [Test]
-hunitTests
-    = let suffixes = ["hs", "lhs"]
-          in [TestCase $
-       do mp1 <- moduleToFilePath [""] "Distribution.Simple.Build" suffixes --exists
-          mp2 <- moduleToFilePath [""] "Foo.Bar" suffixes    -- doesn't exist
-          assertEqual "existing not found failed"
-                   ["Distribution" </> "Simple" </> "Build.hs"] mp1
-          assertEqual "not existing not nothing failed" [] mp2,
-
-        "moduleToPossiblePaths 1" ~: "failed" ~:
-             ["Foo" </> "Bar" </> "Bang.hs","Foo" </> "Bar" </> "Bang.lhs"]
-                ~=? (moduleToPossiblePaths "" "Foo.Bar.Bang" suffixes),
-        "moduleToPossiblePaths2 " ~: "failed" ~:
-              (moduleToPossiblePaths "" "Foo" suffixes) ~=? ["Foo.hs", "Foo.lhs"],
-        TestCase (do files <- filesWithExtensions "." "cabal"
-                     assertEqual "filesWithExtensions" "Cabal.cabal" (head files))
-          ]
-
--- |Might want to make this more generic some day, with regexps
--- or something.
-filesWithExtensions :: FilePath -- ^Directory to look in
-                    -> String   -- ^The extension
-                    -> IO [FilePath] {- ^The file names (not full
-                                     path) of all the files with this
-                                     extension in this directory. -}
-filesWithExtensions dir extension 
-    = do allFiles <- getDirectoryContents dir
-         return $ filter hasExt allFiles
-    where
-      hasExt f = takeExtension f == '.':extension
-#endif
