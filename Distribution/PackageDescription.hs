@@ -1289,7 +1289,7 @@ sanityCheckPackage pkg_descr = do
                            ("This package requires Cabal version: " 
                               ++ (showVersionRange v) ++ ".")
         noBuildType = checkSanity (isNothing $ buildType pkg_descr)
-	                "No build-type specified. If possible use build-type: Simple"
+	                "No 'build-type' specified. If possible use 'build-type: Simple'"
         lf = licenseFile pkg_descr
         
     noLicense <- checkSanityIO (licenseDoesNotExist lf)
