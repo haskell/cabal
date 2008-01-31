@@ -116,12 +116,12 @@ ghcSpecific pkg_descr = do
         ++ "arches except for x86, x86-64 and ppc."
 
     ghcFail "-O" $
-        "Cabal automatically adds the -O flag and setting it yourself "
-        ++ "will disable the use of the --disable-optimization flag."
+        "Cabal automatically adds the '-O' flag. Setting it yourself "
+        ++ "interferes with the --disable-optimization flag."
 
     ghcWarn "-O2" $
-        "-O2 is rarely needed as it often prolong the compile time "
-        ++ "with usually with little benefit."
+        "-O2 is rarely needed. Check that it is giving a real benefit and not"
+        ++ "just imposing longer compile times on your users."
 
     -- most important at this stage to get the framework right
     when (any (`elem` all_ghc_options) ["-ffi", "-fffi"]) $
