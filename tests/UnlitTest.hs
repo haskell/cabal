@@ -38,8 +38,8 @@ cases =
   ( "abc\n", "-- abc\n" ) :
   ( "a\nb\n", "-- a\n-- b\n") :
   ( "a\n\n", "-- a\n\n") :  -- comment -> blank
-  ( "a\n\nb\n", "-- a\n\n-- b\n" ) : -- comment -> blank
-  ( "a\n \n\n", "-- a\n--  \n\n" ) :  -- comment -> comment
+  ( "a\n\nb\n", "-- a\n--\n-- b\n" ) : -- comment -> blank
+  ( "a\n \n\n", "-- a\n \n\n" ) :  -- comment -> comment
   ( "a\n \n> x=x\n", "-- a\n \n  x=x\n" ) :  -- comment -> blank (> )
   ( "a\n \n>x=x\n", "-- a\n \n x=x\n" ) :  -- comment -> blank (>)
   ( "a\n \nb\n", "-- a\n--  \n-- b\n" ) :  -- comment -> comment
