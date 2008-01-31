@@ -544,7 +544,7 @@ findPackageDesc _verbosity dir
  = do files <- getDirectoryContents dir
       case filter ((==".cabal") . takeExtension) files of
         []          -> noDesc
-        [cabalFile] -> return (dir </> cabalFile)
+        [cabalFile] -> return cabalFile
         multiple    -> multiDesc multiple
 
   where
