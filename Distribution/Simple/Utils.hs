@@ -401,16 +401,9 @@ smartCopySources :: Verbosity -- ^verbosity
             -> FilePath -- ^Target directory
             -> [String] -- ^Modules
             -> [String] -- ^search suffixes
-            -> Bool     -- ^Preserve directory structure
             -> IO ()
-smartCopySources verbosity srcDirs targetDir sources searchSuffixes preserveDirs
-    = do allLocations <- mapM moduleToFPErr sources
-         let copies = [(srcDir,
-                        if preserveDirs 
-                          then srcDir </> name
-                          else name)
-                      | (srcDir, name) <- allLocations]
-	 copyFiles verbosity targetDir copies
+smartCopySources verbosity srcDirs targetDir sources searchSuffixes
+    = mapM moduleToFPErr sources >>= copyFiles verbosity targetDir
 
     where moduleToFPErr m
               = findFileWithExtension' searchSuffixes srcDirs (dotToSep m)
