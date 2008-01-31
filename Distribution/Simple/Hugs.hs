@@ -352,7 +352,7 @@ install
     -> IO ()
 install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
     try $ removeDirectoryRecursive libDir
-    smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes False
+    smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes
     let buildProgDir = buildPref </> "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissingVerbose verbosity True binDir
@@ -362,7 +362,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         let targetDir = targetProgDir </> exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbosity [theBuildDir] installDir
-            ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes False
+            ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes
         let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
