@@ -28,7 +28,7 @@ all: build
 
 setup::
 	mkdir -p dist/tmp
-	$(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.lhs -o setup
+	$(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.hs -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
