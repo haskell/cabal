@@ -85,17 +85,17 @@ qaCheckPackage pkg_descr = fmap fst . runQA $ do
 cabalFormat :: PackageDescription -> QA ()
 cabalFormat pkg_descr = do
     when (isNothing (buildType pkg_descr)) $
-        critical "No build-type specified."
+        critical "No 'build-type' specified."
     when (null (category pkg_descr)) $
-        warn "No category field."
+        warn "No 'category' field."
     when (null (description pkg_descr)) $
-        warn "No description field."
+        warn "No 'description' field."
     when (null (maintainer pkg_descr)) $
-        warn "No maintainer field."
+        warn "No 'maintainer' field."
     when (null (synopsis pkg_descr)) $
-        warn "No synopsis field."
+        warn "No 'synopsis' field."
     when (length (synopsis pkg_descr) >= 80) $
-        warn "Over-long synopsis field"
+        warn "The 'synopsis' field is rather long (max 80 chars is recommended)"
 
 
 ghcSpecific :: PackageDescription -> QA ()
@@ -105,18 +105,18 @@ ghcSpecific pkg_descr = do
                            && ("-Wall"   `elem` opts || "-W" `elem` opts)
         has_Werror     = any (\opts -> "-Werror" `elem` opts) ghc_options
     when has_WerrorWall $
-        critical $ "ghc-options: -Wall -Werror makes the package "
+        critical $ "'ghc-options: -Wall -Werror' makes the package "
                  ++ "very easy to break with future GHC versions."
     when (not has_WerrorWall && has_Werror) $
-        warn $ "ghc-options: -Werror makes the package easy to "
+        warn $ "'ghc-options: -Werror' makes the package easy to "
             ++ "break with future GHC versions."
 
     ghcFail "-fasm" $
-        "flag -fasm is unnecessary and breaks on all "
+        "The -fasm flag is unnecessary and breaks on all "
         ++ "arches except for x86, x86-64 and ppc."
 
     ghcFail "-O" $
-        "Cabal automatically add the -O flag and setting it yourself "
+        "Cabal automatically adds the -O flag and setting it yourself "
         ++ "will disable the use of the --disable-optimization flag."
 
     ghcWarn "-O2" $
@@ -125,8 +125,8 @@ ghcSpecific pkg_descr = do
 
     -- most important at this stage to get the framework right
     when (any (`elem` all_ghc_options) ["-ffi", "-fffi"]) $
-    	critical $ "Instead of using -ffi or -fffi, use extensions: "
-    		 ++"ForeignFunctionInterface"
+    	critical $ "Instead of using -ffi or -fffi, use 'extensions: "
+    		 ++"ForeignFunctionInterface'"
 
     where
     ghc_options = [ strs | bi <- allBuildInfo pkg_descr
@@ -148,15 +148,15 @@ ghcSpecific pkg_descr = do
 checkLicense :: PackageDescription -> QA ()
 checkLicense pkg
     | license pkg == AllRightsReserved
-    = critical "license field missing or specified as AllRightsReserved"
+    = critical "The 'license' field is missing or specified as AllRightsReserved"
 
     | null (licenseFile pkg)
-    = warn "license-file not specified"
+    = warn "A 'license-file' is not specified"
 
     | otherwise = do
         exists <- io $ doesFileExist file
         unless exists $
-            critical $ "license-file field refers to the file \"" ++ file
+            critical $ "The 'license-file' field refers to the file \"" ++ file
                      ++ "\" which does not exist."
         where file = licenseFile pkg
 
