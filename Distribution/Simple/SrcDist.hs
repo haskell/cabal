@@ -141,7 +141,11 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   -- move the executables into place
   withExe pkg_descr $ \ (Executable _ mainPath exeBi) -> do
     prepareDir verbosity targetDir pps [] exeBi
-    srcMainFile <- findFile (hsSourceDirs exeBi) mainPath
+    srcMainFile <- do
+      ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)
+      case ppFile of
+        Nothing -> findFile (hsSourceDirs exeBi) mainPath
+        Just pp -> return pp
     copyFileTo verbosity targetDir srcMainFile
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
     let dir = takeDirectory file
