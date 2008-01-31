@@ -220,7 +220,7 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
 
     configVerbose   :: Flag Verbosity, -- ^verbosity level
-    configUserInstall :: Flag Bool,    -- ^The --user/--global flag
+    configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDB :: Flag PackageDB, -- ^Which package DB to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
