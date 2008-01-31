@@ -60,8 +60,9 @@ import Distribution.PackageDescription.QA
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  smartCopySources, die, warn, notice,
-                                  findPackageDesc, findFile, copyFileVerbose)
+                                  die, warn, notice, defaultPackageDesc,
+                                  findFile, findFileWithExtension,
+                                  dotToSep, copyFiles, copyFileVerbose)
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -74,9 +75,9 @@ import Data.Char (isSpace, toLower)
 import Data.List (isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import System.Directory (doesFileExist, doesDirectoryExist,
-         getCurrentDirectory, removeDirectoryRecursive)
+                         removeDirectoryRecursive)
 import Distribution.Verbosity
-import System.FilePath ((</>), takeDirectory, isAbsolute)
+import System.FilePath ((</>), takeDirectory, dropExtension, isAbsolute)
 
 -- |Create a source distribution.
 sdist :: PackageDescription -- ^information from the tarball
@@ -177,7 +178,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
                 "import Distribution.Simple",
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
-  descFile <- getCurrentDirectory >>= findPackageDesc verbosity
+  descFile <- defaultPackageDesc verbosity
   let targetDescFile = targetDir </> descFile
   -- We could just writePackageDescription targetDescFile pkg_descr,
   -- but that would lose comments and formatting.
@@ -236,10 +237,18 @@ prepareDir :: Verbosity -- ^verbosity
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbosity inPref pps mods BuildInfo{hsSourceDirs=srcDirs, otherModules=mods', cSources=cfiles}
-    = do let suff = ppSuffixes pps  ++ ["hs", "lhs"]
-         smartCopySources verbosity srcDirs inPref (mods++mods') suff True
-         mapM_ (copyFileTo verbosity inPref) cfiles
+prepareDir verbosity inPref pps modules bi
+    = do sources <- sequence
+           [ let file = dotToSep module_
+              in findFileWithExtension suffixes (hsSourceDirs bi) file
+             >>= maybe (notFound module_) return
+           | module_ <- modules ++ otherModules bi ]
+
+         copyFiles verbosity inPref (zip (repeat []) (sources ++ cSources bi))
+
+    where suffixes = ppSuffixes pps ++ ["hs", "lhs"]
+          notFound m = die $ "Error: Could not find module: " ++ m
+                          ++ " with any suffix: " ++ show suffixes
 
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileTo verbosity dir file = do
