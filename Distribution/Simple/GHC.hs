@@ -683,8 +683,8 @@ installLib verbosity lbi pref dynPref buildPref
               pd@PackageDescription{library=Just _,
                                     package=p}
     = do let programConf = withPrograms lbi
-         ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"] False
-         ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"] False
+         ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"]
+         ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"]
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
 	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
