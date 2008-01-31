@@ -53,6 +53,7 @@ unclassify (Blank s)     = s
 unclassify (Ordinary s)  = s
 unclassify (Line n file) = "# " ++ show n ++ " " ++ show file
 unclassify (CPP s)       = '#':s
+unclassify (Comment "")  = "--"
 unclassify (Comment s)   = "-- " ++ s
 
 -- | 'unlit' takes a filename (for error reports), and transforms the
@@ -112,14 +113,11 @@ reclassify = blank -- begin in blank state
     comment (BeginCode  :ls) = Blank "" : latex ls
     comment (CPP l      :ls) = CPP l : comment ls
     comment (BirdTrack _:_ ) = [Error "comment line before program line"]
-    -- special case here: a truly empty line will terminate
-    -- a comment section (and send us into the "blank" state)
-    comment (Blank ""   :ls) = Blank "" : blank ls
-    -- but a line containing whitespace will be treated as a
-    -- comment (prefixed with "-- "), unless it is followed by
-    -- a program line, in which case it is really blank.
-    comment (Blank     l:ls@(BirdTrack _:_)) = Blank l : blank ls
-    comment (Blank     l:ls) = Comment l : comment ls
+    -- a blank line and another ordinary line following a comment
+    -- will be treated as continuing the comment. Otherwise it's
+    -- then end of the comment, with a blank line.
+    comment (Blank     l:ls@(Ordinary  _:_)) = Comment l : comment ls
+    comment (Blank     l:ls) = Blank l   : blank ls
     comment (Line n f   :ls) = Line n f  : comment ls
     comment (Ordinary  l:ls) = Comment l : comment ls
 
