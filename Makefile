@@ -12,7 +12,7 @@ all: build
 
 # build the library itself
 
-SOURCES=Distribution/*.hs Distribution/Simple/*.hs
+SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs
 CONFIG_STAMP=dist/setup-config
 BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
 HADDOCK_STAMP=dist/doc/html/Cabal/index.html
@@ -83,10 +83,10 @@ clean:
 
 # testing...
 
-#moduleTest:
-#	mkdir -p dist/debug
-#	$(HC) --make -Wall -DDEBUG -odir dist/debug -hidir dist/debug \
-#		-idist/debug/:src:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest
+moduleTest: tests/ModuleTest.hs tests/PackageDescriptionTests.hs
+	mkdir -p dist/test
+	$(HC) --make -Wall -DDEBUG -odir dist/test -hidir dist/test \
+		-itests tests/ModuleTest.hs -o moduleTest
 
 #tests: moduleTest clean
 #	cd tests/A && $(MAKE) clean

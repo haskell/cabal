@@ -1,4 +1,3 @@
-
 -----------------------------------------------------------------------------
 
 -- |
@@ -42,42 +41,30 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Main where
-#ifdef DEBUG
 -- Import everything, since we want to test the compilation of them:
 
 import qualified Distribution.Version as D.V (hunitTests)
--- import qualified Distribution.InstalledPackageInfo(hunitTests)
-import qualified Distribution.License as D.L ()
-import qualified Distribution.Compiler as D.C (hunitTests)
-import qualified Distribution.Make ()
-import qualified Distribution.Package as D.P ()
-import qualified Distribution.PackageDescription as D.PD (hunitTests)
-import qualified Distribution.Setup as D.Setup (hunitTests)
-import Distribution.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
+import qualified PackageDescriptionTests as D.PD (hunitTests)
+
+import qualified Distribution.Simple.Configure as D.S.C (localBuildInfoFile)
+import qualified Distribution.Simple.Register as D.S.R (installedPkgConfigFile)
+
+import Distribution.Simple.Compiler (CompilerFlavor(..), compilerVersion)
+import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Version (Version(..))
 
-import qualified Distribution.Simple as D.S (simpleHunitTests)
-import qualified Distribution.Simple.Install as D.S.I (hunitTests)
-import qualified Distribution.Simple.Build as D.S.B (hunitTests)
-import qualified Distribution.Simple.SrcDist as D.S.S (hunitTests)
-import qualified Distribution.Simple.Utils as D.S.U (hunitTests)
 import System.FilePath( (</>) )
-import qualified Distribution.Simple.Configure as D.S.C (hunitTests, localBuildInfoFile)
-import qualified Distribution.Simple.Register as D.S.R (hunitTests, installedPkgConfigFile)
-
-import qualified Distribution.Simple.GHCPackageConfig
-    as GHC (localPackageConfig, maybeCreateLocalPackageConfig)
 
 import Distribution.Simple.Configure (configCompiler)
 import Distribution.Verbosity ( silent )
 -- base
 import Data.List (intersperse)
-import Control.Monad(when)
-import Directory(setCurrentDirectory, doesFileExist,
-                 doesDirectoryExist, getCurrentDirectory,
-                 getPermissions, Permissions(..))
-import Distribution.Compat.Directory (removeDirectoryRecursive)
-import System.Cmd(system)
+import Control.Monad (when)
+import System.Directory (setCurrentDirectory, doesFileExist,
+                         doesDirectoryExist, getCurrentDirectory,
+                         getPermissions, Permissions(..),
+                         removeDirectoryRecursive)
+import System.Cmd (system)
 import System.Exit(ExitCode(..))
 import System.Environment (getArgs)
 
@@ -228,7 +215,6 @@ tests currDir comp compConf compVersion = [
 -- HUnit
         ,TestLabel ("testing the HUnit package" ++ compIdent) $ TestCase $
          do setCurrentDirectory $ (testdir </> "HUnit-1.0")
-            GHC.maybeCreateLocalPackageConfig
             system "make -s clean"
             system "make -s"
             assertCmd' compCmd "configure -v0" "configure failed"
@@ -257,10 +243,8 @@ tests currDir comp compConf compVersion = [
             doesDirectoryExist "dist/doc" >>= assertEqual "create of dist/doc" True
             assertBuild
             when (comp == GHC) -- tests building w/ an installed -package
-                 (do pkgConf <- GHC.localPackageConfig
-                     assertCmd' compCmd "install -v0 --user" "hunit install"
-                     assertCmd ("ghc -package-conf " ++ pkgConf
-                                ++ " -package HUnitTest HUnitTester.hs -o ./hunitTest")
+                 (do assertCmd' compCmd "install -v0 --user" "hunit install"
+                     assertCmd ("ghc -package HUnitTest HUnitTester.hs -o ./hunitTest")
                                 "compile w/ hunit"
                      assertCmd "./hunitTest" "hunit test"
                      assertCmd' compCmd "unregister --user" "unregister failed")
@@ -463,14 +447,7 @@ tests currDir comp compConf compVersion = [
 main :: IO ()
 main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
-          setupCount <- runTestTT' $ TestList $
-                        (TestLabel "Utils Tests" $ TestList D.S.U.hunitTests):
-                        (TestLabel "Setup Tests" $ TestList D.Setup.hunitTests):
-                        (TestLabel "config Tests" $ TestList D.S.C.hunitTests):
-                          (D.S.R.hunitTests ++ D.V.hunitTests ++
-                           D.S.S.hunitTests ++ D.S.B.hunitTests ++
-                           D.S.I.hunitTests ++ D.S.simpleHunitTests ++
-                           D.PD.hunitTests ++ D.C.hunitTests)
+          setupCount <- runTestTT' $ TestList (D.V.hunitTests ++ D.PD.hunitTests)
           dir <- getCurrentDirectory
 --          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
           args <- getArgs
@@ -484,7 +461,9 @@ main = do putStrLn "compile successful"
               compilers = [GHC] --, Hugs]
           globalTests <-
             flip mapM compilers $ \compilerFlavour -> do
-              compiler <- configCompiler (Just compilerFlavour) Nothing Nothing silent
+              (compiler, _) <- configCompiler (Just compilerFlavour)
+	                         Nothing Nothing
+	                         defaultProgramConfiguration silent
               let version = compilerVersion compiler
               runTestTT' $ TestList (testList compilerFlavour version)
           putStrLn "-------------"
@@ -493,8 +472,6 @@ main = do putStrLn "compile successful"
                       foldl1 combineCounts (setupCount:globalTests)
           return ()
 
-#endif
 -- Local Variables:
 -- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
 -- End:
-
