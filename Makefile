@@ -1,47 +1,45 @@
 
-CABALVERSION=1.3.3
+VERSION=1.3.3
 
-KIND=rc
+KIND=devel
+#KIND=rc
 #KIND=latest
-GHCFLAGS= --make -Wall -DCABAL_VERSION=1,3,3
-# later: -Wall
-PREF=/usr/local
-USER_FLAG =
-GHCPKGFLAGS =
+
+PREFIX=/usr/local
 HC=ghc
-HC_PKG=ghc-pkg
-# Comment out this line if your system doesn't have System.Posix.
-ISPOSIX=-DHAVE_UNIX_PACKAGE
-
-ifdef user
-USER_FLAG = --user
-GHCPKGFLAGS = -f ~/.ghc-packages
-GHCFLAGS += -package-conf ~/.ghc-packages
-endif
-
-# the cabal tarball...
-CABALBALL=cabal-$(CABALVERSION).tar.gz
 
 all: build
 
 # build the library itself
 
-setup::
-	mkdir -p dist/tmp
-	$(HC) $(GHCFLAGS) -i. -odir dist/tmp -hidir dist/tmp Setup.hs -o setup
+SOURCES=Distribution/*.hs Distribution/Simple/*.hs
+CONFIG_STAMP=dist/setup-config
+BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
+HADDOCK_STAMP=dist/doc/html/Cabal/index.html
+USERGUIDE_STAMP=dist/doc/users-guide/index.html
+SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
+DISTLOC=dist/release
+DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
+
+COMMA=,
+VERSION_VALUE=$(subst .,$(COMMA),$(VERSION))
+
+setup: $(SOURCES)
+	-mkdir -p dist/setup
+	$(HC) $(GHCFLAGS) --make -DCABAL_VERSION=$(VERSION_VALUE) -i. -odir dist/setup -hidir dist/setup Setup.hs -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
 
-config: setup
-	./setup configure --ghc --with-compiler=$(HC) --prefix=$(PREF)
+$(CONFIG_STAMP): setup Cabal.cabal
+	./setup configure --with-compiler=$(HC) --prefix=$(PREFIX)
 
-build: build-stamp
-build-stamp: config
+build: $(BUILD_STAMP)
+$(BUILD_STAMP): $(CONFIG_STAMP) $(SOURCES)
 	./setup build
 
-install: build-stamp
-	./setup install $(USER_FLAG)
+install: $(BUILD_STAMP)
+	./setup install
 
 hugsbootstrap:
 	rm -rf dist/tmp dist/hugs
@@ -56,142 +54,79 @@ hugsinstall: hugsbootstrap
 	cd dist/hugs && ./Setup.lhs build
 	cd dist/hugs && ./Setup.lhs install
 
-haddock: setup
-	./setup configure
+# documentation...
+
+haddock: $(HADDOCK_STAMP)
+$(HADDOCK_STAMP) : $(CONFIG_STAMP)
 	./setup haddock
 
-clean-doc:
-	cd doc && $(MAKE) clean
+XSLTPROC=xsltproc
+XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
+XSLTPROC_HTML_CSS=doc/fptools.css
+XSLTPROC_HTML_PARAMS=\
+	--param use.id.as.filename 1 \
+	--param toc.section.depth 3 \
+	--stringparam base.dir $(XSLTPROC_HTML_OUTDIR) \
+	--stringparam html.stylesheet $(XSLTPROC_HTML_CSS)
+XSLTPROC_HTML_STYLESHEET=/usr/share/sgml/docbook/xsl-stylesheets-1.70.1/xhtml/chunk.xsl
 
-users-guide: 
-	docbook2html doc/Cabal.xml --output doc/users-guide
+users-guide: $(USERGUIDE_STAMP)
+$(USERGUIDE_STAMP) : doc/Cabal.xml
+	$(XSLTPROC) $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET) $<
+	cp $(XSLTPROC_HTML_CSS) $(XSLTPROC_HTML_OUTDIR)
 
-doc: haddock users-guide
-docs: doc
+docs: haddock users-guide
 
-clean: clean-cabal clean-hunit clean-test clean-doc
-
-clean-cabal:
-	-rm -f Distribution/*.o Distribution/*.hi
-	-rm -f Distribution/PackageDescription/*.o Distribution/PackageDescription/*.hi
-	-rm -f Distribution/Compat/*.o Distribution/Compat/*.hi
-	-rm -f Distribution/PreProcess/*.o Distribution/PreProcess/*.hi
-	-rm -f Distribution/Simple/*.o Distribution/Simple/*.hi
-	-rm -f Language/Haskell/*.o Language/Haskell/*.hi
-	-rm -f darcs* out.build *~ semantic.cache* x*.html
-	-rm -f library-infrastructure--darcs.tar.gz
-	-rm -rf setup *.o *.hi moduleTest dist installed-pkg-config
-	-rm -f build-stamp
-	-rm -rf dist/hugs
-
-clean-hunit:
-	-rm -f hunit-stamp hunitInstall-stamp
-	cd tests/HUnit-1.0 && $(MAKE) clean
-
-clean-test:
-	cd tests/A && $(MAKE) clean
-	cd tests/wash2hs && $(MAKE) clean
-
-remove: remove-cabal remove-hunit
-remove-cabal:
-	-$(HC_PKG) $(GHCPKGFLAGS) -r Cabal
-	-rm -rf $(PREF)/lib/Cabal-0.1
-remove-hunit:
-	-$(HC_PKG) $(GHCPKGFLAGS) -r HUnit
-	-rm -rf $(PREF)/lib/HUnit-1.0
-
-# dependencies (included):
-
-hunit: hunit-stamp
-hunit-stamp:
-	cd tests/HUnit-1.0 && $(MAKE) && ./setup configure --prefix=$(PREF) && ./setup build
-	touch $@
-
-hunitInstall: hunitInstall-stamp
-hunitInstall-stamp: hunit-stamp
-	cd tests/HUnit-1.0 && ./setup install $(USER_FLAG)
-	touch $@
+clean:
+	rm -rf dist/
+	rm -f setup
 
 # testing...
 
-moduleTest:
-	mkdir -p dist/debug
-	$(HC) $(GHCFLAGS) $(ISPOSIX) -DDEBUG -odir dist/debug -hidir dist/debug -idist/debug/:src:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest
+#moduleTest:
+#	mkdir -p dist/debug
+#	$(HC) --make -Wall -DDEBUG -odir dist/debug -hidir dist/debug \
+#		-idist/debug/:src:tests/HUnit-1.0/src tests/ModuleTest.hs -o moduleTest
 
-tests: moduleTest clean
-	cd tests/A && $(MAKE) clean
-	cd tests/HUnit-1.0 && $(MAKE) clean
-	cd tests/A && $(MAKE)
-	cd tests/HUnit-1.0 && $(MAKE)
+#tests: moduleTest clean
+#	cd tests/A && $(MAKE) clean
+#	cd tests/HUnit-1.0 && $(MAKE) clean
+#	cd tests/A && $(MAKE)
+#	cd tests/HUnit-1.0 && $(MAKE)
 
-check:
-	rm -f moduleTest
-	$(MAKE) moduleTest
-	./moduleTest
+#check:
+#	rm -f moduleTest
+#	$(MAKE) moduleTest
+#	./moduleTest
 
 # distribution...
 
-pushall:
-	darcs push ijones@darcs.haskell.org:/home/darcs/cabal
-	darcs push ijones@darcs.haskell.org:/home/darcs/packages/Cabal
+$(SDIST_STAMP) : $(BUILD_STAMP)
+	./setup sdist
 
-pullall:
-	darcs pull ijones@darcs.haskell.org:/home/darcs/cabal
-	darcs pull ijones@darcs.haskell.org:/home/darcs/packages/Cabal
+dist: $(DIST_STAMP)
+$(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
+	rm -rf $(DISTLOC)
+	mkdir $(DISTLOC)
+	tar -xzf $(SDIST_STAMP) -C $(DISTLOC)/
+	mkdir $(DISTLOC)/Cabal-$(VERSION)/doc
+	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
+	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
+	cp releaseNotes changelog $(DISTLOC)/Cabal-$(VERSION)/
+	tar -C $(DISTLOC) -c Cabal-$(VERSION) -zf $(DISTLOC)/Cabal-$(VERSION).tar.gz
+	mv $(DISTLOC)/Cabal-$(VERSION)/doc $(DISTLOC)/
+	mv $(DISTLOC)/Cabal-$(VERSION)/releaseNotes $(DISTLOC)/
+	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
+	rm -r $(DISTLOC)/Cabal-$(VERSION)/
+	@echo "Cabal tarball built: $(DIST_STAMP)"
+	@echo "Release fileset prepared: $(DISTLOC)/"
 
+release: $(DIST_STAMP)
+	scp -r $(DISTLOC) www.haskell.org:/home/haskell/cabal/release/cabal-$(VERSION)
+	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
 
-pushdist: pushall dist
-	scp $(TMPDISTLOC)/cabal.tar.gz ijones@www.haskell.org:~/cabal/cabal-code.tgz
-#	PUSH ELSEWHERE: scp changelog ijones@www.haskell.org:~/cabal/release/changelog
-#	PUSH ELSEWHERE: scp releaseNotes ijones@www.haskell.org:~/cabal/release/notes
-#	rm -f /tmp/cabal-code.tgz
+# tags...
 
-deb: dist
-	cd $(TMPDISTLOC) && ln -s $(CABALBALL) haskell-cabal_$(CABALVERSION).orig.tar.gz
-	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL)
-	mv $(TMPDISTLOC)/cabal $(TMPDISTLOC)/haskell-cabal-$(CABALVERSION)
-	cd $(TMPDISTLOC)/haskell-cabal-$(CABALVERSION) && debuild
-
-$(CABALBALL):
-	darcs record
-	rm -rf /tmp/cabal* /tmp/Cabal*
-	rm -rf $(TMPDISTLOC)
-	darcs dist --dist-name=cabal-$(CABALVERSION)
-
-TMPDISTLOC=/tmp/cabaldist
-
-# after this command, there will be cabal.tar.gz in $(TMPDISTLOC),
-# which will have built docs, haddock, and source code.
-
-dist: haddock $(CABALBALL)
-	rm -rf $(TMPDISTLOC)
-	mkdir $(TMPDISTLOC)
-	mv $(CABALBALL) $(TMPDISTLOC)
-	cd $(TMPDISTLOC) && tar -zxvf $(CABALBALL)
-	#mkdir $(TMPDISTLOC)/cabal/doc
-	$(MAKE) doc
-	cp -r dist/doc/html $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc/API
-	cp -r doc/users-guide $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc/users-guide
-	cd ~/prgs/build/haskell-report/packages && docbook2html -o /tmp/pkg-spec-html pkg-spec.sgml && docbook2pdf pkg-spec.sgml -o /tmp
-	cp -r /tmp/pkg-spec{-html,.pdf} $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc
-
-	cd $(TMPDISTLOC) && rm -f $(CABALBALL) && tar -zcvf $(CABALBALL) cabal-$(CABALVERSION)
-	@echo "Cabal tarball built: $(TMPDISTLOC)/$(CABALBALL)"
-
-release: dist
-	mkdir $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal-$(CABALVERSION)/releaseNotes $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal-$(CABALVERSION)/changelog $(TMPDISTLOC)/release
-	cp -r $(TMPDISTLOC)/cabal-$(CABALVERSION)/doc $(TMPDISTLOC)/release
-	cp $(TMPDISTLOC)/cabal-$(CABALVERSION).tar.gz  $(TMPDISTLOC)/release/cabal-$(CABALVERSION).tar.gz
-	scp -r $(TMPDISTLOC)/release www.haskell.org:/home/haskell/cabal/release/cabal-$(CABALVERSION)
-	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(CABALVERSION) $(KIND)'
-
-# dirs that contain source files that should be tagged.  Be careful to
-# about using "."
 TAGSSRCDIRS = Distribution Language
-
-# create ctags/etags files.
-tags::
+tags TAGS: $(SOURCES)
 	find $(TAGSSRCDIRS) -name \*.\*hs | xargs hasktags
-
