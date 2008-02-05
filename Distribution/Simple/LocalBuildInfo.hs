@@ -48,10 +48,6 @@ module Distribution.Simple.LocalBuildInfo (
 	-- * Installation directories
 	module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
-	-- * Build directories
-	distPref, srcPref,
-	hscolourPref, haddockPref,
-	autogenModulesDir
   ) where
 
 
@@ -63,7 +59,6 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.Simple.Compiler (Compiler(..), PackageDB)
-import System.FilePath (FilePath, (</>))
 
 -- |Data cached after configuration step.  See also
 -- 'Distribution.Setup.ConfigFlags'.
@@ -100,27 +95,6 @@ data LocalBuildInfo = LocalBuildInfo {
 	splitObjs     :: Bool 	-- ^Use -split-objs with GHC, if available
 
   } deriving (Read, Show)
-
--- ------------------------------------------------------------
--- * Some Paths
--- ------------------------------------------------------------
-
-distPref :: FilePath
-distPref = "dist"
-
-srcPref :: FilePath
-srcPref = distPref </> "src"
-
-hscolourPref :: PackageDescription -> FilePath
-hscolourPref = haddockPref
-
-haddockPref :: PackageDescription -> FilePath
-haddockPref pkg_descr
-    = foldl1 (</>) [distPref, "doc", "html", pkgName (package pkg_descr)]
-
--- |The directory in which we put auto-generated modules
-autogenModulesDir :: LocalBuildInfo -> String
-autogenModulesDir lbi = buildDir lbi </> "autogen"
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
