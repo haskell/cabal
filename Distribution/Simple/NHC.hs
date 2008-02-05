@@ -145,7 +145,7 @@ build pkg_descr lbi verbosity = do
       ++ nhcVerbosityOptions verbosity
       ++ ["-d", targetDir, "-hidir", targetDir]
       ++ extensionFlags
-      ++ maybe [] (hcOptions NHC . options . libBuildInfo)
+      ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
       ++ concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ]
       ++ inFiles
@@ -203,7 +203,7 @@ build pkg_descr lbi verbosity = do
       ++ nhcVerbosityOptions verbosity
       ++ ["-d", targetDir, "-hidir", targetDir]
       ++ extensionFlags
-      ++ maybe [] (hcOptions NHC . options . libBuildInfo)
+      ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
       ++ concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ]
       ++ inFiles

@@ -49,7 +49,11 @@ module Distribution.Simple.Haddock (
 import Distribution.Compat.ReadP(readP_to_S)
 import Distribution.Package (showPackageId)
 import Distribution.PackageDescription
-import Distribution.ParseUtils(Field(..), readFields, parseCommaList, parseFilePathQ)
+         (PackageDescription(..), BuildInfo(..), hcOptions,
+          Library(..), hasLibs, withLib,
+          Executable(..), withExe)
+import Distribution.ParseUtils (Field(..), ParseResult(..), readFields, 
+                                parseCommaList, parseFilePathQ)
 import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, 
                             lookupProgram, programPath, ghcPkgProgram,
 			    hscolourProgram, haddockProgram, rawSystemProgram, rawSystemProgramStdoutConf,
@@ -297,7 +301,7 @@ ghcSimpleOptions lbi bi mockDir
   =  ["-hide-all-packages"]
   ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
   ++ ["-i"]
-  ++ hcOptions GHC (options bi)
+  ++ hcOptions GHC bi
   ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
   ++ ["-i" ++ mockDir]
