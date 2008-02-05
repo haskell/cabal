@@ -79,10 +79,12 @@ import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
-    ( LocalBuildInfo(..), distPref, absoluteInstallDirs
+    ( LocalBuildInfo(..), absoluteInstallDirs
     , prefixRelativeInstallDirs )
+import Distribution.Simple.BuildPaths
+    ( distPref )
 import Distribution.Simple.Utils
-    ( die, warn, info, createDirectoryIfMissingVerbose )
+    ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -187,7 +189,7 @@ configure (pkg_descr0, pbi) cfg
   = do  let verbosity = fromFlag (configVerbose cfg)
 
 	setupMessage verbosity "Configuring"
-                     (either packageDescription id pkg_descr0)
+                     (package (either packageDescription id pkg_descr0))
 
 	createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 

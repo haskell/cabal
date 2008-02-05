@@ -58,10 +58,13 @@ import Distribution.Simple.PreProcess 	( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
 				( unlit )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir )
+				( LocalBuildInfo(..))
+import Distribution.Simple.BuildPaths
+                                ( autogenModuleName, autogenModulesDir,
+                                  dllExtension )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, dotToSep,
 				  moduleToFilePath, die, info, notice,
-				  smartCopySources, findFile, dllExtension )
+				  smartCopySources, findFile )
 import Language.Haskell.Extension
 				( Extension(..) )
 import System.FilePath        	( (</>), takeExtension, (<.>),

@@ -45,9 +45,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
+        cabalVersion,
         die,
         dieWithLocation,
-        warn, notice, info, debug,
+        warn, notice, setupMessage, info, debug,
         chattyTry,
         breaks,
 	wrapText,
@@ -127,6 +128,14 @@ import System.IO (Handle, hClose)
 import Distribution.Compat.TempFile (openTempFile)
 import Distribution.Verbosity
 
+-- We only get our own version number when we're building with ourselves
+cabalVersion :: Version
+#ifdef CABAL_VERSION
+cabalVersion = Version [CABAL_VERSION] []
+#else
+cabalVersion = error "Cabal was not bootstrapped correctly"
+#endif
+
 -- ------------------------------------------------------------------------------- Utils for setup
 
 dieWithLocation :: FilePath -> (Maybe Int) -> String -> IO a
@@ -161,6 +170,10 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg =
   when (verbosity >= normal) $
     putStrLn msg
+
+setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
+setupMessage verbosity msg pkgid =
+    notice verbosity (msg ++ ' ':showPackageId pkgid ++ "...")
 
 -- | More detail on the operation of some action.
 -- 

@@ -49,9 +49,10 @@ module Distribution.Simple.Register (
         removeRegScripts,
   ) where
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..), distPref,
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            InstallDirs(..),
 					   absoluteInstallDirs)
+import Distribution.Simple.BuildPaths (distPref, haddockName)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
                                      PackageDB(..))
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
@@ -59,8 +60,8 @@ import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     lookupProgram, ghcPkgProgram)
 import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
                                   fromFlag, fromFlagOrDefault)
-import Distribution.PackageDescription (setupMessage, PackageDescription(..),
-					BuildInfo(..), Library(..), haddockName)
+import Distribution.PackageDescription (PackageDescription(..),
+                                              BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Verbosity
 import Distribution.InstalledPackageInfo
@@ -68,7 +69,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, die, info)
+                                  copyFileVerbose, die, info, setupMessage)
 import Distribution.System
 
 import System.FilePath ((</>), (<.>), isAbsolute)
@@ -100,7 +101,7 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
-    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" pkg_descr
+    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" (package pkg_descr)
     return ()
   | otherwise = do
     let isWindows = case os of Windows _ -> True; _ -> False
@@ -117,7 +118,7 @@ register pkg_descr lbi regFlags
                 | genScript = "Writing registration script: "
                            ++ regScriptLocation ++ " for"
                 | otherwise = "Registering"
-    setupMessage verbosity message pkg_descr
+    setupMessage verbosity message (package pkg_descr)
 
     case compilerFlavor (compiler lbi) of
       GHC -> do 
@@ -277,7 +278,7 @@ unregister pkg_descr lbi regFlags = do
       verbosity = fromFlag (regVerbose regFlags)
       packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-  setupMessage verbosity "Unregistering" pkg_descr
+  setupMessage verbosity "Unregistering" (package pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <- case packageDB of

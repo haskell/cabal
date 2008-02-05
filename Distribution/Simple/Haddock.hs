@@ -63,10 +63,11 @@ import Distribution.Simple.InstallDirs (InstallDirs(..),
                                         toPathTemplate, fromPathTemplate,
                                         substPathTemplate,
                                         initialPathTemplateEnv)
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), hscolourPref,
-                                            haddockPref, distPref, autogenModulesDir )
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths ( distPref, haddockPref, haddockName,
+                                        hscolourPref, autogenModulesDir )
 import Distribution.Simple.Utils (die, warn, notice, createDirectoryIfMissingVerbose,
-                                  moduleToFilePath, findFile)
+                                  moduleToFilePath, findFile, setupMessage)
 
 import Distribution.Simple.Utils (rawSystemStdout)
 import Distribution.Verbosity
@@ -113,7 +114,7 @@ haddock pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running Haddock for" pkg_descr
+    setupMessage verbosity "Running Haddock for" (package pkg_descr)
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let showPkg    = showPackageId (package pkg_descr)
@@ -318,7 +319,7 @@ hscolour pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running hscolour for" pkg_descr
+    setupMessage verbosity "Running hscolour for" (package pkg_descr)
     let replaceDot = map (\c -> if c == '.' then '-' else c)
 
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do

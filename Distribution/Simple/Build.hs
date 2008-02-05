@@ -48,8 +48,7 @@ module Distribution.Simple.Build (
 import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
-				  setupMessage, Executable(..), Library(..), 
-                                  autogenModuleName )
+				  Executable(..), Library(..) )
 import Distribution.Package 	( PackageIdentifier(..), showPackageId )
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
@@ -58,9 +57,10 @@ import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..),
                                   InstallDirs(..), absoluteInstallDirs,
                                   prefixRelativeInstallDirs )
+import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
-import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die )
+import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, die, setupMessage )
 import Distribution.System
 
 import System.FilePath          ( (</>), pathSeparator )
@@ -88,7 +88,7 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
 build pkg_descr lbi flags suffixes = do
   let verbosity = fromFlag (buildVerbose flags)
   initialBuildSteps pkg_descr lbi verbosity suffixes
-  setupMessage verbosity "Building" pkg_descr
+  setupMessage verbosity "Building" (package pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.build  pkg_descr lbi verbosity
     JHC  -> JHC.build  pkg_descr lbi verbosity
@@ -106,7 +106,7 @@ makefile pkg_descr lbi flags suffixes = do
   initialBuildSteps pkg_descr lbi verbosity suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")
-  setupMessage verbosity "Generating Makefile" pkg_descr
+  setupMessage verbosity "Generating Makefile" (package pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.makefile  pkg_descr lbi flags
     _    -> die ("Generating a Makefile is not supported for this compiler.")
