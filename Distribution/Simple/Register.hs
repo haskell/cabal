@@ -125,7 +125,7 @@ register pkg_descr lbi regFlags
 	config_flags <- case packageDB of
           GlobalPackageDB      -> return []
           UserPackageDB        -> return ["--user"]
-          SpecificPackageDB db -> return ["-package-conf", db]
+          SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
 	let instConf | genPkgConf = genPkgConfigFile
                      | inplace    = inplacePkgConfigFile
