@@ -70,6 +70,13 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
+         ( PackageDescription(..), GenericPackageDescription
+         , updatePackageDescription, hasLibs
+         , HookedBuildInfo, emptyHookedBuildInfo )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription, readHookedBuildInfo )
+import Distribution.PackageDescription.Configuration
+         ( flattenPackageDescription )
 import Distribution.Simple.Program
          ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
          , userSpecifyArgs )
