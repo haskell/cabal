@@ -47,9 +47,10 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
-	hasLibs, withLib, hasExes, withExe, haddockName )
+	hasLibs, withLib, hasExes, withExe )
 import Distribution.Simple.LocalBuildInfo (
-        LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs, haddockPref)
+        LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs)
+import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   copyFileVerbose, die, info, notice,
                                   copyDirectoryRecursiveVerbose)

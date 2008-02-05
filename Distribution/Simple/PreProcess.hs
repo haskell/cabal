@@ -56,13 +56,13 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 
 
 import Distribution.Simple.PreProcess.Unlit (unlit)
-import Distribution.PackageDescription (setupMessage, PackageDescription(..),
+import Distribution.PackageDescription (PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die,
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die, setupMessage,
                                   moduleToFilePath, moduleToFilePath2)
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              lookupProgram, programPath,
@@ -76,7 +76,7 @@ import Distribution.Verbosity
 import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
-import System.Directory (removeFile, getModificationTime)
+import System.Directory (getModificationTime)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise)
@@ -165,14 +165,14 @@ preprocessSources :: PackageDescription
 
 preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     withLib pkg_descr () $ \ lib -> do
-        setupMessage verbosity "Preprocessing library" pkg_descr
+        setupMessage verbosity "Preprocessing library" (package pkg_descr)
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) forSDist 
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
-        setupMessage verbosity "Preprocessing executables for" pkg_descr
+        setupMessage verbosity "Preprocessing executables for" (package pkg_descr)
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi

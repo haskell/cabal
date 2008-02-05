@@ -55,12 +55,12 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
-         withLib, withExe, setupMessage)
+         withLib, withExe)
 import Distribution.PackageDescription.QA
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  die, warn, notice, defaultPackageDesc,
+                                  die, warn, notice, setupMessage, defaultPackageDesc,
                                   findFile, findFileWithExtension,
                                   dotToSep, copyFiles, copyFileVerbose)
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
@@ -130,7 +130,7 @@ prepareTree :: PackageDescription -- ^info from the cabal file
             -> IO FilePath
 
 prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
-  setupMessage verbosity "Building source dist for" pkg_descr
+  setupMessage verbosity "Building source dist for" (package pkg_descr)
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir </> (nameVersion pkg_descr)

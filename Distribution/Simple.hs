@@ -89,13 +89,14 @@ import Distribution.Simple.Configure(getPersistBuildConfig,
                                      checkPersistBuildConfig,
                                      configure, writePersistBuildConfig)
 
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), distPref, srcPref)
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths ( distPref, srcPref)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
-         (die, notice, info, warn, chattyTry,
+         (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
-          rawSystemExit)
+          rawSystemExit, cabalVersion )
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
@@ -497,5 +498,5 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
     else setupMessage verbosity
-           "Package contains no library to register:" pkg_descr
+           "Package contains no library to register:" (package pkg_descr)
   where verbosity = fromFlag (regVerbose flags)

@@ -88,7 +88,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Utils (die, rawSystemExit)
+import Distribution.Simple.Utils (die, rawSystemExit, cabalVersion)
 
 import Distribution.License (License(..))
 import Distribution.Version (Version(..), showVersion)

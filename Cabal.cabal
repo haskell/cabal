@@ -56,6 +56,7 @@ Library
         Distribution.ParseUtils,
         Distribution.Simple,
         Distribution.Simple.Build,
+        Distribution.Simple.BuildPaths,
         Distribution.Simple.Command,
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
