@@ -64,9 +64,6 @@ module Distribution.Simple.Utils (
         copyFiles,
         moduleToFilePath,
         moduleToFilePath2,
-        mkLibName,
-        mkProfLibName,
-        mkSharedLibName,
         currentDir,
         dotToSep,
 	findFile,
@@ -77,9 +74,6 @@ module Distribution.Simple.Utils (
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
-        exeExtension,
-        objExtension,
-        dllExtension,
   ) where
 
 import Control.Monad
@@ -107,12 +101,10 @@ import System.IO.Error
 import Control.Exception
     ( bracket )
 
-import Distribution.System
-    ( OS(..), os )
-import Distribution.Version
-    (showVersion)
 import Distribution.Package
-    (PackageIdentifier(..))
+    (PackageIdentifier(..), showPackageId)
+import Distribution.Version
+    (Version(..))
 
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
@@ -508,27 +500,6 @@ withTempFile tmpDir template action =
 currentDir :: FilePath
 currentDir = "."
 
-mkLibName :: FilePath -- ^file Prefix
-          -> String   -- ^library name.
-          -> String
-mkLibName pref lib = pref </> ("libHS" ++ lib ++ ".a")
-
-mkProfLibName :: FilePath -- ^file Prefix
-              -> String   -- ^library name.
-              -> String
-mkProfLibName pref lib = mkLibName pref (lib++"_p")
-
--- Implement proper name mangling for dynamical shared objects
--- libHS<packagename>-<compilerFlavour><compilerVersion>
--- e.g. libHSbase-2.1-ghc6.6.1.so
-mkSharedLibName :: FilePath        -- ^file Prefix
-              -> String            -- ^library name.
-              -> PackageIdentifier -- ^package identifier of the compiler
-              -> String
-mkSharedLibName pref lib (PackageIdentifier compilerName compilerVersion)
-  = pref </> ("libHS" ++ lib ++ "-" ++ compiler) <.> dllExtension
-  where compiler = compilerName ++ showVersion compilerVersion
-
 -- ------------------------------------------------------------
 -- * Finding the description file
 -- ------------------------------------------------------------
@@ -579,29 +550,3 @@ findHookedPackageDesc dir = do
 	[] -> return Nothing
 	[f] -> return (Just f)
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
-
--- ------------------------------------------------------------
--- * Platform file extensions
--- ------------------------------------------------------------ 
-
--- ToDo: This should be determined via autoconf (AC_EXEEXT)
--- | Extension for executable files
--- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
-exeExtension :: String
-exeExtension = case os of
-                   Windows _ -> "exe"
-                   _         -> ""
-
--- ToDo: This should be determined via autoconf (AC_OBJEXT)
--- | Extension for object files. For GHC and NHC the extension is @\"o\"@.
--- Hugs uses either @\"o\"@ or @\"obj\"@ depending on the used C compiler.
-objExtension :: String
-objExtension = "o"
-
--- | Extension for dynamically linked (or shared) libraries
--- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
-dllExtension :: String
-dllExtension = case os of
-                   Windows _ -> "dll"
-                   OSX       -> "dylib"
-                   _         -> "so"
