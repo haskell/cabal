@@ -564,7 +564,7 @@ ghcOptions lbi bi odir
            then ["-stubdir", odir] else [])
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
      ++ (if withOptimization lbi then ["-O"] else [])
-     ++ hcOptions GHC (options bi)
+     ++ hcOptions GHC bi
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
 

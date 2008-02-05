@@ -45,10 +45,8 @@ module Distribution.Simple.Hugs (
  ) where
 
 import Distribution.PackageDescription
-				( PackageDescription(..), BuildInfo(..),
-				  withLib,
-				  Executable(..), withExe, Library(..),
-				  libModules, hcOptions )
+         ( PackageDescription(..), BuildInfo(..), hcOptions,
+           Executable(..), withExe, Library(..), withLib, libModules )
 import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgramConf,
@@ -187,7 +185,7 @@ build pkg_descr lbi verbosity = do
 	copyModule cppAll bi srcFile destFile = do
 	    createDirectoryIfMissingVerbose verbosity True (takeDirectory destFile)
 	    (exts, opts, _) <- getOptionsFromSource srcFile
-	    let ghcOpts = hcOptions GHC opts
+	    let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
 	    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
 	    	runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
 	    	return ()
@@ -210,7 +208,7 @@ build pkg_descr lbi verbosity = do
         compileFFI :: BuildInfo -> FilePath -> FilePath -> IO ()
         compileFFI bi modDir file = do
             (_, opts, file_incs) <- getOptionsFromSource file
-            let ghcOpts = hcOptions GHC opts
+            let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
             let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
             let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
             let pathFlag = "-P" ++ modDir ++ [searchPathSeparator]
@@ -369,7 +367,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
-        let hugsOptions = hcOptions Hugs (options (buildInfo exe))
+        let hugsOptions = hcOptions Hugs (buildInfo exe)
         let baseExeFile = progprefix ++ (exeName exe) ++ progsuffix
         let exeFile = case os of
                           Windows _ -> binDir </> baseExeFile <.> ".bat"

@@ -21,11 +21,9 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
 				( configCompiler, getInstalledPackages,
 		  	  	  configDependency )
-import Distribution.PackageDescription	 
-				( readPackageDescription,
-                                  GenericPackageDescription(packageDescription),
-				  PackageDescription(..),
-                                  BuildType(..), cabalVersion )
+import Distribution.PackageDescription
+         ( PackageDescription(..), GenericPackageDescription(..), BuildType(..) )
+import Distribution.PackageDescription.Parse ( readPackageDescription )
 import Distribution.Simple.BuildPaths ( distPref, exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,

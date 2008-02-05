@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.QA
@@ -46,7 +42,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.PackageDescription.QA (
-        cabalVersion,
         sanityCheckPackage,
         
         -- * Quality Assurance
@@ -58,23 +53,16 @@ import Data.Maybe (isNothing, catMaybes)
 import Control.Monad (when,unless)
 import System.Directory (doesFileExist)
 
-import Distribution.PackageDescription.Types
+import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.License (License(..))
+import Distribution.Simple.Utils (cabalVersion)
 
 import Text.PrettyPrint.HughesPJ
 import Distribution.Version (Version(..), withinRange, showVersionRange)
 import Distribution.Package (PackageIdentifier(..))
 import System.FilePath (takeExtension)
-
--- We only get our own version number when we're building with ourselves
-cabalVersion :: Version
-#ifdef CABAL_VERSION
-cabalVersion = Version [CABAL_VERSION] []
-#else
-cabalVersion = error "Cabal was not bootstrapped correctly"
-#endif
 
 -- ------------------------------------------------------------
 -- * Sanity Checking

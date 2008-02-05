@@ -142,7 +142,7 @@ constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [
 constructJHCCmdLine lbi bi _odir verbosity =
         (if verbosity >= deafening then ["-v"] else [])
      ++ extensionsToFlags (compiler lbi) (extensions bi)
-     ++ hcOptions JHC (options bi)
+     ++ hcOptions JHC bi
      ++ ["--noauto","-i-"]
      ++ ["-i", autogenModulesDir lbi]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
