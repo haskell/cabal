@@ -9,7 +9,12 @@ module Distribution.Compat.TempFile (openTempFile) where
 import System.IO              (openFile, Handle, IOMode(ReadWriteMode))
 import System.Directory       (doesFileExist)
 import System.FilePath        ((</>), (<.>), splitExtension)
+#if __NHC__
+import System.Posix.Types (CPid(..))
+foreign import ccall unsafe "getpid" c_getpid :: IO CPid
+#else
 import System.Posix.Internals (c_getpid)
+#endif
 #else
 import System.IO (openTempFile)
 #endif
