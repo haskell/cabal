@@ -43,26 +43,32 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Configuration (
-    Flag(..),
-    ConfVar(..),
-    Condition(..), parseCondition, simplifyCondition,
-    CondTree(..), ppCondTree, mapTreeData, freeVars,
-    --satisfyFlags, 
-    resolveWithFlags, ignoreConditions,
-    DepTestRslt(..)
+module Distribution.PackageDescription.Configuration (
+    finalizePackageDescription,
+    flattenPackageDescription,
+
+    -- Utils
+    satisfyDependency,
+    parseCondition,
+    freeVars,
   ) where
+
+import Distribution.PackageDescription
+         ( GenericPackageDescription(..), PackageDescription(..)
+         , Library(..), Executable(..), BuildInfo(..)
+         , Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..) )
+import Distribution.Package   (PackageIdentifier(..))
+import Distribution.Version
+    ( Version(..), Dependency(..), VersionRange(..)
+    , withinRange, parseVersionRange )
+import Distribution.Simple.Utils (currentDir)
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
-import Distribution.Version 
-    ( Version(..), VersionRange(..), withinRange
-    , showVersionRange, parseVersionRange )
-
-import Text.PrettyPrint.HughesPJ
 
 import Data.Char ( isAlphaNum, toLower )
-import Data.Maybe ( catMaybes, maybeToList )
+import Data.Maybe ( isJust, catMaybes, maybeToList )
+import Data.List  ( nub, maximumBy )
 import Data.Monoid
 
 #ifdef DEBUG
@@ -71,52 +77,6 @@ import Distribution.ParseUtils
 #endif
 
 ------------------------------------------------------------------------------
-
--- | A flag can represent a feature to be included, or a way of linking
---   a target against its dependencies, or in fact whatever you can think of.
-data Flag = MkFlag
-    { flagName        :: String
-    , flagDescription :: String
-    , flagDefault     :: Bool
-    }
-
-instance Show Flag where show (MkFlag n _ _) = n
-
--- | A @ConfFlag@ represents an user-defined flag
-data ConfFlag = ConfFlag String
-    deriving Eq
-
--- | A @ConfVar@ represents the variable type used. 
-data ConfVar = OS String 
-             | Arch String 
-             | Flag ConfFlag
-             | Impl String VersionRange
-               deriving Eq
-
-instance Show ConfVar where
-    show (OS n) = "os(" ++ n ++ ")"
-    show (Arch n) = "arch(" ++ n ++ ")"
-    show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
-    show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
-
--- | A boolean expression parameterized over the variable type used.
-data Condition c = Var c
-                 | Lit Bool
-                 | CNot (Condition c)
-                 | COr (Condition c) (Condition c)
-                 | CAnd (Condition c) (Condition c)
-                   
-instance Show c => Show (Condition c) where
-    show c = render $ ppCond c
-
--- | Pretty print a @Condition@.
-ppCond :: Show c => Condition c -> Doc
-ppCond (Var x) = text (show x)
-ppCond (Lit b) = text (show b)
-ppCond (CNot c) = char '!' <> parens (ppCond c)
-ppCond (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
-ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
-
 
 -- | Simplify the condition and return its free variables.
 simplifyCondition :: Condition c
@@ -219,14 +179,6 @@ parseCondition = condOr
 
 ------------------------------------------------------------------------------
 
-data CondTree v c a = CondNode 
-    { condTreeData        :: a
-    , condTreeConstraints :: c
-    , condTreeComponents  :: [( Condition v
-                              , CondTree v c a
-                              , Maybe (CondTree v c a))]
-    }
-
 mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w) 
             -> CondTree v c a -> CondTree w d b
 mapCondTree fa fc fcnd (CondNode a c ifs) =
@@ -244,23 +196,6 @@ mapTreeConds f = mapCondTree id id f
 mapTreeData :: (a -> b) -> CondTree v c a -> CondTree v c b
 mapTreeData f = mapCondTree f id id
 
-instance (Show v, Show c) => Show (CondTree v c a) where
-    show t = render $ ppCondTree t (text . show)
-
-ppCondTree :: Show v => CondTree v c a -> (c -> Doc) -> Doc
-ppCondTree (CondNode _dat cs ifs) ppD =
-    (text "build-depends: " <+>
-      ppD cs)
-    $+$
-    (vcat $ map ppIf ifs)
-  where 
-    ppIf (c,thenTree,mElseTree) = 
-        ((text "if" <+> ppCond c <> colon) $$
-          nest 2 (ppCondTree thenTree ppD))
-        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t ppD))
-                   mElseTree)
-
- 
 -- | Result of dependency test. Isomorphic to @Maybe d@ but renamed for
 --   clarity.
 data DepTestRslt d = DepOk | MissingDeps d 
@@ -393,6 +328,141 @@ freeVars t = [ s | Flag (ConfFlag s) <- freeVars' t ]
       CNot c'    -> condfv c'
       COr c1 c2  -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+------------------------------------------------------------------------------
+-- Convert GenericPackageDescription to PackageDescription
+--
+
+data PDTagged = Lib Library | Exe String Executable | PDNull
+
+instance Monoid PDTagged where
+    mempty = PDNull
+    PDNull `mappend` x = x
+    x `mappend` PDNull = x
+    Lib l `mappend` Lib l' = Lib (l `mappend` l')
+    Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
+    _ `mappend` _ = bug "Cannot combine incompatible tags"
+
+finalizePackageDescription
+  :: [(String,Bool)]  -- ^ Explicitly specified flag assignments
+  -> Maybe [PackageIdentifier] -- ^ Available dependencies. Pass 'Nothing' if this
+                               -- is unknown.
+  -> String -- ^ OS-name
+  -> String -- ^ Arch-name
+  -> (String, Version) -- ^ Compiler + Version
+  -> GenericPackageDescription
+  -> Either [Dependency]
+            (PackageDescription, [(String,Bool)])
+	     -- ^ Either missing dependencies or the resolved package
+	     -- description along with the flag assignments chosen.
+finalizePackageDescription userflags mpkgs os arch impl
+        (GenericPackageDescription pkg flags mlib0 exes0) =
+    case resolveFlags of
+      Right ((mlib, exes'), deps, flagVals) ->
+        Right ( pkg { library = mlib
+                    , executables = exes'
+                    , buildDepends = nub deps
+                    }
+              , flagVals )
+      Left missing -> Left $ nub missing
+  where
+    -- Combine lib and exes into one list of @CondTree@s with tagged data
+    condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
+                ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
+
+    untagRslts = foldr untag (Nothing, [])
+      where
+        untag (Lib _) (Just _, _) = bug "Only one library expected"
+        untag (Lib l) (Nothing, exes) = (Just l, exes)
+        untag (Exe n e) (mlib, exes)
+         | any ((== n) . fst) exes = bug "Exe with same name found"
+         | otherwise = (mlib, exes ++ [(n, e)])
+        untag PDNull x = x  -- actually this should not happen, but let's be liberal
+
+    resolveFlags =
+        case resolveWithFlags flagChoices os arch impl condTrees check of
+          Right (as, ds, fs) ->
+              let (mlib, exes) = untagRslts as in
+              Right ( (fmap libFillInDefaults mlib,
+                       map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes),
+                     ds, fs)
+          Left missing      -> Left missing
+
+    flagChoices  = map (\(MkFlag n _ d) -> (n, d2c n d)) flags
+    d2c n b      = maybe [b, not b] (\x -> [x]) $ lookup n userflags
+    --flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
+    check ds     = if all satisfyDep ds
+                   then DepOk
+                   else MissingDeps $ filter (not . satisfyDep) ds
+    -- if we don't know which packages are present, we just accept any
+    -- dependency
+    satisfyDep   = maybe (const True)
+                         (\pkgs -> isJust . satisfyDependency pkgs)
+                         mpkgs
+
+
+satisfyDependency :: [PackageIdentifier] -> Dependency
+	-> Maybe PackageIdentifier
+satisfyDependency pkgs (Dependency pkgname vrange) =
+  case filter ok pkgs of
+    [] -> Nothing
+    qs -> Just (maximumBy versions qs)
+  where
+	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
+        versions a b = pkgVersion a `compare` pkgVersion b
+
+
+-- | Flatten a generic package description by ignoring all conditions and just
+-- join the field descriptors into on package description.  Note, however,
+-- that this may lead to inconsistent field values, since all values are
+-- joined into one field, which may not be possible in the original package
+-- description, due to the use of exclusive choices (if ... else ...).
+--
+-- XXX: One particularly tricky case is defaulting.  In the original package
+-- description, e.g., the source dirctory might either be the default or a
+-- certain, explicitly set path.  Since defaults are filled in only after the
+-- package has been resolved and when no explicit value has been set, the
+-- default path will be missing from the package description returned by this
+-- function.
+flattenPackageDescription :: GenericPackageDescription -> PackageDescription
+flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0) =
+    pkg { library = mlib
+        , executables = reverse exes
+        , buildDepends = nub $ ldeps ++ reverse edeps
+        }
+  where
+    (mlib, ldeps) = case mlib0 of
+        Just lib -> let (l,ds) = ignoreConditions lib in
+                    (Just (libFillInDefaults l), ds)
+        Nothing -> (Nothing, [])
+    (exes, edeps) = foldr flattenExe ([],[]) exes0
+    flattenExe (n, t) (es, ds) =
+        let (e, ds') = ignoreConditions t in
+        ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
+
+-- This is in fact rather a hack.  The original version just overrode the
+-- default values, however, when adding conditions we had to switch to a
+-- modifier-based approach.  There, nothing is ever overwritten, but only
+-- joined together.
+--
+-- This is the cleanest way i could think of, that doesn't require
+-- changing all field parsing functions to return modifiers instead.
+libFillInDefaults :: Library -> Library
+libFillInDefaults lib@(Library { libBuildInfo = bi }) =
+    lib { libBuildInfo = biFillInDefaults bi }
+
+exeFillInDefaults :: Executable -> Executable
+exeFillInDefaults exe@(Executable { buildInfo = bi }) =
+    exe { buildInfo = biFillInDefaults bi }
+
+biFillInDefaults :: BuildInfo -> BuildInfo
+biFillInDefaults bi =
+    if null (hsSourceDirs bi)
+    then bi { hsSourceDirs = [currentDir] }
+    else bi
+
+bug :: String -> a
+bug msg = error $ msg ++ ". Consider this a bug."
 
 ------------------------------------------------------------------------------
 -- Testing
