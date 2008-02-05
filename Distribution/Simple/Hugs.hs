@@ -48,7 +48,7 @@ import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  withLib,
 				  Executable(..), withExe, Library(..),
-				  libModules, hcOptions, autogenModuleName )
+				  libModules, hcOptions )
 import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgramConf,

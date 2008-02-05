@@ -26,7 +26,7 @@ import Distribution.PackageDescription
                                   GenericPackageDescription(packageDescription),
 				  PackageDescription(..),
                                   BuildType(..), cabalVersion )
-import Distribution.Simple.LocalBuildInfo ( distPref )
+import Distribution.Simple.BuildPaths ( distPref, exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
