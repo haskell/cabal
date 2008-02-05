@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.PackageDescription.Types
+-- Module      :  Distribution.PackageDescription
 -- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -39,10 +39,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.PackageDescription.Types (
+module Distribution.PackageDescription (
         -- * Package descriptions
         PackageDescription(..),
-        GenericPackageDescription(..),
         emptyPackageDescription,
         BuildType(..),
 
@@ -65,22 +64,27 @@ module Distribution.PackageDescription.Types (
         emptyBuildInfo,
         allBuildInfo,
         unionBuildInfo,
+        hcOptions,
 
         -- ** Supplementary build information
         HookedBuildInfo,
         emptyHookedBuildInfo,
         updatePackageDescription,
+
+        -- * package configuration
+        GenericPackageDescription(..),
+        Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..),
   ) where
 
 import Data.List   (nub)
 import Data.Monoid (Monoid(mempty, mappend))
+import Text.PrettyPrint.HughesPJ
 
 import Distribution.Package  (PackageIdentifier(PackageIdentifier))
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
-import Distribution.Version  (Dependency)
+import Distribution.Version  (Dependency, showVersionRange)
 import Distribution.Compiler (CompilerFlavor)
-import Distribution.Configuration (CondTree, ConfVar, Flag)
 import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
 
@@ -145,16 +149,6 @@ emptyPackageDescription
                       extraSrcFiles = [],
                       extraTmpFiles = []
                      }
-
-data GenericPackageDescription = 
-    GenericPackageDescription {
-        packageDescription :: PackageDescription,
-        genPackageFlags       :: [Flag],
-        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
-        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
-      }
-    --deriving (Show)
-
 
 -- | The type of build system used by this package.
 data BuildType
@@ -335,6 +329,12 @@ type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 emptyHookedBuildInfo :: HookedBuildInfo
 emptyHookedBuildInfo = (Nothing, [])
 
+-- |Select options for a particular Haskell compiler.
+hcOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcOptions hc bi = [ opt | (hc',opts) <- options bi
+                        , hc' == hc
+                        , opt <- opts ]
+
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
@@ -390,3 +390,107 @@ unionBuildInfo b1 b2
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
       combine f = nub $ f b1 ++ f b2
+
+-- ---------------------------------------------------------------------------
+-- The GenericPackageDescription type
+
+data GenericPackageDescription =
+    GenericPackageDescription {
+        packageDescription :: PackageDescription,
+        genPackageFlags       :: [Flag],
+        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
+      }
+    deriving (Show)
+
+{-
+-- XXX: I think we really want a PPrint or Pretty or ShowPretty class.
+instance Show GenericPackageDescription where
+    show (GenericPackageDescription pkg flgs mlib exes) =
+        showPackageDescription pkg ++ "\n" ++
+        (render $ vcat $ map ppFlag flgs) ++ "\n" ++
+        render (maybe empty (\l -> showStanza "Library" (ppCondTree l showDeps)) mlib)
+        ++ "\n" ++
+        (render $ vcat $
+            map (\(n,ct) -> showStanza ("Executable " ++ n) (ppCondTree ct showDeps)) exes)
+      where
+        ppFlag (MkFlag name desc dflt) =
+            showStanza ("Flag " ++ name)
+              ((if (null desc) then empty else
+                   text ("Description: " ++ desc)) $+$
+              text ("Default: " ++ show dflt))
+        showDeps = fsep . punctuate comma . map showDependency
+        showStanza h b = text h <+> lbrace $+$ nest 2 b $+$ rbrace
+-}
+
+-- | A flag can represent a feature to be included, or a way of linking
+--   a target against its dependencies, or in fact whatever you can think of.
+data Flag = MkFlag
+    { flagName        :: String
+    , flagDescription :: String
+    , flagDefault     :: Bool
+    }
+
+instance Show Flag where show (MkFlag n _ _) = n
+
+-- | A @ConfFlag@ represents an user-defined flag
+data ConfFlag = ConfFlag String
+    deriving Eq
+
+-- | A @ConfVar@ represents the variable type used.
+data ConfVar = OS String
+             | Arch String
+             | Flag ConfFlag
+             | Impl String VersionRange
+               deriving Eq
+
+instance Show ConfVar where
+    show (OS n) = "os(" ++ n ++ ")"
+    show (Arch n) = "arch(" ++ n ++ ")"
+    show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
+    show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
+
+-- | A boolean expression parameterized over the variable type used.
+data Condition c = Var c
+                 | Lit Bool
+                 | CNot (Condition c)
+                 | COr (Condition c) (Condition c)
+                 | CAnd (Condition c) (Condition c)
+
+instance Show c => Show (Condition c) where
+    show c = render $ ppCond c
+
+-- | Pretty print a @Condition@.
+ppCond :: Show c => Condition c -> Doc
+ppCond (Var x) = text (show x)
+ppCond (Lit b) = text (show b)
+ppCond (CNot c) = char '!' <> parens (ppCond c)
+ppCond (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
+ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
+
+data CondTree v c a = CondNode
+    { condTreeData        :: a
+    , condTreeConstraints :: c
+    , condTreeComponents  :: [( Condition v
+                              , CondTree v c a
+                              , Maybe (CondTree v c a))]
+    }
+    deriving Show
+
+{-
+instance (Show v, Show c) => Show (CondTree v c a) where
+    show t = render $ ppCondTree t (text . show)
+
+ppCondTree :: Show v => CondTree v c a -> (c -> Doc) -> Doc
+ppCondTree (CondNode _dat cs ifs) ppD =
+    (text "build-depends: " <+>
+      ppD cs)
+    $+$
+    (vcat $ map ppIf ifs)
+  where
+    ppIf (c,thenTree,mElseTree) =
+        ((text "if" <+> ppCond c <> colon) $$
+          nest 2 (ppCondTree thenTree ppD))
+        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t ppD))
+                   mElseTree)
+-}

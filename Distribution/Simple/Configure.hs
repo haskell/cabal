@@ -61,10 +61,13 @@ import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
 import Distribution.PackageDescription
     ( PackageDescription(..), GenericPackageDescription(..)
-    , Library(..), Executable(..), BuildInfo(..), finalizePackageDescription
-    , HookedBuildInfo, sanityCheckPackage, updatePackageDescription
-    , setupMessage, satisfyDependency, hasLibs
+    , Library(..), hasLibs, Executable(..), BuildInfo(..)
+    , HookedBuildInfo, updatePackageDescription
     , allBuildInfo, emptyBuildInfo, unionBuildInfo )
+import Distribution.PackageDescription.Configuration
+    ( finalizePackageDescription, satisfyDependency )
+import Distribution.PackageDescription.QA
+    ( sanityCheckPackage )
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
