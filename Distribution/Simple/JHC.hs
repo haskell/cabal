@@ -50,8 +50,9 @@ import Distribution.PackageDescription
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), 
-				  autogenModulesDir )
+				( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths
+				( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerFlavor(..), Flag,
                                   PackageDB, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
@@ -63,7 +64,7 @@ import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, exeExtension, die, info )
+                                  copyFileVerbose, die, info )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Compat.ReadP

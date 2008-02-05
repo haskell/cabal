@@ -52,11 +52,12 @@ import Distribution.Simple.Setup ( MakefileFlags(..),
                                    fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
-				  withLib, setupMessage,
+				  withLib,
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..), autogenModulesDir )
+				( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId )
@@ -704,7 +705,7 @@ installLib verbosity lbi pref dynPref buildPref
            Nothing -> case lookupProgram arProgram programConf of
                           Just ar  -> do ifVanilla $ rawSystemProgram verbosity ar ["-s", libTargetLoc]
                                          ifProf $ rawSystemProgram verbosity ar ["-s", profLibTargetLoc]
-                          Nothing -> setupMessage verbosity "Warning: Unable to generate index for library (missing ranlib and ar)" pd
+                          Nothing -> warn verbosity "Unable to generate index for library (missing ranlib and ar)"
          return ()
     where ifVanilla action = when (withVanillaLib lbi) (action >> return ())
           ifProf action = when (withProfLib lbi) (action >> return ())

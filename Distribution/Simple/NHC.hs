@@ -52,6 +52,8 @@ import Distribution.PackageDescription
           withLib, withExe, hcOptions )
 import Distribution.Simple.LocalBuildInfo
         ( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths
+        ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
         ( Compiler(..), CompilerFlavor(..), Flag, extensionsToFlags )
 import Language.Haskell.Extension
@@ -62,8 +64,7 @@ import Distribution.Simple.Program
           nhcProgram, hmakeProgram, ldProgram, arProgram,
           rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, info, moduleToFilePath, dotToSep,
-          mkLibName, objExtension, exeExtension,
+        ( die, info, moduleToFilePath, dotToSep,          
           createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
 import Distribution.Version
         ( Version(..), VersionRange(..), orLaterVersion )
@@ -110,7 +111,8 @@ configure verbosity hcPath _hcPkgPath conf = do
 -- | The flags for the supported extensions
 nhcLanguageExtensions :: [(Extension, Flag)]
 nhcLanguageExtensions =
-      -- NHC doesn't enforce the monomorphism restriction at all.
+    -- TODO: use -98 when no extensions are specified.
+    -- NHC doesn't enforce the monomorphism restriction at all.
     [(NoMonomorphismRestriction, "")
     ,(ForeignFunctionInterface,  "")
     ,(ExistentialQuantification, "")
