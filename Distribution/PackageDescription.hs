@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.PackageDescription
+-- Module      :  Distribution.PackageDescription.Types
 -- Copyright   :  Isaac Jones 2003-2005
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -39,37 +39,26 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.PackageDescription (
+module Distribution.PackageDescription.Types (
         -- * Package descriptions
         PackageDescription(..),
         GenericPackageDescription(..),
-        finalizePackageDescription,
-        flattenPackageDescription,
         emptyPackageDescription,
-        readPackageDescription,
-        writePackageDescription,
-        parsePackageDescription,
-        showPackageDescription,
         BuildType(..),
 
         -- ** Libraries
         Library(..),
+        emptyLibrary,
         withLib,
         hasLibs,
         libModules,
 
         -- ** Executables
         Executable(..),
+        emptyExecutable,
         withExe,
         hasExes,
         exeModules,
-
-        -- ** Parsing
-        FieldDescr(..),
-        LineNo,
-
-        -- ** Sanity checking
-        sanityCheckPackage,
 
         -- * Build information
         BuildInfo(..),
@@ -80,209 +69,324 @@ module Distribution.PackageDescription (
         -- ** Supplementary build information
         HookedBuildInfo,
         emptyHookedBuildInfo,
-        readHookedBuildInfo,
-        parseHookedBuildInfo,
-        writeHookedBuildInfo,
-        showHookedBuildInfo,        
         updatePackageDescription,
-
-        -- * Utilities
-        satisfyDependency,
-        ParseResult(..),
-        hcOptions,
-        autogenModuleName,
-        haddockName,
-        setupMessage,
-        cabalVersion,
   ) where
 
-import Data.Maybe  (isJust, maybeToList)
-import Data.List   (nub, maximumBy)
-import Data.Monoid (Monoid(..))
-import Text.PrettyPrint.HughesPJ
-import System.FilePath((<.>))
+import Data.List   (nub)
+import Data.Monoid (Monoid(mempty, mappend))
 
-import Distribution.ParseUtils
-import Distribution.Package   (PackageIdentifier(..), showPackageId)
-import Distribution.Version   (Version(..), Dependency(..), withinRange)
-import Distribution.Verbosity (Verbosity)
-import Distribution.Compiler  (CompilerFlavor(..))
-import Distribution.Simple.Utils (currentDir, notice)
-
-import Distribution.PackageDescription.Types
-import Distribution.PackageDescription.Parse
-import Distribution.PackageDescription.QA (cabalVersion, sanityCheckPackage)
-import Distribution.Configuration
+import Distribution.Package  (PackageIdentifier(PackageIdentifier))
+import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
+import Distribution.License  (License(AllRightsReserved))
+import Distribution.Version  (Dependency)
+import Distribution.Compiler (CompilerFlavor)
+import Distribution.Configuration (CondTree, ConfVar, Flag)
+import Distribution.Simple.Utils  (currentDir)
+import Language.Haskell.Extension (Extension)
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
 
--- XXX: I think we really want a PPrint or Pretty or ShowPretty class.
-instance Show GenericPackageDescription where
-    show (GenericPackageDescription pkg flgs mlib exes) =
-        showPackageDescription pkg ++ "\n" ++
-        (render $ vcat $ map ppFlag flgs) ++ "\n" ++
-        render (maybe empty (\l -> showStanza "Library" (ppCondTree l showDeps)) mlib)
-        ++ "\n" ++
-        (render $ vcat $ 
-            map (\(n,ct) -> showStanza ("Executable " ++ n) (ppCondTree ct showDeps)) exes)
-      where
-        ppFlag (MkFlag name desc dflt) =
-            showStanza ("Flag " ++ name)
-              ((if (null desc) then empty else 
-                   text ("Description: " ++ desc)) $+$
-              text ("Default: " ++ show dflt))
-        showDeps = fsep . punctuate comma . map showDependency
-        showStanza h b = text h <+> lbrace $+$ nest 2 b $+$ rbrace
+-- | This data type is the internal representation of the file @pkg.cabal@.
+-- It contains two kinds of information about the package: information
+-- which is needed for all packages, such as the package name and version, and 
+-- information which is needed for the simple build system only, such as 
+-- the compiler options and library name.
+-- 
+data PackageDescription
+    =  PackageDescription {
+        -- the following are required by all packages:
+        package        :: PackageIdentifier,
+        license        :: License,
+        licenseFile    :: FilePath,
+        copyright      :: String,
+        maintainer     :: String,
+        author         :: String,
+        stability      :: String,
+        testedWith     :: [(CompilerFlavor,VersionRange)],
+        homepage       :: String,
+        pkgUrl         :: String,
+        synopsis       :: String, -- ^A one-line summary of this package
+        description    :: String, -- ^A more verbose description of this package
+        category       :: String,
+        buildDepends   :: [Dependency],
+        descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
+        buildType      :: Maybe BuildType,
+        -- components
+        library        :: Maybe Library,
+        executables    :: [Executable],
+        dataFiles      :: [FilePath],
+        extraSrcFiles  :: [FilePath],
+        extraTmpFiles  :: [FilePath]
+    }
+    deriving (Show, Read, Eq)
 
-data PDTagged = Lib Library | Exe String Executable | PDNull
+emptyPackageDescription :: PackageDescription
+emptyPackageDescription
+    =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
+                      license      = AllRightsReserved,
+                      licenseFile  = "",
+                      descCabalVersion = AnyVersion,
+                      buildType    = Nothing,
+                      copyright    = "",
+                      maintainer   = "",
+                      author       = "",
+                      stability    = "",
+                      testedWith   = [],
+                      buildDepends = [],
+                      homepage     = "",
+                      pkgUrl       = "",
+                      synopsis     = "",
+                      description  = "",
+                      category     = "",
+                      library      = Nothing,
+                      executables  = [],
+                      dataFiles    = [],
+                      extraSrcFiles = [],
+                      extraTmpFiles = []
+                     }
 
-instance Monoid PDTagged where
-    mempty = PDNull
-    PDNull `mappend` x = x
-    x `mappend` PDNull = x
-    Lib l `mappend` Lib l' = Lib (l `mappend` l')
-    Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
-    _ `mappend` _ = bug "Cannot combine incompatible tags"
-
-finalizePackageDescription 
-  :: [(String,Bool)]  -- ^ Explicitly specified flag assignments
-  -> Maybe [PackageIdentifier] -- ^ Available dependencies. Pass 'Nothing' if this
-                               -- is unknown.
-  -> String -- ^ OS-name
-  -> String -- ^ Arch-name
-  -> (String, Version) -- ^ Compiler + Version
-  -> GenericPackageDescription
-  -> Either [Dependency]
-            (PackageDescription, [(String,Bool)])
-	     -- ^ Either missing dependencies or the resolved package
-	     -- description along with the flag assignments chosen.
-finalizePackageDescription userflags mpkgs os arch impl 
-        (GenericPackageDescription pkg flags mlib0 exes0) =
-    case resolveFlags of 
-      Right ((mlib, exes'), deps, flagVals) ->
-        Right ( pkg { library = mlib                            
-                    , executables = exes'
-                    , buildDepends = nub deps
-                    }
-              , flagVals )
-      Left missing -> Left $ nub missing
-  where
-    -- Combine lib and exes into one list of @CondTree@s with tagged data
-    condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
-                ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
-
-    untagRslts = foldr untag (Nothing, [])
-      where
-        untag (Lib _) (Just _, _) = bug "Only one library expected"
-        untag (Lib l) (Nothing, exes) = (Just l, exes)
-        untag (Exe n e) (mlib, exes)
-         | any ((== n) . fst) exes = bug "Exe with same name found"
-         | otherwise = (mlib, exes ++ [(n, e)])
-        untag PDNull x = x  -- actually this should not happen, but let's be liberal
-
-    resolveFlags =
-        case resolveWithFlags flagChoices os arch impl condTrees check of
-          Right (as, ds, fs) ->
-              let (mlib, exes) = untagRslts as in
-              Right ( (fmap libFillInDefaults mlib,
-                       map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes),
-                     ds, fs)
-          Left missing      -> Left missing
-
-    flagChoices  = map (\(MkFlag n _ d) -> (n, d2c n d)) flags
-    d2c n b      = maybe [b, not b] (\x -> [x]) $ lookup n userflags
-    --flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices 
-    check ds     = if all satisfyDep ds
-                   then DepOk
-                   else MissingDeps $ filter (not . satisfyDep) ds
-    -- if we don't know which packages are present, we just accept any
-    -- dependency
-    satisfyDep   = maybe (const True) 
-                         (\pkgs -> isJust . satisfyDependency pkgs) 
-                         mpkgs
+data GenericPackageDescription = 
+    GenericPackageDescription {
+        packageDescription :: PackageDescription,
+        genPackageFlags       :: [Flag],
+        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
+      }
+    --deriving (Show)
 
 
--- | Flatten a generic package description by ignoring all conditions and just
--- join the field descriptors into on package description.  Note, however,
--- that this may lead to inconsistent field values, since all values are
--- joined into one field, which may not be possible in the original package
--- description, due to the use of exclusive choices (if ... else ...).
---
--- XXX: One particularly tricky case is defaulting.  In the original package
--- description, e.g., the source dirctory might either be the default or a
--- certain, explicitly set path.  Since defaults are filled in only after the
--- package has been resolved and when no explicit value has been set, the
--- default path will be missing from the package description returned by this
--- function.
-flattenPackageDescription :: GenericPackageDescription -> PackageDescription
-flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0) =
-    pkg { library = mlib
-        , executables = reverse exes
-        , buildDepends = nub $ ldeps ++ reverse edeps
-        }
-  where
-    (mlib, ldeps) = case mlib0 of
-        Just lib -> let (l,ds) = ignoreConditions lib in 
-                    (Just (libFillInDefaults l), ds)
-        Nothing -> (Nothing, [])
-    (exes, edeps) = foldr flattenExe ([],[]) exes0
-    flattenExe (n, t) (es, ds) = 
-        let (e, ds') = ignoreConditions t in
-        ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds ) 
+-- | The type of build system used by this package.
+data BuildType
+  = Simple      -- ^ calls @Distribution.Simple.defaultMain@
+  | Configure   -- ^ calls @Distribution.Simple.defaultMainWithHooks defaultUserHooks@,
+                -- which invokes @configure@ to generate additional build
+                -- information used by later phases.
+  | Make        -- ^ calls @Distribution.Make.defaultMain@
+  | Custom      -- ^ uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
+                deriving (Show, Read, Eq)
 
--- This is in fact rather a hack.  The original version just overrode the
--- default values, however, when adding conditions we had to switch to a
--- modifier-based approach.  There, nothing is ever overwritten, but only
--- joined together.
---
--- This is the cleanest way i could think of, that doesn't require
--- changing all field parsing functions to return modifiers instead.
-libFillInDefaults :: Library -> Library
-libFillInDefaults lib@(Library { libBuildInfo = bi }) = 
-    lib { libBuildInfo = biFillInDefaults bi }
+-- ---------------------------------------------------------------------------
+-- The Library type
 
-exeFillInDefaults :: Executable -> Executable
-exeFillInDefaults exe@(Executable { buildInfo = bi }) = 
-    exe { buildInfo = biFillInDefaults bi }
+data Library = Library {
+        exposedModules    :: [String],
+        libBuildInfo      :: BuildInfo
+    }
+    deriving (Show, Eq, Read)
 
-biFillInDefaults :: BuildInfo -> BuildInfo
-biFillInDefaults bi =
-    if null (hsSourceDirs bi)
-    then bi { hsSourceDirs = [currentDir] }
-    else bi
+instance Monoid Library where
+    mempty = nullLibrary
+    mappend = unionLibrary
+
+emptyLibrary :: Library
+emptyLibrary = Library [] emptyBuildInfo
+
+nullLibrary :: Library
+nullLibrary = Library [] nullBuildInfo
+
+-- |does this package have any libraries?
+hasLibs :: PackageDescription -> Bool
+hasLibs p = maybe False (buildable . libBuildInfo) (library p)
+
+-- |'Maybe' version of 'hasLibs'
+maybeHasLibs :: PackageDescription -> Maybe Library
+maybeHasLibs p =
+   library p >>= \lib -> if buildable (libBuildInfo lib)
+                           then Just lib
+                           else Nothing
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.
+withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
+withLib pkg_descr a f =
+   maybe (return a) f (maybeHasLibs pkg_descr)
+
+-- |Get all the module names from the libraries in this package
+libModules :: PackageDescription -> [String]
+libModules PackageDescription{library=lib}
+    = maybe [] exposedModules lib
+       ++ maybe [] (otherModules . libBuildInfo) lib
+
+unionLibrary :: Library -> Library -> Library
+unionLibrary l1 l2 =
+    l1 { exposedModules = combine exposedModules
+       , libBuildInfo = unionBuildInfo (libBuildInfo l1) (libBuildInfo l2)
+       }
+  where combine f = f l1 ++ f l2
+
+-- ---------------------------------------------------------------------------
+-- The Executable type
+
+data Executable = Executable {
+        exeName    :: String,
+        modulePath :: FilePath,
+        buildInfo  :: BuildInfo
+    }
+    deriving (Show, Read, Eq)
+
+instance Monoid Executable where
+    mempty = nullExecutable
+    mappend = unionExecutable
+
+emptyExecutable :: Executable
+emptyExecutable = Executable {
+                      exeName = "",
+                      modulePath = "",
+                      buildInfo = emptyBuildInfo
+                     }
+
+nullExecutable :: Executable
+nullExecutable = emptyExecutable { buildInfo = nullBuildInfo }
+
+-- |does this package have any executables?
+hasExes :: PackageDescription -> Bool
+hasExes p = any (buildable . buildInfo) (executables p)
+
+-- | Perform the action on each buildable 'Executable' in the package
+-- description.
+withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
+withExe pkg_descr f =
+  sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
+
+-- |Get all the module names from the exes in this package
+exeModules :: PackageDescription -> [String]
+exeModules PackageDescription{executables=execs}
+    = concatMap (otherModules . buildInfo) execs
+
+unionExecutable :: Executable -> Executable -> Executable
+unionExecutable e1 e2 =
+    e1 { exeName = combine exeName
+       , modulePath = combine modulePath
+       , buildInfo = unionBuildInfo (buildInfo e1) (buildInfo e2)
+       }
+  where combine f = case (f e1, f e2) of
+                      ("","") -> ""
+                      ("", x) -> x
+                      (x, "") -> x
+                      (x, y) -> error $ "Ambiguous values for executable field: '"
+                                  ++ x ++ "' and '" ++ y ++ "'"
+  
+-- ---------------------------------------------------------------------------
+-- The BuildInfo type
+
+-- Consider refactoring into executable and library versions.
+data BuildInfo = BuildInfo {
+        buildable         :: Bool,      -- ^ component is buildable here
+        buildTools        :: [Dependency], -- ^ tools needed to build this bit
+	cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
+        ccOptions         :: [String],  -- ^ options for C compiler
+        ldOptions         :: [String],  -- ^ options for linker
+        pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
+        frameworks        :: [String], -- ^support frameworks for Mac OS X
+        cSources          :: [FilePath],
+        hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
+        otherModules      :: [String], -- ^ non-exposed or non-main modules
+        extensions        :: [Extension],
+        extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
+        extraLibDirs      :: [String],
+        includeDirs       :: [FilePath], -- ^directories to find .h files
+        includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
+	installIncludes   :: [FilePath], -- ^ .h files to install with the package
+        options           :: [(CompilerFlavor,[String])],
+        ghcProfOptions    :: [String],
+        ghcSharedOptions  :: [String]
+    }
+    deriving (Show,Read,Eq)
+
+nullBuildInfo :: BuildInfo
+nullBuildInfo = BuildInfo {
+                      buildable         = True,
+                      buildTools        = [],
+                      cppOptions        = [],
+                      ccOptions         = [],
+                      ldOptions         = [],
+                      pkgconfigDepends  = [],
+                      frameworks        = [],
+                      cSources          = [],
+                      hsSourceDirs      = [],
+                      otherModules      = [],
+                      extensions        = [],
+                      extraLibs         = [],
+                      extraLibDirs      = [],
+                      includeDirs       = [],
+                      includes          = [],
+                      installIncludes   = [],
+                      options           = [],
+                      ghcProfOptions    = [],
+                      ghcSharedOptions  = []
+                     }
+
+emptyBuildInfo :: BuildInfo
+emptyBuildInfo = nullBuildInfo { hsSourceDirs = [currentDir] }
+
+-- | The 'BuildInfo' for the library (if there is one and it's buildable) and
+-- all the buildable executables. Useful for gathering dependencies.
+allBuildInfo :: PackageDescription -> [BuildInfo]
+allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
+                              , let bi = libBuildInfo lib
+                              , buildable bi ]
+                      ++ [ bi | exe <- executables pkg_descr
+                              , let bi = buildInfo exe
+                              , buildable bi ]
+
+type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
+
+emptyHookedBuildInfo :: HookedBuildInfo
+emptyHookedBuildInfo = (Nothing, [])
 
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
 
-satisfyDependency :: [PackageIdentifier] -> Dependency
-	-> Maybe PackageIdentifier
-satisfyDependency pkgs (Dependency pkgname vrange) =
-  case filter ok pkgs of
-    [] -> Nothing 
-    qs -> Just (maximumBy versions qs)
-  where
-	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
-        versions a b = pkgVersion a `compare` pkgVersion b
+updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
+updatePackageDescription (mb_lib_bi, exe_bi) p
+    = p{ executables = updateExecutables exe_bi    (executables p)
+       , library     = updateLibrary     mb_lib_bi (library     p)
+       }
+    where
+      updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
+      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = unionBuildInfo bi (libBuildInfo lib)})
+      updateLibrary Nothing   mb_lib     = mb_lib
 
--- |Select options for a particular Haskell compiler.
-hcOptions :: CompilerFlavor -> [(CompilerFlavor, [String])] -> [String]
-hcOptions hc hc_opts = [opt | (hc',opts) <- hc_opts, hc' == hc, opt <- opts]
+       --the lib only exists in the buildinfo file.  FIX: Is this
+       --wrong?  If there aren't any exposedModules, then the library
+       --won't build anyway.  add to sanity checker?
+      updateLibrary (Just bi) Nothing     = Just emptyLibrary{libBuildInfo=bi}
 
--- |The name of the auto-generated module associated with a package
-autogenModuleName :: PackageDescription -> String
-autogenModuleName pkg_descr =
-    "Paths_" ++ map fixchar (pkgName (package pkg_descr))
-  where fixchar '-' = '_'
-        fixchar c   = c
+      updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
+                        -> [Executable]          -- ^list of executables to update
+                        -> [Executable]          -- ^list with exeNames updated
+      updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
+      
+      updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
+                       -> [Executable]        -- ^list of executables to update
+                       -> [Executable]        -- ^libst with exeName updated
+      updateExecutable _                 []         = []
+      updateExecutable exe_bi'@(name,bi) (exe:exes)
+        | exeName exe == name = exe{buildInfo = unionBuildInfo bi (buildInfo exe)} : exes
+        | otherwise           = exe : updateExecutable exe_bi' exes
 
-haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = pkgName (package pkg_descr) <.> "haddock"
-
-setupMessage :: Verbosity -> String -> PackageDescription -> IO ()
-setupMessage verbosity msg pkg_descr =
-    notice verbosity (msg ++ ' ':showPackageId (package pkg_descr) ++ "...")
-
-bug :: String -> a
-bug msg = error $ msg ++ ". Consider this a bug."
+unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
+unionBuildInfo b1 b2
+    = b1{buildable         = buildable b1 && buildable b2,
+         buildTools        = combine buildTools,
+         cppOptions         = combine cppOptions,
+         ccOptions         = combine ccOptions,
+         ldOptions         = combine ldOptions,
+         pkgconfigDepends  = combine pkgconfigDepends,
+         frameworks        = combine frameworks,
+         cSources          = combine cSources,
+         hsSourceDirs      = combine hsSourceDirs,
+         otherModules      = combine otherModules,
+         extensions        = combine extensions,
+         extraLibs         = combine extraLibs,
+         extraLibDirs      = combine extraLibDirs,
+         includeDirs       = combine includeDirs,
+         includes          = combine includes,
+         installIncludes   = combine installIncludes,
+         options           = combine options
+        }
+      where 
+      combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
+      combine f = nub $ f b1 ++ f b2

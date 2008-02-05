@@ -75,14 +75,13 @@ import Text.PrettyPrint.HughesPJ
 import Distribution.Compat.ReadP hiding (get)
 
 import Distribution.ParseUtils
-import Distribution.PackageDescription.Types
+import Distribution.PackageDescription
 import Distribution.Package (PackageIdentifier(..), parsePackageName)
 import Distribution.Version (Dependency, showVersion, parseVersion,
                              showVersionRange, parseVersionRange, isAnyVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
-import Distribution.Configuration (CondTree(..), ConfVar(..), Flag(..),
-                                   parseCondition, freeVars)
+import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils (die, dieWithLocation, warn)
 
 
