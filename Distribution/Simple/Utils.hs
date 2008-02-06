@@ -62,8 +62,6 @@ module Distribution.Simple.Utils (
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
         copyFiles,
-        moduleToFilePath,
-        moduleToFilePath2,
         currentDir,
         dotToSep,
 	findFile,
@@ -77,7 +75,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( when, filterM, unless )
+    ( when, unless )
 import Data.List
     ( nub, unfoldr )
 
@@ -311,47 +309,6 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 -- ------------------------------------------------------------
 -- * File Utilities
 -- ------------------------------------------------------------
-
--- |Get the file path for this particular module.  In the IO monad
--- because it looks for the actual file.  Might eventually interface
--- with preprocessor libraries in order to correctly locate more
--- filenames.
--- Returns empty list if no such files exist.
-
-moduleToFilePath :: [FilePath] -- ^search locations
-                 -> String   -- ^Module Name
-                 -> [String] -- ^possible suffixes
-                 -> IO [FilePath]
-
-moduleToFilePath pref s possibleSuffixes
-    = filterM doesFileExist $
-          concatMap (searchModuleToPossiblePaths s possibleSuffixes) pref
-    where searchModuleToPossiblePaths :: String -> [String] -> FilePath -> [FilePath]
-          searchModuleToPossiblePaths s' suffs searchP
-              = moduleToPossiblePaths searchP s' suffs
-
--- |Like 'moduleToFilePath', but return the location and the rest of
--- the path as separate results.
-moduleToFilePath2
-    :: [FilePath] -- ^search locations
-    -> String   -- ^Module Name
-    -> [String] -- ^possible suffixes
-    -> IO [(FilePath, FilePath)] -- ^locations and relative names
-moduleToFilePath2 locs mname possibleSuffixes
-    = filterM exists $
-        [(loc, fname <.> ext) | loc <- locs, ext <- possibleSuffixes]
-  where
-    fname = dotToSep mname
-    exists (loc, relname) = doesFileExist (loc </> relname)
-
--- |Get the possible file paths based on this module name.
-moduleToPossiblePaths :: FilePath -- ^search prefix
-                      -> String -- ^module name
-                      -> [String] -- ^possible suffixes
-                      -> [FilePath]
-moduleToPossiblePaths searchPref s possibleSuffixes =
-  let fname = searchPref </> (dotToSep s)
-  in [fname <.> ext | ext <- possibleSuffixes]
 
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
