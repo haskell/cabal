@@ -284,7 +284,7 @@ unregister pkg_descr lbi regFlags = do
 	config_flags <- case packageDB of
           GlobalPackageDB      -> return []
           UserPackageDB        -> return ["--user"]
-          SpecificPackageDB db -> return ["-package-conf", db]
+          SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
         let removeCmd = ["unregister",showPackageId (package pkg_descr)]
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
