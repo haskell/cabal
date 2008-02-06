@@ -64,7 +64,7 @@ import Distribution.Simple.Program
           nhcProgram, hmakeProgram, ldProgram, arProgram,
           rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, info, moduleToFilePath, dotToSep,          
+        ( die, info, findFileWithExtension, dotToSep,
           createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
 import Distribution.Version
         ( Version(..), VersionRange(..), orLaterVersion )
@@ -217,9 +217,11 @@ nhcVerbosityOptions verbosity
 
 --TODO: where to put this? it's duplicated in .Simple too
 getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
-getModulePaths lbi bi =
-   fmap (map normalise . concat) .
-      mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
+getModulePaths lbi bi modules = sequence
+   [ findFileWithExtension ["hs", "lhs"] (buildDir lbi : hsSourceDirs bi)
+       (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
+   | module_ <- modules ]
+   where notFound module_ = die $ "can't find source for module " ++ module_
 
 -- -----------------------------------------------------------------------------
 -- Installing

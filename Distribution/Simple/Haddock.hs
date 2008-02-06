@@ -70,8 +70,9 @@ import Distribution.Simple.InstallDirs (InstallDirs(..),
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( distPref, haddockPref, haddockName,
                                         hscolourPref, autogenModulesDir )
-import Distribution.Simple.Utils (die, warn, notice, createDirectoryIfMissingVerbose,
-                                  moduleToFilePath, findFile, setupMessage)
+import Distribution.Simple.Utils
+         ( die, warn, notice, setupMessage, createDirectoryIfMissingVerbose
+         , findFileWithExtension, findFile, dotToSep )
 
 import Distribution.Simple.Utils (rawSystemStdout)
 import Distribution.Verbosity
@@ -86,7 +87,7 @@ import Data.Char     (isSpace)
 import Data.List     (nub)
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
-                       replaceExtension)
+                       replaceExtension, normalise)
 import Distribution.Version
 import Distribution.Simple.Compiler (compilerVersion, extensionsToFlags)
 
@@ -364,6 +365,8 @@ hscolour pkg_descr lbi suffixes flags = do
 
 --TODO: where to put this? it's duplicated in .Simple too
 getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
-getModulePaths lbi bi =
-   fmap concat .
-      mapM (flip (moduleToFilePath (buildDir lbi : hsSourceDirs bi)) ["hs", "lhs"])
+getModulePaths lbi bi modules = sequence
+   [ findFileWithExtension ["hs", "lhs"] (buildDir lbi : hsSourceDirs bi)
+       (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
+   | module_ <- modules ]
+   where notFound module_ = die $ "can't find source for module " ++ module_
