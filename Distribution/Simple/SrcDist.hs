@@ -139,7 +139,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   withLib pkg_descr () $ \ l ->
     prepareDir verbosity targetDir pps (exposedModules l) (libBuildInfo l)
   -- move the executables into place
-  withExe pkg_descr $ \ (Executable _ mainPath exeBi) -> do
+  withExe pkg_descr $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
     prepareDir verbosity targetDir pps [] exeBi
     srcMainFile <- do
       ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)

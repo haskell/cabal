@@ -82,6 +82,7 @@ import Distribution.Compat.ReadP
 import Control.Monad		( unless, when )
 import Data.Char
 import Data.List		( nub, isPrefixOf )
+import Data.Maybe               ( catMaybes )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist,
 				  getTemporaryDirectory )
@@ -360,12 +361,18 @@ build pkg_descr lbi verbosity = do
 	  sharedLibName  = mkSharedLibName pref (showPackageId (package pkg_descr)) (compilerId (compiler lbi))
 	  ghciLibName = mkGHCiLibName pref (showPackageId (package pkg_descr))
 
-      stubObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") [objExtension]
-                           |  x <- libModules pkg_descr ]  >>= return . concat
-      stubProfObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["p_" ++ objExtension]
-                           |  x <- libModules pkg_descr ]  >>= return . concat
-      stubSharedObjs <- sequence [moduleToFilePath [libTargetDir] (x ++"_stub") ["dyn_" ++ objExtension]
-                           |  x <- libModules pkg_descr ]  >>= return . concat
+      stubObjs <- fmap catMaybes $ sequence
+        [ findFileWithExtension [objExtension] [libTargetDir]
+            (dotToSep x ++"_stub")
+        | x <- libModules pkg_descr ]
+      stubProfObjs <- fmap catMaybes $ sequence
+        [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
+            (dotToSep x ++"_stub")
+        | x <- libModules pkg_descr ]
+      stubSharedObjs <- fmap catMaybes $ sequence
+        [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
+            (dotToSep x ++"_stub")
+        | x <- libModules pkg_descr ]
 
       hObjs     <- getHaskellObjects pkg_descr libBi lbi
 			pref objExtension True
@@ -452,7 +459,8 @@ build pkg_descr lbi verbosity = do
         ifSharedLib $ runGhcProg ghcSharedLinkArgs
 
   -- build any executables
-  withExe pkg_descr $ \ (Executable exeName' modPath exeBi) -> do
+  withExe pkg_descr $ \Executable { exeName = exeName', modulePath = modPath,
+                                    buildInfo = exeBi } -> do
                  info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
@@ -668,7 +676,7 @@ installExe :: Verbosity -- ^verbosity
            -> IO ()
 installExe verbosity pref buildPref (progprefix, progsuffix) pkg_descr
     = do createDirectoryIfMissingVerbose verbosity True pref
-         withExe pkg_descr $ \ (Executable e _ _) -> do
+         withExe pkg_descr $ \Executable { exeName = e } -> do
              let exeFileName = e <.> exeExtension
                  fixedExeFileName = (progprefix ++ e ++ progsuffix) <.> exeExtension
              copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> fixedExeFileName)

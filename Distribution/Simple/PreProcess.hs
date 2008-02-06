@@ -62,8 +62,9 @@ import Distribution.PackageDescription (PackageDescription(..),
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, die, setupMessage,
-                                  moduleToFilePath, moduleToFilePath2)
+import Distribution.Simple.Utils
+         ( createDirectoryIfMissingVerbose, die, setupMessage
+         , findFileWithExtension, findFileWithExtension', dotToSep )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              lookupProgram, programPath,
                              rawSystemProgramConf, rawSystemProgram,
@@ -205,15 +206,16 @@ preprocessModule
 preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
-    psrcFiles  <- moduleToFilePath2 searchLoc modu (map fst handlers)
+    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc (dotToSep modu)
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
-	[] -> do bsrcFiles  <- moduleToFilePath searchLoc modu builtinSuffixes
+      Nothing -> do
+                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc (dotToSep modu)
                  case bsrcFiles of
-	          [] -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
-	          _  -> return ()
+	          Nothing -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
+	          _       -> return ()
         -- found a pre-processable file in one of the source dirs
-        ((psrcLoc, psrcRelFile):_) -> do
+      Just (psrcLoc, psrcRelFile) -> do
             let (srcStem, ext) = splitExtension psrcRelFile
                 psrcFile = psrcLoc </> psrcRelFile
 	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
@@ -229,10 +231,10 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
             when (not forSDist || forSDist && platformIndependent pp) $ do
               -- look for existing pre-processed source file in the dest dir to
               -- see if we really have to re-run the preprocessor.
-	      ppsrcFiles <- moduleToFilePath [buildLoc] modu builtinSuffixes
+	      ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc] (dotToSep modu)
 	      recomp <- case ppsrcFiles of
-	                  [] -> return True
-	                  (ppsrcFile:_) -> do
+	                  Nothing -> return True
+	                  Just ppsrcFile -> do
                               btime <- getModificationTime ppsrcFile
 	                      ptime <- getModificationTime psrcFile
 	                      return (btime < ptime)

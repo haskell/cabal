@@ -61,7 +61,7 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, dotToSep,
-				  moduleToFilePath, die, info, notice,
+				  findFileWithExtension, die, info, notice,
 				  smartCopySources, findFile )
 import Language.Haskell.Extension
 				( Extension(..) )
@@ -72,7 +72,7 @@ import Distribution.Verbosity
 import Distribution.Package	( PackageIdentifier(..) )
 
 import Data.Char		( isSpace )
-import Data.Maybe		( mapMaybe )
+import Data.Maybe		( mapMaybe, catMaybes )
 import Control.Monad		( unless, when, filterM )
 import Control.Exception	( try )
 import Data.List		( nub, sort, isSuffixOf )
@@ -165,18 +165,19 @@ build pkg_descr lbi verbosity = do
 	    let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
             info verbosity $ "Source directories: " ++ show srcDirs
             flip mapM_ mods $ \ m -> do
-                fs <- moduleToFilePath srcDirs m suffixes
+                fs <- findFileWithExtension suffixes srcDirs (dotToSep m)
                 case fs of
-                  [] ->
+                  Nothing ->
                     die ("can't find source for module " ++ m)
-                  srcFile:_ -> do
+                  Just srcFile -> do
                     let ext = takeExtension srcFile
                     copyModule useCpp bi srcFile
                         (destDir </> dotToSep m <.> ext)
 	    -- Pass 2: compile foreign stubs in scratch directory
-	    stubsFileLists <- sequence [moduleToFilePath [destDir] modu suffixes |
-			modu <- mods]
-            compileFiles bi destDir (concat stubsFileLists)
+	    stubsFileLists <- fmap catMaybes $ sequence
+              [ findFileWithExtension suffixes [destDir] (dotToSep modu)
+              | modu <- mods]
+            compileFiles bi destDir stubsFileLists
 
 	suffixes = ["hs", "lhs"]
 
