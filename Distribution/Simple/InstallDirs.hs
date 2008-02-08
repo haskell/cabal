@@ -313,7 +313,13 @@ absoluteInstallDirs :: PackageIdentifier -> PackageIdentifier -> CopyDest
                     -> InstallDirTemplates -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
     (case copydest of
-       CopyTo destdir -> fmap ((destdir </>) . dropDrive)
+       CopyTo destdir -> \dirs -> (fmap ((destdir </>) . dropDrive) dirs) {
+                            -- We add the destdir to all the paths, but the
+                            -- program prefix and suffix are not paths, so we
+                            -- keep their old values:
+                            progprefix = progprefix dirs,
+                            progsuffix = progsuffix dirs
+                          }
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
