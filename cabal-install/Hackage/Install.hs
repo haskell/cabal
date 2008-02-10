@@ -39,7 +39,7 @@ import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils (defaultPackageDesc)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
-import Distribution.PackageDescription (readPackageDescription)
+import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 import Distribution.Verbosity (Verbosity)
 

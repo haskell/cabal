@@ -14,7 +14,6 @@
 module Main where
 
 import Hackage.Setup
-import Distribution.PackageDescription (cabalVersion)
 import Distribution.Simple.Setup (Flag, fromFlag, fromFlagOrDefault,
                                   flagToMaybe)
 import qualified Distribution.Simple.Setup as Cabal
@@ -22,7 +21,7 @@ import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
-import Distribution.Simple.Utils (die)
+import Distribution.Simple.Utils (cabalVersion, die)
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  defaultConfigFile, loadConfig, configRepos,
                                  configPackageDB)
