@@ -31,7 +31,7 @@ import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
-import Distribution.PackageDescription (ParseResult(..))
+import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)

@@ -48,7 +48,7 @@ import Data.ByteString.Lazy (ByteString)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO.Error (isDoesNotExistError)
 
-import Distribution.PackageDescription (parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 --         PackageDescription(package),
 --          GenericPackageDescription(packageDescription))
 import Distribution.Package (PackageIdentifier(..))

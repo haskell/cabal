@@ -29,8 +29,9 @@ import Distribution.Version (Dependency(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
-    , GenericPackageDescription
-    , finalizePackageDescription)
+    , GenericPackageDescription )
+import Distribution.PackageDescription.Configuration
+    ( finalizePackageDescription)
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
 import qualified Distribution.Simple.Setup as Cabal
 
