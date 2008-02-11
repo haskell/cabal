@@ -51,7 +51,7 @@ Library
         Distribution.PackageDescription,
         Distribution.PackageDescription.Configuration,
         Distribution.PackageDescription.Parse,
-        Distribution.PackageDescription.QA,
+        Distribution.PackageDescription.Check,
         Distribution.ParseUtils,
         Distribution.Simple,
         Distribution.Simple.Build,

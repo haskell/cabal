@@ -56,7 +56,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          withLib, withExe)
-import Distribution.PackageDescription.QA
+import Distribution.PackageDescription.Check
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
@@ -72,11 +72,11 @@ import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram
 import Control.Exception (finally)
 import Control.Monad(when, unless)
 import Data.Char (isSpace, toLower)
-import Data.List (isPrefixOf)
+import Data.List (partition, isPrefixOf)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import System.Directory (doesFileExist, doesDirectoryExist,
                          removeDirectoryRecursive)
-import Distribution.Verbosity
+import Distribution.Verbosity (Verbosity)
 import System.FilePath ((</>), takeDirectory, dropExtension, isAbsolute)
 
 -- |Create a source distribution.
@@ -99,17 +99,7 @@ sdist pkg_descr_orig mb_lbi flags tmpDir targetPref pps = do
           | otherwise = pkg_descr_orig
 
     -- do some QA
-    qas <- qaCheckPackage pkg_descr
-    let qfail = [ s | QAFailure s <- qas ]
-        qwarn = [ s | QAWarning s <- qas ]
-    unless (null qfail) $ do
-    	notice verbosity "QA errors:"
-    	notice verbosity $ unlines qfail
-    unless (null qwarn) $ do
-    	notice verbosity $ "QA warnings:"
-    	notice verbosity $ unlines qwarn
-    unless (null qfail) $
-    	notice verbosity "Note: the public hackage server would reject this package due to QA issues"
+    printPackageProblems verbosity pkg_descr
 
     prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date
     createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
@@ -259,6 +249,23 @@ copyFileTo verbosity dir file = do
   let targetFile = dir </> file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
   copyFileVerbose verbosity file targetFile
+
+printPackageProblems :: Verbosity -> PackageDescription -> IO ()
+printPackageProblems verbosity pkg_descr = do
+  ioChecks      <- checkPackageFiles pkg_descr "."
+  let pureChecks = checkPackage      pkg_descr
+      isDistError (PackageDistSuspicious _) = False
+      isDistError _                         = True
+      (errors, warnings) = partition isDistError (pureChecks ++ ioChecks)
+  unless (null errors) $
+      notice verbosity $ "Distribution quality errors:\n"
+                      ++ unlines (map explanation errors)
+  unless (null warnings) $
+      notice verbosity $ "Distribution quality warnings:\n"
+    	              ++ unlines (map explanation warnings)
+  unless (null errors) $
+      notice verbosity
+	"Note: the public hackage server would reject this package."
 
 ------------------------------------------------------------
 
