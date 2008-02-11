@@ -512,6 +512,9 @@ hmakeProgram = (simpleProgram "hmake") {
 jhcProgram :: Program
 jhcProgram = (simpleProgram "jhc") {
     programFindVersion = findProgramVersion "--version" $ \str ->
+    -- invoking "jhc --version" gives a string like
+    -- "jhc 0.3.20080208 (wubgipkamcep-2)
+    -- compiled by ghc-6.8 on a x86_64 running linux"
       case words str of
         (_:ver:_) -> ver
         _         -> ""
