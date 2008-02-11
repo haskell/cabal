@@ -50,8 +50,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
 	runP, ParseResult(..), catchParseError, parseFail,
-	Field(..), fName, lineNo,
-	FieldDescr(..), readFields,
+	Field(..), fName, lineNo, 
+	FieldDescr(..), ppField, ppFields, readFields, 
 	parseFilePathQ, parseTokenQ,
 	parseModuleNameQ, parseDependency, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
@@ -194,6 +194,14 @@ optsField name flavor get set =
 	update f opts ((f',opts'):rest)
            | f == f'   = (f, opts ++ opts') : rest
            | otherwise = (f',opts') : update f opts rest
+
+ppFields :: a -> [FieldDescr a] -> Doc
+ppFields _ [] = empty
+ppFields pkg' ((FieldDescr name getter _):flds) =
+     ppField name (getter pkg') $$ ppFields pkg' flds
+
+ppField :: String -> Doc -> Doc
+ppField name fielddoc = text name <> colon <+> fielddoc
 
 ------------------------------------------------------------------------------
 
