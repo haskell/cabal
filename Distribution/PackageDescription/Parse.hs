@@ -46,13 +46,6 @@ module Distribution.PackageDescription.Parse (
         parsePackageDescription,
         showPackageDescription,
 
-        -- ** Misc internals
-        reqNameName,
-        reqNameVersion,
-        libFieldDescrs,
-        executableFieldDescrs,
-        ppFields,
-
         -- ** Parsing
         ParseResult(..),
         FieldDescr(..),
@@ -88,25 +81,12 @@ import Distribution.Simple.Utils (die, dieWithLocation, warn)
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
 
--- the strings for the required fields are necessary here, and so we
--- don't repeat ourselves, I name them:
-reqNameName	  :: String
-reqNameName       = "name"
-reqNameVersion	  :: String
-reqNameVersion    = "version"
-reqNameCopyright  :: String
-reqNameCopyright  = "copyright"
-reqNameMaintainer :: String
-reqNameMaintainer = "maintainer"
-reqNameSynopsis   :: String
-reqNameSynopsis   = "synopsis"
-
 pkgDescrFieldDescrs :: [FieldDescr PackageDescription]
 pkgDescrFieldDescrs =
-    [ simpleField reqNameName
+    [ simpleField "name"
            text                   parsePackageName
            (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
- , simpleField reqNameVersion
+ , simpleField "version"
            (text . showVersion)   parseVersion
            (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
@@ -121,10 +101,10 @@ pkgDescrFieldDescrs =
  , simpleField "license-file"
            showFilePath           parseFilePathQ
            licenseFile            (\l pkg -> pkg{licenseFile=l})
- , simpleField reqNameCopyright
+ , simpleField "copyright"
            showFreeText           (munch (const True))
            copyright              (\val pkg -> pkg{copyright=val})
- , simpleField reqNameMaintainer
+ , simpleField "maintainer"
            showFreeText           (munch (const True))
            maintainer             (\val pkg -> pkg{maintainer=val})
  , commaListField  "build-depends"
@@ -139,7 +119,7 @@ pkgDescrFieldDescrs =
  , simpleField "package-url"
            showFreeText           (munch (const True))
            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
- , simpleField reqNameSynopsis
+ , simpleField "synopsis"
            showFreeText           (munch (const True))
            synopsis               (\val pkg -> pkg{synopsis=val})
  , simpleField "description"
@@ -720,14 +700,6 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
       space $$
       text "executable:" <+> text name $$
       ppFields bi binfoFieldDescrs
-
-ppFields :: a -> [FieldDescr a] -> Doc
-ppFields _ [] = empty
-ppFields pkg' ((FieldDescr name getter _):flds) =
-     ppField name (getter pkg') $$ ppFields pkg' flds
-
-ppField :: String -> Doc -> Doc
-ppField name fielddoc = text name <> colon <+> fielddoc
 
 -- replace all tabs used as indentation with whitespace, also return where
 -- tabs were found
