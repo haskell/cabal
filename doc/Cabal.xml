@@ -752,9 +752,14 @@ Executable program2
               (required)
             </term>
             <listitem>
-              <para>The name of the source file containing the
-                <literal>Main</literal> module, relative to one of the
-                directories listed in <literal>hs-source-dirs</literal>.</para>
+              <para>The name of the <filename>.hs</filename> or
+                <filename>.lhs</filename> file containing the
+                <literal>Main</literal> module. Note that it is the
+                <filename>.hs</filename> filename that must be listed, even if
+                that file is generated using a preprocessor. The source
+                file must be relative to one of the directories listed in
+                <literal>hs-source-dirs</literal>.
+              </para>
             </listitem>
           </varlistentry>
 	  <varlistentry>
