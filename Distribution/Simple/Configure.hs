@@ -66,8 +66,8 @@ import Distribution.PackageDescription
     , allBuildInfo, emptyBuildInfo, unionBuildInfo )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, satisfyDependency )
-import Distribution.PackageDescription.QA
-    ( sanityCheckPackage )
+import Distribution.PackageDescription.Check
+    ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.ParseUtils
     ( showDependency )
 import Distribution.Simple.Program
@@ -115,8 +115,6 @@ import Data.Maybe
     ( fromMaybe, isNothing )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing )
-import System.Environment
-    ( getProgName )
 import System.Exit
     ( ExitCode(..), exitWith )
 import System.FilePath
@@ -239,10 +237,7 @@ configure (pkg_descr0, pbi) cfg
           info verbosity $ "Flags chosen: " ++ (concat . intersperse ", " .
                       map (\(n,b) -> n ++ "=" ++ show b) $ flags)
 
-        (warns, ers) <- sanityCheckPackage $
-                          updatePackageDescription pbi pkg_descr
-        
-        errorOut verbosity warns ers
+        checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
 
         let ipkgs = fromMaybe (map setDepByVersion (buildDepends pkg_descr)) mipkgs 
 
@@ -502,18 +497,17 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       _    -> die "Unknown compiler"
 
 
--- |Output warnings and errors. Exit if any errors.
-errorOut :: Verbosity -- ^Verbosity
-         -> [String]  -- ^Warnings
-         -> [String]  -- ^errors
-         -> IO ()
-errorOut verbosity warnings errors = do
-  mapM_ (warn verbosity) warnings
-  when (not (null errors)) $ do
-    pname <- getProgName
-    mapM (hPutStrLn stderr . ((pname ++ ": Error: ") ++)) errors
-    exitWith (ExitFailure 1)
-
+-- | Output package check warnings and errors. Exit if any errors.
+checkPackageProblems :: Verbosity -> PackageDescription -> IO ()
+checkPackageProblems verbosity pkg_descr = do
+  ioChecks      <- checkPackageFiles pkg_descr "."
+  let pureChecks = checkPackage      pkg_descr
+      errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
+      warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
+  if null errors
+    then mapM_ (warn verbosity) warnings
+    else do mapM_ (hPutStrLn stderr . ("Error: " ++)) errors
+            exitWith (ExitFailure 1)
 
 -- -----------------------------------------------------------------------------
 -- Tests
