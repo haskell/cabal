@@ -1,5 +1,5 @@
 
-VERSION=1.3.3
+VERSION=1.3.4
 
 KIND=devel
 #KIND=rc
@@ -7,6 +7,7 @@ KIND=devel
 
 PREFIX=/usr/local
 HC=ghc
+GHCFLAGS=-Wall
 
 all: build
 
