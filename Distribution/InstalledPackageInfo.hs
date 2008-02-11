@@ -56,7 +56,7 @@ module Distribution.InstalledPackageInfo (
 
 import Distribution.ParseUtils (
 	FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
-	Field(F), simpleField, listField, parseLicenseQ,
+	Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields,
 	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
@@ -170,11 +170,7 @@ parseBasicStanza _ _ _ =
 -- Pretty-printing
 
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo pkg = render (ppFields all_fields)
-  where
-    ppFields [] = empty
-    ppFields ((FieldDescr name get' _):flds) = 
-	pprField name (get' pkg) $$ ppFields flds
+showInstalledPackageInfo pkg = render (ppFields pkg all_fields)
 
 showInstalledPackageInfoField
 	:: String
@@ -182,10 +178,7 @@ showInstalledPackageInfoField
 showInstalledPackageInfoField field
   = case [ (f,get') | (FieldDescr f get' _) <- all_fields, f == field ] of
 	[]      -> Nothing
-	((f,get'):_) -> Just (render . pprField f . get')
-
-pprField :: String -> Doc -> Doc
-pprField name field = text name <> colon <+> field
+	((f,get'):_) -> Just (render . ppField f . get')
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
