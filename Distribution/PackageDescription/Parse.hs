@@ -182,7 +182,7 @@ executableFieldDescrs =
 binfoFieldDescrs :: [FieldDescr BuildInfo]
 binfoFieldDescrs =
  [ simpleField "buildable"
-           (text . show)      parseReadS
+           (text . show)      parseBool
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
            showDependency     parseBuildTool
@@ -253,7 +253,7 @@ flagFieldDescrs =
         showFreeText     (munch (const True))
         flagDescription  (\val fl -> fl{ flagDescription = val })
     , simpleField "default"
-        (text . show)    parseReadS
+        (text . show)    parseBool
         flagDefault      (\val fl -> fl{ flagDefault = val })
     ]
 
