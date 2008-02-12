@@ -59,7 +59,9 @@ module Distribution.ParseUtils (
 	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
 	field, simpleField, listField, commaListField, optsField, liftField,
-	parseReadS, parseReadSQ, parseQuoted, parseBool
+	parseReadS, parseReadSQ, parseQuoted, parseBool,
+
+        UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
 import Distribution.Compiler (CompilerFlavor)
@@ -202,6 +204,25 @@ ppFields pkg' ((FieldDescr name getter _):flds) =
 
 ppField :: String -> Doc -> Doc
 ppField name fielddoc = text name <> colon <+> fielddoc
+
+
+-- | The type of a function which, given a name-value pair of an
+--   unrecognized field, and the current structure being built,
+--   decides whether to incorporate the unrecognized field
+--   (by returning  Just x, where x is a possibly modified version
+--   of the structure being built), or not (by returning Nothing).
+type UnrecFieldParser a = (String,String) -> a -> Maybe a
+
+-- | A default unrecognized field parser which simply returns Nothing,
+--   i.e. ignores all unrecognized fields, so warnings will be generated.
+warnUnrec :: UnrecFieldParser a
+warnUnrec _ _ = Nothing
+
+-- | A default unrecognized field parser which silently (i.e. no
+--   warnings will be generated) ignores unrecognized fields, by
+--   returning the structure being built unmodified.
+ignoreUnrec :: UnrecFieldParser a
+ignoreUnrec _ x = Just x
 
 ------------------------------------------------------------------------------
 
