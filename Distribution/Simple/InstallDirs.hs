@@ -109,9 +109,7 @@ data InstallDirs dir = InstallDirs {
         docdir       :: dir,
 	mandir       :: dir,
         htmldir      :: dir,
-        haddockdir   :: dir,
-        progprefix   :: dir,
-        progsuffix   :: dir
+        haddockdir   :: dir
     } deriving (Read, Show)
 
 instance Functor InstallDirs where
@@ -129,9 +127,7 @@ instance Functor InstallDirs where
     docdir       = f (docdir dirs),
     mandir       = f (mandir dirs),
     htmldir      = f (htmldir dirs),
-    haddockdir   = f (haddockdir dirs),
-    progprefix   = f (progprefix dirs),
-    progsuffix   = f (progsuffix dirs)
+    haddockdir   = f (haddockdir dirs)
   }
 
 instance Monoid dir => Monoid (InstallDirs dir) where
@@ -149,9 +145,7 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       docdir       = mempty,
       mandir       = mempty,
       htmldir      = mempty,
-      haddockdir   = mempty,
-      progprefix   = mempty,
-      progsuffix   = mempty
+      haddockdir   = mempty
   }
   mappend = combineInstallDirs mappend
 
@@ -173,9 +167,7 @@ combineInstallDirs combine a b = InstallDirs {
     docdir       = docdir a     `combine` docdir b,
     mandir       = mandir a     `combine` mandir b,
     htmldir      = htmldir a    `combine` htmldir b,
-    haddockdir   = haddockdir a `combine` haddockdir b,
-    progprefix   = progprefix a `combine` progprefix b,
-    progsuffix   = progsuffix a `combine` progsuffix b
+    haddockdir   = haddockdir a `combine` haddockdir b
   }
 
 appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
@@ -247,9 +239,7 @@ defaultInstallDirs comp userInstall hasLibs = do
 	_other    -> "$datadir" </> "doc" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
-      haddockdir   = "$htmldir",
-      progprefix   = "",
-      progsuffix   = ""
+      haddockdir   = "$htmldir"
   }
 
 -- ---------------------------------------------------------------------------
@@ -287,9 +277,7 @@ substituteTemplates pkgId compilerId dirs = dirs'
       mandir     = subst docdir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
-                                      [docdirVar, htmldirVar]),
-      progprefix = subst progprefix [],
-      progsuffix = subst progsuffix []
+                                      [docdirVar, htmldirVar])
     }
     -- The initial environment has all the static stuff but no paths
     env = initialPathTemplateEnv pkgId compilerId
@@ -313,13 +301,7 @@ absoluteInstallDirs :: PackageIdentifier -> PackageIdentifier -> CopyDest
                     -> InstallDirTemplates -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
     (case copydest of
-       CopyTo destdir -> \dirs -> (fmap ((destdir </>) . dropDrive) dirs) {
-                            -- We add the destdir to all the paths, but the
-                            -- program prefix and suffix are not paths, so we
-                            -- keep their old values:
-                            progprefix = progprefix dirs,
-                            progsuffix = progsuffix dirs
-                          }
+       CopyTo destdir -> fmap ((destdir </>) . dropDrive)
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate

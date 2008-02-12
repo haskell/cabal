@@ -300,7 +300,9 @@ configure (pkg_descr0, pbi) cfg
 		    withOptimization    = fromFlag $ configOptimization cfg,
 		    withGHCiLib         = fromFlag $ configGHCiLib cfg,
 		    splitObjs           = split_objs,
-		    withPackageDB       = packageDb
+		    withPackageDB       = packageDb,
+                    progPrefix          = fromFlag $ configProgPrefix cfg,
+                    progSuffix          = fromFlag $ configProgSuffix cfg
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
