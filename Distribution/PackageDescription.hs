@@ -113,6 +113,9 @@ data PackageDescription
         synopsis       :: String, -- ^A one-line summary of this package
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
+        customFieldsPD :: [(String,String)], -- ^Custom fields starting 
+                                             -- with x-, stored in a 
+                                             -- simple assoc-list.
         buildDepends   :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
         buildType      :: Maybe BuildType,
@@ -143,6 +146,7 @@ emptyPackageDescription
                       synopsis     = "",
                       description  = "",
                       category     = "",
+                      customFieldsPD = [],
                       library      = Nothing,
                       executables  = [],
                       dataFiles    = [],
@@ -284,7 +288,10 @@ data BuildInfo = BuildInfo {
 	installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
         ghcProfOptions    :: [String],
-        ghcSharedOptions  :: [String]
+        ghcSharedOptions  :: [String],
+        customFieldsBI    :: [(String,String)]  -- ^Custom fields starting
+                                                -- with x-, stored in a
+                                                -- simple assoc-list.  
     }
     deriving (Show,Read,Eq)
 
@@ -308,7 +315,8 @@ nullBuildInfo = BuildInfo {
                       installIncludes   = [],
                       options           = [],
                       ghcProfOptions    = [],
-                      ghcSharedOptions  = []
+                      ghcSharedOptions  = [],
+                      customFieldsBI    = []
                      }
 
 emptyBuildInfo :: BuildInfo
@@ -385,7 +393,8 @@ unionBuildInfo b1 b2
          includeDirs       = combine includeDirs,
          includes          = combine includes,
          installIncludes   = combine installIncludes,
-         options           = combine options
+         options           = combine options,
+         customFieldsBI    = combine customFieldsBI
         }
       where 
       combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
