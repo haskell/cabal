@@ -48,11 +48,13 @@ module Distribution.Simple.LocalBuildInfo (
 	-- * Installation directories
 	module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
+        substPathTemplate
   ) where
 
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
-                                               prefixRelativeInstallDirs)
+                                               prefixRelativeInstallDirs,
+                                               substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
@@ -92,7 +94,9 @@ data LocalBuildInfo = LocalBuildInfo {
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withOptimization :: Bool, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
-	splitObjs     :: Bool 	-- ^Use -split-objs with GHC, if available
+	splitObjs     :: Bool, 	-- ^Use -split-objs with GHC, if available
+        progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
+        progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
 
   } deriving (Read, Show)
 
@@ -118,3 +122,11 @@ prefixRelativeInstallDirs pkg_descr lbi =
     (compilerId (compiler lbi))
     (installDirTemplates lbi)
 
+substPathTemplate :: PackageDescription -> LocalBuildInfo
+                  -> PathTemplate -> FilePath
+substPathTemplate pkg_descr lbi = fromPathTemplate 
+                                . ( InstallDirs.substPathTemplate env )
+    where env = initialPathTemplateEnv 
+                   (package pkg_descr)
+                   (compilerId (compiler lbi))
+          
