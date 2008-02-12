@@ -216,6 +216,8 @@ data ConfigFlags = ConfigFlags {
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the executables.
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
     configOptimization  :: Flag Bool,     -- ^Enable optimization.
+    configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
+    configProgSuffix    :: Flag PathTemplate, -- ^Installed executable suffix.
     configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation paths
     configScratchDir    :: Flag FilePath,
 
@@ -237,6 +239,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configSharedLib    = Flag False,
     configProfExe      = Flag False,
     configOptimization = Flag True,
+    configProgPrefix   = Flag (toPathTemplate ""),
+    configProgSuffix   = Flag (toPathTemplate ""),
     configVerbose      = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
     configGHCiLib      = Flag True,
@@ -340,13 +344,14 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
 
       ,option "" ["program-prefix"]
           "prefix to be applied to installed executables"
-          progprefix (\v flags -> flags { progprefix = v } )
-          (installDirArgTitle "PREFIX")
+          configProgPrefix 
+          (\v flags -> flags { configProgPrefix = v })
+          (reqPathTemplateArgFlag "PREFIX")
 
       ,option "" ["program-suffix"]
           "suffix to be applied to installed executables"
-          progsuffix (\v flags -> flags { progsuffix = v } )
-          (installDirArgTitle "SUFFIX")
+          configProgSuffix (\v flags -> flags { configProgSuffix = v } )
+          (reqPathTemplateArgFlag "SUFFIX")
 
       ,option "" ["enable-library-vanilla"]
          "Enable vanilla libraries"
@@ -464,12 +469,14 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
     showFlagList :: [(String, Bool)] -> [String]
     showFlagList fs = [ if not set then '-':fname else fname | (fname, set) <- fs]
 
-    installDirArgTitle title get set = reqArgFlag title
+    installDirArg get set = reqArgFlag "DIR"
       (fmap fromPathTemplate.get.configInstallDirs)
       (\v flags -> flags { configInstallDirs =
                              set (fmap toPathTemplate v) (configInstallDirs flags)})
-      
-    installDirArg = installDirArgTitle "DIR"
+
+    reqPathTemplateArgFlag title get set = reqArgFlag title
+      (fmap fromPathTemplate.get)
+      (\v flags -> set (fmap toPathTemplate v) flags)
 
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty
@@ -488,6 +495,8 @@ instance Monoid ConfigFlags where
     configProfExe       = mempty,
     configConfigureArgs = mempty,
     configOptimization  = mempty,
+    configProgPrefix    = mempty,
+    configProgSuffix    = mempty,
     configInstallDirs   = mempty,
     configScratchDir    = mempty,
     configVerbose       = mempty,
@@ -510,6 +519,8 @@ instance Monoid ConfigFlags where
     configProfExe       = combine configProfExe,
     configConfigureArgs = combine configConfigureArgs,
     configOptimization  = combine configOptimization,
+    configProgPrefix    = combine configProgPrefix,
+    configProgSuffix    = combine configProgSuffix,
     configInstallDirs   = combine configInstallDirs,
     configScratchDir    = combine configScratchDir,
     configVerbose       = combine configVerbose,
