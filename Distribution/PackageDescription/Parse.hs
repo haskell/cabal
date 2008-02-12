@@ -145,6 +145,12 @@ pkgDescrFieldDescrs =
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
  ]
 
+-- | Store any fields beginning with "x-" in the customFields field of
+--   a PackageDescription.  All other fields will generate a warning.
+storeXFieldsPD :: UnrecFieldParser PackageDescription
+storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD = (f,val):(customFieldsPD pkg) }
+storeXFieldsPD _ _ = Nothing
+
 -- ---------------------------------------------------------------------------
 -- The Library type
 
@@ -155,6 +161,11 @@ libFieldDescrs = map biToLib binfoFieldDescrs
 	 exposedModules (\mods lib -> lib{exposedModules=mods})
      ]
   where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
+
+storeXFieldsLib :: UnrecFieldParser Library
+storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) = 
+    Just $ l {libBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi) }}
+storeXFieldsLib _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
 -- The Executable type
@@ -174,6 +185,10 @@ executableFieldDescrs =
   ++ map biToExe binfoFieldDescrs
   where biToExe = liftField buildInfo (\bi exe -> exe{buildInfo=bi})
 
+storeXFieldsExe :: UnrecFieldParser Executable
+storeXFieldsExe (f@('x':'-':_), val) e@(Executable { buildInfo = bi }) =
+    Just $ e {buildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+storeXFieldsExe _ _ = Nothing
   
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -244,6 +259,10 @@ binfoFieldDescrs =
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})
  ]
+
+storeXFieldsBI :: UnrecFieldParser BuildInfo
+storeXFieldsBI (f@('x':'-':_),val) bi = Just bi{ customFieldsBI = (f,val):(customFieldsBI bi) }
+storeXFieldsBI _ _ = Nothing
 
 ------------------------------------------------------------------------------
 
@@ -404,7 +423,7 @@ parsePackageDescription file = do
 
     flip evalStT fields $ do
       hfs <- getHeader []
-      pkg <- lift $ parseFields pkgDescrFieldDescrs emptyPackageDescription hfs
+      pkg <- lift $ parseFields pkgDescrFieldDescrs storeXFieldsPD emptyPackageDescription hfs
       (flags, mlib, exes) <- getBody
       warnIfRest
       when (not (oldSyntax fields0)) $
@@ -515,7 +534,8 @@ parsePackageDescription file = do
         Just (Section _ sn sl fs) 
           | sn == "flag" -> do
               fl <- lift $ parseFields
-                      flagFieldDescrs 
+                      flagFieldDescrs
+                      warnUnrec
                       (MkFlag (map toLower sl) "" True)
                       fs 
               skipField >> getFlags (fl : acc)
@@ -575,10 +595,10 @@ parsePackageDescription file = do
         processIfs _ = bug "processIfs called with wrong field type"
 
     parseLibFields :: [Field] -> StT s ParseResult Library
-    parseLibFields = lift . parseFields libFieldDescrs emptyLibrary 
+    parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary 
 
     parseExeFields :: [Field] -> StT s ParseResult Executable
-    parseExeFields = lift . parseFields executableFieldDescrs emptyExecutable
+    parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
 
     checkForUndefinedFlags ::
         [Flag] ->
@@ -598,9 +618,18 @@ parsePackageDescription file = do
                     (concat . intersperse " " $ (fv \\ definedFlags))
 
 
-parseFields :: [FieldDescr a] -> a  -> [Field] -> ParseResult a
-parseFields descrs ini fields = 
-    do (a, unknowns) <- foldM (parseField descrs) (ini, []) fields
+-- | Parse a list of fields, given a list of field descriptions,
+--   a structure to accumulate the parsed fields, and a function
+--   that can decide what to do with fields which don't match any
+--   of the field descriptions.  
+parseFields :: [FieldDescr a]      -- ^ list of parseable fields
+            -> UnrecFieldParser a  -- ^ possibly do something with
+                                   --   unrecognized fields
+            -> a                   -- ^ accumulator
+            -> [Field]             -- ^ fields to be parsed
+            -> ParseResult a
+parseFields descrs unrec ini fields = 
+    do (a, unknowns) <- foldM (parseField descrs unrec) (ini, []) fields
        when (not (null unknowns)) $ do
          warning $ render $ 
            text "Unknown fields:" <+> 
@@ -613,15 +642,20 @@ parseFields descrs ini fields =
   where
     commaSep = fsep . punctuate comma . map text
 
-parseField :: [FieldDescr a] -> (a,[(Int,String)]) -> Field -> ParseResult (a, [(Int,String)])
-parseField ((FieldDescr name _ parse):fields) (a, us) (F line f val)
+parseField :: [FieldDescr a]     -- ^ list of parseable fields
+           -> UnrecFieldParser a -- ^ possibly do something with
+                                 --   unrecognized fields
+           -> (a,[(Int,String)]) -- ^ accumulated result and warnings
+           -> Field              -- ^ the field to be parsed
+           -> ParseResult (a, [(Int,String)])
+parseField ((FieldDescr name _ parse):fields) unrec (a, us) (F line f val)
   | name == f = parse line val a >>= \a' -> return (a',us)
-  | otherwise = parseField fields (a,us) (F line f val)
--- ignore "x-" extension fields without a warning
-parseField [] (a,us) (F _ ('x':'-':_) _) = return (a, us)
-parseField [] (a,us) (F l f _) = do
-          return (a, ((l,f):us))
-parseField _ _ _ = error "'parseField' called on a non-field.  This is a bug."
+  | otherwise = parseField fields unrec (a,us) (F line f val)
+parseField [] unrec (a,us) (F l f val) = return $
+  case unrec (f,val) a of        -- no fields matched, see if the 'unrec'
+    Just a' -> (a',us)           -- function wants to do anything with it
+    Nothing -> (a, ((l,f):us))
+parseField _ _ _ _ = bug "'parseField' called on a non-field"
 
 deprecatedFields :: [(String,String)]
 deprecatedFields = 
@@ -643,7 +677,7 @@ deprecField (F line fld val) = do
                       ++ "\" is deprecated, please use \"" ++ newName ++ "\""
               return newName
   return (F line fld' val)
-deprecField _ = error "'deprecField' called on a non-field.  This is a bug."
+deprecField _ = bug "'deprecField' called on a non-field"
 
    
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
@@ -665,10 +699,10 @@ parseHookedBuildInfo inp = do
             = do bis <- parseBI bi
                  return (mName, bis)
         | otherwise = syntaxError line "expecting 'executable' at top of stanza"
-    parseExe (_:_) = error "`parseExe' called on a non-field.  This is a bug."
+    parseExe (_:_) = bug "`parseExe' called on a non-field"
     parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
 
-    parseBI st = parseFields binfoFieldDescrs emptyBuildInfo st
+    parseBI st = parseFields binfoFieldDescrs storeXFieldsBI emptyBuildInfo st
 
 -- ---------------------------------------------------------------------------
 -- Pretty printing
@@ -679,12 +713,19 @@ writePackageDescription fpath pkg = writeFile fpath (showPackageDescription pkg)
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
   ppFields pkg pkgDescrFieldDescrs $$
+  ppCustomFields (customFieldsPD pkg) $$
   (case library pkg of
      Nothing  -> empty
      Just lib -> ppFields lib libFieldDescrs) $$
   vcat (map ppExecutable (executables pkg))
   where
     ppExecutable exe = space $$ ppFields exe executableFieldDescrs
+
+ppCustomFields :: [(String,String)] -> Doc
+ppCustomFields flds = vcat (map ppCustomField flds)
+
+ppCustomField :: (String,String) -> Doc
+ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
 writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
@@ -699,7 +740,8 @@ showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
     ppExeBuildInfo (name, bi) =
       space $$
       text "executable:" <+> text name $$
-      ppFields bi binfoFieldDescrs
+      ppFields bi binfoFieldDescrs $$
+      ppCustomFields (customFieldsBI bi)
 
 -- replace all tabs used as indentation with whitespace, also return where
 -- tabs were found
