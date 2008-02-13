@@ -33,7 +33,6 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
-import qualified Distribution.Simple.Setup as Cabal
 
 import Control.Monad (mplus)
 import Data.List (nub, nubBy, maximumBy, sortBy, groupBy)
