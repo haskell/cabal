@@ -36,7 +36,7 @@ import Hackage.HttpUtils (getHTTP)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Simple.Utils (die, notice, debug)
+import Distribution.Simple.Utils (die, notice, debug, setupMessage)
 import Distribution.Verbosity (Verbosity)
 
 import Data.Monoid (Monoid(mconcat))
@@ -122,7 +122,7 @@ fetchPackage verbosity pkg
          if fetched
             then do notice verbosity $ "'" ++ showPackageId (pkgInfoId pkg) ++ "' is cached."
                     return (packageFile pkg)
-            else do notice verbosity $ "Downloading '" ++ showPackageId (pkgInfoId pkg) ++ "'..."
+            else do setupMessage verbosity "Downloading" (pkgInfoId pkg)
                     downloadPackage verbosity pkg
 
 -- |Fetch a list of packages and their dependencies.
