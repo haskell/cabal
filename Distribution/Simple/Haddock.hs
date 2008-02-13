@@ -52,6 +52,9 @@ import Distribution.PackageDescription
          (PackageDescription(..), BuildInfo(..), hcOptions,
           Library(..), hasLibs, withLib,
           Executable(..), withExe)
+import Distribution.Simple.Compiler
+         ( Compiler(..), CompilerFlavor(..), compilerVersion
+	 , extensionsToFlags )
 import Distribution.ParseUtils (Field(..), ParseResult(..), readFields, 
                                 parseCommaList, parseFilePathQ)
 import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, 
@@ -89,7 +92,6 @@ import Data.List     (nub)
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        replaceExtension, normalise)
 import Distribution.Version
-import Distribution.Simple.Compiler (compilerVersion, extensionsToFlags)
 
 -- --------------------------------------------------------------------------
 -- Haddock support
