@@ -42,8 +42,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Setup (
 
-  module Distribution.Simple.Compiler,
-
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
@@ -69,8 +67,8 @@ module Distribution.Simple.Setup (
                            ) where
 
 import Distribution.Simple.Command
-import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                                     defaultCompilerFlavor, PackageDB(..))
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..) )
 import Distribution.Simple.Utils (wrapText)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms)
