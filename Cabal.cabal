@@ -60,7 +60,6 @@ Library
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
         Distribution.Simple.GHC,
-        Distribution.Simple.GHC.Makefile,
         Distribution.Simple.Haddock,
         Distribution.Simple.Hugs,
         Distribution.Simple.Install,
@@ -87,5 +86,6 @@ Library
   Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.TempFile
+        Distribution.Simple.GHC.Makefile
 
   Extensions: CPP
