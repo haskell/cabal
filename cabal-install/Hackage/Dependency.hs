@@ -18,13 +18,14 @@ module Hackage.Dependency
     , getUpgradableDeps
     ) where
 
-import qualified Hackage.LocalIndex as LocalIndex
-import Hackage.LocalIndex (LocalIndex)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo_(package))
+import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
+import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
 import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.RepoIndex (RepoIndex)
 import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
-import Hackage.Utils (comparing, equating)
+import Hackage.Utils (comparing)
 import Distribution.Version (Dependency(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
@@ -35,13 +36,13 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
 
 import Control.Monad (mplus)
-import Data.List (nub, nubBy, maximumBy, sortBy, groupBy)
+import Data.List (nub, nubBy, maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
 import qualified System.Info (arch,os)
 
 
 resolveDependencies :: Compiler
-                    -> LocalIndex
+                    -> InstalledPackageIndex
                     -> RepoIndex
                     -> [UnresolvedDependency]
                     -> [ResolvedDependency]
@@ -52,7 +53,7 @@ resolveDependencies comp installed available deps =
 -- | Resolve dependencies of a local package description. This is used
 -- when the top-level package does not come from hackage.
 resolveDependenciesLocal :: Compiler
-                         -> LocalIndex
+                         -> InstalledPackageIndex
                          -> RepoIndex
                          -> GenericPackageDescription
                          -> FlagAssignment
@@ -62,7 +63,7 @@ resolveDependenciesLocal comp installed available desc flags =
   | dep <- getDependencies comp installed available desc flags ]
 
 resolveDependency :: Compiler
-                  -> LocalIndex -- ^ Installed packages.
+                  -> InstalledPackageIndex -- ^ Installed packages.
                   -> RepoIndex -- ^ Installable packages
                   -> Dependency
                   -> FlagAssignment
@@ -78,11 +79,11 @@ resolveDependency comp installed available dep flags
            return $ AvailableDependency dep pkg flags resolved
 
 -- | Gets the latest installed package satisfying a dependency.
-latestInstalledSatisfying :: LocalIndex -> Dependency -> Maybe PackageIdentifier
+latestInstalledSatisfying :: InstalledPackageIndex -> Dependency -> Maybe PackageIdentifier
 latestInstalledSatisfying  index dep =
-  case LocalIndex.lookupDependency index dep of
+  case InstalledPackageIndex.lookupDependency index dep of
     []   -> Nothing
-    pkgs -> Just (maximumBy (comparing pkgVersion) pkgs)
+    pkgs -> Just (maximumBy (comparing pkgVersion) (map package pkgs))
 
 -- | Gets the latest available package satisfying a dependency.
 latestAvailableSatisfying :: RepoIndex -> Dependency -> Maybe PkgInfo
@@ -93,7 +94,7 @@ latestAvailableSatisfying index dep =
 
 -- | Gets the dependencies of an available package.
 getDependencies :: Compiler 
-                -> LocalIndex -- ^ Installed packages.
+                -> InstalledPackageIndex -- ^ Installed packages.
                 -> RepoIndex -- ^ Available packages
                 -> GenericPackageDescription
                 -> FlagAssignment
@@ -108,7 +109,7 @@ getDependencies comp installed available pkg flags
     where 
       e = finalizePackageDescription 
                 flags
-                (Just $ nub $ LocalIndex.allPackages installed
+                (Just $ nub $ map package   (InstalledPackageIndex.allPackages installed)
                            ++ map pkgInfoId (RepoIndex.allPackages available))
                 System.Info.os
                 System.Info.arch
@@ -134,7 +135,7 @@ packagesToInstall xs | null missing = Right toInstall
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.
 
-getUpgradableDeps :: LocalIndex
+getUpgradableDeps :: InstalledPackageIndex
                   -> RepoIndex
                   -> [PkgInfo]
 getUpgradableDeps installed available =
@@ -172,10 +173,7 @@ getUpgradableDeps installed available =
 -- package. That is, if multiple versions of this package are installed, figure
 -- out which is the lastest one.
 --
-getLatestPackageVersions :: LocalIndex -> [PackageIdentifier]
+getLatestPackageVersions :: InstalledPackageIndex -> [PackageIdentifier]
 getLatestPackageVersions index =
-  [ maximumBy (comparing pkgVersion) pkgs
-  | pkgGroup <- LocalIndex.allPackageGroups index
-  -- Each pkgGroup may contain packages with names that are not equal
-  -- case-insensitively, so we split into group by name case-sensitively:
-  , pkgs <- (groupBy (equating pkgName) . sortBy (comparing pkgName)) pkgGroup ]
+  [ maximumBy (comparing pkgVersion) $ map package pkgs
+  | pkgs <- InstalledPackageIndex.allPackagesByName index ]
