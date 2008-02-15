@@ -91,7 +91,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
     ( distPref )
 import Distribution.Simple.Utils
-    ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose )
+    ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
+    , intercalate )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -238,7 +239,7 @@ configure (pkg_descr0, pbi) cfg
               
 
         when (not (null flags)) $
-          info verbosity $ "Flags chosen: " ++ (concat . intersperse ", " .
+          info verbosity $ "Flags chosen: " ++ (intercalate ", " .
                       map (\(n,b) -> n ++ "=" ++ show b) $ flags)
 
         checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
