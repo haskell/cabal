@@ -248,12 +248,9 @@ configure (pkg_descr0, pbi) cfg
                           (map InstalledPackageInfo.package) mipkgs
 
         dep_pkgs <- case flavor of
-                      GHC | version >= Version [6,3] [] -> do
-	                mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
-                      JHC                           -> do
-	                mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
-                      _                             -> do
-                        return $ map setDepByVersion (buildDepends pkg_descr)
+          GHC -> mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
+          JHC -> mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
+          _   -> return $ map setDepByVersion (buildDepends pkg_descr)
 
 
 	removeInstalledConfig
@@ -383,8 +380,7 @@ getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfigurati
 getInstalledPackages verbosity comp packageDb progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC | compilerVersion comp >= Version [6,3] []
-        -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
+    GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
     JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDb progconf
     _   -> return Nothing
 
