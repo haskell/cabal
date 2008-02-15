@@ -59,10 +59,10 @@ import Distribution.Simple.Compiler
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
-import Distribution.InstalledPackageInfo
-    ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package) )
+import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
+import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -117,7 +117,9 @@ import Data.Char
 import Data.List
     ( intersperse, nub, partition, isPrefixOf )
 import Data.Maybe
-    ( isNothing )
+    ( fromMaybe, isNothing )
+import Data.Monoid
+    ( Monoid(mempty) )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing )
 import System.Exit
@@ -218,14 +220,17 @@ configure (pkg_descr0, pbi) cfg
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
-        mipkgs <- getInstalledPackages (lessVerbose verbosity) comp
-                    packageDb programsConfig'
+        maybePackageIndex <- getInstalledPackages (lessVerbose verbosity) comp
+                               packageDb programsConfig'
+        let packageIndex = fromMaybe mempty maybePackageIndex
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
-                       (fmap (map InstalledPackageInfo.package) mipkgs)
+                       (fmap (map InstalledPackageInfo.package
+                            . InstalledPackageIndex.allPackages)
+                             maybePackageIndex)
                        System.Info.os
                        System.Info.arch
                        (map toLower (show flavor),version)
@@ -244,12 +249,9 @@ configure (pkg_descr0, pbi) cfg
 
         checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
 
-        let ipkgs = maybe (map setDepByVersion (buildDepends pkg_descr))
-                          (map InstalledPackageInfo.package) mipkgs
-
         dep_pkgs <- case flavor of
-          GHC -> mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
-          JHC -> mapM (configDependency verbosity ipkgs) (buildDepends pkg_descr)
+          GHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
+          JHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
           _   -> return $ map setDepByVersion (buildDepends pkg_descr)
 
 
@@ -363,8 +365,8 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
-configDependency :: Verbosity -> [PackageIdentifier] -> Dependency -> IO PackageIdentifier
-configDependency verbosity ps dep@(Dependency pkgname vrange) =
+configDependency :: Verbosity -> InstalledPackageIndex -> Dependency -> IO PackageIdentifier
+configDependency verbosity index dep@(Dependency pkgname vrange) =
   case satisfyDependency ps dep of
         Nothing -> die $ "cannot satisfy dependency "
                       ++ pkgname ++ showVersionRange vrange ++ "\n"
@@ -374,9 +376,11 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
                                 ++ showVersionRange vrange
                                 ++ ": using " ++ showPackageId pkg
                        return pkg
+  where ps = map InstalledPackageInfo.package
+                 (InstalledPackageIndex.allPackages index)
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
-                     -> IO (Maybe [InstalledPackageInfo])
+                     -> IO (Maybe InstalledPackageIndex)
 getInstalledPackages verbosity comp packageDb progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
