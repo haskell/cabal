@@ -16,13 +16,13 @@ module Hackage.Upgrade
     ( upgrade
     ) where
 
-import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.RepoIndex  as RepoIndex
 import Hackage.Dependency (getUpgradableDeps)
 import Hackage.Install (install)
 import Hackage.Types (PkgInfo (..), UnresolvedDependency(..), Repo)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
+import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Package (showPackageId, PackageIdentifier(..))
 import Distribution.Version (VersionRange(..), Dependency(..))
 import Distribution.Verbosity (Verbosity)
@@ -37,7 +37,7 @@ upgrade :: Verbosity
         -> Cabal.ConfigFlags
         -> IO ()
 upgrade verbosity packageDB repos comp conf configFlags = do 
-  installed <- LocalIndex.read verbosity comp conf packageDB 
+  Just installed <- getInstalledPackages verbosity comp packageDB conf
   available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)      
   let upgradable = getUpgradableDeps installed available
   putStrLn "Upgrading the following packages: "

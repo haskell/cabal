@@ -27,7 +27,6 @@ import Network.HTTP (ConnError(..), Response(..))
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
                       PkgInfo, packageURL, pkgInfoId, packageFile, packageDir)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
-import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Utils (showDependencies)
@@ -36,6 +35,7 @@ import Hackage.HttpUtils (getHTTP)
 import Distribution.Package (showPackageId)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Utils (die, notice, debug, setupMessage)
 import Distribution.Verbosity (Verbosity)
 
@@ -134,7 +134,7 @@ fetch :: Verbosity
       -> [UnresolvedDependency]
       -> IO ()
 fetch verbosity packageDB repos comp conf deps
-    = do installed <- LocalIndex.read verbosity comp conf packageDB 
+    = do Just installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let depTree = resolveDependencies comp installed available deps'

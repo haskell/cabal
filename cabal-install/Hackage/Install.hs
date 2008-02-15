@@ -24,7 +24,6 @@ import System.FilePath ((</>),(<.>))
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
 import qualified Hackage.RepoIndex as RepoIndex
-import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.IndexUtils as IndexUtils
 --import qualified Hackage.DepGraph as DepGraph
 import Hackage.Tar (extractTarGzFile)
@@ -34,6 +33,7 @@ import Hackage.Utils (showDependencies)
 
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
+import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
@@ -68,7 +68,7 @@ installLocalPackage :: Verbosity
 installLocalPackage verbosity packageDB repos comp conf configFlags =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
-      installed <- LocalIndex.read verbosity comp conf packageDB 
+      Just installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
       let resolvedDeps = resolveDependenciesLocal comp installed available desc
                            (Cabal.configConfigurationsFlags configFlags)
@@ -86,7 +86,7 @@ installRepoPackages :: Verbosity
                     -> [UnresolvedDependency]
                     -> IO ()
 installRepoPackages verbosity packageDB repos comp conf configFlags deps =
-    do installed <- LocalIndex.read verbosity comp conf packageDB 
+    do Just installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
        let resolvedDeps = resolveDependencies comp installed available deps'

@@ -12,7 +12,6 @@
 -----------------------------------------------------------------------------
 module Hackage.Info where
 
-import qualified Hackage.LocalIndex as LocalIndex
 import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Dependency 
@@ -23,6 +22,7 @@ import Hackage.Utils (showDependencies)
 import Distribution.Package (showPackageId)
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
+import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils as Utils (notice, info)
 import Distribution.Verbosity (Verbosity)
@@ -38,7 +38,7 @@ info :: Verbosity
      -> [UnresolvedDependency]
      -> IO ()
 info verbosity packageDB repos comp conf deps
-    = do installed <- LocalIndex.read verbosity comp conf packageDB 
+    = do Just installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let apkgs = resolveDependencies comp installed available deps'
