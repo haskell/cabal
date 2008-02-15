@@ -69,6 +69,7 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
+import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
@@ -450,7 +451,7 @@ mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
                 followingLines' = map (\(_,_,s) -> stripDot s) followingLines
                 allLines | null firstLine' =              followingLines'
                          | otherwise       = firstLine' : followingLines'
-             in (concat . intersperse "\n") allLines
+             in intercalate "\n" allLines
           stripDot "." = ""
           stripDot s   = s
 

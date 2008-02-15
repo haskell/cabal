@@ -69,13 +69,13 @@ import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId )
 import Distribution.Simple.Utils( createDirectoryIfMissingVerbose,
-                                  copyFileVerbose, die, info )
+                                  copyFileVerbose, die, info, intercalate )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 
-import Data.List		( nub, intersperse )
+import Data.List		( nub )
 import Data.Char		( isSpace )
 
 
@@ -161,10 +161,10 @@ jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
       Just lib = library pd
-      comma f l = concat $ intersperse "," $ map f l
+      comma = intercalate ","
   in unlines [sline "name" (showPackageId . package)
-             ,"exposed-modules: " ++ (comma id (exposedModules lib))
-             ,"hidden-modules: " ++ (comma id (otherModules $ libBuildInfo lib))
+             ,"exposed-modules: " ++ (comma (exposedModules lib))
+             ,"hidden-modules: " ++ (comma (otherModules $ libBuildInfo lib))
              ]
 
 installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
