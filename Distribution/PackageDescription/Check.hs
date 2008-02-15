@@ -53,7 +53,7 @@ import System.Directory (doesFileExist)
 import Distribution.PackageDescription
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.License (License(..))
-import Distribution.Simple.Utils (cabalVersion)
+import Distribution.Simple.Utils (cabalVersion, intercalate)
 
 import Distribution.Version (Version(..), withinRange, showVersionRange)
 import Distribution.Package (PackageIdentifier(..))
@@ -447,4 +447,4 @@ quote :: String -> String
 quote s = "'" ++ s ++ "'"
 
 commaSep :: [String] -> String
-commaSep = concat . intersperse ","
+commaSep = intercalate ","

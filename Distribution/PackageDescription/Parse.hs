@@ -60,7 +60,7 @@ module Distribution.PackageDescription.Parse (
 
 import Data.Char  (isSpace, toLower)
 import Data.Maybe (listToMaybe)
-import Data.List  (nub, unfoldr, partition, (\\), intersperse)
+import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when)
 import System.Directory (doesFileExist)
 
@@ -75,7 +75,7 @@ import Distribution.Version (Dependency, showVersion, parseVersion,
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
-import Distribution.Simple.Utils (die, dieWithLocation, warn)
+import Distribution.Simple.Utils (die, dieWithLocation, warn, intercalate)
 
 
 -- -----------------------------------------------------------------------------
@@ -615,7 +615,7 @@ parsePackageDescription file = do
         let fv = nub $ freeVars ct
         when (not . all (`elem` definedFlags) $ fv) $
             fail $ "These flags are used without having been defined: " ++
-                    (concat . intersperse " " $ (fv \\ definedFlags))
+                    (intercalate " " (fv \\ definedFlags))
 
 
 -- | Parse a list of fields, given a list of field descriptions,

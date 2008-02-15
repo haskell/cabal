@@ -46,38 +46,59 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
         cabalVersion,
+
+        -- * logging and errors
         die,
         dieWithLocation,
         warn, notice, setupMessage, info, debug,
         chattyTry,
         breaks,
-	wrapText,
+
+        -- * running programs
         rawSystemExit,
         rawSystemStdout,
 	rawSystemStdout',
         maybeExit,
         xargs,
+
+        -- * copying files
         smartCopySources,
         createDirectoryIfMissingVerbose,
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
         copyFiles,
+
+        -- * file names
         currentDir,
         dotToSep,
+
+        -- * finding files
 	findFile,
         findFileWithExtension,
         findFileWithExtension',
         withTempFile,
+
+        -- * .cabal and .buildinfo files
         defaultPackageDesc,
         findPackageDesc,
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
+
+        -- * generic utils
+        equating,
+        comparing,
+        isInfixOf,
+        intercalate,
+        lowercase,
+        wrapText,
   ) where
 
 import Control.Monad
     ( when, unless )
 import Data.List
-    ( nub, unfoldr )
+    ( nub, unfoldr, isPrefixOf, tails, intersperse )
+import Data.Char as Char
+    ( toLower )
 
 import System.Directory
     ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
@@ -507,3 +528,22 @@ findHookedPackageDesc dir = do
 	[] -> return Nothing
 	[f] -> return (Just f)
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
+
+-- ------------------------------------------------------------
+-- * Common utils
+-- ------------------------------------------------------------
+
+equating :: Eq a => (b -> a) -> b -> b -> Bool
+equating p x y = p x == p y
+
+comparing :: Ord a => (b -> a) -> b -> b -> Ordering
+comparing p x y = p x `compare` p y
+
+isInfixOf :: String -> String -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate sep = concat . intersperse sep
+
+lowercase :: String -> String
+lowercase = map Char.toLower
