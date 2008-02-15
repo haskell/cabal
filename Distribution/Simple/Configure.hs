@@ -59,6 +59,10 @@ import Distribution.Simple.Compiler
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
+import Distribution.InstalledPackageInfo
+    ( InstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+    ( InstalledPackageInfo_(package) )
 import Distribution.PackageDescription
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -112,7 +116,7 @@ import Data.Char
 import Data.List
     ( intersperse, nub, partition, isPrefixOf )
 import Data.Maybe
-    ( fromMaybe, isNothing )
+    ( isNothing )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing )
 import System.Exit
@@ -220,7 +224,7 @@ configure (pkg_descr0, pbi) cfg
             Left ppd -> 
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
-                       mipkgs
+                       (fmap (map InstalledPackageInfo.package) mipkgs)
                        System.Info.os
                        System.Info.arch
                        (map toLower (show flavor),version)
@@ -239,7 +243,8 @@ configure (pkg_descr0, pbi) cfg
 
         checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
 
-        let ipkgs = fromMaybe (map setDepByVersion (buildDepends pkg_descr)) mipkgs 
+        let ipkgs = maybe (map setDepByVersion (buildDepends pkg_descr))
+                          (map InstalledPackageInfo.package) mipkgs
 
         dep_pkgs <- case flavor of
                       GHC | version >= Version [6,3] [] -> do
@@ -373,7 +378,7 @@ configDependency verbosity ps dep@(Dependency pkgname vrange) =
                        return pkg
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
-                     -> IO (Maybe [PackageIdentifier])
+                     -> IO (Maybe [InstalledPackageInfo])
 getInstalledPackages verbosity comp packageDb progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of

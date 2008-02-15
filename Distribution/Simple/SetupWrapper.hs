@@ -23,6 +23,7 @@ import Distribution.Simple.Configure
 		  	  	  configDependency )
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription(..), BuildType(..) )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.PackageDescription.Parse ( readPackageDescription )
 import Distribution.Simple.BuildPaths ( distPref, exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
@@ -156,7 +157,7 @@ configCabalFlag :: Verbosity -> VersionRange -> Compiler -> ProgramConfiguration
 configCabalFlag _ AnyVersion _ _ = return []
 configCabalFlag verbosity range comp conf = do
   ipkgs <-  getInstalledPackages verbosity comp UserPackageDB conf
-            >>= return . fromMaybe []
+            >>= return . maybe [] (map InstalledPackageInfo.package)
 	-- user packages are *allowed* here, no portability problem
   cabal_pkgid <- configDependency verbosity ipkgs (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]

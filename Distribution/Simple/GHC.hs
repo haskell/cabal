@@ -55,12 +55,15 @@ import Distribution.PackageDescription
 				  withLib,
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
+import Distribution.InstalledPackageInfo
+                                ( InstalledPackageInfo
+                                , parseInstalledPackageInfo )
+import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
-import Distribution.Package  	( PackageIdentifier(..), showPackageId,
-                                  parsePackageId )
+import Distribution.Package  	( PackageIdentifier(..), showPackageId )
 import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
 				  rawSystemProgramStdoutConf,
                                   rawSystemProgramStdout,
@@ -76,12 +79,10 @@ import Distribution.Version	( Version(..), showVersion,
 import Distribution.System
 import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Compat.ReadP
-    ( readP_to_S, many, skipSpaces )
 
 import Control.Monad		( unless, when )
 import Data.Char
-import Data.List		( nub, isPrefixOf )
+import Data.List		( nub )
 import Data.Maybe               ( catMaybes )
 import System.Directory		( removeFile, renameFile,
 				  getDirectoryContents, doesFileExist,
@@ -249,48 +250,62 @@ oldLanguageExtensions =
       fglasgowExts = "-fglasgow-exts"
 
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
-                     -> IO [PackageIdentifier]
+                     -> IO [InstalledPackageInfo]
 getInstalledPackages verbosity packagedb conf = do
+  let packagedbs = case packagedb of
+        GlobalPackageDB -> [GlobalPackageDB]
+        _               -> [GlobalPackageDB, packagedb]
+  pkgss <- getInstalledPackages' verbosity packagedbs conf
+  return [ pkg | (_, pkgs) <- pkgss, pkg <- pkgs ]
 
-   str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf $
-              ["list"]
-	    ++ (if useSimpleOutput then ["--simple-output"] else [])
-	    ++ packageDbGhcPkgFlag packagedb
-   case parse (munge str) of
-     [ps] -> return ps
-     _    -> die "cannot parse ghc package list"
+-- | Get the packages from specific PackageDBs, not cumulative.
+--
+getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
+                     -> IO [(PackageDB, [InstalledPackageInfo])]
+getInstalledPackages' verbosity packagedbs conf
+  | ghcVersion >= Version [6,9] [] =
+  sequence
+    [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
+                  ["describe", "*", packageDbGhcPkgFlag packagedb]
+         case parsePackages str of
+	   Left ok -> return (packagedb, ok)
+	   _       -> die "failed to parse output of 'ghc-pkg describe *'"
+    | packagedb <- packagedbs ]
+
   where
-    useSimpleOutput = ghcVersion >= Version [6,9] []
-      where Just ghcProg = lookupProgram ghcProgram conf
-            Just ghcVersion = programVersion ghcProg
+    parsePackages str =
+      let parsed = map parseInstalledPackageInfo (splitPkgs str)
+       in case [ msg | ParseFailed msg <- parsed ] of
+            []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
+            msgs -> Right msgs
 
-    packageDbGhcPkgFlag GlobalPackageDB          = ["--global"]
-    packageDbGhcPkgFlag UserPackageDB            = ["--global", "--user"]
-    packageDbGhcPkgFlag (SpecificPackageDB path) = ["--global",
-                                                    "--package-conf=" ++ path]
-    parse = pCheck . readP_to_S (many (skipSpaces >> parsePackageId))
-    pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
+    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcVersion = programVersion ghcProg
 
-    munge | useSimpleOutput = id
+    splitPkgs :: String -> [String]
+    splitPkgs = map unlines . split [] . lines
+      where split  [] [] = []
+            split acc [] = [reverse acc]
+            split acc (l@('n':'a':'m':'e':':':_):ls)
+              | null acc     =               split (l:[])  ls
+              | otherwise    = reverse acc : split (l:[])  ls
+            split acc (l:ls) =               split (l:acc) ls
 
-    -- All the remaining nonsense is to deal with having to parse the
-    -- human-readable output of ghc-pkg rather than the --simple-output.
-    -- This was necessary in ghc-6.8 and before because previously we
-    -- could not specify with --simple-output exactly which package dbs
-    -- to query so the global and user were mixed up together.
+    packageDbGhcPkgFlag GlobalPackageDB          = "--global"
+    packageDbGhcPkgFlag UserPackageDB            = "--user"
+    packageDbGhcPkgFlag (SpecificPackageDB path) = "--package-conf=" ++ path
 
-          | otherwise = case packagedb of
-              GlobalPackageDB -> stripFluff . firstFile
-              _               -> stripFluff . allFiles
-
-    stripFluff = filter (`notElem` ",(){}")
-
-    allFiles str = unlines $ filter keep_line $ lines str
-        where keep_line s = ':' `notElem` s && not ("Creating" `isPrefixOf` s)
-
-    firstFile str = unlines $ takeWhile (not . file_line) $
-                    drop 1 $ dropWhile (not . file_line) $ lines str
-        where file_line s = ':' `elem` s && not ("Creating" `isPrefixOf` s)
+getInstalledPackages' verbosity packagedbs conf = do
+    str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf ["list"]
+    let pkgFiles = [ init line | line <- lines str, last line == ':' ]
+        dbFile packagedb = case (packagedb, pkgFiles) of
+          (GlobalPackageDB, global:_)      -> Just global
+          (UserPackageDB,  _global:user:_) -> Just user
+          (UserPackageDB,  _global:_)      -> Nothing
+          (SpecificPackageDB specific, _)  -> Just specific
+          _ -> error "cannot read ghc-pkg global package file"
+    sequence [ readFile file >>= \content -> return (db, read content)
+             | (db , Just file) <- zip packagedbs (map dbFile packagedbs) ]
 
 -- -----------------------------------------------------------------------------
 -- Building

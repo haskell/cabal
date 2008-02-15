@@ -73,7 +73,7 @@ import Text.PrettyPrint
 -- The InstalledPackageInfo type
 
 data InstalledPackageInfo_ m
-   = InstalledPackageInfo_ {
+   = InstalledPackageInfo {
 	-- these parts are exactly the same as PackageDescription
 	package           :: PackageIdentifier,
         license           :: License,
@@ -111,7 +111,7 @@ type InstalledPackageInfo = InstalledPackageInfo_ String
 
 emptyInstalledPackageInfo :: InstalledPackageInfo_ m
 emptyInstalledPackageInfo
-   = InstalledPackageInfo_ {
+   = InstalledPackageInfo {
         package           = PackageIdentifier "" noVersion,
         license           = AllRightsReserved,
         copyright         = "",
