@@ -42,7 +42,6 @@ Executable cabal
         Hackage.Info
         Hackage.Install
         Hackage.List
-        Hackage.LocalIndex
         Hackage.ParseUtils
         Hackage.RepoIndex
         Hackage.Setup
@@ -53,7 +52,7 @@ Executable cabal
         Hackage.Upload
         Hackage.Utils
 
-    build-depends: Cabal >= 1.3.4, filepath >= 1.0, network,
+    build-depends: Cabal >= 1.3.5, filepath >= 1.0, network,
                    zlib >= 0.3, HTTP >= 3000.0 && < 3001.1
 
     if flag(old-base)

@@ -25,7 +25,6 @@ module Hackage.Setup
     ) where
 
 import Distribution.Simple.Program (defaultProgramConfiguration)
-import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Setup as Cabal
   (GlobalFlags(..),  {-emptyGlobalFlags,-}   globalCommand,
