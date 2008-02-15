@@ -49,6 +49,11 @@ import Distribution.PackageDescription
 				  withLib,
 				  Executable(..), withExe, Library(..),
 				  libModules, hcOptions )
+import Distribution.InstalledPackageInfo
+				( InstalledPackageInfo, 
+                                  emptyInstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+				( InstalledPackageInfo_(package) )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
@@ -103,11 +108,14 @@ jhcLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
-                    -> IO [PackageIdentifier]
+                    -> IO [InstalledPackageInfo]
 getInstalledPackages verbosity _packagedb conf = do
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
-     [ps] -> return ps
+     [ps] -> return [ emptyInstalledPackageInfo {
+                        InstalledPackageInfo.package = p
+                      }
+                    | p <- ps ]
      _    -> die "cannot parse package list"
   where
     pCheck :: [(a, [Char])] -> [a]
