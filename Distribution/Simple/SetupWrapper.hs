@@ -23,7 +23,6 @@ import Distribution.Simple.Configure
 		  	  	  configDependency )
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription(..), BuildType(..) )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.PackageDescription.Parse ( readPackageDescription )
 import Distribution.Simple.BuildPaths ( distPref, exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
@@ -37,6 +36,7 @@ import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import Control.Monad		( when, unless )
 import Data.Maybe		( fromMaybe )
+import Data.Monoid		( Monoid(mempty) )
 
   -- read the .cabal file
   -- 	- attempt to find the version of Cabal required
@@ -156,8 +156,8 @@ opts = [
 configCabalFlag :: Verbosity -> VersionRange -> Compiler -> ProgramConfiguration -> IO [String]
 configCabalFlag _ AnyVersion _ _ = return []
 configCabalFlag verbosity range comp conf = do
-  ipkgs <-  getInstalledPackages verbosity comp UserPackageDB conf
-            >>= return . maybe [] (map InstalledPackageInfo.package)
+  packageIndex <- fromMaybe mempty
+           `fmap` getInstalledPackages verbosity comp UserPackageDB conf
 	-- user packages are *allowed* here, no portability problem
-  cabal_pkgid <- configDependency verbosity ipkgs (Dependency "Cabal" range)
+  cabal_pkgid <- configDependency verbosity packageIndex (Dependency "Cabal" range)
   return ["-package", showPackageId cabal_pkgid]
