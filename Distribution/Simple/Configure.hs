@@ -63,7 +63,7 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package) )
 import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
 import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
     , HookedBuildInfo, updatePackageDescription
@@ -475,11 +475,11 @@ ccLdOptionsBuildInfo cflags ldflags =
       (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
   in emptyBuildInfo {
-       includeDirs  = map (drop 2) includeDirs',
-       extraLibs    = map (drop 2) extraLibs',
-       extraLibDirs = map (drop 2) extraLibDirs',
-       ccOptions    = cflags',
-       ldOptions    = ldflags''
+       PD.includeDirs  = map (drop 2) includeDirs',
+       PD.extraLibs    = map (drop 2) extraLibs',
+       PD.extraLibDirs = map (drop 2) extraLibDirs',
+       PD.ccOptions    = cflags',
+       PD.ldOptions    = ldflags''
      }
 
 -- -----------------------------------------------------------------------------
