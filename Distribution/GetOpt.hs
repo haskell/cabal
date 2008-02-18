@@ -122,8 +122,8 @@ fmtOpt descrWidth so lo descr =
 
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg  _   ) so = "-" ++ [so]
-fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ " " ++ ad
-fmtShort (OptArg _ ad) so = "-" ++ [so] ++ "[" ++ ad ++ "]"
+fmtShort (ReqArg _  _) so = "-" ++ [so]
+fmtShort (OptArg _  _) so = "-" ++ [so]
 
 fmtLong :: ArgDescr a -> String -> String
 fmtLong (NoArg  _   ) lo = "--" ++ lo
