@@ -44,7 +44,7 @@ module Distribution.Simple.JHC (
 	configure, getInstalledPackages, build, installLib, installExe
  ) where
 
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PD
 				( PackageDescription(..), BuildInfo(..),
 				  withLib,
 				  Executable(..), withExe, Library(..),
@@ -156,7 +156,7 @@ constructJHCCmdLine lbi bi _odir verbosity =
      ++ ["--noauto","-i-"]
      ++ ["-i", autogenModulesDir lbi]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
-     ++ ["-optc" ++ opt | opt <- ccOptions bi]
+     ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (concat [ ["-p", showPackageId pkg] | pkg <- packageDeps lbi ])
 
 jhcPkgConf :: PackageDescription -> String
@@ -165,7 +165,7 @@ jhcPkgConf pd =
       Just lib = library pd
       comma = intercalate ","
   in unlines [sline "name" (showPackageId . package)
-             ,"exposed-modules: " ++ (comma (exposedModules lib))
+             ,"exposed-modules: " ++ (comma (PD.exposedModules lib))
              ,"hidden-modules: " ++ (comma (otherModules $ libBuildInfo lib))
              ]
 
