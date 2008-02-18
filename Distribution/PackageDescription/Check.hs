@@ -47,8 +47,9 @@ module Distribution.PackageDescription.Check (
   ) where
 
 import Data.Maybe (isNothing, catMaybes)
-import Data.List  (intersperse, sort, group, isPrefixOf)
-import System.Directory (doesFileExist)
+import Data.List  (sort, group, isPrefixOf)
+import Control.Monad (filterM)
+import System.Directory (doesFileExist, doesDirectoryExist)
 
 import Distribution.PackageDescription
 import Distribution.Compiler(CompilerFlavor(..))
@@ -58,7 +59,7 @@ import Distribution.Simple.Utils (cabalVersion, intercalate)
 import Distribution.Version (Version(..), withinRange, showVersionRange)
 import Distribution.Package (PackageIdentifier(..))
 import Language.Haskell.Extension (Extension(..))
-import System.FilePath (takeExtension, (</>))
+import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
 
 -- | Results of some kind of failed package check.
 --
@@ -118,6 +119,7 @@ checkPackage pkg =
  ++ checkLicense pkg
  ++ checkGhcOptions pkg
  ++ checkCCOptions pkg
+ ++ checkPaths pkg
 
 
 -- ------------------------------------------------------------
@@ -395,6 +397,22 @@ checkAlternatives badField goodField flags =
 
   where (badFlags, goodFlags) = unzip flags
 
+checkPaths :: PackageDescription -> [PackageCheck]
+checkPaths pkg =
+  [ PackageBuildWarning {
+     explanation = quote (kind ++ ": " ++ dir)
+                ++ " is a relative path outside of the source tree.\n"
+                ++ "This will not work when generating a tarball with 'sdist'."
+   }
+  | bi <- allBuildInfo pkg
+  , (dir, kind) <- [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
+                ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
+  , isOutsideTree dir ]
+  where isOutsideTree dir = case splitDirectories dir of
+                              "..":_ -> True
+                              _      -> False
+
 -- ------------------------------------------------------------
 -- * Checks in IO
 -- ------------------------------------------------------------
@@ -407,8 +425,10 @@ checkPackageFiles pkg root = do
     licenseError   <- checkLicenseExists pkg root
     setupError     <- checkSetupExists pkg root
     configureError <- checkConfigureExists pkg root
+    localPathErrors <- checkLocalPathsExist pkg root
 
-    return (catMaybes [licenseError, setupError, configureError])
+    return $ catMaybes [licenseError, setupError, configureError]
+                    ++ localPathErrors
 
 checkLicenseExists :: PackageDescription -> FilePath -> IO (Maybe PackageCheck)
 checkLicenseExists pkg root
@@ -438,6 +458,22 @@ checkConfigureExists PackageDescription { buildType = Just Configure } root = do
     PackageBuildWarning $
       "The 'build-type' is 'Configure' but there is no 'configure' script."
 checkConfigureExists _ _ = return Nothing
+
+checkLocalPathsExist :: PackageDescription -> FilePath -> IO [PackageCheck]
+checkLocalPathsExist pkg root = do
+  let dirs = [ (dir, kind)
+             | bi <- allBuildInfo pkg
+             , (dir, kind) <-
+                  [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+               ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
+               ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
+             , isRelative dir ]
+  missing <- filterM (fmap not . doesDirectoryExist . (root </>) . fst) dirs
+  return [ PackageBuildWarning {
+             explanation = quote (kind ++ ": " ++ dir)
+                        ++ " directory does not exist."
+           }
+         | (dir, kind) <- missing ]
 
 -- ------------------------------------------------------------
 -- * Utils
