@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compiler
@@ -45,20 +41,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor) where
 
+import System.Info (compilerName)
+
 data CompilerFlavor
   = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
   deriving (Show, Read, Eq, Ord)
 
 defaultCompilerFlavor :: Maybe CompilerFlavor
-defaultCompilerFlavor =
-#if defined(__GLASGOW_HASKELL__)
-   Just GHC
-#elif defined(__NHC__)
-   Just NHC
-#elif defined(__JHC__)
-   Just JHC
-#elif defined(__HUGS__)
-   Just Hugs
-#else
-   Nothing
-#endif
+defaultCompilerFlavor = case compilerName of
+  "ghc"   -> Just GHC
+  "nhc98" -> Just NHC
+  "jhc"   -> Just JHC
+  "hugs"  -> Just Hugs
+  _       -> Nothing
