@@ -178,8 +178,11 @@ commonFlags showOrParseArgs = case showOrParseArgs of
   ShowArgs  -> [help]
   ParseArgs -> [help, list]
   where
-    help = GetOpt.Option ['h', '?'] ["help"] (GetOpt.NoArg HelpFlag)
+    help = GetOpt.Option helpShortFlags ["help"] (GetOpt.NoArg HelpFlag)
              "Show this help text"
+    helpShortFlags = case showOrParseArgs of
+      ShowArgs  -> ['h']
+      ParseArgs -> ['h', '?']
     list = GetOpt.Option [] ["list-options"] (GetOpt.NoArg ListOptionsFlag)
              "Print a list of command line flags"
 
