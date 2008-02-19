@@ -319,6 +319,7 @@ configure (pkg_descr0, pbi) cfg
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
 		    packageDeps         = dep_pkgs,
+                    installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
 		    localPkgDescr       = pkg_descr',
 		    withPrograms        = programsConfig''',
