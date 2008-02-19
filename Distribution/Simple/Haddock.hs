@@ -46,8 +46,7 @@ module Distribution.Simple.Haddock (
   ) where
 
 -- local
-import Distribution.Compat.ReadP(readP_to_S)
-import Distribution.Package (showPackageId)
+import Distribution.Package (PackageIdentifier, showPackageId)
 import Distribution.PackageDescription
          (PackageDescription(..), BuildInfo(..), hcOptions,
           Library(..), hasLibs, withLib,
@@ -55,17 +54,15 @@ import Distribution.PackageDescription
 import Distribution.Simple.Compiler
          ( Compiler(..), CompilerFlavor(..), compilerVersion
 	 , extensionsToFlags )
-import Distribution.ParseUtils (Field(..), ParseResult(..), readFields, 
-                                parseCommaList, parseFilePathQ)
-import Distribution.Simple.Program(ConfiguredProgram(..), requireProgram, 
-                            lookupProgram, programPath, ghcPkgProgram,
-			    hscolourProgram, haddockProgram, rawSystemProgram, rawSystemProgramStdoutConf,
-          ghcProgram)
+import Distribution.Simple.Program
+         ( ConfiguredProgram(..), requireProgram
+         , rawSystemProgram, rawSystemProgramStdoutConf
+         , hscolourProgram, haddockProgram, ghcProgram )
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
 import Distribution.Simple.Build (initialBuildSteps)
-import Distribution.Simple.InstallDirs (InstallDirs(..),
+import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,
                                         substPathTemplate,
@@ -73,19 +70,23 @@ import Distribution.Simple.InstallDirs (InstallDirs(..),
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( distPref, haddockPref, haddockName,
                                         hscolourPref, autogenModulesDir )
+import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
+         ( lookupPackageId )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+         ( InstalledPackageInfo_(..) )
 import Distribution.Simple.Utils
          ( die, warn, notice, setupMessage, createDirectoryIfMissingVerbose
          , findFileWithExtension, findFile, dotToSep )
 
-import Distribution.Simple.Utils (rawSystemStdout)
+import Distribution.Simple.Utils (intercalate)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist,
                         removeDirectoryRecursive, copyFile)
 
-import Control.Monad (liftM, when, unless, join)
-import Data.Maybe    ( isJust, catMaybes, fromJust )
+import Control.Monad ( liftM, when, unless )
+import Data.Maybe    ( isJust, fromJust, listToMaybe )
 import Data.Char     (isSpace)
 import Data.List     (nub)
 
@@ -139,7 +140,6 @@ haddock pkg_descr lbi suffixes flags = do
     let mockAll bi = mapM_ (mockPP mockFlags bi tmpDir)
 
     let comp = compiler lbi
-        Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
     let cssFileFlag = case flagToMaybe $ haddockCss flags of
                         Nothing -> []
                         Just cssFile -> ["--css=" ++ cssFile]
@@ -151,40 +151,12 @@ haddock pkg_descr lbi suffixes flags = do
                  ,"--source-entity=src/%{MODULE/./-}.html#%{NAME}"]
             else []
 
-    let getField pkgId f = do
-            let name = showPackageId pkgId
-            s <- rawSystemStdout verbosity (programPath pkgTool) ["field", name, f]
-            case readFields s of
-                (ParseOk _ ((F _ _ fieldVal):_)) ->
-                    return . join . join . take 1 . map fst . filter (null . snd)
-                        . readP_to_S (parseCommaList parseFilePathQ) $ fieldVal
-                _ -> do
-                    warn verbosity $ "Unrecognised output from ghc-pkg field "
-		                  ++ name ++ " " ++ f ++ ": " ++ s
-                    return []
-    let makeReadInterface pkgId = do
-            interface <- getField pkgId "haddock-interfaces"
-            html <- case flagToMaybe $ haddockHtmlLocation flags of
-                Nothing -> getField pkgId "haddock-html"
-                Just htmlStrTemplate ->
-                  let env0 = initialPathTemplateEnv pkgId (compilerId comp)
-                      prefixSubst = prefix (installDirTemplates lbi)
-                      env = (PrefixVar, prefixSubst) : env0
-                      expandTemplateVars = fromPathTemplate
-                                         . substPathTemplate env
-                                         . toPathTemplate
-                   in return (expandTemplateVars htmlStrTemplate)
-            interfaceExists <- doesFileExist interface
-            if interfaceExists
-              then return $ Just $ "--read-interface="
-                         ++ (if null html then "" else html ++ ",")
-                         ++ interface
-              else do warn verbosity $ "The documentation for package "
-                         ++ showPackageId pkgId ++ " is not installed. "
-                         ++ "No links to it will be generated."
-                      return Nothing
-
-    packageFlags <- liftM catMaybes $ mapM makeReadInterface (packageDeps lbi)
+    let htmlTemplate = fmap toPathTemplate $
+                         flagToMaybe (haddockHtmlLocation flags)
+    packageFlags <- do
+      (packageFlags, warnings) <- haddockPackageFlags lbi htmlTemplate
+      maybe (return ()) (warn verbosity) warnings
+      return packageFlags
 
     when isVersion2 $ do
       strHadGhcVers <- rawSystemProgramStdoutConf verbosity haddockProgram (withPrograms lbi) ["--ghc-version"]
@@ -297,6 +269,44 @@ haddock pkg_descr lbi suffixes flags = do
                      removeFile cppOutput
         needsCpp :: BuildInfo -> Bool
         needsCpp bi = CPP `elem` extensions bi
+
+haddockPackageFlags :: LocalBuildInfo
+                    -> Maybe PathTemplate
+                    -> IO ([String], Maybe String)
+haddockPackageFlags lbi htmlTemplate = do
+  interfaces <- sequence
+    [ case interfaceAndHtmlPath pkgid of
+        Nothing -> return (pkgid, Nothing)
+        Just (interface, html) -> do
+          exists <- doesFileExist interface
+          if exists
+            then return (pkgid, Just (interface, html))
+            else return (pkgid, Nothing)
+    | pkgid <- packageDeps lbi ]
+
+  let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
+      warning = "The documentation for the following packages are not "
+             ++ "installed.\nNo links will be generated to these packages: "
+             ++ intercalate ", " (map showPackageId missing)
+      flags = [ "--read-interface="
+             ++ (if null html then "" else html ++ ",") ++ interface
+              | (_, Just (interface, html)) <- interfaces ]
+
+  return (flags, if null missing then Nothing else Just warning)
+
+  where
+    interfaceAndHtmlPath :: PackageIdentifier -> Maybe (FilePath, FilePath)
+    interfaceAndHtmlPath pkgId = do
+      pkg <- InstalledPackageIndex.lookupPackageId (installedPkgs lbi) pkgId
+      interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
+      html <- case htmlTemplate of
+        Nothing -> listToMaybe (InstalledPackageInfo.haddockHTMLs pkg)
+        Just htmlPathTemplate -> Just (expandTemplateVars htmlPathTemplate)
+      return (interface, html)
+
+      where expandTemplateVars = fromPathTemplate . substPathTemplate env
+            env = (PrefixVar, prefix (installDirTemplates lbi))
+                : initialPathTemplateEnv pkgId (compilerId (compiler lbi))
 
 
 ghcSimpleOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
