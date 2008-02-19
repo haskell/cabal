@@ -115,7 +115,7 @@ import Control.Exception as Exception
 import Data.Char
     ( toLower )
 import Data.List
-    ( intersperse, nub, partition, isPrefixOf )
+    ( nub, partition, isPrefixOf )
 import Data.Maybe
     ( fromMaybe, isNothing )
 import Data.Monoid
@@ -254,6 +254,30 @@ configure (pkg_descr0, pbi) cfg
           JHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
           _   -> return $ map setDepByVersion (buildDepends pkg_descr)
 
+        packageDependsIndex <-
+          case InstalledPackageIndex.dependencyClosure packageIndex dep_pkgs of
+            Left packageDependsIndex -> return packageDependsIndex
+            Right broken ->
+              die $ "The following installed packages are broken because other"
+                 ++ " packages\nthey depend on are missing. These broken "
+                 ++ "packages must be rebuilt\nbefore they can be used.\n"
+                 ++ unlines [ "package "
+                           ++ showPackageId (InstalledPackageInfo.package pkg)
+                           ++ " is broken due to missing package "
+                           ++ intercalate ", " (map showPackageId deps)
+                            | (pkg, deps) <- broken ]
+
+        case InstalledPackageIndex.dependencyInconsistencies
+               packageDependsIndex (package pkg_descr) dep_pkgs of
+          [] -> return ()
+          inconsistencies ->
+            warn verbosity $
+                 "This package indirectly depends on multiple versions of the same\n"
+              ++ "package. This is highly likely to cause a compile failure.\n"
+              ++ unlines [ "package " ++ showPackageId pkg ++ " requires "
+                        ++ showPackageId (PackageIdentifier name ver)
+                         | (name, uses) <- inconsistencies
+                         , (pkg, ver) <- uses ]
 
 	removeInstalledConfig
 
@@ -267,7 +291,7 @@ configure (pkg_descr0, pbi) cfg
         let exts = unsupportedExtensions comp extlist
         unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
             show flavor ++ " does not support the following extensions:\n " ++
-            concat (intersperse ", " (map show exts))
+            intercalate ", " (map show exts)
 
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
         programsConfig'' <-
