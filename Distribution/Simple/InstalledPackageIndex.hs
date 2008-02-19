@@ -63,7 +63,7 @@ import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
 -- It can be searched effeciently by package name and version.
 --
 data InstalledPackageIndex = InstalledPackageIndex
-  -- | This index maps lower case package names to all the
+  -- This index maps lower case package names to all the
   -- 'InstalledPackageInfo' records matching that package name
   -- case-insensitively. It includes all versions.
   --
