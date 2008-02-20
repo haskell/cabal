@@ -23,7 +23,6 @@ import System.FilePath ((</>),(<.>))
 
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
-import qualified Hackage.RepoIndex as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Tar (extractTarGzFile)
@@ -69,7 +68,7 @@ installLocalPackage verbosity packageDB repos comp conf configFlags =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
       Just installed <- getInstalledPackages verbosity comp packageDB conf
-      available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+      available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
       let resolvedDeps = resolveDependenciesLocal comp installed available desc
                            (Cabal.configConfigurationsFlags configFlags)
       case packagesToInstall resolvedDeps of
@@ -87,7 +86,7 @@ installRepoPackages :: Verbosity
                     -> IO ()
 installRepoPackages verbosity packageDB repos comp conf configFlags deps =
     do Just installed <- getInstalledPackages verbosity comp packageDB conf
-       available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
        let resolvedDeps = resolveDependencies comp installed available deps'
        case packagesToInstall resolvedDeps of

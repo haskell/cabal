@@ -12,7 +12,6 @@
 -----------------------------------------------------------------------------
 module Hackage.Info where
 
-import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Dependency 
@@ -40,7 +39,7 @@ info :: Verbosity
      -> IO ()
 info verbosity packageDB repos comp conf deps
     = do Just installed <- getInstalledPackages verbosity comp packageDB conf
-         available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+         available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let apkgs = resolveDependencies comp installed available deps'
          details <- mapM infoPkg (flattenResolvedDependencies apkgs)
