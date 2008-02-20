@@ -25,7 +25,7 @@ import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packag
 import Hackage.Fetch (fetchPackage)
 import qualified Hackage.RepoIndex as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
---import qualified Hackage.DepGraph as DepGraph
+import qualified Hackage.DepGraph as DepGraph
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
@@ -92,29 +92,37 @@ installRepoPackages verbosity packageDB repos comp conf configFlags deps =
        let resolvedDeps = resolveDependencies comp installed available deps'
        case packagesToInstall resolvedDeps of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-         Right []     -> notice verbosity "All requested packages already installed. Nothing to do."
-         Right pkgs   -> installPackages verbosity configFlags pkgs
+         Right pkgs
+           | DepGraph.empty pkgs -> notice verbosity
+                     "All requested packages already installed. Nothing to do."
+           | otherwise -> installPackages verbosity configFlags pkgs
 
 installPackages :: Verbosity
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
-                -> [(PkgInfo,FlagAssignment)] -- ^ (Package, list of configure options)
+                -> DepGraph.DepGraph
                 -> IO ()
 installPackages verbosity configFlags pkgs = do 
-  errorPackages <- installPackagesErrs pkgs []
+  errorPackages <- installPackagesErrs [] pkgs
   case errorPackages of
     [] -> return ()
     errpkgs -> let errorMsg = concat $ "Error: some packages failed to install:"
                             : ["\n  " ++ showPackageId (pkgInfoId pkg)
                             | pkg <- errpkgs]
                 in die errorMsg
-
-  where installPackagesErrs :: [(PkgInfo,FlagAssignment)] -> [PkgInfo] -> IO [PkgInfo]
-        installPackagesErrs ((pkg,flags):pkgs') errPkgs = do
-          maybeInstalled <- try (installPkg verbosity configFlags pkg flags)
-          case maybeInstalled of
-            Left  _ -> installPackagesErrs pkgs' (pkg:errPkgs)
-            Right _ -> installPackagesErrs pkgs' errPkgs
-        installPackagesErrs [] ers = return ers
+  where
+    installPackagesErrs failed remaining
+      | DepGraph.empty remaining = return failed
+      | otherwise = case DepGraph.ready remaining of
+      DepGraph.ResolvedPackage pkg flags _depids -> do--TODO build against exactly these deps
+        maybeInstalled <- try (installPkg verbosity configFlags pkg flags)
+        case maybeInstalled of
+          Left  _ ->
+            let (remaining', failed') = DepGraph.removeFailed (pkgInfoId pkg) remaining
+                failed'' = [ pkg' | DepGraph.ResolvedPackage pkg' _ _ <- failed' ]
+             in installPackagesErrs (failed++failed'') remaining'
+          Right _ ->
+            let remaining' = DepGraph.removeCompleted (pkgInfoId pkg) remaining
+             in installPackagesErrs failed remaining'
 
 {-|
   Download, build and install a given package with some given flags.

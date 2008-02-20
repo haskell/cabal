@@ -23,9 +23,10 @@ import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIn
 import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
 import qualified Hackage.RepoIndex as RepoIndex
 import Hackage.RepoIndex (RepoIndex)
+import qualified Hackage.DepGraph as DepGraph
 import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
-import Hackage.Utils (comparing)
+import Hackage.Utils (comparing, unzipEithers)
 import Distribution.Version (Dependency(..))
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.PackageDescription 
@@ -36,10 +37,11 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
 
 import Control.Monad (mplus)
-import Data.List (nub, nubBy, maximumBy)
+import Data.List (nub, maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
 import qualified System.Info (arch,os)
 
+--TODO: never expose the [ResolvedDependency], always gust make a DepGraph
 
 resolveDependencies :: Compiler
                     -> InstalledPackageIndex
@@ -117,20 +119,27 @@ getDependencies comp installed available pkg flags
                 pkg
 
 packagesToInstall :: [ResolvedDependency]
-                  -> Either [Dependency] [(PkgInfo, FlagAssignment)]
-                     -- ^ Either a list of missing dependencies, or a list
+                  -> Either [Dependency] DepGraph.DepGraph
+                     -- ^ Either a list of missing dependencies, or a graph
                      -- of packages to install, with their options.
-packagesToInstall xs | null missing = Right toInstall
-                     | otherwise = Left missing
-  where 
-    flattened = concatMap flatten xs
-    missing = [d | Left d <- flattened]
-    toInstall = nubBy samePackage [x | Right x <- flattened]
-    samePackage a b = pkgInfoId (fst a) == pkgInfoId (fst b)
-    flatten (InstalledDependency _ _) = []
-    flatten (AvailableDependency _ p opts deps) = concatMap flatten deps ++ [Right (p,opts)]
-    flatten (UnavailableDependency dep) = [Left dep]
+packagesToInstall deps0 = case unzipEithers (map getDeps deps0) of
+  ([], ok)     -> Right (DepGraph.fromList (concatMap snd ok))
+  (missing, _) -> Left  (concat missing)
 
+  where
+    getDeps :: ResolvedDependency
+            -> Either [Dependency]
+                      (Maybe PackageIdentifier, [DepGraph.ResolvedPackage])
+    getDeps (InstalledDependency _ _    )          = Right (Nothing, [])
+    getDeps (AvailableDependency _ pkg flags deps) =
+      case unzipEithers (map getDeps deps) of
+        ([], ok)     -> let resolved :: [DepGraph.ResolvedPackage]
+                            resolved = DepGraph.ResolvedPackage pkg flags
+                                         [ pkgid | (Just pkgid, _) <- ok ]
+                                     : concatMap snd ok
+                         in Right (Just $ pkgInfoId pkg, resolved)
+        (missing, _) -> Left (concat missing)
+    getDeps (UnavailableDependency dep) = Left [dep]
 
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.

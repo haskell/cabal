@@ -35,5 +35,9 @@ isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
 intercalate :: [a] -> [[a]] -> [a]
 intercalate sep = concat . intersperse sep
 
+unzipEithers :: [Either a b] -> ([a], [b])
+unzipEithers = foldr (flip consEither) ([], [])
+  where consEither ~(ls,rs) = either (\l -> (l:ls,rs)) (\r -> (ls,r:rs))
+
 lowercase :: String -> String
 lowercase = map Char.toLower
