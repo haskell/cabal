@@ -71,7 +71,7 @@ import Distribution.PackageDescription as PD
     , HookedBuildInfo, updatePackageDescription
     , allBuildInfo, emptyBuildInfo, unionBuildInfo )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription, satisfyDependency )
+    ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.ParseUtils
@@ -94,7 +94,7 @@ import Distribution.Simple.BuildPaths
     ( distPref )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate )
+    , intercalate, comparing )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -117,7 +117,7 @@ import Control.Exception as Exception
 import Data.Char
     ( toLower )
 import Data.List
-    ( nub, partition, isPrefixOf )
+    ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
     ( fromMaybe, isNothing )
 import Data.Monoid
@@ -230,8 +230,7 @@ configure (pkg_descr0, pbi) cfg
             Left ppd -> 
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
-                       (fmap (map packageId . PackageIndex.allPackages)
-                             maybePackageIndex)
+                       maybePackageIndex
                        System.Info.os
                        System.Info.arch
                        (map toLower (show flavor),version)
@@ -396,17 +395,16 @@ hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 -- | Test for a package dependency and record the version we have installed.
 configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency -> IO PackageIdentifier
 configDependency verbosity index dep@(Dependency pkgname vrange) =
-  case satisfyDependency ps dep of
-        Nothing -> die $ "cannot satisfy dependency "
+  case PackageIndex.lookupDependency index dep of
+        [] -> die $ "cannot satisfy dependency "
                       ++ pkgname ++ showVersionRange vrange ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ pkgname ++ "?"
-        Just pkg -> do info verbosity $ "Dependency " ++ pkgname
+        pkgs -> do let pkgid = maximumBy (comparing pkgVersion) (map packageId pkgs)
+                   info verbosity $ "Dependency " ++ pkgname
                                 ++ showVersionRange vrange
-                                ++ ": using " ++ showPackageId pkg
-                       return pkg
-  where ps = map InstalledPackageInfo.package
-                 (PackageIndex.allPackages index)
+                                ++ ": using " ++ showPackageId pkgid
+                   return pkgid
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
                      -> IO (Maybe (PackageIndex InstalledPackageInfo))

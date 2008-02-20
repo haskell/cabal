@@ -48,7 +48,6 @@ module Distribution.PackageDescription.Configuration (
     flattenPackageDescription,
 
     -- Utils
-    satisfyDependency,
     parseCondition,
     freeVars,
   ) where
@@ -58,6 +57,8 @@ import Distribution.PackageDescription
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..) )
 import Distribution.Package   (PackageIdentifier(..))
+import Distribution.Simple.PackageIndex (PackageIndex, Package)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..)
     , withinRange, parseVersionRange )
@@ -344,9 +345,10 @@ instance Monoid PDTagged where
     _ `mappend` _ = bug "Cannot combine incompatible tags"
 
 finalizePackageDescription
-  :: [(String,Bool)]  -- ^ Explicitly specified flag assignments
-  -> Maybe [PackageIdentifier] -- ^ Available dependencies. Pass 'Nothing' if this
-                               -- is unknown.
+  :: Package pkg
+  => [(String,Bool)]  -- ^ Explicitly specified flag assignments
+  -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
+                              -- this is unknown.
   -> String -- ^ OS-name
   -> String -- ^ Arch-name
   -> (String, Version) -- ^ Compiler + Version
@@ -397,19 +399,8 @@ finalizePackageDescription userflags mpkgs os arch impl
     -- if we don't know which packages are present, we just accept any
     -- dependency
     satisfyDep   = maybe (const True)
-                         (\pkgs -> isJust . satisfyDependency pkgs)
+                         (\pkgs -> not . null . PackageIndex.lookupDependency pkgs)
                          mpkgs
-
-
-satisfyDependency :: [PackageIdentifier] -> Dependency
-	-> Maybe PackageIdentifier
-satisfyDependency pkgs (Dependency pkgname vrange) =
-  case filter ok pkgs of
-    [] -> Nothing
-    qs -> Just (maximumBy versions qs)
-  where
-	ok p = pkgName p == pkgname && pkgVersion p `withinRange` vrange
-        versions a b = pkgVersion a `compare` pkgVersion b
 
 
 -- | Flatten a generic package description by ignoring all conditions and just
