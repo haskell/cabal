@@ -58,8 +58,8 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
-import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
-import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
@@ -253,13 +253,13 @@ oldLanguageExtensions =
       fglasgowExts = "-fglasgow-exts"
 
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
-                     -> IO InstalledPackageIndex
+                     -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity packagedb conf = do
   let packagedbs = case packagedb of
         GlobalPackageDB -> [GlobalPackageDB]
         _               -> [GlobalPackageDB, packagedb]
   pkgss <- getInstalledPackages' verbosity packagedbs conf
-  return $ mconcat [ InstalledPackageIndex.fromList pkgs
+  return $ mconcat [ PackageIndex.fromList pkgs
                    | (_, pkgs) <- pkgss ]
 
 -- | Get the packages from specific PackageDBs, not cumulative.

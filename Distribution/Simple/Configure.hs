@@ -59,10 +59,12 @@ import Distribution.Simple.Compiler
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
+import Distribution.InstalledPackageInfo
+    ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package) )
-import qualified Distribution.Simple.InstalledPackageIndex as InstalledPackageIndex
-import Distribution.Simple.InstalledPackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -229,7 +231,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
                        (fmap (map InstalledPackageInfo.package
-                            . InstalledPackageIndex.allPackages)
+                            . PackageIndex.allPackages)
                              maybePackageIndex)
                        System.Info.os
                        System.Info.arch
@@ -255,7 +257,7 @@ configure (pkg_descr0, pbi) cfg
           _   -> return $ map setDepByVersion (buildDepends pkg_descr)
 
         packageDependsIndex <-
-          case InstalledPackageIndex.dependencyClosure packageIndex dep_pkgs of
+          case PackageIndex.dependencyClosure packageIndex dep_pkgs of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -267,7 +269,7 @@ configure (pkg_descr0, pbi) cfg
                            ++ intercalate ", " (map showPackageId deps)
                             | (pkg, deps) <- broken ]
 
-        case InstalledPackageIndex.dependencyInconsistencies
+        case PackageIndex.dependencyInconsistencies
                packageDependsIndex (package pkg_descr) dep_pkgs of
           [] -> return ()
           inconsistencies ->
@@ -390,7 +392,7 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
-configDependency :: Verbosity -> InstalledPackageIndex -> Dependency -> IO PackageIdentifier
+configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency -> IO PackageIdentifier
 configDependency verbosity index dep@(Dependency pkgname vrange) =
   case satisfyDependency ps dep of
         Nothing -> die $ "cannot satisfy dependency "
@@ -402,10 +404,10 @@ configDependency verbosity index dep@(Dependency pkgname vrange) =
                                 ++ ": using " ++ showPackageId pkg
                        return pkg
   where ps = map InstalledPackageInfo.package
-                 (InstalledPackageIndex.allPackages index)
+                 (PackageIndex.allPackages index)
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
-                     -> IO (Maybe InstalledPackageIndex)
+                     -> IO (Maybe (PackageIndex InstalledPackageInfo))
 getInstalledPackages verbosity comp packageDb progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of

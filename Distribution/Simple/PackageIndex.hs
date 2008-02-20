@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.InstalledPackageIndex
+-- Module      :  Distribution.Simple.PackageIndex
 -- Copyright   :  (c) David Himmelstrup 2005,
 --                    Bjorn Bringert 2007,
 --                    Duncan Coutts 2008
@@ -12,9 +12,12 @@
 --
 -- The index of 'InstalledPackageInfo'.
 -----------------------------------------------------------------------------
-module Distribution.Simple.InstalledPackageIndex (
-  -- * Local installed index data type
-  InstalledPackageIndex,
+module Distribution.Simple.PackageIndex (
+  -- * Package classes
+  Package(..),
+
+  -- * Package index data type
+  PackageIndex,
 
   -- * Creating the index
   fromList,
@@ -53,16 +56,37 @@ import Data.Maybe (isNothing)
 
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_(..)
-         , emptyInstalledPackageInfo )
+         ( InstalledPackageInfo, InstalledPackageInfo_, emptyInstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+         ( InstalledPackageInfo_(..) )
+import Distribution.PackageDescription
+         ( PackageDescription )
+import qualified Distribution.PackageDescription as PackageDescription
+         ( PackageDescription(..) )
 import Distribution.Version (Version, Dependency(Dependency), withinRange)
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
+
+-- | Class of things that can be identified by a 'PackageIdentifier'
+--
+-- Types in this class are all notions of a package. This allows us to have
+-- different types for the different phases that packages go though, from
+-- simple name\/id, package description, configured or installed packages.
+--
+class Package pkg where
+  packageId :: pkg -> PackageIdentifier
+
+instance Package PackageIdentifier where
+  packageId = id
+instance Package (InstalledPackageInfo_ str) where
+  packageId = InstalledPackageInfo.package
+instance Package PackageDescription where
+  packageId = PackageDescription.package
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
 -- It can be searched effeciently by package name and version.
 --
-data InstalledPackageIndex = InstalledPackageIndex
+data Package pkg => PackageIndex pkg = PackageIndex
   -- This index maps lower case package names to all the
   -- 'InstalledPackageInfo' records matching that package name
   -- case-insensitively. It includes all versions.
@@ -71,56 +95,56 @@ data InstalledPackageIndex = InstalledPackageIndex
   -- all versions satisfying a dependency, all by varying how we filter. So
   -- most queries will do a map lookup followed by a linear scan of the bucket.
   --
-  (Map String [InstalledPackageInfo])
+  (Map String [pkg])
 
   deriving (Show, Read)
 
-instance Monoid InstalledPackageIndex where
-  mempty  = InstalledPackageIndex (Map.empty)
+instance Package pkg => Monoid (PackageIndex pkg) where
+  mempty  = PackageIndex (Map.empty)
   mappend = merge
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
 
-invariant :: InstalledPackageIndex -> Bool
-invariant (InstalledPackageIndex m) = all (uncurry goodBucket) (Map.toList m)
+invariant :: Package pkg => PackageIndex pkg -> Bool
+invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
   where goodBucket name pkgs =
              lowercase name == name
           && not (null pkgs)
-          && all ((lowercase name==) . lowercase . pkgName . package) pkgs
+          && all ((lowercase name==) . lowercase . pkgName . packageId) pkgs
 --          && all (\pkg -> pkgInfoId pkg
---                       == (package . packageDescription . pkgDesc) pkg) pkgs
-          && distinct (map package pkgs)
+--                       == (packageId . packageDescription . pkgDesc) pkg) pkgs
+          && distinct (map packageId pkgs)
 
         distinct = all ((==1). length) . group . sort
 
 internalError :: String -> a
-internalError name = error ("InstalledPackageIndex." ++ name ++ ": internal error")
+internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 
 -- | When building or merging we have to eliminate duplicates of the exact
 -- same package name and version (case-sensitively) to preserve the invariant.
 --
-stripDups :: [InstalledPackageInfo] -> [InstalledPackageInfo]
-stripDups = nubBy (equating package)
+stripDups :: Package pkg => [pkg] -> [pkg]
+stripDups = nubBy (equating packageId)
 
 -- | Lookup a name in the index to get all packages that match that name
 -- case-insensitively.
 --
-lookup :: InstalledPackageIndex -> String -> [InstalledPackageInfo]
-lookup index@(InstalledPackageIndex m) name =
+lookup :: Package pkg => PackageIndex pkg -> String -> [pkg]
+lookup index@(PackageIndex m) name =
   assert (invariant index) $
   case Map.lookup (lowercase name) m of
     Nothing   -> []
     Just pkgs -> pkgs
 
--- | Build an index out of a bunch of 'InstalledPackageInfo's.
+-- | Build an index out of a bunch of 'Package's.
 --
 -- If there are duplicates, earlier ones mask later one.
 --
-fromList :: [InstalledPackageInfo] -> InstalledPackageIndex
+fromList :: Package pkg => [pkg] -> PackageIndex pkg
 fromList pkgs =
-  let index = (InstalledPackageIndex . Map.map stripDups . Map.fromListWith (++))
-                [ let key = (lowercase . pkgName . package) pkg
+  let index = (PackageIndex . Map.map stripDups . Map.fromListWith (++))
+                [ let key = (lowercase . pkgName . packageId) pkg
                    in (key, [pkg])
                 | pkg <- pkgs ]
    in assert (invariant index) index
@@ -130,28 +154,28 @@ fromList pkgs =
 -- Packages from the first mask packages of the same exact name
 -- (case-sensitively) from the second.
 --
-merge :: InstalledPackageIndex -> InstalledPackageIndex -> InstalledPackageIndex
-merge i1@(InstalledPackageIndex m1) i2@(InstalledPackageIndex m2) =
+merge :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
+merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
   assert (invariant i1 && invariant i2) $
-  let index = InstalledPackageIndex (Map.unionWith mergeBuckets m1 m2)
+  let index = PackageIndex (Map.unionWith mergeBuckets m1 m2)
    in assert (invariant index) index
 
   where mergeBuckets pkgs1 pkgs2 = stripDups (pkgs1 ++ pkgs2)
 
 -- | Get all the packages from the index.
 --
-allPackages :: InstalledPackageIndex -> [InstalledPackageInfo]
-allPackages (InstalledPackageIndex m) = concat (Map.elems m)
+allPackages :: Package pkg => PackageIndex pkg -> [pkg]
+allPackages (PackageIndex m) = concat (Map.elems m)
 
 -- | Get all the packages from the index.
 --
 -- They are grouped by package name, case-sensitively.
 --
-allPackagesByName :: InstalledPackageIndex -> [[InstalledPackageInfo]]
-allPackagesByName (InstalledPackageIndex m) = concatMap groupByName (Map.elems m)
-  where groupByName :: [InstalledPackageInfo] -> [[InstalledPackageInfo]]
-        groupByName = groupBy (equating (pkgName . package))
-                    . sortBy (comparing (pkgName . package))
+allPackagesByName :: Package pkg => PackageIndex pkg -> [[pkg]]
+allPackagesByName (PackageIndex m) = concatMap groupByName (Map.elems m)
+  where groupByName :: Package pkg => [pkg] -> [[pkg]]
+        groupByName = groupBy (equating (pkgName . packageId))
+                    . sortBy (comparing (pkgName . packageId))
 
 -- | Does a case-insensitive search by package name.
 --
@@ -165,14 +189,14 @@ allPackagesByName (InstalledPackageIndex m) = concatMap groupByName (Map.elems m
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
 --
-searchByName :: InstalledPackageIndex -> String -> SearchResult [InstalledPackageInfo]
+searchByName :: Package pkg => PackageIndex pkg -> String -> SearchResult [pkg]
 searchByName index name =
-  case groupBy (equating  (pkgName . package))
-     . sortBy  (comparing (pkgName . package))
+  case groupBy (equating  (pkgName . packageId))
+     . sortBy  (comparing (pkgName . packageId))
      $ lookup index name of
     []     -> None
     [pkgs] -> Unambiguous pkgs
-    pkgss  -> case find ((name==) . pkgName . package . head) pkgss of
+    pkgss  -> case find ((name==) . pkgName . packageId . head) pkgss of
                 Just pkgs -> Unambiguous pkgs
                 Nothing   -> Ambiguous   pkgss
 
@@ -182,8 +206,8 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 -- That is, all packages that contain the given string in their name.
 --
-searchByNameSubstring :: InstalledPackageIndex -> String -> [InstalledPackageInfo]
-searchByNameSubstring (InstalledPackageIndex m) searchterm =
+searchByNameSubstring :: Package pkg => PackageIndex pkg -> String -> [pkg]
+searchByNameSubstring (PackageIndex m) searchterm =
   [ pkg
   | (name, pkgs) <- Map.toList m
   , searchterm' `isInfixOf` name
@@ -195,10 +219,10 @@ searchByNameSubstring (InstalledPackageIndex m) searchterm =
 -- Since multiple package DBs mask each other case-sensitively by package name,
 -- then we get back at most one package.
 --
-lookupPackageId :: InstalledPackageIndex -> PackageIdentifier -> Maybe InstalledPackageInfo
+lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier -> Maybe pkg
 lookupPackageId index pkgid =
   case [ pkg | pkg <- lookup index (pkgName pkgid)
-             , package pkg == pkgid ] of
+             , packageId pkg == pkgid ] of
     []    -> Nothing
     [pkg] -> Just pkg
     _     -> internalError "lookupPackageIdentifier"
@@ -208,9 +232,10 @@ lookupPackageId index pkgid =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
-lookupDependency :: InstalledPackageIndex -> Dependency -> [InstalledPackageInfo]
+lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
 lookupDependency index (Dependency name versionRange) =
-  [ pkg | pkg@InstalledPackageInfo { package = pkgid } <- lookup index name
+  [ pkg | pkg <- lookup index name
+        , let pkgid = packageId pkg
         , pkgName pkgid == name
         , pkgVersion pkgid `withinRange` versionRange ]
 
@@ -218,12 +243,12 @@ lookupDependency index (Dependency name versionRange) =
 --
 -- Returns such packages along with the depends that they're missing.
 --
-brokenPackages :: InstalledPackageIndex
+brokenPackages :: PackageIndex InstalledPackageInfo
                -> [(InstalledPackageInfo, [PackageIdentifier])]
 brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
-  , let missing = [ pkg' | pkg' <- depends pkg
+  , let missing = [ pkg' | pkg' <- InstalledPackageInfo.depends pkg
                          , isNothing (lookupPackageId index pkg') ]
   , not (null missing) ]
 
@@ -235,9 +260,9 @@ brokenPackages index =
 -- * Note that if any of the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 --
-dependencyClosure :: InstalledPackageIndex
+dependencyClosure :: PackageIndex InstalledPackageInfo
                   -> [PackageIdentifier]
-                  -> Either InstalledPackageIndex
+                  -> Either (PackageIndex InstalledPackageInfo)
                             [(InstalledPackageInfo, [PackageIdentifier])]
 dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
   (completed, []) -> Left  $ fromList completed
@@ -252,10 +277,11 @@ dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
     closure completed failed (pkgid:pkgids) = case lookupPackageId index pkgid of
       Nothing  -> closure completed (pkgid:failed) pkgids
                -- TODO: use more effecient test here:
-      Just pkg | package pkg `elem` map package completed
+      Just pkg | packageId pkg `elem` map packageId completed
                -> closure      completed   failed  pkgids
                | otherwise
-               -> closure (pkg:completed)  failed  (depends pkg ++ pkgids)
+               -> closure (pkg:completed)  failed  pkgids'
+               where pkgids' = InstalledPackageInfo.depends pkg ++ pkgids
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
@@ -267,7 +293,7 @@ dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
 --
-dependencyInconsistencies :: InstalledPackageIndex
+dependencyInconsistencies :: PackageIndex InstalledPackageInfo
                           -> PackageIdentifier -> [PackageIdentifier]
                           -> [(String, [(PackageIdentifier, Version)])]
 dependencyInconsistencies index topPkg topDeps =
@@ -277,13 +303,13 @@ dependencyInconsistencies index topPkg topDeps =
   , not (null inconsistencies) ]
 
   where pseudoTopPackage = emptyInstalledPackageInfo {
-          package = topPkg,
-          depends = topDeps
+          InstalledPackageInfo.package = topPkg,
+          InstalledPackageInfo.depends = topDeps
         }
         inverseIndex = Map.fromListWith (++)
-          [ (pkgName dep, [(package pkg, pkgVersion dep)])
+          [ (pkgName dep, [(InstalledPackageInfo.package pkg, pkgVersion dep)])
           | pkg <- pseudoTopPackage : allPackages index
-          , dep <- depends pkg ]
+          , dep <- InstalledPackageInfo.depends pkg ]
 
         duplicatesBy = (\groups -> if length groups == 1
                                      then []
