@@ -10,7 +10,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- The index of 'InstalledPackageInfo'.
+-- An index of packages.
 -----------------------------------------------------------------------------
 module Distribution.Simple.PackageIndex (
   -- * Package classes
@@ -56,7 +56,7 @@ import Data.Maybe (isNothing)
 
 import Distribution.Package (PackageIdentifier(..))
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_, emptyInstalledPackageInfo )
+         ( InstalledPackageInfo_ )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
 import Distribution.PackageDescription
@@ -81,6 +81,19 @@ instance Package (InstalledPackageInfo_ str) where
   packageId = InstalledPackageInfo.package
 instance Package PackageDescription where
   packageId = PackageDescription.package
+
+-- | Subclass of packages that have specific versioned dependencies.
+--
+-- So for example a not-yet-configured package has dependencies on version
+-- ranges, not specific versions. A configured or an already installed package
+-- depends on exact versions. Some operations or data structures (like
+--  dependency graphs) only make sense on this subclass of package types.
+--
+class Package pkg => PackageFixedDeps pkg where
+  depends :: pkg -> [PackageIdentifier]
+
+instance PackageFixedDeps (InstalledPackageInfo_ str) where
+  depends = InstalledPackageInfo.depends
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
@@ -243,12 +256,13 @@ lookupDependency index (Dependency name versionRange) =
 --
 -- Returns such packages along with the depends that they're missing.
 --
-brokenPackages :: PackageIndex InstalledPackageInfo
-               -> [(InstalledPackageInfo, [PackageIdentifier])]
+brokenPackages :: PackageFixedDeps pkg
+               => PackageIndex pkg
+               -> [(pkg, [PackageIdentifier])]
 brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
-  , let missing = [ pkg' | pkg' <- InstalledPackageInfo.depends pkg
+  , let missing = [ pkg' | pkg' <- depends pkg
                          , isNothing (lookupPackageId index pkg') ]
   , not (null missing) ]
 
@@ -260,19 +274,16 @@ brokenPackages index =
 -- * Note that if any of the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 --
-dependencyClosure :: PackageIndex InstalledPackageInfo
+dependencyClosure :: PackageFixedDeps pkg
+                  => PackageIndex pkg
                   -> [PackageIdentifier]
-                  -> Either (PackageIndex InstalledPackageInfo)
-                            [(InstalledPackageInfo, [PackageIdentifier])]
+                  -> Either (PackageIndex pkg)
+                            [(pkg, [PackageIdentifier])]
 dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
   (completed, []) -> Left  $ fromList completed
   (completed, _)  -> Right $ brokenPackages (fromList completed)
 
   where
-    closure :: [InstalledPackageInfo]
-            -> [PackageIdentifier]
-            -> [PackageIdentifier]
-            -> ([InstalledPackageInfo], [PackageIdentifier])
     closure completed failed [] = (completed, failed)
     closure completed failed (pkgid:pkgids) = case lookupPackageId index pkgid of
       Nothing  -> closure completed (pkgid:failed) pkgids
@@ -281,7 +292,7 @@ dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
                -> closure      completed   failed  pkgids
                | otherwise
                -> closure (pkg:completed)  failed  pkgids'
-               where pkgids' = InstalledPackageInfo.depends pkg ++ pkgids
+               where pkgids' = depends pkg ++ pkgids
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
@@ -293,23 +304,20 @@ dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
 --
-dependencyInconsistencies :: PackageIndex InstalledPackageInfo
-                          -> PackageIdentifier -> [PackageIdentifier]
+dependencyInconsistencies :: PackageFixedDeps pkg
+                          => PackageIndex pkg
+                          -> pkg
                           -> [(String, [(PackageIdentifier, Version)])]
-dependencyInconsistencies index topPkg topDeps =
+dependencyInconsistencies index topPkg =
   [ (name, inconsistencies)
   | (name, uses) <- Map.toList inverseIndex
   , let inconsistencies = duplicatesBy uses
   , not (null inconsistencies) ]
 
-  where pseudoTopPackage = emptyInstalledPackageInfo {
-          InstalledPackageInfo.package = topPkg,
-          InstalledPackageInfo.depends = topDeps
-        }
-        inverseIndex = Map.fromListWith (++)
-          [ (pkgName dep, [(InstalledPackageInfo.package pkg, pkgVersion dep)])
-          | pkg <- pseudoTopPackage : allPackages index
-          , dep <- InstalledPackageInfo.depends pkg ]
+  where inverseIndex = Map.fromListWith (++)
+          [ (pkgName dep, [(packageId pkg, pkgVersion dep)])
+          | pkg <- topPkg : allPackages index
+          , dep <- depends pkg ]
 
         duplicatesBy = (\groups -> if length groups == 1
                                      then []

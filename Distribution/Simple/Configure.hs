@@ -60,11 +60,11 @@ import Distribution.Simple.Compiler
 import Distribution.Package
     ( PackageIdentifier(..), showPackageId )
 import Distribution.InstalledPackageInfo
-    ( InstalledPackageInfo )
+    ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-    ( InstalledPackageInfo_(package) )
+    ( InstalledPackageInfo_(package,depends) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (PackageIndex, Package(..))
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -230,8 +230,7 @@ configure (pkg_descr0, pbi) cfg
             Left ppd -> 
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
-                       (fmap (map InstalledPackageInfo.package
-                            . PackageIndex.allPackages)
+                       (fmap (map packageId . PackageIndex.allPackages)
                              maybePackageIndex)
                        System.Info.os
                        System.Info.arch
@@ -269,8 +268,11 @@ configure (pkg_descr0, pbi) cfg
                            ++ intercalate ", " (map showPackageId deps)
                             | (pkg, deps) <- broken ]
 
-        case PackageIndex.dependencyInconsistencies
-               packageDependsIndex (package pkg_descr) dep_pkgs of
+        let pseudoTopPkg = emptyInstalledPackageInfo {
+                InstalledPackageInfo.package = packageId pkg_descr,
+                InstalledPackageInfo.depends = dep_pkgs
+              }
+        case PackageIndex.dependencyInconsistencies packageDependsIndex pseudoTopPkg of
           [] -> return ()
           inconsistencies ->
             warn verbosity $
