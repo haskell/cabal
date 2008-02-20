@@ -27,7 +27,6 @@ import Network.HTTP (ConnError(..), Response(..))
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
                       PkgInfo, packageURL, pkgInfoId, packageFile, packageDir)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
-import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Utils (showDependencies)
@@ -136,7 +135,7 @@ fetch :: Verbosity
       -> IO ()
 fetch verbosity packageDB repos comp conf deps
     = do Just installed <- getInstalledPackages verbosity comp packageDB conf
-         available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)
+         available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let depTree = resolveDependencies comp installed available deps'
          case packagesToInstall depTree of

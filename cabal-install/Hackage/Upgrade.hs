@@ -16,7 +16,7 @@ module Hackage.Upgrade
     ( upgrade
     ) where
 
-import qualified Hackage.RepoIndex  as RepoIndex
+import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Dependency (getUpgradableDeps)
 import Hackage.Install (install)
 import Hackage.Types (PkgInfo (..), UnresolvedDependency(..), Repo)
@@ -38,7 +38,7 @@ upgrade :: Verbosity
         -> IO ()
 upgrade verbosity packageDB repos comp conf configFlags = do 
   Just installed <- getInstalledPackages verbosity comp packageDB conf
-  available <- fmap mconcat (mapM (RepoIndex.read verbosity) repos)      
+  available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)      
   let upgradable = getUpgradableDeps installed available
   putStrLn "Upgrading the following packages: "
   --FIXME: check if upgradable is null

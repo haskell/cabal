@@ -14,6 +14,7 @@ module Hackage.Types where
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.PackageDescription (GenericPackageDescription)
+import Distribution.Simple.PackageIndex (Package(..))
 import Distribution.Version (Dependency, showVersion)
 
 import System.FilePath ((</>), (<.>))
@@ -30,6 +31,8 @@ data PkgInfo = PkgInfo {
     pkgDesc   :: GenericPackageDescription
   }
   deriving (Show)
+
+instance Package PkgInfo where packageId = pkgInfoId
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.

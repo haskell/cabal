@@ -11,24 +11,74 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Hackage.IndexUtils (
+  readRepoIndex,
   disambiguatePackageName,
   disambiguateDependencies
   ) where
 
-import qualified Hackage.RepoIndex as RepoIndex
-import Hackage.RepoIndex (RepoIndex)
-import Hackage.Types (UnresolvedDependency(..), PkgInfo(..))
+import Hackage.Tar
+import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), Repo(..))
 import Hackage.Utils (intercalate)
 
 import Distribution.Package (PackageIdentifier(..))
-import Distribution.Version (Dependency(Dependency))
-import Distribution.Simple.Utils as Utils (die)
+import Distribution.Version (Dependency(Dependency), readVersion)
+import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
+import Distribution.Verbosity (Verbosity)
+import Distribution.Simple.Utils (die, warn)
 
+import Prelude hiding (catch)
+import Control.Exception (catch, Exception(IOException))
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import Data.ByteString.Lazy (ByteString)
+import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
+import System.IO.Error (isDoesNotExistError)
+
+-- | Read a repository index from disk, from the local file specified by
+-- the 'Repo'.
+--
+readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex PkgInfo)
+readRepoIndex verbosity repo =
+  let indexFile = repoCacheDir repo </> "00-index.tar"
+   in fmap parseRepoIndex (BS.readFile indexFile)
+          `catch` (\e -> do case e of
+                              IOException ioe | isDoesNotExistError ioe ->
+                                warn verbosity "The package list does not exist. Run 'cabal update' to download it."
+                              _ -> warn verbosity (show e)
+                            return (PackageIndex.fromList []))
+
+  where
+    -- | Parse a repository index file from a 'ByteString'.
+    --
+    -- All the 'PkgInfo's are marked as having come from the given 'Repo'.
+    --
+    parseRepoIndex :: ByteString -> PackageIndex PkgInfo
+    parseRepoIndex s = PackageIndex.fromList $ do
+      (hdr, content) <- readTarArchive s
+      if takeExtension (tarFileName hdr) == ".cabal"
+        then case splitDirectories (normalise (tarFileName hdr)) of
+               [pkgname,vers,_] ->
+                 let parsed = parsePackageDescription (BS.Char8.unpack content)
+                     descr  = case parsed of
+                       ParseOk _ d -> d
+                       _           -> error $ "Couldn't read cabal file "
+                                           ++ show (tarFileName hdr)
+                  in case readVersion vers of
+                       Just ver -> return PkgInfo {
+                           pkgInfoId = PackageIdentifier pkgname ver,
+                           pkgRepo = repo,
+                           pkgDesc = descr
+                         }
+                       _ -> []
+               _ -> []
+        else []
 
 -- | Disambiguate a set of packages using 'disambiguatePackage' and report any
 -- ambiguities to the user.
 --
-disambiguateDependencies :: RepoIndex
+disambiguateDependencies :: PackageIndex PkgInfo
                          -> [UnresolvedDependency]
                          -> IO [UnresolvedDependency]
 disambiguateDependencies index deps = do
@@ -52,11 +102,12 @@ disambiguateDependencies index deps = do
 -- The only problem is if it matches multiple packages case-insensitively, in
 -- that case it is ambigious.
 --
-disambiguatePackageName :: RepoIndex -> String
-                                     -> Either String [String]
+disambiguatePackageName :: PackageIndex PkgInfo
+                        -> String
+                        -> Either String [String]
 disambiguatePackageName index name =
-    case RepoIndex.lookupPackageName index name of
-      RepoIndex.None              -> Right []
-      RepoIndex.Unambiguous pkgs  -> Left (pkgName (pkgInfoId (head pkgs)))
-      RepoIndex.Ambiguous   pkgss -> Right [ pkgName (pkgInfoId pkg)
+    case PackageIndex.searchByName index name of
+      PackageIndex.None              -> Right []
+      PackageIndex.Unambiguous pkgs  -> Left (pkgName (pkgInfoId (head pkgs)))
+      PackageIndex.Ambiguous   pkgss -> Right [ pkgName (pkgInfoId pkg)
                                            | (pkg:_) <- pkgss ]
