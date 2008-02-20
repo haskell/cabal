@@ -14,6 +14,7 @@ module Hackage.Info where
 
 import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
+import qualified Hackage.DepGraph as DepGraph
 import Hackage.Dependency 
 import Hackage.Fetch
 import Hackage.Types 
@@ -49,12 +50,13 @@ info verbosity packageDB repos comp conf deps
                 "The requested packages cannot be installed, because of missing dependencies:\n"
              ++ showDependencies missing
 
-           Right [] -> notice verbosity $
+           Right pkgs | DepGraph.empty pkgs -> notice verbosity $
                 "All requested packages already installed. Nothing to do."
 
            Right pkgs -> notice verbosity $
                "These packages would be installed:\n"
-             ++ unlines [showPackageId (pkgInfoId pkg) | (pkg,_) <- pkgs]
+             ++ unlines [ showPackageId (pkgInfoId pkg)
+                        | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs]
 
 flattenResolvedDependencies :: [ResolvedDependency] -> [ResolvedDependency]
 flattenResolvedDependencies = nubBy fulfillSame. concatMap flatten
