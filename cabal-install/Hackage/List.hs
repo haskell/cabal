@@ -19,21 +19,22 @@ import Data.Monoid (Monoid(mconcat))
 
 import Distribution.Package
 import Distribution.PackageDescription
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version (showVersion)
 import Distribution.Verbosity (Verbosity)
 
-import qualified Hackage.RepoIndex as RepoIndex
+import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Types (PkgInfo(..), Repo)
 import Hackage.Utils (equating, comparing, intercalate, lowercase)
 
 -- |Show information about packages
 list :: Verbosity -> [Repo] -> [String] -> IO ()
 list verbosity repos pats = do
-    indexes <- mapM (RepoIndex.read verbosity) repos
+    indexes <- mapM (IndexUtils.readRepoIndex verbosity) repos
     let index = mconcat indexes
-        pkgs | null pats = RepoIndex.allPackages index
+        pkgs | null pats = PackageIndex.allPackages index
              | otherwise =
-                 concatMap (RepoIndex.lookupPackageNameSubstring index) pats
+                 concatMap (PackageIndex.searchByNameSubstring index) pats
     putStrLn
       . unlines
       . map showPkgVersions
