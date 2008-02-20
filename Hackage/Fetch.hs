@@ -29,6 +29,7 @@ import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import qualified Hackage.RepoIndex  as RepoIndex
 import qualified Hackage.IndexUtils as IndexUtils
+import qualified Hackage.DepGraph as DepGraph
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
@@ -140,7 +141,8 @@ fetch verbosity packageDB repos comp conf deps
          let depTree = resolveDependencies comp installed available deps'
          case packagesToInstall depTree of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-           Right pkgs   -> do ps <- filterM (fmap not . isFetched) $ map fst pkgs
+           Right pkgs   -> do ps <- filterM (fmap not . isFetched)
+                                      [ pkg | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs ]
                               mapM_ (fetchPackage verbosity) ps
 
 withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
