@@ -56,7 +56,7 @@ import Distribution.Simple.Compiler
 	 , extensionsToFlags )
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgram
-         , rawSystemProgram, rawSystemProgramStdoutConf
+         , rawSystemProgram, rawSystemProgramStdoutConf, rawSystemProgramStdout
          , hscolourProgram, haddockProgram, ghcProgram )
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit, preprocessSources,
                                 PPSuffixHandler, runSimplePreProcessor)
@@ -159,7 +159,7 @@ haddock pkg_descr lbi suffixes flags = do
       return packageFlags
 
     when isVersion2 $ do
-      strHadGhcVers <- rawSystemProgramStdoutConf verbosity haddockProgram (withPrograms lbi) ["--ghc-version"]
+      strHadGhcVers <- rawSystemProgramStdout verbosity confHaddock ["--ghc-version"]
       let mHadGhcVers = readVersion strHadGhcVers
       when (mHadGhcVers == Nothing) $ die "Could not get GHC version from Haddock"
       when (fromJust mHadGhcVers /= compilerVersion comp) $
