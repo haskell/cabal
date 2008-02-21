@@ -19,6 +19,7 @@ module Hackage.Setup
     , upgradeCommand
     , infoCommand
     , fetchCommand
+    , checkCommand
     , uploadCommand, UploadFlags(..)
 
     , parsePackageArgs
@@ -132,6 +133,16 @@ infoCommand = CommandUI {
     commandUsage        = usagePackages "info",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbose id const]
+  }
+
+checkCommand  :: CommandUI (Flag Verbosity)
+checkCommand = CommandUI {
+    commandName         = "check",
+    commandSynopsis     = "Check the package for common mistakes",
+    commandDescription  = Nothing,
+    commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
+    commandDefaultFlags = mempty,
+    commandOptions      = mempty
   }
 
 -- ------------------------------------------------------------

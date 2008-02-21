@@ -31,8 +31,9 @@ import Hackage.Info             (info)
 import Hackage.Update           (update)
 import Hackage.Upgrade          (upgrade)
 import Hackage.Fetch            (fetch)
+import Hackage.Check as Check   (check)
 --import Hackage.Clean            (clean)
-import Hackage.Upload           (upload, check)
+import Hackage.Upload as Upload (upload, check)
 
 import Distribution.Verbosity   (Verbosity, normal)
 import Distribution.Version     (showVersion)
@@ -42,6 +43,7 @@ import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitWith, ExitCode(..))
 import Data.List                (intersperse)
 import Data.Monoid              (Monoid(..))
+import Control.Monad            (unless)
 
 -- | Entry point
 --
@@ -85,6 +87,7 @@ mainWorker args =
       ,upgradeCommand         `commandAddAction` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
+      ,checkCommand           `commandAddAction` checkAction
 
       ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
       ,wrapperAction Cabal.copyCommand
@@ -187,10 +190,16 @@ uploadAction flags extraArgs = do
   -- FIXME: check that the .tar.gz files exist and report friendly error message if not
   let tarfiles = extraArgs
   if fromFlag (uploadCheck flags)
-    then check  verbosity tarfiles
+    then Upload.check  verbosity tarfiles
     else upload verbosity 
                 (flagToMaybe $ configUploadUsername config
                      `mappend` uploadUsername flags)
                 (flagToMaybe $ configUploadPassword config
                      `mappend` uploadPassword flags)
                 tarfiles
+
+checkAction :: Flag Verbosity -> [String] -> IO ()
+checkAction verbosityFlag extraArgs = do
+  unless (null extraArgs) $ do
+    die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
+  Check.check (fromFlag verbosityFlag)
