@@ -56,7 +56,6 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..) )
-import Distribution.Package   (PackageIdentifier(..))
 import Distribution.Simple.PackageIndex (PackageIndex, Package)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
@@ -68,8 +67,8 @@ import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Data.Char ( isAlphaNum, toLower )
-import Data.Maybe ( isJust, catMaybes, maybeToList )
-import Data.List  ( nub, maximumBy )
+import Data.Maybe ( catMaybes, maybeToList )
+import Data.List  ( nub )
 import Data.Monoid
 
 #ifdef DEBUG
