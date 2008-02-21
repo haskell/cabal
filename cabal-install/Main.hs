@@ -202,4 +202,7 @@ checkAction :: Flag Verbosity -> [String] -> IO ()
 checkAction verbosityFlag extraArgs = do
   unless (null extraArgs) $ do
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
-  Check.check (fromFlag verbosityFlag)
+  allOk <- Check.check (fromFlag verbosityFlag)
+  if allOk
+    then exitWith ExitSuccess
+    else exitWith (ExitFailure 1)
