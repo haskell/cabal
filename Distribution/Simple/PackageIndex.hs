@@ -15,6 +15,7 @@
 module Distribution.Simple.PackageIndex (
   -- * Package classes
   Package(..),
+  PackageFixedDeps(..),
 
   -- * Package index data type
   PackageIndex,
@@ -60,9 +61,9 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
 import Distribution.PackageDescription
-         ( PackageDescription )
+         ( PackageDescription, GenericPackageDescription )
 import qualified Distribution.PackageDescription as PackageDescription
-         ( PackageDescription(..) )
+         ( PackageDescription(..), GenericPackageDescription(packageDescription) )
 import Distribution.Version (Version, Dependency(Dependency), withinRange)
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
 
@@ -81,6 +82,8 @@ instance Package (InstalledPackageInfo_ str) where
   packageId = InstalledPackageInfo.package
 instance Package PackageDescription where
   packageId = PackageDescription.package
+instance Package GenericPackageDescription where
+  packageId = packageId . PackageDescription.packageDescription
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
