@@ -23,7 +23,7 @@ import Distribution.PackageDescription.Configuration ( flattenPackageDescription
 import Distribution.Verbosity ( Verbosity )
 import Distribution.Simple.Utils ( defaultPackageDesc )
 
-check :: Verbosity -> IO ()
+check :: Verbosity -> IO Bool
 check verbosity = do
     pdfile <- defaultPackageDesc verbosity
     ppd <- readPackageDescription verbosity pdfile
@@ -78,3 +78,4 @@ check verbosity = do
     when (null packageChecks) $ do
         putStrLn "No errors or warnings could be found in the package."
 
+    return (null packageChecks)
