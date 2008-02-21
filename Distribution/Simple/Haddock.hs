@@ -47,7 +47,7 @@ module Distribution.Simple.Haddock (
 
 -- local
 import Distribution.Package (PackageIdentifier, showPackageId)
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PD
          (PackageDescription(..), BuildInfo(..), hcOptions,
           Library(..), hasLibs, withLib,
           Executable(..), withExe)
@@ -122,10 +122,10 @@ haddock pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running Haddock for" (package pkg_descr)
+    setupMessage verbosity "Running Haddock for" (PD.package pkg_descr)
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
-    let showPkg    = showPackageId (package pkg_descr)
+    let showPkg    = showPackageId (PD.package pkg_descr)
     let outputFlag = if fromFlag (haddockHoogle flags)
                      then "--hoogle"
                      else "--html"
@@ -180,12 +180,12 @@ haddock pkg_descr lbi suffixes flags = do
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
-            modules = exposedModules lib ++ otherModules bi
+            modules = PD.exposedModules lib ++ otherModules bi
         inFiles <- getModulePaths lbi bi modules
         unless isVersion2 $ mockAll bi inFiles
         let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
-            prolog | null (description pkg_descr) = synopsis pkg_descr
-                   | otherwise                    = description pkg_descr
+            prolog | null (PD.description pkg_descr) = synopsis pkg_descr
+                   | otherwise                       = PD.description pkg_descr
             subtitle | null (synopsis pkg_descr) = ""
                      | otherwise                 = ": " ++ synopsis pkg_descr
         writeFile prologName (prolog ++ "\n")
@@ -223,8 +223,8 @@ haddock pkg_descr lbi suffixes flags = do
         let inFiles = srcMainPath : inFiles'
         mockAll bi inFiles
         let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
-            prolog | null (description pkg_descr) = synopsis pkg_descr
-                   | otherwise                    = description pkg_descr
+            prolog | null (PD.description pkg_descr) = synopsis pkg_descr
+                   | otherwise                    = PD.description pkg_descr
         writeFile prologName (prolog ++ "\n")
         let targets
               | isVersion2 = srcMainPath : otherModules bi
@@ -318,7 +318,7 @@ ghcSimpleOptions lbi bi mockDir
   ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
   ++ ["-i" ++ mockDir]
-  ++ ["-I" ++ dir | dir <- includeDirs bi]
+  ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
   ++ ["-odir", mockDir]
   ++ ["-hidir", mockDir]
   ++ extensionsToFlags c (extensions bi)
@@ -336,12 +336,12 @@ hscolour pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running hscolour for" (package pkg_descr)
+    setupMessage verbosity "Running hscolour for" (PD.package pkg_descr)
     let replaceDot = map (\c -> if c == '.' then '-' else c)
 
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
         let bi = libBuildInfo lib
-            modules = exposedModules lib ++ otherModules bi
+            modules = PD.exposedModules lib ++ otherModules bi
 	    outputDir = hscolourPref pkg_descr </> "src"
 	createDirectoryIfMissingVerbose verbosity True outputDir
 	copyCSS hscolourProg outputDir
