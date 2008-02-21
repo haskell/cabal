@@ -15,7 +15,7 @@ module Hackage.Check (
     check
   ) where
 
-import Control.Monad ( unless )
+import Control.Monad ( when, unless )
 
 import Distribution.PackageDescription.Parse ( readPackageDescription )
 import Distribution.PackageDescription.Check
@@ -74,3 +74,7 @@ check verbosity = do
 
     unless (null errors) $ do
         putStrLn "Hackage would reject this package."
+
+    when (null packageChecks) $ do
+        putStrLn "No errors or warnings could be found in the package."
+
