@@ -64,7 +64,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package,depends) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex, Package(..))
+import Distribution.Simple.PackageIndex (PackageIndex, Package(packageId))
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
