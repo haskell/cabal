@@ -22,11 +22,19 @@ module Hackage.DepGraph (
 
 import Hackage.Types
 import Distribution.Package (PackageIdentifier)
+import Distribution.Simple.PackageIndex (Package(..), PackageFixedDeps(..))
 
 import Data.List (partition, intersect)
+import Control.Exception (assert)
 
 data ResolvedPackage = ResolvedPackage PkgInfo FlagAssignment [PackageIdentifier]
   deriving Show
+
+instance Package ResolvedPackage where
+   packageId (ResolvedPackage p _ _) = packageId p
+
+instance PackageFixedDeps ResolvedPackage where
+   depends (ResolvedPackage _ _ d) = d
 
 -- | A package dependency graph
 --
@@ -72,7 +80,7 @@ removeCompleted pkgid (DepGraph pkgs) =
     ([_pkg], pkgs') -> DepGraph [ ResolvedPackage pkg fs (filter (/=pkgid) deps)
                                 | ResolvedPackage pkg fs deps <- pkgs' ]
     _               -> error "DepGraph.removeCompleted: no such package"
-  where isCompleted = (==pkgid) . pkgInfoId . pkginfo
+  where isCompleted = (==pkgid) . packageId
 
 -- | Remove a package and all the packages that depend on it from the graph.
 --
@@ -83,19 +91,15 @@ removeCompleted pkgid (DepGraph pkgs) =
 --
 removeFailed :: PackageIdentifier -> DepGraph -> (DepGraph, [ResolvedPackage])
 removeFailed pkgid (DepGraph pkgs0) =
-  case partition ((==pkgid) . pkgInfoId . pkginfo) pkgs0 of
-    ([pkg], pkgs') -> remove [pkg] [pkgid] pkgs'
+  case partition ((==pkgid) . packageId) pkgs0 of
+    ([pkg], pkgs') -> case remove [pkg] [pkgid] pkgs' of
+                        result -> assert (packageId p == pkgid) result
+                          where (_,p:_) = result
     _              -> error "DepGraph.removeFailed: no such package"
 
   where
     remove rmpkgs pkgids pkgs =
-      case partition (not . null . intersect pkgids . pkgdeps) pkgs of
+      case partition (not . null . intersect pkgids . depends) pkgs of
         ([], _)          -> (DepGraph pkgs, rmpkgs)
         (rmpkgs', pkgs') -> remove (rmpkgs ++ rmpkgs') pkgids' pkgs'
-          where pkgids' = map (pkgInfoId.pkginfo) rmpkgs'
-
-pkginfo :: ResolvedPackage -> PkgInfo
-pkginfo (ResolvedPackage p _ _) = p
-
-pkgdeps :: ResolvedPackage -> [PackageIdentifier]
-pkgdeps (ResolvedPackage _ _ d) = d
+          where pkgids' = map packageId rmpkgs'
