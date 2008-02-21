@@ -59,7 +59,7 @@ check verbosity = do
         putStrLn ""
 
     unless (null distSuspicious) $ do
-        putStrLn "These warnings may cause trouble when distribution the package:"
+        putStrLn "These warnings may cause trouble when distributing the package:"
         mapM_ (putStrLn . explanation) distSuspicious
         putStrLn ""
 
