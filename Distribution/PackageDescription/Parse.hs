@@ -75,7 +75,8 @@ import Distribution.Version (Dependency, showVersion, parseVersion,
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
-import Distribution.Simple.Utils (die, dieWithLocation, warn, intercalate)
+import Distribution.Simple.Utils
+         ( die, dieWithLocation, warn, intercalate, writeFileAtomic )
 
 
 -- -----------------------------------------------------------------------------
@@ -708,7 +709,7 @@ parseHookedBuildInfo inp = do
 -- Pretty printing
 
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
-writePackageDescription fpath pkg = writeFile fpath (showPackageDescription pkg)
+writePackageDescription fpath pkg = writeFileAtomic fpath (showPackageDescription pkg)
 
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
@@ -728,7 +729,7 @@ ppCustomField :: (String,String) -> Doc
 ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
+writeHookedBuildInfo fpath pbi = writeFileAtomic fpath (showHookedBuildInfo pbi)
 
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bi) = render $

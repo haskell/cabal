@@ -60,9 +60,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
-import Distribution.Simple.Utils( createDirectoryIfMissingVerbose, dotToSep,
-				  findFileWithExtension, die, info, notice,
-				  smartCopySources, findFile )
+import Distribution.Simple.Utils
+         ( createDirectoryIfMissingVerbose, writeFileAtomic
+				 , findFile, dotToSep, findFileWithExtension, smartCopySources
+         , die, info, notice )
 import Language.Haskell.Extension
 				( Extension(..) )
 import System.FilePath        	( (</>), takeExtension, (<.>),
@@ -382,7 +383,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
                              let args = hugsOptions ++ [targetName, "\"$@\""]
                              in unlines ["#! /bin/sh",
                                          unwords ("runhugs" : args)]
-        writeFile exeFile script
+        writeFileAtomic exeFile script
         perms <- getPermissions exeFile
         setPermissions exeFile perms { executable = True, readable = True }
 

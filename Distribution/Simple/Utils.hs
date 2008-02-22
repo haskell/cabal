@@ -77,6 +77,7 @@ module Distribution.Simple.Utils (
         findFileWithExtension,
         findFileWithExtension',
         withTempFile,
+        writeFileAtomic,
 
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
@@ -110,15 +111,15 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( takeDirectory, takeExtension, (</>), (<.>), pathSeparator )
+    ( takeDirectory, splitFileName, takeExtension, (</>), (<.>), pathSeparator )
 import System.Directory
-    ( copyFile, createDirectoryIfMissing )
+    ( copyFile, createDirectoryIfMissing, renameFile )
 import System.IO
-    ( hPutStrLn, stderr, hFlush, stdout )
-import System.IO.Error
+    ( hPutStrLn, hPutStr, hClose  , stderr, hFlush, stdout )
+import System.IO.Error as IO.Error
     ( try )
-import Control.Exception
-    ( bracket )
+import qualified Control.Exception as Exception
+    ( bracket, bracketOnError, catch )
 
 import Distribution.Package
     (PackageIdentifier(..), showPackageId)
@@ -134,7 +135,7 @@ import System.IO (hGetContents)
 import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
 #endif
-import System.IO (Handle, hClose)
+import System.IO (Handle)
 
 import Distribution.Compat.TempFile (openTempFile)
 import Distribution.Verbosity
@@ -210,7 +211,7 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()   -- ^ the action itself
           -> IO ()
 chattyTry desc action =
-  catch action $ \exception ->
+  Exception.catch action $ \exception ->
     putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- -----------------------------------------------------------------------------
@@ -272,8 +273,9 @@ rawSystemStdout' verbosity path args = do
   printRawCommandAndArgs verbosity path args
 
 #ifdef __GLASGOW_HASKELL__
-  bracket (runInteractiveProcess path args Nothing Nothing)
-          (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
+  Exception.bracket
+     (runInteractiveProcess path args Nothing Nothing)
+     (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
     $ \(_,outh,errh,pid) -> do
 
       -- fork off a thread to pull on (and discard) the stderr
@@ -468,9 +470,65 @@ withTempFile :: FilePath -- ^ Temp dir to create the file in
              -> String   -- ^ File name template. See 'openTempFile'.
              -> (FilePath -> Handle -> IO a) -> IO a
 withTempFile tmpDir template action =
-  bracket (openTempFile tmpDir template)
-          (\(name, handle) -> hClose handle >> removeFile name)
-          (uncurry action)
+  Exception.bracket
+    (openTempFile tmpDir template)
+    (\(name, handle) -> hClose handle >> removeFile name)
+    (uncurry action)
+
+-- | Writes a file atomically.
+--
+-- The file is either written sucessfully or an IO exception is raised and
+-- the original file is left unchanged.
+--
+-- * Warning: On Windows this operation is very nearly but not quite atomic.
+--   See below.
+--
+-- On Posix it works by writing a temporary file and atomically renaming over
+-- the top any pre-existing target file with the temporary one.
+--
+-- On Windows it is not possible to rename over an existing file so the target
+-- file has to be deleted before the temporary file is renamed to the target.
+-- Therefore there is a race condition between the existing file being removed
+-- and the temporary file being renamed. Another thread could write to the
+-- target or change the permission on the target directory between the deleting
+-- and renaming steps. An exception would be raised but the target file would
+-- either no longer exist or have the content as written by the other thread.
+--
+-- On windows it is not possible to delete a file that is open by a process.
+-- This case will give an IO exception but the atomic property is not affected.
+--
+writeFileAtomic :: FilePath -> String -> IO ()
+writeFileAtomic targetFile content = do
+  Exception.bracketOnError
+    (openTempFile targetDir template)
+    (\(tmpFile, tmpHandle) -> IO.Error.try (hClose tmpHandle)
+                           >> IO.Error.try (removeFile tmpFile))
+    $ \(tmpFile, tmpHandle) -> do
+      hPutStr tmpHandle content
+      hClose tmpHandle
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+      renameFile tmpFile targetFile
+        -- If the targetFile exists then renameFile will fail
+        `Exception.catch` \err -> do
+          exists <- fileExists targetFile
+          if exists
+            then do deleteFile targetFile
+                    -- Big fat hairy race condition
+                    renameFile tmpFile targetFile
+                    -- If the deleteFile succeeds and the renameFile fails
+                    -- then we've lost the 
+            else ioError err
+#else
+      renameFile tmpFile targetFile
+#endif
+  where
+    template = targetName <.> "tmp"
+    targetDir | null targetDir_ = currentDir
+              | otherwise       = targetDir_
+    --TODO: remove this when takeDirectory/splitFileName is fixed
+    --      to always return a valid dir
+    (targetDir_,targetName) = splitFileName targetFile
+
 
 -- | The path name that represents the current directory.
 -- In Unix, it's @\".\"@, but this is system-specific.
