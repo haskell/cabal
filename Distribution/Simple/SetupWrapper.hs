@@ -99,7 +99,7 @@ setupWrapper args mdir = inDir mdir $ do
 	then mainAction args -- current version is OK, so no need
 			     -- to compile a special Setup.hs.
 	else do createDirectoryIfMissingVerbose verbosity True setupDir
-	        writeFile setupHs mainText
+	        writeFileAtomic setupHs mainText
 		trySetupScript setupHs $ error "panic! shouldn't happen"
     Nothing ->
       trySetupScript "Setup.hs"  $

@@ -94,7 +94,7 @@ import Distribution.Simple.BuildPaths
     ( distPref )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate, comparing )
+    , intercalate, comparing, writeFileAtomic )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -171,7 +171,7 @@ maybeGetPersistBuildConfig = do
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
   createDirectoryIfMissing False distPref
-  writeFile localBuildInfoFile (show lbi)
+  writeFileAtomic localBuildInfoFile (show lbi)
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
