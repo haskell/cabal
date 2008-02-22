@@ -19,22 +19,21 @@ module Hackage.Dependency
     ) where
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo_(package))
-import Distribution.Simple.PackageIndex (Package(..))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
-import Hackage.Utils (comparing, unzipEithers)
 import Distribution.Version (Dependency(..))
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
     , GenericPackageDescription )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerVersion)
+import Distribution.Simple.Utils (comparing)
 
 import Control.Monad (mplus)
 import Data.List (maximumBy)
@@ -93,7 +92,7 @@ latestAvailableSatisfying :: PackageIndex PkgInfo -> Dependency -> Maybe PkgInfo
 latestAvailableSatisfying index dep =
   case PackageIndex.lookupDependency index dep of
     []   -> Nothing
-    pkgs -> Just (maximumBy (comparing (pkgVersion . pkgInfoId)) pkgs)
+    pkgs -> Just (maximumBy (comparing (pkgVersion . packageId)) pkgs)
 
 -- | Gets the dependencies of an available package.
 getDependencies :: Compiler 
@@ -142,7 +141,7 @@ packagesToInstall deps0 = case unzipEithers (map getDeps deps0) of
                             resolved = DepGraph.ResolvedPackage pkg flags
                                          [ pkgid | (Just pkgid, _) <- ok ]
                                      : concatMap snd ok
-                         in Right (Just $ pkgInfoId pkg, resolved)
+                         in Right (Just $ packageId pkg, resolved)
         (missing, _) -> Left (concat missing)
     getDeps (UnavailableDependency dep) = Left [dep]
 
@@ -167,14 +166,14 @@ getUpgradableDeps installed available =
                   -> PkgInfo
                   -> Maybe PkgInfo
         newerThan pkgToUpdate mFound testPkg
-            = case (pkgName pkgToUpdate == (pkgName $ pkgInfoId testPkg), mFound) of
+            = case (pkgName pkgToUpdate == (pkgName $ packageId testPkg), mFound) of
                (False, _) -> mFound
                (True, Nothing) -- compare to given package
-                   -> if ((pkgInfoId testPkg) `isNewer` pkgToUpdate)
+                   -> if ((packageId testPkg) `isNewer` pkgToUpdate)
                       then Just testPkg
                       else Nothing -- none found so far
                (True, Just lastNewestPkg) -- compare to latest package
-                   -> if ((pkgInfoId testPkg) `isNewer` (pkgInfoId lastNewestPkg))
+                   -> if ((packageId testPkg) `isNewer` (packageId lastNewestPkg))
                       then Just testPkg
                       else mFound
 
@@ -191,3 +190,7 @@ getLatestPackageVersions :: PackageIndex InstalledPackageInfo -> [PackageIdentif
 getLatestPackageVersions index =
   [ maximumBy (comparing pkgVersion) $ map package pkgs
   | pkgs <- PackageIndex.allPackagesByName index ]
+
+unzipEithers :: [Either a b] -> ([a], [b])
+unzipEithers = foldr (flip consEither) ([], [])
+  where consEither ~(ls,rs) = either (\l -> (l:ls,rs)) (\r -> (ls,r:rs))

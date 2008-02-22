@@ -18,15 +18,14 @@ module Hackage.IndexUtils (
 
 import Hackage.Tar
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), Repo(..))
-import Hackage.Utils (intercalate)
 
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.Version (Dependency(Dependency), readVersion)
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die, warn)
+import Distribution.Simple.Utils (die, warn, intercalate)
 
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
@@ -108,6 +107,6 @@ disambiguatePackageName :: PackageIndex PkgInfo
 disambiguatePackageName index name =
     case PackageIndex.searchByName index name of
       PackageIndex.None              -> Right []
-      PackageIndex.Unambiguous pkgs  -> Left (pkgName (pkgInfoId (head pkgs)))
-      PackageIndex.Ambiguous   pkgss -> Right [ pkgName (pkgInfoId pkg)
+      PackageIndex.Unambiguous pkgs  -> Left (pkgName (packageId (head pkgs)))
+      PackageIndex.Ambiguous   pkgss -> Right [ pkgName (packageId pkg)
                                            | (pkg:_) <- pkgss ]
