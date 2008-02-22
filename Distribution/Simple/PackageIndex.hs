@@ -13,10 +13,6 @@
 -- An index of packages.
 -----------------------------------------------------------------------------
 module Distribution.Simple.PackageIndex (
-  -- * Package classes
-  Package(..),
-  PackageFixedDeps(..),
-
   -- * Package index data type
   PackageIndex,
 
@@ -55,48 +51,10 @@ import Data.List (nubBy, group, sort, groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing)
 
-import Distribution.Package (PackageIdentifier(..))
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo_ )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo_(..) )
-import Distribution.PackageDescription
-         ( PackageDescription, GenericPackageDescription )
-import qualified Distribution.PackageDescription as PackageDescription
-         ( PackageDescription(..), GenericPackageDescription(packageDescription) )
+import Distribution.Package
+         ( PackageIdentifier(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version (Version, Dependency(Dependency), withinRange)
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
-
--- | Class of things that can be identified by a 'PackageIdentifier'
---
--- Types in this class are all notions of a package. This allows us to have
--- different types for the different phases that packages go though, from
--- simple name\/id, package description, configured or installed packages.
---
-class Package pkg where
-  packageId :: pkg -> PackageIdentifier
-
-instance Package PackageIdentifier where
-  packageId = id
-instance Package (InstalledPackageInfo_ str) where
-  packageId = InstalledPackageInfo.package
-instance Package PackageDescription where
-  packageId = PackageDescription.package
-instance Package GenericPackageDescription where
-  packageId = packageId . PackageDescription.packageDescription
-
--- | Subclass of packages that have specific versioned dependencies.
---
--- So for example a not-yet-configured package has dependencies on version
--- ranges, not specific versions. A configured or an already installed package
--- depends on exact versions. Some operations or data structures (like
---  dependency graphs) only make sense on this subclass of package types.
---
-class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> [PackageIdentifier]
-
-instance PackageFixedDeps (InstalledPackageInfo_ str) where
-  depends = InstalledPackageInfo.depends
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
