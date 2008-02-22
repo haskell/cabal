@@ -19,11 +19,11 @@ module Hackage.Upgrade
 import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Dependency (getUpgradableDeps)
 import Hackage.Install (install)
-import Hackage.Types (PkgInfo (..), UnresolvedDependency(..), Repo)
+import Hackage.Types (UnresolvedDependency(..), Repo)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Package (showPackageId, PackageIdentifier(..))
+import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
 import Distribution.Version (VersionRange(..), Dependency(..))
 import Distribution.Verbosity (Verbosity)
 import qualified Distribution.Simple.Setup as Cabal
@@ -42,9 +42,9 @@ upgrade verbosity packageDB repos comp conf configFlags = do
   let upgradable = getUpgradableDeps installed available
   putStrLn "Upgrading the following packages: "
   --FIXME: check if upgradable is null
-  mapM_ putStrLn [showPackageId (pkgInfoId x) | x <- upgradable]
+  mapM_ putStrLn [showPackageId (packageId x) | x <- upgradable]
   install verbosity packageDB repos comp conf configFlags
-              [UnresolvedDependency (identifierToDependency $ pkgInfoId x) []
+              [UnresolvedDependency (identifierToDependency $ packageId x) []
                                   | x <- upgradable]
 
 identifierToDependency :: PackageIdentifier -> Dependency

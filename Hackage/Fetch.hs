@@ -25,14 +25,14 @@ import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Network.HTTP (ConnError(..), Response(..))
 
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
-                      PkgInfo, packageURL, pkgInfoId, packageFile, packageDir)
+                      PkgInfo, packageURL, packageFile, packageDir)
 import Hackage.Dependency (resolveDependencies, packagesToInstall)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
-import Distribution.Package (showPackageId)
+import Distribution.Package (showPackageId, Package(..))
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
@@ -96,7 +96,7 @@ downloadPackage verbosity pkg
          createDirectoryIfMissing True dir
          mbError <- downloadFile verbosity path url
          case mbError of
-           Just err -> die $ "Failed to download '" ++ showPackageId (pkgInfoId pkg) ++ "': " ++ show err
+           Just err -> die $ "Failed to download '" ++ showPackageId (packageId pkg) ++ "': " ++ show err
            Nothing -> return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
@@ -120,9 +120,9 @@ fetchPackage :: Verbosity -> PkgInfo -> IO String
 fetchPackage verbosity pkg
     = do fetched <- isFetched pkg
          if fetched
-            then do notice verbosity $ "'" ++ showPackageId (pkgInfoId pkg) ++ "' is cached."
+            then do notice verbosity $ "'" ++ showPackageId (packageId pkg) ++ "' is cached."
                     return (packageFile pkg)
-            else do setupMessage verbosity "Downloading" (pkgInfoId pkg)
+            else do setupMessage verbosity "Downloading" (packageId pkg)
                     downloadPackage verbosity pkg
 
 -- |Fetch a list of packages and their dependencies.

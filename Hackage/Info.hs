@@ -19,7 +19,7 @@ import Hackage.Fetch
 import Hackage.Types 
 import Hackage.Utils (showDependencies)
 
-import Distribution.Package (showPackageId)
+import Distribution.Package (showPackageId, Package(..))
 import Distribution.ParseUtils (showDependency)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Configure (getInstalledPackages)
@@ -54,7 +54,7 @@ info verbosity packageDB repos comp conf deps
 
            Right pkgs -> notice verbosity $
                "These packages would be installed:\n"
-             ++ unlines [ showPackageId (pkgInfoId pkg)
+             ++ unlines [ showPackageId (packageId pkg)
                         | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs]
 
 flattenResolvedDependencies :: [ResolvedDependency] -> [ResolvedDependency]
@@ -70,7 +70,7 @@ infoPkg (InstalledDependency dep p)
 infoPkg (AvailableDependency dep pkg flags deps)
     = do fetched <- isFetched pkg
          return ["Requested:    " ++ show (showDependency dep)
-                ,"  Using:      " ++ showPackageId (pkgInfoId pkg)
+                ,"  Using:      " ++ showPackageId (packageId pkg)
                 ,"  Depends:    " ++ showDependencies (map fulfills deps)
                 ,"  Options:    " ++ unwords [ if set then flag else '-':flag
                                              | (flag, set) <- flags ]

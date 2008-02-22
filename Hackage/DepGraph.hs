@@ -21,8 +21,7 @@ module Hackage.DepGraph (
   ) where
 
 import Hackage.Types
-import Distribution.Package (PackageIdentifier)
-import Distribution.Simple.PackageIndex (Package(..), PackageFixedDeps(..))
+import Distribution.Package (PackageIdentifier, Package(..), PackageFixedDeps(..))
 
 import Data.List (partition, intersect)
 import Control.Exception (assert)

@@ -37,10 +37,9 @@ import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils (defaultPackageDesc)
-import Distribution.Package (showPackageId, PackageIdentifier(..))
+import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
 import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.PackageIndex (Package(..))
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 import Distribution.Verbosity (Verbosity)
 
@@ -181,7 +180,7 @@ installPkg :: Verbosity
 installPkg verbosity configFlags pkg flags
     = do pkgPath <- fetchPackage verbosity pkg
          tmp <- getTemporaryDirectory
-         let p = pkgInfoId pkg
+         let p = packageId pkg
              tmpDirPath = tmp </> ("TMP" ++ showPackageId p)
              path = tmpDirPath </> showPackageId p
          bracket_ (createDirectoryIfMissing True tmpDirPath)
