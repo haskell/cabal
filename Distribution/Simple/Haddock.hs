@@ -75,10 +75,10 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
 import Distribution.Simple.Utils
-         ( die, warn, notice, setupMessage, createDirectoryIfMissingVerbose
+         ( die, warn, notice, intercalate, setupMessage
+         , createDirectoryIfMissingVerbose, withTempFile
          , findFileWithExtension, findFile, dotToSep )
 
-import Distribution.Simple.Utils (intercalate)
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
@@ -92,6 +92,7 @@ import Data.List     (nub)
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        replaceExtension, normalise)
+import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 
 -- --------------------------------------------------------------------------
@@ -183,36 +184,37 @@ haddock pkg_descr lbi suffixes flags = do
             modules = PD.exposedModules lib ++ otherModules bi
         inFiles <- getModulePaths lbi bi modules
         unless isVersion2 $ mockAll bi inFiles
-        let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
+        let template = showPkg ++ "-haddock-prolog.txt"
             prolog | null (PD.description pkg_descr) = synopsis pkg_descr
                    | otherwise                       = PD.description pkg_descr
             subtitle | null (synopsis pkg_descr) = ""
                      | otherwise                 = ": " ++ synopsis pkg_descr
-        writeFile prologName (prolog ++ "\n")
-        let targets
-              | isVersion2 = modules
-              | otherwise  = replaceLitExts inFiles
-        let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
-        -- FIX: replace w/ rawSystemProgramConf?
-        rawSystemProgram verbosity confHaddock
-                ([outputFlag,
-                  "--odir=" ++ haddockPref pkg_descr,
-                  "--title=" ++ showPkg ++ subtitle,
-                  "--dump-interface=" ++ haddockFile,
-                  "--prologue=" ++ prologName]
-                 ++ packageName
-		 ++ cssFileFlag
-                 ++ linkToHscolour
-                 ++ packageFlags
-                 ++ programArgs confHaddock
-                 ++ verboseFlags
-                 ++ map ("--hide=" ++) (otherModules bi)
-                 ++ haddock2options bi (buildDir lbi)
-                 ++ targets
-                )
-        removeFile prologName
-        notice verbosity $ "Documentation created: "
-                        ++ (haddockPref pkg_descr </> "index.html")
+        withTempFile distPref template $ \prologFileName prologFileHandle -> do
+          hPutStrLn prologFileHandle prolog
+          hClose prologFileHandle
+          let targets
+                | isVersion2 = modules
+                | otherwise  = replaceLitExts inFiles
+          let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
+          -- FIX: replace w/ rawSystemProgramConf?
+          rawSystemProgram verbosity confHaddock
+                  ([ outputFlag
+                   , "--odir=" ++ haddockPref pkg_descr
+                   , "--title=" ++ showPkg ++ subtitle
+                   , "--dump-interface=" ++ haddockFile
+                   , "--prologue=" ++ prologFileName ]
+                   ++ packageName
+                   ++ cssFileFlag
+                   ++ linkToHscolour
+                   ++ packageFlags
+                   ++ programArgs confHaddock
+                   ++ verboseFlags
+                   ++ map ("--hide=" ++) (otherModules bi)
+                   ++ haddock2options bi (buildDir lbi)
+                   ++ targets
+                  )
+          notice verbosity $ "Documentation created: "
+                          ++ (haddockPref pkg_descr </> "index.html")
 
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
@@ -222,29 +224,30 @@ haddock pkg_descr lbi suffixes flags = do
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
         let inFiles = srcMainPath : inFiles'
         mockAll bi inFiles
-        let prologName = distPref </> showPkg ++ "-haddock-prolog.txt"
+        let template = showPkg ++ "-haddock-prolog.txt"
             prolog | null (PD.description pkg_descr) = synopsis pkg_descr
                    | otherwise                    = PD.description pkg_descr
-        writeFile prologName (prolog ++ "\n")
-        let targets
-              | isVersion2 = srcMainPath : otherModules bi
-              | otherwise = replaceLitExts inFiles
-        let preprocessDir = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
-        rawSystemProgram verbosity confHaddock
-                ([outputFlag,
-                  "--odir=" ++ exeTargetDir,
-                  "--title=" ++ exeName exe,
-                  "--prologue=" ++ prologName]
-                 ++ linkToHscolour
-                 ++ packageFlags
-                 ++ programArgs confHaddock
-                 ++ verboseFlags
-                 ++ haddock2options bi preprocessDir
-                 ++ targets
-                )
-        removeFile prologName
-        notice verbosity $ "Documentation created: "
-                       ++ (exeTargetDir </> "index.html")
+        withTempFile distPref template $ \prologFileName prologFileHandle -> do
+          hPutStrLn prologFileHandle prolog
+          hClose prologFileHandle
+          let targets
+                | isVersion2 = srcMainPath : otherModules bi
+                | otherwise = replaceLitExts inFiles
+          let preprocessDir = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
+          rawSystemProgram verbosity confHaddock
+                  ([ outputFlag
+                   , "--odir=" ++ exeTargetDir
+                   , "--title=" ++ exeName exe
+                   , "--prologue=" ++ prologFileName ]
+                   ++ linkToHscolour
+                   ++ packageFlags
+                   ++ programArgs confHaddock
+                   ++ verboseFlags
+                   ++ haddock2options bi preprocessDir
+                   ++ targets
+                  )
+          notice verbosity $ "Documentation created: "
+                         ++ (exeTargetDir </> "index.html")
 
     removeDirectoryRecursive tmpDir
   where
