@@ -62,7 +62,7 @@ import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
                                   fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription (PackageDescription(..),
                                               BuildInfo(..), Library(..))
-import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..))
 import Distribution.Verbosity
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
@@ -101,13 +101,13 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
-    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" (package pkg_descr)
+    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" (packageId pkg_descr)
     return ()
   | otherwise = do
     let isWindows = case os of Windows _ -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
         genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
-        genPkgConfigDefault = showPackageId (package pkg_descr) <.> "conf"
+        genPkgConfigDefault = showPackageId (packageId pkg_descr) <.> "conf"
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (fromFlag (regGenPkgConf regFlags))
         verbosity = fromFlag (regVerbose regFlags)
@@ -118,7 +118,7 @@ register pkg_descr lbi regFlags
                 | genScript = "Writing registration script: "
                            ++ regScriptLocation ++ " for"
                 | otherwise = "Registering"
-    setupMessage verbosity message (package pkg_descr)
+    setupMessage verbosity message (packageId pkg_descr)
 
     case compilerFlavor (compiler lbi) of
       GHC -> do 
@@ -223,7 +223,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                       }
 	  where inplaceDocdir  = pwd </> distPref </> "doc"
 	        inplaceHtmldir = inplaceDocdir </> "html"
-		                               </> pkgName (package pkg_descr)
+		                               </> pkgName (packageId pkg_descr)
         (absinc,relinc) = partition isAbsolute (includeDirs bi)
         installIncludeDir | null (installIncludes bi) = []
                           | otherwise = [includedir installDirs]
@@ -238,7 +238,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
          | otherwise = libdir installDirs
     in
     return emptyInstalledPackageInfo{
-        IPI.package           = package pkg_descr,
+        IPI.package           = packageId pkg_descr,
         IPI.license           = license pkg_descr,
         IPI.copyright         = copyright pkg_descr,
         IPI.maintainer        = maintainer pkg_descr,
@@ -253,7 +253,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	IPI.hiddenModules     = otherModules bi,
         IPI.importDirs        = [libraryDir],
         IPI.libraryDirs       = libraryDir : extraLibDirs bi,
-        IPI.hsLibraries       = ["HS" ++ showPackageId (package pkg_descr)],
+        IPI.hsLibraries       = ["HS" ++ showPackageId (packageId pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = absinc ++ if inplace
                                             then map (pwd </>) relinc
@@ -278,7 +278,7 @@ unregister pkg_descr lbi regFlags = do
       verbosity = fromFlag (regVerbose regFlags)
       packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-  setupMessage verbosity "Unregistering" (package pkg_descr)
+  setupMessage verbosity "Unregistering" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC -> do
 	config_flags <- case packageDB of
@@ -286,7 +286,7 @@ unregister pkg_descr lbi regFlags = do
           UserPackageDB        -> return ["--user"]
           SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
-        let removeCmd = ["unregister",showPackageId (package pkg_descr)]
+        let removeCmd = ["unregister",showPackageId (packageId pkg_descr)]
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
             allArgs      = removeCmd ++ config_flags
 	if genScript
