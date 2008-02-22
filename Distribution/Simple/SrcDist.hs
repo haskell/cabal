@@ -57,7 +57,7 @@ import Distribution.PackageDescription
 	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
          withLib, withExe)
 import Distribution.PackageDescription.Check
-import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
+import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   die, warn, notice, setupMessage, defaultPackageDesc,
@@ -120,7 +120,7 @@ prepareTree :: PackageDescription -- ^info from the cabal file
             -> IO FilePath
 
 prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
-  setupMessage verbosity "Building source dist for" (package pkg_descr)
+  setupMessage verbosity "Building source dist for" (packageId pkg_descr)
   ex <- doesDirectoryExist tmpDir
   when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
   let targetDir = tmpDir </> (nameVersion pkg_descr)
@@ -274,4 +274,4 @@ tarBallName :: PackageDescription -> FilePath
 tarBallName p = (nameVersion p) ++ ".tar.gz"
 
 nameVersion :: PackageDescription -> String
-nameVersion = showPackageId . package
+nameVersion = showPackageId . packageId

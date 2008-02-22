@@ -48,6 +48,7 @@ module Distribution.Simple.Install (
 import Distribution.PackageDescription (
 	PackageDescription(..), BuildInfo(..), Library(..),
 	hasLibs, withLib, hasExes, withExe )
+import Distribution.Package (Package(..))
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs,
         substPathTemplate)
@@ -141,7 +142,7 @@ install pkg_descr lbi flags = do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
-     NHC  -> do withLib pkg_descr () $ NHC.installLib verbosity libPref buildPref (package pkg_descr)
+     NHC  -> do withLib pkg_descr () $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
      _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
