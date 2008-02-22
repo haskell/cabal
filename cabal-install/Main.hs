@@ -40,7 +40,7 @@ import Distribution.Version     (showVersion)
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
-import System.Exit              (exitWith, ExitCode(..))
+import System.Exit              (exitFailure)
 import Data.List                (intersperse)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (unless)
@@ -70,7 +70,7 @@ mainWorker args =
     printOptionsList = putStr . unlines
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
-      exitWith (ExitFailure 1)
+      exitFailure
     printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
                                   ++ showVersion Paths_cabal_install.version
@@ -203,6 +203,4 @@ checkAction verbosityFlag extraArgs = do
   unless (null extraArgs) $ do
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
-  if allOk
-    then exitWith ExitSuccess
-    else exitWith (ExitFailure 1)
+  unless allOk exitFailure
