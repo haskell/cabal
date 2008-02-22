@@ -505,5 +505,5 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
     else setupMessage verbosity
-           "Package contains no library to register:" (package pkg_descr)
+           "Package contains no library to register:" (packageId pkg_descr)
   where verbosity = fromFlag (regVerbose flags)

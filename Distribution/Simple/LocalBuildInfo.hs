@@ -59,7 +59,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.Simple.Compiler (Compiler(..), PackageDB)
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -112,7 +112,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
                     -> InstallDirs FilePath
 absoluteInstallDirs pkg_descr lbi copydest =
   InstallDirs.absoluteInstallDirs
-    (package pkg_descr)
+    (packageId pkg_descr)
     (compilerId (compiler lbi))
     copydest
     (installDirTemplates lbi)
@@ -122,7 +122,7 @@ prefixRelativeInstallDirs :: PackageDescription -> LocalBuildInfo
                           -> InstallDirs (Maybe FilePath)
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
-    (package pkg_descr)
+    (packageId pkg_descr)
     (compilerId (compiler lbi))
     (installDirTemplates lbi)
 
@@ -131,6 +131,6 @@ substPathTemplate :: PackageDescription -> LocalBuildInfo
 substPathTemplate pkg_descr lbi = fromPathTemplate 
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv 
-                   (package pkg_descr)
+                   (packageId pkg_descr)
                    (compilerId (compiler lbi))
           

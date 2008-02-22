@@ -49,7 +49,7 @@ import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )
-import Distribution.Package 	( PackageIdentifier(..), showPackageId )
+import Distribution.Package 	( PackageIdentifier(..), showPackageId, Package(..) )
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
@@ -88,7 +88,7 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
 build pkg_descr lbi flags suffixes = do
   let verbosity = fromFlag (buildVerbose flags)
   initialBuildSteps pkg_descr lbi verbosity suffixes
-  setupMessage verbosity "Building" (package pkg_descr)
+  setupMessage verbosity "Building" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.build  pkg_descr lbi verbosity
     JHC  -> JHC.build  pkg_descr lbi verbosity
@@ -106,7 +106,7 @@ makefile pkg_descr lbi flags suffixes = do
   initialBuildSteps pkg_descr lbi verbosity suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")
-  setupMessage verbosity "Generating Makefile" (package pkg_descr)
+  setupMessage verbosity "Generating Makefile" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.makefile  pkg_descr lbi flags
     _    -> die ("Generating a Makefile is not supported for this compiler.")
@@ -123,7 +123,7 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
           map libBuildInfo (maybeToList (library pkg_descr)) ++
           map buildInfo (executables pkg_descr)
   unless (any buildable buildInfos) $ do
-    let name = showPackageId (package pkg_descr)
+    let name = showPackageId (packageId pkg_descr)
     die ("Package " ++ name ++ " can't be built on this system.")
 
   createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
@@ -171,7 +171,7 @@ buildPathsModule pkg_descr lbi =
 	"import Data.Version"++
 	"\n"++
 	"\nversion :: Version"++
-	"\nversion = " ++ show (pkgVersion (package pkg_descr))++
+	"\nversion = " ++ show (pkgVersion (packageId pkg_descr))++
 	"\n"
 
        body

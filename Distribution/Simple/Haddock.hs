@@ -46,7 +46,7 @@ module Distribution.Simple.Haddock (
   ) where
 
 -- local
-import Distribution.Package (PackageIdentifier, showPackageId)
+import Distribution.Package (PackageIdentifier, showPackageId, Package(..))
 import Distribution.PackageDescription as PD
          (PackageDescription(..), BuildInfo(..), hcOptions,
           Library(..), hasLibs, withLib,
@@ -122,10 +122,10 @@ haddock pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running Haddock for" (PD.package pkg_descr)
+    setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
-    let showPkg    = showPackageId (PD.package pkg_descr)
+    let showPkg    = showPackageId (packageId pkg_descr)
     let outputFlag = if fromFlag (haddockHoogle flags)
                      then "--hoogle"
                      else "--html"
@@ -336,7 +336,7 @@ hscolour pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
-    setupMessage verbosity "Running hscolour for" (PD.package pkg_descr)
+    setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
     let replaceDot = map (\c -> if c == '.' then '-' else c)
 
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
