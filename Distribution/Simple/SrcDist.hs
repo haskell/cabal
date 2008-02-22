@@ -59,10 +59,10 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
-                                  die, warn, notice, setupMessage, defaultPackageDesc,
-                                  findFile, findFileWithExtension,
-                                  dotToSep, copyFiles, copyFileVerbose)
+import Distribution.Simple.Utils
+        ( createDirectoryIfMissingVerbose, writeFileAtomic, copyFiles
+        , copyFileVerbose, findFile, findFileWithExtension, dotToSep
+        , die, warn, notice, setupMessage, defaultPackageDesc )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -168,7 +168,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   lhsExists <- doesFileExist "Setup.lhs"
   if hsExists then copyFileTo verbosity targetDir "Setup.hs"
     else if lhsExists then copyFileTo verbosity targetDir "Setup.lhs"
-    else writeFile (targetDir </> "Setup.hs") $ unlines [
+    else writeFileAtomic (targetDir </> "Setup.hs") $ unlines [
                 "import Distribution.Simple",
                 "main = defaultMainWithHooks defaultUserHooks"]
   -- the description file itself
@@ -178,7 +178,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   -- but that would lose comments and formatting.
   if snapshot then do
       contents <- readFile descFile
-      writeFile targetDescFile $
+      writeFileAtomic targetDescFile $
           unlines $ map (appendVersion date) $ lines $ contents
     else copyFileVerbose verbosity descFile targetDescFile
   return targetDir
