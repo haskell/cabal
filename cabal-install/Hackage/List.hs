@@ -17,7 +17,7 @@ module Hackage.List (
 import Data.List (nub, sortBy, groupBy)
 import Data.Monoid (Monoid(mconcat))
 
-import Distribution.Package
+import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version (showVersion)
@@ -25,7 +25,7 @@ import Distribution.Verbosity (Verbosity)
 
 import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Types (PkgInfo(..), Repo)
-import Hackage.Utils (equating, comparing, intercalate, lowercase)
+import Distribution.Simple.Utils (equating, comparing, intercalate, lowercase)
 
 -- |Show information about packages
 list :: Verbosity -> [Repo] -> [String] -> IO ()
@@ -38,24 +38,24 @@ list verbosity repos pats = do
     putStrLn
       . unlines
       . map showPkgVersions
-      . groupBy (equating (pkgName . pkgInfoId))
+      . groupBy (equating (pkgName . packageId))
       . sortBy (comparing nameAndVersion)
       $ pkgs
 
   where
     nameAndVersion p = (lowercase name, name, version)
-        where name = pkgName (pkgInfoId p)
-              version = pkgVersion (pkgInfoId p)
+        where name = pkgName (packageId p)
+              version = pkgVersion (packageId p)
 
 
 showPkgVersions :: [PkgInfo] -> String
 showPkgVersions pkgs =
-    padTo 35 $ pkgName (pkgInfoId pkg)
+    padTo 35 $ pkgName (packageId pkg)
             ++ " ["
             ++ intercalate ", " (map showVersion versions)
             ++ "] "
     ++ synopsis (packageDescription (pkgDesc pkg))
   where
     pkg = last pkgs
-    versions = nub (map (pkgVersion . pkgInfoId) pkgs)
+    versions = nub (map (pkgVersion . packageId) pkgs)
     padTo n s = s ++ (replicate (n - length s) ' ')

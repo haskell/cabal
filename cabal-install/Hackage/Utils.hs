@@ -2,12 +2,10 @@ module Hackage.Utils where
 
 import Distribution.ParseUtils (showDependency)
 import Distribution.Version (Dependency(..))
+import Distribution.Simple.Utils (intercalate)
 
-import Control.Exception
 import Control.Monad (guard)
-import qualified Data.Char as Char (toLower)
-import Data.List (intersperse, isPrefixOf, tails)
-
+import Control.Exception (Exception, catchJust, ioErrors)
 import System.IO.Error (isDoesNotExistError)
 
 readFileIfExists :: FilePath -> IO (Maybe String)
@@ -22,22 +20,3 @@ fileNotFoundExceptions e =
 
 showDependencies :: [Dependency] -> String
 showDependencies = intercalate ", " . map (show . showDependency)
-
-equating :: Eq a => (b -> a) -> b -> b -> Bool
-equating p x y = p x == p y
-
-comparing :: Ord a => (b -> a) -> b -> b -> Ordering
-comparing p x y = p x `compare` p y
-
-isInfixOf :: String -> String -> Bool
-isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
-
-intercalate :: [a] -> [[a]] -> [a]
-intercalate sep = concat . intersperse sep
-
-unzipEithers :: [Either a b] -> ([a], [b])
-unzipEithers = foldr (flip consEither) ([], [])
-  where consEither ~(ls,rs) = either (\l -> (l:ls,rs)) (\r -> (ls,r:rs))
-
-lowercase :: String -> String
-lowercase = map Char.toLower
