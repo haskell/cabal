@@ -46,7 +46,7 @@ module Distribution.Simple.NHC
   ) where
 
 import Distribution.Package
-   	( PackageIdentifier(..) )
+        ( PackageIdentifier(..), Package(..) )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
           withLib, withExe, hcOptions )
@@ -167,7 +167,7 @@ build pkg_descr lbi verbosity = do
     info verbosity "Linking..."
     let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
         --        | cFile <- cSources bi ]
-	libName  = mkLibName targetDir (pkgName (package pkg_descr))
+	libName  = mkLibName targetDir (pkgName (packageId pkg_descr))
         hObjs = [ targetDir </> dotToSep m <.> objExtension
                 | m <- modules ]
 

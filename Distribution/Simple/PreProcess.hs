@@ -59,7 +59,7 @@ import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
-import Distribution.Package (showPackageId)
+import Distribution.Package (showPackageId, Package(..))
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils
@@ -166,14 +166,14 @@ preprocessSources :: PackageDescription
 
 preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     withLib pkg_descr () $ \ lib -> do
-        setupMessage verbosity "Preprocessing library" (package pkg_descr)
+        setupMessage verbosity "Preprocessing library" (packageId pkg_descr)
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) forSDist 
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
-        setupMessage verbosity "Preprocessing executables for" (package pkg_descr)
+        setupMessage verbosity "Preprocessing executables for" (packageId pkg_descr)
     withExe pkg_descr $ \ theExe -> do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
