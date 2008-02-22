@@ -52,11 +52,12 @@ module Distribution.PackageDescription.Configuration (
     freeVars,
   ) where
 
+import Distribution.Package (Package)
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..) )
-import Distribution.Simple.PackageIndex (PackageIndex, Package)
+import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..)

@@ -58,13 +58,13 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerVersion, showCompilerId
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
-    ( PackageIdentifier(..), showPackageId )
+    ( PackageIdentifier(..), showPackageId, Package(..) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package,depends) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex, Package(packageId))
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -199,7 +199,7 @@ configure (pkg_descr0, pbi) cfg
   = do  let verbosity = fromFlag (configVerbose cfg)
 
 	setupMessage verbosity "Configuring"
-                     (package (either packageDescription id pkg_descr0))
+                     (packageId (either packageDescription id pkg_descr0))
 
 	createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
@@ -262,7 +262,7 @@ configure (pkg_descr0, pbi) cfg
                  ++ " packages\nthey depend on are missing. These broken "
                  ++ "packages must be rebuilt\nbefore they can be used.\n"
                  ++ unlines [ "package "
-                           ++ showPackageId (InstalledPackageInfo.package pkg)
+                           ++ showPackageId (packageId pkg)
                            ++ " is broken due to missing package "
                            ++ intercalate ", " (map showPackageId deps)
                             | (pkg, deps) <- broken ]

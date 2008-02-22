@@ -63,6 +63,8 @@ import Distribution.ParseUtils (
 import Distribution.License 	( License(..) )
 import Distribution.Package	( PackageIdentifier(..), showPackageId,
 				  parsePackageId )
+import qualified Distribution.Package as Package
+         ( Package(..), PackageFixedDeps(..) )
 import Distribution.Version	( Version(..), showVersion )
 import Distribution.Compat.ReadP as ReadP
 
@@ -106,6 +108,11 @@ data InstalledPackageInfo_ m
 	haddockHTMLs      :: [FilePath]
     }
     deriving (Read, Show)
+
+instance Package.Package          (InstalledPackageInfo_ str) where
+   packageId = package
+instance Package.PackageFixedDeps (InstalledPackageInfo_ str) where
+   depends   = depends
 
 type InstalledPackageInfo = InstalledPackageInfo_ String
 

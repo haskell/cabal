@@ -80,7 +80,7 @@ import Data.List   (nub)
 import Data.Monoid (Monoid(mempty, mappend))
 import Text.PrettyPrint.HughesPJ
 
-import Distribution.Package  (PackageIdentifier(PackageIdentifier))
+import Distribution.Package  (PackageIdentifier(..), Package(..))
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Version  (Dependency, showVersionRange)
@@ -127,6 +127,9 @@ data PackageDescription
         extraTmpFiles  :: [FilePath]
     }
     deriving (Show, Read, Eq)
+
+instance Package PackageDescription where
+  packageId = package
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
@@ -411,6 +414,9 @@ data GenericPackageDescription =
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
       }
     deriving (Show)
+
+instance Package GenericPackageDescription where
+  packageId = packageId . packageDescription
 
 {-
 -- XXX: I think we really want a PPrint or Pretty or ShowPretty class.
