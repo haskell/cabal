@@ -63,7 +63,9 @@ extractEntry mdir hdr cnt
          case tarFileType hdr of
            TarNormalFile   -> BS.writeFile path cnt >> setPerms
            TarHardLink     -> copyLinked >> setPerms
-           TarSymbolicLink -> copyLinked
+           TarSymbolicLink -> copyLinked --FIXME: what if the other file has not
+                                         --been unpacked yet? Perhaps collect all
+                                         --links and do them at the end.
            TarDirectory    -> createDirectoryIfMissing False path >> setPerms
            TarOther _      -> return () -- FIXME: warning?
 

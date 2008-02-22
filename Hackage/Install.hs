@@ -44,6 +44,7 @@ import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 import Distribution.Verbosity (Verbosity)
 
 data BuildResult = DependentFailed PackageIdentifier
+                 | UnpackFailed
                  | ConfigureFailed
                  | BuildFailed
                  | InstallFailed
@@ -69,6 +70,7 @@ install verbosity packageDB repos comp conf configFlags deps = do
          [ showPackageId pkgid ++ case reason of
            DependentFailed pkgid' -> " depends on " ++ showPackageId pkgid'
                                   ++ " which failed to install."
+           UnpackFailed    -> " failed while unpacking the package."
            ConfigureFailed -> " failed during the configure step."
            BuildFailed     -> " failed during the building phase."
            InstallFailed   -> " failed during the final install step."
@@ -194,6 +196,7 @@ installPkg verbosity configFlags pkg flags
                             Cabal.configConfigurationsFlags =
                               Cabal.configConfigurationsFlags configFlags ++ flags }
                       installUnpackedPkg verbosity configFlags' (Just path))
+           `catch` \_ -> return UnpackFailed
 
 installUnpackedPkg :: Verbosity
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
