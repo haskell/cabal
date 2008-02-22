@@ -66,7 +66,7 @@ import Distribution.Package	( PackageIdentifier(..), showPackageId,
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
 import Distribution.Version	( Version(..), showVersion )
-import Distribution.Compat.ReadP as ReadP
+import qualified Distribution.Compat.ReadP as ReadP
 
 import Control.Monad	( foldM )
 import Text.PrettyPrint
@@ -205,30 +205,33 @@ basicFieldDescrs =
                            (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            copyright              (\val pkg -> pkg{copyright=val})
  , simpleField "maintainer"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            maintainer             (\val pkg -> pkg{maintainer=val})
  , simpleField "stability"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            stability              (\val pkg -> pkg{stability=val})
  , simpleField "homepage"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            homepage               (\val pkg -> pkg{homepage=val})
  , simpleField "package-url"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
  , simpleField "description"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            description            (\val pkg -> pkg{description=val})
  , simpleField "category"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            category               (\val pkg -> pkg{category=val})
  , simpleField "author"
-                           showFreeText           (munch (const True))
+                           showFreeText           parseFreeText
                            author                 (\val pkg -> pkg{author=val})
  ]
+
+parseFreeText :: ReadP.ReadP s String
+parseFreeText = ReadP.munch (const True)
 
 installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
@@ -288,6 +291,5 @@ installedFieldDescrs = [
 	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
-parsePackageId' :: ReadP [PackageIdentifier] PackageIdentifier
-parsePackageId' = parseQuoted parsePackageId <++ parsePackageId
-
+parsePackageId' :: ReadP.ReadP [PackageIdentifier] PackageIdentifier
+parsePackageId' = parseQuoted parsePackageId ReadP.<++ parsePackageId
