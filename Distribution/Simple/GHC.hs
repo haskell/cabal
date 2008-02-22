@@ -336,13 +336,9 @@ build pkg_descr lbi verbosity = do
 
       createDirectoryIfMissingVerbose verbosity True libTargetDir
       -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
-      let ghc_vers = compilerVersion (compiler lbi)
-          packageId | versionBranch ghc_vers >= [6,4]
-                                = showPackageId (package pkg_descr)
-                    | otherwise = pkgName (package pkg_descr)
-          -- Only use the version number with ghc-6.4 and later
+      let packageIdStr = showPackageId (packageId pkg_descr)
           ghcArgs =
-                 ["-package-name", packageId ]
+                 ["-package-name", packageIdStr ]
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -376,10 +372,10 @@ build pkg_descr lbi verbosity = do
       info verbosity "Linking..."
       let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
 	  cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
-	  libName  = mkLibName pref (showPackageId (package pkg_descr))
-	  profLibName  = mkProfLibName pref (showPackageId (package pkg_descr))
-	  sharedLibName  = mkSharedLibName pref (showPackageId (package pkg_descr)) (compilerId (compiler lbi))
-	  ghciLibName = mkGHCiLibName pref (showPackageId (package pkg_descr))
+	  libName  = mkLibName pref packageIdStr
+	  profLibName  = mkProfLibName pref packageIdStr
+	  sharedLibName  = mkSharedLibName pref packageIdStr (compilerId (compiler lbi))
+	  ghciLibName = mkGHCiLibName pref packageIdStr
 
       stubObjs <- fmap catMaybes $ sequence
         [ findFileWithExtension [objExtension] [libTargetDir]
@@ -446,7 +442,7 @@ build pkg_descr lbi verbosity = do
 		  "-dynamic",
 		  "-o", sharedLibName ]
 		++ ghcSharedObjArgs
-		++ ["-package-name", packageId ]
+		++ ["-package-name", packageIdStr ]
 		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 	        ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
 	        ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
@@ -574,9 +570,7 @@ ghcVerbosityOptions verbosity
 
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
-     =  (if compilerVersion c > Version [6,4] []
-            then ["-hide-all-packages"]
-            else [])
+     =  ["-hide-all-packages"]
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ autogenModulesDir lbi]
@@ -638,10 +632,7 @@ makefile pkg_descr lbi flags = do
   let Just lib = library pkg_descr
       bi = libBuildInfo lib
   
-      ghc_vers = compilerVersion (compiler lbi)
-      packageId | versionBranch ghc_vers >= [6,4]
-                                = showPackageId (package pkg_descr)
-                 | otherwise = pkgName (package pkg_descr)
+      packageIdStr = showPackageId (packageId pkg_descr)
   (arProg, _) <- requireProgram verbosity arProgram AnyVersion
                    (withPrograms lbi)
   (ldProg, _) <- requireProgram verbosity ldProgram AnyVersion
@@ -657,16 +648,16 @@ makefile pkg_descr lbi flags = do
         ("srcdir", case hsSourceDirs bi of
                         [one] -> one
                         _     -> error "makefile: can't cope with multiple hs-source-dirs yet, sorry"),
-        ("package", packageId),
+        ("package", packageIdStr),
         ("GHC_OPTS", unwords ( 
-                           ["-package-name", packageId ]
+                           ["-package-name", packageIdStr ]
                         ++ ghcOptions lbi bi (buildDir lbi))),
         ("MAKEFILE", file),
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
-        ("GHCI_LIB", mkGHCiLibName builddir (showPackageId (package pkg_descr))),
+        ("GHCI_LIB", mkGHCiLibName builddir packageIdStr),
         ("soext", dllExtension),
-        ("LIB_LD_OPTS", unwords (["-package-name", packageId]
+        ("LIB_LD_OPTS", unwords (["-package-name", packageIdStr]
 				 ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
 				 ++ ["-l"++libName | libName <- extraLibs bi]
 				 ++ ["-L"++libDir | libDir <- extraLibDirs bi])),
