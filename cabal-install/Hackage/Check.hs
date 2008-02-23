@@ -21,7 +21,7 @@ import Distribution.PackageDescription.Parse ( readPackageDescription )
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
 import Distribution.Verbosity ( Verbosity )
-import Distribution.Simple.Utils ( defaultPackageDesc )
+import Distribution.Simple.Utils ( defaultPackageDesc, toUTF8 )
 
 check :: Verbosity -> IO Bool
 check verbosity = do
@@ -50,22 +50,22 @@ check verbosity = do
 
     unless (null buildImpossible) $ do
         putStrLn "The package will not build sanely due to these errors:"
-        mapM_ (putStrLn . explanation) buildImpossible
+        mapM_ (putStrLn . toUTF8. explanation) buildImpossible
         putStrLn ""
 
     unless (null buildWarning) $ do
         putStrLn "The following warnings are likely affect your build negatively:"
-        mapM_ (putStrLn . explanation) buildWarning
+        mapM_ (putStrLn . toUTF8 . explanation) buildWarning
         putStrLn ""
 
     unless (null distSuspicious) $ do
         putStrLn "These warnings may cause trouble when distributing the package:"
-        mapM_ (putStrLn . explanation) distSuspicious
+        mapM_ (putStrLn . toUTF8 . explanation) distSuspicious
         putStrLn ""
 
     unless (null distInexusable) $ do
         putStrLn "The following errors will cause portability problems on other environments:"
-        mapM_ (putStrLn . explanation) distInexusable
+        mapM_ (putStrLn . toUTF8 . explanation) distInexusable
         putStrLn ""
 
     let isDistError (PackageDistSuspicious {}) = False
