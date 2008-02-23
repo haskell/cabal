@@ -69,13 +69,12 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.Simple.Utils (intercalate)
+import Distribution.Simple.Utils (intercalate, fromUTF8)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
-import Data.Maybe	( fromMaybe)
-import Data.List        (intersperse)
+import Data.Maybe	(fromMaybe)
 
 #ifdef DEBUG
 import Test.HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
@@ -273,7 +272,7 @@ readFields input =
                  . trimLines
                  . lines
                  . normaliseLineEndings
-                 -- TODO: should decode UTF8
+                 . fromUTF8
 
 -- attach line number and determine indentation
 trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
@@ -516,7 +515,7 @@ parseBuildToolNameQ = parseQuoted parseBuildToolName <++ parseBuildToolName
 -- like parsePackageName but accepts symbols in components
 parseBuildToolName :: ReadP r String
 parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
-                        return (concat (intersperse "-" ns))
+                        return (intercalate "-" ns)
   where component = do
           cs <- munch1 (\c -> isAlphaNum c || isSymbol c && c /= '-')
           if all isDigit cs then pfail else return cs
