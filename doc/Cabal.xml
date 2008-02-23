@@ -3081,10 +3081,12 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
 
       <sect3>
         <title>Stable Command-line interfaces</title>
+	<para></para>
       </sect3>
 
       <sect3>
         <title>Unstable command-line</title>
+	<para></para>
       </sect3>
     </sect2>
 
