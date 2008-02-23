@@ -85,6 +85,10 @@ module Distribution.Simple.Utils (
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
 
+        -- * Unicode
+        fromUTF8,
+        toUTF8,
+
         -- * generic utils
         equating,
         comparing,
@@ -99,7 +103,9 @@ import Control.Monad
 import Data.List
     ( nub, unfoldr, isPrefixOf, tails, intersperse )
 import Data.Char as Char
-    ( toLower )
+    ( toLower, chr, ord )
+import Data.Bits
+    ( (.|.), (.&.), shiftL, shiftR )
 
 import System.Directory
     ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
@@ -158,7 +164,7 @@ die :: String -> IO a
 die msg = do
   hFlush stdout
   pname <- getProgName
-  hPutStrLn stderr (pname ++ ": " ++ msg)
+  hPutStrLn stderr $ toUTF8 (pname ++ ": " ++ msg)
   exitWith (ExitFailure 1)
 
 -- | Non fatal conditions that may be indicative of an error or problem.
@@ -169,7 +175,7 @@ warn :: Verbosity -> String -> IO ()
 warn verbosity msg = 
   when (verbosity >= normal) $ do
     hFlush stdout
-    hPutStrLn stderr ("Warning: " ++ msg)
+    hPutStrLn stderr ("Warning: " ++ toUTF8 msg)
 
 -- | Useful status messages.
 --
@@ -181,7 +187,7 @@ warn verbosity msg =
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg =
   when (verbosity >= normal) $
-    putStrLn msg
+    putStrLn (toUTF8 msg)
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid =
@@ -194,7 +200,7 @@ setupMessage verbosity msg pkgid =
 info :: Verbosity -> String -> IO ()
 info verbosity msg =
   when (verbosity >= verbose) $
-    putStrLn msg
+    putStrLn (toUTF8 msg)
 
 -- | Detailed internal debugging information
 --
@@ -203,7 +209,7 @@ info verbosity msg =
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
   when (verbosity >= deafening) $
-    putStrLn msg
+    putStrLn (toUTF8 msg)
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
@@ -212,7 +218,7 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()
 chattyTry desc action =
   Exception.catch action $ \exception ->
-    putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
+    putStrLn $ toUTF8 $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
@@ -586,6 +592,46 @@ findHookedPackageDesc dir = do
 	[] -> return Nothing
 	[f] -> return (Just f)
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
+
+-- ------------------------------------------------------------
+-- * UTF8 <-> Unicode String Conversions
+-- ------------------------------------------------------------
+
+-- This is a modification of the UTF8 code from gtk2hs
+
+fromUTF8 :: String -> String
+fromUTF8 []     = []
+fromUTF8 (c:cs)
+  | c <= '\x7F' = c : fromUTF8 cs
+  | c <= '\xBF' = replacementChar : fromUTF8 cs
+  | c <= '\xDF' = twoBytes   c cs
+  | c <= '\xEF' = threeBytes c cs
+  | otherwise   = replacementChar : fromUTF8 cs
+  where
+    twoBytes c1 (c2:cs') = chr (((ord c1 .&. 0x1F) `shiftL` 6) .|.
+                                 (ord c2 .&. 0x3F)) : fromUTF8 cs'
+    twoBytes _  _        = replacementChar : []
+
+    threeBytes c1 (c2:c3:cs') = chr (((ord c1 .&. 0x0F) `shiftL` 12) .|.
+                                     ((ord c2 .&. 0x3F) `shiftL`  6) .|.
+                                      (ord c3 .&. 0x3F)) : fromUTF8 cs'
+    threeBytes _  _           = replacementChar : []
+
+    replacementChar = '\xfffd'
+
+toUTF8 :: String -> String
+toUTF8 []        = []
+toUTF8 (c:cs)
+  | c <= '\x07F' = c
+                 : toUTF8 cs
+  | c <= '\x7FF' = chr (0xC0 .|. (w `shiftR` 6))
+                 : chr (0x80 .|. (w .&. 0x3F))
+                 : toUTF8 cs
+  | otherwise    = chr (0xE0 .|.  (w `shiftR` 12))
+                 : chr (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
+                 : chr (0x80 .|.  (w .&. 0x3F))
+                 : toUTF8 cs
+  where w = ord c
 
 -- ------------------------------------------------------------
 -- * Common utils

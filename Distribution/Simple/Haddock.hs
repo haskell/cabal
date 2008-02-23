@@ -190,6 +190,7 @@ haddock pkg_descr lbi suffixes flags = do
             subtitle | null (synopsis pkg_descr) = ""
                      | otherwise                 = ": " ++ synopsis pkg_descr
         withTempFile distPref template $ \prologFileName prologFileHandle -> do
+          --TODO: what format is this? utf8 or ascii?
           hPutStrLn prologFileHandle prolog
           hClose prologFileHandle
           let targets
