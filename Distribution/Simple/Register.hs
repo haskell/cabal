@@ -157,9 +157,9 @@ register pkg_descr lbi regFlags
 	createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
 	copyFileVerbose verbosity installedPkgConfigFile
 	    (libdir installDirs </> "package.conf")
-      JHC -> when (verbosity >= normal) $ putStrLn "registering for JHC (nothing to do)"
-      NHC -> when (verbosity >= normal) $ putStrLn "registering nhc98 (nothing to do)"
-      _   -> die ("only registering with GHC/Hugs/jhc/nhc98 is implemented")
+      JHC -> notice verbosity "registering for JHC (nothing to do)"
+      NHC -> notice verbosity "registering nhc98 (nothing to do)"
+      _   -> die "only registering with GHC/Hugs/jhc/nhc98 is implemented"
 
 -- -----------------------------------------------------------------------------
 -- The installed package config
