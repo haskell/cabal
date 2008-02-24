@@ -17,7 +17,6 @@ module Hackage.Fetch
     , -- * Utilities
       fetchPackage
     , isFetched
-    , readURI
     , downloadIndex
     ) where
 
@@ -47,17 +46,6 @@ import System.FilePath ((</>), (<.>))
 import System.Directory (copyFile)
 import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
 
-
-readURI :: Verbosity -> URI -> IO String
-readURI verbosity uri
-    | uriScheme uri == "file:" = (readFile $ uriPath uri)
-    | otherwise = do
-        eitherResult <- getHTTP verbosity uri
-        case eitherResult of
-           Left err -> die $ "Failed to download '" ++ show uri ++ "': " ++ show err
-           Right rsp
-               | rspCode rsp == (2,0,0) -> return (rspBody rsp)
-               | otherwise -> die $ "Failed to download '" ++ show uri ++ "': Invalid HTTP code: " ++ show (rspCode rsp)
 
 downloadURI :: Verbosity
             -> FilePath -- ^ Where to put it
