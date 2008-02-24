@@ -18,7 +18,7 @@ import Network.URI (URI, parseURI)
 
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
-import System.IO        (hFlush, stdout)
+import System.IO        (hFlush, stdout, openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.Random    (randomRIO)
 
 
@@ -80,7 +80,7 @@ handlePackage verbosity uri auth path =
 
 mkRequest :: URI -> FilePath -> IO Request
 mkRequest uri path = 
-    do pkg <- readFile path
+    do pkg <- readBinaryFile path
        boundary <- genBoundary
        let body = printMultiPart boundary (mkFormData path pkg)
        return $ Request {
@@ -91,6 +91,9 @@ mkRequest uri path =
                                       Header HdrAccept ("text/plain")],
                          rqBody = body
                         }
+
+readBinaryFile :: FilePath -> IO String
+readBinaryFile path = openBinaryFile path ReadMode >>= hGetContents
 
 genBoundary :: IO String
 genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
