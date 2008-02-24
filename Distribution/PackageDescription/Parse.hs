@@ -76,7 +76,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils
-         ( die, dieWithLocation, warn, intercalate, writeFileAtomic )
+         ( die, dieWithLocation, warn, intercalate, readTextFile, writeTextFile )
 
 
 -- -----------------------------------------------------------------------------
@@ -286,7 +286,7 @@ readAndParseFile :: Verbosity -> (String -> ParseResult a) -> FilePath -> IO a
 readAndParseFile verbosity parser fpath = do
   exists <- doesFileExist fpath
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
-  str <- readFile fpath
+  str <- readTextFile fpath
   case parser str of
     ParseFailed e -> do
         let (line, message) = locatedErrorMsg e
@@ -709,7 +709,7 @@ parseHookedBuildInfo inp = do
 -- Pretty printing
 
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
-writePackageDescription fpath pkg = writeFileAtomic fpath (showPackageDescription pkg)
+writePackageDescription fpath pkg = writeTextFile fpath (showPackageDescription pkg)
 
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
@@ -729,7 +729,7 @@ ppCustomField :: (String,String) -> Doc
 ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath pbi = writeFileAtomic fpath (showHookedBuildInfo pbi)
+writeHookedBuildInfo fpath pbi = writeTextFile fpath (showHookedBuildInfo pbi)
 
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bi) = render $

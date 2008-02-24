@@ -69,7 +69,7 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName )
 import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.Simple.Utils (intercalate, fromUTF8)
+import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
@@ -272,7 +272,6 @@ readFields input =
                  . trimLines
                  . lines
                  . normaliseLineEndings
-                 . fromUTF8
 
 -- attach line number and determine indentation
 trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
@@ -774,7 +773,7 @@ main = do
 
 checkResult :: FilePath -> IO Bool
 checkResult inputFile = do
-  file <- readFile inputFile
+  file <- readTextFile inputFile
   case readFields file of
     ParseOk _ result -> do
        hPutStrLn stderr $ inputFile ++ " parses ok :-)"

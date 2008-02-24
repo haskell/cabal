@@ -94,7 +94,7 @@ import Distribution.Simple.BuildPaths
     ( distPref )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate, comparing, writeFileAtomic )
+    , intercalate, comparing, readTextFile, writeTextFile )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -143,7 +143,7 @@ tryGetConfigStateFile filename = do
   let dieMsg = "error reading " ++ filename ++ 
                "; run \"setup configure\" command?\n"
   if (not e) then return $ Left dieMsg else do 
-    str <- readFile filename
+    str <- readTextFile filename
     case reads str of
       [(bi,_)] -> return $ Right bi
       _        -> return $ Left  dieMsg
@@ -171,7 +171,7 @@ maybeGetPersistBuildConfig = do
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
   createDirectoryIfMissing False distPref
-  writeFileAtomic localBuildInfoFile (show lbi)
+  writeTextFile localBuildInfoFile (show lbi)
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.

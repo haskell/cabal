@@ -76,6 +76,8 @@ module Distribution.Simple.Utils (
 	findFile,
         findFileWithExtension,
         findFileWithExtension',
+
+        -- * files
         withTempFile,
         writeFileAtomic,
 
@@ -88,6 +90,8 @@ module Distribution.Simple.Utils (
         -- * Unicode
         fromUTF8,
         toUTF8,
+        readTextFile,
+        writeTextFile,
 
         -- * generic utils
         equating,
@@ -267,7 +271,10 @@ rawSystemExit verbosity path args = do
   hFlush stdout
   maybeExit $ rawSystem path args
 
--- Run a command and return its output
+-- | Run a command and return its output.
+--
+-- The output is assumed to be encoded as UTF8.
+--
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
   (output, exitCode) <- rawSystemStdout' verbosity path args
@@ -293,7 +300,7 @@ rawSystemStdout' verbosity path args = do
       forkIO $ do evaluate (length err); return ()
 
       -- wait for all the output
-      output <- hGetContents outh
+      output <- fromUTF8 `fmap` hGetContents outh
       evaluate (length output)
 
       -- wait for the program to terminate
@@ -306,7 +313,7 @@ rawSystemStdout' verbosity path args = do
     hClose tmpHandle
     let quote name = "'" ++ name ++ "'"
     exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
-    output <- readFile tmpName
+    output <- readTextFile tmpName
     length output `seq` return (output, exitCode)
 #endif
 
@@ -594,7 +601,7 @@ findHookedPackageDesc dir = do
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
 
 -- ------------------------------------------------------------
--- * UTF8 <-> Unicode String Conversions
+-- * Unicode stuff
 -- ------------------------------------------------------------
 
 -- This is a modification of the UTF8 code from gtk2hs
@@ -632,6 +639,20 @@ toUTF8 (c:cs)
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
   where w = ord c
+
+-- | Reads a UTF8 encoded text file as a Unicode String
+--
+-- Reads lazily using ordinary 'readFile'.
+--
+readTextFile :: FilePath -> IO String
+readTextFile = fmap fromUTF8 . readFile
+
+-- | Writes a Unicode String as a UTF8 encoded text file.
+--
+-- Uses 'writeFileAtomic', so provides the same guarantees.
+--
+writeTextFile :: FilePath -> String -> IO ()
+writeTextFile path = writeFileAtomic path . toUTF8
 
 -- ------------------------------------------------------------
 -- * Common utils

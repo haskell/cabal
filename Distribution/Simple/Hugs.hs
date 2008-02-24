@@ -61,8 +61,8 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, writeFileAtomic
-				 , findFile, dotToSep, findFileWithExtension, smartCopySources
+         ( createDirectoryIfMissingVerbose, readTextFile, writeTextFile
+	 , findFile, dotToSep, findFileWithExtension, smartCopySources
          , die, info, notice )
 import Language.Haskell.Extension
 				( Extension(..) )
@@ -251,7 +251,7 @@ build pkg_descr lbi verbosity = do
 	-- Get the non-literate source of a Haskell module.
 	readHaskellFile :: FilePath -> IO String
 	readHaskellFile file = do
-	    text <- readFile file
+	    text <- readTextFile file
 	    if ".lhs" `isSuffixOf` file
               then either return die (unlit file text)
               else return text
@@ -269,7 +269,7 @@ getOptionsFromSource
            [String]                     -- INCLUDE pragmas
           )
 getOptionsFromSource file = do
-    text <- readFile file
+    text <- readTextFile file
     text' <- if ".lhs" `isSuffixOf` file
                then either return die (unlit file text)
                else return text
@@ -383,7 +383,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
                              let args = hugsOptions ++ [targetName, "\"$@\""]
                              in unlines ["#! /bin/sh",
                                          unwords ("runhugs" : args)]
-        writeFileAtomic exeFile script
+        writeTextFile exeFile script
         perms <- getPermissions exeFile
         setPermissions exeFile perms { executable = True, readable = True }
 
