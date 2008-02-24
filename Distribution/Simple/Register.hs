@@ -63,14 +63,13 @@ import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
 import Distribution.PackageDescription (PackageDescription(..),
                                               BuildInfo(..), Library(..))
 import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..))
-import Distribution.Verbosity
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
-         , die, info, setupMessage )
+         , die, info, notice, setupMessage )
 import Distribution.System
 
 import System.FilePath ((</>), (<.>), isAbsolute)
