@@ -90,6 +90,7 @@ type LineNo = Int
 data PError = AmbigousParse String LineNo
             | NoParse String LineNo
             | TabsError LineNo
+            | UTFError LineNo
             | FromString String (Maybe LineNo)
         deriving Show
 
@@ -129,6 +130,7 @@ locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'")
 locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed: ")
 locatedErrorMsg (TabsError n)       = (Just n, "Tab used as indentation.")
+locatedErrorMsg (UTFError  n)       = (Just n, "Invalid UTF-8 text.")
 locatedErrorMsg (FromString s n)    = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
@@ -136,6 +138,9 @@ syntaxError n s = ParseFailed $ FromString s (Just n)
 
 tabsError :: LineNo -> ParseResult a
 tabsError ln = ParseFailed $ TabsError ln
+
+utf8Error :: LineNo -> ParseResult a
+utf8Error ln = ParseFailed $ UTFError ln
 
 warning :: String -> ParseResult ()
 warning s = ParseOk [s] ()
@@ -263,15 +268,18 @@ fName (Section _ n _ _) = n
 fName _ = error "fname: not a field or section"
 
 readFields :: String -> ParseResult [Field]
-readFields input = 
-      ifelse
-  =<< mapM (mkField 0)
-  =<< mkTree (tokenise input)
+readFields input =
+  case [ n | (n,l) <- zip [1..] ls
+           , '\xfffd' `elem` l ] of
 
-  where tokenise = concatMap tokeniseLine
-                 . trimLines
-                 . lines
-                 . normaliseLineEndings
+    (n:_) -> utf8Error n
+
+    []    -> ifelse
+         =<< mapM (mkField 0)
+         =<< mkTree tokens
+
+  where ls = (lines . normaliseLineEndings) input
+        tokens = (concatMap tokeniseLine . trimLines) ls
 
 -- attach line number and determine indentation
 trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
