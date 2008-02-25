@@ -109,7 +109,7 @@ import Data.List
 import Data.Char as Char
     ( toLower, chr, ord )
 import Data.Bits
-    ( (.|.), (.&.), shiftL, shiftR )
+    ( Bits((.|.), (.&.), shiftL, shiftR) )
 
 import System.Directory
     ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
