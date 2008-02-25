@@ -25,7 +25,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die, warn, intercalate)
+import Distribution.Simple.Utils (die, warn, intercalate, fromUTF8)
 
 import Prelude hiding (catch)
 import Control.Exception (catch, Exception(IOException))
@@ -59,7 +59,8 @@ readRepoIndex verbosity repo =
       if takeExtension (tarFileName hdr) == ".cabal"
         then case splitDirectories (normalise (tarFileName hdr)) of
                [pkgname,vers,_] ->
-                 let parsed = parsePackageDescription (BS.Char8.unpack content)
+                 let parsed = parsePackageDescription
+                                (fromUTF8 . BS.Char8.unpack $ content)
                      descr  = case parsed of
                        ParseOk _ d -> d
                        _           -> error $ "Couldn't read cabal file "
