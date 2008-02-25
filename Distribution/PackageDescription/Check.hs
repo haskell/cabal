@@ -235,7 +235,10 @@ checkLicense pkg =
       PackageDistInexcusable
         "The 'license' field is missing or specified as AllRightsReserved."
 
-  , check (null (licenseFile pkg)) $
+  , check (license pkg `notElem` [AllRightsReserved, PublicDomain]
+           -- AllRightsReserved and PublicDomain are not strictly
+           -- licenses so don't need license files.
+        && null (licenseFile pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
 
