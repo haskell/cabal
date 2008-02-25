@@ -69,7 +69,7 @@ XSLTPROC_HTML_PARAMS=\
 	--param toc.section.depth 3 \
 	--stringparam base.dir $(XSLTPROC_HTML_OUTDIR) \
 	--stringparam html.stylesheet $(XSLTPROC_HTML_CSS)
-XSLTPROC_HTML_STYLESHEET=/usr/share/sgml/docbook/xsl-stylesheets-1.70.1/xhtml/chunk.xsl
+XSLTPROC_HTML_STYLESHEET=/usr/share/sgml/docbook/xsl-stylesheets/xhtml/chunk.xsl
 
 users-guide: $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/Cabal.xml
