@@ -165,9 +165,9 @@ library
           <filename><replaceable>package</replaceable>.cabal</filename>
         </term>
         <listitem>
-          <para>a text file containing a package description
+          <para>a Unicode UTF-8 text file containing a package description
             (for details of the syntax of this file, see
-            <xref linkend="pkg-descr"/>), and</para>
+            <xref linkend="pkg-descr"/>)</para>
         </listitem>
       </varlistentry>
 
@@ -291,8 +291,9 @@ Executable program2
     <sect2 id="pkg-descr">
       <title>Package descriptions</title>
 
-      <para>The package description file should have a name ending in
-        <quote><literal>.cabal</literal></quote>.  There must be exactly
+      <para>The package description file must have a name ending in
+        <quote><literal>.cabal</literal></quote>.  It must be a Unicode text
+	file encoded using valid UTF-8. There must be exactly
         one such file in the directory.  The first part of the name is
         usually the package name, and some of the tools that operate
         on Cabal packages require this.</para>
