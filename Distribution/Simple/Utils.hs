@@ -91,6 +91,7 @@ module Distribution.Simple.Utils (
         fromUTF8,
         toUTF8,
         readTextFile,
+        readAsciiFile,
         writeTextFile,
 
         -- * generic utils
@@ -646,6 +647,13 @@ toUTF8 (c:cs)
 --
 readTextFile :: FilePath -> IO String
 readTextFile = fmap fromUTF8 . readFile
+
+-- | Reads an ASCII encoded text file as a String
+--
+-- Reads lazily using ordinary 'readFile'.
+--
+readAsciiFile :: FilePath -> IO String
+readAsciiFile = readFile
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --
