@@ -49,7 +49,8 @@ module Distribution.Simple.Command (
   -- * Constructing commands
   ShowOrParseArgs(..),
   makeCommand,
-  Option, option, ArgDescr, noArg, reqArg, optArg,
+  Option, option, liftOption,
+  ArgDescr, noArg, reqArg, optArg,
   
   -- * Associating actions with commands
   Command,
@@ -98,6 +99,16 @@ argDescrToGetOpt :: ArgDescr a -> GetOpt.ArgDescr (a -> a)
 argDescrToGetOpt (NoArg    f _) = GetOpt.NoArg f
 argDescrToGetOpt (ReqArg d f _) = GetOpt.ReqArg f d
 argDescrToGetOpt (OptArg d f _) = GetOpt.OptArg f d
+
+liftOption :: (b -> a) -> (a -> (b -> b)) -> Option a -> Option b
+liftOption get set (Option cs ss d arg) =
+  Option cs ss d (liftArgDescr get set arg)
+
+liftArgDescr :: (b -> a) -> (a -> (b -> b)) -> ArgDescr a -> ArgDescr b
+liftArgDescr get set arg = case arg of
+  NoArg    f t -> NoArg    (\  b -> set (f   (get b)) b) (t . get)
+  ReqArg d f t -> ReqArg d (\s b -> set (f s (get b)) b) (t . get)
+  OptArg d f t -> OptArg d (\s b -> set (f s (get b)) b) (t . get)
 
 noArg :: Monoid a => a -> (a -> Bool)
       ->(b -> a) -> (a -> (b -> b)) -> ArgDescr b
