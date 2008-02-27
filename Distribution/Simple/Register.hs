@@ -68,7 +68,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, copyFileVerbose, writeUTF8File
+         ( createDirectoryIfMissingVerbose, copyFileVerbose
          , die, info, notice, setupMessage )
 import Distribution.System
 
@@ -172,7 +172,7 @@ writeInstalledConfig pkg_descr lbi inplace instConfOverride = do
   let instConfDefault | inplace   = inplacePkgConfigFile
                       | otherwise = installedPkgConfigFile
       instConf = fromMaybe instConfDefault instConfOverride
-  writeUTF8File instConf (pkg_config ++ "\n")
+  writeFile instConf (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
 showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
