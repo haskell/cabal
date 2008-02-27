@@ -2430,11 +2430,21 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
-	    <term><option>--enable-optimization</option> or <option>-O</option></term>
+	    <term><option>--enable-optimization</option>[=<replaceable>n</replaceable>] or <option>-O</option>[<replaceable>n</replaceable>]</term>
 	    <listitem>
 	      <para>(default) Build with optimization flags (if available).
 		This is appropriate for production use, taking more time
 		to build faster libraries and programs.</para>
+	      <para>
+	        The optional <replaceable>n</replaceable> value is the
+		optimisation level. Some compilers support multiple
+		optimisation levels. The range is 0 to 2. Level 0 is
+		equivalent to <option>--disable-optimization</option>,
+		level 1 is the default if no <replaceable>n</replaceable>
+		parameter is given. Level 2 is higher optimisation if the
+		compiler supports it. Level 2 is likely to lead to longer
+		compile times and bigger generated code.
+	      </para>
 	    </listitem>
 	  </varlistentry>
 
