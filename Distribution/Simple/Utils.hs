@@ -145,6 +145,10 @@ import System.IO (hGetContents)
 import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
 #endif
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+import qualified Control.Exception as Exception
+    ( throwIO )
+#endif
 import System.IO (Handle)
 
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
@@ -523,14 +527,14 @@ writeFileAtomic targetFile content = do
       renameFile tmpFile targetFile
         -- If the targetFile exists then renameFile will fail
         `Exception.catch` \err -> do
-          exists <- fileExists targetFile
+          exists <- doesFileExist targetFile
           if exists
-            then do deleteFile targetFile
+            then do removeFile targetFile
                     -- Big fat hairy race condition
                     renameFile tmpFile targetFile
-                    -- If the deleteFile succeeds and the renameFile fails
-                    -- then we've lost the 
-            else ioError err
+                    -- If the removeFile succeeds and the renameFile fails
+                    -- then we've lost the atomic property.
+            else Exception.throwIO err
 #else
       renameFile tmpFile targetFile
 #endif
