@@ -585,7 +585,10 @@ ghcOptions lbi bi odir
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
      ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
-     ++ (if withOptimization lbi then ["-O"] else [])
+     ++ (case withOptimization lbi of
+           NoOptimisation      -> []
+           NormalOptimisation  -> ["-O"]
+           MaximumOptimisation -> ["-O2"])
      ++ hcOptions GHC bi
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
@@ -609,7 +612,9 @@ ghcCcOptions lbi bi odir
      =  ["-I" ++ dir | dir <- includeDirs bi]
      ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
-     ++ (if withOptimization lbi then ["-optc-O2"] else [])
+     ++ (case withOptimization lbi of
+           NoOptimisation -> []
+           _              -> ["-optc-O2"])
      ++ ["-odir", odir]
 
 mkGHCiLibName :: FilePath -- ^file Prefix

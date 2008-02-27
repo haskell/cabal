@@ -68,7 +68,8 @@ module Distribution.Simple.Setup (
 
 import Distribution.Simple.Command
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..) )
+         ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
+         , OptimisationLevel(..), flagToOptimisationLevel )
 import Distribution.Simple.Utils (wrapText)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms)
@@ -213,7 +214,7 @@ data ConfigFlags = ConfigFlags {
     configSharedLib     :: Flag Bool,     -- ^Build shared library
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the executables.
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
-    configOptimization  :: Flag Bool,     -- ^Enable optimization.
+    configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
     configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
     configProgSuffix    :: Flag PathTemplate, -- ^Installed executable suffix.
     configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation paths
@@ -236,7 +237,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configProfLib      = Flag False,
     configSharedLib    = Flag False,
     configProfExe      = Flag False,
-    configOptimization = Flag True,
+    configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
     configVerbose      = Flag normal,
@@ -394,16 +395,21 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
       ,option "O" ("enable-optimization": case showOrParseArgs of
                       -- Allow British English spelling:
                       ShowArgs -> []; ParseArgs -> ["enable-optimisation"])
-         "Build with optimization"
+         "Build with optimization (n is 0--2, default is 1)"
          configOptimization (\v flags -> flags { configOptimization = v })
-         trueArg
+         (optArg "n" (Flag . flagToOptimisationLevel)
+                     (\f -> case f of
+                              Flag NoOptimisation      -> []
+                              Flag NormalOptimisation  -> [Nothing]
+                              Flag MaximumOptimisation -> [Just "2"]
+                              _                        -> []))
 
       ,option "" ("disable-optimization": case showOrParseArgs of
                       -- Allow British English spelling:
                       ShowArgs -> []; ParseArgs -> ["disable-optimisation"])
          "Build without optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
-         falseArg
+         (noArg (Flag NoOptimisation) (\f -> case f of Flag NoOptimisation -> True; _ -> False))
 
       ,option "" ["enable-library-for-ghci"]
          "compile library for use with GHCi"
