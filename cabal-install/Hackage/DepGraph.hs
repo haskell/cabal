@@ -21,10 +21,15 @@ module Hackage.DepGraph (
   ) where
 
 import Hackage.Types
-import Distribution.Package (PackageIdentifier, Package(..), PackageFixedDeps(..))
+import Distribution.Package
+         ( PackageIdentifier, showPackageId, Package(..), PackageFixedDeps(..) )
+import Distribution.Simple.Utils
+         ( intercalate, equating )
 
-import Data.List (partition, intersect)
-import Control.Exception (assert)
+import Data.List
+         ( partition, intersect, nubBy )
+import Control.Exception
+         ( assert )
 
 data ResolvedPackage = ResolvedPackage PkgInfo FlagAssignment [PackageIdentifier]
   deriving Show
@@ -46,7 +51,7 @@ newtype DepGraph = DepGraph [ResolvedPackage]
 -- * The dependencies must not by cyclic.
 --
 fromList :: [ResolvedPackage] -> DepGraph
-fromList = DepGraph
+fromList = DepGraph . nubBy (equating packageId)
 
 toList :: DepGraph -> [ResolvedPackage]
 toList (DepGraph g) = g
@@ -78,7 +83,12 @@ removeCompleted pkgid (DepGraph pkgs) =
   case partition isCompleted pkgs of
     ([_pkg], pkgs') -> DepGraph [ ResolvedPackage pkg fs (filter (/=pkgid) deps)
                                 | ResolvedPackage pkg fs deps <- pkgs' ]
-    _               -> error "DepGraph.removeCompleted: no such package"
+    _               -> error $ "DepGraph.removeCompleted: no such package "
+                            ++ showPackageId pkgid
+                            ++ "\nin DepGraph: "
+                            ++ intercalate ", "
+                                 (map (showPackageId . packageId) pkgs)
+
   where isCompleted = (==pkgid) . packageId
 
 -- | Remove a package and all the packages that depend on it from the graph.
@@ -94,7 +104,10 @@ removeFailed pkgid (DepGraph pkgs0) =
     ([pkg], pkgs') -> case remove [pkg] [pkgid] pkgs' of
                         result -> assert (packageId p == pkgid) result
                           where (_,p:_) = result
-    _              -> error "DepGraph.removeFailed: no such package"
+    ((_:_),_)      -> error $ "DepGraph.removeFailed: internal error multiple instances of "
+                           ++ showPackageId pkgid
+    _              -> error $ "DepGraph.removeFailed: no such package "
+                           ++ showPackageId pkgid
 
   where
     remove rmpkgs pkgids pkgs =
