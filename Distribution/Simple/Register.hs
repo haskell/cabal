@@ -68,7 +68,7 @@ import Distribution.InstalledPackageInfo
 	 emptyInstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, copyFileVerbose, writeTextFile
+         ( createDirectoryIfMissingVerbose, copyFileVerbose, writeUTF8File
          , die, info, notice, setupMessage )
 import Distribution.System
 
@@ -172,7 +172,7 @@ writeInstalledConfig pkg_descr lbi inplace instConfOverride = do
   let instConfDefault | inplace   = inplacePkgConfigFile
                       | otherwise = installedPkgConfigFile
       instConf = fromMaybe instConfDefault instConfOverride
-  writeTextFile instConf (pkg_config ++ "\n")
+  writeUTF8File instConf (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
 showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
@@ -310,8 +310,8 @@ rawSystemEmit :: ConfiguredProgram  -- ^Program to run
 rawSystemEmit prog scriptName extraArgs
  = case os of
        Windows _ ->
-           writeTextFile scriptName ("@" ++ path ++ concatMap (' ':) args)
-       _ -> do writeTextFile scriptName ("#!/bin/sh\n\n"
+           writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
+       _ -> do writeFile scriptName ("#!/bin/sh\n\n"
                                   ++ (path ++ concatMap (' ':) args)
                                   ++ "\n")
                p <- getPermissions scriptName
@@ -328,8 +328,8 @@ rawSystemPipe :: ConfiguredProgram
 rawSystemPipe prog scriptName pipeFrom extraArgs
  = case os of
        Windows _ ->
-           writeTextFile scriptName ("@" ++ path ++ concatMap (' ':) args)
-       _ -> do writeTextFile scriptName ("#!/bin/sh\n\n"
+           writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
+       _ -> do writeFile scriptName ("#!/bin/sh\n\n"
                                   ++ "echo '" ++ escapeForShell pipeFrom
                                   ++ "' | "
                                   ++ (path ++ concatMap (' ':) args)
