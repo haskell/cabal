@@ -124,8 +124,8 @@ import System.FilePath
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile )
 import System.IO
-    ( openBinaryFile, IOMode(ReadMode), stderr, stdout
-    , hPutStrLn, hPutStr, hFlush, hClose )
+    ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
+    , stderr, stdout, hPutStrLn, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
@@ -149,7 +149,6 @@ import System.Directory (getTemporaryDirectory)
 import qualified Control.Exception as Exception
     ( throwIO )
 #endif
-import System.IO (Handle)
 
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
 import Distribution.Verbosity
@@ -294,6 +293,9 @@ rawSystemStdout' verbosity path args = do
      (runInteractiveProcess path args Nothing Nothing)
      (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
     $ \(_,outh,errh,pid) -> do
+
+      -- We want to process the output as text.
+      hSetBinaryMode outh False
 
       -- fork off a thread to pull on (and discard) the stderr
       -- so if the process writes to stderr we do not block.
