@@ -48,6 +48,10 @@ module Distribution.Simple.Compiler (
         -- * Support for package databases
         PackageDB(..),
 
+        -- * Support for optimisation levels
+        OptimisationLevel(..),
+        flagToOptimisationLevel,
+
         -- * Support for language extensions
         Flag,
         extensionsToFlags,
@@ -89,6 +93,30 @@ data PackageDB = GlobalPackageDB
                | UserPackageDB
                | SpecificPackageDB FilePath
     deriving (Show, Read)
+
+-- ------------------------------------------------------------
+-- * Optimisation levels
+-- ------------------------------------------------------------
+
+-- | Some compilers support optimising. Some have different levels.
+-- For compliers that do not the level is just capped to the level
+-- they do support.
+--
+data OptimisationLevel = NoOptimisation
+                       | NormalOptimisation
+                       | MaximumOptimisation
+    deriving (Show, Read, Enum, Bounded)
+
+flagToOptimisationLevel :: Maybe String -> OptimisationLevel
+flagToOptimisationLevel Nothing  = NormalOptimisation
+flagToOptimisationLevel (Just s) = case reads s of
+  [(i, "")]
+    | i >= fromEnum (minBound :: OptimisationLevel)
+   && i <= fromEnum (maxBound :: OptimisationLevel)
+                -> toEnum i
+    | otherwise -> error $ "Bad optimisation level: " ++ show i
+                        ++ ". Valid values are 0..2"
+  _             -> error $ "Can't parse optimisation level " ++ s
 
 -- ------------------------------------------------------------
 -- * Extensions
