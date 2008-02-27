@@ -79,7 +79,6 @@ module Distribution.Simple.Utils (
 
         -- * files
         withTempFile,
-        writeFileAtomic,
 
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
@@ -90,9 +89,8 @@ module Distribution.Simple.Utils (
         -- * Unicode
         fromUTF8,
         toUTF8,
-        readTextFile,
-        readAsciiFile,
-        writeTextFile,
+        readUTF8File,
+        writeUTF8File,
 
         -- * generic utils
         equating,
@@ -126,7 +124,8 @@ import System.FilePath
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile )
 import System.IO
-    ( hPutStrLn, hPutStr, hClose  , stderr, hFlush, stdout )
+    ( openBinaryFile, IOMode(ReadMode), stderr, stdout
+    , hPutStrLn, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
@@ -148,7 +147,7 @@ import System.Directory (getTemporaryDirectory)
 #endif
 import System.IO (Handle)
 
-import Distribution.Compat.TempFile (openTempFile)
+import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
 import Distribution.Verbosity
 
 -- We only get our own version number when we're building with ourselves
@@ -169,7 +168,7 @@ die :: String -> IO a
 die msg = do
   hFlush stdout
   pname <- getProgName
-  hPutStrLn stderr $ toUTF8 (pname ++ ": " ++ msg)
+  hPutStrLn stderr (pname ++ ": " ++ msg)
   exitWith (ExitFailure 1)
 
 -- | Non fatal conditions that may be indicative of an error or problem.
@@ -180,7 +179,7 @@ warn :: Verbosity -> String -> IO ()
 warn verbosity msg = 
   when (verbosity >= normal) $ do
     hFlush stdout
-    hPutStrLn stderr ("Warning: " ++ toUTF8 msg)
+    hPutStrLn stderr ("Warning: " ++ msg)
 
 -- | Useful status messages.
 --
@@ -192,7 +191,7 @@ warn verbosity msg =
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg =
   when (verbosity >= normal) $
-    putStrLn (toUTF8 msg)
+    putStrLn msg
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid =
@@ -205,7 +204,7 @@ setupMessage verbosity msg pkgid =
 info :: Verbosity -> String -> IO ()
 info verbosity msg =
   when (verbosity >= verbose) $
-    putStrLn (toUTF8 msg)
+    putStrLn msg
 
 -- | Detailed internal debugging information
 --
@@ -214,7 +213,7 @@ info verbosity msg =
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
   when (verbosity >= deafening) $
-    putStrLn (toUTF8 msg)
+    putStrLn msg
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
@@ -223,7 +222,7 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()
 chattyTry desc action =
   Exception.catch action $ \exception ->
-    putStrLn $ toUTF8 $ "Error while " ++ desc ++ ": " ++ show exception
+    putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
@@ -301,7 +300,7 @@ rawSystemStdout' verbosity path args = do
       forkIO $ do evaluate (length err); return ()
 
       -- wait for all the output
-      output <- fromUTF8 `fmap` hGetContents outh
+      output <- hGetContents outh
       evaluate (length output)
 
       -- wait for the program to terminate
@@ -314,7 +313,7 @@ rawSystemStdout' verbosity path args = do
     hClose tmpHandle
     let quote name = "'" ++ name ++ "'"
     exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
-    output <- readTextFile tmpName
+    output <- readFile tmpName
     length output `seq` return (output, exitCode)
 #endif
 
@@ -514,7 +513,7 @@ withTempFile tmpDir template action =
 writeFileAtomic :: FilePath -> String -> IO ()
 writeFileAtomic targetFile content = do
   Exception.bracketOnError
-    (openTempFile targetDir template)
+    (openBinaryTempFile targetDir template)
     (\(tmpFile, tmpHandle) -> IO.Error.try (hClose tmpHandle)
                            >> IO.Error.try (removeFile tmpFile))
     $ \(tmpFile, tmpHandle) -> do
@@ -645,22 +644,15 @@ toUTF8 (c:cs)
 --
 -- Reads lazily using ordinary 'readFile'.
 --
-readTextFile :: FilePath -> IO String
-readTextFile = fmap fromUTF8 . readFile
-
--- | Reads an ASCII encoded text file as a String
---
--- Reads lazily using ordinary 'readFile'.
---
-readAsciiFile :: FilePath -> IO String
-readAsciiFile = readFile
+readUTF8File :: FilePath -> IO String
+readUTF8File f = fmap fromUTF8 . hGetContents =<< openBinaryFile f ReadMode
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --
 -- Uses 'writeFileAtomic', so provides the same guarantees.
 --
-writeTextFile :: FilePath -> String -> IO ()
-writeTextFile path = writeFileAtomic path . toUTF8
+writeUTF8File :: FilePath -> String -> IO ()
+writeUTF8File path = writeFileAtomic path . toUTF8
 
 -- ------------------------------------------------------------
 -- * Common utils

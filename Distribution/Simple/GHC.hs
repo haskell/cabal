@@ -309,7 +309,7 @@ getInstalledPackages' verbosity packagedbs conf = do
           (UserPackageDB,  _global:_)      -> Nothing
           (SpecificPackageDB specific, _)  -> Just specific
           _ -> error "cannot read ghc-pkg global package file"
-    sequence [ readAsciiFile file >>= \content -> return (db, read content)
+    sequence [ readFile file >>= \content -> return (db, read content)
              | (db , Just file) <- zip packagedbs (map dbFile packagedbs) ]
 
 -- -----------------------------------------------------------------------------

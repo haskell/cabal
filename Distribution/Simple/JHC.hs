@@ -70,7 +70,7 @@ import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package  	( PackageIdentifier(..), showPackageId,
                                   parsePackageId, Package(..) )
 import Distribution.Simple.Utils
-        ( createDirectoryIfMissingVerbose, copyFileVerbose, writeTextFile
+        ( createDirectoryIfMissingVerbose, copyFileVerbose
         , die, info, intercalate )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
@@ -140,7 +140,7 @@ build pkg_descr lbi verbosity = do
       let pkgid = showPackageId (packageId pkg_descr)
           pfile = buildDir lbi </> "jhc-pkg.conf"
           hlfile= buildDir lbi </> (pkgid ++ ".hl")
-      writeTextFile pfile $ jhcPkgConf pkg_descr
+      writeFile pfile $ jhcPkgConf pkg_descr
       rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
   withExe pkg_descr $ \exe -> do
       info verbosity ("Building executable "++exeName exe)

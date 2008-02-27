@@ -3,10 +3,11 @@
 {-# OPTIONS_NHC98 -cpp #-}
 {-# OPTIONS_JHC -fcpp #-}
 -- #hide
-module Distribution.Compat.TempFile (openTempFile) where
+module Distribution.Compat.TempFile (openTempFile, openBinaryTempFile) where
 
 #if __NHC__ || __HUGS__
-import System.IO              (openFile, Handle, IOMode(ReadWriteMode))
+import System.IO              (openFile, openBinaryFile,
+                               Handle, IOMode(ReadWriteMode))
 import System.Directory       (doesFileExist)
 import System.FilePath        ((</>), (<.>), splitExtension)
 #if __NHC__
@@ -16,7 +17,7 @@ foreign import ccall unsafe "getpid" c_getpid :: IO CPid
 import System.Posix.Internals (c_getpid)
 #endif
 #else
-import System.IO (openTempFile)
+import System.IO (openTempFile, openBinaryTempFile)
 #endif
 
 -- ------------------------------------------------------------
@@ -44,6 +45,20 @@ openTempFile tmp_dir template
                 else do hnd <- openFile path ReadWriteMode
                         return (path, hnd)
 
-    getProcessID :: IO Int
-    getProcessID = fmap fromIntegral c_getpid
+openBinaryTempFile :: FilePath -> String -> IO (FilePath, Handle)
+openBinaryTempFile tmp_dir template
+  = do x <- getProcessID
+       findTempName x
+  where
+    (templateBase, templateExt) = splitExtension template
+    findTempName :: Int -> IO (FilePath, Handle)
+    findTempName x
+      = do let path = tmp_dir </> (templateBase ++ show x) <.> templateExt
+           b  <- doesFileExist path
+           if b then findTempName (x+1)
+                else do hnd <- openBinaryFile path ReadWriteMode
+                        return (path, hnd)
+
+getProcessID :: IO Int
+getProcessID = fmap fromIntegral c_getpid
 #endif
