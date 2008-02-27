@@ -61,7 +61,7 @@ import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
 import Distribution.Simple.Utils
-        ( createDirectoryIfMissingVerbose, die, setupMessage, writeTextFile )
+        ( createDirectoryIfMissingVerbose, die, setupMessage, writeUTF8File )
 import Distribution.System
 
 import System.FilePath          ( (</>), pathSeparator )
@@ -217,7 +217,7 @@ buildPathsModule pkg_descr lbi =
    	            then getModificationTime paths_filepath
    	            else return btime
 	 if btime >= ptime
-	   then writeTextFile paths_filepath (header++body)
+	   then writeUTF8File paths_filepath (header++body)
 	   else return ()
  where
 	InstallDirs {

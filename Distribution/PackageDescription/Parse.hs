@@ -76,7 +76,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils
-         ( die, dieWithLocation, warn, intercalate, readTextFile, writeTextFile )
+         ( die, dieWithLocation, warn, intercalate, readUTF8File, writeUTF8File )
 
 
 -- -----------------------------------------------------------------------------
@@ -282,11 +282,14 @@ flagFieldDescrs =
 
 -- | Given a parser and a filename, return the parse of the file,
 -- after checking if the file exists.
-readAndParseFile :: Verbosity -> (String -> ParseResult a) -> FilePath -> IO a
-readAndParseFile verbosity parser fpath = do
+readAndParseFile :: (FilePath -> IO String)
+                 -> (String -> ParseResult a)
+                 -> Verbosity
+                 -> FilePath -> IO a
+readAndParseFile readFile' parser verbosity fpath = do
   exists <- doesFileExist fpath
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
-  str <- readTextFile fpath
+  str <- readFile' fpath
   case parser str of
     ParseFailed e -> do
         let (line, message) = locatedErrorMsg e
@@ -296,12 +299,13 @@ readAndParseFile verbosity parser fpath = do
         return x
 
 readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
-readHookedBuildInfo verbosity = readAndParseFile verbosity parseHookedBuildInfo
+readHookedBuildInfo =
+    readAndParseFile readFile parseHookedBuildInfo
 
 -- |Parse the given package file.
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readPackageDescription verbosity =
-    readAndParseFile verbosity parsePackageDescription
+readPackageDescription =
+    readAndParseFile readUTF8File parsePackageDescription
 
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []
@@ -709,7 +713,7 @@ parseHookedBuildInfo inp = do
 -- Pretty printing
 
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
-writePackageDescription fpath pkg = writeTextFile fpath (showPackageDescription pkg)
+writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
 
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
@@ -729,7 +733,7 @@ ppCustomField :: (String,String) -> Doc
 ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath pbi = writeTextFile fpath (showHookedBuildInfo pbi)
+writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
 
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bi) = render $

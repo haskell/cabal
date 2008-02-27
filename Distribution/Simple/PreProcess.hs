@@ -63,7 +63,7 @@ import Distribution.Package (showPackageId, Package(..))
 import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, readTextFile, writeTextFile
+         ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
          , die, setupMessage
          , findFileWithExtension, findFileWithExtension', dotToSep )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
@@ -270,8 +270,8 @@ ppUnlit =
   PreProcessor {
     platformIndependent = True,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity -> do
-      contents <- readTextFile inFile
-      either (writeTextFile outFile) die (unlit inFile contents)
+      contents <- readUTF8File inFile
+      either (writeUTF8File outFile) die (unlit inFile contents)
   }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
