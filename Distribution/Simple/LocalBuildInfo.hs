@@ -60,7 +60,8 @@ import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier(..), Package(..))
-import Distribution.Simple.Compiler (Compiler(..), PackageDB)
+import Distribution.Simple.Compiler
+         ( Compiler(..), PackageDB, OptimisationLevel )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 
@@ -96,7 +97,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
-        withOptimization :: Bool, -- ^Whether to build with optimization (if available).
+        withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
 	splitObjs     :: Bool, 	-- ^Use -split-objs with GHC, if available
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
