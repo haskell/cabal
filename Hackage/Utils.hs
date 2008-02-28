@@ -2,16 +2,16 @@ module Hackage.Utils where
 
 import Distribution.ParseUtils (showDependency)
 import Distribution.Version (Dependency(..))
-import Distribution.Simple.Utils (intercalate, readTextFile)
+import Distribution.Simple.Utils (intercalate)
 
 import Control.Monad (guard)
 import Control.Exception (Exception, catchJust, ioErrors)
 import System.IO.Error (isDoesNotExistError)
 
-readTextFileIfExists :: FilePath -> IO (Maybe String)
-readTextFileIfExists path =
+readFileIfExists :: FilePath -> IO (Maybe String)
+readFileIfExists path =
     catchJust fileNotFoundExceptions 
-                  (fmap Just (readTextFile path))
+                  (fmap Just (readFile path))
                   (\_ -> return Nothing)
 
 fileNotFoundExceptions :: Exception -> Maybe IOError
