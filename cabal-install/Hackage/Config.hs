@@ -41,8 +41,8 @@ import Distribution.Verbosity (Verbosity, normal)
 
 import Hackage.Types (RemoteRepo(..), Repo(..), Username, Password)
 import Hackage.ParseUtils
-import Hackage.Utils (readTextFileIfExists)
-import Distribution.Simple.Utils (notice, warn, writeTextFile)
+import Hackage.Utils (readFileIfExists)
+import Distribution.Simple.Utils (notice, warn)
 
 
 --
@@ -159,7 +159,7 @@ defaultRemoteRepo =
 loadConfig :: Verbosity -> FilePath -> IO SavedConfig
 loadConfig verbosity configFile = 
     do defaultConf <- defaultSavedConfig
-       minp <- readTextFileIfExists configFile
+       minp <- readFileIfExists configFile
        case minp of
          Nothing -> do notice verbosity $ "Config file " ++ configFile ++ " not found."
                        notice verbosity $ "Writing default configuration to " ++ configFile
@@ -179,7 +179,7 @@ loadConfig verbosity configFile =
 writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 
     do createDirectoryIfMissing True (takeDirectory file)
-       writeTextFile file $ showFields configWriteFieldDescrs cfg ++ "\n"
+       writeFile file $ showFields configWriteFieldDescrs cfg ++ "\n"
 
 showConfig :: SavedConfig -> String
 showConfig = showFields configFieldDescrs
