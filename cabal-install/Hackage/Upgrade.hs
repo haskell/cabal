@@ -28,7 +28,7 @@ import Distribution.Version (VersionRange(..), Dependency(..))
 import Distribution.Verbosity (Verbosity)
 import qualified Distribution.Simple.Setup as Cabal
 
-import Data.Monoid (Monoid(mconcat))
+import Data.Monoid (Monoid(..))
 
 upgrade :: Verbosity
         -> PackageDB -> [Repo]
@@ -43,7 +43,7 @@ upgrade verbosity packageDB repos comp conf configFlags = do
   putStrLn "Upgrading the following packages: "
   --FIXME: check if upgradable is null
   mapM_ putStrLn [showPackageId (packageId x) | x <- upgradable]
-  install verbosity packageDB repos comp conf configFlags
+  install verbosity packageDB repos comp conf configFlags mempty
               [UnresolvedDependency (identifierToDependency $ packageId x) []
                                   | x <- upgradable]
 

@@ -13,7 +13,7 @@
 module Hackage.Setup
     ( globalCommand, Cabal.GlobalFlags(..)
     , configureCommand
-    , installCommand --Cabal.InstallFlags(..)
+    , installCommand, InstallFlags(..)
     , listCommand
     , updateCommand
     , upgradeCommand
@@ -62,16 +62,11 @@ globalCommand = Cabal.globalCommand {
       ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
   }
 
-configureCommand :: CommandUI Cabal.ConfigFlags
-configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
-    commandDefaultFlags = mempty
-  }
+cabalConfigureCommand :: CommandUI Cabal.ConfigFlags
+cabalConfigureCommand = Cabal.configureCommand defaultProgramConfiguration
 
-installCommand :: CommandUI Cabal.ConfigFlags
-installCommand = (Cabal.configureCommand defaultProgramConfiguration) {
-    commandName         = "install",
-    commandSynopsis     = "Installs a list of packages.",
-    commandUsage        = usagePackages "install",
+configureCommand :: CommandUI Cabal.ConfigFlags
+configureCommand = cabalConfigureCommand {
     commandDefaultFlags = mempty
   }
 
@@ -146,6 +141,47 @@ checkCommand = CommandUI {
   }
 
 -- ------------------------------------------------------------
+-- * Install flags
+-- ------------------------------------------------------------
+
+-- Install takes exactly the same flags as configure, but with the addition
+-- of doing --dry-run.
+
+data InstallFlags = InstallFlags {
+    installDryRun :: Flag Bool
+  }
+
+defaultInstallFlags :: InstallFlags
+defaultInstallFlags = InstallFlags {
+    installDryRun = mempty
+  }
+
+installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
+installCommand = cabalConfigureCommand {
+    commandName         = "install",
+    commandSynopsis     = "Installs a list of packages.",
+    commandUsage        = usagePackages "install",
+    commandDefaultFlags = mempty,
+    commandOptions      = \showOrParseArgs ->
+         liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
+      ++ liftOptionsSnd [
+
+       option [] ["dry-run"]
+         "Do not install anything, only print what would be installed."
+        installDryRun (\v flags -> flags { installDryRun = v })
+        (noArg (toFlag True) (fromFlagOrDefault False))
+
+      ]
+  }
+
+instance Monoid InstallFlags where
+  mempty = defaultInstallFlags
+  mappend a b = InstallFlags {
+    installDryRun = combine installDryRun
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
 -- * Upload flags
 -- ------------------------------------------------------------
 
@@ -213,6 +249,12 @@ instance Monoid UploadFlags where
 -- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
+
+liftOptionsFst :: [Option a] -> [Option (a,b)]
+liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
+
+liftOptionsSnd :: [Option b] -> [Option (a,b)]
+liftOptionsSnd = map (liftOption snd (\b (a,_) -> (a,b)))
 
 optionVerbose :: (flags -> Flag Verbosity)
               -> (Flag Verbosity -> flags -> flags)
