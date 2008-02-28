@@ -119,18 +119,18 @@ configureAction flags extraArgs = do
            : commandShowOptions configureCommand flags' ++ extraArgs
   setupWrapper args Nothing
 
-installAction :: Cabal.ConfigFlags -> [String] -> IO ()
-installAction flags extraArgs = do
+installAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
+installAction (cflags,iflags) extraArgs = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
   config <- loadConfig verbosity configFile
-  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
-               `mappend` flags
-  (comp, conf) <- configCompilerAux flags'
+  let cflags' = savedConfigToConfigFlags (Cabal.configPackageDB cflags) config
+               `mappend` cflags
+  (comp, conf) <- configCompilerAux cflags'
   install verbosity
-          (fromFlag $ Cabal.configPackageDB flags') (configRepos config)
-          comp conf flags' pkgs
+          (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
+          comp conf cflags' iflags pkgs
 
 infoAction :: Cabal.Flag Verbosity -> [String] -> IO ()
 infoAction verbosityFlag extraArgs = do

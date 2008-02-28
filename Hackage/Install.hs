@@ -25,6 +25,7 @@ import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packag
 import Hackage.Fetch (fetchPackage)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
+import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
@@ -57,12 +58,14 @@ install :: Verbosity
         -> Compiler
         -> ProgramConfiguration
         -> Cabal.ConfigFlags
+        -> InstallFlags
         -> [UnresolvedDependency]
         -> IO ()
-install verbosity packageDB repos comp conf configFlags deps = do
+install verbosity packageDB repos comp conf configFlags installFlags deps = do
+  let dryRun = Cabal.fromFlagOrDefault False (installDryRun installFlags)
   buildResults <- if null deps 
-    then installLocalPackage verbosity packageDB repos comp conf configFlags
-    else installRepoPackages verbosity packageDB repos comp conf configFlags deps
+    then installLocalPackage verbosity packageDB repos comp conf configFlags dryRun
+    else installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps
   case filter (buildFailed . snd) buildResults of
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
@@ -87,8 +90,9 @@ installLocalPackage :: Verbosity
                     -> Compiler
                     -> ProgramConfiguration
                     -> Cabal.ConfigFlags
+                    -> Bool -- ^Dry run
                     -> IO [(PackageIdentifier, BuildResult)]
-installLocalPackage verbosity packageDB repos comp conf configFlags =
+installLocalPackage verbosity packageDB repos comp conf configFlags dryRun =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
       Just installed <- getInstalledPackages verbosity comp packageDB conf
@@ -97,10 +101,15 @@ installLocalPackage verbosity packageDB repos comp conf configFlags =
                            (Cabal.configConfigurationsFlags configFlags)
       buildResults <- case packagesToInstall resolvedDeps of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-        Right pkgs   -> installPackages verbosity configFlags pkgs
-      --TODO: don't run if buildResult failed
-      buildResult <- installUnpackedPkg verbosity configFlags Nothing
-      return ((packageId (packageDescription desc), buildResult) : buildResults)
+        Right pkgs   -> do
+            if dryRun
+              then printDryRun pkgs >> return []
+              else installPackages verbosity configFlags pkgs
+      if dryRun
+        then return []
+        --TODO: don't run if buildResult failed
+        else do buildResult <- installUnpackedPkg verbosity configFlags Nothing
+                return ((packageId (packageDescription desc), buildResult) : buildResults)
 
 installRepoPackages :: Verbosity
                     -> PackageDB
@@ -108,9 +117,10 @@ installRepoPackages :: Verbosity
                     -> Compiler
                     -> ProgramConfiguration
                     -> Cabal.ConfigFlags
+                    -> Bool -- ^Dry run
                     -> [UnresolvedDependency]
                     -> IO [(PackageIdentifier, BuildResult)]
-installRepoPackages verbosity packageDB repos comp conf configFlags deps =
+installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps =
     do Just installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
@@ -121,7 +131,24 @@ installRepoPackages verbosity packageDB repos comp conf configFlags deps =
            | DepGraph.empty pkgs -> notice verbosity
                      "All requested packages already installed. Nothing to do."
                      >> return []
+           | dryRun -> do
+                printDryRun pkgs
+                return []
            | otherwise -> installPackages verbosity configFlags pkgs
+
+printDryRun :: DepGraph.DepGraph -> IO ()
+printDryRun pkgs
+  | DepGraph.empty pkgs = putStrLn "No packages to be installed."
+  | otherwise = do
+        putStrLn "In order, the following would be installed:"
+        mapM_ (putStrLn . showPackageId) (order pkgs)
+        where
+        order ps
+            | DepGraph.empty ps = []
+            | otherwise =
+                let (DepGraph.ResolvedPackage pkgInfo _ _) = DepGraph.ready ps
+                    pkgId = packageId pkgInfo
+                in (pkgId : order (DepGraph.removeCompleted pkgId ps))
 
 installPackages :: Verbosity
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
