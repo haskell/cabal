@@ -124,7 +124,7 @@ import System.FilePath
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile )
 import System.IO
-    ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
+    ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode, hGetContents
     , stderr, stdout, hPutStrLn, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
@@ -140,7 +140,6 @@ import Distribution.Version
 import Control.Concurrent (forkIO)
 import Control.Exception (evaluate)
 import System.Process (runInteractiveProcess, waitForProcess)
-import System.IO (hGetContents)
 #else
 import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
