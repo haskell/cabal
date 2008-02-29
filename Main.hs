@@ -27,7 +27,6 @@ import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  configPackageDB)
 import Hackage.List             (list)
 import Hackage.Install          (install)
-import Hackage.Info             (info)
 import Hackage.Update           (update)
 import Hackage.Upgrade          (upgrade)
 import Hackage.Fetch            (fetch)
@@ -81,7 +80,6 @@ mainWorker args =
     commands =
       [configureCommand       `commandAddAction` configureAction
       ,installCommand         `commandAddAction` installAction
-      ,infoCommand            `commandAddAction` infoAction
       ,listCommand            `commandAddAction` listAction
       ,updateCommand          `commandAddAction` updateAction
       ,upgradeCommand         `commandAddAction` upgradeAction
@@ -131,18 +129,6 @@ installAction (cflags,iflags) extraArgs = do
   install verbosity
           (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
           comp conf cflags' iflags pkgs
-
-infoAction :: Cabal.Flag Verbosity -> [String] -> IO ()
-infoAction verbosityFlag extraArgs = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
-  configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlag verbosityFlag
-  config <- loadConfig verbosity configFile
-  let flags = savedConfigToConfigFlags (configPackageDB config) config
-  (comp, conf) <- configCompilerAux flags
-  info verbosity
-       (fromFlag $ Cabal.configPackageDB flags) (configRepos config)
-       comp conf pkgs
 
 listAction :: Cabal.Flag Verbosity -> [String] -> IO ()
 listAction verbosityFlag extraArgs = do
