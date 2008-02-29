@@ -61,7 +61,7 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
+         ( createDirectoryIfMissingVerbose, readUTF8File
 	 , findFile, dotToSep, findFileWithExtension, smartCopySources
          , die, info, notice )
 import Language.Haskell.Extension
