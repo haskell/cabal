@@ -62,7 +62,7 @@ install :: Verbosity
         -> [UnresolvedDependency]
         -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps = do
-  let dryRun = Cabal.fromFlagOrDefault False (installDryRun installFlags)
+  let dryRun = Cabal.fromFlag (installDryRun installFlags)
   buildResults <- if null deps 
     then installLocalPackage verbosity packageDB repos comp conf configFlags dryRun
     else installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps
