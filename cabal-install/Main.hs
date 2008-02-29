@@ -158,17 +158,17 @@ updateAction verbosityFlag _extraArgs = do
   config <- loadConfig verbosity configFile
   update verbosity (configRepos config)
 
-upgradeAction :: Cabal.ConfigFlags -> [String] -> IO ()
-upgradeAction flags _extraArgs = do
+upgradeAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
+upgradeAction (cflags,iflags) _extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
   config <- loadConfig verbosity configFile
-  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
-               `mappend` flags
-  (comp, conf) <- configCompilerAux flags'
+  let cflags' = savedConfigToConfigFlags (Cabal.configPackageDB cflags) config
+               `mappend` cflags
+  (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
-          (fromFlag $ Cabal.configPackageDB flags') (configRepos config)
-          comp conf flags'
+          (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
+          comp conf cflags' iflags
 
 fetchAction :: Flag Verbosity -> [String] -> IO ()
 fetchAction verbosityFlag extraArgs = do
