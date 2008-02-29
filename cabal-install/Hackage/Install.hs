@@ -23,6 +23,7 @@ import System.FilePath ((</>),(<.>))
 
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
 import Hackage.Fetch (fetchPackage)
+import qualified Hackage.Info as Info
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Setup (InstallFlags(..))
@@ -99,11 +100,13 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun =
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
       let resolvedDeps = resolveDependenciesLocal comp installed available desc
                            (Cabal.configConfigurationsFlags configFlags)
+      details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
+      info verbosity $ unlines (map ("  "++) (concat details))
       buildResults <- case packagesToInstall resolvedDeps of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> do
             if dryRun
-              then printDryRun pkgs >> return []
+              then printDryRun verbosity pkgs >> return []
               else installPackages verbosity configFlags pkgs
       if dryRun
         then return []
@@ -125,6 +128,8 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps 
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
        let resolvedDeps = resolveDependencies comp installed available deps'
+       details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
+       info verbosity $ unlines (map ("  "++) (concat details))
        case packagesToInstall resolvedDeps of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right pkgs
@@ -132,16 +137,16 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps 
                      "All requested packages already installed. Nothing to do."
                      >> return []
            | dryRun -> do
-                printDryRun pkgs
+                printDryRun verbosity pkgs
                 return []
            | otherwise -> installPackages verbosity configFlags pkgs
 
-printDryRun :: DepGraph.DepGraph -> IO ()
-printDryRun pkgs
-  | DepGraph.empty pkgs = putStrLn "No packages to be installed."
+printDryRun :: Verbosity -> DepGraph.DepGraph -> IO ()
+printDryRun verbosity pkgs
+  | DepGraph.empty pkgs = notice verbosity "No packages to be installed."
   | otherwise = do
-        putStrLn "In order, the following would be installed:"
-        mapM_ (putStrLn . showPackageId) (order pkgs)
+        notice verbosity $ "In order, the following would be installed:\n"
+          ++ unlines (map showPackageId (order pkgs))
         where
         order ps
             | DepGraph.empty ps = []
