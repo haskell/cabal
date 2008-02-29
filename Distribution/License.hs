@@ -57,12 +57,36 @@ module Distribution.License (
 -- below are general guidelines.  Please read the licenses themselves
 -- and consult a lawyer if you are unsure of your rights to release
 -- the software.
+--
+data License =
 
-data License = GPL  -- ^GNU Public License. Source code must accompany alterations.
-             | LGPL -- ^Lesser GPL, Less restrictive than GPL, useful for libraries.
-             | BSD3 -- ^3-clause BSD license, newer, no advertising clause. Very free license.
-             | BSD4 -- ^4-clause BSD license, older, with advertising clause.
-             | PublicDomain -- ^Holder makes no claim to ownership, least restrictive license.
-             | AllRightsReserved -- ^No rights are granted to others. Undistributable. Most restrictive.
-             | {- ... | -} OtherLicense -- ^Some other license.
-               deriving (Read, Show, Eq)
+--TODO: * deprecate BSD4
+--      * add optional gpl versions
+--      * add MIT license
+--      * fix parsing to be more permissive
+
+    -- | GNU Public License. Source code must accompany alterations.
+    GPL --(Maybe Version)
+
+    -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
+  | LGPL --(Maybe Version)
+
+    -- | 3-clause BSD license, newer, no advertising clause. Very free license.
+  | BSD3
+
+    -- | 4-clause BSD license, older, with advertising clause.
+  | BSD4
+
+--    -- | The MIT license, similar to the BSD3. Very free license.
+--  | MIT
+
+    -- | Holder makes no claim to ownership, least restrictive license.
+  | PublicDomain
+
+    -- | No rights are granted to others. Undistributable. Most restrictive.
+  | AllRightsReserved
+
+    -- | Some other license.
+  | OtherLicense
+  deriving (Read, Show, Eq)
+
