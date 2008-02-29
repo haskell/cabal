@@ -41,7 +41,7 @@ import qualified Distribution.Simple.Setup as Cabal
   RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    sdistCommand,
                                          testCommand-})
-import Distribution.Simple.Setup (Flag, toFlag, fromFlagOrDefault, flagToList)
+import Distribution.Simple.Setup (Flag(..), toFlag, flagToList)
 import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
 
 import Hackage.Types (UnresolvedDependency(..), Username, Password)
@@ -100,13 +100,16 @@ updateCommand = CommandUI {
     commandOptions      = \_ -> [optionVerbose id const]
   }
 
-upgradeCommand  :: CommandUI Cabal.ConfigFlags
-upgradeCommand = (Cabal.configureCommand defaultProgramConfiguration) {
+upgradeCommand  :: CommandUI (Cabal.ConfigFlags, InstallFlags)
+upgradeCommand = cabalConfigureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "Upgrades installed packages to the latest available version",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
-    commandDefaultFlags = mempty
+    commandDefaultFlags = (mempty, defaultInstallFlags),
+    commandOptions      = \showOrParseArgs ->
+         liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
+      ++ liftOptionsSnd [optionDryRun]
   }
 
 {-
@@ -153,7 +156,7 @@ data InstallFlags = InstallFlags {
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
-    installDryRun = mempty
+    installDryRun = Flag False
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -161,18 +164,18 @@ installCommand = cabalConfigureCommand {
     commandName         = "install",
     commandSynopsis     = "Installs a list of packages.",
     commandUsage        = usagePackages "install",
-    commandDefaultFlags = mempty,
+    commandDefaultFlags = (mempty, defaultInstallFlags),
     commandOptions      = \showOrParseArgs ->
          liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
-      ++ liftOptionsSnd [
-
-       option [] ["dry-run"]
-         "Do not install anything, only print what would be installed."
-        installDryRun (\v flags -> flags { installDryRun = v })
-        (noArg (toFlag True) (fromFlagOrDefault False))
-
-      ]
+      ++ liftOptionsSnd [optionDryRun]
   }
+
+optionDryRun :: Option InstallFlags
+optionDryRun =
+  option [] ["dry-run"]
+    "Do not install anything, only print what would be installed."
+    installDryRun (\v flags -> flags { installDryRun = v })
+    trueArg
 
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
@@ -217,7 +220,7 @@ uploadCommand = CommandUI {
       ,option ['c'] ["check"]
          "Do not upload, just do QA checks."
         uploadCheck (\v flags -> flags { uploadCheck = v })
-        (noArg (toFlag True) (fromFlagOrDefault False))
+        trueArg
 
       ,option ['u'] ["username"]
         "Hackage username."
@@ -255,6 +258,10 @@ liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
 
 liftOptionsSnd :: [Option b] -> [Option (a,b)]
 liftOptionsSnd = map (liftOption snd (\b (a,_) -> (a,b)))
+
+trueArg {-, falseArg-} :: (b -> Flag Bool) -> (Flag Bool -> b -> b) -> ArgDescr b
+trueArg  = noArg (Flag True) (\f -> case f of Flag True  -> True; _ -> False)
+--falseArg = noArg (Flag False) (\f -> case f of Flag False -> True; _ -> False)
 
 optionVerbose :: (flags -> Flag Verbosity)
               -> (Flag Verbosity -> flags -> flags)

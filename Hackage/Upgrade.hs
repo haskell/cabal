@@ -20,10 +20,12 @@ import qualified Hackage.IndexUtils as IndexUtils
 import Hackage.Dependency (getUpgradableDeps)
 import Hackage.Install (install)
 import Hackage.Types (UnresolvedDependency(..), Repo)
+import Hackage.Setup (InstallFlags(..))
+
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
+import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.Version (VersionRange(..), Dependency(..))
 import Distribution.Verbosity (Verbosity)
 import qualified Distribution.Simple.Setup as Cabal
@@ -35,15 +37,13 @@ upgrade :: Verbosity
         -> Compiler
         -> ProgramConfiguration
         -> Cabal.ConfigFlags
+        -> InstallFlags
         -> IO ()
-upgrade verbosity packageDB repos comp conf configFlags = do 
+upgrade verbosity packageDB repos comp conf configFlags installFlags = do
   Just installed <- getInstalledPackages verbosity comp packageDB conf
   available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)      
   let upgradable = getUpgradableDeps installed available
-  putStrLn "Upgrading the following packages: "
-  --FIXME: check if upgradable is null
-  mapM_ putStrLn [showPackageId (packageId x) | x <- upgradable]
-  install verbosity packageDB repos comp conf configFlags mempty
+  install verbosity packageDB repos comp conf configFlags installFlags
               [UnresolvedDependency (identifierToDependency $ packageId x) []
                                   | x <- upgradable]
 
