@@ -2430,6 +2430,20 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>--package-db</option>=<replaceable>db</replaceable></term>
+	    <listitem>
+	      <para>Allows package dependencies to be satisfied from this
+                additional package database <replaceable>db</replaceable> in
+                addition to the global package database. All packages in the
+                user's package database will be ignored. The interpretation
+                of <replaceable>db</replaceable> is implementation-specific.
+                Typically it will be a file or directory. Not all
+                implementations support arbitrary package databases.
+              </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>--enable-optimization</option>[=<replaceable>n</replaceable>] or <option>-O</option>[<replaceable>n</replaceable>]</term>
 	    <listitem>
 	      <para>(default) Build with optimization flags (if available).
