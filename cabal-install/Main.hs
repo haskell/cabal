@@ -135,7 +135,9 @@ listAction verbosityFlag extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity configFile
-  list verbosity (configRepos config) extraArgs
+  let flags = savedConfigToConfigFlags (configPackageDB config) config
+  (comp, conf) <- configCompilerAux flags
+  list verbosity (fromFlag $ Cabal.configPackageDB flags) (configRepos config) comp conf extraArgs
 
 updateAction :: Flag Verbosity -> [String] -> IO ()
 updateAction verbosityFlag _extraArgs = do
