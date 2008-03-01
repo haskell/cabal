@@ -130,14 +130,20 @@ installAction (cflags,iflags) extraArgs = do
           (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
           comp conf cflags' iflags pkgs
 
-listAction :: Cabal.Flag Verbosity -> [String] -> IO ()
-listAction verbosityFlag extraArgs = do
+listAction :: ListFlags -> [String] -> IO ()
+listAction listFlags extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlag verbosityFlag
+  let verbosity = fromFlag (listVerbosity listFlags)
   config <- loadConfig verbosity configFile
   let flags = savedConfigToConfigFlags (configPackageDB config) config
   (comp, conf) <- configCompilerAux flags
-  list verbosity (fromFlag $ Cabal.configPackageDB flags) (configRepos config) comp conf extraArgs
+  list verbosity
+       (fromFlag $ Cabal.configPackageDB flags)
+       (configRepos config)
+       comp
+       conf
+       listFlags
+       extraArgs
 
 updateAction :: Flag Verbosity -> [String] -> IO ()
 updateAction verbosityFlag _extraArgs = do
