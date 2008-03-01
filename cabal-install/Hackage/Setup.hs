@@ -14,7 +14,7 @@ module Hackage.Setup
     ( globalCommand, Cabal.GlobalFlags(..)
     , configureCommand
     , installCommand, InstallFlags(..)
-    , listCommand
+    , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
     , infoCommand
@@ -80,16 +80,6 @@ fetchCommand = CommandUI {
     commandOptions      = \_ -> [optionVerbose id const]
   }
 
-listCommand  :: CommandUI (Flag Verbosity)
-listCommand = CommandUI {
-    commandName         = "list",
-    commandSynopsis     = "List available packages on the server (cached).",
-    commandDescription  = Nothing,
-    commandUsage        = usagePackages "list",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbose id const]
-  }
-
 updateCommand  :: CommandUI (Flag Verbosity)
 updateCommand = CommandUI {
     commandName         = "update",
@@ -142,6 +132,47 @@ checkCommand = CommandUI {
     commandDefaultFlags = mempty,
     commandOptions      = mempty
   }
+
+-- ------------------------------------------------------------
+-- * List flags
+-- ------------------------------------------------------------
+
+data ListFlags = ListFlags {
+    listInstalled :: Flag Bool,
+    listVerbosity :: Flag Verbosity
+  }
+
+defaultListFlags :: ListFlags
+defaultListFlags = ListFlags {
+    listInstalled = Flag False,
+    listVerbosity = toFlag normal
+  }
+
+listCommand  :: CommandUI ListFlags
+listCommand = CommandUI {
+    commandName         = "list",
+    commandSynopsis     = "List available packages on the server (cached).",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "list",
+    commandDefaultFlags = mempty,
+    commandOptions      = \_ -> [
+        optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v }),
+
+        option "I" ["installed"]
+            "Only print installed packages"
+            listInstalled (\v flags -> flags { listInstalled = v })
+            trueArg
+
+        ]
+  }
+
+instance Monoid ListFlags where
+  mempty = defaultListFlags
+  mappend a b = ListFlags {
+    listInstalled = combine listInstalled,
+    listVerbosity = combine listVerbosity
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * Install flags
