@@ -27,17 +27,26 @@ import Distribution.Version (Version,showVersion)
 import Distribution.Verbosity (Verbosity)
 
 import qualified Hackage.IndexUtils as IndexUtils
+import Hackage.Setup (ListFlags(..))
 import Hackage.Types (PkgInfo(..), Repo)
 import Distribution.Simple.Configure as Cabal (getInstalledPackages)
 import Distribution.Simple.Compiler as Cabal (Compiler,PackageDB)
 import Distribution.Simple.PackageIndex as Installed
 import Distribution.Simple.Program as Cabal (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, lowercase, notice)
+import Distribution.Simple.Setup (fromFlag)
 import Distribution.InstalledPackageInfo as Installed
 
 -- |Show information about packages
-list :: Verbosity -> PackageDB -> [Repo] -> Compiler -> ProgramConfiguration -> [String] -> IO ()
-list verbosity packageDB repos comp conf pats = do
+list :: Verbosity
+     -> PackageDB
+     -> [Repo]
+     -> Compiler
+     -> ProgramConfiguration
+     -> ListFlags
+     -> [String]
+     -> IO ()
+list verbosity packageDB repos comp conf listFlags pats = do
     indexes <- mapM (IndexUtils.readRepoIndex verbosity) repos
     let index = mconcat indexes
         pkgs | null pats = PackageIndex.allPackages index
@@ -63,18 +72,24 @@ list verbosity packageDB repos comp conf pats = do
                             | i <- installed
                             ]
                     ]
-    putStr
-      . unlines
-      . map (showPkgVersions instPkgs)
-      . groupBy (equating (pkgName . packageId))
-      . sortBy (comparing nameAndVersion)
-      $ pkgs
+    let matches =
+          installedFilter instPkgs
+          . groupBy (equating (pkgName . packageId))
+          . sortBy (comparing nameAndVersion)
+          $ pkgs
 
-  where
+    if null matches
+        then notice verbosity "No mathes found."
+        else putStr . unlines . map (showPkgVersions instPkgs) $ matches
+
+   where
     nameAndVersion p = (lowercase name, name, version)
         where name = pkgName (packageId p)
               version = pkgVersion (packageId p)
-
+    installedFilter pkgs
+        | fromFlag (listInstalled listFlags) =
+            filter (\p -> Map.member (pkgName . packageId . head $ p) pkgs)
+        | otherwise = id
 
 showPkgVersions :: Map String Version -> [PkgInfo] -> String
 showPkgVersions installedPkgs pkgs = unlines $
