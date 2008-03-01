@@ -235,6 +235,12 @@ checkLicense pkg =
       PackageDistInexcusable
         "The 'license' field is missing or specified as AllRightsReserved."
 
+  , check (license pkg == BSD4) $
+      PackageDistSuspicious $
+           "Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' "
+        ++ "refers to the\nold 4-clause BSD license with the advertising "
+        ++ "clause. 'BSD3' refers the new\n3-clause BSD license."
+
   , check (license pkg `notElem` [AllRightsReserved, PublicDomain]
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
