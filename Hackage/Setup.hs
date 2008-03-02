@@ -139,12 +139,14 @@ checkCommand = CommandUI {
 
 data ListFlags = ListFlags {
     listInstalled :: Flag Bool,
+    listSimpleOutput :: Flag Bool,
     listVerbosity :: Flag Verbosity
   }
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
     listInstalled = Flag False,
+    listSimpleOutput = Flag False,
     listVerbosity = toFlag normal
   }
 
@@ -156,11 +158,16 @@ listCommand = CommandUI {
     commandUsage        = usagePackages "list",
     commandDefaultFlags = mempty,
     commandOptions      = \_ -> [
-        optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v }),
+        optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v })
 
-        option "I" ["installed"]
+        , option "I" ["installed"]
             "Only print installed packages"
             listInstalled (\v flags -> flags { listInstalled = v })
+            trueArg
+
+        , option [] ["simple-output"]
+            "Print in a easy-to-parse format"
+            listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
             trueArg
 
         ]
@@ -170,6 +177,7 @@ instance Monoid ListFlags where
   mempty = defaultListFlags
   mappend a b = ListFlags {
     listInstalled = combine listInstalled,
+    listSimpleOutput = combine listSimpleOutput,
     listVerbosity = combine listVerbosity
   }
     where combine field = field a `mappend` field b
