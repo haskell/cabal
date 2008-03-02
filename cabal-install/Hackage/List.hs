@@ -64,7 +64,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
             Just ps ->
                 return
                     . Map.fromList $
-                    [ (name, maximum versions)
+                    [ (name, versions)
                     | installed <- allPackagesByName ps
                     , let name = pkgName . packageId . Installed.package . head $ installed
                     , let versions =
@@ -78,20 +78,40 @@ list verbosity packageDB repos comp conf listFlags pats = do
           . sortBy (comparing nameAndVersion)
           $ pkgs
 
-    if null matches
-        then notice verbosity "No mathes found."
-        else putStr . unlines . map (showPkgVersions instPkgs) $ matches
+    if fromFlag (listSimpleOutput listFlags)
+      then putStr . unlines . map (simpleShowPackageId . packageId) . concat $ matches
+      else
+        if null matches
+            then notice verbosity "No mathes found."
+            else putStr . unlines . map (showPkgVersions instPkgs) $ matches
 
    where
     nameAndVersion p = (lowercase name, name, version)
         where name = pkgName (packageId p)
               version = pkgVersion (packageId p)
-    installedFilter pkgs
+    simpleShowPackageId :: PackageIdentifier -> String
+    simpleShowPackageId pkg = pkgName pkg ++ " " ++ showVersion (pkgVersion pkg)
+    installedFilter :: Map String [Version] -> [[PkgInfo]] -> [[PkgInfo]]
+    installedFilter installed pkgs
         | fromFlag (listInstalled listFlags) =
-            filter (\p -> Map.member (pkgName . packageId . head $ p) pkgs)
-        | otherwise = id
+            [ matches
+            | pkg <- pkgs
+            , let installedVersions =
+                    maybe [] id
+                        (Map.lookup
+                            (pkgName . packageId . head $ pkg)
+                            installed)
+            , let matches =
+                    [ cab
+                    | cab <- pkg
+                    , any (\i -> (pkgVersion . packageId) cab == i)
+                          installedVersions
+                    ]
+            , not (null matches)
+            ]
+        | otherwise = pkgs
 
-showPkgVersions :: Map String Version -> [PkgInfo] -> String
+showPkgVersions :: Map String [Version] -> [PkgInfo] -> String
 showPkgVersions installedPkgs pkgs = unlines $
     [ " * " ++ name ] ++ map (indent 6) (catMaybes [
       -- does it matter which repo the package came from?
@@ -113,4 +133,4 @@ showPkgVersions installedPkgs pkgs = unlines $
     pd = packageDescription (pkgDesc pkg)
     name = pkgName (packageId pkg)
     pkg = last pkgs
-    installedVersion = Map.lookup name installedPkgs
+    installedVersion = fmap maximum $ Map.lookup name installedPkgs
