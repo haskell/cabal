@@ -160,7 +160,7 @@ listCommand = CommandUI {
     commandOptions      = \_ -> [
         optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v })
 
-        , option "I" ["installed"]
+        , option [] ["installed"]
             "Only print installed packages"
             listInstalled (\v flags -> flags { listInstalled = v })
             trueArg
