@@ -99,6 +99,8 @@ module Distribution.Simple.Utils (
         intercalate,
         lowercase,
         wrapText,
+        wrapText',
+        wrapLine,
   ) where
 
 import Control.Monad
@@ -125,7 +127,7 @@ import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile )
 import System.IO
     ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode, hGetContents
-    , stderr, stdout, hPutStrLn, hPutStr, hFlush, hClose )
+    , stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
@@ -170,7 +172,7 @@ die :: String -> IO a
 die msg = do
   hFlush stdout
   pname <- getProgName
-  hPutStrLn stderr (pname ++ ": " ++ msg)
+  hPutStr stderr (wrapText (pname ++ ": " ++ msg))
   exitWith (ExitFailure 1)
 
 -- | Non fatal conditions that may be indicative of an error or problem.
@@ -181,7 +183,7 @@ warn :: Verbosity -> String -> IO ()
 warn verbosity msg = 
   when (verbosity >= normal) $ do
     hFlush stdout
-    hPutStrLn stderr ("Warning: " ++ msg)
+    hPutStr stderr (wrapText ("Warning: " ++ msg))
 
 -- | Useful status messages.
 --
@@ -193,7 +195,7 @@ warn verbosity msg =
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg =
   when (verbosity >= normal) $
-    putStrLn msg
+    putStr (wrapText msg)
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid =
@@ -206,7 +208,7 @@ setupMessage verbosity msg pkgid =
 info :: Verbosity -> String -> IO ()
 info verbosity msg =
   when (verbosity >= verbose) $
-    putStrLn msg
+    putStr (wrapText msg)
 
 -- | Detailed internal debugging information
 --
@@ -215,7 +217,7 @@ info verbosity msg =
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
   when (verbosity >= deafening) $
-    putStrLn msg
+    putStr (wrapText msg)
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
@@ -237,9 +239,21 @@ breaks f xs = case span f xs of
                           (v, xs'') ->
                               v : breaks f xs''
 
--- Wraps a list of words text to a list of lines of a particular width.
-wrapText :: Int -> [String] -> [String]
-wrapText width = map unwords . wrap 0 []
+-- | Wraps text to the default line width. Existing newlines are preserved.
+wrapText :: String -> String
+wrapText = wrapText' 79
+
+-- | Wraps text to the given line width. Existing newlines are preserved.
+wrapText' :: Int -> String -> String
+wrapText' width = unlines
+                . concatMap (map unwords
+                           . wrapLine width
+                           . words)
+                . lines
+
+-- | Wraps a list of words to a list of lines of words of a particular width.
+wrapLine :: Int -> [String] -> [[String]]
+wrapLine width = wrap 0 []
   where wrap :: Int -> [String] -> [String] -> [[String]]
         wrap 0   []   (w:ws)
           | length w + 1 > width
