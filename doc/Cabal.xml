@@ -298,8 +298,9 @@ Executable program2
         usually the package name, and some of the tools that operate
         on Cabal packages require this.</para>
 
-      <para>In the package description file, lines beginning with
-      <quote><literal>--</literal></quote> are treated as comments
+      <para>In the package description file, lines whose first
+      non-whitespace characters
+      are <quote><literal>--</literal></quote> are treated as comments
       and ignored.</para>
 
       <para>This file should contain of a number global property
