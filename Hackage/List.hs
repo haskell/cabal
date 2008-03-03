@@ -35,7 +35,7 @@ import Hackage.Types (PkgInfo(..), Repo)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler (Compiler,PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Simple.Utils (equating, comparing, notice, intercalate)
+import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
 
 -- |Show information about packages
@@ -70,8 +70,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
       else
         if null matches
             then notice verbosity "No mathes found."
-            else notice verbosity $
-                   intercalate "\n" (map showPackageInfo matches)
+            else putStr $ unlines (map showPackageInfo matches)
   where
     installedFilter
       | onlyInstalled = filter (not . null . installedVersions)

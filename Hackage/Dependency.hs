@@ -39,7 +39,8 @@ import Control.Monad (mplus)
 import Data.List (maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Monoid (Monoid(mappend))
-import qualified System.Info (arch,os)
+import qualified System.Info (arch)
+import qualified Distribution.System (os)
 
 --TODO: never expose the [ResolvedDependency], always gust make a DepGraph
 
@@ -117,7 +118,7 @@ getDependencies comp installed available pkg flags
                      flatten = PackageIndex.fromList . map packageId
                              . PackageIndex.allPackages
                   in Just (flatten available `mappend` flatten installed))
-                System.Info.os
+                Distribution.System.os
                 System.Info.arch
                 (showCompilerId comp, compilerVersion comp)
                 pkg
