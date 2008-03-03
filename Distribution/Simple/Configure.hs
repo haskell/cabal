@@ -129,7 +129,7 @@ import System.Exit
 import System.FilePath
     ( (</>) )
 import qualified System.Info
-    ( os, arch )
+    ( arch )
 import System.IO
     ( hPutStrLn, stderr )
 import Text.PrettyPrint.HughesPJ
@@ -231,7 +231,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
                        maybePackageIndex
-                       System.Info.os
+                       Distribution.System.os
                        System.Info.arch
                        (map toLower (show flavor),version)
                        ppd
