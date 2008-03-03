@@ -55,10 +55,10 @@ module Distribution.Simple.Configure (configure,
     where
 
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(..), compilerVersion, showCompilerId
+    ( CompilerFlavor(..), Compiler(compilerFlavor), compilerVersion, showCompilerId
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
-    ( PackageIdentifier(..), showPackageId, Package(..) )
+    ( PackageIdentifier(..), showPackageId, parsePackageId, Package(..) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -76,6 +76,8 @@ import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.ParseUtils
     ( showDependency )
+import Distribution.Compat.ReadP
+    ( readP_to_S )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -94,7 +96,7 @@ import Distribution.Simple.BuildPaths
     ( distPref )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate, comparing )
+    , intercalate, comparing, cabalVersion, cabalBootstrapping )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -129,7 +131,7 @@ import System.Exit
 import System.FilePath
     ( (</>) )
 import qualified System.Info
-    ( arch )
+    ( arch, compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, stderr )
 import Text.PrettyPrint.HughesPJ
@@ -139,14 +141,42 @@ import Prelude hiding (catch)
 
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
 tryGetConfigStateFile filename = do
-  e <- doesFileExist filename
-  let dieMsg = "error reading " ++ filename ++ 
-               "; run \"setup configure\" command?\n"
-  if (not e) then return $ Left dieMsg else do 
-    str <- readFile filename
-    case reads str of
-      [(bi,_)] -> return $ Right bi
-      _        -> return $ Left  dieMsg
+  exists <- doesFileExist filename
+  if not exists
+    then return (Left missing)
+    else do 
+      str <- readFile filename
+      return $ case lines str of
+        [headder, rest] -> case checkHeader headder of
+          Just msg -> Left msg
+          Nothing  -> case reads rest of
+            [(bi,_)] -> Right bi
+            _        -> Left cantParse
+        _            -> Left cantParse
+  where
+    checkHeader :: String -> Maybe String
+    checkHeader header = case parseHeader header of
+      Just (cabalId, compilerId)
+        | cabalId
+       == currentCabalId -> Nothing
+        | otherwise      -> Just (badVersion cabalId compilerId)
+      Nothing            -> Just cantParse
+
+    missing   = "Run the 'configure' command first."
+    cantParse = "Saved package config file seems to be corrupt. "
+             ++ "Try re-running the 'configure' command."
+    badVersion cabalId compilerId
+              = "You need to re-run the 'configure' command. "
+             ++ "The version of Cabal being used has changed (was "
+             ++ showPackageId cabalId ++ ", now "
+             ++ showPackageId currentCabalId ++ ")."
+             ++ badcompiler compilerId
+    badcompiler compilerId | compilerId == currentCompilerId = ""
+                           | otherwise
+              = " Additionally the compiler is different (was "
+             ++ showPackageId compilerId ++ ", now "
+             ++ showPackageId currentCompilerId
+             ++ ") which is probably the cause of the problem."
 
 -- internal function
 tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
@@ -171,7 +201,42 @@ maybeGetPersistBuildConfig = do
 writePersistBuildConfig :: LocalBuildInfo -> IO ()
 writePersistBuildConfig lbi = do
   createDirectoryIfMissing False distPref
-  writeFile localBuildInfoFile (show lbi)
+  writeFile localBuildInfoFile $ showHeader pkgid
+                              ++ '\n' : show lbi
+  where
+    pkgid   = packageId (localPkgDescr lbi)
+
+showHeader :: PackageIdentifier -> String
+showHeader pkgid =
+     "Saved package config for " ++ showPackageId pkgid
+  ++ " written by " ++ showPackageId currentCabalId
+  ++      " using " ++ showPackageId currentCompilerId
+  where
+
+currentCabalId :: PackageIdentifier
+currentCabalId = PackageIdentifier "Cabal" currentVersion
+  where currentVersion | cabalBootstrapping = Version [0] []
+                       | otherwise          = cabalVersion
+
+currentCompilerId :: PackageIdentifier
+currentCompilerId = PackageIdentifier System.Info.compilerName
+                                      System.Info.compilerVersion
+
+parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier) 
+parseHeader header = case words header of
+  ["Saved", "package", "config", "for", pkgid,
+   "written", "by", cabalid, "using", compilerid]
+    -> case (readPackageId pkgid,
+             readPackageId cabalid,
+             readPackageId compilerid) of
+        (Just _,
+         Just cabalid',
+         Just compilerid') -> Just (cabalid', compilerid')
+        _                  -> Nothing
+  _                        -> Nothing
+  where readPackageId str = case readP_to_S parsePackageId str of
+          [] -> Nothing
+          ok -> Just (fst (last ok))
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
