@@ -14,7 +14,6 @@ module Hackage.Config
     ( SavedConfig(..)
     , savedConfigToConfigFlags
     , configRepos
-    , configPackageDB
     , defaultConfigFile
     , loadConfig
     , showConfig
@@ -33,7 +32,6 @@ import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
-import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
 import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
@@ -71,14 +69,8 @@ configRepos config =
      in Repo remote cacheDir
   | remote <- configRemoteRepos config ]
 
-configPackageDB :: SavedConfig -> Flag PackageDB
-configPackageDB config = case configUserInstall config of
-  NoFlag     -> NoFlag
-  Flag True  -> Flag UserPackageDB
-  Flag False -> Flag GlobalPackageDB
-
-savedConfigToConfigFlags :: Flag PackageDB -> SavedConfig -> Cabal.ConfigFlags
-savedConfigToConfigFlags packageDB config = mempty {
+savedConfigToConfigFlags :: Flag Bool -> SavedConfig -> Cabal.ConfigFlags
+savedConfigToConfigFlags userInstallFlag config = mempty {
     Cabal.configHcFlavor    = configCompiler config,
     Cabal.configHcPath      = configCompilerPath config,
     Cabal.configHcPkg       = configHcPkgPath config,
@@ -86,20 +78,11 @@ savedConfigToConfigFlags packageDB config = mempty {
     Cabal.configInstallDirs = if userInstall
                                 then configUserInstallDirs config
                                 else configGlobalInstallDirs config,
-    Cabal.configVerbose     = configVerbose config,
-
-    -- FIXME: Urk, all this complex stuff is a result of the mismatch between
-    -- userInstall :: Bool and packageDB :: PackageDB. We should use one or
-    -- the other consistently.
-    Cabal.configPackageDB   = if userInstall
-                                then toFlag UserPackageDB
-                                else toFlag GlobalPackageDB
+    Cabal.configVerbose     = configVerbose config
   }
   where userInstall :: Bool
-        userInstall = fromFlag $ fmap (\p -> case p of
-                                               UserPackageDB -> True
-                                               _             -> False) packageDB
-                       `mappend` configUserInstall config
+        userInstall = fromFlag $ configUserInstall config
+                       `mappend` userInstallFlag
 
 --
 -- * Default config

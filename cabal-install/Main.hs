@@ -14,7 +14,7 @@
 module Main where
 
 import Hackage.Setup
-import Distribution.Simple.Setup (Flag, fromFlag, fromFlagOrDefault,
+import Distribution.Simple.Setup (Flag(..), fromFlag, fromFlagOrDefault,
                                   flagToMaybe)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
@@ -23,8 +23,7 @@ import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
 import Distribution.Simple.Utils (cabalVersion, die)
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
-                                 defaultConfigFile, loadConfig, configRepos,
-                                 configPackageDB)
+                                 defaultConfigFile, loadConfig, configRepos)
 import Hackage.List             (list)
 import Hackage.Install          (install)
 import Hackage.Update           (update)
@@ -111,7 +110,7 @@ configureAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
   config <- loadConfig verbosity configFile
-  let flags' = savedConfigToConfigFlags (Cabal.configPackageDB flags) config
+  let flags' = savedConfigToConfigFlags (Cabal.configUserInstall flags) config
                `mappend` flags
       args = commandName configureCommand
            : commandShowOptions configureCommand flags' ++ extraArgs
@@ -123,7 +122,7 @@ installAction (cflags,iflags) extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
   config <- loadConfig verbosity configFile
-  let cflags' = savedConfigToConfigFlags (Cabal.configPackageDB cflags) config
+  let cflags' = savedConfigToConfigFlags (Cabal.configUserInstall cflags) config
                `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
@@ -135,7 +134,7 @@ listAction listFlags extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlag (listVerbosity listFlags)
   config <- loadConfig verbosity configFile
-  let flags = savedConfigToConfigFlags (configPackageDB config) config
+  let flags = savedConfigToConfigFlags NoFlag config
   (comp, conf) <- configCompilerAux flags
   list verbosity
        (fromFlag $ Cabal.configPackageDB flags)
@@ -157,7 +156,7 @@ upgradeAction (cflags,iflags) _extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
   config <- loadConfig verbosity configFile
-  let cflags' = savedConfigToConfigFlags (Cabal.configPackageDB cflags) config
+  let cflags' = savedConfigToConfigFlags (Cabal.configUserInstall cflags) config
                `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
@@ -170,7 +169,7 @@ fetchAction verbosityFlag extraArgs = do
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity configFile
-  let flags = savedConfigToConfigFlags (configPackageDB config) config
+  let flags = savedConfigToConfigFlags NoFlag config
   (comp, conf) <- configCompilerAux flags
   fetch verbosity
         (fromFlag $ Cabal.configPackageDB flags) (configRepos config)
