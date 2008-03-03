@@ -156,7 +156,7 @@ listCommand = CommandUI {
     commandSynopsis     = "List available packages on the server (cached).",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "list",
-    commandDefaultFlags = mempty,
+    commandDefaultFlags = defaultListFlags,
     commandOptions      = \_ -> [
         optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v })
 

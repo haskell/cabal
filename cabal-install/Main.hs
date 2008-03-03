@@ -23,7 +23,8 @@ import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
 import Distribution.Simple.Utils (cabalVersion, die)
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
-                                 defaultConfigFile, loadConfig, configRepos)
+                                 defaultConfigFile, loadConfig, configRepos,
+                                 configPackageDB)
 import Hackage.List             (list)
 import Hackage.Install          (install)
 import Hackage.Update           (update)
@@ -126,7 +127,7 @@ installAction (cflags,iflags) extraArgs = do
                `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
-          (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
+          (configPackageDB cflags') (configRepos config)
           comp conf cflags' iflags pkgs
 
 listAction :: ListFlags -> [String] -> IO ()
@@ -137,7 +138,7 @@ listAction listFlags extraArgs = do
   let flags = savedConfigToConfigFlags NoFlag config
   (comp, conf) <- configCompilerAux flags
   list verbosity
-       (fromFlag $ Cabal.configPackageDB flags)
+       (configPackageDB flags)
        (configRepos config)
        comp
        conf
@@ -160,7 +161,7 @@ upgradeAction (cflags,iflags) _extraArgs = do
                `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
-          (fromFlag $ Cabal.configPackageDB cflags') (configRepos config)
+          (configPackageDB cflags') (configRepos config)
           comp conf cflags' iflags
 
 fetchAction :: Flag Verbosity -> [String] -> IO ()
@@ -172,7 +173,7 @@ fetchAction verbosityFlag extraArgs = do
   let flags = savedConfigToConfigFlags NoFlag config
   (comp, conf) <- configCompilerAux flags
   fetch verbosity
-        (fromFlag $ Cabal.configPackageDB flags) (configRepos config)
+        (configPackageDB flags) (configRepos config)
         comp conf pkgs
 
 uploadAction :: UploadFlags -> [String] -> IO ()
