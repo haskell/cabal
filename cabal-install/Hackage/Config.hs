@@ -14,6 +14,7 @@ module Hackage.Config
     ( SavedConfig(..)
     , savedConfigToConfigFlags
     , configRepos
+    , configPackageDB
     , defaultConfigFile
     , loadConfig
     , showConfig
@@ -32,6 +33,7 @@ import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
+import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
 import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
@@ -42,6 +44,14 @@ import Hackage.ParseUtils
 import Hackage.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
+configPackageDB :: Cabal.ConfigFlags -> PackageDB
+configPackageDB config =
+  fromFlagOrDefault defaultDB (Cabal.configPackageDB config)
+  where
+    defaultDB = case Cabal.configUserInstall config of
+      NoFlag     -> UserPackageDB
+      Flag True  -> UserPackageDB
+      Flag False -> GlobalPackageDB
 
 --
 -- * Configuration saved in the config file
