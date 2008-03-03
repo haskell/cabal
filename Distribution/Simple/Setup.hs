@@ -70,7 +70,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , OptimisationLevel(..), flagToOptimisationLevel )
-import Distribution.Simple.Utils (wrapText)
+import Distribution.Simple.Utils (wrapLine)
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms)
 import Distribution.Simple.InstallDirs
@@ -1099,7 +1099,7 @@ programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
      "The flags --with-PROG and --PROG-option(s) can be used with"
   ++ " the following programs:"
-  ++ (concatMap ("\n  "++) . wrapText 77 . sort)
+  ++ (concatMap (\line -> "\n  " ++ unwords line) . wrapLine 77 . sort)
      [ programName prog | (prog, _) <- knownPrograms progConf ]
   ++ "\n"
 
