@@ -80,7 +80,7 @@ cabal-setup install
       the Haskell implementation that the user picks. Where compiler-specific
       options are needed however, there is an "escape hatch" available. The
       developer can specify implementation-specific options and more generally
-      there is a configuration mechanism to custoimise many aspects of how a
+      there is a configuration mechanism to customise many aspects of how a
       package is built depending on the Haskell implementation, the Operating
       system, computer architecture and user-specified configuration flags.
     </para>
@@ -954,7 +954,7 @@ Executable program2
               <para>A list of header files to be included in any
               compilations via C.  This field applies to both header
               files that are already installed on the system and to
-              those coming with the package to be isntalled.  These files
+              those coming with the package to be installed.  These files
               typically contain function prototypes for foreign imports
               used by the package.</para>
             </listitem>
@@ -1375,12 +1375,12 @@ Library {
 	  </itemizedlist>
 
           <para>To put it another way, Cabal does a complete backtracking
-          search to find a satisfiable packge configuration. It is only the
+          search to find a satisfiable package configuration. It is only the
           dependencies specified in the <literal>build-depends</literal> field
           in conditional blocks that determine if a particular flag assignment
           is satisfiable (<literal>build-tools</literal> are not considered).
           The order of the declaration and the default value of the flags
-          determines the search order. Flags overriden on the command line fix
+          determines the search order. Flags overridden on the command line fix
           the assignment of that flag, so no backtracking will be tried for
           that flag.</para>
 
@@ -2360,7 +2360,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
 	  <para>A library cannot (currently) be prefix-independent,
 	    because it will be linked into an executable whose
-	    filesystem location bears no relation to the library
+	    file system location bears no relation to the library
 	    package.</para>
 	</sect4>
       </sect3>
@@ -2646,7 +2646,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 
       <para>The makefile command replaces part of the work done by
       <literal>setup build</literal>.  The sequence of commands would
-      typeically be:
+      typically be:
 <programlisting>
 runhaskell Setup.hs makefile
 make
@@ -2717,7 +2717,7 @@ runhaskell Setup.hs build
           <term><option>--html-location</option>=<replaceable>url</replaceable></term>
           <listitem>
             <para>Specify a template for the location of HTML documentation
-              for pre-requisite packages.  The substitutions listed in
+              for prerequisite packages.  The substitutions listed in
               <xref linkend="simple-paths"/> are applied to the template
               to obtain a location for each package, which will be used
               by hyperlinks in the generated documentation.  For example,
@@ -3053,7 +3053,7 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
       tracker</ulink>.
     </para>
 
-    <para>For general disussion or queries email the libraries mailing list
+    <para>For general discussion or queries email the libraries mailing list
     <email>libraries@haskell.org</email>. There is also a development mailing
     list <email>cabal-devel@haskell.org</email>.
     </para>
@@ -3123,7 +3123,7 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
         url="http://haskell.org/haskellwiki/Package_versioning_policy">Package
         Versioning Policy</ulink>. This means that within a stable major
         release, for example 1.2.x, there will be no incompatible API changes.
-        But minor versions increments, for example 1.2.3, indicate compatable
+        But minor versions increments, for example 1.2.3, indicate compatible
         API additions.
       </para>
 
@@ -3157,7 +3157,7 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
         <para>
           <itemizedlist>
             <listitem>
-              <para><literal>UserHooks</literal> The hooks api will change in the
+              <para><literal>UserHooks</literal> The hooks API will change in the
               future</para>
             </listitem>
             <listitem>
@@ -3186,7 +3186,7 @@ runhaskell Setup.hs hscolour --css=<replaceable>path</replaceable></screen>
         file that contains directories with <filename>.cabal</filename> files
         in. In future it may contain more kinds of files so do not assume every
         file is a <filename>.cabal</filename> file. Incompatible revisions to
-        the format would involve bumping the name of the index file, ie
+        the format would involve bumping the name of the index file, i.e.,
         <filename>00-index.tar.gz</filename>,
         <filename>01-index.tar.gz</filename> etc.
       </para>
