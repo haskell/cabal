@@ -62,7 +62,9 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..)
     , withinRange, parseVersionRange )
-import Distribution.Simple.Utils (currentDir)
+import Distribution.System
+         ( OS, readOS )
+import Distribution.Simple.Utils (currentDir, lowercase)
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
@@ -115,24 +117,17 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: String -> String -> (String, Version) -> Condition ConfVar ->  
-                         (Condition ConfFlag, [String])
+simplifyWithSysParams :: OS -> String -> (String, Version) -> Condition ConfVar
+                      -> (Condition ConfFlag, [String])
 simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
-    interp (OS name)   = Right $ lcase name == lcase os
-                              || lcase name `elem` osAliases (lcase os)
-    interp (Arch name) = Right $ lcase name == lcase arch
-    interp (Impl i vr) = Right $ lcase impl == lcase i
+    interp (OS os')    = Right $ os' == os
+    interp (Arch name) = Right $ lowercase name == lowercase arch
+    interp (Impl i vr) = Right $ lowercase impl == lowercase i
                               && implVer `withinRange` vr
     interp (Flag  f)   = Left f
     flags = [ fname | ConfFlag fname <- fvs ]
-
-    --FIXME: use Distribution.System.OS type and alias list:
-    osAliases "mingw32"  = ["windows"]
-    osAliases "solaris2" = ["solaris"]
-    osAliases _          = []
-    lcase = map toLower
 
 -- XXX: Add instances and check
 --
@@ -161,7 +156,7 @@ parseCondition = condOr
                       +++ archCond +++ flagCond +++ implCond )
     inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
-    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var. OS 
+    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var . OS . readOS
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch 
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
@@ -234,7 +229,7 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 resolveWithFlags :: Monoid a =>
      [(String,[Bool])] 
         -- ^ Domain for each flag name, will be tested in order.
-  -> String  -- ^ OS name, as returned by System.Info.os
+  -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> String  -- ^ arch name, as returned by System.Info.arch
   -> (String, Version) -- ^ Compiler name + version
   -> [CondTree ConfVar [d] a]    
@@ -349,7 +344,7 @@ finalizePackageDescription
   => [(String,Bool)]  -- ^ Explicitly specified flag assignments
   -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
                               -- this is unknown.
-  -> String -- ^ OS-name
+  -> OS     -- ^ OS-name
   -> String -- ^ Arch-name
   -> (String, Version) -- ^ Compiler + Version
   -> GenericPackageDescription
