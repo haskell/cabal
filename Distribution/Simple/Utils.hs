@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
         cabalVersion,
+        cabalBootstrapping,
 
         -- * logging and errors
         die,
@@ -160,6 +161,13 @@ cabalVersion :: Version
 cabalVersion = Version [CABAL_VERSION] []
 #else
 cabalVersion = error "Cabal was not bootstrapped correctly"
+#endif
+
+cabalBootstrapping :: Bool
+#ifdef CABAL_VERSION
+cabalBootstrapping = False
+#else
+cabalBootstrapping = True
 #endif
 
 -- ------------------------------------------------------------------------------- Utils for setup
