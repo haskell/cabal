@@ -100,7 +100,6 @@ module Distribution.Simple.Utils (
         intercalate,
         lowercase,
         wrapText,
-        wrapText',
         wrapLine,
   ) where
 
@@ -249,15 +248,11 @@ breaks f xs = case span f xs of
 
 -- | Wraps text to the default line width. Existing newlines are preserved.
 wrapText :: String -> String
-wrapText = wrapText' 79
-
--- | Wraps text to the given line width. Existing newlines are preserved.
-wrapText' :: Int -> String -> String
-wrapText' width = unlines
-                . concatMap (map unwords
-                           . wrapLine width
-                           . words)
-                . lines
+wrapText = unlines
+         . concatMap (map unwords
+                    . wrapLine 79
+                    . words)
+         . lines
 
 -- | Wraps a list of words to a list of lines of words of a particular width.
 wrapLine :: Int -> [String] -> [[String]]
