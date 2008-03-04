@@ -9,11 +9,11 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Bits ((.&.))
 import Data.Char (ord)
 import Data.Int (Int8, Int64)
-import Data.List (unfoldr)
+import Data.List (unfoldr,partition)
 import Data.Maybe (catMaybes)
 import Numeric (readOct)
 import System.Directory (Permissions(..), setPermissions, createDirectoryIfMissing, copyFile)
-import System.FilePath ((</>), isValid, isAbsolute)
+import System.FilePath ((</>), isValid, isAbsolute, splitFileName)
 import System.Posix.Types (FileMode)
 
 -- GNU gzip
@@ -43,7 +43,14 @@ readTarArchive :: ByteString -> [(TarHeader,ByteString)]
 readTarArchive = catMaybes . unfoldr getTarEntry
 
 extractTarArchive :: Maybe FilePath -> [(TarHeader,ByteString)] -> IO ()
-extractTarArchive mdir = mapM_ (uncurry (extractEntry mdir))
+extractTarArchive mdir tar = extract files >> extract links
+    where
+    extract = mapM_ (uncurry (extractEntry mdir))
+    -- TODO: does this cause a memory leak?
+    (files, links) = partition (not . isLink . tarFileType . fst) tar
+    isLink TarHardLink     = True
+    isLink TarSymbolicLink = True
+    isLink _               = False
 
 extractTarGzFile :: Maybe FilePath -- ^ Destination directory
                -> FilePath -- ^ Tarball
@@ -59,13 +66,14 @@ extractEntry :: Maybe FilePath -> TarHeader -> ByteString -> IO ()
 extractEntry mdir hdr cnt
     = do path <- relativizePath mdir (tarFileName hdr)
          let setPerms   = setPermissions path (fileModeToPermissions (tarFileMode hdr))
-             copyLinked = relativizePath mdir (tarLinkTarget hdr) >>= copyFile path
+             copyLinked =
+                let (base, _) = splitFileName path
+                    sourceName = base </> tarLinkTarget hdr
+                in copyFile sourceName path
          case tarFileType hdr of
            TarNormalFile   -> BS.writeFile path cnt >> setPerms
            TarHardLink     -> copyLinked >> setPerms
-           TarSymbolicLink -> copyLinked --FIXME: what if the other file has not
-                                         --been unpacked yet? Perhaps collect all
-                                         --links and do them at the end.
+           TarSymbolicLink -> copyLinked
            TarDirectory    -> createDirectoryIfMissing False path >> setPerms
            TarOther _      -> return () -- FIXME: warning?
 
