@@ -66,7 +66,7 @@ import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
 import Distribution.Version (showVersion)
-import Distribution.System (OS(..), os)
+import Distribution.System (OS(..), buildOS)
 
 -- ---------------------------------------------------------------------------
 -- Build directories and files
@@ -131,9 +131,9 @@ mkSharedLibName pref lib (PackageIdentifier compilerName compilerVersion)
 -- | Extension for executable files
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: String
-exeExtension = case os of
-                   Windows _ -> "exe"
-                   _         -> ""
+exeExtension = case buildOS of
+                   Windows -> "exe"
+                   _       -> ""
 
 -- ToDo: This should be determined via autoconf (AC_OBJEXT)
 -- | Extension for object files. For GHC and NHC the extension is @\"o\"@.
@@ -144,7 +144,7 @@ objExtension = "o"
 -- | Extension for dynamically linked (or shared) libraries
 -- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
 dllExtension :: String
-dllExtension = case os of
-                   Windows _ -> "dll"
-                   OSX       -> "dylib"
-                   _         -> "so"
+dllExtension = case buildOS of
+                   Windows -> "dll"
+                   OSX     -> "dylib"
+                   _       -> "so"
