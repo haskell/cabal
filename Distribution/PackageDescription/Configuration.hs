@@ -63,7 +63,7 @@ import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..)
     , withinRange, parseVersionRange )
 import Distribution.System
-         ( OS, readOS )
+         ( OS, readOS, Arch, readArch )
 import Distribution.Simple.Utils (currentDir, lowercase)
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
@@ -117,13 +117,13 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: OS -> String -> (String, Version) -> Condition ConfVar
+simplifyWithSysParams :: OS -> Arch -> (String, Version) -> Condition ConfVar
                       -> (Condition ConfFlag, [String])
 simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
     interp (OS os')    = Right $ os' == os
-    interp (Arch name) = Right $ lowercase name == lowercase arch
+    interp (Arch arch') = Right $ arch' == arch
     interp (Impl i vr) = Right $ lowercase impl == lowercase i
                               && implVer `withinRange` vr
     interp (Flag  f)   = Left f
@@ -157,7 +157,7 @@ parseCondition = condOr
     inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var . OS . readOS
-    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch 
+    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch . readArch
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
     ident    = munch1 isIdentChar >>= return . map toLower
@@ -230,7 +230,7 @@ resolveWithFlags :: Monoid a =>
      [(String,[Bool])] 
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
-  -> String  -- ^ arch name, as returned by System.Info.arch
+  -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> (String, Version) -- ^ Compiler name + version
   -> [CondTree ConfVar [d] a]    
   -> ([d] -> DepTestRslt [d])  -- ^ Dependency test function.
@@ -345,7 +345,7 @@ finalizePackageDescription
   -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
                               -- this is unknown.
   -> OS     -- ^ OS-name
-  -> String -- ^ Arch-name
+  -> Arch   -- ^ Arch-name
   -> (String, Version) -- ^ Compiler + Version
   -> GenericPackageDescription
   -> Either [Dependency]

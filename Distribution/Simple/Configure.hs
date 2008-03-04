@@ -100,7 +100,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
-    ( os, OS(..), Windows(..) )
+    ( os, OS(..), Windows(..), buildArch )
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..), showVersion, readVersion
     , showVersionRange, orLaterVersion, withinRange )
@@ -129,7 +129,7 @@ import System.Exit
 import System.FilePath
     ( (</>) )
 import qualified System.Info
-    ( arch, compilerName, compilerVersion )
+    ( compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, stderr )
 import Text.PrettyPrint.HughesPJ
@@ -294,7 +294,7 @@ configure (pkg_descr0, pbi) cfg
                        (configConfigurationsFlags cfg)
                        maybePackageIndex
                        Distribution.System.os
-                       System.Info.arch
+                       Distribution.System.buildArch
                        (map toLower (show flavor),version)
                        ppd
                 of Right r -> return r
