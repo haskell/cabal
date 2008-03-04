@@ -71,6 +71,7 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyFileVerbose
          , die, info, notice, setupMessage )
 import Distribution.System
+         ( OS(..), buildOS )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory (removeFile, getCurrentDirectory,
@@ -84,14 +85,14 @@ import Data.Maybe (isNothing, isJust, fromJust, fromMaybe)
 import Data.List (partition)
 
 regScriptLocation :: FilePath
-regScriptLocation = case os of
-                        Windows _ -> "register.bat"
-                        _         -> "register.sh"
+regScriptLocation = case buildOS of
+                        Windows -> "register.bat"
+                        _       -> "register.sh"
 
 unregScriptLocation :: FilePath
-unregScriptLocation = case os of
-                          Windows _ -> "unregister.bat"
-                          _         -> "unregister.sh"
+unregScriptLocation = case buildOS of
+                          Windows -> "unregister.bat"
+                          _       -> "unregister.sh"
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -104,7 +105,7 @@ register pkg_descr lbi regFlags
     setupMessage (fromFlag $ regVerbose regFlags) "No package to register" (packageId pkg_descr)
     return ()
   | otherwise = do
-    let isWindows = case os of Windows _ -> True; _ -> False
+    let isWindows = case buildOS of Windows -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
         genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
         genPkgConfigDefault = showPackageId (packageId pkg_descr) <.> "conf"
@@ -308,8 +309,8 @@ rawSystemEmit :: ConfiguredProgram  -- ^Program to run
               -> [String]  -- ^Args
               -> IO ()
 rawSystemEmit prog scriptName extraArgs
- = case os of
-       Windows _ ->
+ = case buildOS of
+       Windows ->
            writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
        _ -> do writeFile scriptName ("#!/bin/sh\n\n"
                                   ++ (path ++ concatMap (' ':) args)
@@ -326,8 +327,8 @@ rawSystemPipe :: ConfiguredProgram
               -> [String]  -- ^Args
               -> IO ()
 rawSystemPipe prog scriptName pipeFrom extraArgs
- = case os of
-       Windows _ ->
+ = case buildOS of
+       Windows ->
            writeFile scriptName ("@" ++ path ++ concatMap (' ':) args)
        _ -> do writeFile scriptName ("#!/bin/sh\n\n"
                                   ++ "echo '" ++ escapeForShell pipeFrom

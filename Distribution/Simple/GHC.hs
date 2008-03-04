@@ -80,6 +80,7 @@ import Distribution.Simple.Compiler
 import Distribution.Version	( Version(..), showVersion,
                                   VersionRange(..), orLaterVersion )
 import Distribution.System
+         ( OS(..), buildOS )
 import Distribution.Verbosity
 import Language.Haskell.Extension (Extension(..))
 
@@ -124,8 +125,8 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcPkgProg ++ " is version " ++ showVersion ghcPkgVersion
 
   -- finding ghc's local ld is a bit tricky as it's not on the path:
-  let ldProgram' = case os of
-        Windows _ ->
+  let ldProgram' = case buildOS of
+        Windows ->
           let compilerDir  = takeDirectory (programPath ghcProg)
               baseDir      = takeDirectory compilerDir
               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
