@@ -85,7 +85,7 @@ import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Version  (Dependency, showVersionRange)
 import Distribution.Compiler (CompilerFlavor)
-import Distribution.System   (OS, showOS)
+import Distribution.System   (OS, showOS, Arch, showArch)
 import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
 
@@ -455,14 +455,14 @@ data ConfFlag = ConfFlag String
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS
-             | Arch String
+             | Arch Arch
              | Flag ConfFlag
              | Impl String VersionRange
                deriving Eq
 
 instance Show ConfVar where
     show (OS os) = "os(" ++ showOS os ++ ")"
-    show (Arch n) = "arch(" ++ n ++ ")"
+    show (Arch arch) = "arch(" ++ showArch arch ++ ")"
     show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
     show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
 

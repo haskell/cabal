@@ -5,9 +5,15 @@ module Distribution.System (
   showOS,
   readOS,
   os,
+
+  -- * Machine Architecture
+  Arch(..),
+  showArch,
+  readArch,
+  buildArch,
   ) where
 
-import qualified System.Info (os)
+import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower)
 
 -- ------------------------------------------------------------
@@ -17,7 +23,7 @@ import qualified Data.Char as Char (toLower)
 data OS = Linux | Windows Windows | OSX
         | FreeBSD | OpenBSD | NetBSD
         | Solaris | AIX | HPUX | IRIX
-        | Other String
+        | OtherOS String
   deriving (Eq, Ord, Show, Read)
 
 --TODO: eliminate Windows data type
@@ -37,20 +43,66 @@ osAliases Solaris     = ["solaris2"]
 osAliases _           = []
 
 showOS :: OS -> String
-showOS (Other name) = lowercase name
-showOS other        = lowercase (show other)
+showOS (OtherOS name) = name
+showOS other          = lowercase (show other)
 
 readOS :: String -> OS
-readOS s = case lookup (lowercase s)
-                [ (name, os')
-                | os' <- knownOSs
-                , name <- showOS os' : osAliases os' ] of
-  Just os' -> os'
-  Nothing  -> Other s
+readOS s =
+  case lookup (lowercase s) osMap of
+    Just os' -> os'
+    Nothing  -> OtherOS (lowercase s)
+  where
+    osMap = [ (name, os')
+            | os' <- knownOSs
+            , name <- showOS os' : osAliases os' ]
 
 --TODO: rename to buildOS and rename os' above to just os
 os :: OS
 os = readOS System.Info.os
+
+-- ------------------------------------------------------------
+-- * Machine Architecture
+-- ------------------------------------------------------------
+
+data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
+          | Arm   | Mips   | SH
+          | IA64  | S390 
+          | Alpha | Hppa   | Rs6000
+          | M68k  | Vax
+          | OtherArch String
+  deriving (Eq, Ord, Show, Read)
+
+knownArches :: [Arch]
+knownArches = [I386, X86_64, PPC, PPC64, Sparc
+              ,Arm, Mips, SH
+              ,IA64, S390 
+              ,Alpha, Hppa, Rs6000
+              ,M68k, Vax]
+
+archAliases :: Arch -> [String]
+archAliases PPC   = ["powerpc"]
+archAliases PPC64 = ["powerpc64"]
+archAliases Sparc = ["sparc64"]
+archAliases Mips  = ["mipsel", "mipseb"]
+archAliases Arm   = ["armeb", "armel"]
+archAliases _     = []
+
+showArch :: Arch -> String
+showArch (OtherArch name) = name
+showArch other            = lowercase (show other)
+
+readArch :: String -> Arch
+readArch s =
+  case lookup (lowercase s) archMap of
+    Just arch -> arch
+    Nothing   -> OtherArch (lowercase s)
+  where
+    archMap = [ (name, arch)
+              | arch <- knownArches
+              , name <- showArch arch : archAliases arch ]
+
+buildArch :: Arch
+buildArch = readArch System.Info.arch
 
 lowercase :: String -> String
 lowercase = map Char.toLower
