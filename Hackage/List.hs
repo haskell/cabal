@@ -15,10 +15,12 @@ module Hackage.List (
   ) where
 
 import Data.List (sortBy, groupBy, sort, nub)
-import Data.Maybe (catMaybes, listToMaybe, fromJust)
+import Data.Maybe (listToMaybe, fromJust)
 import Data.Monoid (Monoid(mconcat))
 import Control.Monad (MonadPlus(mplus))
 import Control.Exception (assert)
+
+import Text.PrettyPrint.HughesPJ
 
 import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.License (License)
@@ -69,7 +71,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
                                            ++ availableVersions pkg ]
       else
         if null matches
-            then notice verbosity "No mathes found."
+            then notice verbosity "No matches found."
             else putStr $ unlines (map showPackageInfo matches)
   where
     installedFilter
@@ -93,28 +95,25 @@ data PackageDisplayInfo = PackageDisplayInfo {
 
 showPackageInfo :: PackageDisplayInfo -> String
 showPackageInfo pkg =
-  unlines $
-     [" * " ++ name pkg]
-  ++ (map (indent 6) . catMaybes) [
-       maybeNull (availableVersions pkg) $
-       "Latest version available: "
-    ++ showVersion (maximum (availableVersions pkg))
-     , maybeNull (installedVersions pkg) $
-       "Latest version installed: "
-    ++ showVersion (maximum (installedVersions pkg))
-     , maybeNull (homepage pkg) $
-       "Homepage: " ++ homepage pkg
-     , maybeNull (category pkg) $
-       "Category: " ++ category pkg
-     , maybeNull (synopsis pkg) $
-       "Synopsis: " ++ synopsis pkg
-     , Just $
-       "License:  " ++ show (license pkg)
-     ]
+  render $
+     text " *" <+> text (name pkg)
+     $+$
+     (nest 6 $ vcat [
+       maybeShow (availableVersions pkg)
+         "Latest version available:"
+         (text . showVersion . maximum)
+     , maybeShow (installedVersions pkg)
+         "Latest version installed:"
+         (text . showVersion . maximum)
+     , maybeShow (homepage pkg) "Homepage:" text
+     , maybeShow (category pkg) "Category:" text
+     , maybeShow (synopsis pkg) "Synopsis:" (vcat . map text . lines)
+     , text "License: " <+> text (show (license pkg))
+     ])
+     $+$ text ""
   where
-    indent n str = replicate n ' ' ++ str
-    maybeNull [] _ = Nothing
-    maybeNull _  s = Just s
+    maybeShow [] _ _ = empty
+    maybeShow l  s f = text s <+> (f l)
 
 -- | We get the 'PackageDisplayInfo' by combining the info for the installed
 -- and available versions of a package.
