@@ -73,6 +73,7 @@ import Control.Exception (finally)
 import Control.Monad(when, unless)
 import Data.Char (isSpace, toLower)
 import Data.List (partition, isPrefixOf)
+import Data.Maybe (catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import System.Directory (doesFileExist, doesDirectoryExist,
                          removeDirectoryRecursive)
@@ -237,8 +238,13 @@ prepareDir verbosity inPref pps modules bi
               in findFileWithExtension suffixes (hsSourceDirs bi) file
              >>= maybe (notFound module_) return
            | module_ <- modules ++ otherModules bi ]
+         bootFiles <- sequence
+           [ let file = dotToSep module_
+              in findFileWithExtension ["hs-boot"] (hsSourceDirs bi) file
+           | module_ <- modules ++ otherModules bi ]
 
-         copyFiles verbosity inPref (zip (repeat []) (sources ++ cSources bi))
+         let allSources = sources ++ catMaybes bootFiles ++ cSources bi
+         copyFiles verbosity inPref (zip (repeat []) allSources)
 
     where suffixes = ppSuffixes pps ++ ["hs", "lhs"]
           notFound m = die $ "Error: Could not find module: " ++ m
