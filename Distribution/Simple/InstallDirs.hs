@@ -76,7 +76,8 @@ import System.FilePath (dropDrive)
 
 import Distribution.Package (PackageIdentifier(..), showPackageId)
 import Distribution.Version (showVersion)
-import Distribution.System (OS(..), os)
+import Distribution.System
+         ( OS(..), buildOS )
 import Distribution.Simple.Compiler (CompilerFlavor(..))
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
@@ -212,30 +213,30 @@ defaultInstallDirs comp userInstall hasLibs = do
   return $ fmap toPathTemplate $ InstallDirs {
       prefix       = if userInstall
                        then userInstallPrefix
-                       else case os of
-        Windows _ -> windowsProgramFilesDir </> "Haskell"
+                       else case buildOS of
+        Windows   -> windowsProgramFilesDir </> "Haskell"
         _other    -> "/usr/local",
       bindir       = "$prefix" </> "bin",
-      libdir       = case os of
-        Windows _ -> "$prefix"
+      libdir       = case buildOS of
+        Windows   -> "$prefix"
         _other    -> "$prefix" </> "lib",
       libsubdir    = case comp of
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
            _other -> "$pkgid" </> "$compiler",
       dynlibdir    = "$libdir",
-      libexecdir   = case os of
-        Windows _ -> "$prefix" </> "$pkgid"
+      libexecdir   = case buildOS of
+        Windows   -> "$prefix" </> "$pkgid"
         _other    -> "$prefix" </> "libexec",
       progdir      = "$libdir" </> "hugs" </> "programs",
       includedir   = "$libdir" </> "$libsubdir" </> "include",
-      datadir      = case os of
-        Windows _  | hasLibs   -> windowsProgramFilesDir </> "Haskell"
+      datadir      = case buildOS of
+        Windows    | hasLibs   -> windowsProgramFilesDir </> "Haskell"
                    | otherwise -> "$prefix"
         _other    -> "$prefix" </> "share",
       datasubdir   = "$pkgid",
-      docdir       = case os of
-        Windows _ -> "$prefix"  </> "doc" </> "$pkgid"
+      docdir       = case buildOS of
+        Windows   -> "$prefix"  </> "doc" </> "$pkgid"
 	_other    -> "$datadir" </> "doc" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
@@ -536,7 +537,7 @@ dropDrive (_:':':cs)   | isWindows         = cs
 dropDrive cs = cs
 
 isWindows :: Bool
-isWindows = case os of
-  Windows _ -> True
-  _         -> False
+isWindows = case buildOS of
+  Windows -> True
+  _       -> False
 #endif
