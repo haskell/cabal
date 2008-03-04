@@ -69,6 +69,7 @@ import Language.Haskell.Extension
 import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.System
+         ( OS(..), buildOS )
 import Distribution.Verbosity
 import Distribution.Package	( PackageIdentifier(..) )
 
@@ -371,11 +372,11 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (buildInfo exe)
         let baseExeFile = progprefix ++ (exeName exe) ++ progsuffix
-        let exeFile = case os of
-                          Windows _ -> binDir </> baseExeFile <.> ".bat"
-                          _         -> binDir </> baseExeFile
-        let script = case os of
-                         Windows _ ->
+        let exeFile = case buildOS of
+                          Windows -> binDir </> baseExeFile <.> ".bat"
+                          _       -> binDir </> baseExeFile
+        let script = case buildOS of
+                         Windows ->
                              let args = hugsOptions ++ [targetName, "%*"]
                              in unlines ["@echo off",
                                          unwords ("runhugs" : args)]

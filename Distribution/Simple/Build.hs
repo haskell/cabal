@@ -245,8 +245,8 @@ buildPathsModule pkg_descr lbi =
           || not (supportsRelocatableProgs (compilerFlavor (compiler lbi)))
 
         supportsRelocatableProgs Hugs = True
-        supportsRelocatableProgs GHC  = case os of
-                           Windows _ -> True
+        supportsRelocatableProgs GHC  = case buildOS of
+                           Windows   -> True
                            _         -> False
         supportsRelocatableProgs _    = False
 
@@ -321,11 +321,11 @@ filename_stuff =
   "      _                            -> path1\n"++
   "\n"++
   "pathSeparator :: Char\n"++
-  (case os of
-       Windows _ -> "pathSeparator = '\\\\'\n"
+  (case buildOS of
+       Windows   -> "pathSeparator = '\\\\'\n"
        _         -> "pathSeparator = '/'\n") ++
   "\n"++
   "isPathSeparator :: Char -> Bool\n"++
-  (case os of
-       Windows _ -> "isPathSeparator c = c == '/' || c == '\\\\'\n"
+  (case buildOS of
+       Windows   -> "isPathSeparator c = c == '/' || c == '\\\\'\n"
        _         -> "isPathSeparator c = c == '/'\n")

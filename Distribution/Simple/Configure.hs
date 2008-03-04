@@ -100,7 +100,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
-    ( os, OS(..), Windows(..), buildArch )
+    ( OS(..), buildOS, buildArch )
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..), showVersion, readVersion
     , showVersionRange, orLaterVersion, withinRange )
@@ -293,7 +293,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
                        maybePackageIndex
-                       Distribution.System.os
+                       Distribution.System.buildOS
                        Distribution.System.buildArch
                        (map toLower (show flavor),version)
                        ppd
@@ -422,11 +422,11 @@ configure (pkg_descr0, pbi) cfg
 
         let dirinfo name dir isPrefixRelative =
               info verbosity $ name ++ " installed in: " ++ dir ++ relNote
-              where relNote = case os of
-                      Windows MingW | not (hasLibs pkg_descr)
-                                   && isNothing isPrefixRelative
-                                   -> "  (fixed location)"
-                      _            -> ""
+              where relNote = case buildOS of
+                      Windows | not (hasLibs pkg_descr)
+                             && isNothing isPrefixRelative
+                             -> "  (fixed location)"
+                      _      -> ""
 
         dirinfo "Binaries"         (bindir dirs)     (bindir relative)
         dirinfo "Libraries"        (libdir dirs)     (libdir relative)

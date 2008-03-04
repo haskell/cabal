@@ -1,10 +1,9 @@
 module Distribution.System (
   -- * Operating System
   OS(..),
-  Windows(..),
   showOS,
   readOS,
-  os,
+  buildOS,
 
   -- * Machine Architecture
   Arch(..),
@@ -20,23 +19,19 @@ import qualified Data.Char as Char (toLower)
 -- * Operating System
 -- ------------------------------------------------------------
 
-data OS = Linux | Windows Windows | OSX
+data OS = Linux | Windows | OSX
         | FreeBSD | OpenBSD | NetBSD
         | Solaris | AIX | HPUX | IRIX
         | OtherOS String
   deriving (Eq, Ord, Show, Read)
 
---TODO: eliminate Windows data type
-data Windows = MingW
-  deriving (Eq, Ord, Show, Read)
-
 knownOSs :: [OS]
-knownOSs = [Linux, Windows MingW, OSX
+knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD
            ,Solaris, AIX, HPUX, IRIX]
 
 osAliases :: OS -> [String]
-osAliases (Windows _) = ["mingw32", "cygwin32"]
+osAliases Windows     = ["mingw32", "cygwin32"]
 osAliases OSX         = ["darwin"]
 osAliases FreeBSD     = ["kfreebsdgnu"]
 osAliases Solaris     = ["solaris2"]
@@ -49,16 +44,15 @@ showOS other          = lowercase (show other)
 readOS :: String -> OS
 readOS s =
   case lookup (lowercase s) osMap of
-    Just os' -> os'
-    Nothing  -> OtherOS (lowercase s)
+    Just os -> os
+    Nothing -> OtherOS (lowercase s)
   where
-    osMap = [ (name, os')
-            | os' <- knownOSs
-            , name <- showOS os' : osAliases os' ]
+    osMap = [ (name, os)
+            | os <- knownOSs
+            , name <- showOS os : osAliases os ]
 
---TODO: rename to buildOS and rename os' above to just os
-os :: OS
-os = readOS System.Info.os
+buildOS :: OS
+buildOS = readOS System.Info.os
 
 -- ------------------------------------------------------------
 -- * Machine Architecture
