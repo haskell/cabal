@@ -116,8 +116,6 @@ import Control.Monad
     ( when, unless, foldM )
 import Control.Exception as Exception
     ( catch )
-import Data.Char
-    ( toLower )
 import Data.List
     ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
@@ -295,7 +293,7 @@ configure (pkg_descr0, pbi) cfg
                        maybePackageIndex
                        Distribution.System.buildOS
                        Distribution.System.buildArch
-                       (map toLower (show flavor),version)
+                       (flavor, version)
                        ppd
                 of Right r -> return r
                    Left missing -> 
