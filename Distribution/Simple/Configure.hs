@@ -122,8 +122,6 @@ import Data.List
     ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
     ( fromMaybe, isNothing )
-import Data.Monoid
-    ( Monoid(mempty) )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing )
 import System.Exit
@@ -289,7 +287,6 @@ configure (pkg_descr0, pbi) cfg
         -- FIXME: currently only GHC has hc-pkg
         maybePackageIndex <- getInstalledPackages (lessVerbose verbosity) comp
                                packageDb programsConfig'
-        let packageIndex = fromMaybe mempty maybePackageIndex
 
         (pkg_descr, flags) <- case pkg_descr0 of
             Left ppd -> 
@@ -314,10 +311,24 @@ configure (pkg_descr0, pbi) cfg
 
         checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
 
+        let packageIndex = fromMaybe bogusPackageIndex maybePackageIndex
+            -- FIXME: For Hugs, nhc98 and other compilers we do not know what
+            -- packages are already installed, so we just make some up, pretend
+            -- that they do exist and just hope for the best. We make them up
+            -- based on what other package the package we're currently building
+            -- happens to depend on. See 'inventBogusPackageId' below.
+            -- Let's hope they really are installed... :-)
+            bogusDependencies = map inventBogusPackageId (buildDepends pkg_descr)
+            bogusPackageIndex = PackageIndex.fromList
+              [ emptyInstalledPackageInfo {
+                  InstalledPackageInfo.package = bogusPackageId
+                  -- note that these bogus packages have no other dependencies
+                }
+              | bogusPackageId <- bogusDependencies ]
         dep_pkgs <- case flavor of
           GHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
           JHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
-          _   -> return $ map setDepByVersion (buildDepends pkg_descr)
+          _   -> return bogusDependencies
 
         packageDependsIndex <-
           case PackageIndex.dependencyClosure packageIndex dep_pkgs of
@@ -434,13 +445,13 @@ configure (pkg_descr0, pbi) cfg
 
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
-setDepByVersion :: Dependency -> PackageIdentifier
+inventBogusPackageId :: Dependency -> PackageIdentifier
 
 -- if they specify the exact version, use that:
-setDepByVersion (Dependency s (ThisVersion v)) = PackageIdentifier s v
+inventBogusPackageId (Dependency s (ThisVersion v)) = PackageIdentifier s v
 
 -- otherwise, just set it to empty
-setDepByVersion (Dependency s _) = PackageIdentifier s (Version [] [])
+inventBogusPackageId (Dependency s _) = PackageIdentifier s (Version [] [])
 
 reportProgram :: Verbosity -> Program -> Maybe ConfiguredProgram -> IO ()
 reportProgram verbosity prog Nothing
