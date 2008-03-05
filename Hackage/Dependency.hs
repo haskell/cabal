@@ -45,25 +45,41 @@ import qualified Distribution.System (os)
 --TODO: never expose the [ResolvedDependency], always gust make a DepGraph
 
 resolveDependencies :: Compiler
-                    -> PackageIndex InstalledPackageInfo
+                    -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex PkgInfo
                     -> [UnresolvedDependency]
                     -> [ResolvedDependency]
-resolveDependencies comp installed available deps =
+resolveDependencies comp (Just installed) available deps =
   [ resolveDependency comp installed available dep flags
   | UnresolvedDependency dep flags <- deps]
+resolveDependencies _ Nothing available deps =
+  resolveDependenciesBogusly available deps
+
+-- | We're using a compiler where we cannot track installed packages so just
+-- pretend everything is installed and hope for the best. Yay!
+resolveDependenciesBogusly :: PackageIndex PkgInfo
+                           -> [UnresolvedDependency]
+                           -> [ResolvedDependency]
+resolveDependenciesBogusly available = map resolveFromAvailable
+  where resolveFromAvailable (UnresolvedDependency dep flags) =
+          case latestAvailableSatisfying available dep of
+            Nothing  -> UnavailableDependency dep
+            Just pkg -> AvailableDependency dep pkg flags []
 
 -- | Resolve dependencies of a local package description. This is used
 -- when the top-level package does not come from hackage.
 resolveDependenciesLocal :: Compiler
-                         -> PackageIndex InstalledPackageInfo
+                         -> Maybe (PackageIndex InstalledPackageInfo)
                          -> PackageIndex PkgInfo
                          -> GenericPackageDescription
                          -> FlagAssignment
                          -> [ResolvedDependency]
-resolveDependenciesLocal comp installed available desc flags =
+resolveDependenciesLocal comp (Just installed) available desc flags =
   [ resolveDependency comp installed available dep flags
   | dep <- getDependencies comp installed available desc flags ]
+
+-- When we do not know what is installed, let us just hope everything is ok:
+resolveDependenciesLocal _ Nothing _ _ _ = []
 
 resolveDependency :: Compiler
                   -> PackageIndex InstalledPackageInfo -- ^ Installed packages.

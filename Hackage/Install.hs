@@ -96,7 +96,7 @@ installLocalPackage :: Verbosity
 installLocalPackage verbosity packageDB repos comp conf configFlags dryRun =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
-      Just installed <- getInstalledPackages verbosity comp packageDB conf
+      installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
       let resolvedDeps = resolveDependenciesLocal comp installed available desc
                            (Cabal.configConfigurationsFlags configFlags)
@@ -124,7 +124,7 @@ installRepoPackages :: Verbosity
                     -> [UnresolvedDependency]
                     -> IO [(PackageIdentifier, BuildResult)]
 installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps =
-    do Just installed <- getInstalledPackages verbosity comp packageDB conf
+    do installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
        let resolvedDeps = resolveDependencies comp installed available deps'
