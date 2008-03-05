@@ -84,7 +84,7 @@ import Distribution.Package  (PackageIdentifier(..), Package(..))
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Version  (Dependency, showVersionRange)
-import Distribution.Compiler (CompilerFlavor)
+import Distribution.Compiler (CompilerFlavor, showCompilerFlavor)
 import Distribution.System   (OS, showOS, Arch, showArch)
 import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
@@ -457,14 +457,15 @@ data ConfFlag = ConfFlag String
 data ConfVar = OS OS
              | Arch Arch
              | Flag ConfFlag
-             | Impl String VersionRange
+             | Impl CompilerFlavor VersionRange
                deriving Eq
 
 instance Show ConfVar where
     show (OS os) = "os(" ++ showOS os ++ ")"
     show (Arch arch) = "arch(" ++ showArch arch ++ ")"
     show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
-    show (Impl c v) = "impl(" ++ c ++ " " ++ showVersionRange v ++ ")"
+    show (Impl c v) = "impl(" ++ showCompilerFlavor c
+                       ++ " " ++ showVersionRange v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
