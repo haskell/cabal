@@ -62,9 +62,10 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
     ( Version(..), Dependency(..), VersionRange(..)
     , withinRange, parseVersionRange )
+import Distribution.Compiler (CompilerFlavor, readCompilerFlavor)
 import Distribution.System
          ( OS, readOS, Arch, readArch )
-import Distribution.Simple.Utils (currentDir, lowercase)
+import Distribution.Simple.Utils (currentDir)
 
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
@@ -117,15 +118,15 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: OS -> Arch -> (String, Version) -> Condition ConfVar
+simplifyWithSysParams :: OS -> Arch -> (CompilerFlavor, Version) -> Condition ConfVar
                       -> (Condition ConfFlag, [String])
-simplifyWithSysParams os arch (impl, implVer) cond = (cond', flags)
+simplifyWithSysParams os arch (comp, compVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
     interp (OS os')    = Right $ os' == os
     interp (Arch arch') = Right $ arch' == arch
-    interp (Impl i vr) = Right $ lowercase impl == lowercase i
-                              && implVer `withinRange` vr
+    interp (Impl comp' vr) = Right $ comp' == comp
+                                  && compVer `withinRange` vr
     interp (Flag  f)   = Left f
     flags = [ fname | ConfFlag fname <- fvs ]
 
@@ -171,7 +172,7 @@ parseCondition = condOr
     sp            = skipSpaces
     implIdent     = do i <- ident
                        vr <- sp >> option AnyVersion parseVersionRange
-                       return $ Impl i vr
+                       return $ Impl (readCompilerFlavor i) vr
 
 ------------------------------------------------------------------------------
 
@@ -231,7 +232,7 @@ resolveWithFlags :: Monoid a =>
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
-  -> (String, Version) -- ^ Compiler name + version
+  -> (CompilerFlavor, Version) -- ^ Compiler flavour + version
   -> [CondTree ConfVar [d] a]    
   -> ([d] -> DepTestRslt [d])  -- ^ Dependency test function.
   -> (Either [d] -- missing dependencies
@@ -346,7 +347,7 @@ finalizePackageDescription
                               -- this is unknown.
   -> OS     -- ^ OS-name
   -> Arch   -- ^ Arch-name
-  -> (String, Version) -- ^ Compiler + Version
+  -> (CompilerFlavor, Version) -- ^ Compiler + Version
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, [(String,Bool)])
