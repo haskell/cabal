@@ -459,9 +459,11 @@ build pkg_descr lbi verbosity = do
 
             runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
-             --TODO: discover this at configure time on unix
-            -- used to be 30k, but Solaris needs 2k (see GHC bug #1785)
-            maxCommandLineSize = 2048
+             --TODO: discover this at configure time or runtime on unix
+             -- The value is 32k on Windows and posix specifies a minimum of 4k
+             -- but all sensible unixes use more than 4k.
+             -- we could use getSysVar ArgumentLimit but that's in the unix lib
+            maxCommandLineSize = 30 * 1024
 
         ifVanillaLib False $ xargs maxCommandLineSize
           runAr arArgs arObjArgs
