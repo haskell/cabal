@@ -39,18 +39,45 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor) where
+module Distribution.Compiler (
+  CompilerFlavor(..),
+  showCompilerFlavor,
+  readCompilerFlavor,
+  buildCompilerFlavor,
+  defaultCompilerFlavor
+  ) where
 
-import System.Info (compilerName)
+import qualified System.Info (compilerName)
+import qualified Data.Char as Char (toLower)
 
-data CompilerFlavor
-  = GHC | NHC | Hugs | HBC | Helium | JHC | OtherCompiler String
+data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC
+                    | OtherCompiler String
   deriving (Show, Read, Eq, Ord)
 
+knownCompilerFlavors :: [CompilerFlavor]
+knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC]
+
+showCompilerFlavor :: CompilerFlavor -> String
+showCompilerFlavor (OtherCompiler name) = name
+showCompilerFlavor NHC                  = "nhc98"
+showCompilerFlavor other                = lowercase (show other)
+
+readCompilerFlavor :: String -> CompilerFlavor
+readCompilerFlavor s =
+  case lookup (lowercase s) compilerMap of
+    Just arch -> arch
+    Nothing   -> OtherCompiler (lowercase s)
+  where
+    compilerMap = [ (showCompilerFlavor compiler, compiler)
+                  | compiler <- knownCompilerFlavors ]
+
+buildCompilerFlavor :: CompilerFlavor
+buildCompilerFlavor = readCompilerFlavor System.Info.compilerName
+
 defaultCompilerFlavor :: Maybe CompilerFlavor
-defaultCompilerFlavor = case compilerName of
-  "ghc"   -> Just GHC
-  "nhc98" -> Just NHC
-  "jhc"   -> Just JHC
-  "hugs"  -> Just Hugs
-  _       -> Nothing
+defaultCompilerFlavor = case buildCompilerFlavor of
+  OtherCompiler _ -> Nothing
+  _               -> Just buildCompilerFlavor
+
+lowercase :: String -> String
+lowercase = map Char.toLower
