@@ -14,7 +14,7 @@ module Hackage.List (
   list
   ) where
 
-import Data.List (sortBy, groupBy, sort, nub)
+import Data.List (sortBy, groupBy, sort, nub, intersperse)
 import Data.Maybe (listToMaybe, fromJust)
 import Data.Monoid (Monoid(mconcat))
 import Control.Monad (MonadPlus(mplus))
@@ -107,13 +107,19 @@ showPackageInfo pkg =
          (text . showVersion . maximum)
      , maybeShow (homepage pkg) "Homepage:" text
      , maybeShow (category pkg) "Category:" text
-     , maybeShow (synopsis pkg) "Synopsis:" (vcat . map text . lines)
+     , maybeShow (synopsis pkg) "Synopsis:" reflowParas
      , text "License: " <+> text (show (license pkg))
      ])
      $+$ text ""
   where
     maybeShow [] _ _ = empty
     maybeShow l  s f = text s <+> (f l)
+    reflowParas = vcat
+                . intersperse (text "")           -- re-insert blank lines
+                . map (fsep . map text . concatMap words)  -- reflow paras
+                . filter (/= [""])
+                . groupBy (\x y -> "" `notElem` [x,y])  -- break on blank lines
+                . lines
 
 -- | We get the 'PackageDisplayInfo' by combining the info for the installed
 -- and available versions of a package.
