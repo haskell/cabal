@@ -122,7 +122,7 @@ fetch :: Verbosity
       -> [UnresolvedDependency]
       -> IO ()
 fetch verbosity packageDB repos comp conf deps
-    = do Just installed <- getInstalledPackages verbosity comp packageDB conf
+    = do installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
          let depTree = resolveDependencies comp installed available deps'
