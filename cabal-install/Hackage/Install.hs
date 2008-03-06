@@ -31,6 +31,7 @@ import Hackage.Tar (extractTarGzFile)
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
                       Repo)
 import Hackage.Utils (showDependencies)
+import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler (Compiler, PackageDB(..))
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
@@ -38,12 +39,13 @@ import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Simple.Utils (defaultPackageDesc)
+import Distribution.Simple.Utils (defaultPackageDesc,inDir,rawSystemExit)
 import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 import Distribution.Verbosity (Verbosity)
+import Distribution.Simple.BuildPaths ( exeExtension )
 
 data BuildResult = DependentFailed PackageIdentifier
                  | UnpackFailed
@@ -64,9 +66,15 @@ install :: Verbosity
         -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps = do
   let dryRun = Cabal.fromFlag (installDryRun installFlags)
+      onlyInstall = Cabal.fromFlag (installOnly installFlags)
+      -- ignore --root-cmd if --user.
+      rootCmd | Cabal.fromFlag (Cabal.configUserInstall configFlags) = Nothing
+              | otherwise = Cabal.flagToMaybe (installRootCmd installFlags)
   buildResults <- if null deps 
-    then installLocalPackage verbosity packageDB repos comp conf configFlags dryRun
-    else installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps
+    then if onlyInstall -- used only internally, we assume there's no other interesting flag.
+           then installLocalPackageOnly verbosity
+           else installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootCmd
+    else installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootCmd deps
   case filter (buildFailed . snd) buildResults of
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
@@ -92,8 +100,9 @@ installLocalPackage :: Verbosity
                     -> ProgramConfiguration
                     -> Cabal.ConfigFlags
                     -> Bool -- ^Dry run
+                    -> Maybe FilePath -- ^ RootCmd
                     -> IO [(PackageIdentifier, BuildResult)]
-installLocalPackage verbosity packageDB repos comp conf configFlags dryRun =
+installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootCmd =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
       installed <- getInstalledPackages verbosity comp packageDB conf
@@ -107,12 +116,22 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun =
         Right pkgs   -> do
             if dryRun
               then printDryRun verbosity pkgs >> return []
-              else installPackages verbosity configFlags pkgs
+              else installPackages verbosity configFlags rootCmd pkgs
       if dryRun
         then return []
         --TODO: don't run if buildResult failed
-        else do buildResult <- installUnpackedPkg verbosity configFlags Nothing
+        else do buildResult <- installUnpackedPkg verbosity configFlags Nothing rootCmd
                 return ((packageId (packageDescription desc), buildResult) : buildResults)
+
+-- | Installs the package without also configuring and building. i.e. copy + register
+installLocalPackageOnly :: Verbosity -> IO [(PackageIdentifier, BuildResult)]
+installLocalPackageOnly verbosity =
+  do cabalFile <- defaultPackageDesc verbosity
+     desc <- readPackageDescription verbosity cabalFile
+     buildResult <- onFailure InstallFailed $ do
+                      setupWrapper ["install"] Nothing
+                      return BuildOk
+     return [(packageId (packageDescription desc), buildResult)]
 
 installRepoPackages :: Verbosity
                     -> PackageDB
@@ -121,9 +140,10 @@ installRepoPackages :: Verbosity
                     -> ProgramConfiguration
                     -> Cabal.ConfigFlags
                     -> Bool -- ^Dry run
+                    -> Maybe FilePath -- ^RootCmd
                     -> [UnresolvedDependency]
                     -> IO [(PackageIdentifier, BuildResult)]
-installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps =
+installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootCmd deps =
     do installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
@@ -139,7 +159,7 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun deps 
            | dryRun -> do
                 printDryRun verbosity pkgs
                 return []
-           | otherwise -> installPackages verbosity configFlags pkgs
+           | otherwise -> installPackages verbosity configFlags rootCmd pkgs
 
 printDryRun :: Verbosity -> DepGraph.DepGraph -> IO ()
 printDryRun verbosity pkgs
@@ -157,9 +177,10 @@ printDryRun verbosity pkgs
 
 installPackages :: Verbosity
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
+                -> Maybe FilePath    -- ^RootCmd
                 -> DepGraph.DepGraph
                 -> IO [(PackageIdentifier, BuildResult)]
-installPackages verbosity configFlags = installPackagesErrs []
+installPackages verbosity configFlags rootCmd = installPackagesErrs []
   where
     installPackagesErrs :: [(PackageIdentifier, BuildResult)]
                         -> DepGraph.DepGraph
@@ -169,7 +190,7 @@ installPackages verbosity configFlags = installPackagesErrs []
       | otherwise = case DepGraph.ready remaining of
       DepGraph.ResolvedPackage pkg flags _depids -> do--TODO build against exactly these deps
         let pkgid = packageId pkg
-        buildResult <- installPkg verbosity configFlags pkg flags
+        buildResult <- installPkg verbosity configFlags rootCmd pkg flags
         case buildResult of
           BuildOk ->
             let remaining' = DepGraph.removeCompleted pkgid remaining
@@ -208,10 +229,11 @@ installPackages verbosity configFlags = installPackagesErrs []
 -} 
 installPkg :: Verbosity
            -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
+           -> Maybe FilePath    -- ^RootCmd
            -> PkgInfo
            -> FlagAssignment
            -> IO BuildResult
-installPkg verbosity configFlags pkg flags
+installPkg verbosity configFlags rootCmd pkg flags
     = do pkgPath <- fetchPackage verbosity pkg
          tmp <- getTemporaryDirectory
          let p = packageId pkg
@@ -227,20 +249,23 @@ installPkg verbosity configFlags pkg flags
                       let configFlags' = configFlags {
                             Cabal.configConfigurationsFlags =
                               Cabal.configConfigurationsFlags configFlags ++ flags }
-                      installUnpackedPkg verbosity configFlags' (Just path))
+                      installUnpackedPkg verbosity configFlags' (Just path) rootCmd)
            `catch` \_ -> return UnpackFailed
 
 installUnpackedPkg :: Verbosity
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
+                   -> Maybe FilePath -- ^ Use this command to gain privileges while running install.
                    -> IO BuildResult
-installUnpackedPkg verbosity configFlags mpath
+installUnpackedPkg verbosity configFlags mpath rootCmd 
     = onFailure ConfigureFailed $ do
         setup ("configure" : configureOptions)
         onFailure BuildFailed $ do
           setup ["build"]
           onFailure InstallFailed $ do
-            setup ["install"]
+            case rootCmd of 
+              (Just cmd) -> reexec cmd
+              Nothing    -> setup ["install"]
             return BuildOk
   where
     configureCommand = Cabal.configureCommand defaultProgramConfiguration
@@ -249,4 +274,16 @@ installUnpackedPkg verbosity configFlags mpath
         = do debug verbosity $
                "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
              setupWrapper cmds mpath
-    onFailure result = Exception.handle (\_ -> return result)
+    reexec cmd = 
+        do bindir <- getBinDir
+           let self = bindir </> "cabal" <.> exeExtension
+           b <- doesFileExist self
+           if b then
+               inDir mpath $ 
+               rawSystemExit verbosity cmd [self,"install","--only"]
+             else 
+               die $ "Unable to find cabal executable at: " ++ self 
+               
+-- helper
+onFailure :: a -> IO a -> IO a
+onFailure result = Exception.handle (\_ -> return result)

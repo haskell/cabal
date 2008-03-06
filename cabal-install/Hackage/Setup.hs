@@ -191,11 +191,15 @@ instance Monoid ListFlags where
 
 data InstallFlags = InstallFlags {
     installDryRun :: Flag Bool
+    ,installOnly :: Flag Bool
+    ,installRootCmd :: Flag String
   }
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDryRun = Flag False
+    ,installOnly = Flag False
+    ,installRootCmd = mempty
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -206,7 +210,12 @@ installCommand = cabalConfigureCommand {
     commandDefaultFlags = (mempty, defaultInstallFlags),
     commandOptions      = \showOrParseArgs ->
          liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
-      ++ liftOptionsSnd [optionDryRun]
+      ++ liftOptionsSnd 
+             (optionDryRun : optionRootCmd :
+              case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
+                ParseArgs -> [optionOnly]  -- reconfiguring/building with dep. analysis
+                _         -> [])           -- It's used by --root-cmd.
+                                          
   }
 
 optionDryRun :: Option InstallFlags
@@ -216,10 +225,26 @@ optionDryRun =
     installDryRun (\v flags -> flags { installDryRun = v })
     trueArg
 
+optionOnly :: Option InstallFlags
+optionOnly =
+  option [] ["only"]
+    "Only installs the package in the current directory."
+    installOnly (\v flags -> flags { installOnly = v })
+    trueArg
+
+optionRootCmd :: Option InstallFlags
+optionRootCmd =
+  option [] ["root-cmd"]
+    "Command used to gain root privileges, when installing with --global."
+    installRootCmd (\v flags -> flags { installRootCmd = v })
+    (reqArg "COMMAND" toFlag flagToList)
+
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
   mappend a b = InstallFlags {
     installDryRun = combine installDryRun
+    ,installOnly = combine installOnly
+    ,installRootCmd = combine installRootCmd
   }
     where combine field = field a `mappend` field b
 
