@@ -61,6 +61,7 @@ module Distribution.Simple.Utils (
 	rawSystemStdout',
         maybeExit,
         xargs,
+        inDir,
 
         -- * copying files
         smartCopySources,
@@ -113,7 +114,7 @@ import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 
 import System.Directory
-    ( getDirectoryContents, getCurrentDirectory, doesDirectoryExist
+    ( getDirectoryContents, getCurrentDirectory, setCurrentDirectory, doesDirectoryExist
     , doesFileExist, removeFile )
 import System.Environment
     ( getProgName )
@@ -131,7 +132,7 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracketOnError, catch )
+    ( bracket, bracketOnError, catch, finally )
 
 import Distribution.Package
     (PackageIdentifier, showPackageId)
@@ -363,6 +364,14 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
           | len' < len = chunk (s:acc) (len-len'-1) ss
           | otherwise  = (reverse acc, s:ss)
           where len' = length s
+
+-- | Executes the action in the specified directory.
+inDir :: Maybe FilePath -> IO () -> IO ()
+inDir Nothing m = m
+inDir (Just d) m = do
+  old <- getCurrentDirectory
+  setCurrentDirectory d
+  m `Exception.finally` setCurrentDirectory old
 
 -- ------------------------------------------------------------
 -- * File Utilities
