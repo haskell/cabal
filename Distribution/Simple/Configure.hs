@@ -125,7 +125,7 @@ import System.Directory
 import System.Exit
     ( ExitCode(..), exitWith )
 import System.FilePath
-    ( (</>) )
+    ( (</>), isAbsolute )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -414,6 +414,9 @@ configure (pkg_descr0, pbi) cfg
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs pkg_descr lbi
+
+        unless (isAbsolute (prefix dirs)) $ die $
+            "expected an absolute directory name for --prefix: " ++ prefix dirs
 
         info verbosity $ "Using compiler: " ++ showCompilerId comp
         info verbosity $ "Using install prefix: " ++ prefix dirs
