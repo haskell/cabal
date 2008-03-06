@@ -436,7 +436,7 @@ configure (pkg_descr0, pbi) cfg
         dirinfo "Documentation"    (docdir dirs)     (docdir relative)
 
         sequence_ [ reportProgram verbosity prog configuredProg
-                  | (prog, configuredProg) <- knownPrograms programsConfig' ]
+                  | (prog, configuredProg) <- knownPrograms programsConfig''' ]
 
 	return lbi
 
