@@ -31,7 +31,6 @@ import Distribution.Simple.Program ( ProgramConfiguration,
 import Distribution.Simple.GHC (ghcVerbosityOptions)
 import Distribution.GetOpt
 import System.Directory
-import Control.Exception ( finally )
 import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
 import Control.Monad		( when, unless )
@@ -112,13 +111,6 @@ buildTypes = [
   (Configure, (defaultMainWithHooksArgs autoconfUserHooks,
     "import Distribution.Simple; main=defaultMainWithHooks autoconfUserHooks")),
   (Make, (Make.defaultMainArgs, "import Distribution.Make; main=defaultMain"))]
-
-inDir :: Maybe FilePath -> IO () -> IO ()
-inDir Nothing m = m
-inDir (Just d) m = do
-  old <- getCurrentDirectory
-  setCurrentDirectory d
-  m `finally` setCurrentDirectory old
 
 data Flags
   = Flags {
