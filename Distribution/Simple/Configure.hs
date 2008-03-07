@@ -68,8 +68,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
-    , HookedBuildInfo, updatePackageDescription
-    , allBuildInfo, emptyBuildInfo, unionBuildInfo )
+    , HookedBuildInfo, updatePackageDescription, allBuildInfo )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
@@ -120,6 +119,8 @@ import Data.List
     ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
     ( fromMaybe, isNothing )
+import Data.Monoid
+    ( Monoid(..) )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing )
 import System.Exit
@@ -550,11 +551,11 @@ configurePkgconfigPackages verbosity pkg_descr conf
     updateLibrary Nothing    = return Nothing
     updateLibrary (Just lib) = do
       bi <- pkgconfigBuildInfo (pkgconfigDepends (libBuildInfo lib))
-      return $ Just lib { libBuildInfo = libBuildInfo lib `unionBuildInfo` bi }
+      return $ Just lib { libBuildInfo = libBuildInfo lib `mappend` bi }
 
     updateExecutable exe = do
       bi <- pkgconfigBuildInfo (pkgconfigDepends (buildInfo exe))
-      return exe { buildInfo = buildInfo exe `unionBuildInfo` bi }
+      return exe { buildInfo = buildInfo exe `mappend` bi }
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
     pkgconfigBuildInfo pkgdeps = do
@@ -578,7 +579,7 @@ ccLdOptionsBuildInfo cflags ldflags =
   let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
       (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
-  in emptyBuildInfo {
+  in mempty {
        PD.includeDirs  = map (drop 2) includeDirs',
        PD.extraLibs    = map (drop 2) extraLibs',
        PD.extraLibDirs = map (drop 2) extraLibDirs',
