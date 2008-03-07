@@ -134,7 +134,7 @@ import qualified Control.Exception as Exception
     ( bracket, bracketOnError, catch )
 
 import Distribution.Package
-    (PackageIdentifier(..), showPackageId)
+    (PackageIdentifier, showPackageId)
 import Distribution.Version
     (Version(..))
 

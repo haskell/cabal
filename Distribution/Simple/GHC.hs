@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier(..), showPackageId, Package(..) )
+         ( PackageIdentifier(PackageIdentifier), showPackageId, Package(..) )
 import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
 				  rawSystemProgramStdoutConf,
                                   rawSystemProgramStdout,
