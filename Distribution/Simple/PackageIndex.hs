@@ -52,7 +52,8 @@ import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing)
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), PackageFixedDeps(..) )
+         ( PackageIdentifier, Package(..), packageName, packageVersion
+         , PackageFixedDeps(..)  )
 import Distribution.Version (Version, Dependency(Dependency), withinRange)
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
 
@@ -85,7 +86,7 @@ invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
   where goodBucket name pkgs =
              lowercase name == name
           && not (null pkgs)
-          && all ((lowercase name==) . lowercase . pkgName . packageId) pkgs
+          && all ((lowercase name==) . lowercase . packageName) pkgs
 --          && all (\pkg -> pkgInfoId pkg
 --                       == (packageId . packageDescription . pkgDesc) pkg) pkgs
           && distinct (map packageId pkgs)
@@ -118,7 +119,7 @@ lookup index@(PackageIndex m) name =
 fromList :: Package pkg => [pkg] -> PackageIndex pkg
 fromList pkgs =
   let index = (PackageIndex . Map.map stripDups . Map.fromListWith (++))
-                [ let key = (lowercase . pkgName . packageId) pkg
+                [ let key = (lowercase . packageName) pkg
                    in (key, [pkg])
                 | pkg <- pkgs ]
    in assert (invariant index) index
@@ -148,8 +149,8 @@ allPackages (PackageIndex m) = concat (Map.elems m)
 allPackagesByName :: Package pkg => PackageIndex pkg -> [[pkg]]
 allPackagesByName (PackageIndex m) = concatMap groupByName (Map.elems m)
   where groupByName :: Package pkg => [pkg] -> [[pkg]]
-        groupByName = groupBy (equating (pkgName . packageId))
-                    . sortBy (comparing (pkgName . packageId))
+        groupByName = groupBy (equating packageName)
+                    . sortBy (comparing packageName)
 
 -- | Does a case-insensitive search by package name.
 --
@@ -165,12 +166,12 @@ allPackagesByName (PackageIndex m) = concatMap groupByName (Map.elems m)
 --
 searchByName :: Package pkg => PackageIndex pkg -> String -> SearchResult [pkg]
 searchByName index name =
-  case groupBy (equating  (pkgName . packageId))
-     . sortBy  (comparing (pkgName . packageId))
+  case groupBy (equating  packageName)
+     . sortBy  (comparing packageName)
      $ lookup index name of
     []     -> None
     [pkgs] -> Unambiguous pkgs
-    pkgss  -> case find ((name==) . pkgName . packageId . head) pkgss of
+    pkgss  -> case find ((name==) . packageName . head) pkgss of
                 Just pkgs -> Unambiguous pkgs
                 Nothing   -> Ambiguous   pkgss
 
@@ -195,7 +196,7 @@ searchByNameSubstring (PackageIndex m) searchterm =
 --
 lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier -> Maybe pkg
 lookupPackageId index pkgid =
-  case [ pkg | pkg <- lookup index (pkgName pkgid)
+  case [ pkg | pkg <- lookup index (packageName pkgid)
              , packageId pkg == pkgid ] of
     []    -> Nothing
     [pkg] -> Just pkg
@@ -209,9 +210,8 @@ lookupPackageId index pkgid =
 lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
 lookupDependency index (Dependency name versionRange) =
   [ pkg | pkg <- lookup index name
-        , let pkgid = packageId pkg
-        , pkgName pkgid == name
-        , pkgVersion pkgid `withinRange` versionRange ]
+        , packageName pkg == name
+        , packageVersion pkg `withinRange` versionRange ]
 
 -- | All packages that have depends that are not in the index.
 --
@@ -276,7 +276,7 @@ dependencyInconsistencies index topPkg =
   , not (null inconsistencies) ]
 
   where inverseIndex = Map.fromListWith (++)
-          [ (pkgName dep, [(packageId pkg, pkgVersion dep)])
+          [ (packageName dep, [(packageId pkg, packageVersion dep)])
           | pkg <- topPkg : allPackages index
           , dep <- depends pkg ]
 

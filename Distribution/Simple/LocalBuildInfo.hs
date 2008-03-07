@@ -59,7 +59,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
-import Distribution.Package (PackageIdentifier(..), Package(..))
+import Distribution.Package (PackageIdentifier, Package(..))
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDB, OptimisationLevel )
 import Distribution.Simple.PackageIndex (PackageIndex)

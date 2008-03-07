@@ -62,7 +62,8 @@ import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
                                   fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription (PackageDescription(..),
                                               BuildInfo(..), Library(..))
-import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..))
+import Distribution.Package
+         ( packageName, showPackageId, Package(..) )
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
@@ -224,7 +225,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
                       }
 	  where inplaceDocdir  = pwd </> distPref </> "doc"
 	        inplaceHtmldir = inplaceDocdir </> "html"
-		                               </> pkgName (packageId pkg_descr)
+		                               </> packageName pkg_descr
         (absinc,relinc) = partition isAbsolute (includeDirs bi)
         installIncludeDir | null (installIncludes bi) = []
                           | otherwise = [includedir installDirs]
