@@ -95,7 +95,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
 
 showPackageInfo :: PackageDisplayInfo -> String
 showPackageInfo pkg =
-  render $
+  renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
      text " *" <+> text (name pkg)
      $+$
      (nest 6 $ vcat [
