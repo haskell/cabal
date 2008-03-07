@@ -63,7 +63,6 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         allBuildInfo,
-        unionBuildInfo,
         hcOptions,
 
         -- ** Supplementary build information
@@ -298,6 +297,10 @@ data BuildInfo = BuildInfo {
                                                 -- simple assoc-list.  
     }
     deriving (Show,Read,Eq)
+
+instance Monoid BuildInfo where
+    mempty = nullBuildInfo
+    mappend = unionBuildInfo
 
 nullBuildInfo :: BuildInfo
 nullBuildInfo = BuildInfo {
