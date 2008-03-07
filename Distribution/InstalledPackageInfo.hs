@@ -61,8 +61,9 @@ import Distribution.ParseUtils (
 	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
 	showFreeText)
 import Distribution.License 	( License(..) )
-import Distribution.Package	( PackageIdentifier(..), showPackageId,
-				  parsePackageId )
+import Distribution.Package
+         ( PackageIdentifier(..), packageName, packageVersion
+         , showPackageId, parsePackageId )
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
 import Distribution.Version	( Version(..), showVersion )
@@ -197,10 +198,10 @@ basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
                            text                   parsePackageNameQ
-                           (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
+                           packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
                            (text . showVersion)   parseOptVersion 
-                           (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+                           packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "license"
                            (text . show)          parseLicenseQ
                            license                (\l pkg -> pkg{license=l})

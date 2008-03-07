@@ -74,7 +74,8 @@ import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 #endif
 
-import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Package
+         ( PackageIdentifier, packageName, packageVersion, showPackageId )
 import Distribution.Version (showVersion)
 import Distribution.System
          ( OS(..), buildOS )
@@ -405,8 +406,8 @@ initialPathTemplateEnv :: PackageIdentifier -> PackageIdentifier
                        -> [(PathTemplateVariable, PathTemplate)]
 initialPathTemplateEnv pkgId compilerId =
   map (\(v,s) -> (v, PathTemplate [Ordinary s]))
-  [(PkgNameVar,  pkgName pkgId)
-  ,(PkgVerVar,   showVersion (pkgVersion pkgId))
+  [(PkgNameVar,  packageName pkgId)
+  ,(PkgVerVar,   showVersion (packageVersion pkgId))
   ,(PkgIdVar,    showPackageId pkgId)
   ,(CompilerVar, showPackageId compilerId)]
 

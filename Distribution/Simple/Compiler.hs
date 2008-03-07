@@ -60,7 +60,7 @@ module Distribution.Simple.Compiler (
 
 import Distribution.Compiler
 import Distribution.Version (Version(..))
-import Distribution.Package (PackageIdentifier(..), showPackageId)
+import Distribution.Package (PackageIdentifier, packageVersion, showPackageId)
 import Language.Haskell.Extension (Extension(..))
 
 import Data.List (nub)
@@ -77,7 +77,7 @@ showCompilerId :: Compiler -> String
 showCompilerId = showPackageId . compilerId
 
 compilerVersion :: Compiler -> Version
-compilerVersion = pkgVersion . compilerId
+compilerVersion = packageVersion . compilerId
 
 -- ------------------------------------------------------------
 -- * Package databases

@@ -71,7 +71,7 @@ import System.FilePath        	( (</>), takeExtension, (<.>),
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
-import Distribution.Package	( PackageIdentifier(..) )
+import Distribution.Package	( PackageIdentifier(PackageIdentifier) )
 
 import Data.Char		( isSpace )
 import Data.Maybe		( mapMaybe, catMaybes )

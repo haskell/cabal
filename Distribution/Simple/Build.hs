@@ -49,7 +49,8 @@ import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )
-import Distribution.Package 	( PackageIdentifier(..), showPackageId, Package(..) )
+import Distribution.Package
+         ( packageVersion, showPackageId, Package(..) )
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
@@ -172,7 +173,7 @@ buildPathsModule pkg_descr lbi =
 	"import Data.Version"++
 	"\n"++
 	"\nversion :: Version"++
-	"\nversion = " ++ show (pkgVersion (packageId pkg_descr))++
+	"\nversion = " ++ show (packageVersion pkg_descr)++
 	"\n"
 
        body

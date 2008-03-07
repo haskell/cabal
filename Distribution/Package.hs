@@ -45,7 +45,7 @@ module Distribution.Package (
 	showPackageId, parsePackageId, parsePackageName,
 
 	-- * Package classes
-	Package(..),
+	Package(..), packageName, packageVersion,
 	PackageFixedDeps(..),
   ) where
 
@@ -66,7 +66,7 @@ data PackageIdentifier
 showPackageId :: PackageIdentifier -> String
 showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
 showPackageId pkgid = 
-  pkgName pkgid ++ '-': showVersion (pkgVersion pkgid)
+  pkgName pkgid ++ '-': showVersion (packageVersion pkgid)
 
 parsePackageName :: ReadP r String
 parsePackageName = do ns <- sepBy1 component (char '-')
@@ -92,6 +92,12 @@ parsePackageId = do
 --
 class Package pkg where
   packageId :: pkg -> PackageIdentifier
+
+packageName    :: Package pkg => pkg -> String
+packageName     = pkgName    . packageId
+
+packageVersion :: Package pkg => pkg -> Version
+packageVersion  = pkgVersion . packageId
 
 instance Package PackageIdentifier where
   packageId = id
