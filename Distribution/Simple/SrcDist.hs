@@ -54,8 +54,7 @@ module Distribution.Simple.SrcDist (
   )  where
 
 import Distribution.PackageDescription
-	(PackageDescription(..), BuildInfo(..), Executable(..), Library(..),
-         withLib, withExe)
+         ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..) )
 import Distribution.PackageDescription.Check
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
@@ -127,10 +126,10 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
   let targetDir = tmpDir </> (nameVersion pkg_descr)
   createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
-  withLib pkg_descr () $ \ l ->
+  withLib $ \ l ->
     prepareDir verbosity targetDir pps (exposedModules l) (libBuildInfo l)
   -- move the executables into place
-  withExe pkg_descr $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
+  withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
     prepareDir verbosity targetDir pps [] exeBi
     srcMainFile <- do
       ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)
@@ -149,7 +148,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
     copyFileTo verbosity targetDir fpath
 
   -- copy the install-include files
-  withLib pkg_descr () $ \ l -> do
+  withLib $ \ l -> do
     let lbi = libBuildInfo l
         relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
     incs <- mapM (findInc relincdirs) (installIncludes lbi)
@@ -200,6 +199,11 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
       let path = (d </> f)
       b <- doesFileExist path
       if b then return (f,path) else findInc ds f
+
+    -- We have to deal with all libs and executables, so we have local
+    -- versions of these functions that ignore the 'buildable' attribute:
+    withLib action = maybe (return ()) action (library pkg_descr)
+    withExe action = mapM_ action (executables pkg_descr)
 
 -- |Create an archive from a tree of source files, and clean up the tree.
 createArchive :: PackageDescription   -- ^info from cabal file
