@@ -170,7 +170,7 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
     else if lhsExists then copyFileTo verbosity targetDir "Setup.lhs"
     else writeUTF8File (targetDir </> "Setup.hs") $ unlines [
                 "import Distribution.Simple",
-                "main = defaultMainWithHooks defaultUserHooks"]
+                "main = defaultMain"]
   -- the description file itself
   descFile <- defaultPackageDesc verbosity
   let targetDescFile = targetDir </> descFile
