@@ -1,0 +1,19 @@
+Name: test
+Version: 0.1
+Build-Type: Simple
+Cabal-Version: >=1.2
+
+-- http://hackage.haskell.org/trac/hackage/ticket/257
+-- This is a test to make sure we're including all sections into the sdist
+-- irrespective of the buildable status.
+-- So the test passes if the tarball includes both Exe1.hs and Exe2.hs
+
+Executable exe1
+    Main-Is: Exe1.hs
+    Build-Depends: base
+
+Executable exe2
+    Main-Is: Exe2.hs
+    Build-Depends: base
+    if !os(linux)
+      Buildable: False
