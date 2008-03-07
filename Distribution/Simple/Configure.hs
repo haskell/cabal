@@ -58,7 +58,8 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerFlavor), compilerVersion, showCompilerId
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
-    ( PackageIdentifier(..), showPackageId, parsePackageId, Package(..) )
+    ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
+    , showPackageId, parsePackageId )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -478,7 +479,7 @@ configDependency verbosity index dep@(Dependency pkgname vrange) =
                       ++ pkgname ++ showVersionRange vrange ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ pkgname ++ "?"
-        pkgs -> do let pkgid = maximumBy (comparing pkgVersion) (map packageId pkgs)
+        pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
                    info verbosity $ "Dependency " ++ pkgname
                                 ++ showVersionRange vrange
                                 ++ ": using " ++ showPackageId pkgid

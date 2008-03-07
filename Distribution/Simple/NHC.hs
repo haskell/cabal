@@ -46,7 +46,7 @@ module Distribution.Simple.NHC
   ) where
 
 import Distribution.Package
-        ( PackageIdentifier(..), Package(..) )
+        ( PackageIdentifier(PackageIdentifier), packageName )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
           withLib, withExe, hcOptions )
@@ -147,7 +147,7 @@ build pkg_descr lbi verbosity = do
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
-      ++ concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ]
+      ++ concat [ ["-package", packageName pkg] | pkg <- packageDeps lbi ]
       ++ inFiles
 {-
     -- build any C sources
@@ -167,7 +167,7 @@ build pkg_descr lbi verbosity = do
     info verbosity "Linking..."
     let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
         --        | cFile <- cSources bi ]
-	libName  = mkLibName targetDir (pkgName (packageId pkg_descr))
+	libName  = mkLibName targetDir (packageName pkg_descr)
         hObjs = [ targetDir </> dotToSep m <.> objExtension
                 | m <- modules ]
 
@@ -205,7 +205,7 @@ build pkg_descr lbi verbosity = do
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
-      ++ concat [ ["-package", pkgName pkg] | pkg <- packageDeps lbi ]
+      ++ concat [ ["-package", packageName pkg] | pkg <- packageDeps lbi ]
       ++ inFiles
       ++ [exeName exe]
 
@@ -252,6 +252,6 @@ installLib verbosity pref buildPref pkgid lib
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
          smartCopySources verbosity [buildPref] pref modules ["hi"]
-         let name = pkgName pkgid
+         let name = packageName pkgid
              libTargetLoc = mkLibName pref name
          copyFileVerbose verbosity (mkLibName buildPref name) libTargetLoc

@@ -62,7 +62,8 @@ module Distribution.Simple.BuildPaths (
 
 import System.FilePath (FilePath, (</>), (<.>))
 
-import Distribution.Package (PackageIdentifier(..), Package(..))
+import Distribution.Package
+         ( PackageIdentifier(PackageIdentifier), packageName )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
 import Distribution.Version (showVersion)
@@ -82,7 +83,7 @@ hscolourPref = haddockPref
 
 haddockPref :: PackageDescription -> FilePath
 haddockPref pkg_descr
-    = foldl1 (</>) [distPref, "doc", "html", pkgName (packageId pkg_descr)]
+    = foldl1 (</>) [distPref, "doc", "html", packageName pkg_descr]
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
@@ -92,12 +93,12 @@ autogenModulesDir lbi = buildDir lbi </> "autogen"
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> String
 autogenModuleName pkg_descr =
-    "Paths_" ++ map fixchar (pkgName (packageId pkg_descr))
+    "Paths_" ++ map fixchar (packageName pkg_descr)
   where fixchar '-' = '_'
         fixchar c   = c
 
 haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = pkgName (packageId pkg_descr) <.> "haddock"
+haddockName pkg_descr = packageName pkg_descr <.> "haddock"
 
 -- ---------------------------------------------------------------------------
 -- Library file names

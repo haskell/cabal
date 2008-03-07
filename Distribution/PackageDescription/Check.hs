@@ -57,7 +57,8 @@ import Distribution.License (License(..))
 import Distribution.Simple.Utils (cabalVersion, intercalate)
 
 import Distribution.Version (Version(..), withinRange, showVersionRange)
-import Distribution.Package (PackageIdentifier(..))
+import Distribution.Package
+         ( packageName, packageVersion )
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
 
@@ -132,10 +133,10 @@ checkSanity :: PackageDescription -> [PackageCheck]
 checkSanity pkg =
   catMaybes [
 
-    check (null . pkgName . package $ pkg) $
+    check (null . packageName $ pkg) $
       PackageBuildImpossible "No 'name' field."
 
-  , check (null . versionBranch . pkgVersion . package $ pkg) $
+  , check (null . versionBranch . packageVersion $ pkg) $
       PackageBuildImpossible "No 'version' field."
 
   , check (null (executables pkg) && isNothing (library pkg)) $

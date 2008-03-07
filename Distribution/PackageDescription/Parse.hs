@@ -69,7 +69,9 @@ import Distribution.Compat.ReadP hiding (get)
 
 import Distribution.ParseUtils
 import Distribution.PackageDescription
-import Distribution.Package (PackageIdentifier(..), parsePackageName)
+import Distribution.Package
+         ( PackageIdentifier(..), packageName, packageVersion
+         , parsePackageName )
 import Distribution.Version (Dependency, showVersion, parseVersion,
                              showVersionRange, parseVersionRange, isAnyVersion)
 import Distribution.Verbosity (Verbosity)
@@ -86,10 +88,10 @@ pkgDescrFieldDescrs :: [FieldDescr PackageDescription]
 pkgDescrFieldDescrs =
     [ simpleField "name"
            text                   parsePackageName
-           (pkgName . package)    (\name pkg -> pkg{package=(package pkg){pkgName=name}})
+           packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
            (text . showVersion)   parseVersion
-           (pkgVersion . package) (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+           packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
            (text . showVersionRange) parseVersionRange
            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
@@ -443,7 +445,7 @@ parsePackageDescription file = do
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
     maybeWarnCabalVersion pkg =
-        when (pkgName (package pkg) /= "Cabal" -- supress warning for Cabal
+        when (packageName pkg /= "Cabal" -- supress warning for Cabal
 	   && isAnyVersion (descCabalVersion pkg)) $
           lift $ warning $
             "A package using section syntax should require\n" 

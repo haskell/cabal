@@ -67,8 +67,9 @@ import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   requireProgram, lookupProgram,
                                   rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version	( VersionRange(AnyVersion) )
-import Distribution.Package  	( PackageIdentifier(..), showPackageId,
-                                  parsePackageId, Package(..) )
+import Distribution.Package
+        ( PackageIdentifier(PackageIdentifier), showPackageId, parsePackageId
+        , Package(..) )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, copyFileVerbose
         , die, info, intercalate )
