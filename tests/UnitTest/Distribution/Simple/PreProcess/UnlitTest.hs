@@ -1,5 +1,5 @@
 
-module UnlitTest where
+module UnitTest.Distribution.Simple.PreProcess.Unlit where
 
 import Distribution.Simple.PreProcess.Unlit
 import Control.Exception
