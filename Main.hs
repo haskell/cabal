@@ -21,7 +21,7 @@ import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
-import Distribution.Simple.Utils (cabalVersion, die)
+import Distribution.Simple.Utils (cabalVersion, die, intercalate)
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  defaultConfigFile, loadConfig, configRepos,
                                  configPackageDB)
@@ -40,6 +40,8 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
+import System.FilePath          (splitExtension, takeExtension)
+import System.Directory         (doesFileExist)
 import Data.List                (intersperse)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (unless)
@@ -183,6 +185,7 @@ uploadAction flags extraArgs = do
   config <- loadConfig verbosity configFile
   -- FIXME: check that the .tar.gz files exist and report friendly error message if not
   let tarfiles = extraArgs
+  checkTarFiles tarfiles
   if fromFlag (uploadCheck flags)
     then Upload.check  verbosity tarfiles
     else upload verbosity 
@@ -191,6 +194,22 @@ uploadAction flags extraArgs = do
                 (flagToMaybe $ configUploadPassword config
                      `mappend` uploadPassword flags)
                 tarfiles
+  where
+    checkTarFiles tarfiles
+      | null tarfiles
+      = die "the 'upload' command expects one or more .tar.gz packages."
+      | not (null otherFiles)
+      = die $ "the 'upload' command expects only .tar.gz packages: "
+           ++ intercalate ", " otherFiles
+      | otherwise = sequence_
+                      [ do exists <- doesFileExist tarfile
+                           unless exists $ die $ "file not found: " ++ tarfile
+                      | tarfile <- tarfiles ]
+
+      where otherFiles = filter (not . isTarGzFile) tarfiles
+            isTarGzFile file = case splitExtension file of
+              (file', ".gz") -> takeExtension file' == ".tar"
+              _              -> False
 
 checkAction :: Flag Verbosity -> [String] -> IO ()
 checkAction verbosityFlag extraArgs = do
