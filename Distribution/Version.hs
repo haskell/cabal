@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
@@ -63,9 +59,6 @@ module Distribution.Version (
   -- * Dependencies
   Dependency(..),
 
-#ifdef DEBUG
-  hunitTests
-#endif
  ) where
 
 import Data.Version	( Version(..), showVersion )
@@ -75,10 +68,6 @@ import Data.Char	( isSpace, isDigit, isAlphaNum )
 import Data.Maybe	( listToMaybe )
 
 import Distribution.Compat.ReadP
-
-#ifdef DEBUG
-import Test.HUnit
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Version utils
@@ -203,76 +192,3 @@ parseVersionRange = do
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
-
-#ifdef DEBUG
--- ------------------------------------------------------------
--- * Testing
--- ------------------------------------------------------------
-
--- |Simple version parser wrapper
-doVersionParse :: String -> Either String Version
-doVersionParse input = case results of
-                         [y] -> Right y
-                         []  -> Left "No parse"
-                         _   -> Left "Ambigous parse"
-  where results = [ x | (x,"") <- readP_to_S parseVersion input ]
-
-branch1 :: [Int]
-branch1 = [1]
-
-branch2 :: [Int]
-branch2 = [1,2]
-
-branch3 :: [Int]
-branch3 = [1,2,3]
-
-release1 :: Version
-release1 = Version{versionBranch=branch1, versionTags=[]}
-
-release2 :: Version
-release2 = Version{versionBranch=branch2, versionTags=[]}
-
-release3 :: Version
-release3 = Version{versionBranch=branch3, versionTags=[]}
-
-hunitTests :: [Test]
-hunitTests
-    = [
-       "released version 1" ~: "failed"
-            ~: (Right $ release1) ~=? doVersionParse "1",
-       "released version 3" ~: "failed"
-            ~: (Right $ release3) ~=? doVersionParse "1.2.3",
-
-       "range comparison LaterVersion 1" ~: "failed"
-            ~: True
-            ~=? release3 `withinRange` (LaterVersion release2),
-       "range comparison LaterVersion 2" ~: "failed"
-            ~: False
-            ~=? release2 `withinRange` (LaterVersion release3),
-       "range comparison EarlierVersion 1" ~: "failed"
-            ~: True
-            ~=? release3 `withinRange` (LaterVersion release2),
-       "range comparison EarlierVersion 2" ~: "failed"
-            ~: False
-            ~=? release2 `withinRange` (LaterVersion release3),
-       "range comparison orLaterVersion 1" ~: "failed"
-            ~: True
-            ~=? release3 `withinRange` (orLaterVersion release3),
-       "range comparison orLaterVersion 2" ~: "failed"
-            ~: True
-            ~=? release3 `withinRange` (orLaterVersion release2),
-       "range comparison orLaterVersion 3" ~: "failed"
-            ~: False
-            ~=? release2 `withinRange` (orLaterVersion release3),
-       "range comparison orEarlierVersion 1" ~: "failed"
-            ~: True
-            ~=? release2 `withinRange` (orEarlierVersion release2),
-       "range comparison orEarlierVersion 2" ~: "failed"
-            ~: True
-            ~=? release2 `withinRange` (orEarlierVersion release3),
-       "range comparison orEarlierVersion 3" ~: "failed"
-            ~: False
-            ~=? release3 `withinRange` (orEarlierVersion release2)
-      ]
-#endif
-
