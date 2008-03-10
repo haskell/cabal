@@ -20,7 +20,7 @@ showPError err = let (ml,msg) = locatedErrorMsg err
 
 
 
-readPToMaybe :: ReadP r a -> String -> Maybe a
+readPToMaybe :: ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str, all isSpace s ]
 
 ignoreWarnings :: ParseResult a -> ParseResult a
