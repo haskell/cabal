@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Configuration
@@ -74,11 +70,6 @@ import Data.Char ( isAlphaNum, toLower )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
 import Data.Monoid
-
-#ifdef DEBUG
-import Data.List ( (\\) )
-import Distribution.ParseUtils
-#endif
 
 ------------------------------------------------------------------------------
 
@@ -450,72 +441,3 @@ biFillInDefaults bi =
 
 bug :: String -> a
 bug msg = error $ msg ++ ". Consider this a bug."
-
-------------------------------------------------------------------------------
--- Testing
-
-#ifdef DEBUG
-
-tstTree :: CondTree ConfVar [Int] String
-tstTree = CondNode "A" [0] 
-              [ (CNot (Var (Flag (ConfFlag "a"))), 
-                 CondNode "B" [1] [],
-                 Nothing)
-              , (CAnd (Var (Flag (ConfFlag "b"))) (Var (Flag (ConfFlag "c"))),
-                CondNode "C" [2] [],
-                Just $ CondNode "D" [3] 
-                         [ (Lit True,
-                           CondNode "E" [4] [],
-                           Just $ CondNode "F" [5] []) ])
-                ]
-
-
-test_simplify = simplifyWithSysParams i386 darwin ("ghc",Version [6,6] []) tstCond 
-  where 
-    tstCond = COr (CAnd (Var (Arch ppc)) (Var (OS darwin)))
-                  (CAnd (Var (Flag (ConfFlag "debug"))) (Var (OS darwin)))
-    [ppc,i386] = ["ppc","i386"]
-    [darwin,windows] = ["darwin","windows"]
-
-
-
-test_parseCondition = map (runP 1 "test" parseCondition) testConditions
-  where
-    testConditions = [ "os(darwin)"
-                     , "arch(i386)"
-                     , "!os(linux)"
-                     , "! arch(ppc)"
-                     , "os(windows) && arch(i386)"
-                     , "os(windows) && arch(i386) && flag(debug)"
-                     , "true && false || false && true"  -- should be same 
-                     , "(true && false) || (false && true)"  -- as this
-                     , "(os(darwin))"
-                     , " ( os ( darwin ) ) "
-                     , "true && !(false || os(plan9))"
-                     , "flag( foo_bar )"
-                     , "flag( foo_O_-_O_bar )"
-                     , "impl ( ghc )"
-                     , "impl( ghc >= 6.6.1 )"
-                     ]
-
-test_ppCondTree = render $ ppCondTree tstTree (text . show)
-  
-
-test_simpCondTree = simplifyCondTree env tstTree
-  where
-    env x = maybe (Left x) Right (lookup x flags)
-    flags = [(mkFlag "a",False), (mkFlag "b",False), (mkFlag "c", True)] 
-    mkFlag = Flag . ConfFlag
-
-test_resolveWithFlags = resolveWithFlags dom "os" "arch" ("ghc",Version [6,6] []) [tstTree] check
-  where
-    dom = [("a", [False,True]), ("b", [True,False]), ("c", [True,False])]
-    check ds = let missing = ds \\ avail in
-               case missing of
-                 [] -> DepOk
-                 _ -> MissingDeps missing
-    avail = [0,1,3,4]
-
-test_ignoreConditions = ignoreConditions tstTree
-
-#endif
