@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 
 -- |
--- Module      :  Distribution.ModuleTest
+-- Module      :  UnitTest
 -- Copyright   :  Isaac Jones 2003-2004
 --
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
@@ -43,8 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Main where
 -- Import everything, since we want to test the compilation of them:
 
-import qualified Distribution.Version as D.V (hunitTests)
-import qualified PackageDescriptionTests as D.PD (hunitTests)
+import qualified UnitTest.Distribution.Version as D.V (hunitTests)
+import qualified UnitTest.Distribution.PackageDescription as D.PD (hunitTests)
 
 import qualified Distribution.Simple.Configure as D.S.C (localBuildInfoFile)
 import qualified Distribution.Simple.Register as D.S.R (installedPkgConfigFile)
