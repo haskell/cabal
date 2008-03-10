@@ -75,6 +75,7 @@ import Language.Haskell.Extension (Extension)
 import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
 import Data.Maybe	(fromMaybe)
+import Data.Tree as Tree (Tree(..), flatten)
 
 #ifdef DEBUG
 import Test.HUnit (Test(..), assertBool, Assertion, runTestTT, Counts, assertEqual)
@@ -444,7 +445,7 @@ mkField d (Node (n,t,_) _) | d >= 1 && t = tabsError n
 mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
   ([], _)       -> syntaxError n $ "unrecognised field or section: " ++ show l
   (name, rest)  -> case trimLeading rest of
-    (':':rest') -> do let followingLines = concatMap flatten ts
+    (':':rest') -> do let followingLines = concatMap Tree.flatten ts
                           tabs = not (null [()| (_,True,_) <- followingLines ])
                       if tabs && d >= 1
                         then tabsError n
@@ -624,18 +625,6 @@ showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
 showFreeText s = vcat [text (if null l then "." else l) | l <- lines s]
-
--- --------------------------------------------
--- ** Tree bits
-
--- Data.Tree was not present in ghc-6.2, and we only need these bits:
-
-data Tree a = Node a (Forest a)
-type Forest a = [Tree a]
-
-flatten :: Tree a -> [a]
-flatten t = squish t []
-  where squish (Node x ts) xs = x:foldr squish xs ts
 
 ------------------------------------------------------------------------------
 -- TESTING
