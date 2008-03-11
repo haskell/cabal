@@ -185,7 +185,7 @@ build pkg_descr lbi verbosity = do
 
   withExe pkg_descr $ \exe -> do
     when (dropExtension (modulePath exe) /= exeName exe) $
-      die $ "hmake does not support exe names that do not match the name of\n"
+      die $ "hmake does not support exe names that do not match the name of "
          ++ "the 'main-is' file. You will have to rename your executable to "
          ++ show (dropExtension (modulePath exe))
     let bi = buildInfo exe

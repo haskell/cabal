@@ -120,8 +120,8 @@ configure verbosity hcPath hcPkgPath conf = do
   let Just ghcPkgVersion = programVersion ghcPkgProg
 
   when (ghcVersion /= ghcPkgVersion) $ die $
-       "Version mismatch between ghc and ghc-pkg:\n"
-    ++ programPath ghcProg ++ " is version " ++ showVersion ghcVersion ++ "\n"
+       "Version mismatch between ghc and ghc-pkg: "
+    ++ programPath ghcProg ++ " is version " ++ showVersion ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ showVersion ghcPkgVersion
 
   -- finding ghc's local ld is a bit tricky as it's not on the path:

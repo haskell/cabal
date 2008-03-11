@@ -335,8 +335,8 @@ configure (pkg_descr0, pbi) cfg
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
-                 ++ " packages\nthey depend on are missing. These broken "
-                 ++ "packages must be rebuilt\nbefore they can be used.\n"
+                 ++ " packages they depend on are missing. These broken "
+                 ++ "packages must be rebuilt before they can be used.\n"
                  ++ unlines [ "package "
                            ++ showPackageId (packageId pkg)
                            ++ " is broken due to missing package "
@@ -351,7 +351,7 @@ configure (pkg_descr0, pbi) cfg
           [] -> return ()
           inconsistencies ->
             warn verbosity $
-                 "This package indirectly depends on multiple versions of the same\n"
+                 "This package indirectly depends on multiple versions of the same "
               ++ "package. This is highly likely to cause a compile failure.\n"
               ++ unlines [ "package " ++ showPackageId pkg ++ " requires "
                         ++ showPackageId (PackageIdentifier name ver)
