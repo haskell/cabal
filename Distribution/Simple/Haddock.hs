@@ -103,7 +103,7 @@ haddock pkg_descr _ _ haddockFlags
   | not (hasLibs pkg_descr) && not (fromFlag $ haddockExecutables haddockFlags) =
       warn (fromFlag $ haddockVerbose haddockFlags) $
            "No documentation was generated as this package does not contain "
-        ++ "a\nlibrary. Perhaps you want to use the haddock command with the "
+        ++ "a library. Perhaps you want to use the haddock command with the "
         ++ "--executables flag."
 
 haddock pkg_descr lbi suffixes flags = do
@@ -289,7 +289,7 @@ haddockPackageFlags lbi htmlTemplate = do
 
   let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
       warning = "The documentation for the following packages are not "
-             ++ "installed.\nNo links will be generated to these packages: "
+             ++ "installed. No links will be generated to these packages: "
              ++ intercalate ", " (map showPackageId missing)
       flags = [ "--read-interface="
              ++ (if null html then "" else html ++ ",") ++ interface
