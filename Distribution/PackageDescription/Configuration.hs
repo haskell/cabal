@@ -48,7 +48,7 @@ module Distribution.PackageDescription.Configuration (
     freeVars,
   ) where
 
-import Distribution.Package (Package)
+import Distribution.Package (Package, Dependency(..))
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
@@ -56,8 +56,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
-    ( Version(..), Dependency(..), VersionRange(..)
-    , withinRange, parseVersionRange )
+    ( Version(..), VersionRange(..), withinRange, parseVersionRange )
 import Distribution.Compiler (CompilerFlavor, readCompilerFlavor)
 import Distribution.System
          ( OS, readOS, Arch, readArch )

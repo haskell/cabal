@@ -56,9 +56,6 @@ module Distribution.Version (
   parseVersionRange,
   isAnyVersion,
 
-  -- * Dependencies
-  Dependency(..),
-
  ) where
 
 import Data.Version	( Version(..), showVersion )
@@ -153,13 +150,6 @@ showVersionRange (UnionVersionRanges r1 r2)
   = showVersionRange r1 ++ "||" ++ showVersionRange r2
 showVersionRange (IntersectVersionRanges r1 r2) 
   = showVersionRange r1 ++ "&&" ++ showVersionRange r2
-
--- ------------------------------------------------------------
--- * Package dependencies
--- ------------------------------------------------------------
-
-data Dependency = Dependency String VersionRange
-                  deriving (Read, Show, Eq)
 
 -- ------------------------------------------------------------
 -- * Parsing

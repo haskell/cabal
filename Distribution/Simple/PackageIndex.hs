@@ -53,8 +53,9 @@ import Data.Maybe (isNothing)
 
 import Distribution.Package
          ( PackageIdentifier, Package(..), packageName, packageVersion
-         , PackageFixedDeps(..)  )
-import Distribution.Version (Version, Dependency(Dependency), withinRange)
+         , Dependency(Dependency), PackageFixedDeps(..) )
+import Distribution.Version
+         ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
 
 -- | The collection of information about packages from one or more 'PackageDB's.

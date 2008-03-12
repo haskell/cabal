@@ -79,10 +79,11 @@ import Data.List   (nub)
 import Data.Monoid (Monoid(mempty, mappend))
 import Text.PrettyPrint.HughesPJ
 
-import Distribution.Package  (PackageIdentifier(PackageIdentifier), Package(..))
+import Distribution.Package
+         ( PackageIdentifier(PackageIdentifier), Dependency, Package(..) )
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
-import Distribution.Version  (Dependency, showVersionRange)
+import Distribution.Version  (showVersionRange)
 import Distribution.Compiler (CompilerFlavor, showCompilerFlavor)
 import Distribution.System   (OS, showOS, Arch, showArch)
 import Distribution.Simple.Utils  (currentDir)

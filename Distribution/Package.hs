@@ -44,6 +44,10 @@ module Distribution.Package (
 	PackageIdentifier(..),
 	showPackageId, parsePackageId, parsePackageName,
 
+        -- * Package dependencies
+        Dependency(..),
+        showDependency, parseDependency,
+
 	-- * Package classes
 	Package(..), packageName, packageVersion,
 	PackageFixedDeps(..),
@@ -51,6 +55,8 @@ module Distribution.Package (
 
 import Distribution.Version
 import Distribution.Compat.ReadP as ReadP
+import qualified Text.PrettyPrint as Pretty
+import Text.PrettyPrint ((<+>))
 import Data.Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
@@ -83,6 +89,24 @@ parsePackageId = do
   n <- parsePackageName
   v <- (ReadP.char '-' >> parseVersion) <++ return (Version [] [])
   return PackageIdentifier{pkgName=n,pkgVersion=v}
+
+-- ------------------------------------------------------------
+-- * Package dependencies
+-- ------------------------------------------------------------
+
+data Dependency = Dependency String VersionRange
+                  deriving (Read, Show, Eq)
+
+showDependency :: Dependency -> Pretty.Doc
+showDependency (Dependency name ver) =
+  Pretty.text name <+> Pretty.text (showVersionRange ver)
+
+parseDependency :: ReadP r Dependency
+parseDependency = do name <- parsePackageName
+                     skipSpaces
+                     ver <- parseVersionRange <++ return AnyVersion
+                     skipSpaces
+                     return $ Dependency name ver
 
 -- | Class of things that can be identified by a 'PackageIdentifier'
 --
