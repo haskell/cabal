@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier), showPackageId, Package(..) )
+         ( showPackageId, Package(..) )
 import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
 				  rawSystemProgramStdoutConf,
                                   rawSystemProgramStdout,
@@ -77,6 +77,8 @@ import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
                                   ghcProgram, ghcPkgProgram,
                                   arProgram, ranlibProgram, ldProgram )
 import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
+         , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
 import Distribution.Version	( Version(..), showVersion,
                                   VersionRange(..), orLaterVersion )
 import Distribution.System
@@ -168,8 +170,7 @@ configure verbosity hcPath hcPkgPath conf = do
       else return oldLanguageExtensions
 
   let comp = Compiler {
-        compilerFlavor         = GHC,
-        compilerId             = PackageIdentifier "ghc" ghcVersion,
+        compilerId             = CompilerId GHC ghcVersion,
         compilerExtensions     = languageExtensions
       }
   return (comp, conf'''')

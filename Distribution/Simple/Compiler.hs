@@ -43,7 +43,7 @@ module Distribution.Simple.Compiler (
         -- * Haskell implementations
 	module Distribution.Compiler,
 	Compiler(..),
-        showCompilerId, compilerVersion,
+        showCompilerId, compilerFlavor, compilerVersion,
 
         -- * Support for package databases
         PackageDB(..),
@@ -58,26 +58,28 @@ module Distribution.Simple.Compiler (
         unsupportedExtensions
   ) where
 
-import Distribution.Compiler
+import Distribution.Compiler hiding (showCompilerId)
+import qualified Distribution.Compiler (showCompilerId)
 import Distribution.Version (Version(..))
-import Distribution.Package (PackageIdentifier, packageVersion, showPackageId)
 import Language.Haskell.Extension (Extension(..))
 
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
 
 data Compiler = Compiler {
-        compilerFlavor          :: CompilerFlavor,
-        compilerId              :: PackageIdentifier,
-	compilerExtensions      :: [(Extension, Flag)]
+        compilerId              :: CompilerId,
+	compilerExtensions      :: [(Extension, String)]
     }
     deriving (Show, Read)
 
 showCompilerId :: Compiler -> String
-showCompilerId = showPackageId . compilerId
+showCompilerId = Distribution.Compiler.showCompilerId . compilerId
+
+compilerFlavor ::  Compiler -> CompilerFlavor
+compilerFlavor = (\(CompilerId f _) -> f) . compilerId
 
 compilerVersion :: Compiler -> Version
-compilerVersion = packageVersion . compilerId
+compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 
 -- ------------------------------------------------------------
 -- * Package databases

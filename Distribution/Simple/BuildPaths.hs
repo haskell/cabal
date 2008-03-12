@@ -63,7 +63,9 @@ module Distribution.Simple.BuildPaths (
 import System.FilePath (FilePath, (</>), (<.>))
 
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier), packageName )
+         ( packageName )
+import Distribution.Compiler
+         ( CompilerId(..), showCompilerFlavor )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
 import Distribution.Version (showVersion)
@@ -118,11 +120,12 @@ mkProfLibName pref lib = mkLibName pref (lib++"_p")
 -- e.g. libHSbase-2.1-ghc6.6.1.so
 mkSharedLibName :: FilePath        -- ^file Prefix
               -> String            -- ^library name.
-              -> PackageIdentifier -- ^package identifier of the compiler
+              -> CompilerId        -- ^identifier of the compiler
               -> String
-mkSharedLibName pref lib (PackageIdentifier compilerName compilerVersion)
+mkSharedLibName pref lib (CompilerId compilerFlavor compilerVersion)
   = pref </> ("libHS" ++ lib ++ "-" ++ comp) <.> dllExtension
-  where comp = compilerName ++ showVersion compilerVersion
+  where comp = showCompilerFlavor compilerFlavor
+            ++ showVersion compilerVersion
 
 -- ------------------------------------------------------------
 -- * Platform file extensions

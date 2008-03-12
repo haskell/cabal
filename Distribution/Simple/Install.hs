@@ -56,7 +56,8 @@ import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   copyFileVerbose, die, info, notice,
                                   copyDirectoryRecursiveVerbose)
-import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..))
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
 
 import qualified Distribution.Simple.GHC  as GHC

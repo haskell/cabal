@@ -79,7 +79,8 @@ import Distribution.Package
 import Distribution.Version (showVersion)
 import Distribution.System
          ( OS(..), buildOS )
-import Distribution.Simple.Compiler (CompilerFlavor(..))
+import Distribution.Compiler
+         ( CompilerId, showCompilerId, CompilerFlavor(..) )
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign
@@ -259,7 +260,7 @@ defaultInstallDirs comp userInstall hasLibs = do
 -- 'PathTemplate's that still have the 'PrefixVar' in them. Doing this makes it
 -- each to check which paths are relative to the $prefix.
 --
-substituteTemplates :: PackageIdentifier -> PackageIdentifier
+substituteTemplates :: PackageIdentifier -> CompilerId
                     -> InstallDirTemplates -> InstallDirTemplates
 substituteTemplates pkgId compilerId dirs = dirs'
   where
@@ -299,7 +300,7 @@ substituteTemplates pkgId compilerId dirs = dirs'
 -- | Convert from abstract install directories to actual absolute ones by
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
-absoluteInstallDirs :: PackageIdentifier -> PackageIdentifier -> CopyDest
+absoluteInstallDirs :: PackageIdentifier -> CompilerId -> CopyDest
                     -> InstallDirTemplates -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
     (case copydest of
@@ -327,7 +328,7 @@ data CopyDest
 -- prevents us from making a relocatable package (also known as a \"prefix
 -- independent\" package).
 --
-prefixRelativeInstallDirs :: PackageIdentifier -> PackageIdentifier
+prefixRelativeInstallDirs :: PackageIdentifier -> CompilerId
                           -> InstallDirTemplates
                           -> InstallDirs (Maybe FilePath)
 prefixRelativeInstallDirs pkgId compilerId dirs =
@@ -402,14 +403,14 @@ substPathTemplate environment (PathTemplate template) =
                   Nothing                        -> [component]
 
 -- | The initial environment has all the static stuff but no paths
-initialPathTemplateEnv :: PackageIdentifier -> PackageIdentifier
+initialPathTemplateEnv :: PackageIdentifier -> CompilerId
                        -> [(PathTemplateVariable, PathTemplate)]
 initialPathTemplateEnv pkgId compilerId =
   map (\(v,s) -> (v, PathTemplate [Ordinary s]))
   [(PkgNameVar,  packageName pkgId)
   ,(PkgVerVar,   showVersion (packageVersion pkgId))
   ,(PkgIdVar,    showPackageId pkgId)
-  ,(CompilerVar, showPackageId compilerId)]
+  ,(CompilerVar, showCompilerId compilerId)]
 
 -- ---------------------------------------------------------------------------
 -- Parsing and showing path templates:

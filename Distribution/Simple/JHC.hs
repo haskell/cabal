@@ -59,8 +59,9 @@ import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
 				( autogenModulesDir, exeExtension )
-import Distribution.Simple.Compiler ( Compiler(..), CompilerFlavor(..), Flag,
-                                  PackageDB, extensionsToFlags )
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..)
+         , PackageDB, Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
@@ -68,8 +69,7 @@ import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package
-        ( PackageIdentifier(PackageIdentifier), showPackageId, parsePackageId
-        , Package(..) )
+        ( showPackageId, parsePackageId, Package(..) )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, copyFileVerbose
         , die, info, intercalate )
@@ -95,8 +95,7 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   let Just version = programVersion jhcProg
       comp = Compiler {
-        compilerFlavor         = JHC,
-        compilerId             = PackageIdentifier "jhc" version,
+        compilerId             = CompilerId JHC version,
         compilerExtensions     = jhcLanguageExtensions
       }
   return (comp, conf')

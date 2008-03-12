@@ -60,7 +60,8 @@ import Distribution.PackageDescription (PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
 import Distribution.Package (showPackageId, Package(..))
-import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerVersion)
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
