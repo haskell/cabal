@@ -47,7 +47,8 @@ module Distribution.Simple.Hugs (
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), hcOptions,
            Executable(..), withExe, Library(..), withLib, libModules )
-import Distribution.Simple.Compiler 	( Compiler(..), CompilerFlavor(..), Flag )
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag )
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgramConf,
                                   ffihugsProgram, hugsProgram )
@@ -71,7 +72,6 @@ import System.FilePath        	( (</>), takeExtension, (<.>),
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
-import Distribution.Package	( PackageIdentifier(PackageIdentifier) )
 
 import Data.Char		( isSpace )
 import Data.Maybe		( mapMaybe, catMaybes )
@@ -95,8 +95,7 @@ configure verbosity hcPath _hcPkgPath conf = do
   (_hugsProg, conf'')   <- requireProgram verbosity hugsProgram AnyVersion conf'
 
   let comp = Compiler {
-        compilerFlavor         = Hugs,
-        compilerId             = PackageIdentifier "hugs" (Version [] []),
+        compilerId             = CompilerId Hugs (Version [] []),
         compilerExtensions     = hugsLanguageExtensions
       }
   return (comp, conf'')

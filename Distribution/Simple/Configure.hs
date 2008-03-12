@@ -55,8 +55,8 @@ module Distribution.Simple.Configure (configure,
     where
 
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(compilerFlavor), compilerVersion, showCompilerId
-    , unsupportedExtensions, PackageDB(..) )
+    ( CompilerFlavor(..), Compiler, compilerFlavor, compilerVersion
+    , showCompilerId, unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
     , showPackageId, parsePackageId

@@ -46,7 +46,7 @@ module Distribution.Simple.NHC
   ) where
 
 import Distribution.Package
-        ( PackageIdentifier(PackageIdentifier), packageName )
+        ( PackageIdentifier, packageName )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
           withLib, withExe, hcOptions )
@@ -55,7 +55,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
         ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
-        ( Compiler(..), CompilerFlavor(..), Flag, extensionsToFlags )
+        ( CompilerFlavor(..), CompilerId(..), Compiler(..)
+        , Flag, extensionsToFlags )
 import Language.Haskell.Extension
         ( Extension(..) )
 import Distribution.Simple.Program 
@@ -102,8 +103,7 @@ configure verbosity hcPath _hcPkgPath conf = do
   -- unless (null (cSources bi)) $ requireProgram ccProgram AnyVersion
 
   let comp = Compiler {
-        compilerFlavor  = NHC,
-        compilerId      = PackageIdentifier "nhc98" nhcVersion,
+        compilerId         = CompilerId NHC nhcVersion,
         compilerExtensions = nhcLanguageExtensions
       }
   return (comp, conf'''')
