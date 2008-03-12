@@ -40,12 +40,19 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Compiler (
+  -- * Compiler flavor
   CompilerFlavor(..),
   showCompilerFlavor,
   readCompilerFlavor,
   buildCompilerFlavor,
-  defaultCompilerFlavor
+  defaultCompilerFlavor,
+
+  -- * Compiler id
+  CompilerId(..),
+  showCompilerId,
   ) where
+
+import Distribution.Version (Version(..), showVersion)
 
 import qualified System.Info (compilerName)
 import qualified Data.Char as Char (toLower)
@@ -78,6 +85,17 @@ defaultCompilerFlavor :: Maybe CompilerFlavor
 defaultCompilerFlavor = case buildCompilerFlavor of
   OtherCompiler _ -> Nothing
   _               -> Just buildCompilerFlavor
+
+-- ------------------------------------------------------------
+-- * Compiler Id
+-- ------------------------------------------------------------
+
+data CompilerId = CompilerId CompilerFlavor Version
+  deriving (Eq, Ord, Read, Show)
+
+showCompilerId :: CompilerId -> String
+showCompilerId (CompilerId f (Version [] _)) = showCompilerFlavor f
+showCompilerId (CompilerId f v) = showCompilerFlavor f ++ '-': showVersion v
 
 lowercase :: String -> String
 lowercase = map Char.toLower
