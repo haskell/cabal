@@ -45,7 +45,8 @@ module Distribution.Simple.Build (
 	build, makefile, initialBuildSteps
   ) where
 
-import Distribution.Simple.Compiler	( Compiler(..), CompilerFlavor(..) )
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), compilerFlavor )
 import Distribution.PackageDescription 
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )

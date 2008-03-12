@@ -53,8 +53,8 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            InstallDirs(..),
 					   absoluteInstallDirs)
 import Distribution.Simple.BuildPaths (distPref, haddockName)
-import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..),
-                                     PackageDB(..))
+import Distribution.Simple.Compiler
+         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
