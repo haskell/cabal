@@ -64,7 +64,7 @@ import Distribution.Simple.Compiler (CompilerFlavor(..), Compiler(..), compilerV
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
-         , die, setupMessage
+         , die, setupMessage, intercalate
          , findFileWithExtension, findFileWithExtension', dotToSep )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              lookupProgram, programPath,
@@ -77,7 +77,6 @@ import Distribution.Verbosity
 
 import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
-import Data.List (nub)
 import System.Directory (getModificationTime)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
@@ -179,9 +178,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
         let exeDir = buildDir lbi </> exeName theExe </> exeName theExe ++ "-tmp"
-        sequence_ [ preprocessModule (nub $ (hsSourceDirs bi)
-                                  ++ (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)))
-                                     exeDir forSDist
+        sequence_ [ preprocessModule (hsSourceDirs bi) exeDir forSDist
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
         preprocessModule (hsSourceDirs bi) exeDir forSDist
@@ -213,7 +210,8 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
       Nothing -> do
                  bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc (dotToSep modu)
                  case bsrcFiles of
-	          Nothing -> die ("can't find source for " ++ modu ++ " in " ++ show searchLoc)
+	          Nothing -> die ("can't find source for " ++ modu ++ " in "
+		                   ++ intercalate ", " searchLoc)
 	          _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
