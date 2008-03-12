@@ -32,9 +32,12 @@ import Text.PrettyPrint.HughesPJ (text)
 import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
-import Distribution.ParseUtils (FieldDescr(..), simpleField, listField, liftField, field)
+import Distribution.ParseUtils
+         ( FieldDescr(..), simpleField, listField, liftField, field
+         , parseFilePathQ, parseTokenQ )
 import Distribution.Simple.Compiler (PackageDB(..))
-import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate, toPathTemplate)
+import Distribution.Simple.InstallDirs
+         ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
@@ -195,16 +198,17 @@ configWriteFieldDescrs =
                 (text . showRepo)                  parseRepo
                 configRemoteRepos (\rs cfg -> cfg { configRemoteRepos = rs })
     , simpleField "cachedir"
-                (text . show . fromFlagOrDefault "") (fmap emptyToNothing $ readS_to_P reads)
+                (text . show . fromFlagOrDefault "")
+                (fmap emptyToNothing parseFilePathQ)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , boolField "user-install" (fromFlag . configUserInstall) (\u cfg -> cfg { configUserInstall = toFlag u })
     , simpleField "hackage-username"
                 (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing $ readS_to_P reads)
+                (fmap emptyToNothing parseTokenQ)
                 configUploadUsername    (\d cfg -> cfg { configUploadUsername = d })
     , simpleField "hackage-password"
                 (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing $ readS_to_P reads)
+                (fmap emptyToNothing parseTokenQ)
                 configUploadPassword    (\d cfg -> cfg { configUploadPassword = d })
     ]
     where emptyToNothing "" = mempty
@@ -239,8 +243,9 @@ installDirField :: String
                 -> (Flag PathTemplate -> InstallDirs (Flag PathTemplate) -> InstallDirs (Flag PathTemplate))
                 -> FieldDescr (InstallDirs (Flag PathTemplate))
 installDirField name get set = 
-    liftField get set $ field name (text . show . fromFlag)
-                                   (fmap toFlag $ readS_to_P reads)
+    liftField get set $
+      field name (text . fromPathTemplate . fromFlag)
+                 (fmap (toFlag . toPathTemplate) parseFilePathQ)
 
 modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
 modifyFieldName f d = d { fieldName = f (fieldName d) }
