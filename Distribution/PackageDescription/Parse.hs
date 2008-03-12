@@ -71,9 +71,11 @@ import Distribution.ParseUtils
 import Distribution.PackageDescription
 import Distribution.Package
          ( PackageIdentifier(..), packageName, packageVersion
-         , parsePackageName )
-import Distribution.Version (Dependency, showVersion, parseVersion,
-                             showVersionRange, parseVersionRange, isAnyVersion)
+         , parsePackageName
+         , Dependency(..), showDependency, parseDependency )
+import Distribution.Version
+         ( showVersion, parseVersion
+         , showVersionRange, parseVersionRange, isAnyVersion )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)

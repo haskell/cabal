@@ -59,7 +59,8 @@ import Distribution.Simple.Compiler
     , unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
-    , showPackageId, parsePackageId )
+    , showPackageId, parsePackageId
+    , Dependency(..), showDependency )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -74,8 +75,6 @@ import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
-import Distribution.ParseUtils
-    ( showDependency )
 import Distribution.Compat.ReadP
     ( readP_to_S )
 import Distribution.Simple.Program
@@ -102,7 +101,7 @@ import Distribution.Simple.Register
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
-    ( Version(..), Dependency(..), VersionRange(..), showVersion, readVersion
+    ( Version(..), VersionRange(..), showVersion, readVersion
     , showVersionRange, orLaterVersion, withinRange )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
