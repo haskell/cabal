@@ -49,11 +49,11 @@ module Distribution.ParseUtils (
 	Field(..), fName, lineNo, 
 	FieldDescr(..), ppField, ppFields, readFields, 
 	parseFilePathQ, parseTokenQ,
-	parseModuleNameQ, parseDependency, parseBuildTool, parsePkgconfigDependency,
+	parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
 	parseTestedWithQ, parseLicenseQ, parseExtensionQ, 
 	parseSepList, parseCommaList, parseOptCommaList,
-	showFilePath, showToken, showTestedWith, showDependency, showFreeText,
+	showFilePath, showToken, showTestedWith, showFreeText,
 	field, simpleField, listField, commaListField, optsField, liftField,
 	parseReadS, parseReadSQ, parseQuoted, parseBool,
 
@@ -63,7 +63,7 @@ module Distribution.ParseUtils (
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.License
 import Distribution.Version
-import Distribution.Package	( parsePackageName )
+import Distribution.Package	( parsePackageName, Dependency(..) )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
@@ -517,13 +517,6 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
           cs <- munch1 (\c -> isAlphaNum c || isSymbol c && c /= '-')
           if all isDigit cs then pfail else return cs
 
-parseDependency :: ReadP r Dependency
-parseDependency = do name <- parsePackageNameQ
-                     skipSpaces
-                     ver <- parseVersionRangeQ <++ return AnyVersion
-                     skipSpaces
-                     return $ Dependency name ver
-
 -- pkg-config allows versions and other letters in package names, 
 -- eg "gtk+-2.0" is a valid pkg-config package _name_.
 -- It then has a package version number like 2.10.13
@@ -606,9 +599,6 @@ showToken str
 
 showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
 showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRange version)
-
-showDependency :: Dependency -> Doc
-showDependency (Dependency name ver) = text name <+> text (showVersionRange ver)
 
 -- | Pretty-print free-format text, ensuring that it is vertically aligned,
 -- and with blank lines replaced by dots for correct re-parsing.
