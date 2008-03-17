@@ -53,6 +53,7 @@ Library
         Distribution.PackageDescription.Parse,
         Distribution.PackageDescription.Check,
         Distribution.ParseUtils,
+        Distribution.ReadE,
         Distribution.Simple,
         Distribution.Simple.Build,
         Distribution.Simple.BuildPaths,

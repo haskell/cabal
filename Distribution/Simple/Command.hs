@@ -46,23 +46,46 @@ module Distribution.Simple.Command (
   CommandUI(..),
   commandShowOptions,
     
-  -- * Constructing commands
+  -- ** Constructing commands
   ShowOrParseArgs(..),
   makeCommand,
-  Option, option, liftOption,
-  ArgDescr, noArg, reqArg, optArg,
-  
-  -- * Associating actions with commands
+
+  -- ** Associating actions with commands
   Command,
   commandAddAction,
   
-  -- * Running commands
+  -- ** Running commands
   CommandParse(..),
   commandsRun,
+
+-- * Option Fields
+  OptionField(..), Name,
+
+-- ** Constructing Option Fields
+  option, multiOption,
+
+-- ** Liftings & Projections
+  liftOption, viewAsFieldDescr,
+
+-- * Option Descriptions
+  OptDescr(..), Description, SFlags, LFlags, OptFlags, ArgPlaceHolder,
+
+-- ** OptDescr 'smart' constructors
+  MkOptDescr,
+  reqArg, reqArg', reqArg'', optArg, optArg', optArg'', noArg,
+  boolOpt, boolOpt', choiceOpt, choiceOptFromEnum
+
   ) where
 
+import Control.Monad
+import Data.Char (isAlpha, toLower)
+import Data.List (sortBy)
+import Data.Maybe
+import Data.Monoid
 import qualified Distribution.GetOpt as GetOpt
-import Data.Monoid (Monoid(..))
+import Distribution.ParseUtils
+import Distribution.ReadE
+import Text.PrettyPrint.HughesPJ    ( punctuate, cat, comma, text, empty)
 
 data CommandUI flags = CommandUI {
     -- | The name of the command as it would be entered on the command line.
@@ -76,71 +99,238 @@ data CommandUI flags = CommandUI {
     commandDescription :: Maybe (String -> String),
     -- | Initial \/ empty flags
     commandDefaultFlags :: flags,
-    -- | All the GetOpt options for this command
-    commandOptions     :: ShowOrParseArgs -> [Option flags]
+    -- | All the Option fields for this command
+    commandOptions     :: ShowOrParseArgs -> [OptionField flags]
   }
 
 data ShowOrParseArgs = ShowArgs | ParseArgs
 
-data Option a = Option [Char] [String] String (ArgDescr a)
+type Name        = String
+type Description = String
 
-option :: [Char] -> [String] -> String -> c -> d
-       -> (c -> d -> ArgDescr a) -> Option a
-option ss ls d get set arg = Option ss ls d (arg get set)
+-- | We usually have a datatype for storing configuration values, where
+--   every field stores a configuration option, and the user sets
+--   the value either via command line flags or a configuration file.
+--   An individual OptionField models such a field, and we usually
+--   build a list of options associated to a configuration datatype.
+data OptionField a = OptionField {
+  optionName        :: Name,
+  optionDescr       :: [OptDescr a] }
 
-data ArgDescr a = NoArg         (                a -> a) (a ->           Bool)
-                | ReqArg String (      String -> a -> a) (a ->       [String])
-                | OptArg String (Maybe String -> a -> a) (a -> [Maybe String])
+-- | An OptionField takes one or more OptDescrs, describing the command line interface for the field.
+data OptDescr a  = ReqArg Description OptFlags ArgPlaceHolder (ReadE (a->a))         (a -> [String])
+                 | OptArg Description OptFlags ArgPlaceHolder (ReadE (a->a)) (a->a)  (a -> [Maybe String])
+                 | ChoiceOpt [(Description, OptFlags, a->a, a -> Bool)]
+                 | BoolOpt Description OptFlags{-True-} OptFlags{-False-} (Bool -> a->a) (a->Bool)
 
-optionToGetOpt :: Option a -> GetOpt.OptDescr (a -> a)
-optionToGetOpt (Option cs ss d arg) = GetOpt.Option cs ss (argDescrToGetOpt arg) d
+-- | Short command line option strings
+type SFlags   = [Char]
+-- | Long command line option strings
+type LFlags   = [String]
+type OptFlags = (SFlags,LFlags)
+type ArgPlaceHolder = String
 
-argDescrToGetOpt :: ArgDescr a -> GetOpt.ArgDescr (a -> a)
-argDescrToGetOpt (NoArg    f _) = GetOpt.NoArg f
-argDescrToGetOpt (ReqArg d f _) = GetOpt.ReqArg f d
-argDescrToGetOpt (OptArg d f _) = GetOpt.OptArg f d
 
-liftOption :: (b -> a) -> (a -> (b -> b)) -> Option a -> Option b
-liftOption get set (Option cs ss d arg) =
-  Option cs ss d (liftArgDescr get set arg)
+-- | Create an option taking a single OptDescr.
+--   No explicit Name is given for the Option, the name is the first LFlag given.
+option :: SFlags -> LFlags -> Description -> get -> set -> MkOptDescr get set a -> OptionField a
+option sf (n:lf) d get set arg = OptionField n [arg sf (n:lf) d get set]
+option _ _ _ _ _ _ = error "Distribution.command.option: An OptionField must have at least one LFlag"
 
-liftArgDescr :: (b -> a) -> (a -> (b -> b)) -> ArgDescr a -> ArgDescr b
-liftArgDescr get set arg = case arg of
-  NoArg    f t -> NoArg    (\  b -> set (f   (get b)) b) (t . get)
-  ReqArg d f t -> ReqArg d (\s b -> set (f s (get b)) b) (t . get)
-  OptArg d f t -> OptArg d (\s b -> set (f s (get b)) b) (t . get)
+-- | Create an option taking several OptDescrs.
+--   You will have to give the flags and description individually to the OptDescr constructor.
+multiOption :: Name -> get -> set
+            -> [get -> set -> OptDescr a]  -- ^MkOptDescr constructors partially applied to flags and description.
+            -> OptionField a
+multiOption n get set args = OptionField n [arg get set | arg <- args]
 
-noArg :: Monoid a => a -> (a -> Bool)
-      ->(b -> a) -> (a -> (b -> b)) -> ArgDescr b
-noArg flag showflag get set = NoArg (\b -> set (get b `mappend` flag) b) (showflag . get)
+type MkOptDescr get set a = SFlags -> LFlags -> Description -> get -> set -> OptDescr a
 
-reqArg :: Monoid a => String -> (String -> a) -> (a -> [String])
-       -> (b -> a) -> (a -> (b -> b)) -> ArgDescr b
-reqArg name mkflag showflag get set =
-  ReqArg name (\v b -> set (get b `mappend` mkflag v) b) (showflag . get)
+-- | Create a string-valued command line interface.
+reqArg :: Monoid b => ArgPlaceHolder -> ReadE b -> (b -> [String])
+                   -> MkOptDescr (a -> b) (b -> a -> a) a
+reqArg ad mkflag showflag sf lf d get set =
+  ReqArg d (sf,lf) ad (fmap (\a b -> set (get b `mappend` a) b) mkflag) (showflag . get)
 
-optArg :: Monoid a => String -> (Maybe String -> a) -> (a -> [Maybe String])
-       -> (b -> a) -> (a -> (b -> b)) -> ArgDescr b
-optArg name mkflag showflag get set =
-  OptArg name (\v b -> set (get b `mappend` mkflag v) b) (showflag . get)
+-- | Create a string-valued command line interface with a default value.
+optArg :: Monoid b => ArgPlaceHolder -> ReadE b -> b -> (b -> [Maybe String])
+                   -> MkOptDescr (a -> b) (b -> a -> a) a
+optArg ad mkflag def showflag sf lf d get set  =
+  OptArg d (sf,lf) ad (fmap (\a b -> set (get b `mappend` a) b) mkflag)
+               (\b ->          set (get b `mappend` def) b)
+               (showflag . get)
+
+-- | (String -> a) variant of "reqArg"
+reqArg' :: Monoid b => ArgPlaceHolder -> (String -> b) -> (b -> [String])
+                    -> MkOptDescr (a -> b) (b -> a -> a) a
+reqArg' ad mkflag showflag =
+    reqArg ad (succeedReadE mkflag) showflag
+
+-- | (String -> a) variant of "optArg"
+optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b) -> (b -> [Maybe String])
+                    -> MkOptDescr (a -> b) (b -> a -> a) a
+optArg' ad mkflag showflag =
+    optArg ad (succeedReadE (mkflag . Just)) def showflag
+      where def = mkflag Nothing
+
+-- | ReadS variant of "reqArg"
+reqArg'' :: Monoid b => ArgPlaceHolder -> ReadS b -> (b -> [String])
+                     -> MkOptDescr (a -> b) (b -> a -> a) a
+reqArg'' ad mkflag showflag sf lf@(n:_) =
+    reqArg ad (readS_to_E' n ad mkflag) showflag sf lf
+reqArg'' _ _ _ _ _ = error "Distribution.command.reqArg'': unreachable"
+
+-- | ReadS variant of "optArg"
+optArg'' :: Monoid b => ArgPlaceHolder -> (Maybe String -> [(b,String)]) -> (b -> [Maybe String])
+                     -> MkOptDescr (a -> b) (b -> a -> a) a
+optArg'' ad mkflag showflag sf lf@(n:_) =
+    optArg ad (readS_to_E' n ad (mkflag . Just)) def showflag sf lf
+      where def = let [(x,"")] = mkflag Nothing in x
+optArg'' _ _ _ _ _ = error "Distribution.command.optArg'': unreachable"
+
+noArg :: (Eq b, Monoid b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
+noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
+
+boolOpt :: (b -> Bool) -> (Bool -> b) -> SFlags -> SFlags -> MkOptDescr (a -> b) (b -> a -> a) a
+boolOpt g s sfT sfF _sf _lf@(n:_) d get set =
+    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g.get)
+boolOpt _ _ _ _ _ _ _ _ _ = error "Distribution.Simple.Setup.boolOpt: unreachable"
+
+boolOpt' :: (b -> Bool) -> (Bool -> b) -> OptFlags -> OptFlags -> MkOptDescr (a -> b) (b -> a -> a) a
+boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g.get)
+
+-- | create a Choice option
+choiceOpt :: Eq b => [(b,OptFlags,Description)] -> MkOptDescr (a -> b) (b -> a -> a) a
+choiceOpt aa_ff _sf _lf _d get set  = ChoiceOpt alts
+    where alts = [(d,flags, set alt, (==alt) . get) | (alt,flags,d) <- aa_ff]
+
+-- | create a Choice option out of an enumeration type.
+--   As long flags, the Show output is used. As short flags, the first character
+--   which does not conflict with a previous one is used.
+choiceOptFromEnum :: (Bounded b, Enum b, Show b, Eq b) => MkOptDescr (a -> b) (b -> a -> a) a
+choiceOptFromEnum _sf _lf d get = choiceOpt [ (x, (sf, [map toLower $ show x]), d')
+                                                | (x, sf) <- sflags'
+                                                , let d' = d ++ show x]
+                                            _sf _lf d get
+    where sflags' = foldl f [] [firstOne..]
+          f prev x = let prevflags = concatMap snd prev in
+                     prev ++ take 1 [(x, [toLower sf]) | sf <- show x, isAlpha sf
+                                                       , toLower sf `notElem` prevflags]
+          firstOne = minBound `asTypeOf` get undefined
+
+viewAsGetOpt :: OptionField a -> [GetOpt.OptDescr (a->a)]
+viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
+  where
+    optDescrToGetOpt :: OptDescr t -> [GetOpt.OptDescr (t -> t)]
+    optDescrToGetOpt (ReqArg d (cs,ss) arg_desc set _) =
+         [GetOpt.Option cs ss (GetOpt.ReqArg set' arg_desc) d]
+             where set' = readEOrFail set
+    optDescrToGetOpt (OptArg d (cs,ss) arg_desc set def _) =
+         [GetOpt.Option cs ss (GetOpt.OptArg set' arg_desc) d]
+             where set' Nothing    = def
+                   set' (Just txt) = readEOrFail set txt
+    optDescrToGetOpt (ChoiceOpt alts) =
+         [GetOpt.Option sf lf (GetOpt.NoArg set) d | (d,(sf,lf),set,_) <- alts]
+    optDescrToGetOpt (BoolOpt d (sfT,lfT) (sfF, lfF) set _get) =
+         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) d
+         , GetOpt.Option sfF lfF (GetOpt.NoArg (set True)) d ]
+
+-- | to view as a FieldDescr, we sort the list of interfaces (Req > Choice > Opt) and consider only the first one.
+viewAsFieldDescr :: OptionField a -> FieldDescr a
+viewAsFieldDescr (OptionField _n []) = error "Distribution.command.viewAsFieldDescr: unexpected"
+viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
+    where optDescr = head $ sortBy cmp dd
+          ReqArg{}    `cmp` ReqArg{}    = EQ
+          ReqArg{}    `cmp` _           = GT
+          BoolOpt{}   `cmp` ReqArg{}    = LT
+          BoolOpt{}   `cmp` BoolOpt{}   = EQ
+          BoolOpt{}   `cmp` _           = GT
+          ChoiceOpt{} `cmp` ReqArg{}    = LT
+          ChoiceOpt{} `cmp` BoolOpt{}   = LT
+          ChoiceOpt{} `cmp` ChoiceOpt{} = EQ
+          ChoiceOpt{} `cmp` _           = GT
+          OptArg{}    `cmp` OptArg{}    = EQ
+          OptArg{}    `cmp` _           = LT
+          get t = case optDescr of
+                    ReqArg _ _ _ _ ppr ->
+                     (cat . punctuate comma . map text . ppr) t
+                    OptArg _ _ _ _ _ ppr ->
+                     case ppr t of
+                        []        -> empty
+                        (Nothing : _) -> text "True"
+                        (Just a  : _) -> text a
+                    ChoiceOpt alts ->
+                     fromMaybe empty $ listToMaybe
+                         [ text lf | (_,(_,lf:_), _,enabled) <- alts, enabled t]
+                    BoolOpt _ _ _ _ enabled -> (text . show . enabled) t
+          set line val a =
+                  case optDescr of
+                    ReqArg _ _ _ readE _    -> ($ a) `liftM` runE line n readE val
+                                             -- We parse for a single value instead of a list,
+                                             -- as one can't really implement parseList :: ReadE a -> ReadE [a]
+                                             -- with the current ReadE definition
+                    ChoiceOpt{}             -> case getChoiceByLongFlag optDescr val of
+                                                 Just f -> return (f a)
+                                                 _      -> syntaxError line val
+                    BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parseBool val
+                    OptArg _ _ _ _readE _ _ -> -- The behaviour in this case is not clear, and it has no use so far,
+                                               -- so we avoid future surprises by not implementing it.
+                                               error "Command.optionToFieldDescr: feature not implemented"
+
+getChoiceByLongFlag :: OptDescr b -> String -> Maybe (b->b)
+getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe [ set | (_,(_sf,lf:_), set, _) <- alts
+                                                          , lf == val]
+
+getChoiceByLongFlag _ _ = error "Distribution.command.getChoiceByLongFlag: expected a choice option"
+
+getCurrentChoice :: OptDescr a -> a -> [String]
+getCurrentChoice (ChoiceOpt alts) a =
+    [ lf | (_,(_sf,lf:_), _, currentChoice) <- alts, currentChoice a]
+
+getCurrentChoice _ _ = error "Command.getChoice: expected a Choice OptDescr"
+
+
+liftOption :: (b -> a) -> (a -> (b -> b)) -> OptionField a -> OptionField b
+liftOption get' set' opt = opt { optionDescr = liftOptDescr get' set' `map` optionDescr opt}
+
+
+liftOptDescr :: (b -> a) -> (a -> (b -> b)) -> OptDescr a -> OptDescr b
+liftOptDescr get' set' (ChoiceOpt opts) =
+    ChoiceOpt [ (d, ff, liftSet get' set' set , (get . get'))
+              | (d, ff, set, get) <- opts]
+
+liftOptDescr get' set' (OptArg d ff ad set def get) =
+    OptArg d ff ad (liftSet get' set' `fmap` set) (liftSet get' set' def) (get . get')
+
+liftOptDescr get' set' (ReqArg d ff ad set get) =
+    ReqArg d ff ad (liftSet get' set' `fmap` set) (get . get')
+
+liftOptDescr get' set' (BoolOpt d ffT ffF set get) =
+    BoolOpt d ffT ffF (liftSet get' set' `fmap` set) (get . get')
+
+liftSet :: (b -> a) -> (a -> (b -> b)) -> (a -> a) -> b -> b
+liftSet get' set' set x = set' (set $ get' x) x
 
 -- | Show flags in the standard long option command line format
 commandShowOptions :: CommandUI flags -> flags -> [String]
-commandShowOptions command v =
-  concatMap (showOption v) (commandOptions command ParseArgs)
-  where 
-    showOption :: a -> Option a -> [String]
-    showOption x (Option _ (name:_) _ (NoArg _ showflag)) | showflag x
-      = ["--"++name]
-    showOption x (Option _ (name:_) _ (ReqArg _ _ showflag))
+commandShowOptions command v = concat
+  [ showOptDescr v (optionName o) od | o <- commandOptions command ParseArgs
+                                     , od <- optionDescr o]
+  where
+    showOptDescr :: a -> String -> OptDescr a -> [String]
+    showOptDescr x _name (BoolOpt _ (_,lfT:_) (_,lfF:_) _ enabled)
+      = ["--" ++ if enabled x then lfT else lfF]
+    showOptDescr x _name c@ChoiceOpt{}
+      = ["--" ++ val | val <- getCurrentChoice c x]
+    showOptDescr x name (ReqArg _ _ _ _ showflag)
       = [ "--"++name++"="++flag
         | flag <- showflag x ]
-    showOption x (Option _ (name:_) _ (OptArg _ _ showflag))
+    showOptDescr x name (OptArg _ _ _ _ _ showflag)
       = [ case flag of
             Just s  -> "--"++name++"="++s
             Nothing -> "--"++name
         | flag <- showflag x ]
-    showOption _ _ = []
+
 
 commandListOptions :: CommandUI flags -> [String]
 commandListOptions command =
@@ -148,7 +338,7 @@ commandListOptions command =
     addCommonFlags ShowArgs $ -- This is a slight hack, we don't want
                               -- "--list-options" showing up in the
                               -- list options output, so use ShowArgs
-      map optionToGetOpt (commandOptions command ParseArgs)
+      concatMap viewAsGetOpt (commandOptions command ParseArgs)
   where
     listOption (GetOpt.Option shortNames longNames _ _) =
          [ "-"  ++ [name] | name <- shortNames ]
@@ -159,7 +349,7 @@ commandHelp :: CommandUI flags -> String
 commandHelp command =
     GetOpt.usageInfo ""
   . addCommonFlags ShowArgs
-  . map optionToGetOpt
+  . concatMap viewAsGetOpt
   $ commandOptions command ShowArgs
 
 -- | Make a Command from standard 'GetOpt' options.
@@ -167,7 +357,7 @@ makeCommand :: String                         -- ^ name
             -> String                         -- ^ short description
             -> Maybe (String -> String)       -- ^ long description
             -> flags                          -- ^ initial\/empty flags
-            -> (ShowOrParseArgs -> [Option flags]) -- ^ options
+            -> (ShowOrParseArgs -> [OptionField flags]) -- ^ options
             -> CommandUI flags
 makeCommand name shortDesc longDesc defaultFlags options =
   CommandUI {
@@ -214,7 +404,7 @@ commandParseArgs :: CommandUI flags -> Bool -> [String]
                  -> CommandParse (flags -> flags, [String])
 commandParseArgs command ordered args =
   let options = addCommonFlags ParseArgs
-              . map optionToGetOpt
+              . concatMap viewAsGetOpt
               $ commandOptions command ParseArgs
       order | ordered   = GetOpt.RequireOrder
             | otherwise = GetOpt.Permute
