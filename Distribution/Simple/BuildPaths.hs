@@ -63,7 +63,7 @@ module Distribution.Simple.BuildPaths (
 import System.FilePath (FilePath, (</>), (<.>))
 
 import Distribution.Package
-         ( packageName )
+         ( PackageIdentifier(pkgName), packageName, showPackageId )
 import Distribution.Compiler
          ( CompilerId(..), showCompilerFlavor )
 import Distribution.PackageDescription (PackageDescription)
@@ -85,7 +85,7 @@ hscolourPref = haddockPref
 
 haddockPref :: PackageDescription -> FilePath
 haddockPref pkg_descr
-    = foldl1 (</>) [distPref, "doc", "html", packageName pkg_descr]
+    = distPref </> "doc" </> "html" </> packageName pkg_descr
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
@@ -105,25 +105,18 @@ haddockName pkg_descr = packageName pkg_descr <.> "haddock"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
-mkLibName :: FilePath -- ^file Prefix
-          -> String   -- ^library name.
-          -> String
-mkLibName pref lib = pref </> ("libHS" ++ lib ++ ".a")
+mkLibName :: PackageIdentifier -> String
+mkLibName lib = "libHS" ++ showPackageId lib <.> "a"
 
-mkProfLibName :: FilePath -- ^file Prefix
-              -> String   -- ^library name.
-              -> String
-mkProfLibName pref lib = mkLibName pref (lib++"_p")
+mkProfLibName :: PackageIdentifier -> String
+mkProfLibName lib = mkLibName lib { pkgName = pkgName lib ++ "_p" }
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
 -- e.g. libHSbase-2.1-ghc6.6.1.so
-mkSharedLibName :: FilePath        -- ^file Prefix
-              -> String            -- ^library name.
-              -> CompilerId        -- ^identifier of the compiler
-              -> String
-mkSharedLibName pref lib (CompilerId compilerFlavor compilerVersion)
-  = pref </> ("libHS" ++ lib ++ "-" ++ comp) <.> dllExtension
+mkSharedLibName :: PackageIdentifier -> CompilerId -> String
+mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
+  = "libHS" ++ showPackageId lib ++ "-" ++ comp <.> dllExtension
   where comp = showCompilerFlavor compilerFlavor
             ++ showVersion compilerVersion
 

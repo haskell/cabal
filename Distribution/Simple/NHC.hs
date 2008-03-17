@@ -46,7 +46,7 @@ module Distribution.Simple.NHC
   ) where
 
 import Distribution.Package
-        ( PackageIdentifier, packageName )
+        ( PackageIdentifier, packageName, Package(..) )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
           withLib, withExe, hcOptions )
@@ -167,19 +167,19 @@ build pkg_descr lbi verbosity = do
     info verbosity "Linking..."
     let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
         --        | cFile <- cSources bi ]
-	libName  = mkLibName targetDir (packageName pkg_descr)
+        libFilePath = targetDir </> mkLibName (packageId pkg_descr)
         hObjs = [ targetDir </> dotToSep m <.> objExtension
                 | m <- modules ]
 
     unless (null hObjs {-&& null cObjs-}) $ do
-      try (removeFile libName) -- first remove library if it exists
+      try (removeFile libFilePath) -- first remove library if it exists
 
       let arVerbosity | verbosity >= deafening = "v"
                       | verbosity >= normal = ""
                       | otherwise = "c"
 
       rawSystemProgramConf verbosity arProgram (withPrograms lbi) $
-           ["q"++ arVerbosity, libName]
+           ["q"++ arVerbosity, libFilePath]
         ++ hObjs
 --        ++ cObjs
 
@@ -252,6 +252,5 @@ installLib verbosity pref buildPref pkgid lib
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
          smartCopySources verbosity [buildPref] pref modules ["hi"]
-         let name = packageName pkgid
-             libTargetLoc = mkLibName pref name
-         copyFileVerbose verbosity (mkLibName buildPref name) libTargetLoc
+         let libName = mkLibName pkgid
+         copyFileVerbose verbosity (buildPref </> libName) (pref </> libName)
