@@ -94,7 +94,7 @@ compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 data PackageDB = GlobalPackageDB
                | UserPackageDB
                | SpecificPackageDB FilePath
-    deriving (Show, Read)
+    deriving (Eq, Show, Read)
 
 -- ------------------------------------------------------------
 -- * Optimisation levels
@@ -107,7 +107,7 @@ data PackageDB = GlobalPackageDB
 data OptimisationLevel = NoOptimisation
                        | NormalOptimisation
                        | MaximumOptimisation
-    deriving (Show, Read, Enum, Bounded)
+    deriving (Eq, Show, Read, Enum, Bounded)
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing  = NormalOptimisation

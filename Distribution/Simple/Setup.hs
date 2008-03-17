@@ -56,7 +56,7 @@ module Distribution.Simple.Setup (
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
                                                                testCommand,
   CopyDest(..),
-  configureArgs,
+  configureArgs, configureOptions,
 
   Flag(..),
   toFlag,
@@ -64,9 +64,12 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-                           ) where
+  boolOpt, boolOpt', trueArg, falseArg, optionVerbose ) where
 
-import Distribution.Simple.Command
+import Distribution.Compiler ()
+import Distribution.ReadE
+import Distribution.Simple.Command hiding (boolOpt, boolOpt')
+import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , OptimisationLevel(..), flagToOptimisationLevel )
@@ -102,8 +105,11 @@ import Distribution.Verbosity
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving Show
+data Flag a = Flag a | NoFlag deriving Eq
 
+instance Show a => Show (Flag a) where
+  show (Flag a) = show a
+  show NoFlag   = "Not set"
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
   fmap _ NoFlag  = NoFlag
@@ -112,6 +118,22 @@ instance Monoid (Flag a) where
   mempty = NoFlag
   _ `mappend` f@(Flag _) = f
   f `mappend` NoFlag    = f
+
+instance Bounded a => Bounded (Flag a) where
+  minBound = toFlag minBound
+  maxBound = toFlag maxBound
+
+instance Enum a => Enum (Flag a) where
+  fromEnum = fromEnum . fromFlag
+  toEnum   = toFlag   . toEnum
+  enumFrom (Flag a) = map toFlag . enumFrom $ a
+  enumFrom _        = []
+  enumFromThen (Flag a) (Flag b) = toFlag `map` enumFromThen a b
+  enumFromThen _        _        = []
+  enumFromTo   (Flag a) (Flag b) = toFlag `map` enumFromTo a b
+  enumFromTo   _        _        = []
+  enumFromThenTo (Flag a) (Flag b) (Flag c) = toFlag `map` enumFromThenTo a b c
+  enumFromThenTo _        _        _        = []
 
 toFlag :: a -> Flag a
 toFlag = Flag
@@ -255,28 +277,24 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
     shortDesc  = "Prepare to build the package."
     longDesc   = Just (\_ -> programFlagsDescription progConf)
     defaultFlags = defaultConfigFlags progConf
-    options showOrParseArgs =
+    options showOrParseArgs = 
+         configureOptions showOrParseArgs
+      ++ programConfigurationPaths   progConf showOrParseArgs
+           configProgramPaths (\v fs -> fs { configProgramPaths = v })
+      ++ programConfigurationOptions progConf showOrParseArgs
+           configProgramArgs (\v fs -> fs { configProgramArgs = v })
+
+
+configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
+configureOptions showOrParseArgs =
       [optionVerbose configVerbose (\v flags -> flags { configVerbose = v })
 
-      ,option "g" ["ghc"]
-         "compile with GHC"
+      ,option [] ["compiler"] "compiler"
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
-         (noArg (Flag GHC) (\f -> case f of Flag GHC -> True; _ -> False))
-
-      ,option "" ["nhc98"]
-         "compile with NHC"
-         configHcFlavor (\v flags -> flags { configHcFlavor = v })
-         (noArg (Flag NHC) (\f -> case f of Flag NHC -> True; _ -> False))
-
-      ,option "" ["jhc"]
-         "compile with JHC"
-         configHcFlavor (\v flags -> flags { configHcFlavor = v })
-         (noArg (Flag JHC) (\f -> case f of Flag JHC -> True; _ -> False))
-
-      ,option "" ["hugs"]
-         "compile with hugs"
-         configHcFlavor (\v flags -> flags { configHcFlavor = v })
-         (noArg (Flag Hugs) (\f -> case f of Flag Hugs -> True; _ -> False))
+         (choiceOpt [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
+                    , (Flag NHC, ([] , ["nhc98"]), "compile with NHC")
+                    , (Flag JHC, ([] , ["jhc"]), "compile with JHC")
+                    , (Flag Hugs,([] , ["hugs"]), "compile with Hugs")])
 
       ,option "w" ["with-compiler"]
          "give the path to a particular compiler"
@@ -354,104 +372,68 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
           configProgSuffix (\v flags -> flags { configProgSuffix = v } )
           (reqPathTemplateArgFlag "SUFFIX")
 
-      ,option "" ["enable-library-vanilla"]
-         "Enable vanilla libraries"
+      ,option "" ["library-vanilla"]
+         "Vanilla libraries"
          configVanillaLib (\v flags -> flags { configVanillaLib = v })
-         trueArg
+         (boolOpt [] [])
 
-      ,option "" ["disable-library-vanilla"]
-         "Disable vanilla libraries"
-          configVanillaLib (\v flags -> flags { configVanillaLib = v })
-          falseArg
-
-      ,option "p" ["enable-library-profiling"]
-         "Enable library profiling"
+      ,option "p" ["library-profiling"]
+         "Library profiling"
          configProfLib (\v flags -> flags { configProfLib = v })
-         trueArg
+         (boolOpt "p" [])
 
-      ,option "" ["disable-library-profiling"]
-         "Disable library profiling"
-         configProfLib (\v flags -> flags { configProfLib = v })
-         falseArg
-
-      ,option "" ["enable-shared"]
-         "Enable shared library"
+      ,option "" ["shared"]
+         "Shared library"
          configSharedLib (\v flags -> flags { configSharedLib = v })
-         trueArg
+         (boolOpt [] [])
 
-      ,option "" ["disable-shared"]
-         "Disable shared library"
-         configSharedLib (\v flags -> flags { configSharedLib = v })
-         falseArg
-
-      ,option "" ["enable-executable-profiling"]
-         "Enable executable profiling"
+      ,option "" ["executable-profiling"]
+         "Executable profiling"
          configProfExe (\v flags -> flags { configProfExe = v })
-         trueArg
-
-      ,option "" ["disable-executable-profiling"]
-         "Disable executable profiling"
-         configProfExe (\v flags -> flags { configProfExe = v })
-         falseArg
-
-      ,option "O" ("enable-optimization": case showOrParseArgs of
-                      -- Allow British English spelling:
-                      ShowArgs -> []; ParseArgs -> ["enable-optimisation"])
-         "Build with optimization (n is 0--2, default is 1)"
+         (boolOpt [] [])
+      ,multiOption "optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
-         (optArg "n" (Flag . flagToOptimisationLevel)
+         [optArg' "n" (Flag . flagToOptimisationLevel)
                      (\f -> case f of
                               Flag NoOptimisation      -> []
                               Flag NormalOptimisation  -> [Nothing]
                               Flag MaximumOptimisation -> [Just "2"]
-                              _                        -> []))
-
-      ,option "" ("disable-optimization": case showOrParseArgs of
+                              _                        -> [])
+                 "O" ("enable-optimization": case showOrParseArgs of
+                      -- Allow British English spelling:
+                      ShowArgs -> []; ParseArgs -> ["enable-optimisation"])
+                 "Build with optimization (n is 0--2, default is 1)",
+          noArg (Flag NoOptimisation) []
+                ("disable-optimization": case showOrParseArgs of
                       -- Allow British English spelling:
                       ShowArgs -> []; ParseArgs -> ["disable-optimisation"])
-         "Build without optimization"
-         configOptimization (\v flags -> flags { configOptimization = v })
-         (noArg (Flag NoOptimisation) (\f -> case f of Flag NoOptimisation -> True; _ -> False))
+                "Build without optimization"
+         ]
 
-      ,option "" ["enable-library-for-ghci"]
+      ,option "" ["library-for-ghci"]
          "compile library for use with GHCi"
          configGHCiLib (\v flags -> flags { configGHCiLib = v })
-         trueArg
+         (boolOpt [] [])
 
-      ,option "" ["disable-library-for-ghci"]
-         "do not compile libraries for GHCi"
-         configGHCiLib (\v flags -> flags { configGHCiLib = v })
-         falseArg
-
-      ,option "" ["enable-split-objs"]
+      ,option "" ["split-objs"]
          "split library into smaller objects to reduce binary sizes (GHC 6.6+)"
          configSplitObjs (\v flags -> flags { configSplitObjs = v })
-         trueArg
-
-      ,option "" ["disable-split-objs"]
-         "split library into smaller objects to reduce binary sizes (GHC 6.6+)"
-         configSplitObjs (\v flags -> flags { configSplitObjs = v })
-         falseArg
+         (boolOpt [] [])
 
       ,option "" ["configure-option"]
          "Extra option for configure"
          configConfigureArgs (\v flags -> flags { configConfigureArgs = v })
-         (reqArg "OPT" (\x -> [x]) id)
+         (reqArg' "OPT" (\x -> [x]) id)
 
-      ,option "" ["user"]
+      ,option "" ["user-install"]
          "do a per-user installation"
          configUserInstall (\v flags -> flags { configUserInstall = v })
-         trueArg
-
-      ,option "" ["global"]
-         "(default) do a system-wide installation"
-         configUserInstall (\v flags -> flags { configUserInstall = v })
-         falseArg
+         (boolOpt' ([],["user"]) ([], ["global"]))
 
       ,option "" ["package-db"]
          "Use a specific package database (to satisfy dependencies and register in)"
          configPackageDB (\v flags -> flags { configPackageDB = v })
-         (reqArg "PATH" (Flag . SpecificPackageDB)
+         (reqArg' "PATH" (Flag . SpecificPackageDB)
                         (\f -> case f of
                                  Flag (SpecificPackageDB db) -> [db]
                                  _ -> []))
@@ -459,23 +441,19 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
-         (reqArg "FLAGS" readFlagList showFlagList)
+         (reqArg' "FLAGS" readFlagList showFlagList)
 
       ,option "" ["extra-include-dirs"]
          "A list of directories to search for header files"
          configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
-         (reqArg "PATH" (\x -> [x]) id)
+         (reqArg' "PATH" (\x -> [x]) id)
 
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
-         (reqArg "PATH" (\x -> [x]) id)
+         (reqArg' "PATH" (\x -> [x]) id)
       ]
-      ++ programConfigurationPaths   progConf showOrParseArgs
-           configProgramPaths (\v fs -> fs { configProgramPaths = v })
-      ++ programConfigurationOptions progConf showOrParseArgs
-           configProgramArgs (\v fs -> fs { configProgramArgs = v })
-
+  where     
     readFlagList :: String -> [(String, Bool)]
     readFlagList = map tagWithValue . words
       where tagWithValue ('-':fname) = (map toLower fname, False)
@@ -484,12 +462,12 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
     showFlagList :: [(String, Bool)] -> [String]
     showFlagList fs = [ if not set then '-':fname else fname | (fname, set) <- fs]
 
-    installDirArg get set = reqArgFlag "DIR"
+    installDirArg _sf _lf d get set = reqArgFlag "DIR" _sf _lf d
       (fmap fromPathTemplate.get.configInstallDirs)
       (\v flags -> flags { configInstallDirs =
                              set (fmap toPathTemplate v) (configInstallDirs flags)})
 
-    reqPathTemplateArgFlag title get set = reqArgFlag title
+    reqPathTemplateArgFlag title _sf _lf d get set = reqArgFlag title _sf _lf d
       (fmap fromPathTemplate.get)
       (\v flags -> set (fmap toPathTemplate v) flags)
 
@@ -582,13 +560,13 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
          copyDest (\v flags -> flags { copyDest = v })
-         (reqArg "DIR" (Flag . CopyTo)
+         (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
 
       ,option "" ["copy-prefix"]
          "[DEPRECATED, directory to copy files to instead of prefix]"
          copyDest (\v flags -> flags { copyDest = v })
-         (reqArg "DIR" (Flag . CopyPrefix)
+         (reqArg' "DIR" (Flag . CopyPrefix)
                        (\f -> case f of Flag (CopyPrefix p) -> [p]; _ -> []))
 
       ]
@@ -636,18 +614,12 @@ installCommand = makeCommand name shortDesc longDesc defaultInstallFlags options
     options _  =
       [optionVerbose installVerbose (\v flags -> flags { installVerbose = v })
 
-      ,option "" ["user"]
-         "upon registration, register this package in the user's local package database"
+      ,option "" ["packageDB"] ""
          installPackageDB (\v flags -> flags { installPackageDB = v })
-         (noArg (Flag UserPackageDB)
-                (\f -> case f of Flag UserPackageDB -> True; _ -> False))
-
-      ,option "" ["global"]
-         "(default; override with configure) upon registration, register this package in the system-wide package database"
-         installPackageDB (\v flags -> flags { installPackageDB = v })
-         (noArg (Flag GlobalPackageDB)
-                (\f -> case f of Flag GlobalPackageDB -> True; _ -> False))
-
+         (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
+                      "upon configuration register this package in the user's local package database")
+                    , (Flag GlobalPackageDB, ([],["global"]),
+                      "(default) upon configuration register this package in the system-wide package database")])
       ]
 
 emptyInstallFlags :: InstallFlags
@@ -743,17 +715,12 @@ registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags optio
     options _  =
       [optionVerbose regVerbose (\v flags -> flags { regVerbose = v })
 
-      ,option "" ["user"]
-         "upon registration, register this package in the user's local package database"
+      ,option "" ["packageDB"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
-         (noArg (Flag UserPackageDB)
-                (\f -> case f of Flag UserPackageDB -> True; _ -> False))
-
-      ,option "" ["global"]
-         "(default) upon registration, register this package in the system-wide package database"
-         regPackageDB (\v flags -> flags { regPackageDB = v })
-         (noArg (Flag GlobalPackageDB)
-                (\f -> case f of Flag GlobalPackageDB -> True; _ -> False))
+         (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
+                                "upon registration, register this package in the user's local package database")
+                    , (Flag GlobalPackageDB, ([],["global"]),
+                                "(default)upon registration, register this package in the system-wide package database")])
 
       ,option "" ["inplace"]
          "register the package in the build location, so it can be used without being installed"
@@ -768,7 +735,7 @@ registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags optio
       ,option "" ["gen-pkg-config"]
          "instead of registering, generate a package registration file"
          regGenPkgConf (\v flags -> flags { regGenPkgConf  = v })
-         (optArg "PKG" Flag flagToList)
+         (optArg' "PKG" Flag flagToList)
       ]
 
 unregisterCommand :: CommandUI RegisterFlags
@@ -780,17 +747,12 @@ unregisterCommand = makeCommand name shortDesc longDesc defaultRegisterFlags opt
     options _  =
       [optionVerbose regVerbose (\v flags -> flags { regVerbose = v })
 
-      ,option "" ["user"]
-         "unregister this package in the user's local package database"
+      ,option "" ["user"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
-         (noArg (Flag UserPackageDB)
-                (\f -> case f of Flag UserPackageDB -> True; _ -> False))
-
-      ,option "" ["global"]
-         "(default) unregister this package in the system-wide package database"
-         regPackageDB (\v flags -> flags { regPackageDB = v })
-         (noArg (Flag GlobalPackageDB)
-                (\f -> case f of Flag GlobalPackageDB -> True; _ -> False))
+         (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
+                              "unregister this package in the user's local package database")
+                    , (Flag GlobalPackageDB, ([],["global"]),
+                              "(default) unregister this package in the  system-wide package database")])
 
       ,option "" ["gen-script"]
          "Instead of performing the unregister command, generate a script to unregister later"
@@ -1123,7 +1085,7 @@ programConfigurationPaths
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
-  -> [Option flags]
+  -> [OptionField flags]
 programConfigurationPaths progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -1134,7 +1096,7 @@ programConfigurationPaths progConf showOrParseArgs get set =
       option "" ["with-" ++ prog]
         ("give the path to " ++ prog)
         get set
-        (reqArg "PATH" (\path -> [(prog, path)])
+        (reqArg' "PATH" (\path -> [(prog, path)])
           (\progPaths -> [ path | (prog', path) <- progPaths, prog==prog' ]))
 
 programConfigurationOptions
@@ -1142,7 +1104,7 @@ programConfigurationOptions
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
-  -> [Option flags]
+  -> [OptionField flags]
 programConfigurationOptions progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -1154,14 +1116,14 @@ programConfigurationOptions progConf showOrParseArgs get set =
       option "" [prog ++ "-options"]
         ("give extra options to " ++ prog)
         get set
-        (reqArg "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
+        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
     programOption prog =
       option "" [prog ++ "-option"]
         ("give an extra option to " ++ prog ++
          " (no need to quote options containing spaces)")
         get set
-        (reqArg "OPT" (\arg -> [(prog, [arg])])
+        (reqArg' "OPT" (\arg -> [(prog, [arg])])
            (\progArgs -> concat [ args | (prog', args) <- progArgs, prog==prog' ]))
                 
 
@@ -1169,25 +1131,31 @@ programConfigurationOptions progConf showOrParseArgs get set =
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-trueArg, falseArg :: (b -> Flag Bool) -> (Flag Bool -> b -> b) -> ArgDescr b
-trueArg  = noArg (Flag True) (\f -> case f of Flag True  -> True; _ -> False)
-falseArg = noArg (Flag False) (\f -> case f of Flag False -> True; _ -> False)
+boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt  = Command.boolOpt  (fromFlagOrDefault False) Flag
 
-reqArgFlag :: String
-           -> (b -> Flag String) -> (Flag String -> b -> b) -> ArgDescr b
-reqArgFlag name = reqArg name Flag flagToList
+boolOpt' :: OptFlags -> OptFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt' = Command.boolOpt' (fromFlagOrDefault False) Flag
+
+trueArg, falseArg :: SFlags -> LFlags -> Description -> (b -> Flag Bool) ->
+                     (Flag Bool -> (b -> b)) -> OptDescr b
+trueArg  = noArg (Flag True)
+falseArg = noArg (Flag False)
+
+reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
+              (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
+reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
 optionVerbose :: (flags -> Flag Verbosity)
               -> (Flag Verbosity -> flags -> flags)
-              -> Option flags
+              -> OptionField flags
 optionVerbose get set =
   option "v" ["verbose"]
     "Control verbosity (n is 0--3, default verbosity level is 1)"
     get set
-    (optArg "n" (Flag . flagToVerbosity)
-                (\f -> case f of
-                         Flag v -> [Just (showForCabal v)]
-                         _      -> []))
+    (optArg "n" (fmap Flag flagToVerbosity)
+                (Flag verbose) -- default Value if no n is given
+                (fmap (Just . showForCabal) . flagToList))
 
 -- ------------------------------------------------------------
 -- * Other Utils

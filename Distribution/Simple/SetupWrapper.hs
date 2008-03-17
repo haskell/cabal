@@ -30,6 +30,7 @@ import Distribution.Simple.Program ( ProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
 import Distribution.Simple.GHC (ghcVerbosityOptions)
 import Distribution.GetOpt
+import Distribution.ReadE
 import System.Directory
 import Distribution.Verbosity
 import System.FilePath ((</>), (<.>))
@@ -141,7 +142,8 @@ opts = [
                "give the path to a particular compiler to use on setup",
            Option "" ["with-setup-hc-pkg"] (ReqArg (setWithHcPkg.Just) "PATH")
                "give the path to the package tool to use on setup",
-	   Option "v" ["verbose"] (OptArg (setVerbosity . flagToVerbosity) "n")
+	   Option "v" ["verbose"] (OptArg (maybe (setVerbosity verbose)
+                                                 (setVerbosity . readEOrFail flagToVerbosity)) "n")
 	       "Control verbosity (n is 0--3, default verbosity level is 1)"
   ]
 

@@ -50,9 +50,10 @@ module Distribution.Verbosity (
  ) where
 
 import Data.List (elemIndex)
+import Distribution.ReadE
 
 data Verbosity = Silent | Normal | Verbose | Deafening
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Enum, Bounded)
 
 -- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity
@@ -90,16 +91,15 @@ intToVerbosity 2 = Just Verbose
 intToVerbosity 3 = Just Deafening
 intToVerbosity _ = Nothing
 
-flagToVerbosity :: Maybe String -> Verbosity
-flagToVerbosity Nothing = verbose -- A "-v" flag is equivalent to "-v2"
-flagToVerbosity (Just s)
- = case reads s of
+flagToVerbosity :: ReadE Verbosity
+flagToVerbosity = ReadE $ \s ->
+   case reads s of
        [(i, "")] ->
            case intToVerbosity i of
-               Just v -> v
-               Nothing -> error ("Bad verbosity: " ++ show i ++
-                                 ". Valid values are 0..3")
-       _ -> error ("Can't parse verbosity " ++ s)
+               Just v -> Right v
+               Nothing -> Left ("Bad verbosity: " ++ show i ++
+                                     ". Valid values are 0..3")
+       _ -> Left ("Can't parse verbosity " ++ s)
 
 showForCabal, showForGHC :: Verbosity -> String
 

@@ -45,7 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- #hide
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
-	runP, ParseResult(..), catchParseError, parseFail,
+	runP, runE, ParseResult(..), catchParseError, parseFail,
 	Field(..), fName, lineNo, 
 	FieldDescr(..), ppField, ppFields, readFields, 
 	parseFilePathQ, parseTokenQ,
@@ -65,6 +65,7 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName, Dependency(..) )
 import Distribution.Compat.ReadP as ReadP hiding (get)
+import Distribution.ReadE
 import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
 
@@ -115,6 +116,12 @@ runP line fieldname p s =
              _   -> ParseFailed (AmbigousParse fieldname line)
     _   -> ParseFailed (AmbigousParse fieldname line)
   where results = readP_to_S p s
+
+runE :: LineNo -> String -> ReadE a -> String -> ParseResult a
+runE line fieldname p s =
+    case runReadE p s of
+      Right a -> ParseOk [] a
+      Left  e -> syntaxError line ("Parse of field '"++fieldname++"' failed ("++e++"): " )
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'")
