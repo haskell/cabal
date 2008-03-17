@@ -718,8 +718,7 @@ installLib    :: Verbosity -- ^verbosity
 installLib verbosity lbi pref dynPref buildPref
               pd@PackageDescription{library=Just _,
                                     package=p}
-    = do let programConf = withPrograms lbi
-         ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"]
+    = do ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"]
          ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"]
          let libTargetLoc = mkLibName pref (showPackageId p)
              profLibTargetLoc = mkProfLibName pref (showPackageId p)
@@ -730,18 +729,9 @@ installLib verbosity lbi pref dynPref buildPref
 	 ifGHCi $ copyFileVerbose verbosity (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
 	 ifShared $ copyFileVerbose verbosity (mkSharedLibName buildPref (showPackageId p) (compilerId (compiler lbi))) sharedLibTargetLoc
 
-         -- use ranlib or ar -s to build an index. this is necessary
-         -- on some systems like MacOS X.  If we can't find those,
-         -- don't worry too much about it.
-         case lookupProgram ranlibProgram programConf of
-           Just rl  -> do ifVanilla $ rawSystemProgram verbosity rl [libTargetLoc]
-                          ifProf $ rawSystemProgram verbosity rl [profLibTargetLoc]
+         ifVanilla $ updateLibArchive verbosity lbi libTargetLoc
+         ifProf    $ updateLibArchive verbosity lbi libTargetLoc
 
-           Nothing -> case lookupProgram arProgram programConf of
-                          Just ar  -> do ifVanilla $ rawSystemProgram verbosity ar ["-s", libTargetLoc]
-                                         ifProf $ rawSystemProgram verbosity ar ["-s", profLibTargetLoc]
-                          Nothing -> warn verbosity "Unable to generate index for library (missing ranlib and ar)"
-         return ()
     where ifVanilla action = when (withVanillaLib lbi) (action >> return ())
           ifProf action = when (withProfLib lbi) (action >> return ())
           ifGHCi action = when (withGHCiLib lbi) (action >> return ())
@@ -749,3 +739,17 @@ installLib verbosity lbi pref dynPref buildPref
 
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
+
+-- | use @ranlib@ or @ar -s@ to build an index. This is necessary on systems
+-- like MacOS X. If we can't find those, don't worry too much about it.
+--
+updateLibArchive :: Verbosity -> LocalBuildInfo -> FilePath -> IO ()
+updateLibArchive verbosity lbi path =
+  case lookupProgram ranlibProgram (withPrograms lbi) of
+    Just ranlib -> rawSystemProgram verbosity ranlib [path]
+    Nothing     -> case lookupProgram arProgram (withPrograms lbi) of
+      Just ar   -> rawSystemProgram verbosity ar ["-s", path]
+      Nothing   -> warn verbosity $
+                        "Unable to generate a symbol index for the static "
+                     ++ "library '" ++ path
+                     ++ "' (missing the 'ranlib' and 'ar' programs)"
