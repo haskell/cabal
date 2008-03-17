@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( showPackageId, Package(..) )
+         ( PackageIdentifier, showPackageId, Package(..) )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , rawSystemProgram, rawSystemProgramConf
@@ -320,6 +320,7 @@ getInstalledPackages' verbosity packagedbs conf = do
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let pref = buildDir lbi
+      pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
@@ -336,9 +337,8 @@ build pkg_descr lbi verbosity = do
 
       createDirectoryIfMissingVerbose verbosity True libTargetDir
       -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
-      let packageIdStr = showPackageId (packageId pkg_descr)
-          ghcArgs =
-                 ["-package-name", packageIdStr ]
+      let ghcArgs =
+                 ["-package-name", showPackageId pkgid ]
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -372,10 +372,11 @@ build pkg_descr lbi verbosity = do
       info verbosity "Linking..."
       let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
 	  cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
-	  libName  = mkLibName pref packageIdStr
-	  profLibName  = mkProfLibName pref packageIdStr
-	  sharedLibName  = mkSharedLibName pref packageIdStr (compilerId (compiler lbi))
-	  ghciLibName = mkGHCiLibName pref packageIdStr
+          vanillaLibFilePath = libTargetDir </> mkLibName pkgid
+          profileLibFilePath = libTargetDir </> mkProfLibName pkgid
+          sharedLibFilePath  = libTargetDir </> mkSharedLibName pkgid
+                                                  (compilerId (compiler lbi))
+          ghciLibFilePath    = libTargetDir </> mkGHCiLibName pkgid
 
       stubObjs <- fmap catMaybes $ sequence
         [ findFileWithExtension [objExtension] [libTargetDir]
@@ -404,28 +405,29 @@ build pkg_descr lbi verbosity = do
 		else return []
 
       unless (null hObjs && null cObjs && null stubObjs) $ do
-        try (removeFile libName) -- first remove library if it exists
-        try (removeFile profLibName) -- first remove library if it exists
-        try (removeFile sharedLibName) -- first remove library if it exists
-        try (removeFile ghciLibName) -- first remove library if it exists
+        -- first remove library files if they exists
+        sequence_
+          [ try (removeFile libFilePath)
+          | libFilePath <- [vanillaLibFilePath, profileLibFilePath
+                           ,sharedLibFilePath,  ghciLibFilePath] ]
 
         let arVerbosity | verbosity >= deafening = "v"
                         | verbosity >= normal = ""
                         | otherwise = "c"
             arArgs = ["q"++ arVerbosity]
-                ++ [libName]
+                ++ [vanillaLibFilePath]
             arObjArgs =
 		   hObjs
                 ++ map (pref </>) cObjs
                 ++ stubObjs
             arProfArgs = ["q"++ arVerbosity]
-                ++ [profLibName]
+                ++ [profileLibFilePath]
             arProfObjArgs =
 		   hProfObjs
                 ++ map (pref </>) cObjs
                 ++ stubProfObjs
 	    ldArgs = ["-r"]
-	        ++ ["-o", ghciLibName <.> "tmp"]
+	        ++ ["-o", ghciLibFilePath <.> "tmp"]
             ldObjArgs =
 		   hObjs
                 ++ map (pref </>) cObjs
@@ -440,9 +442,9 @@ build pkg_descr lbi verbosity = do
 	    ghcSharedLinkArgs =
 		[ "-shared",
 		  "-dynamic",
-		  "-o", sharedLibName ]
+		  "-o", sharedLibFilePath ]
 		++ ghcSharedObjArgs
-		++ ["-package-name", packageIdStr ]
+		++ ["-package-name", showPackageId pkgid ]
 		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
 	        ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
 	        ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
@@ -472,7 +474,7 @@ build pkg_descr lbi verbosity = do
           runAr arProfArgs arProfObjArgs
 
         ifGHCiLib $ xargs maxCommandLineSize
-          (runLd ghciLibName) ldArgs ldObjArgs
+          (runLd ghciLibFilePath) ldArgs ldObjArgs
 
         ifSharedLib $ runGhcProg ghcSharedLinkArgs
 
@@ -619,10 +621,8 @@ ghcCcOptions lbi bi odir
            _              -> ["-optc-O2"])
      ++ ["-odir", odir]
 
-mkGHCiLibName :: FilePath -- ^file Prefix
-              -> String   -- ^library name.
-              -> String
-mkGHCiLibName pref lib = pref </> ("HS" ++ lib) <.> ".o"
+mkGHCiLibName :: PackageIdentifier -> String
+mkGHCiLibName lib = "HS" ++ showPackageId lib <.> "o"
 
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
@@ -662,7 +662,7 @@ makefile pkg_descr lbi flags = do
         ("MAKEFILE", file),
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
-        ("GHCI_LIB", mkGHCiLibName builddir packageIdStr),
+        ("GHCI_LIB", builddir </> mkGHCiLibName (packageId pkg_descr)),
         ("soext", dllExtension),
         ("LIB_LD_OPTS", unwords (["-package-name", packageIdStr]
 				 ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
@@ -715,27 +715,37 @@ installLib    :: Verbosity -- ^verbosity
               -> FilePath  -- ^install location for dynamic librarys
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
-installLib verbosity lbi pref dynPref buildPref
-              pd@PackageDescription{library=Just _,
-                                    package=p}
-    = do ifVanilla $ smartCopySources verbosity [buildPref] pref (libModules pd) ["hi"]
-         ifProf $ smartCopySources verbosity [buildPref] pref (libModules pd) ["p_hi"]
-         let libTargetLoc = mkLibName pref (showPackageId p)
-             profLibTargetLoc = mkProfLibName pref (showPackageId p)
-	     libGHCiTargetLoc = mkGHCiLibName pref (showPackageId p)
-	     sharedLibTargetLoc = mkSharedLibName dynPref (showPackageId p) (compilerId (compiler lbi))
-         ifVanilla $ copyFileVerbose verbosity (mkLibName buildPref (showPackageId p)) libTargetLoc
-         ifProf $ copyFileVerbose verbosity (mkProfLibName buildPref (showPackageId p)) profLibTargetLoc
-	 ifGHCi $ copyFileVerbose verbosity (mkGHCiLibName buildPref (showPackageId p)) libGHCiTargetLoc
-	 ifShared $ copyFileVerbose verbosity (mkSharedLibName buildPref (showPackageId p) (compilerId (compiler lbi))) sharedLibTargetLoc
+installLib verbosity lbi targetDir dynlibTargetDir builtDir
+              pkg@PackageDescription{library=Just _} = do
+  -- copy .hi files over:
+  let copyModuleFiles ext =
+        smartCopySources verbosity [builtDir] targetDir (libModules pkg) [ext]
+  ifVanilla $ copyModuleFiles "hi"
+  ifProf    $ copyModuleFiles "p_hi"
 
-         ifVanilla $ updateLibArchive verbosity lbi libTargetLoc
-         ifProf    $ updateLibArchive verbosity lbi libTargetLoc
+  -- copy the built library files over:
+  ifVanilla $ copy builtDir targetDir vanillaLibName
+  ifProf    $ copy builtDir targetDir profileLibName
+  ifGHCi    $ copy builtDir targetDir ghciLibName
+  ifShared  $ copy builtDir dynlibTargetDir sharedLibName
 
-    where ifVanilla action = when (withVanillaLib lbi) (action >> return ())
-          ifProf action = when (withProfLib lbi) (action >> return ())
-          ifGHCi action = when (withGHCiLib lbi) (action >> return ())
-          ifShared action = when (withSharedLib lbi) (action >> return ())
+  -- run ranlib if necessary:
+  ifVanilla $ updateLibArchive verbosity lbi (targetDir </> vanillaLibName)
+  ifProf    $ updateLibArchive verbosity lbi (targetDir </> profileLibName)
+
+  where
+    vanillaLibName = mkLibName pkgid
+    profileLibName = mkProfLibName pkgid
+    ghciLibName    = mkGHCiLibName pkgid
+    sharedLibName  = mkSharedLibName pkgid (compilerId (compiler lbi))
+
+    pkgid          = packageId pkg
+    copy src dst n = copyFileVerbose verbosity (src </> n) (dst </> n)
+
+    ifVanilla = when (withVanillaLib lbi)
+    ifProf    = when (withProfLib    lbi)
+    ifGHCi    = when (withGHCiLib    lbi)
+    ifShared  = when (withSharedLib  lbi)
 
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
