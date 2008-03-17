@@ -68,6 +68,7 @@ module Distribution.Simple.Program (
     , ffihugsProgram
     , ranlibProgram
     , arProgram
+    , stripProgram
     , happyProgram
     , alexProgram
     , hsc2hsProgram
@@ -468,6 +469,7 @@ builtinPrograms =
     -- platform toolchain
     , ranlibProgram
     , arProgram
+    , stripProgram
     , ldProgram
     , tarProgram
     -- configuration tools
@@ -553,6 +555,9 @@ ranlibProgram = simpleProgram "ranlib"
 
 arProgram :: Program
 arProgram = simpleProgram "ar"
+
+stripProgram :: Program
+stripProgram = simpleProgram "strip"
 
 hsc2hsProgram :: Program
 hsc2hsProgram = (simpleProgram "hsc2hs") {
