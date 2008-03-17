@@ -219,6 +219,8 @@ data ConfigFlags = ConfigFlags {
     configProgSuffix    :: Flag PathTemplate, -- ^Installed executable suffix.
     configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation paths
     configScratchDir    :: Flag FilePath,
+    configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
 
     configVerbose   :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
@@ -459,6 +461,15 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
          (reqArg "FLAGS" readFlagList showFlagList)
 
+      ,option "" ["extra-include-dirs"]
+         "A list of directories to search for header files"
+         configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
+         (reqArg "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-lib-dirs"]
+         "A list of directories to search for external libraries"
+         configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
+         (reqArg "PATH" (\x -> [x]) id)
       ]
       ++ programConfigurationPaths   progConf showOrParseArgs
            configProgramPaths (\v fs -> fs { configProgramPaths = v })
@@ -508,6 +519,8 @@ instance Monoid ConfigFlags where
     configPackageDB     = mempty,
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
+    configExtraLibDirs  = mempty,
+    configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty
   }
   mappend a b =  ConfigFlags {
@@ -532,6 +545,8 @@ instance Monoid ConfigFlags where
     configPackageDB     = combine configPackageDB,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
+    configExtraLibDirs  = combine configExtraLibDirs,
+    configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags
   }
     where combine field = field a `mappend` field b
