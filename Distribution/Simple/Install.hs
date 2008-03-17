@@ -136,7 +136,7 @@ install pkg_descr lbi flags = do
      GHC  -> do withLib pkg_descr () $ \_ ->
                   GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
-		  GHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
+		  GHC.installExe verbosity lbi binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do

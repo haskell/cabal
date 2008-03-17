@@ -67,15 +67,13 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
          ( showPackageId, Package(..) )
-import Distribution.Simple.Program ( rawSystemProgram, rawSystemProgramConf,
-				  rawSystemProgramStdoutConf,
-                                  rawSystemProgramStdout,
-				  Program(..), ConfiguredProgram(..),
-                                  ProgramConfiguration,
-                                  userMaybeSpecifyPath, requireProgram,
-                                  programPath, lookupProgram, updateProgram,
-                                  ghcProgram, ghcPkgProgram,
-                                  arProgram, ranlibProgram, ldProgram )
+import Distribution.Simple.Program
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         , rawSystemProgram, rawSystemProgramConf
+         , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
+         , userMaybeSpecifyPath, programPath, lookupProgram, updateProgram
+         , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
+         , stripProgram )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
@@ -689,17 +687,26 @@ makefile pkg_descr lbi flags = do
 
 -- |Install executables for GHC.
 installExe :: Verbosity -- ^verbosity
+           -> LocalBuildInfo
            -> FilePath  -- ^install location
            -> FilePath  -- ^Build location
            -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
            -> IO ()
-installExe verbosity pref buildPref (progprefix, progsuffix) pkg_descr
+installExe verbosity lbi pref buildPref (progprefix, progsuffix) pkg_descr
     = do createDirectoryIfMissingVerbose verbosity True pref
          withExe pkg_descr $ \Executable { exeName = e } -> do
              let exeFileName = e <.> exeExtension
                  fixedExeFileName = (progprefix ++ e ++ progsuffix) <.> exeExtension
              copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> fixedExeFileName)
+             stripExe verbosity lbi exeFileName (pref </> fixedExeFileName)
+
+stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+stripExe verbosity lbi name path =
+  case lookupProgram stripProgram (withPrograms lbi) of
+    Just strip -> rawSystemProgram verbosity strip [path]
+    Nothing    -> warn verbosity $ "Unable to strip executable '" ++ name
+                                ++ "' (missing the 'strip' program)"
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity -- ^verbosity
