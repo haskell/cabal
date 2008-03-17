@@ -70,7 +70,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
-    , HookedBuildInfo, updatePackageDescription, allBuildInfo )
+    , HookedBuildInfo, updatePackageDescription, allBuildInfo)
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
@@ -88,7 +88,7 @@ import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
-import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..), absoluteInstallDirs
     , prefixRelativeInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -287,7 +287,7 @@ configure (pkg_descr0, pbi) cfg
         maybePackageIndex <- getInstalledPackages (lessVerbose verbosity) comp
                                packageDb programsConfig'
 
-        (pkg_descr, flags) <- case pkg_descr0 of
+        (pkg_descr0', flags) <- case pkg_descr0 of
             Left ppd -> 
                 case finalizePackageDescription 
                        (configConfigurationsFlags cfg)
@@ -303,6 +303,9 @@ configure (pkg_descr0, pbi) cfg
                              map showDependency missing)
             Right pd -> return (pd,[])
               
+        -- add extra include/lib dirs as specified in cfg
+        -- we do it here so that those get checked too
+        let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
         when (not (null flags)) $
           info verbosity $ "Flags chosen: " ++ (intercalate ", " .
@@ -441,7 +444,14 @@ configure (pkg_descr0, pbi) cfg
 
 	return lbi
 
-
+    where
+      addExtraIncludeLibDirs pkg_descr =
+          let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
+                               , includeDirs = configExtraIncludeDirs cfg}
+              modifyLib l        = l{ libBuildInfo = libBuildInfo l `mappend` extraBi }
+              modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
+          in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
+                      , executables = modifyExecutable  `map` executables pkg_descr}
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
 
