@@ -79,8 +79,9 @@ module Distribution.Simple.Utils (
         findFileWithExtension,
         findFileWithExtension',
 
-        -- * files
+        -- * temp files and dirs
         withTempFile,
+        withTempDirectory,
 
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
@@ -125,14 +126,14 @@ import System.Exit
 import System.FilePath
     ( takeDirectory, splitFileName, takeExtension, (</>), (<.>), pathSeparator )
 import System.Directory
-    ( copyFile, createDirectoryIfMissing, renameFile )
+    ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
 import System.IO
     ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode, hGetContents
     , stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracketOnError, catch, finally )
+    ( bracket, bracket_, bracketOnError, catch, finally )
 
 import Distribution.Package
     (PackageIdentifier, showPackageId)
@@ -518,6 +519,16 @@ withTempFile tmpDir template action =
     (openTempFile tmpDir template)
     (\(name, handle) -> hClose handle >> removeFile name)
     (uncurry action)
+
+-- | Use a temporary directory.
+--
+-- Use this exact given dir which must not already exist.
+--
+withTempDirectory :: Verbosity -> FilePath -> IO a -> IO a
+withTempDirectory verbosity tmpDir =
+  Exception.bracket_
+    (createDirectoryIfMissingVerbose verbosity True tmpDir)
+    (removeDirectoryRecursive tmpDir)
 
 -- | Writes a file atomically.
 --
