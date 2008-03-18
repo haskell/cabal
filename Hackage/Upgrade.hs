@@ -25,8 +25,8 @@ import Hackage.Setup (InstallFlags(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Package (PackageIdentifier(..), Package(..))
-import Distribution.Version (VersionRange(..), Dependency(..))
+import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
+import Distribution.Version (VersionRange(..))
 import Distribution.Verbosity (Verbosity)
 import qualified Distribution.Simple.Setup as Cabal
 

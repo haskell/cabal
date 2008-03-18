@@ -12,9 +12,9 @@
 -----------------------------------------------------------------------------
 module Hackage.Types where
 
-import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..))
+import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..), Dependency)
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.Version (Dependency, showVersion)
+import Distribution.Version (showVersion)
 import Distribution.Simple.Utils (intercalate)
 
 import System.FilePath ((</>), (<.>))

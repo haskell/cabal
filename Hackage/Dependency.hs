@@ -25,15 +25,14 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
-import Distribution.Version (Dependency(..))
-import Distribution.Package (PackageIdentifier(..), Package(..))
+import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
 import Distribution.PackageDescription 
     (PackageDescription(buildDepends)
     , GenericPackageDescription )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
 import Distribution.Simple.Compiler
-         ( Compiler(compilerFlavor), compilerVersion )
+         ( Compiler, compilerFlavor, compilerVersion )
 import Distribution.Simple.Utils (comparing)
 
 import Control.Monad (mplus)
