@@ -15,7 +15,7 @@ module Main where
 
 import Hackage.Setup
 import Distribution.Simple.Setup (Flag(..), fromFlag, fromFlagOrDefault,
-                                  flagToMaybe)
+                                  flagToMaybe,SDistFlags,sdistCommand)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
@@ -33,6 +33,7 @@ import Hackage.Fetch            (fetch)
 import Hackage.Check as Check   (check)
 --import Hackage.Clean            (clean)
 import Hackage.Upload as Upload (upload, check)
+import Hackage.SrcDist(sdist)
 
 import Distribution.Verbosity   (Verbosity, normal)
 import Distribution.Version     (showVersion)
@@ -88,12 +89,12 @@ mainWorker args =
       ,fetchCommand           `commandAddAction` fetchAction
       ,uploadCommand          `commandAddAction` uploadAction
       ,checkCommand           `commandAddAction` checkAction
-
+      ,sdistCommand           `commandAddAction` sdistAction
       ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
       ,wrapperAction Cabal.copyCommand
       ,wrapperAction Cabal.haddockCommand
       ,wrapperAction Cabal.cleanCommand
-      ,wrapperAction Cabal.sdistCommand
+--      ,wrapperAction Cabal.sdistCommand
       ,wrapperAction Cabal.hscolourCommand
       ,wrapperAction Cabal.registerCommand
 --      ,wrapperAction unregisterCommand
@@ -217,3 +218,10 @@ checkAction verbosityFlag extraArgs = do
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
+
+
+sdistAction :: SDistFlags -> [String] -> IO ()
+sdistAction sflags extraArgs = do
+  unless (null extraArgs) $ do
+    die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
+  sdist sflags

@@ -58,7 +58,7 @@ Executable cabal
       build-depends: base < 3
     else
       build-depends: base >= 3, process, directory, pretty, random,
-                     containers
+                     containers, old-time
 
     if flag(bytestring-in-base)
       build-depends: base >= 2.0 && < 2.2
