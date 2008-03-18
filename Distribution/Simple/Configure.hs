@@ -130,7 +130,7 @@ import System.FilePath
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
-    ( hPutStrLn, stderr )
+    ( hPutStrLn, stderr, hGetContents, openFile, hClose, IOMode(ReadMode) )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
     
@@ -141,8 +141,8 @@ tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
   if not exists
     then return (Left missing)
-    else do 
-      str <- readFile filename
+    else do
+      str <- readFileStrict filename
       return $ case lines str of
         [headder, rest] -> case checkHeader headder of
           Just msg -> Left msg
@@ -151,6 +151,11 @@ tryGetConfigStateFile filename = do
             _        -> Left cantParse
         _            -> Left cantParse
   where
+    readFileStrict name = do 
+      h <- openFile name ReadMode
+      str <- hGetContents h >>= \str -> length str `seq` return str 
+      hClose h
+      return str
     checkHeader :: String -> Maybe String
     checkHeader header = case parseHeader header of
       Just (cabalId, compilerId)
