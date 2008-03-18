@@ -232,10 +232,10 @@ viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
     optDescrToGetOpt (ChoiceOpt alts) =
          [GetOpt.Option sf lf (GetOpt.NoArg set) d | (d,(sf,lf),set,_) <- alts]
     optDescrToGetOpt (BoolOpt d (sfT,lfT) (sfF, lfF) set _get) =
-         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) d
-         , GetOpt.Option sfF lfF (GetOpt.NoArg (set True)) d ]
+         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True))  ("Enable " ++ d)
+         , GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) ("Disable " ++ d) ]
 
--- | to view as a FieldDescr, we sort the list of interfaces (Req > Choice > Opt) and consider only the first one.
+-- | to view as a FieldDescr, we sort the list of interfaces (Req > Bool > Choice > Opt) and consider only the first one.
 viewAsFieldDescr :: OptionField a -> FieldDescr a
 viewAsFieldDescr (OptionField _n []) = error "Distribution.command.viewAsFieldDescr: unexpected"
 viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
@@ -279,7 +279,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
 
 getChoiceByLongFlag :: OptDescr b -> String -> Maybe (b->b)
 getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe [ set | (_,(_sf,lf:_), set, _) <- alts
-                                                          , lf == val]
+                                                             , lf == val]
 
 getChoiceByLongFlag _ _ = error "Distribution.command.getChoiceByLongFlag: expected a choice option"
 
@@ -314,21 +314,21 @@ liftSet get' set' set x = set' (set $ get' x) x
 -- | Show flags in the standard long option command line format
 commandShowOptions :: CommandUI flags -> flags -> [String]
 commandShowOptions command v = concat
-  [ showOptDescr v (optionName o) od | o <- commandOptions command ParseArgs
-                                     , od <- optionDescr o]
+  [ showOptDescr v  od | o <- commandOptions command ParseArgs
+                       , od <- optionDescr o]
   where
-    showOptDescr :: a -> String -> OptDescr a -> [String]
-    showOptDescr x _name (BoolOpt _ (_,lfT:_) (_,lfF:_) _ enabled)
+    showOptDescr :: a -> OptDescr a -> [String]
+    showOptDescr x (BoolOpt _ (_,lfT:_) (_,lfF:_) _ enabled)
       = ["--" ++ if enabled x then lfT else lfF]
-    showOptDescr x _name c@ChoiceOpt{}
+    showOptDescr x c@ChoiceOpt{}
       = ["--" ++ val | val <- getCurrentChoice c x]
-    showOptDescr x name (ReqArg _ _ _ _ showflag)
-      = [ "--"++name++"="++flag
+    showOptDescr x (ReqArg _ (_ssff,lf:_) _ _ showflag)
+      = [ "--"++lf++"="++flag
         | flag <- showflag x ]
-    showOptDescr x name (OptArg _ _ _ _ _ showflag)
+    showOptDescr x (OptArg _ (_ssff,lf:_) _ _ _ showflag)
       = [ case flag of
-            Just s  -> "--"++name++"="++s
-            Nothing -> "--"++name
+            Just s  -> "--"++lf++"="++s
+            Nothing -> "--"++lf
         | flag <- showflag x ]
 
 
