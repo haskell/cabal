@@ -2593,6 +2593,56 @@ runhaskell Setup.hs unregister --gen-script</screen>
             </listitem>
 	  </varlistentry>
 
+
+	  <varlistentry>
+	    <term><option>--extra-include-dirs</option>[=<replaceable>dir</replaceable>]</term>
+	    <listitem>
+	      <para>
+		An extra directory to search for C header files. You can use
+		this flag multiple times to get a list of directories.
+	      </para>
+	      <para>
+		You might need to use this flag if you have standard system
+		header files in a non-standard location that is not mentioned
+		in the package's <filename>.cabal</filename> file. Using this
+		option has the same affect as appending the directory
+		<replaceable>dir</replaceable> to the
+		<literal>include-dirs</literal> field in each library and
+		executable in the package's <filename>.cabal</filename> file.
+		The advantage of course is that you do not have to modify the
+		package at all. These extra directories will be used while
+		building the package and for libraries it is also saved in the
+		package registration information and used when compiling
+		modules that use the library.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+
+	  <varlistentry>
+	    <term><option>--extra-lib-dirs</option>[=<replaceable>dir</replaceable>]</term>
+	    <listitem>
+	      <para>
+		An extra directory to search for system libraries files. You
+		can use this flag multiple times to get a list of directories.
+	      </para>
+	      <para>
+		You might need to use this flag if you have standard system
+		libraries in a non-standard location that is not mentioned
+		in the package's <filename>.cabal</filename> file. Using this
+		option has the same affect as appending the directory
+		<replaceable>dir</replaceable> to the
+		<literal>extra-lib-dirs</literal> field in each library and
+		executable in the package's <filename>.cabal</filename> file.
+		The advantage of course is that you do not have to modify the
+		package at all. These extra directories will be used while
+		building the package and for libraries it is also saved in the
+		package registration information and used when compiling
+		modules that use the library.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
 	</variablelist>
 
 	<para>In the simple build infrastructure, an additional option
