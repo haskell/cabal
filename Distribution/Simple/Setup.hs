@@ -105,11 +105,8 @@ import Distribution.Verbosity
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving Eq
+data Flag a = Flag a | NoFlag deriving (Show, Eq)
 
-instance Show a => Show (Flag a) where
-  show (Flag a) = show a
-  show NoFlag   = "Not set"
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
   fmap _ NoFlag  = NoFlag
@@ -426,7 +423,7 @@ configureOptions showOrParseArgs =
          (reqArg' "OPT" (\x -> [x]) id)
 
       ,option "" ["user-install"]
-         "do a per-user installation"
+         "doing a per-user installation"
          configUserInstall (\v flags -> flags { configUserInstall = v })
          (boolOpt' ([],["user"]) ([], ["global"]))
 
