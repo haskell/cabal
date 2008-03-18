@@ -19,8 +19,7 @@ import Hackage.Fetch
 import Hackage.Types 
 import Hackage.Utils (showDependencies)
 
-import Distribution.Package (showPackageId, Package(..))
-import Distribution.ParseUtils (showDependency)
+import Distribution.Package (showPackageId, Package(..), showDependency)
 
 import Data.List (nubBy)
 

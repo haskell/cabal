@@ -1,12 +1,12 @@
 module Hackage.ParseUtils where
 
 import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (+++))
-import Distribution.Package (PackageIdentifier(..), parsePackageId)
+import Distribution.Package (PackageIdentifier(..), parsePackageId, Dependency(..), parseDependency)
 import Distribution.ParseUtils 
     (Field(..), FieldDescr(..), ParseResult(..), PError
-    , field, liftField, readFields, parseDependency
+    , field, liftField, readFields
     , warning, lineNo, locatedErrorMsg)
-import Distribution.Version (Version(..), Dependency(..), VersionRange(..))
+import Distribution.Version (Version(..), VersionRange(..))
 
 import Control.Monad (foldM, liftM)
 import Data.Char (isSpace, toLower)

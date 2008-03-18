@@ -19,8 +19,8 @@ module Hackage.IndexUtils (
 import Hackage.Tar
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), Repo(..))
 
-import Distribution.Package (PackageIdentifier(..), Package(..))
-import Distribution.Version (Dependency(Dependency), readVersion)
+import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(Dependency))
+import Distribution.Version (readVersion)
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
