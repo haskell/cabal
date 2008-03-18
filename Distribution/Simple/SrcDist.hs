@@ -46,38 +46,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- we can't easily look inside a tarball once its created.
 
 module Distribution.Simple.SrcDist (
-	 sdist
-        ,createArchive
-        ,prepareTree
-        ,tarBallName
-        ,copyFileTo
+  -- * The top level action
+  sdist,
+
+  -- ** Parts of 'sdist'
+  printPackageProblems,
+  prepareTree,
+  createArchive,
+
+  -- ** Snaphots
+  prepareSnapshotTree,
+  snapshotVersion,
+  dateToSnapshotNumber,
   )  where
 
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..) )
 import Distribution.PackageDescription.Check
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
-import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
+import Distribution.Version
+         ( Version(versionBranch), showVersion, VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
-        ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
-        , copyFiles, copyFileVerbose, findFile, findFileWithExtension, dotToSep
-        , die, warn, notice, setupMessage, defaultPackageDesc )
+         ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
+         , copyFiles, copyFileVerbose, findFile, findFileWithExtension
+         , withTempDirectory, dotToSep, defaultPackageDesc
+         , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
 
-import Control.Exception (finally)
 import Control.Monad(when, unless)
-import Data.Char (isSpace, toLower)
+import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
-import Data.Maybe (catMaybes)
+import Data.Maybe (isNothing, catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
-import System.Directory (doesFileExist, doesDirectoryExist,
-                         removeDirectoryRecursive)
+import System.Directory (doesFileExist, doesDirectoryExist)
 import Distribution.Verbosity (Verbosity)
-import System.FilePath ((</>), takeDirectory, dropExtension, isAbsolute)
+import System.FilePath
+         ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
 
 -- |Create a source distribution.
 sdist :: PackageDescription -- ^information from the tarball
@@ -87,43 +95,43 @@ sdist :: PackageDescription -- ^information from the tarball
       -> FilePath -- ^TargetPrefix
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg_descr_orig mb_lbi flags tmpDir targetPref pps = do
-    let snapshot  = fromFlag (sDistSnapshot flags)
-        verbosity = fromFlag (sDistVerbose flags)
-    time <- getClockTime
-    ct <- toCalendarTime time
-    let date = ctYear ct*10000 + (fromEnum (ctMonth ct) + 1)*100 + ctDay ct
-    let pkg_descr
-          | snapshot  = updatePackage (updatePkgVersion
-                          (updateVersionBranch (++ [date]))) pkg_descr_orig
-          | otherwise = pkg_descr_orig
+sdist pkg mb_lbi flags tmpDir targetPref pps = do
 
-    -- do some QA
-    printPackageProblems verbosity pkg_descr
+  -- do some QA
+  printPackageProblems verbosity pkg
 
-    prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date
-    createArchive pkg_descr verbosity mb_lbi tmpDir targetPref
-    return ()
+  exists <- doesDirectoryExist tmpDir
+  when exists $
+    die $ "Source distribution already in place. please move or remove: "
+       ++ tmpDir
+
+  when (isNothing mb_lbi) $
+    warn verbosity "Cannot run preprocessors. Run 'configure' command first."
+
+  withTempDirectory verbosity tmpDir $ do
+
+    setupMessage verbosity "Building source dist for" (packageId pkg)
+    if snapshot
+      then getClockTime >>= toCalendarTime
+       >>= prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps
+      else prepareTree         verbosity pkg mb_lbi tmpDir pps
+    targzFile <- createArchive verbosity pkg mb_lbi tmpDir targetPref
+    notice verbosity $ "Source tarball created: " ++ targzFile
+
   where
-    updatePackage f pd = pd { package = f (package pd) }
-    updatePkgVersion f pkg = pkg { pkgVersion = f (pkgVersion pkg) }
-    updateVersionBranch f v = v { versionBranch = f (versionBranch v) }
+    verbosity = fromFlag (sDistVerbose flags)
+    snapshot  = fromFlag (sDistSnapshot flags)
 
 -- |Prepare a directory tree of source files.
-prepareTree :: PackageDescription -- ^info from the cabal file
-            -> Verbosity          -- ^verbosity
+prepareTree :: Verbosity          -- ^verbosity
+            -> PackageDescription -- ^info from the cabal file
             -> Maybe LocalBuildInfo
-            -> Bool               -- ^snapshot
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
-            -> Int                -- ^date
-            -> IO FilePath
+            -> IO FilePath        -- ^the name of the dir created and populated
 
-prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
-  setupMessage verbosity "Building source dist for" (packageId pkg_descr)
-  ex <- doesDirectoryExist tmpDir
-  when ex (die $ "Source distribution already in place. please move: " ++ tmpDir)
-  let targetDir = tmpDir </> (nameVersion pkg_descr)
+prepareTree verbosity pkg_descr mb_lbi tmpDir pps = do
+  let targetDir = tmpDir </> tarBallName pkg_descr
   createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
   withLib $ \ l ->
@@ -155,13 +163,13 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
     flip mapM_ incs $ \(_,fpath) ->
        copyFileTo verbosity targetDir fpath
 
-  -- we have some preprocessors specified, try to generate those files
-  when (not (null pps)) $
-    case mb_lbi of
-      Just lbi -> preprocessSources pkg_descr (lbi { buildDir = targetDir }) 
-                                    True verbosity pps
-      Nothing -> warn verbosity
-          "Cannot run preprocessors.  Run 'configure' command first."
+  -- if the package was configured then we can run platform independent
+  -- pre-processors and include those generated files
+  case mb_lbi of
+    Just lbi | not (null pps)
+      -> preprocessSources pkg_descr (lbi { buildDir = targetDir })
+                             True verbosity pps
+    _ -> return ()
 
   -- setup isn't listed in the description file.
   hsExists <- doesFileExist "Setup.hs"
@@ -173,27 +181,10 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
                 "main = defaultMain"]
   -- the description file itself
   descFile <- defaultPackageDesc verbosity
-  let targetDescFile = targetDir </> descFile
-  -- We could just writePackageDescription targetDescFile pkg_descr,
-  -- but that would lose comments and formatting.
-  if snapshot then do
-      contents <- readUTF8File descFile
-      writeUTF8File targetDescFile $
-          unlines $ map (appendVersion date) $ lines $ contents
-    else copyFileVerbose verbosity descFile targetDescFile
+  copyFileVerbose verbosity descFile (targetDir </> descFile)
   return targetDir
 
   where
-
-    appendVersion :: Int -> String -> String
-    appendVersion n line
-      | "version:" `isPrefixOf` map toLower line =
-            trimTrailingSpace line ++ "." ++ show n
-      | otherwise = line
-
-    trimTrailingSpace :: String -> String
-    trimTrailingSpace = reverse . dropWhile isSpace . reverse
-
     findInc [] f = die ("can't find include file " ++ f)
     findInc (d:ds) f = do
       let path = (d </> f)
@@ -205,16 +196,70 @@ prepareTree pkg_descr verbosity mb_lbi snapshot tmpDir pps date = do
     withLib action = maybe (return ()) action (library pkg_descr)
     withExe action = mapM_ action (executables pkg_descr)
 
+-- | Prepare a directory tree of source files for a snapshot version with the
+-- given date.
+--
+prepareSnapshotTree :: Verbosity          -- ^verbosity
+                    -> PackageDescription -- ^info from the cabal file
+                    -> Maybe LocalBuildInfo
+                    -> FilePath           -- ^source tree to populate
+                    -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+                    -> CalendarTime       -- ^snapshot date
+                    -> IO FilePath        -- ^the resulting temp dir
+prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps date = do
+  let pkgid   = packageId pkg
+      pkgver' = snapshotVersion date (pkgVersion pkgid)
+      pkg'    = pkg { package = pkgid { pkgVersion = pkgver' } }
+  targetDir <- prepareTree verbosity pkg' mb_lbi tmpDir pps
+  overwriteSnapshotPackageDesc pkgver' targetDir
+  return targetDir
+  
+  where
+    overwriteSnapshotPackageDesc version targetDir = do
+      -- We could just writePackageDescription targetDescFile pkg_descr,
+      -- but that would lose comments and formatting.
+      descFile <- defaultPackageDesc verbosity
+      writeUTF8File (targetDir </> descFile)
+          . unlines . map (replaceVersion version) . lines
+        =<< readUTF8File descFile
+
+    replaceVersion :: Version -> String -> String
+    replaceVersion version line
+      | "version:" `isPrefixOf` map toLower line
+                  = "version: " ++ showVersion version
+      | otherwise = line
+
+-- | Modifies a 'Version' by appending a snapshot number corresponding
+-- to the given date.
+--
+snapshotVersion :: CalendarTime -> Version -> Version
+snapshotVersion date version = version {
+    versionBranch = versionBranch version
+                 ++ [dateToSnapshotNumber date]
+  }
+
+-- | Given a date produce a corresponding integer representation.
+-- For example given a date @18/03/2008@ produce the number @20080318@.
+--
+dateToSnapshotNumber :: CalendarTime -> Int
+dateToSnapshotNumber date = year  * 10000
+                          + month * 100
+                          + day
+  where
+    year  = ctYear date
+    month = fromEnum (ctMonth date) + 1
+    day   = ctDay date
+
 -- |Create an archive from a tree of source files, and clean up the tree.
-createArchive :: PackageDescription   -- ^info from cabal file
-              -> Verbosity            -- ^verbosity
+createArchive :: Verbosity            -- ^verbosity
+              -> PackageDescription   -- ^info from cabal file
               -> Maybe LocalBuildInfo -- ^info from configure
               -> FilePath             -- ^source tree to archive
               -> FilePath             -- ^name of archive to create
               -> IO FilePath
 
-createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
-  let tarBallFilePath = targetPref </> tarBallName pkg_descr
+createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
+  let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
 
   (tarProg, _) <- requireProgram verbosity tarProgram AnyVersion
                     (maybe defaultProgramConfiguration withPrograms mb_lbi)
@@ -223,10 +268,7 @@ createArchive pkg_descr verbosity mb_lbi tmpDir targetPref = do
    -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
    -- which is problematic in a Windows setting.]
   rawSystemProgram verbosity tarProg
-           ["-C", tmpDir, "-czf", tarBallFilePath, nameVersion pkg_descr]
-      -- XXX this should be done back where tmpDir is made, not here
-      `finally` removeDirectoryRecursive tmpDir
-  notice verbosity $ "Source tarball created: " ++ tarBallFilePath
+           ["-C", tmpDir, "-czf", tarBallFilePath, tarBallName pkg_descr]
   return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo
@@ -279,9 +321,7 @@ printPackageProblems verbosity pkg_descr = do
 
 ------------------------------------------------------------
 
--- |The file name of the tarball
-tarBallName :: PackageDescription -> FilePath
-tarBallName p = (nameVersion p) ++ ".tar.gz"
-
-nameVersion :: PackageDescription -> String
-nameVersion = showPackageId . packageId
+-- | The name of the tarball without extension
+--
+tarBallName :: PackageDescription -> String
+tarBallName = showPackageId . packageId
