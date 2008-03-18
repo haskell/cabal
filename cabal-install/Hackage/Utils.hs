@@ -1,7 +1,6 @@
 module Hackage.Utils where
 
-import Distribution.ParseUtils (showDependency)
-import Distribution.Version (Dependency(..))
+import Distribution.Package (Dependency(..), showDependency)
 import Distribution.Simple.Utils (intercalate)
 
 import Control.Monad (guard)
