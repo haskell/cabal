@@ -246,6 +246,7 @@ data ConfigFlags = ConfigFlags {
     configPackageDB :: Flag PackageDB, -- ^Which package DB to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
+    configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configConfigurationsFlags :: [(String, Bool)]
   }
   deriving Show
@@ -264,7 +265,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configVerbose      = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
     configGHCiLib      = Flag True,
-    configSplitObjs    = Flag False -- takes longer, so turn off by default
+    configSplitObjs    = Flag False, -- takes longer, so turn off by default
+    configStripExes    = Flag True
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -417,6 +419,11 @@ configureOptions showOrParseArgs =
          configSplitObjs (\v flags -> flags { configSplitObjs = v })
          (boolOpt [] [])
 
+      ,option "" ["executable-stripping"]
+         "strip executables upon installation to reduce binary sizes"
+         configStripExes (\v flags -> flags { configStripExes = v })
+         (boolOpt [] [])
+
       ,option "" ["configure-option"]
          "Extra option for configure"
          configConfigureArgs (\v flags -> flags { configConfigureArgs = v })
@@ -494,6 +501,7 @@ instance Monoid ConfigFlags where
     configPackageDB     = mempty,
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
+    configStripExes     = mempty,
     configExtraLibDirs  = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty
@@ -520,6 +528,7 @@ instance Monoid ConfigFlags where
     configPackageDB     = combine configPackageDB,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
+    configStripExes     = combine configSplitObjs,
     configExtraLibDirs  = combine configExtraLibDirs,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags

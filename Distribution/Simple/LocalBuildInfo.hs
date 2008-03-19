@@ -100,6 +100,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
 	splitObjs     :: Bool, 	-- ^Use -split-objs with GHC, if available
+        stripExes     :: Bool,  -- ^Whether to strip executables during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
 

@@ -88,7 +88,7 @@ import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
-import Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), absoluteInstallDirs
     , prefixRelativeInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -416,6 +416,7 @@ configure (pkg_descr0, pbi) cfg
 		    withOptimization    = fromFlag $ configOptimization cfg,
 		    withGHCiLib         = fromFlag $ configGHCiLib cfg,
 		    splitObjs           = split_objs,
+                    stripExes           = fromFlag $ configStripExes cfg,
 		    withPackageDB       = packageDb,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
                     progSuffix          = fromFlag $ configProgSuffix cfg
