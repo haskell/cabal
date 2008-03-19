@@ -41,9 +41,8 @@ import qualified Distribution.Simple.Setup as Cabal
   RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    sdistCommand,
                                          testCommand-})
-import Distribution.Simple.Setup (Flag(..), toFlag, flagToList)
-import Distribution.Verbosity (Verbosity, normal, flagToVerbosity, showForCabal)
-
+import Distribution.Simple.Setup (Flag(..), toFlag, flagToList, trueArg, optionVerbose)
+import Distribution.Verbosity (Verbosity, normal)
 import Hackage.Types (UnresolvedDependency(..), Username, Password)
 import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
@@ -218,26 +217,26 @@ installCommand = cabalConfigureCommand {
                                           
   }
 
-optionDryRun :: Option InstallFlags
+optionDryRun :: OptionField InstallFlags
 optionDryRun =
   option [] ["dry-run"]
     "Do not install anything, only print what would be installed."
     installDryRun (\v flags -> flags { installDryRun = v })
     trueArg
 
-optionOnly :: Option InstallFlags
+optionOnly :: OptionField InstallFlags
 optionOnly =
   option [] ["only"]
     "Only installs the package in the current directory."
     installOnly (\v flags -> flags { installOnly = v })
     trueArg
 
-optionRootCmd :: Option InstallFlags
+optionRootCmd :: OptionField InstallFlags
 optionRootCmd =
   option [] ["root-cmd"]
     "Command used to gain root privileges, when installing with --global."
     installRootCmd (\v flags -> flags { installRootCmd = v })
-    (reqArg "COMMAND" toFlag flagToList)
+    (reqArg' "COMMAND" toFlag flagToList)
 
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
@@ -289,12 +288,12 @@ uploadCommand = CommandUI {
       ,option ['u'] ["username"]
         "Hackage username."
         uploadUsername (\v flags -> flags { uploadUsername = v })
-        (reqArg "USERNAME" toFlag flagToList)
+        (reqArg' "USERNAME" toFlag flagToList)
 
       ,option ['p'] ["password"]
         "Hackage password."
         uploadPassword (\v flags -> flags { uploadPassword = v })
-        (reqArg "PASSWORD" toFlag flagToList)
+        (reqArg' "PASSWORD" toFlag flagToList)
       ]
   }
 
@@ -317,25 +316,11 @@ instance Monoid UploadFlags where
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-liftOptionsFst :: [Option a] -> [Option (a,b)]
+liftOptionsFst :: [OptionField a] -> [OptionField (a,b)]
 liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
 
-liftOptionsSnd :: [Option b] -> [Option (a,b)]
+liftOptionsSnd :: [OptionField b] -> [OptionField (a,b)]
 liftOptionsSnd = map (liftOption snd (\b (a,_) -> (a,b)))
-
-trueArg {-, falseArg-} :: (b -> Flag Bool) -> (Flag Bool -> b -> b) -> ArgDescr b
-trueArg  = noArg (Flag True) (\f -> case f of Flag True  -> True; _ -> False)
---falseArg = noArg (Flag False) (\f -> case f of Flag False -> True; _ -> False)
-
-optionVerbose :: (flags -> Flag Verbosity)
-              -> (Flag Verbosity -> flags -> flags)
-              -> Option flags
-optionVerbose get set =
-  option "v" ["verbose"]
-    "Control verbosity (n is 0--3, default verbosity level is 1)"
-    get set
-    (optArg "n" (toFlag . flagToVerbosity)
-                (fmap (Just . showForCabal) . flagToList))
 
 usagePackages :: String -> String -> String
 usagePackages name pname =
