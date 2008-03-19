@@ -1,10 +1,42 @@
 -*-change-log-*-
 
-1.2.2.1 Duncan Coutts <duncan@haskell.org> Nov 2007
+1.3.x (current development version)
+	* Rewritten command line handling support
+	* Command line completion with bash
+	* Better support for Haddock 2
+	* Improved support for nhc98
+	* Removed support for ghc-6.2
+	* Haddock markup in .lhs files now supported
+	* Default colour scheme for highlighted source code
+	* Default prefix for --user installs is now $HOME/.cabal
+	* All .cabal files are treaded as UTF-8 and must be valid
+	* Many checks added for common mistakes
+	* New --package-db= option for specific package databases
+	* Many internal changes to support cabal-install
+	* Stricter parsing for version strings, eg dissalows "1.05"
+	* Improved user guide introduction
+	* Programatica support removed
+	* New options --program-prefix/suffix allows eg versioned programs
+	* Support packages that use .hs-boot files
+	* Fix sdist for Main modules that require preprocessing
+	* New configure -O flag with optimisation level 0--2
+	* Provide access to "x-" extension fields through the Cabal api
+	* Added check for broken installed packages
+	* Added warning about using inconsistent versions of dependencies
+	* Strip binary executable files by default with an option to disable
+	* New options to add site-specific include and library search paths
+	* Many bugs fixed.
+	* Many internal structural improvements and code cleanups
+
+1.2.3.0 Duncan Coutts <duncan@haskell.org> Nov 2007
 	* Released with GHC 6.8.2
 	* Includes full list of GHC language extensions
 	* Fix infamous "dist/conftest.c" bug
 	* Fix configure --interfacedir=
+	* Find ld.exe on Windows correctly
+	* Export PreProcessor constructor and mkSimplePreProcessor
+	* Fix minor bug in unlit code
+	* Fix some markup in the haddock docs
 
 1.2.2.0 Duncan Coutts <duncan@haskell.org> Nov 2007
 	* Released with GHC 6.8.1
