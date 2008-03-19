@@ -70,5 +70,5 @@ createArchive :: Verbosity
 createArchive _verbosity pkg tmpDir targetPref = do
   let tarBallName     = showPackageId (packageId pkg)
       tarBallFilePath = targetPref </> tarBallName <.> "tar.gz"
-  createTarGzFile tarBallFilePath (Just tmpDir) tarBallName
+  createTarGzFile tarBallFilePath tmpDir tarBallName
   return tarBallFilePath
