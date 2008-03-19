@@ -702,7 +702,7 @@ installExe verbosity lbi pref buildPref (progprefix, progsuffix) pkg_descr
              stripExe verbosity lbi exeFileName (pref </> fixedExeFileName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-stripExe verbosity lbi name path =
+stripExe verbosity lbi name path = when (stripExes lbi) $
   case lookupProgram stripProgram (withPrograms lbi) of
     Just strip -> rawSystemProgram verbosity strip [path]
     Nothing    -> warn verbosity $ "Unable to strip executable '" ++ name
