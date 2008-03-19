@@ -17,10 +17,7 @@ module Hackage.Tar (
   TarHeader(..),
   TarFileType(..),
   readTarArchive,
-  extractTarArchive,
   extractTarGzFile,
-  gunzip,
-  gzip,
   createTarGzFile
   ) where
 
@@ -50,16 +47,11 @@ import Control.Monad (liftM,when)
 import Distribution.Simple.Utils (die)
 
 -- GNU gzip
-import Codec.Compression.GZip (decompress,compress)
+import qualified Codec.Compression.GZip as GZip
+         ( decompress, compress )
 
 -- Or use Ian's gunzip:
 -- import Codec.Compression.GZip.GUnZip (gunzip)
-
-gunzip :: ByteString -> ByteString
-gunzip = decompress
-
-gzip :: ByteString -> ByteString
-gzip = compress
 
 data TarHeader = TarHeader {
                     tarFileName   :: FilePath,
@@ -78,29 +70,29 @@ data TarFileType = TarNormalFile
 readTarArchive :: ByteString -> [(TarHeader,ByteString)]
 readTarArchive = catMaybes . unfoldr getTarEntry
 
-extractTarArchive :: Maybe FilePath -> [(TarHeader,ByteString)] -> IO ()
-extractTarArchive mdir tar = extract files >> extract links
+extractTarArchive :: FilePath -> [(TarHeader,ByteString)] -> IO ()
+extractTarArchive dir tar = extract files >> extract links
     where
-    extract = mapM_ (uncurry (extractEntry mdir))
+    extract = mapM_ (uncurry (extractEntry dir))
     -- TODO: does this cause a memory leak?
     (files, links) = partition (not . isLink . tarFileType . fst) tar
     isLink TarHardLink     = True
     isLink TarSymbolicLink = True
     isLink _               = False
 
-extractTarGzFile :: Maybe FilePath -- ^ Destination directory
-               -> FilePath -- ^ Tarball
-               -> IO ()
-extractTarGzFile mdir file = 
-    BS.readFile file >>= extractTarArchive mdir . readTarArchive .  decompress {- gunzip -}
+extractTarGzFile :: FilePath -- ^ Destination directory
+                 -> FilePath -- ^ Tarball
+                 -> IO ()
+extractTarGzFile dir file =
+  extractTarArchive dir . readTarArchive . GZip.decompress =<< BS.readFile file
 
 --
 -- * Extracting
 --
 
-extractEntry :: Maybe FilePath -> TarHeader -> ByteString -> IO ()
-extractEntry mdir hdr cnt
-    = do path <- relativizePath mdir (tarFileName hdr)
+extractEntry :: FilePath -> TarHeader -> ByteString -> IO ()
+extractEntry dir hdr cnt
+    = do path <- relativizePath dir (tarFileName hdr)
          let setPerms   = setPermissions path (fileModeToPermissions (tarFileMode hdr))
              copyLinked =
                 let (base, _) = splitFileName path
@@ -113,11 +105,11 @@ extractEntry mdir hdr cnt
            TarDirectory    -> createDirectoryIfMissing False path >> setPerms
            TarOther _      -> return () -- FIXME: warning?
 
-relativizePath :: Monad m => Maybe FilePath -> FilePath -> m FilePath
-relativizePath mdir file
+relativizePath :: Monad m => FilePath -> FilePath -> m FilePath
+relativizePath dir file
     | isAbsolute file    = fail $ "Absolute file name in TAR archive: " ++ show file
     | not (isValid file) = fail $ "Invalid file name in TAR archive: " ++ show file
-    | otherwise          = return $ maybe file (</> file) mdir
+    | otherwise          = return $ dir </> file
 
 fileModeToPermissions :: FileMode -> Permissions
 fileModeToPermissions m = 
@@ -225,7 +217,7 @@ createTarGzFile tarFile baseDir sourceDir = do
                           . createTarEntry baseDir
                           . makeRelative baseDir)
                   =<< recurseDirectories [baseDir </> sourceDir]
-      BS.writeFile tarFile . gzip . entries2Archive $ entries
+      BS.writeFile tarFile . GZip.compress . entries2Archive $ entries
       mapM_ hClose (catMaybes hs) -- TODO: the handles are explicitly closed because of a bug in bytestring-0.9.0.1,
                                   -- once we depend on a later version we can avoid this hack.
 
