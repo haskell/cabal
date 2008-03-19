@@ -332,6 +332,7 @@ commandShowOptions command v = concat
             Just s  -> "--"++lf++"="++s
             Nothing -> "--"++lf
         | flag <- showflag x ]
+    showOptDescr x _ = error "Distribution.Simple.Command.showOptDescr: unreachable"
 
 
 commandListOptions :: CommandUI flags -> [String]
