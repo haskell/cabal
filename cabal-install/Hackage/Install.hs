@@ -15,10 +15,11 @@ module Hackage.Install
     ) where
 
 import Data.Monoid (Monoid(mconcat))
-import Control.Exception as Exception (bracket_, handle)
+import Control.Exception as Exception
+         ( handle, Exception )
 import Control.Monad (when)
-import System.Directory (getTemporaryDirectory, createDirectoryIfMissing
-                        ,removeDirectoryRecursive, doesFileExist)
+import System.Directory
+         ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
 import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
@@ -39,7 +40,8 @@ import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Simple.Utils (defaultPackageDesc,inDir,rawSystemExit)
+import Distribution.Simple.Utils
+         ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
 import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
 import Distribution.PackageDescription.Parse (readPackageDescription)
@@ -48,10 +50,10 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 data BuildResult = DependentFailed PackageIdentifier
-                 | UnpackFailed
-                 | ConfigureFailed
-                 | BuildFailed
-                 | InstallFailed
+                 | UnpackFailed    Exception
+                 | ConfigureFailed Exception
+                 | BuildFailed     Exception
+                 | InstallFailed   Exception
                  | BuildOk
 
 -- |Installs the packages needed to satisfy a list of dependencies.
@@ -82,10 +84,14 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
          [ showPackageId pkgid ++ case reason of
            DependentFailed pkgid' -> " depends on " ++ showPackageId pkgid'
                                   ++ " which failed to install."
-           UnpackFailed    -> " failed while unpacking the package."
-           ConfigureFailed -> " failed during the configure step."
-           BuildFailed     -> " failed during the building phase."
-           InstallFailed   -> " failed during the final install step."
+           UnpackFailed    e -> " failed while unpacking the package."
+                             ++ " The exception was:\n  " ++ show e
+           ConfigureFailed e -> " failed during the configure step."
+                             ++ " The exception was:\n  " ++ show e
+           BuildFailed     e -> " failed during the building phase."
+                             ++ " The exception was:\n  " ++ show e
+           InstallFailed   e -> " failed during the final install step."
+                             ++ " The exception was:\n  " ++ show e
            _ -> ""
          | (pkgid, reason) <- failed ]
 
@@ -233,24 +239,25 @@ installPkg :: Verbosity
            -> PkgInfo
            -> FlagAssignment
            -> IO BuildResult
-installPkg verbosity configFlags rootCmd pkg flags
-    = do pkgPath <- fetchPackage verbosity pkg
-         tmp <- getTemporaryDirectory
-         let p = packageId pkg
-             tmpDirPath = tmp </> ("TMP" ++ showPackageId p)
-             path = tmpDirPath </> showPackageId p
-         bracket_ (createDirectoryIfMissing True tmpDirPath)
-                  (removeDirectoryRecursive tmpDirPath)
-                  (do info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
-                      extractTarGzFile tmpDirPath pkgPath
-                      let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
-                      e <- doesFileExist descFilePath
-                      when (not e) $ die $ "Package .cabal file not found: " ++ show descFilePath
-                      let configFlags' = configFlags {
-                            Cabal.configConfigurationsFlags =
-                              Cabal.configConfigurationsFlags configFlags ++ flags }
-                      installUnpackedPkg verbosity configFlags' (Just path) rootCmd)
-           `catch` \_ -> return UnpackFailed
+installPkg verbosity configFlags rootCmd pkg flags = do
+  pkgPath <- fetchPackage verbosity pkg
+  tmp <- getTemporaryDirectory
+  let pkgid = packageId pkg
+      tmpDirPath = tmp </> ("TMP" ++ showPackageId pkgid)
+      path = tmpDirPath </> showPackageId pkgid
+  onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
+    info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
+    extractTarGzFile tmpDirPath pkgPath
+    let descFilePath = tmpDirPath </> showPackageId pkgid
+                                  </> pkgName pkgid <.> "cabal"
+    exists <- doesFileExist descFilePath
+    when (not exists) $
+      die $ "Package .cabal file not found: " ++ show descFilePath
+    let configFlags' = configFlags {
+          Cabal.configConfigurationsFlags =
+          Cabal.configConfigurationsFlags configFlags ++ flags
+        }
+    installUnpackedPkg verbosity configFlags' (Just path) rootCmd
 
 installUnpackedPkg :: Verbosity
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
@@ -285,5 +292,5 @@ installUnpackedPkg verbosity configFlags mpath rootCmd
                die $ "Unable to find cabal executable at: " ++ self 
                
 -- helper
-onFailure :: a -> IO a -> IO a
-onFailure result = Exception.handle (\_ -> return result)
+onFailure :: (Exception -> BuildResult) -> IO BuildResult -> IO BuildResult
+onFailure result = Exception.handle (return . result)
