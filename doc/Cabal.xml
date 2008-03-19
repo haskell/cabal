@@ -2566,6 +2566,40 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><option>--enable-executable-stripping</option></term>
+	    <listitem>
+	      <para>
+		(default) When installing binary executable programs, run the
+		<literal>strip</literal> program on the binary. This can
+		considerably reduce the size of the executable binary file. It
+		does this by removing debugging information and symbols. While
+		such extra information is useful for debugging C programs with
+		traditional debuggers it is rarely helpful for debugging
+		binaries produced by Haskell compilers.
+	      </para>
+	      <para>
+		Not all Haskell implementations generate native binaries. For
+		such implementations this option has no effect.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><option>--disable-executable-stripping</option></term>
+	    <listitem>
+	      <para>
+		Do not strip binary executables during installation. You
+		might want to use this option if you need to debug a program
+		using gdb, for example if you want to debug the C parts of a
+		program containing both Haskell and C code. Another reason is
+		if your are building a package for a system which has a policy
+		of managing the stripping itself (such as some linux
+		distributions).
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><option>--enable-shared</option></term>
 	    <listitem>
 	      <para>Build shared library. This implies a seperate
