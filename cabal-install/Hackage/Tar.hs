@@ -1,11 +1,31 @@
--- | Simplistic TAR archive reading (Only gets the file names and file contents) and writing.
-module Hackage.Tar (TarHeader(..), TarFileType(..),
-                                         readTarArchive, extractTarArchive, 
-                                         extractTarGzFile, gunzip, gzip, createTarGzFile) where
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Hackage.Check
+-- Copyright   :  (c) 2007 Bjorn Bringert, 2008 Andrea Vezzosi
+-- License     :  BSD-like
+--
+-- Maintainer  :  duncan@haskell.org
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- Simplistic TAR archive reading and writing
+--
+-- Only handles the file names and file contents, ignores other file metadata.
+--
+-----------------------------------------------------------------------------
+module Hackage.Tar (
+  TarHeader(..),
+  TarFileType(..),
+  readTarArchive,
+  extractTarArchive,
+  extractTarGzFile,
+  gunzip,
+  gzip,
+  createTarGzFile
+  ) where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Lazy (ByteString)
 import Data.Bits ((.&.),(.|.))
 import Data.Char (ord)
@@ -18,7 +38,7 @@ import System.Directory (Permissions(..), setPermissions, getPermissions, create
 import System.Time (ClockTime(..))
 import System.FilePath ((</>), isValid, isAbsolute, splitFileName, splitDirectories )
 import System.Posix.Types (FileMode)
-import System.IO (hFileSize,openFile,hClose,Handle,IOMode(ReadMode,WriteMode),withFile,hSetBinaryMode)
+import System.IO (hFileSize,openBinaryFile,hClose,Handle,IOMode(ReadMode,WriteMode),withFile,hSetBinaryMode)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Monad (liftM,when)
 import Distribution.Simple.Utils (inDir,intercalate)
@@ -235,8 +255,7 @@ createTarEntry path =
                    tarLinkTarget = ""
                  }
        (sz,cnt,mh) <- case ftype of
-                TarNormalFile -> do h <- openFile path ReadMode
-                                    hSetBinaryMode h True
+                TarNormalFile -> do h <- openBinaryFile path ReadMode
                                     sz <- hFileSize h
                                     cnt <- BS.hGetContents h
                                     return (sz,cnt,Just h)
@@ -269,17 +288,17 @@ getModTime path =
 putTarEntry :: TarEntry -> ByteString
 putTarEntry TarEntry{entryHdr=hdr,entrySize=size,entryModTime=time,entryCnt=cnt} = 
   BS.concat
-    [BS.fromChunks [putTarHeader hdr size time]
+    [putTarHeader hdr size time
     ,cnt
     ,BS.replicate ((- fromIntegral size) `mod` 512) 0
     ]
 
 
-putTarHeader :: TarHeader -> Integer -> EpochTime -> B.ByteString
+putTarHeader :: TarHeader -> Integer -> EpochTime -> BS.ByteString
 putTarHeader hdr filesize modTime = 
     let block = concat $ (putHeaderNoChkSum hdr filesize modTime)
         chkSum = foldl' (\x y -> x + ord y) 0 block
-    in B.pack $ take 148 block ++
+    in BS.Char8.pack $ take 148 block ++
        putOct 8 chkSum ++
        drop 156 block
 
