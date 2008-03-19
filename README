@@ -19,7 +19,7 @@ install, and register it in a standard location.
 
 Cabal should build just like any other Cabal-ized packagem, so if you
 you can't or don't want to use the Makefile, you can run:
-ghc -i. --make Setup.lhs -o setup
+ghc -i. --make Setup.hs -o setup
 ./setup configure
 ./setup build
 sudo ./setup install
@@ -29,7 +29,7 @@ sudo ./setup install
 ghc -i. --make Setup.lhs -o setup
 ./setup configure --prefix=$HOME --user
 ./setup build
-./setup install --user
+./setup install
 
 
 Additional notes for GHC-6.4.1 and older:
@@ -78,15 +78,6 @@ You can get the code from the web page; the version control system we
 use is very open and welcoming to new developers.
 
 darcs get --partial http://darcs.haskell.org/packages/Cabal
-
--= Debian Templates =-
-
-Build a Debian source tree with:
-
-dh_make -d -t /full/path/to/debiantemplates
-
-After, you just need to edit the copyright, description, and
-dependencies...
 
 -= Credits (in alphabetical order) =-
 
