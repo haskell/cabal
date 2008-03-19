@@ -242,7 +242,7 @@ installPkg verbosity configFlags rootCmd pkg flags
          bracket_ (createDirectoryIfMissing True tmpDirPath)
                   (removeDirectoryRecursive tmpDirPath)
                   (do info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
-                      extractTarGzFile (Just tmpDirPath) pkgPath
+                      extractTarGzFile tmpDirPath pkgPath
                       let descFilePath = tmpDirPath </> showPackageId p </> pkgName p <.> "cabal"
                       e <- doesFileExist descFilePath
                       when (not e) $ die $ "Package .cabal file not found: " ++ show descFilePath

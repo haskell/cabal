@@ -16,22 +16,22 @@ module Hackage.Update
 
 import Hackage.Types
 import Hackage.Fetch
-import Hackage.Tar
 
 import Distribution.Simple.Utils (notice)
 import Distribution.Verbosity (Verbosity)
 
 import qualified Data.ByteString.Lazy as BS
+import qualified Codec.Compression.GZip as GZip (decompress)
 import System.FilePath (dropExtension)
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> [Repo] -> IO ()
 update verbosity = mapM_ (updateRepo verbosity)
 
-updateRepo :: Verbosity
-           -> Repo
-           -> IO ()
-updateRepo verbosity repo =
-    do notice verbosity $ "Downloading package list from server '" ++ repoURL repo ++ "'"
-       indexPath <- downloadIndex verbosity repo
-       BS.readFile indexPath >>= BS.writeFile (dropExtension indexPath) . gunzip
+updateRepo :: Verbosity -> Repo -> IO ()
+updateRepo verbosity repo = do
+  notice verbosity $ "Downloading package list from server '"
+                  ++ repoURL repo ++ "'"
+  indexPath <- downloadIndex verbosity repo
+  BS.writeFile (dropExtension indexPath) . GZip.decompress
+                                       =<< BS.readFile indexPath
