@@ -21,7 +21,7 @@ module Hackage.Config
     ) where
 
 import Prelude hiding (catch)
-import Data.Char (isAlphaNum, toLower)
+import Data.Char (isAlphaNum)
 import Data.Maybe (fromMaybe)
 import Control.Monad (when)
 import Data.Monoid (Monoid(..))
@@ -29,7 +29,7 @@ import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory)
 import Text.PrettyPrint.HughesPJ (text)
 
-import Distribution.Compat.ReadP (ReadP, char, munch1, readS_to_P)
+import Distribution.Compat.ReadP (ReadP, char, munch1)
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils
@@ -38,7 +38,11 @@ import Distribution.ParseUtils
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
-import Distribution.Simple.Setup (Flag(..), toFlag, fromFlag, fromFlagOrDefault)
+import Distribution.Simple.Command (ShowOrParseArgs(..), viewAsFieldDescr)
+import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.Setup ( Flag(..), toFlag, fromFlag, fromFlagOrDefault
+                                 , ConfigFlags, defaultConfigFlags, configureOptions)
+import qualified Distribution.Simple.Setup as ConfigFlags
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
 
@@ -61,19 +65,18 @@ configPackageDB config =
 --
 
 data SavedConfig = SavedConfig {
-    configCompiler          :: Flag CompilerFlavor,
-    configCompilerPath      :: Flag FilePath,
-    configHcPkgPath         :: Flag FilePath,
-    configUserInstallDirs   :: InstallDirs (Flag PathTemplate),
-    configGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
     configCacheDir          :: Flag FilePath,
     configRemoteRepos       :: [RemoteRepo],     -- ^Available Hackage servers.
-    configVerbose           :: Flag Verbosity,
-    configUserInstall       :: Flag Bool,        -- ^--user-install flag
     configUploadUsername    :: Flag Username,
-    configUploadPassword    :: Flag Password
+    configUploadPassword    :: Flag Password,
+    configUserInstallDirs   :: InstallDirs (Flag PathTemplate),
+    configGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
+    configFlags             :: ConfigFlags
   }
   deriving (Show)
+
+configUserInstall     :: SavedConfig -> Flag Bool
+configUserInstall     =  ConfigFlags.configUserInstall . configFlags
 
 configRepos :: SavedConfig -> [Repo]
 configRepos config =
@@ -83,15 +86,11 @@ configRepos config =
   | remote <- configRemoteRepos config ]
 
 savedConfigToConfigFlags :: Flag Bool -> SavedConfig -> Cabal.ConfigFlags
-savedConfigToConfigFlags userInstallFlag config = mempty {
-    Cabal.configHcFlavor    = configCompiler config,
-    Cabal.configHcPath      = configCompilerPath config,
-    Cabal.configHcPkg       = configHcPkgPath config,
+savedConfigToConfigFlags userInstallFlag config = (configFlags config) {
     Cabal.configUserInstall = toFlag userInstall,
     Cabal.configInstallDirs = if userInstall
                                 then configUserInstallDirs config
-                                else configGlobalInstallDirs config,
-    Cabal.configVerbose     = configVerbose config
+                                else configGlobalInstallDirs config
   }
   where userInstall :: Bool
         userInstall = fromFlag $ configUserInstall config
@@ -130,15 +129,18 @@ defaultSavedConfig =
     do userInstallDirs <- defaultUserInstallDirs
        cacheDir        <- defaultCacheDir
        return SavedConfig
-         { configCompiler          = toFlag defaultCompiler
-         , configCompilerPath      = mempty
-         , configHcPkgPath         = mempty
+         { configFlags = (defaultConfigFlags defaultProgramConfiguration){
+                           ConfigFlags.configHcFlavor    = toFlag defaultCompiler
+                         , ConfigFlags.configVerbose     = toFlag normal
+                         , ConfigFlags.configUserInstall = toFlag True
+                         , ConfigFlags.configInstallDirs = error
+                             "ConfigFlags.installDirs: avoid this field. Use UserInstallDirs \
+                              \ or GlobalInstallDirs instead"
+                         }
          , configUserInstallDirs   = userInstallDirs
          , configGlobalInstallDirs = defaultGlobalInstallDirs
          , configCacheDir          = toFlag cacheDir
          , configRemoteRepos       = [defaultRemoteRepo]
-         , configVerbose           = toFlag normal
-         , configUserInstall       = toFlag True
          , configUploadUsername    = mempty
          , configUploadPassword    = mempty
          }
@@ -182,26 +184,21 @@ showConfig = showFields configFieldDescrs
 
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr SavedConfig]
-configFieldDescrs = 
-    configWriteFieldDescrs
+configFieldDescrs =
+    map ( configFlagsField . viewAsFieldDescr) (configureOptions ShowArgs)
+    ++ configCabalInstallFieldDescrs
     ++ map userInstallDirField installDirDescrs
     ++ map globalInstallDirField installDirDescrs
 
--- | The subset of the config file fields that we write out
--- if the config file is missing.
-configWriteFieldDescrs :: [FieldDescr SavedConfig]
-configWriteFieldDescrs =
-    [ simpleField "compiler"
-                (text . show . fromFlagOrDefault GHC) (fmap toFlag parseCompilerFlavor)
-                configCompiler (\c cfg -> cfg { configCompiler = c })
-    , listField "repos"
+configCabalInstallFieldDescrs :: [FieldDescr SavedConfig]
+configCabalInstallFieldDescrs =
+    [ listField "repos"
                 (text . showRepo)                  parseRepo
                 configRemoteRepos (\rs cfg -> cfg { configRemoteRepos = rs })
     , simpleField "cachedir"
                 (text . show . fromFlagOrDefault "")
                 (fmap emptyToNothing parseFilePathQ)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
-    , boolField "user-install" (fromFlag . configUserInstall) (\u cfg -> cfg { configUserInstall = toFlag u })
     , simpleField "hackage-username"
                 (text . show . fromFlagOrDefault "")
                 (fmap emptyToNothing parseTokenQ)
@@ -213,6 +210,12 @@ configWriteFieldDescrs =
     ]
     where emptyToNothing "" = mempty
           emptyToNothing f  = toFlag f
+                              
+-- | The subset of the config file fields that we write out
+-- if the config file is missing.
+configWriteFieldDescrs :: [FieldDescr SavedConfig]
+configWriteFieldDescrs = configCabalInstallFieldDescrs
+                         ++ [f | f <- configFieldDescrs, fieldName f `elem` ["compiler", "user-install"]]
 
 installDirDescrs :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirDescrs =
@@ -224,6 +227,9 @@ installDirDescrs =
     , installDirField "docdir"     docdir     (\d ds -> ds { docdir     = d })
     , installDirField "htmldir"    htmldir    (\d ds -> ds { htmldir    = d })
     ]
+
+configFlagsField :: FieldDescr ConfigFlags -> FieldDescr SavedConfig
+configFlagsField = liftField configFlags (\ff cfg -> cfg{configFlags=ff})
 
 
 userInstallDirField :: FieldDescr (InstallDirs (Flag PathTemplate)) -> FieldDescr SavedConfig
@@ -249,18 +255,6 @@ installDirField name get set =
 
 modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
 modifyFieldName f d = d { fieldName = f (fieldName d) }
-
-parseCompilerFlavor :: ReadP r CompilerFlavor
-parseCompilerFlavor = 
-    do s <- munch1 isAlphaNum
-       return $ case map toLower s of
-                  "ghc"    -> GHC
-                  "nhc"    -> NHC
-                  "hugs"   -> Hugs
-                  "hbc"    -> HBC
-                  "helium" -> Helium
-                  "jhc"    -> JHC
-                  _        -> OtherCompiler s
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":" ++ remoteRepoURL repo
