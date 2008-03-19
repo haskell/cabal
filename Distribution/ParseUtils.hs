@@ -521,7 +521,10 @@ parseBuildToolName :: ReadP r String
 parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
                         return (intercalate "-" ns)
   where component = do
-          cs <- munch1 (\c -> isAlphaNum c || isSymbol c && c /= '-')
+          cs <- munch1 (\c -> isAlphaNum c
+                           || isSymbol   c
+                           || c == '_'
+                           && c /= '-')
           if all isDigit cs then pfail else return cs
 
 -- pkg-config allows versions and other letters in package names, 
