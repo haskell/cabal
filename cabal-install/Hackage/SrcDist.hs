@@ -4,43 +4,71 @@
 module Hackage.SrcDist (
 	 sdist
   )  where
-import Distribution.Simple.SrcDist (preparePackage,tarBallName,nameVersion)
+import Distribution.Simple.SrcDist
+         ( printPackageProblems, prepareTree, prepareSnapshotTree )
 import Hackage.Tar (createTarGzFile)
+
+import Distribution.Package (showPackageId, Package(..))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.Simple.Utils (notice, defaultPackageDesc )
+import Distribution.Simple.Utils
+         ( withTempDirectory , defaultPackageDesc
+         , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
-import Control.Exception (finally)
-import System.Directory (removeDirectoryRecursive)
 import Distribution.Verbosity (Verbosity)
-import System.FilePath ((</>))
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.BuildPaths ( distPref, srcPref)
 import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
 
+import System.Time (getClockTime, toCalendarTime)
+import System.FilePath ((</>), (<.>))
+import System.Directory (doesDirectoryExist)
+import Control.Monad (when)
+import Data.Maybe (isNothing)
+
 -- |Create a source distribution.
 sdist :: SDistFlags -> IO ()
 sdist flags = do
-  let snapshot  = fromFlag (sDistSnapshot flags)
-      verbosity = fromFlag (sDistVerbose flags)
-  cabalFile <- defaultPackageDesc verbosity
-  pkg_descr0 <- readPackageDescription verbosity cabalFile
+  pkg <- return . flattenPackageDescription
+     =<< readPackageDescription verbosity
+     =<< defaultPackageDesc verbosity
   mb_lbi <- maybeGetPersistBuildConfig
-  let pkg_descr' = (flattenPackageDescription pkg_descr0)
-  pkg_descr <- preparePackage pkg_descr' mb_lbi verbosity snapshot srcPref knownSuffixHandlers
-  createArchive pkg_descr verbosity srcPref distPref
-  return ()
+  let tmpDir = srcPref
+
+  -- do some QA
+  printPackageProblems verbosity pkg
+
+  exists <- doesDirectoryExist tmpDir
+  when exists $
+    die $ "Source distribution already in place. please move or remove: "
+       ++ tmpDir
+
+  when (isNothing mb_lbi) $
+    warn verbosity "Cannot run preprocessors. Run 'configure' command first."
+
+  withTempDirectory verbosity tmpDir $ do
+
+    setupMessage verbosity "Building source dist for" (packageId pkg)
+    if snapshot
+      then getClockTime >>= toCalendarTime
+       >>= prepareSnapshotTree verbosity pkg mb_lbi tmpDir knownSuffixHandlers
+      else prepareTree         verbosity pkg mb_lbi tmpDir knownSuffixHandlers
+    targzFile <- createArchive verbosity pkg tmpDir distPref
+    notice verbosity $ "Source tarball created: " ++ targzFile
+
+  where
+    verbosity = fromFlag (sDistVerbose flags)
+    snapshot  = fromFlag (sDistSnapshot flags)
 
 -- |Create an archive from a tree of source files, and clean up the tree.
-createArchive :: PackageDescription
-                 -> Verbosity
-                 -> FilePath
-                 -> FilePath
-                 -> IO FilePath
-createArchive pkg_descr verbosity tmpDir targetPref = do
-  let tarBallFilePath = targetPref </> tarBallName pkg_descr
-  createTarGzFile tarBallFilePath (Just tmpDir) (nameVersion pkg_descr)
-      `finally` removeDirectoryRecursive tmpDir
-  notice verbosity $ "Source tarball created: " ++ tarBallFilePath
+createArchive :: Verbosity
+              -> PackageDescription
+              -> FilePath
+              -> FilePath
+              -> IO FilePath
+createArchive _verbosity pkg tmpDir targetPref = do
+  let tarBallName     = showPackageId (packageId pkg)
+      tarBallFilePath = targetPref </> tarBallName <.> "tar.gz"
+  createTarGzFile tarBallFilePath (Just tmpDir) tarBallName
   return tarBallFilePath
