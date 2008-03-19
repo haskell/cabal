@@ -33,15 +33,21 @@ import Data.Int (Int8, Int64)
 import Data.List (unfoldr,partition,foldl')
 import Data.Maybe (catMaybes)
 import Numeric (readOct,showOct)
-import System.Directory (Permissions(..), setPermissions, getPermissions, createDirectoryIfMissing, copyFile, getModificationTime
-                        ,doesFileExist,doesDirectoryExist,makeRelativeToCurrentDirectory,getDirectoryContents)
+import System.Directory
+         ( getDirectoryContents, doesFileExist, doesDirectoryExist
+         , getModificationTime,  createDirectoryIfMissing, copyFile
+         , Permissions(..), setPermissions, getPermissions )
 import System.Time (ClockTime(..))
-import System.FilePath ((</>), isValid, isAbsolute, splitFileName, splitDirectories )
+import System.FilePath as FilePath
+         ( (</>), isValid, isAbsolute, splitFileName, splitDirectories, makeRelative )
+import qualified System.FilePath.Posix as FilePath.Posix
+         ( joinPath, pathSeparator )
 import System.Posix.Types (FileMode)
-import System.IO (hFileSize,openBinaryFile,hClose,Handle,IOMode(ReadMode,WriteMode),withFile,hSetBinaryMode)
+import System.IO
+         ( Handle, IOMode(ReadMode), openBinaryFile, hFileSize, hClose )
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Monad (liftM,when)
-import Distribution.Simple.Utils (inDir,intercalate)
+import Distribution.Simple.Utils (die)
 
 -- GNU gzip
 import Codec.Compression.GZip (decompress,compress)
@@ -206,18 +212,20 @@ getString off len = BS.Char8.unpack . BS.Char8.takeWhile (/='\0') . getBytes off
 -- * Writing
 --
 
--- | Creates a tar gzipped archive, the paths in the archive will be relative to the Base directory,
--- or the current working directory if the former is Nothing.
+-- | Creates a tar gzipped archive, the paths in the archive will be relative
+-- to the base directory.
+--
 createTarGzFile :: FilePath        -- ^ Full Tarball path
-                -> Maybe FilePath  -- ^ Base directory 
-                -> FilePath        -- ^ Directory or file to package
+                -> FilePath        -- ^ Base directory
+                -> FilePath        -- ^ Directory or file to package, relative to the base dir
                 -> IO ()
-createTarGzFile tarFile localdir target = 
-  withFile tarFile WriteMode $ \h -> do
-    hSetBinaryMode h True
-    inDir localdir $ do
-      (entries,hs) <- fmap unzip . mapM (unsafeInterleaveIO . createTarEntry) =<< recurseDirectories [target]
-      BS.hPut h . gzip . entries2Archive $ entries
+createTarGzFile tarFile baseDir sourceDir = do
+      (entries,hs) <- fmap unzip
+                    . mapM (unsafeInterleaveIO
+                          . createTarEntry baseDir
+                          . makeRelative baseDir)
+                  =<< recurseDirectories [baseDir </> sourceDir]
+      BS.writeFile tarFile . gzip . entries2Archive $ entries
       mapM_ hClose (catMaybes hs) -- TODO: the handles are explicitly closed because of a bug in bytestring-0.9.0.1,
                                   -- once we depend on a later version we can avoid this hack.
 
@@ -243,13 +251,15 @@ entries2Archive :: [TarEntry] -> ByteString
 entries2Archive es = BS.concat $ (map putTarEntry es) ++ [BS.replicate (512*2) 0]
 
 -- TODO: It needs to return the handle only because of the hack in createTarGzFile
-createTarEntry :: FilePath -> IO (TarEntry,Maybe Handle)
-createTarEntry path =
+createTarEntry :: FilePath -> FilePath -> IO (TarEntry,Maybe Handle)
+createTarEntry path relpath =
     do ftype <- getFileType path
-       path' <- sanitizePath ftype path
+       let tarpath = nativePathToTarPath ftype relpath
+       when (null tarpath || length tarpath > 255) $
+            die $ "Path too long: " ++ show tarpath
        mode <- getFileMode ftype path
        let hdr = TarHeader {
-                   tarFileName = path',
+                   tarFileName = tarpath,
                    tarFileMode = mode,
                    tarFileType = ftype,
                    tarLinkTarget = ""
@@ -335,19 +345,16 @@ putTarFileType t =
                  TarDirectory       -> '5'
                  TarOther c         -> c
 
--- | The tar format expects unix paths
-pathSeparator :: Char
-pathSeparator = '/'
-
--- | Normalize the path wrt the current directory, and converts it to use @pathSeparator@
-sanitizePath :: TarFileType -> FilePath -> IO FilePath
-sanitizePath t path = 
-    do path' <- liftM (addTrailingSep . intercalate [pathSeparator] . splitDirectories ) $ makeRelativeToCurrentDirectory path       
-       when (null path' || length path' > 255) $
-            fail $ "Path too long: " ++ show path'
-       return path'
+-- | Convert a native path to a unix/posix style path
+-- and for directories add a trailing @\/@.
+--
+nativePathToTarPath :: TarFileType -> FilePath -> FilePath
+nativePathToTarPath ftype = addTrailingSep ftype
+                          . FilePath.Posix.joinPath
+                          . FilePath.splitDirectories
   where 
-    addTrailingSep = if t == TarDirectory then (++[pathSeparator]) else id
+    addTrailingSep TarDirectory path = path ++ [FilePath.Posix.pathSeparator]
+    addTrailingSep _            path = path
 
 -- | Takes a sanitized path, i.e. converted to Posix form
 splitLongPath :: FilePath -> (String,String)
@@ -356,7 +363,8 @@ splitLongPath path =
               -- 101 since we will always move a separator to the prefix  
      in if null x 
          then if null y then err "Empty path." else ("", y)
-         else case break (==pathSeparator) y of
+         else case break (==FilePath.Posix.pathSeparator) y of
+              --TODO: convert this to use FilePath.Posix.splitPath
                 (_,"")    -> err "Can't split path." 
                 (_,_:"")  -> err "Can't split path." 
                 (y1,s:y2) | length p > 155 || length y2 > 100 -> err "Can't split path."
