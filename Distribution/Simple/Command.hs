@@ -136,7 +136,7 @@ type ArgPlaceHolder = String
 -- | Create an option taking a single OptDescr.
 --   No explicit Name is given for the Option, the name is the first LFlag given.
 option :: SFlags -> LFlags -> Description -> get -> set -> MkOptDescr get set a -> OptionField a
-option sf (n:lf) d get set arg = OptionField n [arg sf (n:lf) d get set]
+option sf lf@(n:_) d get set arg = OptionField n [arg sf lf d get set]
 option _ _ _ _ _ _ = error "Distribution.command.option: An OptionField must have at least one LFlag"
 
 -- | Create an option taking several OptDescrs.
