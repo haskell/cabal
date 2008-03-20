@@ -214,8 +214,8 @@ createTarGzFile :: FilePath        -- ^ Full Tarball path
 createTarGzFile tarFile baseDir sourceDir = do
       (entries,hs) <- fmap unzip
                     . mapM (unsafeInterleaveIO
-                          . createTarEntry baseDir
-                          . makeRelative baseDir)
+                          . (\path -> createTarEntry path
+                                      $ makeRelative baseDir path))
                   =<< recurseDirectories [baseDir </> sourceDir]
       BS.writeFile tarFile . GZip.compress . entries2Archive $ entries
       mapM_ hClose (catMaybes hs) -- TODO: the handles are explicitly closed because of a bug in bytestring-0.9.0.1,
@@ -243,7 +243,9 @@ entries2Archive :: [TarEntry] -> ByteString
 entries2Archive es = BS.concat $ (map putTarEntry es) ++ [BS.replicate (512*2) 0]
 
 -- TODO: It needs to return the handle only because of the hack in createTarGzFile
-createTarEntry :: FilePath -> FilePath -> IO (TarEntry,Maybe Handle)
+createTarEntry :: FilePath -- ^ path to find the file
+               -> FilePath -- ^ path to use for the TarHeader
+               -> IO (TarEntry,Maybe Handle)
 createTarEntry path relpath =
     do ftype <- getFileType path
        let tarpath = nativePathToTarPath ftype relpath
