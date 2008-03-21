@@ -72,9 +72,8 @@ import Distribution.Compat.ReadP hiding (get)
 import Distribution.ParseUtils
 import Distribution.PackageDescription
 import Distribution.Package
-         ( PackageIdentifier(..), packageName, packageVersion
-         , parsePackageName
-         , Dependency(..), showDependency, parseDependency )
+         ( PackageIdentifier(..), packageName, packageVersion, parsePackageName
+         , Dependency(..) )
 import Distribution.Version
         ( isAnyVersion )
 import Distribution.Verbosity (Verbosity)
@@ -114,7 +113,7 @@ pkgDescrFieldDescrs =
            showFreeText           (munch (const True))
            maintainer             (\val pkg -> pkg{maintainer=val})
  , commaListField  "build-depends"
-           showDependency         parseDependency
+           disp                   parse
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
            showFreeText           (munch (const True))
@@ -206,7 +205,7 @@ binfoFieldDescrs =
            disp               parse
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
-           showDependency     parseBuildTool
+           disp               parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , listField "cpp-options"
            showToken          parseTokenQ
@@ -218,7 +217,7 @@ binfoFieldDescrs =
            showToken          parseTokenQ
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
-           showDependency     parsePkgconfigDependency
+           disp               parsePkgconfigDependency
            pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
  , listField "frameworks"
            showToken          parseTokenQ
@@ -351,7 +350,7 @@ constraintFieldNames = ["build-depends"]
 -- field descriptor.
 parseConstraint :: Field -> ParseResult [Dependency]
 parseConstraint (F l n v) 
-    | n == "build-depends" = runP l n (parseCommaList parseDependency) v 
+    | n == "build-depends" = runP l n (parseCommaList parse) v
 parseConstraint f = bug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 {-

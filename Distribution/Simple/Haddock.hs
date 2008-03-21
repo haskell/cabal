@@ -46,7 +46,8 @@ module Distribution.Simple.Haddock (
   ) where
 
 -- local
-import Distribution.Package (PackageIdentifier, showPackageId, Package(..))
+import Distribution.Package
+         ( PackageIdentifier, Package(..) )
 import Distribution.PackageDescription as PD
          (PackageDescription(..), BuildInfo(..), hcOptions,
           Library(..), hasLibs, withLib,
@@ -79,7 +80,7 @@ import Distribution.Simple.Utils
          , createDirectoryIfMissingVerbose, withTempFile
          , findFileWithExtension, findFile, dotToSep )
 import Distribution.Text
-         ( simpleParse )
+         ( display, simpleParse )
 
 import Distribution.Verbosity
 import Language.Haskell.Extension
@@ -128,7 +129,7 @@ haddock pkg_descr lbi suffixes flags = do
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
-    let showPkg    = showPackageId (packageId pkg_descr)
+    let showPkg    = display (packageId pkg_descr)
     let outputFlag = if fromFlag (haddockHoogle flags)
                      then "--hoogle"
                      else "--html"
@@ -292,7 +293,7 @@ haddockPackageFlags lbi htmlTemplate = do
   let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
-             ++ intercalate ", " (map showPackageId missing)
+             ++ intercalate ", " (map display missing)
       flags = [ "--read-interface="
              ++ (if null html then "" else html ++ ",") ++ interface
               | (_, Just (interface, html)) <- interfaces ]
@@ -317,7 +318,7 @@ haddockPackageFlags lbi htmlTemplate = do
 ghcSimpleOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcSimpleOptions lbi bi mockDir
   =  ["-hide-all-packages"]
-  ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+  ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
   ++ ["-i"]
   ++ hcOptions GHC bi
   ++ ["-i" ++ autogenModulesDir lbi]
