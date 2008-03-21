@@ -555,7 +555,7 @@ parseTestedWithQ = parseQuoted tw <++ tw
 		return (compiler,version)
 
 parseLicenseQ :: ReadP r License
-parseLicenseQ = parseQuoted parseReadS <++ parseReadS
+parseLicenseQ = parseQuoted parse <++ parse
 
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In

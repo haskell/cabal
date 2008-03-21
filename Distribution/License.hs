@@ -49,6 +49,10 @@ module Distribution.License (
 	License(..)
   ) where
 
+import Distribution.Text (Text(..))
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
+
 -- |This datatype indicates the license under which your package is
 -- released.  It is also wise to add your license to each source file
 -- using the license-file field.  The 'AllRightsReserved' constructor
@@ -90,3 +94,6 @@ data License =
   | OtherLicense
   deriving (Read, Show, Eq)
 
+instance Text License where
+  disp  = Disp.text . show
+  parse = Parse.readS_to_P reads
