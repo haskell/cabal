@@ -42,21 +42,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Compiler (
   -- * Compiler flavor
   CompilerFlavor(..),
-  showCompilerFlavor,
-  readCompilerFlavor,
   buildCompilerFlavor,
   defaultCompilerFlavor,
 
   -- * Compiler id
   CompilerId(..),
-  showCompilerId,
   ) where
 
 import Distribution.Version (Version(..))
 
 import qualified System.Info (compilerName)
-import qualified Data.Char as Char (toLower)
-import Distribution.Text (display)
+import Distribution.Text (Text(..), display)
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>))
+
+import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
+import Control.Monad (when)
 
 data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC
                     | OtherCompiler String
@@ -65,23 +67,34 @@ data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC]
 
-showCompilerFlavor :: CompilerFlavor -> String
-showCompilerFlavor (OtherCompiler name) = name
-showCompilerFlavor NHC                  = "nhc98"
-showCompilerFlavor other                = lowercase (show other)
+instance Text CompilerFlavor where
+  disp (OtherCompiler name) = Disp.text name
+  disp NHC                  = Disp.text "nhc98"
+  disp other                = Disp.text (lowercase (show other))
 
-readCompilerFlavor :: String -> CompilerFlavor
-readCompilerFlavor s =
+  parse = do
+    comp <- Parse.munch1 Char.isAlphaNum
+    when (all Char.isDigit comp) Parse.pfail
+    return (classifyCompilerFlavor comp)
+
+classifyCompilerFlavor :: String -> CompilerFlavor
+classifyCompilerFlavor s =
   case lookup (lowercase s) compilerMap of
-    Just arch -> arch
-    Nothing   -> OtherCompiler (lowercase s)
+    Just compiler -> compiler
+    Nothing       -> OtherCompiler (lowercase s)
   where
-    compilerMap = [ (showCompilerFlavor compiler, compiler)
+    compilerMap = [ (display compiler, compiler)
                   | compiler <- knownCompilerFlavors ]
 
 buildCompilerFlavor :: CompilerFlavor
-buildCompilerFlavor = readCompilerFlavor System.Info.compilerName
+buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
 
+-- | The default compiler flavour to pick when compiling stuff. This defaults
+-- to the compiler used to build the Cabal lib.
+--
+-- However if it's not a recognised compiler then it's 'Nothing' and the user
+-- will have to specify which compiler they want.
+--
 defaultCompilerFlavor :: Maybe CompilerFlavor
 defaultCompilerFlavor = case buildCompilerFlavor of
   OtherCompiler _ -> Nothing
@@ -94,9 +107,14 @@ defaultCompilerFlavor = case buildCompilerFlavor of
 data CompilerId = CompilerId CompilerFlavor Version
   deriving (Eq, Ord, Read, Show)
 
-showCompilerId :: CompilerId -> String
-showCompilerId (CompilerId f (Version [] _)) = showCompilerFlavor f
-showCompilerId (CompilerId f v) = showCompilerFlavor f ++ '-': display v
+instance Text CompilerId where
+  disp (CompilerId f (Version [] _)) = disp f
+  disp (CompilerId f v) = disp f <> Disp.char '-' <> disp v
+
+  parse = do
+    flavour <- parse
+    version <- (Parse.char '-' >> parse) Parse.<++ return (Version [] [])
+    return (CompilerId flavour version)
 
 lowercase :: String -> String
 lowercase = map Char.toLower
