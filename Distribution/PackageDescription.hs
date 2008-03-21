@@ -83,7 +83,7 @@ import Distribution.Package
          ( PackageIdentifier(PackageIdentifier), Dependency, Package(..) )
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
-import Distribution.Compiler (CompilerFlavor, showCompilerFlavor)
+import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
          ( display )
@@ -469,7 +469,7 @@ instance Show ConfVar where
     show (OS os) = "os(" ++ display os ++ ")"
     show (Arch arch) = "arch(" ++ display arch ++ ")"
     show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
-    show (Impl c v) = "impl(" ++ showCompilerFlavor c
+    show (Impl c v) = "impl(" ++ display c
                        ++ " " ++ display v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.

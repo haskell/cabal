@@ -65,7 +65,7 @@ import System.FilePath (FilePath, (</>), (<.>))
 import Distribution.Package
          ( PackageIdentifier(pkgName), packageName )
 import Distribution.Compiler
-         ( CompilerId(..), showCompilerFlavor )
+         ( CompilerId(..) )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
 import Distribution.Text
@@ -118,8 +118,7 @@ mkProfLibName lib = mkLibName lib { pkgName = pkgName lib ++ "_p" }
 mkSharedLibName :: PackageIdentifier -> CompilerId -> String
 mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
   = "libHS" ++ display lib ++ "-" ++ comp <.> dllExtension
-  where comp = showCompilerFlavor compilerFlavor
-            ++ display compilerVersion
+  where comp = display compilerFlavor ++ display compilerVersion
 
 -- ------------------------------------------------------------
 -- * Platform file extensions

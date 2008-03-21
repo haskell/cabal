@@ -57,7 +57,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
          ( Version(..), VersionRange(..), withinRange )
-import Distribution.Compiler (CompilerFlavor, readCompilerFlavor)
+import Distribution.Compiler (CompilerFlavor)
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (currentDir)
@@ -162,9 +162,9 @@ parseCondition = condOr
     isIdentChar c = isAlphaNum c || (c `elem` "_-")
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
-    implIdent     = do i <- ident
+    implIdent     = do i <- parse
                        vr <- sp >> option AnyVersion parse
-                       return $ Impl (readCompilerFlavor i) vr
+                       return $ Impl i vr
 
 ------------------------------------------------------------------------------
 
