@@ -64,6 +64,8 @@ import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when)
 import System.Directory (doesFileExist)
 
+import Distribution.Text
+         ( Text(disp, parse) )
 import Text.PrettyPrint.HughesPJ
 import Distribution.Compat.ReadP hiding (get)
 
@@ -202,7 +204,7 @@ storeXFieldsExe _ _ = Nothing
 binfoFieldDescrs :: [FieldDescr BuildInfo]
 binfoFieldDescrs =
  [ simpleField "buildable"
-           (text . show)      parseBool
+           disp               parse
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
            showDependency     parseBuildTool
@@ -277,7 +279,7 @@ flagFieldDescrs =
         showFreeText     (munch (const True))
         flagDescription  (\val fl -> fl{ flagDescription = val })
     , simpleField "default"
-        (text . show)    parseBool
+        disp             parse
         flagDefault      (\val fl -> fl{ flagDefault = val })
     ]
 
@@ -657,8 +659,8 @@ parseField :: [FieldDescr a]     -- ^ list of parseable fields
            -> (a,[(Int,String)]) -- ^ accumulated result and warnings
            -> Field              -- ^ the field to be parsed
            -> ParseResult (a, [(Int,String)])
-parseField ((FieldDescr name _ parse):fields) unrec (a, us) (F line f val)
-  | name == f = parse line val a >>= \a' -> return (a',us)
+parseField ((FieldDescr name _ parser):fields) unrec (a, us) (F line f val)
+  | name == f = parser line val a >>= \a' -> return (a',us)
   | otherwise = parseField fields unrec (a,us) (F line f val)
 parseField [] unrec (a,us) (F l f val) = return $
   case unrec (f,val) a of        -- no fields matched, see if the 'unrec'

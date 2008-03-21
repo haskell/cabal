@@ -79,6 +79,7 @@ Library
         Distribution.Simple.UserHooks,
         Distribution.Simple.Utils,
         Distribution.System,
+        Distribution.Text,
         Distribution.Verbosity,
         Distribution.Version,
         Distribution.Compat.ReadP,
