@@ -54,6 +54,8 @@ module Distribution.Package (
   ) where
 
 import Distribution.Version
+import Distribution.Text
+         ( Text(..), display )
 import Distribution.Compat.ReadP as ReadP
 import qualified Text.PrettyPrint as Pretty
 import Text.PrettyPrint ((<+>))
@@ -72,7 +74,7 @@ data PackageIdentifier
 showPackageId :: PackageIdentifier -> String
 showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
 showPackageId pkgid = 
-  pkgName pkgid ++ '-': showVersion (packageVersion pkgid)
+  pkgName pkgid ++ '-': display (packageVersion pkgid)
 
 parsePackageName :: ReadP r String
 parsePackageName = do ns <- sepBy1 component (char '-')
@@ -87,7 +89,7 @@ parsePackageName = do ns <- sepBy1 component (char '-')
 parsePackageId :: ReadP r PackageIdentifier
 parsePackageId = do 
   n <- parsePackageName
-  v <- (ReadP.char '-' >> parseVersion) <++ return (Version [] [])
+  v <- (ReadP.char '-' >> parse) <++ return (Version [] [])
   return PackageIdentifier{pkgName=n,pkgVersion=v}
 
 -- ------------------------------------------------------------
@@ -99,12 +101,12 @@ data Dependency = Dependency String VersionRange
 
 showDependency :: Dependency -> Pretty.Doc
 showDependency (Dependency name ver) =
-  Pretty.text name <+> Pretty.text (showVersionRange ver)
+  Pretty.text name <+> disp ver
 
 parseDependency :: ReadP r Dependency
 parseDependency = do name <- parsePackageName
                      skipSpaces
-                     ver <- parseVersionRange <++ return AnyVersion
+                     ver <- parse <++ return AnyVersion
                      skipSpaces
                      return $ Dependency name ver
 

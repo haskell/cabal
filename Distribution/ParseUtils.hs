@@ -66,6 +66,8 @@ import Distribution.Version
 import Distribution.Package	( parsePackageName, Dependency(..) )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
+import Distribution.Text
+         ( Text(..) )
 import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
 
@@ -537,18 +539,18 @@ parsePackageNameQ :: ReadP r String
 parsePackageNameQ = parseQuoted parsePackageName <++ parsePackageName 
 
 parseVersionRangeQ :: ReadP r VersionRange
-parseVersionRangeQ = parseQuoted parseVersionRange <++ parseVersionRange
+parseVersionRangeQ = parseQuoted parse <++ parse
 
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
-  where ver = parseVersion <++ return noVersion
+  where ver = parse <++ return noVersion
 	noVersion = Version{ versionBranch=[], versionTags=[] }
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
   where tw = do compiler <- parseReadS
 		skipSpaces
-		version <- parseVersionRange <++ return AnyVersion
+		version <- parse <++ return AnyVersion
 		skipSpaces
 		return (compiler,version)
 
@@ -604,7 +606,7 @@ showToken str
   where dodgy c = isSpace c || c == ','
 
 showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
-showTestedWith (compiler,version) = text (show compiler ++ " " ++ showVersionRange version)
+showTestedWith (compiler, version) = text (show compiler) <+> disp version
 
 -- | Pretty-print free-format text, ensuring that it is vertically aligned,
 -- and with blank lines replaced by dots for correct re-parsing.

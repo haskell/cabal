@@ -76,11 +76,12 @@ import System.FilePath (dropDrive)
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, showPackageId )
-import Distribution.Version (showVersion)
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Compiler
          ( CompilerId, showCompilerId, CompilerFlavor(..) )
+import Distribution.Text
+         ( display )
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Foreign
@@ -408,7 +409,7 @@ initialPathTemplateEnv :: PackageIdentifier -> CompilerId
 initialPathTemplateEnv pkgId compilerId =
   map (\(v,s) -> (v, PathTemplate [Ordinary s]))
   [(PkgNameVar,  packageName pkgId)
-  ,(PkgVerVar,   showVersion (packageVersion pkgId))
+  ,(PkgVerVar,   display (packageVersion pkgId))
   ,(PkgIdVar,    showPackageId pkgId)
   ,(CompilerVar, showCompilerId compilerId)]
 

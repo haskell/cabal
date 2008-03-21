@@ -91,7 +91,10 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils (die, rawSystemExit, cabalVersion)
 
 import Distribution.License (License(..))
-import Distribution.Version (Version(..), showVersion)
+import Distribution.Version
+         ( Version(..) )
+import Distribution.Text
+         ( display )
 
 import System.Environment (getArgs, getProgName)
 import Data.List  (intersperse)
@@ -128,9 +131,9 @@ defaultMainHelper args =
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
       exitWith (ExitFailure 1)
-    printNumericVersion = putStrLn $ showVersion cabalVersion
+    printNumericVersion = putStrLn $ display cabalVersion
     printVersion        = putStrLn $ "Cabal library version "
-                                  ++ showVersion cabalVersion
+                                  ++ display cabalVersion
 
     progs = defaultProgramConfiguration
     commands =
