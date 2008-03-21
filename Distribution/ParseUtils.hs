@@ -55,7 +55,7 @@ module Distribution.ParseUtils (
 	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showFreeText,
 	field, simpleField, listField, commaListField, optsField, liftField,
-	parseReadS, parseReadSQ, parseQuoted, parseBool,
+	parseReadS, parseReadSQ, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -501,10 +501,6 @@ parseFilePathQ = parseTokenQ
 
 parseReadS :: Read a => ReadP r a
 parseReadS = readS_to_P reads
-
-parseBool :: ReadP r Bool
-parseBool = choice [ (string "true" <++ string "True") >> return True
-                   , (string "false" <++ string "False") >> return False ]
 
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ

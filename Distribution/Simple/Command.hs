@@ -83,6 +83,8 @@ import Data.List (sortBy)
 import Data.Maybe
 import Data.Monoid
 import qualified Distribution.GetOpt as GetOpt
+import Distribution.Text
+         ( Text(parse) )
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Text.PrettyPrint.HughesPJ    ( punctuate, cat, comma, text, empty)
@@ -272,7 +274,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
                     ChoiceOpt{}             -> case getChoiceByLongFlag optDescr val of
                                                  Just f -> return (f a)
                                                  _      -> syntaxError line val
-                    BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parseBool val
+                    BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parse val
                     OptArg _ _ _ _readE _ _ -> -- The behaviour in this case is not clear, and it has no use so far,
                                                -- so we avoid future surprises by not implementing it.
                                                error "Command.optionToFieldDescr: feature not implemented"
