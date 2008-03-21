@@ -59,8 +59,7 @@ import Distribution.Simple.Compiler
     , showCompilerId, unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
-    , showPackageId, parsePackageId
-    , Dependency(..), showDependency )
+    , Dependency(Dependency) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -75,8 +74,6 @@ import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
-import Distribution.Compat.ReadP
-    ( readP_to_S )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -131,7 +128,7 @@ import qualified System.Info
 import System.IO
     ( hPutStrLn, stderr, hGetContents, openFile, hClose, IOMode(ReadMode) )
 import Distribution.Text
-    ( display, simpleParse )
+    ( Text(disp), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
     
@@ -171,14 +168,14 @@ tryGetConfigStateFile filename = do
     badVersion cabalId compilerId
               = "You need to re-run the 'configure' command. "
              ++ "The version of Cabal being used has changed (was "
-             ++ showPackageId cabalId ++ ", now "
-             ++ showPackageId currentCabalId ++ ")."
+             ++ display cabalId ++ ", now "
+             ++ display currentCabalId ++ ")."
              ++ badcompiler compilerId
     badcompiler compilerId | compilerId == currentCompilerId = ""
                            | otherwise
               = " Additionally the compiler is different (was "
-             ++ showPackageId compilerId ++ ", now "
-             ++ showPackageId currentCompilerId
+             ++ display compilerId ++ ", now "
+             ++ display currentCompilerId
              ++ ") which is probably the cause of the problem."
 
 -- internal function
@@ -211,9 +208,9 @@ writePersistBuildConfig lbi = do
 
 showHeader :: PackageIdentifier -> String
 showHeader pkgid =
-     "Saved package config for " ++ showPackageId pkgid
-  ++ " written by " ++ showPackageId currentCabalId
-  ++      " using " ++ showPackageId currentCompilerId
+     "Saved package config for " ++ display pkgid
+  ++ " written by " ++ display currentCabalId
+  ++      " using " ++ display currentCompilerId
   where
 
 currentCabalId :: PackageIdentifier
@@ -229,17 +226,14 @@ parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier)
 parseHeader header = case words header of
   ["Saved", "package", "config", "for", pkgid,
    "written", "by", cabalid, "using", compilerid]
-    -> case (readPackageId pkgid,
-             readPackageId cabalid,
-             readPackageId compilerid) of
+    -> case (simpleParse pkgid :: Maybe PackageIdentifier,
+             simpleParse cabalid,
+             simpleParse compilerid) of
         (Just _,
          Just cabalid',
          Just compilerid') -> Just (cabalid', compilerid')
         _                  -> Nothing
   _                        -> Nothing
-  where readPackageId str = case readP_to_S parsePackageId str of
-          [] -> Nothing
-          ok -> Just (fst (last ok))
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
@@ -306,7 +300,7 @@ configure (pkg_descr0, pbi) cfg
                    Left missing -> 
                        die $ "At least the following dependencies are missing:\n"
                          ++ (render . nest 4 . sep . punctuate comma $ 
-                             map showDependency missing)
+                             map disp missing)
             Right pd -> return (pd,[])
               
         -- add extra include/lib dirs as specified in cfg
@@ -346,9 +340,9 @@ configure (pkg_descr0, pbi) cfg
                  ++ " packages they depend on are missing. These broken "
                  ++ "packages must be rebuilt before they can be used.\n"
                  ++ unlines [ "package "
-                           ++ showPackageId (packageId pkg)
+                           ++ display (packageId pkg)
                            ++ " is broken due to missing package "
-                           ++ intercalate ", " (map showPackageId deps)
+                           ++ intercalate ", " (map display deps)
                             | (pkg, deps) <- broken ]
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
@@ -361,8 +355,8 @@ configure (pkg_descr0, pbi) cfg
             warn verbosity $
                  "This package indirectly depends on multiple versions of the same "
               ++ "package. This is highly likely to cause a compile failure.\n"
-              ++ unlines [ "package " ++ showPackageId pkg ++ " requires "
-                        ++ showPackageId (PackageIdentifier name ver)
+              ++ unlines [ "package " ++ display pkg ++ " requires "
+                        ++ display (PackageIdentifier name ver)
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
@@ -498,7 +492,7 @@ configDependency verbosity index dep@(Dependency pkgname vrange) =
         pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
                    info verbosity $ "Dependency " ++ pkgname
                                 ++ display vrange
-                                ++ ": using " ++ showPackageId pkgid
+                                ++ ": using " ++ display pkgid
                    return pkgid
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration

@@ -63,7 +63,7 @@ module Distribution.Simple.BuildPaths (
 import System.FilePath (FilePath, (</>), (<.>))
 
 import Distribution.Package
-         ( PackageIdentifier(pkgName), packageName, showPackageId )
+         ( PackageIdentifier(pkgName), packageName )
 import Distribution.Compiler
          ( CompilerId(..), showCompilerFlavor )
 import Distribution.PackageDescription (PackageDescription)
@@ -107,7 +107,7 @@ haddockName pkg_descr = packageName pkg_descr <.> "haddock"
 -- Library file names
 
 mkLibName :: PackageIdentifier -> String
-mkLibName lib = "libHS" ++ showPackageId lib <.> "a"
+mkLibName lib = "libHS" ++ display lib <.> "a"
 
 mkProfLibName :: PackageIdentifier -> String
 mkProfLibName lib = mkLibName lib { pkgName = pkgName lib ++ "_p" }
@@ -117,7 +117,7 @@ mkProfLibName lib = mkLibName lib { pkgName = pkgName lib ++ "_p" }
 -- e.g. libHSbase-2.1-ghc6.6.1.so
 mkSharedLibName :: PackageIdentifier -> CompilerId -> String
 mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
-  = "libHS" ++ showPackageId lib ++ "-" ++ comp <.> dllExtension
+  = "libHS" ++ display lib ++ "-" ++ comp <.> dllExtension
   where comp = showCompilerFlavor compilerFlavor
             ++ display compilerVersion
 

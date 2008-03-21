@@ -63,7 +63,8 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..) )
 import Distribution.PackageDescription.Check
-import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
+import Distribution.Package
+         ( PackageIdentifier(pkgVersion), Package(..) )
 import Distribution.Version
          ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
@@ -326,4 +327,4 @@ printPackageProblems verbosity pkg_descr = do
 -- | The name of the tarball without extension
 --
 tarBallName :: PackageDescription -> String
-tarBallName = showPackageId . packageId
+tarBallName = display . packageId

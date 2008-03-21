@@ -42,24 +42,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Package (
 	-- * Package ids
 	PackageIdentifier(..),
-	showPackageId, parsePackageId, parsePackageName,
+        parsePackageName,
 
         -- * Package dependencies
         Dependency(..),
-        showDependency, parseDependency,
 
 	-- * Package classes
 	Package(..), packageName, packageVersion,
 	PackageFixedDeps(..),
   ) where
 
-import Distribution.Version
-import Distribution.Text
-         ( Text(..), display )
-import Distribution.Compat.ReadP as ReadP
-import qualified Text.PrettyPrint as Pretty
-import Text.PrettyPrint ((<+>))
-import Data.Char ( isDigit, isAlphaNum )
+import Distribution.Version (Version(..), VersionRange(AnyVersion))
+
+import Distribution.Text (Text(..))
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP ((<++))
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>), (<+>))
+import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
 -- | The name and version of a package.
@@ -70,27 +70,24 @@ data PackageIdentifier
      }
      deriving (Read, Show, Eq, Ord)
 
--- |Creates a string like foo-1.2
-showPackageId :: PackageIdentifier -> String
-showPackageId (PackageIdentifier n (Version [] _)) = n -- if no version, don't show version.
-showPackageId pkgid = 
-  pkgName pkgid ++ '-': display (packageVersion pkgid)
+instance Text PackageIdentifier where
+  disp (PackageIdentifier n v) = case v of
+    Version [] _ -> Disp.text n -- if no version, don't show version.
+    _            -> Disp.text n <> Disp.char '-' <> disp v
 
-parsePackageName :: ReadP r String
-parsePackageName = do ns <- sepBy1 component (char '-')
+  parse = do
+    n <- parsePackageName
+    v <- (Parse.char '-' >> parse) <++ return (Version [] [])
+    return (PackageIdentifier n v)
+
+parsePackageName :: Parse.ReadP r String
+parsePackageName = do ns <- Parse.sepBy1 component (Parse.char '-')
                       return (concat (intersperse "-" ns))
   where component = do 
-	   cs <- munch1 isAlphaNum
-	   if all isDigit cs then pfail else return cs
+	   cs <- Parse.munch1 Char.isAlphaNum
+	   if all Char.isDigit cs then Parse.pfail else return cs
 	-- each component must contain an alphabetic character, to avoid
 	-- ambiguity in identifiers like foo-1 (the 1 is the version number).
-
--- |A package ID looks like foo-1.2.
-parsePackageId :: ReadP r PackageIdentifier
-parsePackageId = do 
-  n <- parsePackageName
-  v <- (ReadP.char '-' >> parse) <++ return (Version [] [])
-  return PackageIdentifier{pkgName=n,pkgVersion=v}
 
 -- ------------------------------------------------------------
 -- * Package dependencies
@@ -99,16 +96,15 @@ parsePackageId = do
 data Dependency = Dependency String VersionRange
                   deriving (Read, Show, Eq)
 
-showDependency :: Dependency -> Pretty.Doc
-showDependency (Dependency name ver) =
-  Pretty.text name <+> disp ver
+instance Text Dependency where
+  disp (Dependency name ver) =
+    Disp.text name <+> disp ver
 
-parseDependency :: ReadP r Dependency
-parseDependency = do name <- parsePackageName
-                     skipSpaces
-                     ver <- parse <++ return AnyVersion
-                     skipSpaces
-                     return $ Dependency name ver
+  parse = do name <- parsePackageName
+             Parse.skipSpaces
+             ver <- parse <++ return AnyVersion
+             Parse.skipSpaces
+             return (Dependency name ver)
 
 -- | Class of things that can be identified by a 'PackageIdentifier'
 --

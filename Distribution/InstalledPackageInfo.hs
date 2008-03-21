@@ -62,14 +62,13 @@ import Distribution.ParseUtils (
 	showFreeText)
 import Distribution.License 	( License(..) )
 import Distribution.Package
-         ( PackageIdentifier(..), packageName, packageVersion
-         , showPackageId, parsePackageId )
+         ( PackageIdentifier(..), packageName, packageVersion )
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
 import Distribution.Version
          ( Version(..) )
 import Distribution.Text
-         ( Text(disp) )
+         ( Text(disp, parse) )
 import qualified Distribution.Compat.ReadP as ReadP
 
 import Control.Monad	( foldM )
@@ -270,7 +269,7 @@ installedFieldDescrs = [
 	showFilePath       parseFilePathQ
 	includes           (\xs pkg -> pkg{includes=xs})
  , listField   "depends"
-	(text.showPackageId)  parsePackageId'
+	disp               parsePackageId'
 	depends            (\xs pkg -> pkg{depends=xs})
  , listField   "hugs-options"
 	showToken	   parseTokenQ
@@ -296,4 +295,4 @@ installedFieldDescrs = [
  ]
 
 parsePackageId' :: ReadP.ReadP [PackageIdentifier] PackageIdentifier
-parsePackageId' = parseQuoted parsePackageId ReadP.<++ parsePackageId
+parsePackageId' = parseQuoted parse ReadP.<++ parse
