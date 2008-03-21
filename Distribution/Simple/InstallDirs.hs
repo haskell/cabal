@@ -79,7 +79,7 @@ import Distribution.Package
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Compiler
-         ( CompilerId, showCompilerId, CompilerFlavor(..) )
+         ( CompilerId, CompilerFlavor(..) )
 import Distribution.Text
          ( display )
 
@@ -411,7 +411,7 @@ initialPathTemplateEnv pkgId compilerId =
   [(PkgNameVar,  packageName pkgId)
   ,(PkgVerVar,   display (packageVersion pkgId))
   ,(PkgIdVar,    display pkgId)
-  ,(CompilerVar, showCompilerId compilerId)]
+  ,(CompilerVar, display compilerId)]
 
 -- ---------------------------------------------------------------------------
 -- Parsing and showing path templates:

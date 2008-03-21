@@ -58,9 +58,9 @@ module Distribution.Simple.Compiler (
         unsupportedExtensions
   ) where
 
-import Distribution.Compiler hiding (showCompilerId)
-import qualified Distribution.Compiler (showCompilerId)
+import Distribution.Compiler
 import Distribution.Version (Version(..))
+import Distribution.Text (display)
 import Language.Haskell.Extension (Extension(..))
 
 import Data.List (nub)
@@ -73,7 +73,7 @@ data Compiler = Compiler {
     deriving (Show, Read)
 
 showCompilerId :: Compiler -> String
-showCompilerId = Distribution.Compiler.showCompilerId . compilerId
+showCompilerId = display . compilerId
 
 compilerFlavor ::  Compiler -> CompilerFlavor
 compilerFlavor = (\(CompilerId f _) -> f) . compilerId
