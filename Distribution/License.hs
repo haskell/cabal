@@ -49,9 +49,12 @@ module Distribution.License (
 	License(..)
   ) where
 
-import Distribution.Text (Text(..))
+import Distribution.Version (Version)
+
+import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
+import qualified Data.Char as Char (isAlphaNum)
 
 -- |This datatype indicates the license under which your package is
 -- released.  It is also wise to add your license to each source file
@@ -67,7 +70,6 @@ data License =
 --TODO: * deprecate BSD4
 --      * add optional gpl versions
 --      * add MIT license
---      * fix parsing to be more permissive
 
     -- | GNU Public License. Source code must accompany alterations.
     GPL --(Maybe Version)
@@ -92,8 +94,38 @@ data License =
 
     -- | Some other license.
   | OtherLicense
+
+    -- | Not a recognised license.
+    -- Allows us to deal with future extensions more gracefully.
+  | UnknownLicense String
   deriving (Read, Show, Eq)
 
+--TODO: use knownLicenses to give a better parse error message
+--knownLicenses :: [License]
+--knownLicenses = [GPL Nothing, LGPL Nothing, BSD3, BSD4, MIT
+--                ,PublicDomain, AllRightsReserved, OtherLicense]
+
 instance Text License where
-  disp  = Disp.text . show
-  parse = Parse.readS_to_P reads
+--disp (GPL  version)         = "GPL"  <> showOptionalVersion version
+--disp (LGPL version)         = "LGPL" <> showOptionalVersion version
+  disp (UnknownLicense other) = Disp.text other
+  disp other                  = Disp.text (show other)
+
+  parse = do
+    name    <- Parse.munch1 Char.isAlphaNum
+    version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
+    -- We parse an optional version but do not yet allow it on any known
+    -- license. However parsing the version will allow forwards compatability
+    -- for when we do introduce optional (L)GPL license versions.
+    return $ case (name, version :: Maybe Version) of
+      ("GPL",               Nothing) -> GPL
+      ("LGPL",              Nothing) -> LGPL
+  --  ("GPL",               version) -> GPL  version
+  --  ("LGPL",              version) -> LGPL version
+      ("BSD3",              Nothing) -> BSD3
+  --  ("MIT",               Nothing) -> MIT
+      ("PublicDomain",      Nothing) -> PublicDomain
+      ("AllRightsReserved", Nothing) -> AllRightsReserved
+      ("OtherLicense",      Nothing) -> OtherLicense
+      _                              -> UnknownLicense $ name
+                                     ++ maybe "" (('-':) . display) version
