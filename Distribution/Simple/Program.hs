@@ -87,8 +87,10 @@ import qualified Data.Map as Map
 import Distribution.Simple.Utils (die, debug, warn, rawSystemExit,
                                   rawSystemStdout, rawSystemStdout',
                                   withTempFile)
-import Distribution.Version (Version(..), readVersion, showVersion,
-                             VersionRange(..), withinRange, showVersionRange)
+import Distribution.Version
+         ( Version(..), VersionRange(AnyVersion), withinRange )
+import Distribution.Text
+         ( simpleParse, display )
 import Distribution.Verbosity
 import System.Directory (doesFileExist, removeFile, findExecutable)
 import System.FilePath  (dropExtension)
@@ -181,11 +183,11 @@ findProgramVersion :: ProgArg            -- ^ version args
 findProgramVersion versionArg selectVersion verbosity path = do
   str <- rawSystemStdout verbosity path [versionArg]
          `Exception.catch` \_ -> return ""
-  let version = readVersion (selectVersion str)
+  let version = simpleParse (selectVersion str)
   case version of
       Nothing -> warn verbosity $ "cannot determine version of " ++ path
                                ++ " :\n" ++ show str
-      Just v  -> debug verbosity $ path ++ " is version " ++ showVersion v
+      Just v  -> debug verbosity $ path ++ " is version " ++ display v
   return version
 
 -- ------------------------------------------------------------
@@ -390,13 +392,13 @@ requireProgram verbosity prog range conf = do
                       ++ " is required but it could not be found."
         badVersion v l = programName prog ++ versionRequirement
                       ++ " is required but the version found at "
-                      ++ locationPath l ++ " is version " ++ showVersion v
+                      ++ locationPath l ++ " is version " ++ display v
         noVersion l    = programName prog ++ versionRequirement
                       ++ " is required but the version of "
                       ++ locationPath l ++ " could not be determined."
         versionRequirement
           | range == AnyVersion = ""
-          | otherwise           = " version " ++ showVersionRange range
+          | otherwise           = " version " ++ display range
 
 -- ------------------------------------------------------------
 -- * Running programs

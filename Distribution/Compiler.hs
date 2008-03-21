@@ -52,10 +52,11 @@ module Distribution.Compiler (
   showCompilerId,
   ) where
 
-import Distribution.Version (Version(..), showVersion)
+import Distribution.Version (Version(..))
 
 import qualified System.Info (compilerName)
 import qualified Data.Char as Char (toLower)
+import Distribution.Text (display)
 
 data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC
                     | OtherCompiler String
@@ -95,7 +96,7 @@ data CompilerId = CompilerId CompilerFlavor Version
 
 showCompilerId :: CompilerId -> String
 showCompilerId (CompilerId f (Version [] _)) = showCompilerFlavor f
-showCompilerId (CompilerId f v) = showCompilerFlavor f ++ '-': showVersion v
+showCompilerId (CompilerId f v) = showCompilerFlavor f ++ '-': display v
 
 lowercase :: String -> String
 lowercase = map Char.toLower

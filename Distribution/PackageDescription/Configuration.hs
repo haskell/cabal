@@ -56,12 +56,14 @@ import Distribution.PackageDescription
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
-    ( Version(..), VersionRange(..), withinRange, parseVersionRange )
+         ( Version(..), VersionRange(..), withinRange )
 import Distribution.Compiler (CompilerFlavor, readCompilerFlavor)
 import Distribution.System
          ( OS, readOS, Arch, readArch )
 import Distribution.Simple.Utils (currentDir)
 
+import Distribution.Text
+         ( Text(parse) )
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
@@ -161,7 +163,7 @@ parseCondition = condOr
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
     implIdent     = do i <- ident
-                       vr <- sp >> option AnyVersion parseVersionRange
+                       vr <- sp >> option AnyVersion parse
                        return $ Impl (readCompilerFlavor i) vr
 
 ------------------------------------------------------------------------------

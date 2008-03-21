@@ -76,8 +76,7 @@ import Distribution.Package
          , parsePackageName
          , Dependency(..), showDependency, parseDependency )
 import Distribution.Version
-         ( showVersion, parseVersion
-         , showVersionRange, parseVersionRange, isAnyVersion )
+        ( isAnyVersion )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
@@ -94,10 +93,10 @@ pkgDescrFieldDescrs =
            text                   parsePackageName
            packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
-           (text . showVersion)   parseVersion
+           disp                   parse
            packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
-           (text . showVersionRange) parseVersionRange
+           disp                   parse
            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
  , simpleField "build-type"
            (text . maybe "" show) (fmap Just parseReadSQ)

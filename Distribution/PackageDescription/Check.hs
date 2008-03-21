@@ -56,9 +56,12 @@ import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.License (License(..))
 import Distribution.Simple.Utils (cabalVersion, intercalate)
 
-import Distribution.Version (Version(..), withinRange, showVersionRange)
+import Distribution.Version
+         ( Version(..), withinRange )
 import Distribution.Package
          ( packageName, packageVersion )
+import Distribution.Text
+         ( display )
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
 
@@ -152,7 +155,7 @@ checkSanity pkg =
     check (not $ cabalVersion `withinRange` requiredCabalVersion) $
       PackageBuildImpossible $
            "This package requires Cabal version: "
-        ++ showVersionRange requiredCabalVersion
+        ++ display requiredCabalVersion
   ]
 
   where requiredCabalVersion = descCabalVersion pkg

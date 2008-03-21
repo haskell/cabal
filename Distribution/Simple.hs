@@ -108,6 +108,8 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.License
+import Distribution.Text
+         ( display )
 
 -- Base
 import System.Environment(getArgs,getProgName)
@@ -166,9 +168,9 @@ defaultMainHelper hooks args =
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
       exitWith (ExitFailure 1)
-    printNumericVersion = putStrLn $ showVersion cabalVersion
+    printNumericVersion = putStrLn $ display cabalVersion
     printVersion        = putStrLn $ "Cabal library version "
-                                  ++ showVersion cabalVersion
+                                  ++ display cabalVersion
 
     progs = allPrograms hooks
     commands =

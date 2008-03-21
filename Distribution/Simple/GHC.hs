@@ -77,11 +77,13 @@ import Distribution.Simple.Program
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
-import Distribution.Version	( Version(..), showVersion,
-                                  VersionRange(..), orLaterVersion )
+import Distribution.Version
+         ( Version(..), VersionRange(..), orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
+import Distribution.Text
+         ( display )
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
@@ -121,8 +123,8 @@ configure verbosity hcPath hcPkgPath conf = do
 
   when (ghcVersion /= ghcPkgVersion) $ die $
        "Version mismatch between ghc and ghc-pkg: "
-    ++ programPath ghcProg ++ " is version " ++ showVersion ghcVersion ++ " "
-    ++ programPath ghcPkgProg ++ " is version " ++ showVersion ghcPkgVersion
+    ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
+    ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
   -- finding ghc's local ld is a bit tricky as it's not on the path:
   let ldProgram' = case buildOS of
@@ -649,7 +651,7 @@ makefile pkg_descr lbi flags = do
   let decls = [
         ("modules", unwords (exposedModules lib ++ otherModules bi)),
         ("GHC", programPath ghcProg),
-        ("GHC_VERSION", (showVersion (compilerVersion (compiler lbi)))),
+        ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
         ("odir", builddir),
         ("srcdir", case hsSourceDirs bi of
