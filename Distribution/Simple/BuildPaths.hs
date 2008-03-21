@@ -68,7 +68,8 @@ import Distribution.Compiler
          ( CompilerId(..), showCompilerFlavor )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
-import Distribution.Version (showVersion)
+import Distribution.Text
+         ( display )
 import Distribution.System (OS(..), buildOS)
 
 -- ---------------------------------------------------------------------------
@@ -118,7 +119,7 @@ mkSharedLibName :: PackageIdentifier -> CompilerId -> String
 mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
   = "libHS" ++ showPackageId lib ++ "-" ++ comp <.> dllExtension
   where comp = showCompilerFlavor compilerFlavor
-            ++ showVersion compilerVersion
+            ++ display compilerVersion
 
 -- ------------------------------------------------------------
 -- * Platform file extensions

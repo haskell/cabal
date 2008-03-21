@@ -78,6 +78,8 @@ import Distribution.Simple.Utils
          ( die, warn, notice, intercalate, setupMessage
          , createDirectoryIfMissingVerbose, withTempFile
          , findFileWithExtension, findFile, dotToSep )
+import Distribution.Text
+         ( simpleParse )
 
 import Distribution.Verbosity
 import Language.Haskell.Extension
@@ -161,7 +163,7 @@ haddock pkg_descr lbi suffixes flags = do
 
     when isVersion2 $ do
       strHadGhcVers <- rawSystemProgramStdout verbosity confHaddock ["--ghc-version"]
-      let mHadGhcVers = readVersion strHadGhcVers
+      let mHadGhcVers = simpleParse strHadGhcVers
       when (mHadGhcVers == Nothing) $ die "Could not get GHC version from Haddock"
       when (fromJust mHadGhcVers /= compilerVersion comp) $
         die "Haddock's internal GHC version must match the configured GHC version"

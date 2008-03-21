@@ -43,47 +43,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Version (
   -- * Package versions
   Version(..),
-  showVersion,
-  readVersion,
-  parseVersion,
 
   -- * Version ranges
   VersionRange(..), 
   orLaterVersion, orEarlierVersion,
   betweenVersionsInclusive,
   withinRange,
-  showVersionRange,
-  parseVersionRange,
   isAnyVersion,
 
  ) where
 
-import Data.Version	( Version(..), showVersion )
+import Data.Version	( Version(..) )
 
-import Control.Monad    ( liftM )
-import Data.Char	( isSpace, isDigit, isAlphaNum )
-import Data.Maybe	( listToMaybe )
-
-import Distribution.Compat.ReadP
-
--- -----------------------------------------------------------------------------
--- Version utils
-
-parseVersion :: ReadP r Version
-parseVersion = do branch <- sepBy1 digits (char '.')
-                  tags   <- many (char '-' >> munch1 isAlphaNum)
-                  return Version{versionBranch=branch, versionTags=tags}
-  where
-    digits  :: ReadP r Int
-    digits   = do first <- satisfy isDigit
-                  if first == '0'
-		    then return 0
-		    else do rest <- munch isDigit
-                            return (read (first : rest))
-
-readVersion :: String -> Maybe Version
-readVersion str =
-  listToMaybe [ r | (r,s) <- readP_to_S parseVersion str, all isSpace s ]
+import Distribution.Text ( Text(..) )
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP ((+++))
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>))
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -133,50 +109,44 @@ withinRange v1 (UnionVersionRanges v2 v3)
 withinRange v1 (IntersectVersionRanges v2 v3) 
    = v1 `withinRange` v2 && v1 `withinRange` v3
 
-showVersionRange :: VersionRange -> String
-showVersionRange AnyVersion = "-any"
-showVersionRange (ThisVersion v) = '=' : '=' : showVersion v
-showVersionRange (LaterVersion v) = '>' : showVersion v
-showVersionRange (EarlierVersion v) = '<' : showVersion v
-showVersionRange (UnionVersionRanges (ThisVersion v1) (LaterVersion v2))
-  | v1 == v2 = '>' : '=' : showVersion v1
-showVersionRange (UnionVersionRanges (LaterVersion v2) (ThisVersion v1))
-  | v1 == v2 = '>' : '=' : showVersion v1
-showVersionRange (UnionVersionRanges (ThisVersion v1) (EarlierVersion v2))
-  | v1 == v2 = '<' : '=' : showVersion v1
-showVersionRange (UnionVersionRanges (EarlierVersion v2) (ThisVersion v1))
-  | v1 == v2 = '<' : '=' : showVersion v1
-showVersionRange (UnionVersionRanges r1 r2) 
-  = showVersionRange r1 ++ "||" ++ showVersionRange r2
-showVersionRange (IntersectVersionRanges r1 r2) 
-  = showVersionRange r1 ++ "&&" ++ showVersionRange r2
+instance Text VersionRange where
+  disp AnyVersion           = Disp.text "-any"
+  disp (ThisVersion    v)   = Disp.text "==" <> disp v
+  disp (LaterVersion   v)   = Disp.char '>'  <> disp v
+  disp (EarlierVersion v)   = Disp.char '<'  <> disp v
+  disp (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
+    | v1 == v2 = Disp.text ">=" <> disp v1
+  disp (UnionVersionRanges (LaterVersion v2) (ThisVersion  v1))
+    | v1 == v2 = Disp.text ">=" <> disp v1
+  disp (UnionVersionRanges (ThisVersion v1) (EarlierVersion v2))
+    | v1 == v2 = Disp.text "<=" <> disp v1
+  disp (UnionVersionRanges (EarlierVersion v2) (ThisVersion v1))
+    | v1 == v2 = Disp.text "<=" <> disp v1
+  disp (UnionVersionRanges r1 r2)
+    = disp r1 <> Disp.text "||" <> disp r2
+  disp (IntersectVersionRanges r1 r2)
+    = disp r1 <> Disp.text "&&" <> disp r2
 
--- ------------------------------------------------------------
--- * Parsing
--- ------------------------------------------------------------
-
---  -----------------------------------------------------------
-parseVersionRange :: ReadP r VersionRange
-parseVersionRange = do
+  parse = do
   f1 <- factor
-  skipSpaces
+  Parse.skipSpaces
   (do
-     string "||"
-     skipSpaces
+     Parse.string "||"
+     Parse.skipSpaces
      f2 <- factor
      return (UnionVersionRanges f1 f2)
    +++
    do    
-     string "&&"
-     skipSpaces
+     Parse.string "&&"
+     Parse.skipSpaces
      f2 <- factor
      return (IntersectVersionRanges f1 f2)
    +++
    return f1)
   where 
-        factor   = choice ((string "-any" >> return AnyVersion) :
+        factor   = Parse.choice ((Parse.string "-any" >> return AnyVersion) :
                                     map parseRangeOp rangeOps)
-        parseRangeOp (s,f) = string s >> skipSpaces >> liftM f parseVersion
+        parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
