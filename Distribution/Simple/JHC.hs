@@ -69,12 +69,14 @@ import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version	( VersionRange(AnyVersion) )
 import Distribution.Package
-        ( showPackageId, parsePackageId, Package(..) )
+         ( Package(..) )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, copyFileVerbose
         , die, info, intercalate )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
+import Distribution.Text
+         ( parse, display )
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 
@@ -113,7 +115,7 @@ getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
                     -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity _packagedb conf = do
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
-   case pCheck (readP_to_S (many (skipSpaces >> parsePackageId)) str) of
+   case pCheck (readP_to_S (many (skipSpaces >> parse)) str) of
      [ps] -> return $ PackageIndex.fromList
                     [ emptyInstalledPackageInfo {
                         InstalledPackageInfo.package = p
@@ -137,7 +139,7 @@ build pkg_descr lbi verbosity = do
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
       rawSystemProgram verbosity jhcProg (["-c"] ++ args ++ libModules pkg_descr)
-      let pkgid = showPackageId (packageId pkg_descr)
+      let pkgid = display (packageId pkg_descr)
           pfile = buildDir lbi </> "jhc-pkg.conf"
           hlfile= buildDir lbi </> (pkgid ++ ".hl")
       writeFile pfile $ jhcPkgConf pkg_descr
@@ -158,21 +160,21 @@ constructJHCCmdLine lbi bi _odir verbosity =
      ++ ["-i", autogenModulesDir lbi]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     ++ (concat [ ["-p", showPackageId pkg] | pkg <- packageDeps lbi ])
+     ++ (concat [ ["-p", display pkg] | pkg <- packageDeps lbi ])
 
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
       Just lib = library pd
       comma = intercalate ","
-  in unlines [sline "name" (showPackageId . packageId)
+  in unlines [sline "name" (display . packageId)
              ,"exposed-modules: " ++ (comma (PD.exposedModules lib))
              ,"hidden-modules: " ++ (comma (otherModules $ libBuildInfo lib))
              ]
 
 installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
 installLib verb dest build_dir pkg_descr _ = do
-    let p = showPackageId (packageId pkg_descr)++".hl"
+    let p = display (packageId pkg_descr)++".hl"
     createDirectoryIfMissingVerbose verb True dest
     copyFileVerbose verb (build_dir </> p) (dest </> p)
 

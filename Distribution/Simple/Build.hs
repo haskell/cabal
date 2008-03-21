@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )
 import Distribution.Package
-         ( packageVersion, showPackageId, Package(..) )
+         ( Package(..), packageVersion )
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
@@ -79,6 +79,8 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Distribution.PackageDescription (hasLibs)
 import Distribution.Verbosity
+import Distribution.Text
+         ( display )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -126,7 +128,7 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
           map libBuildInfo (maybeToList (library pkg_descr)) ++
           map buildInfo (executables pkg_descr)
   unless (any buildable buildInfos) $ do
-    let name = showPackageId (packageId pkg_descr)
+    let name = display (packageId pkg_descr)
     die ("Package " ++ name ++ " can't be built on this system.")
 
   createDirectoryIfMissingVerbose verbosity True (buildDir lbi)

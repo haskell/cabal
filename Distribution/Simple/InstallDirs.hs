@@ -75,7 +75,7 @@ import System.FilePath (dropDrive)
 #endif
 
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, showPackageId )
+         ( PackageIdentifier, packageName, packageVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Compiler
@@ -410,7 +410,7 @@ initialPathTemplateEnv pkgId compilerId =
   map (\(v,s) -> (v, PathTemplate [Ordinary s]))
   [(PkgNameVar,  packageName pkgId)
   ,(PkgVerVar,   display (packageVersion pkgId))
-  ,(PkgIdVar,    showPackageId pkgId)
+  ,(PkgIdVar,    display pkgId)
   ,(CompilerVar, showCompilerId compilerId)]
 
 -- ---------------------------------------------------------------------------

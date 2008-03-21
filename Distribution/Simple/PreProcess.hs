@@ -59,7 +59,8 @@ import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
 					Library(..), withLib, libModules)
-import Distribution.Package (showPackageId, Package(..))
+import Distribution.Package
+         ( Package(..) )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
@@ -75,6 +76,8 @@ import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              haddockProgram, ghcProgram)
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
+import Distribution.Text
+         ( display )
 
 import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
@@ -345,7 +348,7 @@ ppHsc2hs bi lbi = pp
 	                                        ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
                                           , opt <- ["-package"
-                                                   ,showPackageId pkg] ]
+                                                   ,display pkg] ]
               ++ [ "--cflag=-I"    ++ dir | dir <- includeDirs bi]
               ++ [ "--lflag=-optl" ++ opt | opt <- getLdOptions bi ]
 

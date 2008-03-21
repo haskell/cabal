@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier, showPackageId, Package(..) )
+         ( PackageIdentifier, Package(..) )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , rawSystemProgram, rawSystemProgramConf
@@ -340,7 +340,7 @@ build pkg_descr lbi verbosity = do
       createDirectoryIfMissingVerbose verbosity True libTargetDir
       -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
       let ghcArgs =
-                 ["-package-name", showPackageId pkgid ]
+                 ["-package-name", display pkgid ]
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
               ++ (libModules pkg_descr)
           ghcArgsProf = ghcArgs
@@ -446,8 +446,8 @@ build pkg_descr lbi verbosity = do
 		  "-dynamic",
 		  "-o", sharedLibFilePath ]
 		++ ghcSharedObjArgs
-		++ ["-package-name", showPackageId pkgid ]
-		++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+		++ ["-package-name", display pkgid ]
+		++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
 	        ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
 	        ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -590,7 +590,7 @@ ghcOptions lbi bi odir
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
-     ++ (concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ])
+     ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
@@ -616,7 +616,7 @@ constructCcCmdLine lbi bi pref filename verbosity
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcCcOptions lbi bi odir
      =  ["-I" ++ dir | dir <- includeDirs bi]
-     ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
+     ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []
@@ -624,7 +624,7 @@ ghcCcOptions lbi bi odir
      ++ ["-odir", odir]
 
 mkGHCiLibName :: PackageIdentifier -> String
-mkGHCiLibName lib = "HS" ++ showPackageId lib <.> "o"
+mkGHCiLibName lib = "HS" ++ display lib <.> "o"
 
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
@@ -641,7 +641,7 @@ makefile pkg_descr lbi flags = do
   let Just lib = library pkg_descr
       bi = libBuildInfo lib
   
-      packageIdStr = showPackageId (packageId pkg_descr)
+      packageIdStr = display (packageId pkg_descr)
   (arProg, _) <- requireProgram verbosity arProgram AnyVersion
                    (withPrograms lbi)
   (ldProg, _) <- requireProgram verbosity ldProgram AnyVersion
@@ -667,7 +667,7 @@ makefile pkg_descr lbi flags = do
         ("GHCI_LIB", builddir </> mkGHCiLibName (packageId pkg_descr)),
         ("soext", dllExtension),
         ("LIB_LD_OPTS", unwords (["-package-name", packageIdStr]
-				 ++ concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
+				 ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
 				 ++ ["-l"++libName | libName <- extraLibs bi]
 				 ++ ["-L"++libDir | libDir <- extraLibDirs bi])),
         ("AR", programPath arProg),

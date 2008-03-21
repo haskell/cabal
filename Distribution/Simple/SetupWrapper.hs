@@ -29,6 +29,8 @@ import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
 import Distribution.Simple.GHC (ghcVerbosityOptions)
+import Distribution.Text
+         ( display )
 import Distribution.GetOpt
 import Distribution.ReadE
 import System.Directory
@@ -154,4 +156,4 @@ configCabalFlag verbosity range comp conf = do
            `fmap` getInstalledPackages verbosity comp UserPackageDB conf
 	-- user packages are *allowed* here, no portability problem
   cabal_pkgid <- configDependency verbosity packageIndex (Dependency "Cabal" range)
-  return ["-package", showPackageId cabal_pkgid]
+  return ["-package", display cabal_pkgid]

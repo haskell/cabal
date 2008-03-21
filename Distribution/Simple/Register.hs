@@ -63,7 +63,7 @@ import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
 import Distribution.PackageDescription (PackageDescription(..),
                                               BuildInfo(..), Library(..))
 import Distribution.Package
-         ( packageName, showPackageId, Package(..) )
+         ( Package(..), packageName )
 import Distribution.InstalledPackageInfo
 	(InstalledPackageInfo, showInstalledPackageInfo, 
 	 emptyInstalledPackageInfo)
@@ -73,6 +73,8 @@ import Distribution.Simple.Utils
          , die, info, notice, setupMessage )
 import Distribution.System
          ( OS(..), buildOS )
+import Distribution.Text
+         ( display )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory (removeFile, getCurrentDirectory,
@@ -109,7 +111,7 @@ register pkg_descr lbi regFlags
     let isWindows = case buildOS of Windows -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
         genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
-        genPkgConfigDefault = showPackageId (packageId pkg_descr) <.> "conf"
+        genPkgConfigDefault = display (packageId pkg_descr) <.> "conf"
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (fromFlag (regGenPkgConf regFlags))
         verbosity = fromFlag (regVerbose regFlags)
@@ -255,7 +257,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 	IPI.hiddenModules     = otherModules bi,
         IPI.importDirs        = [libraryDir],
         IPI.libraryDirs       = libraryDir : extraLibDirs bi,
-        IPI.hsLibraries       = ["HS" ++ showPackageId (packageId pkg_descr)],
+        IPI.hsLibraries       = ["HS" ++ display (packageId pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
         IPI.includeDirs       = absinc ++ if inplace
                                             then map (pwd </>) relinc
@@ -288,7 +290,7 @@ unregister pkg_descr lbi regFlags = do
           UserPackageDB        -> return ["--user"]
           SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
-        let removeCmd = ["unregister",showPackageId (packageId pkg_descr)]
+        let removeCmd = ["unregister", display (packageId pkg_descr)]
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
             allArgs      = removeCmd ++ config_flags
 	if genScript
