@@ -84,7 +84,7 @@ import Distribution.Package
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor, showCompilerFlavor)
-import Distribution.System   (OS, showOS, Arch, showArch)
+import Distribution.System   (OS, Arch)
 import Distribution.Text
          ( display )
 import Distribution.Simple.Utils  (currentDir)
@@ -466,8 +466,8 @@ data ConfVar = OS OS
                deriving Eq
 
 instance Show ConfVar where
-    show (OS os) = "os(" ++ showOS os ++ ")"
-    show (Arch arch) = "arch(" ++ showArch arch ++ ")"
+    show (OS os) = "os(" ++ display os ++ ")"
+    show (Arch arch) = "arch(" ++ display arch ++ ")"
     show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
     show (Impl c v) = "impl(" ++ showCompilerFlavor c
                        ++ " " ++ display v ++ ")"
