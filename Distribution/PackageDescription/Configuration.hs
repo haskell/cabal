@@ -59,7 +59,7 @@ import Distribution.Version
          ( Version(..), VersionRange(..), withinRange )
 import Distribution.Compiler (CompilerFlavor, readCompilerFlavor)
 import Distribution.System
-         ( OS, readOS, Arch, readArch )
+         ( OS, Arch )
 import Distribution.Simple.Utils (currentDir)
 
 import Distribution.Text
@@ -149,15 +149,15 @@ parseCondition = condOr
                       +++ archCond +++ flagCond +++ implCond )
     inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
-    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var . OS . readOS
-    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var . Arch . readArch
+    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var
+    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
     ident    = munch1 isIdentChar >>= return . map toLower
     lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
                ((string "false" <++ string "False") >> return (Lit False))
-    archIdent     = ident >>= return 
-    osIdent       = ident >>= return 
+    archIdent     = fmap Arch parse
+    osIdent       = fmap OS   parse
     flagIdent     = ident
     isIdentChar c = isAlphaNum c || (c `elem` "_-")
     oper s        = sp >> string s >> sp

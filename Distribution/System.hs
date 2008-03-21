@@ -1,19 +1,19 @@
 module Distribution.System (
   -- * Operating System
   OS(..),
-  showOS,
-  readOS,
   buildOS,
 
   -- * Machine Architecture
   Arch(..),
-  showArch,
-  readArch,
   buildArch,
   ) where
 
 import qualified System.Info (os, arch)
-import qualified Data.Char as Char (toLower)
+import qualified Data.Char as Char (toLower, isAlphaNum)
+
+import Distribution.Text (Text(..), display)
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
 -- * Operating System
@@ -37,22 +37,25 @@ osAliases FreeBSD     = ["kfreebsdgnu"]
 osAliases Solaris     = ["solaris2"]
 osAliases _           = []
 
-showOS :: OS -> String
-showOS (OtherOS name) = name
-showOS other          = lowercase (show other)
+instance Text OS where
+  disp (OtherOS name) = Disp.text name
+  disp other          = Disp.text (lowercase (show other))
 
-readOS :: String -> OS
-readOS s =
+  parse = fmap classifyOS (Parse.munch1 Char.isAlphaNum)
+  --TODO: probably should disallow starting with a number
+
+classifyOS :: String -> OS
+classifyOS s =
   case lookup (lowercase s) osMap of
     Just os -> os
     Nothing -> OtherOS (lowercase s)
   where
     osMap = [ (name, os)
             | os <- knownOSs
-            , name <- showOS os : osAliases os ]
+            , name <- display os : osAliases os ]
 
 buildOS :: OS
-buildOS = readOS System.Info.os
+buildOS = classifyOS System.Info.os
 
 -- ------------------------------------------------------------
 -- * Machine Architecture
@@ -81,22 +84,25 @@ archAliases Mips  = ["mipsel", "mipseb"]
 archAliases Arm   = ["armeb", "armel"]
 archAliases _     = []
 
-showArch :: Arch -> String
-showArch (OtherArch name) = name
-showArch other            = lowercase (show other)
+instance Text Arch where
+  disp (OtherArch name) = Disp.text name
+  disp other            = Disp.text (lowercase (show other))
 
-readArch :: String -> Arch
-readArch s =
+  parse = fmap classifyArch (Parse.munch1 Char.isAlphaNum)
+  --TODO: probably should disallow starting with a number
+
+classifyArch :: String -> Arch
+classifyArch s =
   case lookup (lowercase s) archMap of
     Just arch -> arch
     Nothing   -> OtherArch (lowercase s)
   where
     archMap = [ (name, arch)
               | arch <- knownArches
-              , name <- showArch arch : archAliases arch ]
+              , name <- display arch : archAliases arch ]
 
 buildArch :: Arch
-buildArch = readArch System.Info.arch
+buildArch = classifyArch System.Info.arch
 
 lowercase :: String -> String
 lowercase = map Char.toLower
