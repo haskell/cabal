@@ -135,8 +135,10 @@ import System.IO.Error as IO.Error
 import qualified Control.Exception as Exception
     ( bracket, bracket_, bracketOnError, catch, finally )
 
+import Distribution.Text
+    ( display )
 import Distribution.Package
-    (PackageIdentifier, showPackageId)
+    ( PackageIdentifier )
 import Distribution.Version
     (Version(..))
 
@@ -208,7 +210,7 @@ notice verbosity msg =
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid =
-    notice verbosity (msg ++ ' ':showPackageId pkgid ++ "...")
+    notice verbosity (msg ++ ' ': display pkgid ++ "...")
 
 -- | More detail on the operation of some action.
 -- 
