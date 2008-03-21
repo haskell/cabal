@@ -66,7 +66,10 @@ import Distribution.Package
          , showPackageId, parsePackageId )
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
-import Distribution.Version	( Version(..), showVersion )
+import Distribution.Version
+         ( Version(..) )
+import Distribution.Text
+         ( Text(disp) )
 import qualified Distribution.Compat.ReadP as ReadP
 
 import Control.Monad	( foldM )
@@ -200,7 +203,7 @@ basicFieldDescrs =
                            text                   parsePackageNameQ
                            packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
-                           (text . showVersion)   parseOptVersion 
+                           disp                   parseOptVersion
                            packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "license"
                            (text . show)          parseLicenseQ
@@ -237,7 +240,7 @@ parseFreeText = ReadP.munch (const True)
 installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
    simpleField "exposed"
-	(text.show) 	   parseReadS
+	disp               parseReadS
 	exposed     	   (\val pkg -> pkg{exposed=val})
  , listField   "exposed-modules"
 	text               parseModuleNameQ

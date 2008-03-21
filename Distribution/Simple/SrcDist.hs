@@ -65,7 +65,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check
 import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion), Package(..))
 import Distribution.Version
-         ( Version(versionBranch), showVersion, VersionRange(AnyVersion) )
+         ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
          , copyFiles, copyFileVerbose, findFile, findFileWithExtension
@@ -76,6 +76,8 @@ import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSo
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
+import Distribution.Text
+         ( display )
 
 import Control.Monad(when, unless)
 import Data.Char (toLower)
@@ -226,7 +228,7 @@ prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps date = do
     replaceVersion :: Version -> String -> String
     replaceVersion version line
       | "version:" `isPrefixOf` map toLower line
-                  = "version: " ++ showVersion version
+                  = "version: " ++ display version
       | otherwise = line
 
 -- | Modifies a 'Version' by appending a snapshot number corresponding

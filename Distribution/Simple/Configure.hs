@@ -101,8 +101,7 @@ import Distribution.Simple.Register
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
-    ( Version(..), VersionRange(..), showVersion, readVersion
-    , showVersionRange, orLaterVersion, withinRange )
+    ( Version(..), VersionRange(..), orLaterVersion, withinRange )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -131,6 +130,8 @@ import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, stderr, hGetContents, openFile, hClose, IOMode(ReadMode) )
+import Distribution.Text
+    ( display, simpleParse )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
     
@@ -481,7 +482,7 @@ reportProgram verbosity prog (Just configuredProg)
             UserSpecified p -> " given by user at: " ++ p
           version = case programVersion configuredProg of
             Nothing -> ""
-            Just v  -> " version " ++ showVersion v
+            Just v  -> " version " ++ display v
 
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
@@ -491,12 +492,12 @@ configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency
 configDependency verbosity index dep@(Dependency pkgname vrange) =
   case PackageIndex.lookupDependency index dep of
         [] -> die $ "cannot satisfy dependency "
-                      ++ pkgname ++ showVersionRange vrange ++ "\n"
+                      ++ pkgname ++ display vrange ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ pkgname ++ "?"
         pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
                    info verbosity $ "Dependency " ++ pkgname
-                                ++ showVersionRange vrange
+                                ++ display vrange
                                 ++ ": using " ++ showPackageId pkgid
                    return pkgid
 
@@ -547,7 +548,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
     requirePkg (Dependency pkg range) = do
       version <- pkgconfig ["--modversion", pkg]
                  `Exception.catch` \_ -> die notFound
-      case readVersion version of
+      case simpleParse version of
         Nothing -> die "parsing output of pkg-config --modversion failed"
         Just v | not (withinRange v range) -> die (badVersion v)
                | otherwise                 -> info verbosity (depSatisfied v)
@@ -556,13 +557,13 @@ configurePkgconfigPackages verbosity pkg_descr conf
                     ++ " is required but it could not be found."
         badVersion v = "The pkg-config package " ++ pkg ++ versionRequirement
                     ++ " is required but the version installed on the"
-                    ++ " system is version " ++ showVersion v
-        depSatisfied v = "Dependency " ++ pkg ++ showVersionRange range
-                      ++ ": using version " ++ showVersion v
+                    ++ " system is version " ++ display v
+        depSatisfied v = "Dependency " ++ pkg ++ display range
+                      ++ ": using version " ++ display v
 
         versionRequirement
           | range == AnyVersion = ""
-          | otherwise           = " version " ++ showVersionRange range                            
+          | otherwise           = " version " ++ display range
 
     updateLibrary Nothing    = return Nothing
     updateLibrary (Just lib) = do

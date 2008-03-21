@@ -83,9 +83,10 @@ import Distribution.Package
          ( PackageIdentifier(PackageIdentifier), Dependency, Package(..) )
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
-import Distribution.Version  (showVersionRange)
 import Distribution.Compiler (CompilerFlavor, showCompilerFlavor)
 import Distribution.System   (OS, showOS, Arch, showArch)
+import Distribution.Text
+         ( display )
 import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
 
@@ -469,7 +470,7 @@ instance Show ConfVar where
     show (Arch arch) = "arch(" ++ showArch arch ++ ")"
     show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
     show (Impl c v) = "impl(" ++ showCompilerFlavor c
-                       ++ " " ++ showVersionRange v ++ ")"
+                       ++ " " ++ display v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
