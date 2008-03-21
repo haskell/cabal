@@ -101,7 +101,7 @@ pkgDescrFieldDescrs =
            (text . maybe "" show) (fmap Just parseReadSQ)
            buildType              (\t pkg -> pkg{buildType=t})
  , simpleField "license"
-           (text . show)          parseLicenseQ
+           disp                   parseLicenseQ
            license                (\l pkg -> pkg{license=l})
  , simpleField "license-file"
            showFilePath           parseFilePathQ

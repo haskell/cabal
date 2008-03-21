@@ -205,7 +205,7 @@ basicFieldDescrs =
                            disp                   parseOptVersion
                            packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "license"
-                           (text . show)          parseLicenseQ
+                           disp                   parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
  , simpleField "copyright"
                            showFreeText           parseFreeText
