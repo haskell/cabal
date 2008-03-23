@@ -170,7 +170,7 @@ prepareTree verbosity pkg_descr mb_lbi tmpDir pps = do
   -- pre-processors and include those generated files
   case mb_lbi of
     Just lbi | not (null pps)
-      -> preprocessSources pkg_descr (lbi { buildDir = targetDir })
+      -> preprocessSources pkg_descr (lbi { buildDir = targetDir </> buildDir lbi })
                              True verbosity pps
     _ -> return ()
 
