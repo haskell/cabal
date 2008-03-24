@@ -55,7 +55,7 @@ module Distribution.ParseUtils (
 	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showFreeText,
 	field, simpleField, listField, commaListField, optsField, liftField,
-	parseReadS, parseQuoted,
+        parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -501,9 +501,6 @@ parseFilePathQ = parseTokenQ
   -- removed until normalise is no longer broken, was:
   --   liftM normalise parseTokenQ
 
-parseReadS :: Read a => ReadP r a
-parseReadS = readS_to_P reads
-
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ
                     skipSpaces
@@ -565,11 +562,14 @@ parseLicenseQ = parseQuoted parse <++ parse
 parseExtensionQ :: ReadP r Extension
 parseExtensionQ = parseQuoted parse <++ parse
 
+parseHaskellString :: ReadP r String
+parseHaskellString = readS_to_P reads
+
 parseTokenQ :: ReadP r String
-parseTokenQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
+parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseTokenQ' :: ReadP r String
-parseTokenQ' = parseReadS <++ munch1 (\x -> not (isSpace x))
+parseTokenQ' = parseHaskellString <++ munch1 (\x -> not (isSpace x))
 
 parseSepList :: ReadP r b
 	     -> ReadP r a -- ^The parser for the stuff between commas
