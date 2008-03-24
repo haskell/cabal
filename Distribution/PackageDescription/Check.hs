@@ -107,8 +107,8 @@ check True  pc = Just pc
 -- * Standard checks
 -- ------------------------------------------------------------
 
--- TODO: Once we implement striping (ticket #88) we should also reject
---       ghc-options: -optl-Wl,-s.
+-- TODO:
+--
 --  * check for unknown 'OS's and 'Arch's. This requires checking the
 --    'GenericPackageDescription' which we do not currently get passed.
 
@@ -346,6 +346,14 @@ checkGhcOptions pkg =
   , checkFlags ["-split-objs"] $
       PackageDistInexcusable $
         "'ghc-options: -split-objs' is not needed. Use the --enable-split-objs configure flag."
+
+  , checkFlags ["-optl-Wl,-s"] $
+      PackageDistSuspicious $
+           "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
+        ++ " operating systems. Cabal 1.4 and later automatically strip"
+        ++ " executables. Cabal also has a flag --disable-executable-stripping"
+        ++ " which is necessary when building packages for some Linux"
+        ++ " distributions and using '-optl-Wl,-s' prevents that from working."
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious $
