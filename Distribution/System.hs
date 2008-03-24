@@ -48,7 +48,7 @@ classifyOS :: String -> OS
 classifyOS s =
   case lookup (lowercase s) osMap of
     Just os -> os
-    Nothing -> OtherOS (lowercase s)
+    Nothing -> OtherOS s
   where
     osMap = [ (name, os)
             | os <- knownOSs
@@ -95,7 +95,7 @@ classifyArch :: String -> Arch
 classifyArch s =
   case lookup (lowercase s) archMap of
     Just arch -> arch
-    Nothing   -> OtherArch (lowercase s)
+    Nothing   -> OtherArch s
   where
     archMap = [ (name, arch)
               | arch <- knownArches

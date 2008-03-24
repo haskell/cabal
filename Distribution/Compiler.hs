@@ -81,7 +81,7 @@ classifyCompilerFlavor :: String -> CompilerFlavor
 classifyCompilerFlavor s =
   case lookup (lowercase s) compilerMap of
     Just compiler -> compiler
-    Nothing       -> OtherCompiler (lowercase s)
+    Nothing       -> OtherCompiler s
   where
     compilerMap = [ (display compiler, compiler)
                   | compiler <- knownCompilerFlavors ]
