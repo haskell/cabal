@@ -109,6 +109,8 @@ check True  pc = Just pc
 
 -- TODO: Once we implement striping (ticket #88) we should also reject
 --       ghc-options: -optl-Wl,-s.
+--  * check for unknown 'OS's and 'Arch's. This requires checking the
+--    'GenericPackageDescription' which we do not currently get passed.
 
 -- | Check for common mistakes and problems in package descriptions.
 --
@@ -211,8 +213,26 @@ checkFields pkg =
   catMaybes [
 
     check (isNothing (buildType pkg)) $
-      PackageBuildWarning
-        "No 'build-type' specified. If possible use 'build-type: Simple'."
+      PackageBuildWarning $
+           "No 'build-type' specified. If you do not need a custom Setup.hs or "
+        ++ "./configure script then use 'build-type: Simple'."
+
+  , case buildType pkg of
+      Just (UnknownBuildType unknown) -> Just $
+        PackageBuildWarning $
+             quote unknown ++ " is not a known 'build-type'. "
+          ++ "The known build types are: "
+          ++ intercalate ", " (map display knownBuildTypes)
+      _ -> Nothing
+
+  , check (not (null unknownCompilers)) $
+      PackageBuildWarning $
+        "Unknown compiler " ++ intercalate ", " (map quote unknownCompilers)
+                            ++ " in 'tested-with' field."
+
+  , check (not (null unknownExtensions)) $
+      PackageBuildWarning $
+        "Unknown extensions: " ++ intercalate ", " unknownExtensions
 
   , check (null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
@@ -230,6 +250,10 @@ checkFields pkg =
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
   ]
+  where
+    unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
+    unknownExtensions = [ name | bi <- allBuildInfo pkg
+                               , UnknownExtension name <- extensions bi ]
 
 checkLicense :: PackageDescription -> [PackageCheck]
 checkLicense pkg =
@@ -238,6 +262,12 @@ checkLicense pkg =
     check (license pkg == AllRightsReserved) $
       PackageDistInexcusable
         "The 'license' field is missing or specified as AllRightsReserved."
+
+  , case license pkg of
+      UnknownLicense l -> Just $
+        PackageBuildWarning $
+          quote ("license: " ++ l) ++ " is not a recognised license."
+      _ -> Nothing
 
   , check (license pkg == BSD4) $
       PackageDistSuspicious $
