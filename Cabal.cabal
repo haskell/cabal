@@ -28,7 +28,8 @@ Flag small_base
 
 Library
   if flag(small_base)
-    Build-Depends: base >= 3, pretty, directory, old-time, process, containers
+    Build-Depends: base >= 3, directory, process, old-time,
+                              containers, array, pretty
   else
     Build-Depends: base < 3
   Build-Depends: filepath

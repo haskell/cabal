@@ -124,7 +124,7 @@ flagToOptimisationLevel (Just s) = case reads s of
 -- * Extensions
 -- ------------------------------------------------------------
 
--- |For the given compiler, return the flags for the supported extensions.
+-- |For the given compiler, return the extensions it does not support.
 unsupportedExtensions :: Compiler -> [Extension] -> [Extension]
 unsupportedExtensions comp exts =
   [ ext | ext <- exts
