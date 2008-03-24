@@ -371,7 +371,7 @@ configure (pkg_descr0, pbi) cfg
         let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
         let exts = unsupportedExtensions comp extlist
         unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
-            show flavor ++ " does not support the following extensions:\n " ++
+            display flavor ++ " does not support the following extensions: " ++
             intercalate ", " (map display exts)
 
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
