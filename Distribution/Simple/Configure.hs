@@ -372,7 +372,7 @@ configure (pkg_descr0, pbi) cfg
         let exts = unsupportedExtensions comp extlist
         unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
             show flavor ++ " does not support the following extensions:\n " ++
-            intercalate ", " (map show exts)
+            intercalate ", " (map display exts)
 
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
         programsConfig'' <-
