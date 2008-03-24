@@ -41,15 +41,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Language.Haskell.Extension (
 	Extension(..),
+        knownExtensions
   ) where
+
+import Distribution.Text (Text(..))
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
+import qualified Data.Char as Char (isAlphaNum)
+import Data.Array (Array, accumArray, bounds, inRange, (!))
 
 -- ------------------------------------------------------------
 -- * Extension
 -- ------------------------------------------------------------
 
--- NB:  if you add a constructor to 'Extension', be sure also to
---      add it to Distribution.Compiler.extensionsTo_X_Flag
---	(where X is each compiler)
+-- Note: if you add a new 'Extension':
+--
+-- * also add it to the Distribution.Simple.X.languageExtensions lists
+--   (where X is each compiler: GHC, JHC, Hugs, NHC)
+--
+-- * also to the 'knownExtensions' list below.
+--
+-- * If the first character of the new extension is outside the range 'A' - 'U'
+--   (ie 'V'-'Z' or any non-uppercase-alphabetical char) then update the bounds
+--   of the 'extensionTable' below.
 
 -- |This represents language extensions beyond Haskell 98 that are
 -- supported by some implementations, usually in some special mode.
@@ -110,4 +124,97 @@ data Extension
   | UnboxedTuples
   | DeriveDataTypeable
   | ConstrainedClassMethods
+
+  | UnknownExtension String
   deriving (Show, Read, Eq)
+
+knownExtensions :: [Extension]
+knownExtensions =
+  [ OverlappingInstances
+  , UndecidableInstances
+  , IncoherentInstances
+  , RecursiveDo
+  , ParallelListComp
+  , MultiParamTypeClasses
+  , NoMonomorphismRestriction
+  , FunctionalDependencies
+  , Rank2Types
+  , RankNTypes
+  , PolymorphicComponents
+  , ExistentialQuantification
+  , ScopedTypeVariables
+  , ImplicitParams
+  , FlexibleContexts
+  , FlexibleInstances
+  , EmptyDataDecls
+  , CPP
+
+  , KindSignatures
+  , BangPatterns
+  , TypeSynonymInstances
+  , TemplateHaskell
+  , ForeignFunctionInterface
+  , Arrows
+  , Generics
+  , NoImplicitPrelude
+  , NamedFieldPuns
+  , PatternGuards
+  , GeneralizedNewtypeDeriving
+
+  , ExtensibleRecords
+  , RestrictedTypeSynonyms
+  , HereDocuments
+  , MagicHash
+  , TypeFamilies
+  , StandaloneDeriving
+
+  , UnicodeSyntax
+  , PatternSignatures
+  , UnliftedFFITypes
+  , LiberalTypeSynonyms
+  , TypeOperators
+--PArr -- not ready yet, and will probably be renamed to ParallelArrays
+  , RecordWildCards
+  , RecordPuns
+  , DisambiguateRecordFields
+  , OverloadedStrings
+  , GADTs
+  , NoMonoPatBinds
+  , RelaxedPolyRec
+  , ExtendedDefaultRules
+  , UnboxedTuples
+  , DeriveDataTypeable
+  , ConstrainedClassMethods
+  ]
+
+instance Text Extension where
+  disp (UnknownExtension other) = Disp.text other
+  disp other                    = Disp.text (show other)
+
+  parse = do
+    extension <- Parse.munch1 Char.isAlphaNum
+    return (classifyExtension extension)
+
+-- | 'read' for 'Extension's is really really slow so for the Text instance
+-- what we do is make a simple table indexed off the first letter in the
+-- extension name. The extension names actually cover the range @'A'-'U'@
+-- pretty densely and the biggest bucket is 7 so it's not too bad. We just do
+-- a linear search within each bucket.
+--
+-- This gives an order of magnitude improvement in parsing speed, and it'll
+-- also allow us to do case insensitive matches in future if we prefer.
+--
+classifyExtension :: String -> Extension
+classifyExtension string@(c:_)
+  | inRange (bounds extensionTable) c
+  = case lookup string (extensionTable ! c) of
+      Just extension    -> extension
+      Nothing           -> UnknownExtension string
+classifyExtension string = UnknownExtension string
+
+extensionTable :: Array Char [(String, Extension)]
+extensionTable =
+  accumArray (flip (:)) [] ('A', 'U')
+    [ (head str, (str, extension))
+    | extension <- knownExtensions
+    , let str = show extension ]
