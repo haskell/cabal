@@ -98,7 +98,7 @@ pkgDescrFieldDescrs =
            disp                   parse
            descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
  , simpleField "build-type"
-           (text . maybe "" show) (fmap Just parseReadSQ)
+           (maybe empty disp)     (fmap Just parse)
            buildType              (\t pkg -> pkg{buildType=t})
  , simpleField "license"
            disp                   parseLicenseQ
