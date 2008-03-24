@@ -563,7 +563,7 @@ parseLicenseQ = parseQuoted parse <++ parse
 -- Hence the trick above to make 'lic' polymorphic.
 
 parseExtensionQ :: ReadP r Extension
-parseExtensionQ = parseQuoted parseReadS <++ parseReadS
+parseExtensionQ = parseQuoted parse <++ parse
 
 parseTokenQ :: ReadP r String
 parseTokenQ = parseReadS <++ munch1 (\x -> not (isSpace x) && x /= ',')
