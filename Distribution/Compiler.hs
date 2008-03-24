@@ -44,6 +44,7 @@ module Distribution.Compiler (
   CompilerFlavor(..),
   buildCompilerFlavor,
   defaultCompilerFlavor,
+  parseCompilerFlavorCompat,
 
   -- * Compiler id
   CompilerId(..),
@@ -85,6 +86,31 @@ classifyCompilerFlavor s =
   where
     compilerMap = [ (display compiler, compiler)
                   | compiler <- knownCompilerFlavors ]
+
+
+--TODO: In some future release, remove 'parseCompilerFlavorCompat' and use
+-- ordinary 'parse'. Also add ("nhc", NHC) to the above 'compilerMap'.
+
+-- | Like 'classifyCompilerFlavor' but compatible with the old ReadS parser.
+--
+-- It is compatible in the sense that it accepts only the same strings,
+-- eg "GHC" but not "ghc". However other strings get mapped to 'OtherCompiler'.
+-- The point of this is that we do not allow extra valid values that would
+-- upset older Cabal versions that had a stricter parser however we cope with
+-- new values more gracefully so that we'll be able to introduce new value in
+-- future without breaking things so much.
+--
+parseCompilerFlavorCompat :: Parse.ReadP r CompilerFlavor
+parseCompilerFlavorCompat = do
+  comp <- Parse.munch1 Char.isAlphaNum
+  when (all Char.isDigit comp) Parse.pfail
+  case lookup comp compilerMap of
+    Just compiler -> return compiler
+    Nothing       -> return (OtherCompiler comp)
+  where
+    compilerMap = [ (show compiler, compiler)
+                  | compiler <- knownCompilerFlavors
+                  , compiler /= YHC ]
 
 buildCompilerFlavor :: CompilerFlavor
 buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
