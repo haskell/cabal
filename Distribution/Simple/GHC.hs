@@ -83,7 +83,7 @@ import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
 import Distribution.Text
-         ( display )
+         ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad		( unless, when )
@@ -159,14 +159,19 @@ configure verbosity hcPath hcPkgPath conf = do
   -- configuration needs to be in a state monad. That is exactly the plan
   -- (along with some other stuff to give Cabal a better DSL).
 
-  let isSep c = isSpace c || (c == ',')
   languageExtensions <-
     if ghcVersion >= Version [6,7] []
       then do exts <- rawSystemStdout verbosity (programPath ghcProg)
                         ["--supported-languages"]
-              return [ (ext, "-X" ++ show ext)
-                     | extStr <- breaks isSep exts
-                     , (ext, "") <- reads extStr ++ reads ("No" ++ extStr) ]
+              -- GHC has the annoying habit of inverting some of the extensions
+              -- so we have to try parsing ("No" ++ ghcExtensionName) first
+              let readExtension str = do
+                    ext <- simpleParse ("No" ++ str)
+                    case ext of
+                      UnknownExtension _ -> simpleParse str
+                      _                  -> return ext
+              return [ (ext, "-X" ++ display ext)
+                     | Just ext <- map readExtension (lines exts) ]
       else return oldLanguageExtensions
 
   let comp = Compiler {
@@ -306,13 +311,17 @@ getInstalledPackages' verbosity packagedbs conf = do
     str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf ["list"]
     let pkgFiles = [ init line | line <- lines str, last line == ':' ]
         dbFile packagedb = case (packagedb, pkgFiles) of
-          (GlobalPackageDB, global:_)      -> Just global
-          (UserPackageDB,  _global:user:_) -> Just user
-          (UserPackageDB,  _global:_)      -> Nothing
-          (SpecificPackageDB specific, _)  -> Just specific
-          _ -> error "cannot read ghc-pkg global package file"
-    sequence [ readFile file >>= \content -> return (db, read content)
-             | (db , Just file) <- zip packagedbs (map dbFile packagedbs) ]
+          (GlobalPackageDB, global:_)      -> return $ Just global
+          (UserPackageDB,  _global:user:_) -> return $ Just user
+          (UserPackageDB,  _global:_)      -> return $ Nothing
+          (SpecificPackageDB specific, _)  -> return $ Just specific
+          _ -> die "cannot read ghc-pkg package listing"
+    pkgFiles' <- mapM dbFile packagedbs
+    sequence [ do content <- readFile file
+                  case reads content of
+                    [(pkgs, _)] -> return (db, pkgs)
+                    _ -> die $ "cannot read ghc package database " ++ file
+             | (db , Just file) <- zip packagedbs pkgFiles' ]
 
 -- -----------------------------------------------------------------------------
 -- Building
