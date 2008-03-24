@@ -58,7 +58,7 @@ import Distribution.ParseUtils (
 	FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
 	Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields,
 	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
-	showFilePath, showToken, parseReadS, parseOptVersion, parseQuoted,
+	showFilePath, showToken, parseOptVersion, parseQuoted,
 	showFreeText)
 import Distribution.License 	( License(..) )
 import Distribution.Package
@@ -239,7 +239,7 @@ parseFreeText = ReadP.munch (const True)
 installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
    simpleField "exposed"
-	disp               parseReadS
+	disp               parse
 	exposed     	   (\val pkg -> pkg{exposed=val})
  , listField   "exposed-modules"
 	text               parseModuleNameQ
