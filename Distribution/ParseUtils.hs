@@ -60,7 +60,7 @@ module Distribution.ParseUtils (
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
-import Distribution.Compiler (CompilerFlavor)
+import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
 import Distribution.Package	( parsePackageName, Dependency(..) )
@@ -548,7 +548,7 @@ parseOptVersion = parseQuoted ver <++ ver
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
-  where tw = do compiler <- parseReadS
+  where tw = do compiler <- parseCompilerFlavorCompat
 		skipSpaces
 		version <- parse <++ return AnyVersion
 		skipSpaces
