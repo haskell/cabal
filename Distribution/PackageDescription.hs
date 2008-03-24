@@ -44,6 +44,7 @@ module Distribution.PackageDescription (
         PackageDescription(..),
         emptyPackageDescription,
         BuildType(..),
+        knownBuildTypes,
 
         -- ** Libraries
         Library(..),
