@@ -22,6 +22,9 @@ import Distribution.Simple.Command
 import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
 import Distribution.Simple.Utils (cabalVersion, die, intercalate)
+import Distribution.Text
+         ( display )
+
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  defaultConfigFile, loadConfig, configRepos,
                                  configPackageDB)
@@ -36,7 +39,6 @@ import Hackage.Upload as Upload (upload, check)
 import Hackage.SrcDist(sdist)
 
 import Distribution.Verbosity   (Verbosity, normal)
-import Distribution.Version     (showVersion)
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -73,11 +75,11 @@ mainWorker args =
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
       exitFailure
-    printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
+    printNumericVersion = putStrLn $ display Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ showVersion Paths_cabal_install.version
+                                  ++ display Paths_cabal_install.version
                                   ++ "\nusing version "
-                                  ++ showVersion cabalVersion
+                                  ++ display cabalVersion
                                   ++ " of the Cabal library "
 
     commands =

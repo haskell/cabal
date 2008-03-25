@@ -1,6 +1,9 @@
 module Hackage.Utils where
 
-import Distribution.Package (Dependency(..), showDependency)
+import Distribution.Package
+         ( Dependency(..) )
+import Distribution.Text
+         ( display )
 import Distribution.Simple.Utils (intercalate)
 
 import Control.Monad (guard)
@@ -18,4 +21,4 @@ fileNotFoundExceptions e =
     ioErrors e >>= \ioe -> guard (isDoesNotExistError ioe) >> return ioe
 
 showDependencies :: [Dependency] -> String
-showDependencies = intercalate ", " . map (show . showDependency)
+showDependencies = intercalate ", " . map display

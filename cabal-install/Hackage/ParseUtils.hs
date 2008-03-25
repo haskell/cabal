@@ -1,11 +1,14 @@
 module Hackage.ParseUtils where
 
-import Distribution.Compat.ReadP (ReadP, readP_to_S, pfail, get, look, choice, (+++))
-import Distribution.Package (PackageIdentifier(..), parsePackageId, Dependency(..), parseDependency)
+import Distribution.Compat.ReadP
+         ( ReadP, readP_to_S, pfail, get, look, choice, (+++) )
+import Distribution.Package (PackageIdentifier(..), Dependency(..))
 import Distribution.ParseUtils 
-    (Field(..), FieldDescr(..), ParseResult(..), PError
-    , field, liftField, readFields
-    , warning, lineNo, locatedErrorMsg)
+         ( Field(..), FieldDescr(..), ParseResult(..), PError
+         , field, liftField, readFields
+         , warning, lineNo, locatedErrorMsg)
+import Distribution.Text
+         ( Text(parse) )
 import Distribution.Version (Version(..), VersionRange(..))
 
 import Control.Monad (foldM, liftM)
@@ -73,7 +76,7 @@ stringNoCase this = look >>= scan this
   scan _      _                               = pfail
 
 parseDependencyOrPackageId :: ReadP r Dependency
-parseDependencyOrPackageId = parseDependency +++ liftM pkgToDep parsePackageId
+parseDependencyOrPackageId = parse +++ liftM pkgToDep parse
   where pkgToDep p = case pkgVersion p of
           Version [] _ -> Dependency (pkgName p) AnyVersion
           version      -> Dependency (pkgName p) (ThisVersion version)

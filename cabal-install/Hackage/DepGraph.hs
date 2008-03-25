@@ -22,7 +22,9 @@ module Hackage.DepGraph (
 
 import Hackage.Types
 import Distribution.Package
-         ( PackageIdentifier, showPackageId, Package(..), PackageFixedDeps(..) )
+         ( PackageIdentifier, Package(..), PackageFixedDeps(..) )
+import Distribution.Text
+         ( display )
 import Distribution.Simple.Utils
          ( intercalate, equating )
 
@@ -84,10 +86,10 @@ removeCompleted pkgid (DepGraph pkgs) =
     ([_pkg], pkgs') -> DepGraph [ ResolvedPackage pkg fs (filter (/=pkgid) deps)
                                 | ResolvedPackage pkg fs deps <- pkgs' ]
     _               -> error $ "DepGraph.removeCompleted: no such package "
-                            ++ showPackageId pkgid
+                            ++ display pkgid
                             ++ "\nin DepGraph: "
                             ++ intercalate ", "
-                                 (map (showPackageId . packageId) pkgs)
+                                 (map (display . packageId) pkgs)
 
   where isCompleted = (==pkgid) . packageId
 
@@ -105,9 +107,9 @@ removeFailed pkgid (DepGraph pkgs0) =
                         result -> assert (packageId p == pkgid) result
                           where (_,p:_) = result
     ((_:_),_)      -> error $ "DepGraph.removeFailed: internal error multiple instances of "
-                           ++ showPackageId pkgid
+                           ++ display pkgid
     _              -> error $ "DepGraph.removeFailed: no such package "
-                           ++ showPackageId pkgid
+                           ++ display pkgid
 
   where
     remove rmpkgs pkgids pkgs =
