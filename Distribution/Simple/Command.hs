@@ -78,7 +78,6 @@ module Distribution.Simple.Command (
   ) where
 
 import Control.Monad
-import Control.Monad.Instances (Functor(..))	-- instance Functor ((->) r)
 import qualified Control.Exception as Exception
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy, isPrefixOf)
@@ -338,7 +337,7 @@ liftOptDescr get' set' (ReqArg d ff ad set get) =
     ReqArg d ff ad (liftSet get' set' `fmap` set) (get . get')
 
 liftOptDescr get' set' (BoolOpt d ffT ffF set get) =
-    BoolOpt d ffT ffF (liftSet get' set' `fmap` set) (get . get')
+    BoolOpt d ffT ffF (liftSet get' set' . set) (get . get')
 
 liftSet :: (b -> a) -> (a -> (b -> b)) -> (a -> a) -> b -> b
 liftSet get' set' set x = set' (set $ get' x) x
