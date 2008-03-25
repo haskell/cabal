@@ -360,8 +360,8 @@ checkGhcOptions pkg =
         "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use the 'extensions' field."
 
   , checkAlternatives "ghc-options" "extensions"
-      [ (flag, show extension) | flag <- all_ghc_options
-                               , Just extension <- [ghcExtension flag] ]
+      [ (flag, display extension) | flag <- all_ghc_options
+                                  , Just extension <- [ghcExtension flag] ]
 
   , checkAlternatives "ghc-options" "extensions"
       [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
