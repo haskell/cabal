@@ -78,6 +78,7 @@ module Distribution.Simple.Command (
   ) where
 
 import Control.Monad
+import Control.Monad.Instances (Functor(..))	-- instance Functor ((->) r)
 import qualified Control.Exception as Exception
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy, isPrefixOf)
