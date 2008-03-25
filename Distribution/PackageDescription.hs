@@ -89,7 +89,7 @@ import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
-         ( Text(..), display )
+         ( Text(..) )
 import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
 
@@ -475,26 +475,25 @@ data Flag = MkFlag
     , flagDescription :: String
     , flagDefault     :: Bool
     }
-
-instance Show Flag where show (MkFlag n _ _) = n
+    deriving Show
 
 -- | A @ConfFlag@ represents an user-defined flag
-data ConfFlag = ConfFlag String
-    deriving Eq
+newtype ConfFlag = ConfFlag String
+    deriving (Eq, Show)
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS
              | Arch Arch
              | Flag ConfFlag
              | Impl CompilerFlavor VersionRange
-               deriving Eq
+    deriving (Eq, Show)
 
-instance Show ConfVar where
-    show (OS os) = "os(" ++ display os ++ ")"
-    show (Arch arch) = "arch(" ++ display arch ++ ")"
-    show (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
-    show (Impl c v) = "impl(" ++ display c
-                       ++ " " ++ display v ++ ")"
+--instance Text ConfVar where
+--    disp (OS os) = "os(" ++ display os ++ ")"
+--    disp (Arch arch) = "arch(" ++ display arch ++ ")"
+--    disp (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
+--    disp (Impl c v) = "impl(" ++ display c
+--                       ++ " " ++ display v ++ ")"
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
@@ -502,17 +501,14 @@ data Condition c = Var c
                  | CNot (Condition c)
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
+    deriving Show
 
-instance Show c => Show (Condition c) where
-    show c = render $ ppCond c
-
--- | Pretty print a @Condition@.
-ppCond :: Show c => Condition c -> Doc
-ppCond (Var x) = text (show x)
-ppCond (Lit b) = text (show b)
-ppCond (CNot c) = char '!' <> parens (ppCond c)
-ppCond (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
-ppCond (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
+--instance Text c => Text (Condition c) where
+--  disp (Var x) = text (show x)
+--  disp (Lit b) = text (show b)
+--  disp (CNot c) = char '!' <> parens (ppCond c)
+--  disp (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
+--  disp (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
 
 data CondTree v c a = CondNode
     { condTreeData        :: a
@@ -523,20 +519,15 @@ data CondTree v c a = CondNode
     }
     deriving Show
 
-{-
-instance (Show v, Show c) => Show (CondTree v c a) where
-    show t = render $ ppCondTree t (text . show)
-
-ppCondTree :: Show v => CondTree v c a -> (c -> Doc) -> Doc
-ppCondTree (CondNode _dat cs ifs) ppD =
-    (text "build-depends: " <+>
-      ppD cs)
-    $+$
-    (vcat $ map ppIf ifs)
-  where
-    ppIf (c,thenTree,mElseTree) =
-        ((text "if" <+> ppCond c <> colon) $$
-          nest 2 (ppCondTree thenTree ppD))
-        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t ppD))
-                   mElseTree)
--}
+--instance (Text v, Text c) => Text (CondTree v c a) where
+--  disp (CondNode _dat cs ifs) =
+--    (text "build-depends: " <+>
+--      disp cs)
+--    $+$
+--    (vcat $ map ppIf ifs)
+--  where
+--    ppIf (c,thenTree,mElseTree) =
+--        ((text "if" <+> ppCond c <> colon) $$
+--          nest 2 (ppCondTree thenTree disp))
+--        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t disp))
+--                   mElseTree)
