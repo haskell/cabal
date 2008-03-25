@@ -76,7 +76,7 @@ import Distribution.Simple.Utils
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Text
-         ( parse, display )
+         ( Text(parse), display )
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 
