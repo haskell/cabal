@@ -98,6 +98,10 @@ import System.FilePath((</>), (<.>), splitFileName, splitExtension,
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 
+#ifdef __NHC__
+default (Integer,Double,Version)
+#endif
+
 -- --------------------------------------------------------------------------
 -- Haddock support
 
