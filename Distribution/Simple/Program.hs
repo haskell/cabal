@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program
@@ -100,10 +99,6 @@ import System.IO.Error (try)
 import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
 
-#ifdef __NHC__
-default (Integer,Double,Version)
-#endif
-
 -- | Represents a program which can be configured.
 data Program = Program {
         -- | The simple name of the program, eg. ghc
@@ -188,7 +183,8 @@ findProgramVersion :: ProgArg            -- ^ version args
 findProgramVersion versionArg selectVersion verbosity path = do
   str <- rawSystemStdout verbosity path [versionArg]
          `Exception.catch` \_ -> return ""
-  let version = simpleParse (selectVersion str)
+  let version :: Maybe Version
+      version = simpleParse (selectVersion str)
   case version of
       Nothing -> warn verbosity $ "cannot determine version of " ++ path
                                ++ " :\n" ++ show str
