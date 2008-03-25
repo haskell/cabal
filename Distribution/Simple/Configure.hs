@@ -448,7 +448,7 @@ configure (pkg_descr0, pbi) cfg
     where
       addExtraIncludeLibDirs pkg_descr =
           let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
-                               , includeDirs = configExtraIncludeDirs cfg}
+                               , PD.includeDirs = configExtraIncludeDirs cfg}
               modifyLib l        = l{ libBuildInfo = libBuildInfo l `mappend` extraBi }
               modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
