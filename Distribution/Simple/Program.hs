@@ -99,6 +99,10 @@ import System.IO.Error (try)
 import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
 
+#ifdef __NHC__
+default (Integer,Double,Version)
+#endif
+
 -- | Represents a program which can be configured.
 data Program = Program {
         -- | The simple name of the program, eg. ghc
