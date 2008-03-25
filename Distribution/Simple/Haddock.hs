@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Haddock
@@ -99,10 +98,6 @@ import System.FilePath((</>), (<.>), splitFileName, splitExtension,
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 
-#ifdef __NHC__
-default (Integer,Double,Version)
-#endif
-
 -- --------------------------------------------------------------------------
 -- Haddock support
 
@@ -169,7 +164,8 @@ haddock pkg_descr lbi suffixes flags = do
 
     when isVersion2 $ do
       strHadGhcVers <- rawSystemProgramStdout verbosity confHaddock ["--ghc-version"]
-      let mHadGhcVers = simpleParse strHadGhcVers
+      let mHadGhcVers :: Maybe Version
+          mHadGhcVers = simpleParse strHadGhcVers
       when (mHadGhcVers == Nothing) $ die "Could not get GHC version from Haddock"
       when (fromJust mHadGhcVers /= compilerVersion comp) $
         die "Haddock's internal GHC version must match the configured GHC version"
