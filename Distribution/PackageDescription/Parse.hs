@@ -226,7 +226,7 @@ binfoFieldDescrs =
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
  , listField   "extensions"
-           (text . show)      parseExtensionQ
+           disp               parseExtensionQ
            extensions         (\exts  binfo -> binfo{extensions=exts})
  , listField   "extra-libraries"
            showToken          parseTokenQ

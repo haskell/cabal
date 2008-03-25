@@ -68,6 +68,7 @@ module Distribution.Simple.Setup (
 
 import Distribution.Compiler ()
 import Distribution.ReadE
+import Distribution.Text (display)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
@@ -1182,7 +1183,7 @@ configureArgs bcHack flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
                         (_, Flag hc_path) -> [hc_flag_name ++ hc_path]
-                        (Flag hc, NoFlag) -> [hc_flag_name ++ showHC hc]
+                        (Flag hc, NoFlag) -> [hc_flag_name ++ display hc]
                         (NoFlag,NoFlag)   -> []
         hc_flag_name
             --TODO kill off thic bc hack when defaultUserHooks is removed.
@@ -1194,12 +1195,6 @@ configureArgs bcHack flags
         optFlag' name config_field = optFlag name (fmap fromPathTemplate
                                                  . config_field
                                                  . configInstallDirs)
-
-        showHC GHC = "ghc"
-        showHC NHC = "nhc98"
-        showHC JHC = "jhc"
-        showHC Hugs = "hugs"
-        showHC c    = "unknown compiler: " ++ (show c)
 
 -- | Helper function to split a string into a list of arguments.
 -- It's supposed to handle quoted things sensibly, eg:
