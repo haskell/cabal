@@ -12,9 +12,11 @@
 -----------------------------------------------------------------------------
 module Hackage.Types where
 
-import Distribution.Package (PackageIdentifier(..), showPackageId, Package(..), Dependency)
+import Distribution.Package
+         ( PackageIdentifier(..), Package(..), Dependency )
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.Version (showVersion)
+import Distribution.Text
+         ( display )
 import Distribution.Simple.Utils (intercalate)
 
 import System.FilePath ((</>), (<.>))
@@ -37,7 +39,7 @@ instance Package PkgInfo where packageId = pkgInfoId
 -- the tarball for a given @PackageIdentifer@.
 packageFile :: PkgInfo -> FilePath
 packageFile pkg = packageDir pkg
-              </> showPackageId (packageId pkg)
+              </> display (packageId pkg)
               <.> "tar.gz"
 
 -- |Generate the full path to the directory where the local cached copy of
@@ -46,14 +48,14 @@ packageDir :: PkgInfo -> FilePath
 packageDir PkgInfo { pkgInfoId = p, pkgRepo = repo } = 
                          repoCacheDir repo
                      </> pkgName p
-                     </> showVersion (pkgVersion p)
+                     </> display (pkgVersion p)
 
 -- | Generate the URL of the tarball for a given package.
 packageURL :: PkgInfo -> String
 packageURL pkg = intercalate "/"
     [repoURL (pkgRepo pkg),
-     pkgName p, showVersion (pkgVersion p),
-     showPackageId p ++ ".tar.gz"]
+     pkgName p, display (pkgVersion p),
+     display p ++ ".tar.gz"]
     where p = packageId pkg
 
 data RemoteRepo = RemoteRepo {

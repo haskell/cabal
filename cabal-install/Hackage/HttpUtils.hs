@@ -16,10 +16,11 @@ import Control.Exception (try, bracket)
 #endif
 import System.Environment (getEnvironment)
 
-import Distribution.Version     (showVersion)
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (warn, debug)
+import Distribution.Text
+         ( display )
 
 -- try to read the system proxy settings on windows or unix
 proxyString :: IO (Maybe String)
@@ -78,7 +79,7 @@ mkRequest uri = Request{ rqURI     = uri
                        , rqMethod  = GET
                        , rqHeaders = [Header HdrUserAgent userAgent]
                        , rqBody    = "" }
-  where userAgent = "cabal-install/" ++ showVersion Paths_cabal_install.version
+  where userAgent = "cabal-install/" ++ display Paths_cabal_install.version
 
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: Verbosity -> URI -> IO (Result Response)

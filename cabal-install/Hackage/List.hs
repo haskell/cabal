@@ -21,6 +21,8 @@ import Control.Monad (MonadPlus(mplus))
 import Control.Exception (assert)
 
 import Text.PrettyPrint.HughesPJ
+import Distribution.Text
+         ( Text(disp), display )
 
 import Distribution.Package (PackageIdentifier(..), Package(..))
 import Distribution.License (License)
@@ -28,7 +30,7 @@ import qualified Distribution.PackageDescription as Available
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Version (Version, showVersion)
+import Distribution.Version (Version)
 import Distribution.Verbosity (Verbosity)
 
 import qualified Hackage.IndexUtils as IndexUtils (readRepoIndex)
@@ -63,7 +65,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
 
     if simpleOutput
       then putStr $ unlines
-             [ name pkg ++ " " ++ showVersion version
+             [ name pkg ++ " " ++ display version
              | pkg <- matches
              , version <- if onlyInstalled
                             then              installedVersions pkg
@@ -101,10 +103,10 @@ showPackageInfo pkg =
      (nest 6 $ vcat [
        maybeShow (availableVersions pkg)
          "Latest version available:"
-         (text . showVersion . maximum)
+         (disp . maximum)
      , maybeShow (installedVersions pkg)
          "Latest version installed:"
-         (text . showVersion . maximum)
+         (disp . maximum)
      , maybeShow (homepage pkg) "Homepage:" text
      , maybeShow (category pkg) "Category:" text
      , maybeShow (synopsis pkg) "Synopsis:" reflowParas

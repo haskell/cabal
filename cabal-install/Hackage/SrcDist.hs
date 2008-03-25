@@ -8,7 +8,8 @@ import Distribution.Simple.SrcDist
          ( printPackageProblems, prepareTree, prepareSnapshotTree )
 import Hackage.Tar (createTarGzFile)
 
-import Distribution.Package (showPackageId, Package(..))
+import Distribution.Package
+         ( Package(..) )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.Utils
          ( withTempDirectory , defaultPackageDesc
@@ -20,6 +21,8 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.BuildPaths ( distPref, srcPref)
 import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
+import Distribution.Text
+         ( display )
 
 import System.Time (getClockTime, toCalendarTime)
 import System.FilePath ((</>), (<.>))
@@ -68,7 +71,7 @@ createArchive :: Verbosity
               -> FilePath
               -> IO FilePath
 createArchive _verbosity pkg tmpDir targetPref = do
-  let tarBallName     = showPackageId (packageId pkg)
+  let tarBallName     = display (packageId pkg)
       tarBallFilePath = targetPref </> tarBallName <.> "tar.gz"
   createTarGzFile tarBallFilePath tmpDir tarBallName
   return tarBallFilePath
