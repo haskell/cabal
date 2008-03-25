@@ -20,10 +20,11 @@ import Hackage.Tar
 import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), Repo(..))
 
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(Dependency))
-import Distribution.Version (readVersion)
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
+import Distribution.Text
+         ( simpleParse )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, intercalate, fromUTF8)
 
@@ -65,7 +66,7 @@ readRepoIndex verbosity repo =
                        ParseOk _ d -> d
                        _           -> error $ "Couldn't read cabal file "
                                            ++ show (tarFileName hdr)
-                  in case readVersion vers of
+                  in case simpleParse vers of
                        Just ver -> return PkgInfo {
                            pkgInfoId = PackageIdentifier pkgname ver,
                            pkgRepo = repo,

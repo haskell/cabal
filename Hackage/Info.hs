@@ -19,7 +19,10 @@ import Hackage.Fetch
 import Hackage.Types 
 import Hackage.Utils (showDependencies)
 
-import Distribution.Package (showPackageId, Package(..), showDependency)
+import Distribution.Package
+         ( Package(..) )
+import Distribution.Text
+         ( display )
 
 import Data.List (nubBy)
 
@@ -31,12 +34,12 @@ flattenResolvedDependencies = nubBy fulfillSame. concatMap flatten
 
 infoPkg :: ResolvedDependency -> IO [String]
 infoPkg (InstalledDependency dep p)
-    = return ["Requested:    " ++ show (showDependency dep)
-             ,"  Installed:  " ++ showPackageId p]
+    = return ["Requested:    " ++ display dep
+             ,"  Installed:  " ++ display p]
 infoPkg (AvailableDependency dep pkg flags deps)
     = do fetched <- isFetched pkg
-         return ["Requested:    " ++ show (showDependency dep)
-                ,"  Using:      " ++ showPackageId (packageId pkg)
+         return ["Requested:    " ++ display dep
+                ,"  Using:      " ++ display (packageId pkg)
                 ,"  Depends:    " ++ showDependencies (map fulfills deps)
                 ,"  Options:    " ++ unwords [ if set then flag else '-':flag
                                              | (flag, set) <- flags ]
@@ -46,6 +49,6 @@ infoPkg (AvailableDependency dep pkg flags deps)
                                         else  "*Not downloaded"
                 ]
 infoPkg (UnavailableDependency dep)
-    = return ["Requested:    " ++ show (showDependency dep)
+    = return ["Requested:    " ++ display dep
              ,"  Not available!"
              ]

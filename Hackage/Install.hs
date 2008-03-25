@@ -42,10 +42,13 @@ import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
-import Distribution.Package (showPackageId, PackageIdentifier(..), Package(..))
+import Distribution.Package
+         ( PackageIdentifier(..), Package(..) )
 import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.BuildPaths ( exeExtension )
 
@@ -81,8 +84,8 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
       ++ unlines
-         [ showPackageId pkgid ++ case reason of
-           DependentFailed pkgid' -> " depends on " ++ showPackageId pkgid'
+         [ display pkgid ++ case reason of
+           DependentFailed pkgid' -> " depends on " ++ display pkgid'
                                   ++ " which failed to install."
            UnpackFailed    e -> " failed while unpacking the package."
                              ++ " The exception was:\n  " ++ show e
@@ -172,7 +175,7 @@ printDryRun verbosity pkgs
   | DepGraph.empty pkgs = notice verbosity "No packages to be installed."
   | otherwise = do
         notice verbosity $ "In order, the following would be installed:\n"
-          ++ unlines (map showPackageId (order pkgs))
+          ++ unlines (map display (order pkgs))
         where
         order ps
             | DepGraph.empty ps = []
@@ -243,12 +246,12 @@ installPkg verbosity configFlags rootCmd pkg flags = do
   pkgPath <- fetchPackage verbosity pkg
   tmp <- getTemporaryDirectory
   let pkgid = packageId pkg
-      tmpDirPath = tmp </> ("TMP" ++ showPackageId pkgid)
-      path = tmpDirPath </> showPackageId pkgid
+      tmpDirPath = tmp </> ("TMP" ++ display pkgid)
+      path = tmpDirPath </> display pkgid
   onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
     info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
     extractTarGzFile tmpDirPath pkgPath
-    let descFilePath = tmpDirPath </> showPackageId pkgid
+    let descFilePath = tmpDirPath </> display pkgid
                                   </> pkgName pkgid <.> "cabal"
     exists <- doesFileExist descFilePath
     when (not exists) $

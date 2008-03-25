@@ -31,11 +31,14 @@ import qualified Hackage.DepGraph as DepGraph
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
-import Distribution.Package (showPackageId, Package(..))
+import Distribution.Package
+         ( Package(..) )
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Utils (die, notice, debug, setupMessage)
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity (Verbosity)
 
 import Data.Monoid (Monoid(mconcat))
@@ -84,7 +87,7 @@ downloadPackage verbosity pkg
          createDirectoryIfMissing True dir
          mbError <- downloadFile verbosity path url
          case mbError of
-           Just err -> die $ "Failed to download '" ++ showPackageId (packageId pkg) ++ "': " ++ show err
+           Just err -> die $ "Failed to download '" ++ display (packageId pkg) ++ "': " ++ show err
            Nothing -> return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
@@ -108,7 +111,7 @@ fetchPackage :: Verbosity -> PkgInfo -> IO String
 fetchPackage verbosity pkg
     = do fetched <- isFetched pkg
          if fetched
-            then do notice verbosity $ "'" ++ showPackageId (packageId pkg) ++ "' is cached."
+            then do notice verbosity $ "'" ++ display (packageId pkg) ++ "' is cached."
                     return (packageFile pkg)
             else do setupMessage verbosity "Downloading" (packageId pkg)
                     downloadPackage verbosity pkg
