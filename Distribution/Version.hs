@@ -128,22 +128,22 @@ instance Text VersionRange where
     = disp r1 <> Disp.text "&&" <> disp r2
 
   parse = do
-  f1 <- factor
-  Parse.skipSpaces
-  (do
-     Parse.string "||"
-     Parse.skipSpaces
-     f2 <- factor
-     return (UnionVersionRanges f1 f2)
-   +++
-   do    
-     Parse.string "&&"
-     Parse.skipSpaces
-     f2 <- factor
-     return (IntersectVersionRanges f1 f2)
-   +++
-   return f1)
-  where 
+    f1 <- factor
+    Parse.skipSpaces
+    (do
+       Parse.string "||"
+       Parse.skipSpaces
+       f2 <- factor
+       return (UnionVersionRanges f1 f2)
+     +++
+     do    
+       Parse.string "&&"
+       Parse.skipSpaces
+       f2 <- factor
+       return (IntersectVersionRanges f1 f2)
+     +++
+     return f1)
+   where 
         factor   = Parse.choice ((Parse.string "-any" >> return AnyVersion) :
                                     map parseRangeOp rangeOps)
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
