@@ -377,12 +377,6 @@ clean pkg_descr flags = do
 -- --------------------------------------------------------------------------
 -- Default hooks
 
-no_extra_flags :: [String] -> IO ()
-no_extra_flags [] = return ()
-no_extra_flags extra_flags =
- die $ concat
-     $ intersperse "\n" ("Unrecognised flags:" : map (' ' :) extra_flags)
-
 -- | Hooks that correspond to a plain instantiation of the 
 -- \"simple\" build system
 simpleUserHooks :: UserHooks
@@ -429,7 +423,7 @@ defaultUserHooks = autoconfUserHooks {
     -- http://hackage.haskell.org/trac/hackage/ticket/165
     where oldCompatPostConf args flags _ _
               = do let verbosity = fromFlag (configVerbose flags)
-                   no_extra_flags args
+                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
                        rawSystemExit verbosity "sh" $
@@ -454,7 +448,7 @@ autoconfUserHooks
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
               = do let verbosity = fromFlag (configVerbose flags)
-                   no_extra_flags args
+                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    if confExists
                      then rawSystemExit verbosity "sh" $
@@ -465,7 +459,7 @@ autoconfUserHooks
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
-              no_extra_flags a
+              noExtraFlags a
               maybe_infoFile <- defaultHookedPackageDesc
               case maybe_infoFile of
                   Nothing       -> return emptyHookedBuildInfo
