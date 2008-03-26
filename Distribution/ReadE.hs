@@ -44,7 +44,6 @@ module Distribution.ReadE (
    -- * ReadE
    ReadE(..), succeedReadE, failReadE,
    -- * Projections
-   readS_to_E, readS_to_E', readP_to_E, readP_to_E',
    parseReadE, readEOrFail,
   ) where
 
@@ -65,26 +64,6 @@ succeedReadE f = ReadE (Right . f)
 
 failReadE :: ErrorMsg -> ReadE a
 failReadE = ReadE . const Left
-
-readS_to_E :: (String -> ErrorMsg) -> ReadS a -> ReadE a
-readS_to_E err r = ReadE$ \txt -> case r txt of
-                           [(a,[])] -> Right a
-                           _        -> Left (err txt)
-
-readS_to_E' :: String -> String -> ReadS a -> ReadE a
-readS_to_E' name arg_desc r =
-    ReadE $ \txt -> case r txt of
-              [(a,[])] -> Right a
-              _ -> error (concat ["Failed to parse ", name,
-                                  ". Expected " ++ arg_desc,
-                                  ", found " ++ show txt])
-
-readP_to_E :: (String -> ErrorMsg) -> ReadP a a -> ReadE a
-readP_to_E err = readS_to_E err . readP_to_S
-
-readP_to_E' :: String -> String -> ReadP a a -> ReadE a
-readP_to_E' name arg_descr = readS_to_E' name arg_descr . readP_to_S
-
 
 parseReadE :: ReadE a -> ReadP r a
 parseReadE (ReadE p) = do
