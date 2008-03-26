@@ -55,13 +55,13 @@ import Distribution.PackageDescription
          (PackageDescription, GenericPackageDescription,
           HookedBuildInfo, emptyHookedBuildInfo)
 import Distribution.Simple.Program    (Program)
+import Distribution.Simple.Command    (noExtraFlags)
 import Distribution.Simple.PreProcess (PPSuffixHandler)
 import Distribution.Simple.Setup
          (ConfigFlags, BuildFlags, MakefileFlags, CleanFlags, CopyFlags,
           InstallFlags, SDistFlags, RegisterFlags, HscolourFlags,
           HaddockFlags)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
-import Distribution.Simple.Utils (die)
 
 type Args = [String]
 
@@ -209,10 +209,5 @@ emptyUserHooks
       haddockHook  = ru,
       postHaddock  = ru
     }
-    where rn  args _   = no_extra_flags args >> return emptyHookedBuildInfo
+    where rn args  _ = noExtraFlags args >> return emptyHookedBuildInfo
           ru _ _ _ _ = return ()
-
-no_extra_flags :: [String] -> IO ()
-no_extra_flags [] = return ()
-no_extra_flags extra_flags =
- die $ unlines ("Unrecognised flags:" : map (' ' :) extra_flags)

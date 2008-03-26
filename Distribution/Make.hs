@@ -150,7 +150,7 @@ defaultMainHelper args =
 
 configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   let verbosity = fromFlag (configVerbose flags)
   rawSystemExit verbosity "sh" $
     "configure"
@@ -159,7 +159,7 @@ configureAction flags args = do
 
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   let destArgs = case fromFlag $ copyDest flags of 
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
@@ -169,43 +169,38 @@ copyAction flags args = do
 
 installAction :: InstallFlags -> [String] -> IO ()
 installAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ installVerbose flags) "make" ["install"]
   rawSystemExit (fromFlag $ installVerbose flags) "make" ["register"]
 
 haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do 
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ haddockVerbose flags) "make" ["docs"]
     `catch` \_ ->
     rawSystemExit (fromFlag $ haddockVerbose flags) "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ buildVerbose flags) "make" []
 
 cleanAction :: CleanFlags -> [String] -> IO ()
 cleanAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ cleanVerbose flags) "make" ["clean"]
 
 sdistAction :: SDistFlags -> [String] -> IO ()
 sdistAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ sDistVerbose flags) "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
 registerAction  flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ regVerbose flags) "make" ["register"]
 
 unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
-  no_extra_flags args
+  noExtraFlags args
   rawSystemExit (fromFlag $ regVerbose flags) "make" ["unregister"]
-
-no_extra_flags :: [String] -> IO ()
-no_extra_flags [] = return ()
-no_extra_flags extra_flags  = 
-  die $ "Unrecognised flags: " ++ concat (intersperse "," (extra_flags))
