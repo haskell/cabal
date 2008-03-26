@@ -53,6 +53,7 @@ module Distribution.Simple.Command (
   -- ** Associating actions with commands
   Command,
   commandAddAction,
+  noExtraFlags,
   
   -- ** Running commands
   CommandParse(..),
@@ -88,6 +89,7 @@ import Distribution.Text
          ( Text(parse) )
 import Distribution.ParseUtils
 import Distribution.ReadE
+import Distribution.Simple.Utils (die, intercalate)
 import Text.PrettyPrint.HughesPJ    ( punctuate, cat, comma, text, empty)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Environment (getEnv)
@@ -522,3 +524,13 @@ commandsRun globalCommand commands args =
     }
       where maxlen = maximum [ length name | Command name _ _ <- commands]
             align str = str ++ replicate (maxlen - length str) ' '
+
+-- | Utility function, many commands do not accept additional flags. This
+-- action fails with a helpful error message if the user supplies any extra.
+--
+noExtraFlags :: [String] -> IO ()
+noExtraFlags [] = return ()
+noExtraFlags extraFlags =
+  die $ "Unrecognised flags: " ++ intercalate ", " extraFlags
+--TODO: eliminate this function and turn it into a variant on commandAddAction
+--      instead like commandAddActionNoArgs that doesn't supply the [String]
