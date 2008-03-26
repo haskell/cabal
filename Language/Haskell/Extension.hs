@@ -48,7 +48,7 @@ import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
-import Data.Array (Array, accumArray, bounds, inRange, (!))
+import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 
 -- ------------------------------------------------------------
 -- * Extension
