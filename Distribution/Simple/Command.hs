@@ -73,7 +73,7 @@ module Distribution.Simple.Command (
 
 -- ** OptDescr 'smart' constructors
   MkOptDescr,
-  reqArg, reqArg', reqArg'', optArg, optArg', optArg'', noArg,
+  reqArg, reqArg', optArg, optArg', noArg,
   boolOpt, boolOpt', choiceOpt, choiceOptFromEnum
 
   ) where
@@ -179,21 +179,6 @@ optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b) -> (b -> [Maybe Str
 optArg' ad mkflag showflag =
     optArg ad (succeedReadE (mkflag . Just)) def showflag
       where def = mkflag Nothing
-
--- | ReadS variant of "reqArg"
-reqArg'' :: Monoid b => ArgPlaceHolder -> ReadS b -> (b -> [String])
-                     -> MkOptDescr (a -> b) (b -> a -> a) a
-reqArg'' ad mkflag showflag sf lf@(n:_) =
-    reqArg ad (readS_to_E' n ad mkflag) showflag sf lf
-reqArg'' _ _ _ _ _ = error "Distribution.command.reqArg'': unreachable"
-
--- | ReadS variant of "optArg"
-optArg'' :: Monoid b => ArgPlaceHolder -> (Maybe String -> [(b,String)]) -> (b -> [Maybe String])
-                     -> MkOptDescr (a -> b) (b -> a -> a) a
-optArg'' ad mkflag showflag sf lf@(n:_) =
-    optArg ad (readS_to_E' n ad (mkflag . Just)) def showflag sf lf
-      where def = let [(x,"")] = mkflag Nothing in x
-optArg'' _ _ _ _ _ = error "Distribution.command.optArg'': unreachable"
 
 noArg :: (Eq b, Monoid b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
