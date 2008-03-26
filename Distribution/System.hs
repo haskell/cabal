@@ -88,7 +88,8 @@ instance Text Arch where
   disp (OtherArch name) = Disp.text name
   disp other            = Disp.text (lowercase (show other))
 
-  parse = fmap classifyArch (Parse.munch1 Char.isAlphaNum)
+  parse = fmap classifyArch (Parse.munch1 isIdentChar)
+    where isIdentChar c = Char.isAlphaNum c || c == '_'
   --TODO: probably should disallow starting with a number
 
 classifyArch :: String -> Arch
