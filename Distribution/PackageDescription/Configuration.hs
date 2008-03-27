@@ -60,14 +60,14 @@ import Distribution.Version
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System
          ( OS, Arch )
-import Distribution.Simple.Utils (currentDir)
+import Distribution.Simple.Utils (currentDir, lowercase)
 
 import Distribution.Text
          ( Text(parse) )
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
-import Data.Char ( isAlphaNum, toLower )
+import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
 import Data.Monoid
@@ -151,14 +151,13 @@ parseCondition = condOr
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
-    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
+    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
-    ident    = munch1 isIdentChar >>= return . map toLower
     boolLiteral   = fmap Lit  parse
     archIdent     = fmap Arch parse
     osIdent       = fmap OS   parse
-    flagIdent     = ident
-    isIdentChar c = isAlphaNum c || (c `elem` "_-")
+    flagIdent     = fmap (Flag . ConfFlag . lowercase) (munch1 isIdentChar)
+    isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
     implIdent     = do i <- parse
