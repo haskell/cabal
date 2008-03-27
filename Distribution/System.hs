@@ -41,8 +41,7 @@ instance Text OS where
   disp (OtherOS name) = Disp.text name
   disp other          = Disp.text (lowercase (show other))
 
-  parse = fmap classifyOS (Parse.munch1 Char.isAlphaNum)
-  --TODO: probably should disallow starting with a number
+  parse = fmap classifyOS ident
 
 classifyOS :: String -> OS
 classifyOS s =
@@ -88,9 +87,7 @@ instance Text Arch where
   disp (OtherArch name) = Disp.text name
   disp other            = Disp.text (lowercase (show other))
 
-  parse = fmap classifyArch (Parse.munch1 isIdentChar)
-    where isIdentChar c = Char.isAlphaNum c || c == '_'
-  --TODO: probably should disallow starting with a number
+  parse = fmap classifyArch ident
 
 classifyArch :: String -> Arch
 classifyArch s =
@@ -104,6 +101,10 @@ classifyArch s =
 
 buildArch :: Arch
 buildArch = classifyArch System.Info.arch
+
+ident :: Parse.ReadP r String
+ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+  --TODO: probably should disallow starting with a number
 
 lowercase :: String -> String
 lowercase = map Char.toLower
