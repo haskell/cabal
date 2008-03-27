@@ -91,7 +91,7 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
-  let verbosity = fromFlag (buildVerbose flags)
+  let verbosity = fromFlag (buildVerbosity flags)
   initialBuildSteps pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
@@ -107,7 +107,7 @@ makefile :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 makefile pkg_descr lbi flags suffixes = do
-  let verbosity = fromFlag (makefileVerbose flags)
+  let verbosity = fromFlag (makefileVerbosity flags)
   initialBuildSteps pkg_descr lbi verbosity suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")

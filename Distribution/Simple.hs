@@ -212,12 +212,12 @@ configureAction hooks flags args = do
 
                 (mb_pd_file, pkg_descr0) <- confPkgDescr
 
-                --    get_pkg_descr (configVerbose flags')
+                --    get_pkg_descr (configVerbosity flags')
                 --let pkg_descr = updatePackageDescription pbi pkg_descr0
                 let epkg_descr = (pkg_descr0, pbi)
 
                 --(warns, ers) <- sanityCheckPackage pkg_descr
-                --errorOut (configVerbose flags') warns ers
+                --errorOut (configVerbosity flags') warns ers
 
 		localbuildinfo0 <- confHook hooks epkg_descr flags
 
@@ -228,7 +228,7 @@ configureAction hooks flags args = do
 		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags pkg_descr localbuildinfo
               where
-                verbosity = fromFlag (configVerbose flags)
+                verbosity = fromFlag (configVerbosity flags)
                 confPkgDescr :: IO (Maybe FilePath,
                                     Either GenericPackageDescription
                                            PackageDescription)
@@ -274,7 +274,7 @@ cleanAction hooks flags args = do
 
                 cleanHook hooks pkg_descr mlbi hooks flags
                 postClean hooks args flags pkg_descr mlbi
-  where verbosity = fromFlag (cleanVerbose flags)
+  where verbosity = fromFlag (cleanVerbosity flags)
 
 copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
 copyAction = hookedAction preCopy copyHook postCopy
@@ -296,7 +296,7 @@ sdistAction hooks flags args = do
 
                 sDistHook hooks pkg_descr mlbi hooks flags
                 postSDist hooks args flags pkg_descr mlbi
-  where verbosity = fromFlag (sDistVerbose flags)
+  where verbosity = fromFlag (sDistVerbosity flags)
 
 testAction :: UserHooks -> () -> Args -> IO ()
 testAction hooks _flags args = do
@@ -372,7 +372,7 @@ clean pkg_descr flags = do
             if isDir then removeDirectoryRecursive fname
               else if isFile then removeFile fname
               else return ()
-        verbosity = fromFlag (cleanVerbose flags)
+        verbosity = fromFlag (cleanVerbosity flags)
 
 -- --------------------------------------------------------------------------
 -- Default hooks
@@ -412,7 +412,7 @@ simpleUserHooks =
 defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
-	               let verbosity = fromFlag (configVerbose flags)
+	               let verbosity = fromFlag (configVerbosity flags)
 		       warn verbosity $
 		         "defaultUserHooks in Setup script is deprecated."
 	               confHook autoconfUserHooks pkg flags,
@@ -422,7 +422,7 @@ defaultUserHooks = autoconfUserHooks {
     -- It's here for compatability with existing Setup.hs scripts. See:
     -- http://hackage.haskell.org/trac/hackage/ticket/165
     where oldCompatPostConf args flags _ _
-              = do let verbosity = fromFlag (configVerbose flags)
+              = do let verbosity = fromFlag (configVerbosity flags)
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
@@ -434,20 +434,20 @@ autoconfUserHooks :: UserHooks
 autoconfUserHooks
     = simpleUserHooks
       {
-       postConf  = defaultPostConf,
-       preBuild  = readHook buildVerbose,
-       preMakefile = readHook makefileVerbose,
-       preClean  = readHook cleanVerbose,
-       preCopy   = readHook copyVerbose,
-       preInst   = readHook installVerbose,
-       preHscolour = readHook hscolourVerbose,
-       preHaddock  = readHook haddockVerbose,
-       preReg    = readHook regVerbose,
-       preUnreg  = readHook regVerbose
+       postConf    = defaultPostConf,
+       preBuild    = readHook buildVerbosity,
+       preMakefile = readHook makefileVerbosity,
+       preClean    = readHook cleanVerbosity,
+       preCopy     = readHook copyVerbosity,
+       preInst     = readHook installVerbosity,
+       preHscolour = readHook hscolourVerbosity,
+       preHaddock  = readHook haddockVerbosity,
+       preReg      = readHook regVerbosity,
+       preUnreg    = readHook regVerbosity
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags _ _
-              = do let verbosity = fromFlag (configVerbose flags)
+              = do let verbosity = fromFlag (configVerbosity flags)
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
                    if confExists
@@ -472,13 +472,13 @@ defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
 defaultInstallHook pkg_descr localbuildinfo _ flags = do
   install pkg_descr localbuildinfo defaultCopyFlags {
-    copyDest    = toFlag NoCopyDest,
-    copyVerbose = installVerbose flags
+    copyDest      = toFlag NoCopyDest,
+    copyVerbosity = installVerbosity flags
   }
   when (hasLibs pkg_descr) $
       register pkg_descr localbuildinfo defaultRegisterFlags {
-        regPackageDB = installPackageDB flags,
-        regVerbose   = installVerbose flags
+        regPackageDB  = installPackageDB flags,
+        regVerbosity = installVerbosity flags
       }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
@@ -502,4 +502,4 @@ defaultRegHook pkg_descr localbuildinfo _ flags =
     then register pkg_descr localbuildinfo flags
     else setupMessage verbosity
            "Package contains no library to register:" (packageId pkg_descr)
-  where verbosity = fromFlag (regVerbose flags)
+  where verbosity = fromFlag (regVerbosity flags)

@@ -258,7 +258,7 @@ configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  let verbosity = fromFlag (configVerbose cfg)
+  = do  let verbosity = fromFlag (configVerbosity cfg)
 
 	setupMessage verbosity "Configuring"
                      (packageId (either packageDescription id pkg_descr0))
@@ -606,7 +606,7 @@ configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
                                        (flagToMaybe $ configHcPath cfg)
                                        (flagToMaybe $ configHcPkg cfg)
                                        defaultProgramConfiguration
-                                       (fromFlag (configVerbose cfg))
+                                       (fromFlag (configVerbosity cfg))
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramConfiguration -> Verbosity

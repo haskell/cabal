@@ -122,7 +122,7 @@ sdist pkg mb_lbi flags tmpDir targetPref pps = do
     notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
-    verbosity = fromFlag (sDistVerbose flags)
+    verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
 
 -- |Prepare a directory tree of source files.
