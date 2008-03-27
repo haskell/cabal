@@ -160,7 +160,7 @@ configureAction flags args = do
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   noExtraFlags args
-  let destArgs = case fromFlag $ copyDest flags of 
+  let destArgs = case fromFlag $ copyDest' flags of
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
         CopyPrefix path -> ["install", "prefix=" ++ path]

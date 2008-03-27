@@ -547,7 +547,8 @@ instance Monoid ConfigFlags where
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
 data CopyFlags = CopyFlags {
-    copyDest      :: Flag CopyDest,
+    copyDest      :: CopyDest,
+    copyDest'     :: Flag CopyDest,
     copyVerbose   :: Verbosity,
     copyVerbosity :: Flag Verbosity
   }
@@ -555,7 +556,8 @@ data CopyFlags = CopyFlags {
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
-    copyDest      = Flag NoCopyDest,
+    copyDest      = NoCopyDest,
+    copyDest'     = Flag NoCopyDest,
     copyVerbose   = normal,
     copyVerbosity = Flag normal
   }
@@ -573,13 +575,13 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
-         copyDest (\v flags -> flags { copyDest = v })
+         copyDest' (\v flags -> flags { copyDest' = v })
          (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
 
       ,option "" ["copy-prefix"]
          "[DEPRECATED, directory to copy files to instead of prefix]"
-         copyDest (\v flags -> flags { copyDest = v })
+         copyDest' (\v flags -> flags { copyDest' = v })
          (reqArg' "DIR" (Flag . CopyPrefix)
                        (\f -> case f of Flag (CopyPrefix p) -> [p]; _ -> []))
 
@@ -590,12 +592,14 @@ emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
   mempty = CopyFlags {
-    copyDest      = mempty,
+    copyDest      = NoCopyDest,
+    copyDest'     = mempty,
     copyVerbose   = normal,
     copyVerbosity = mempty
   }
   mappend a b = CopyFlags {
-    copyDest      = combine copyDest,
+    copyDest      = fromFlagOrDefault (copyDest a) (copyDest' b),
+    copyDest'     = combine copyDest',
     copyVerbose   = fromFlagOrDefault (copyVerbose a) (copyVerbosity b),
     copyVerbosity = combine copyVerbosity
   }

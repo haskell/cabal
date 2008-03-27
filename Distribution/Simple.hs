@@ -472,7 +472,7 @@ defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
 defaultInstallHook pkg_descr localbuildinfo _ flags = do
   install pkg_descr localbuildinfo defaultCopyFlags {
-    copyDest      = toFlag NoCopyDest,
+    copyDest'     = toFlag NoCopyDest,
     copyVerbosity = installVerbosity flags
   }
   when (hasLibs pkg_descr) $
