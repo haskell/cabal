@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compat.ReadP
@@ -66,10 +67,21 @@ module Distribution.Compat.ReadP
   readP_to_S, -- :: ReadP a -> ReadS a
   readS_to_P  -- :: ReadS a -> ReadP a
   
+#if __GLASGOW_HASKELL__ < 603 && !__HUGS__
   -- * Properties
   -- $properties
+#endif
   )
  where
+
+#if __GLASGOW_HASKELL__ >= 603 || __HUGS__
+
+import Text.ParserCombinators.ReadP hiding (ReadP)
+import qualified Text.ParserCombinators.ReadP as ReadP
+
+type ReadP r a = ReadP.ReadP a
+
+#else
 
 import Control.Monad( MonadPlus(..), liftM2 )
 import Data.Char (isSpace)
@@ -468,3 +480,4 @@ Here follow the properties:
 >    readP_to_S (readS_to_P r) s =~. r s
 -}
 
+#endif
