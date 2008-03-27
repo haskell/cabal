@@ -34,7 +34,7 @@ import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils
          ( FieldDescr(..), simpleField, listField, liftField, field
-         , parseFilePathQ, parseTokenQ )
+         , parseFilePathQ, parseTokenQ, PWarning(..) )
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
@@ -131,7 +131,7 @@ defaultSavedConfig =
        return SavedConfig
          { configFlags = (defaultConfigFlags defaultProgramConfiguration){
                            ConfigFlags.configHcFlavor    = toFlag defaultCompiler
-                         , ConfigFlags.configVerbose     = toFlag normal
+                         , ConfigFlags.configVerbosity   = toFlag normal
                          , ConfigFlags.configUserInstall = toFlag True
                          , ConfigFlags.configInstallDirs = error
                              "ConfigFlags.installDirs: avoid this field. Use UserInstallDirs \
@@ -166,7 +166,8 @@ loadConfig verbosity configFile =
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
                        ParseOk ws conf -> 
                            do when (not $ null ws) $
-                                warn verbosity $ "Config file: " ++ unlines ws
+                                warn verbosity $ "Config file: "
+                                  ++ unlines [ m | PWarning m <- ws ]
                               return conf
                        ParseFailed err -> 
                            do warn verbosity $ "Error parsing config file " 
