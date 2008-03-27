@@ -135,8 +135,8 @@ utf8Warnings line fieldname s =
          , '\xfffd' `elem` l ]
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
-locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'")
-locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed: ")
+locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'.")
+locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed.")
 locatedErrorMsg (TabsError n)       = (Just n, "Tab used as indentation.")
 locatedErrorMsg (FromString s n)    = (n, s)
 
