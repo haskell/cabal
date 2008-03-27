@@ -145,7 +145,7 @@ parseCondition = condOr
   where
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
-    cond     = sp >> (lit +++ inparens condOr +++ notCond +++ osCond 
+    cond     = sp >> (boolLiteral +++ inparens condOr +++ notCond +++ osCond
                       +++ archCond +++ flagCond +++ implCond )
     inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
     notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
@@ -154,8 +154,7 @@ parseCondition = condOr
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var . Flag . ConfFlag
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
     ident    = munch1 isIdentChar >>= return . map toLower
-    lit      = ((string "true" <++ string "True") >> return (Lit True)) <++ 
-               ((string "false" <++ string "False") >> return (Lit False))
+    boolLiteral   = fmap Lit  parse
     archIdent     = fmap Arch parse
     osIdent       = fmap OS   parse
     flagIdent     = ident
