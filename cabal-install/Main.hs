@@ -105,7 +105,7 @@ mainWorker args =
 --      ,wrapperAction makefileCommand
       ]
 
-wrapperAction :: CommandUI flags -> Command (IO ())
+wrapperAction :: Monoid flags => CommandUI flags -> Command (IO ())
 wrapperAction command =
   commandAddAction command $ \flags extraArgs ->
   let args = commandName command : commandShowOptions command flags ++ extraArgs
@@ -114,7 +114,7 @@ wrapperAction command =
 configureAction :: Cabal.ConfigFlags -> [String] -> IO ()
 configureAction flags extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose flags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbosity flags)
   config <- loadConfig verbosity configFile
   let flags' = savedConfigToConfigFlags (Cabal.configUserInstall flags) config
                `mappend` flags
@@ -126,7 +126,7 @@ installAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
 installAction (cflags,iflags) extraArgs = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbosity cflags)
   config <- loadConfig verbosity configFile
   let cflags' = savedConfigToConfigFlags (Cabal.configUserInstall cflags) config
                `mappend` cflags
@@ -160,7 +160,7 @@ updateAction verbosityFlag _extraArgs = do
 upgradeAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
 upgradeAction (cflags,iflags) _extraArgs = do
   configFile <- defaultConfigFile --FIXME
-  let verbosity = fromFlagOrDefault normal (Cabal.configVerbose cflags)
+  let verbosity = fromFlagOrDefault normal (Cabal.configVerbosity cflags)
   config <- loadConfig verbosity configFile
   let cflags' = savedConfigToConfigFlags (Cabal.configUserInstall cflags) config
                `mappend` cflags
