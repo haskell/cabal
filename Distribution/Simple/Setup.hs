@@ -64,7 +64,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-  boolOpt, boolOpt', trueArg, falseArg, optionVerbose ) where
+  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity ) where
 
 import Distribution.Compiler ()
 import Distribution.ReadE
@@ -242,7 +242,7 @@ data ConfigFlags = ConfigFlags {
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
 
-    configVerbose   :: Flag Verbosity, -- ^verbosity level
+    configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDB :: Flag PackageDB, -- ^Which package DB to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
@@ -263,7 +263,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
-    configVerbose      = Flag normal,
+    configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
     configGHCiLib      = Flag True,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
@@ -287,7 +287,7 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
-      [optionVerbose configVerbose (\v flags -> flags { configVerbose = v })
+      [optionVerbosity configVerbosity (\v flags -> flags { configVerbosity = v })
 
       ,option [] ["compiler"] "compiler"
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
@@ -497,7 +497,7 @@ instance Monoid ConfigFlags where
     configProgSuffix    = mempty,
     configInstallDirs   = mempty,
     configScratchDir    = mempty,
-    configVerbose       = mempty,
+    configVerbosity     = mempty,
     configUserInstall   = mempty,
     configPackageDB     = mempty,
     configGHCiLib       = mempty,
@@ -524,7 +524,7 @@ instance Monoid ConfigFlags where
     configProgSuffix    = combine configProgSuffix,
     configInstallDirs   = combine configInstallDirs,
     configScratchDir    = combine configScratchDir,
-    configVerbose       = combine configVerbose,
+    configVerbosity     = combine configVerbosity,
     configUserInstall   = combine configUserInstall,
     configPackageDB     = combine configPackageDB,
     configGHCiLib       = combine configGHCiLib,
@@ -542,15 +542,15 @@ instance Monoid ConfigFlags where
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
 data CopyFlags = CopyFlags {
-    copyDest    :: Flag CopyDest,
-    copyVerbose :: Flag Verbosity
+    copyDest      :: Flag CopyDest,
+    copyVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
-    copyDest    = Flag NoCopyDest,
-    copyVerbose = Flag normal
+    copyDest      = Flag NoCopyDest,
+    copyVerbosity = Flag normal
   }
 
 copyCommand :: CommandUI CopyFlags
@@ -562,7 +562,7 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
           "Does not call register, and allows a prefix at install time\n"
        ++ "Without the --destdir flag, configure determines location.\n"
     options _  =
-      [optionVerbose copyVerbose (\v flags -> flags { copyVerbose = v })
+      [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
@@ -583,12 +583,12 @@ emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
   mempty = CopyFlags {
-    copyDest    = mempty,
-    copyVerbose = mempty
+    copyDest      = mempty,
+    copyVerbosity = mempty
   }
   mappend a b = CopyFlags {
-    copyDest    = combine copyDest,
-    copyVerbose = combine copyVerbose
+    copyDest      = combine copyDest,
+    copyVerbosity = combine copyVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -599,14 +599,14 @@ instance Monoid CopyFlags where
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags {
     installPackageDB :: Flag PackageDB,
-    installVerbose   :: Flag Verbosity
+    installVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
     installPackageDB = NoFlag,
-    installVerbose   = Flag normal
+    installVerbosity = Flag normal
   }
 
 installCommand :: CommandUI InstallFlags
@@ -619,7 +619,7 @@ installCommand = makeCommand name shortDesc longDesc defaultInstallFlags options
       ++ "If you want to install into a location that is not what was\n"
       ++ "specified in the configure step, use the copy command.\n"
     options _  =
-      [optionVerbose installVerbose (\v flags -> flags { installVerbose = v })
+      [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
 
       ,option "" ["packageDB"] ""
          installPackageDB (\v flags -> flags { installPackageDB = v })
@@ -635,11 +635,11 @@ emptyInstallFlags = mempty
 instance Monoid InstallFlags where
   mempty = InstallFlags{
     installPackageDB = mempty,
-    installVerbose   = mempty
+    installVerbosity = mempty
   }
   mappend a b = InstallFlags{
     installPackageDB = combine installPackageDB,
-    installVerbose   = combine installVerbose
+    installVerbosity = combine installVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -649,15 +649,15 @@ instance Monoid InstallFlags where
 
 -- | Flags to @sdist@: (snapshot, verbosity)
 data SDistFlags = SDistFlags {
-    sDistSnapshot :: Flag Bool,
-    sDistVerbose  :: Flag Verbosity
+    sDistSnapshot  :: Flag Bool,
+    sDistVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
-    sDistSnapshot = Flag False,
-    sDistVerbose  = Flag normal
+    sDistSnapshot  = Flag False,
+    sDistVerbosity = Flag normal
   }
 
 sdistCommand :: CommandUI SDistFlags
@@ -667,7 +667,7 @@ sdistCommand = makeCommand name shortDesc longDesc defaultSDistFlags options
     shortDesc  = "Generate a source distribution file (.tar.gz)."
     longDesc   = Nothing
     options _  =
-      [optionVerbose sDistVerbose (\v flags -> flags { sDistVerbose = v })
+      [optionVerbosity sDistVerbosity (\v flags -> flags { sDistVerbosity = v })
 
       ,option "" ["snapshot"]
          "Produce a snapshot source distribution"
@@ -680,12 +680,12 @@ emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
   mempty = SDistFlags {
-    sDistSnapshot = mempty,
-    sDistVerbose  = mempty
+    sDistSnapshot  = mempty,
+    sDistVerbosity = mempty
   }
   mappend a b = SDistFlags {
-    sDistSnapshot = combine sDistSnapshot,
-    sDistVerbose  = combine sDistVerbose
+    sDistSnapshot  = combine sDistSnapshot,
+    sDistVerbosity = combine sDistVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -700,7 +700,7 @@ data RegisterFlags = RegisterFlags {
     regGenScript   :: Flag Bool,
     regGenPkgConf  :: Flag (Maybe FilePath),
     regInPlace     :: Flag Bool,
-    regVerbose     :: Flag Verbosity
+    regVerbosity   :: Flag Verbosity
   }
   deriving Show
 
@@ -710,7 +710,7 @@ defaultRegisterFlags = RegisterFlags {
     regGenScript   = Flag False,
     regGenPkgConf  = Flag Nothing,
     regInPlace     = Flag False,
-    regVerbose     = Flag normal
+    regVerbosity   = Flag normal
   }
 
 registerCommand :: CommandUI RegisterFlags
@@ -720,7 +720,7 @@ registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags optio
     shortDesc  = "Register this package with the compiler."
     longDesc   = Nothing
     options _  =
-      [optionVerbose regVerbose (\v flags -> flags { regVerbose = v })
+      [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
 
       ,option "" ["packageDB"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
@@ -752,7 +752,7 @@ unregisterCommand = makeCommand name shortDesc longDesc defaultRegisterFlags opt
     shortDesc  = "Unregister this package with the compiler."
     longDesc   = Nothing
     options _  =
-      [optionVerbose regVerbose (\v flags -> flags { regVerbose = v })
+      [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
 
       ,option "" ["user"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
@@ -776,14 +776,14 @@ instance Monoid RegisterFlags where
     regGenScript   = mempty,
     regGenPkgConf  = mempty,
     regInPlace     = mempty,
-    regVerbose     = mempty
+    regVerbosity   = mempty
   }
   mappend a b = RegisterFlags {
     regPackageDB   = combine regPackageDB,
     regGenScript   = combine regGenScript,
     regGenPkgConf  = combine regGenPkgConf,
     regInPlace     = combine regInPlace,
-    regVerbose     = combine regVerbose
+    regVerbosity   = combine regVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -794,7 +794,7 @@ instance Monoid RegisterFlags where
 data HscolourFlags = HscolourFlags {
     hscolourCSS         :: Flag FilePath,
     hscolourExecutables :: Flag Bool,
-    hscolourVerbose     :: Flag Verbosity
+    hscolourVerbosity   :: Flag Verbosity
   }
   deriving Show
 
@@ -805,19 +805,19 @@ defaultHscolourFlags :: HscolourFlags
 defaultHscolourFlags = HscolourFlags {
     hscolourCSS         = NoFlag,
     hscolourExecutables = Flag False,
-    hscolourVerbose     = Flag normal
+    hscolourVerbosity   = Flag normal
   }
 
 instance Monoid HscolourFlags where
   mempty = HscolourFlags {
     hscolourCSS         = mempty,
     hscolourExecutables = mempty,
-    hscolourVerbose     = mempty
+    hscolourVerbosity   = mempty
   }
   mappend a b = HscolourFlags {
     hscolourCSS         = combine hscolourCSS,
     hscolourExecutables = combine hscolourExecutables,
-    hscolourVerbose     = combine hscolourVerbose
+    hscolourVerbosity   = combine hscolourVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -828,7 +828,7 @@ hscolourCommand = makeCommand name shortDesc longDesc defaultHscolourFlags optio
     shortDesc  = "Generate HsColour colourised code, in HTML format."
     longDesc   = Just (\_ -> "Requires hscolour.")
     options _  =
-      [optionVerbose hscolourVerbose (\v flags -> flags { hscolourVerbose = v })
+      [optionVerbosity hscolourVerbosity (\v flags -> flags { hscolourVerbosity = v })
 
       ,option "" ["executables"]
          "Run hscolour for Executables targets"
@@ -852,7 +852,7 @@ data HaddockFlags = HaddockFlags {
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
-    haddockVerbose      :: Flag Verbosity
+    haddockVerbosity    :: Flag Verbosity
   }
   deriving Show
 
@@ -864,7 +864,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
     haddockHscolourCss  = NoFlag,
-    haddockVerbose      = Flag normal
+    haddockVerbosity    = Flag normal
   }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -874,7 +874,7 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
     shortDesc  = "Generate Haddock HTML documentation."
     longDesc   = Just (\_ -> "Requires cpphs and haddock.\n")
     options _  =
-      [optionVerbose haddockVerbose (\v flags -> flags { haddockVerbose = v })
+      [optionVerbosity haddockVerbosity (\v flags -> flags { haddockVerbosity = v })
 
       ,option "" ["hoogle"]
          "Generate a hoogle database"
@@ -918,7 +918,7 @@ instance Monoid HaddockFlags where
     haddockCss          = mempty,
     haddockHscolour     = mempty,
     haddockHscolourCss  = mempty,
-    haddockVerbose      = mempty
+    haddockVerbosity    = mempty
   }
   mappend a b = HaddockFlags {
     haddockHoogle       = combine haddockHoogle,
@@ -927,7 +927,7 @@ instance Monoid HaddockFlags where
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,
-    haddockVerbose      = combine haddockVerbose
+    haddockVerbosity    = combine haddockVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -937,14 +937,14 @@ instance Monoid HaddockFlags where
 
 data CleanFlags = CleanFlags {
     cleanSaveConf  :: Flag Bool,
-    cleanVerbose   :: Flag Verbosity
+    cleanVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
-    cleanSaveConf = Flag False,
-    cleanVerbose  = Flag normal
+    cleanSaveConf  = Flag False,
+    cleanVerbosity = Flag normal
   }
 
 cleanCommand :: CommandUI CleanFlags
@@ -954,7 +954,7 @@ cleanCommand = makeCommand name shortDesc longDesc defaultCleanFlags options
     shortDesc  = "Clean up after a build."
     longDesc   = Just (\_ -> "Removes .hi, .o, preprocessed sources, etc.\n")
     options _  =
-      [optionVerbose cleanVerbose (\v flags -> flags { cleanVerbose = v })
+      [optionVerbosity cleanVerbosity (\v flags -> flags { cleanVerbosity = v })
 
       ,option "s" ["save-configure"]
          "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."
@@ -967,12 +967,12 @@ emptyCleanFlags = mempty
 
 instance Monoid CleanFlags where
   mempty = CleanFlags {
-    cleanSaveConf = mempty,
-    cleanVerbose  = mempty
+    cleanSaveConf  = mempty,
+    cleanVerbosity = mempty
   }
   mappend a b = CleanFlags {
-    cleanSaveConf = combine cleanSaveConf,
-    cleanVerbose  = combine cleanVerbose
+    cleanSaveConf  = combine cleanSaveConf,
+    cleanVerbosity = combine cleanVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -982,14 +982,14 @@ instance Monoid CleanFlags where
 
 data BuildFlags = BuildFlags {
     buildProgramArgs :: [(String, [String])],
-    buildVerbose     :: Flag Verbosity
+    buildVerbosity   :: Flag Verbosity
   }
   deriving Show
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramArgs = [],
-    buildVerbose     = Flag normal
+    buildVerbosity   = Flag normal
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
@@ -999,7 +999,7 @@ buildCommand progConf = makeCommand name shortDesc longDesc defaultBuildFlags op
     shortDesc  = "Make this package ready for installation."
     longDesc   = Nothing
     options showOrParseArgs =
-      optionVerbose buildVerbose (\v flags -> flags { buildVerbose = v })
+      optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
 
       : programConfigurationOptions progConf showOrParseArgs
           buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
@@ -1010,11 +1010,11 @@ emptyBuildFlags = mempty
 instance Monoid BuildFlags where
   mempty = BuildFlags {
     buildProgramArgs = mempty,
-    buildVerbose     = mempty
+    buildVerbosity   = mempty
   }
   mappend a b = BuildFlags {
     buildProgramArgs = combine buildProgramArgs,
-    buildVerbose     = combine buildVerbose
+    buildVerbosity   = combine buildVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -1023,15 +1023,15 @@ instance Monoid BuildFlags where
 -- ------------------------------------------------------------
 
 data MakefileFlags = MakefileFlags {
-    makefileFile    :: Flag FilePath,
-    makefileVerbose :: Flag Verbosity
+    makefileFile      :: Flag FilePath,
+    makefileVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultMakefileFlags :: MakefileFlags
 defaultMakefileFlags  = MakefileFlags {
-    makefileFile    = NoFlag,
-    makefileVerbose = Flag normal
+    makefileFile      = NoFlag,
+    makefileVerbosity = Flag normal
   }
 
 makefileCommand :: CommandUI MakefileFlags
@@ -1041,7 +1041,7 @@ makefileCommand = makeCommand name shortDesc longDesc defaultMakefileFlags optio
     shortDesc  = "Generate a makefile (only for GHC libraries)."
     longDesc   = Nothing
     options _  =
-      [optionVerbose makefileVerbose (\v flags -> flags { makefileVerbose = v })
+      [optionVerbosity makefileVerbosity (\v flags -> flags { makefileVerbosity = v })
 
       ,option "f" ["file"]
          "Filename to use (default: Makefile)."
@@ -1054,12 +1054,12 @@ emptyMakefileFlags  = mempty
 
 instance Monoid MakefileFlags where
   mempty = MakefileFlags {
-    makefileFile    = mempty,
-    makefileVerbose = mempty
+    makefileFile      = mempty,
+    makefileVerbosity = mempty
   }
   mappend a b = MakefileFlags {
-    makefileFile    = combine makefileFile,
-    makefileVerbose = combine makefileVerbose
+    makefileFile      = combine makefileFile,
+    makefileVerbosity = combine makefileVerbosity
   }
     where combine field = field a `mappend` field b
 
@@ -1153,10 +1153,10 @@ reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
               (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
-optionVerbose :: (flags -> Flag Verbosity)
-              -> (Flag Verbosity -> flags -> flags)
-              -> OptionField flags
-optionVerbose get set =
+optionVerbosity :: (flags -> Flag Verbosity)
+                -> (Flag Verbosity -> flags -> flags)
+                -> OptionField flags
+optionVerbosity get set =
   option "v" ["verbose"]
     "Control verbosity (n is 0--3, default verbosity level is 1)"
     get set

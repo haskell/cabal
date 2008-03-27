@@ -80,7 +80,7 @@ install :: PackageDescription -- ^information from the .cabal file
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
 install pkg_descr lbi flags = do
-  let verbosity = fromFlag (copyVerbose flags)
+  let verbosity = fromFlag (copyVerbosity flags)
       copydest  = fromFlag (copyDest flags)
       InstallDirs {
          bindir     = binPref,
