@@ -50,11 +50,14 @@ module Distribution.Package (
 	-- * Package classes
 	Package(..), packageName, packageVersion,
 	PackageFixedDeps(..),
+
+  -- * Deprecated compat stuff
+  showPackageId,
   ) where
 
 import Distribution.Version (Version(..), VersionRange(AnyVersion))
 
-import Distribution.Text (Text(..))
+import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
@@ -133,3 +136,10 @@ instance Package PackageIdentifier where
 --
 class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> [PackageIdentifier]
+
+-- ---------------------------------------------------------------------------
+-- Deprecated compat stuff
+
+{-# DEPRECATED showPackageId "use the Text class instead" #-}
+showPackageId :: PackageIdentifier -> String
+showPackageId = display

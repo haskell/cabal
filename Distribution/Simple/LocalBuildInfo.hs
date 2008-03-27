@@ -48,7 +48,10 @@ module Distribution.Simple.LocalBuildInfo (
 	-- * Installation directories
 	module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
-        substPathTemplate
+        substPathTemplate,
+
+        -- * Deprecated compat stuff
+        mkDataDir,
   ) where
 
 
@@ -136,3 +139,10 @@ substPathTemplate pkg_descr lbi = fromPathTemplate
                    (packageId pkg_descr)
                    (compilerId (compiler lbi))
           
+-- ---------------------------------------------------------------------------
+-- Deprecated compat stuff
+
+mkDataDir :: PackageDescription -> LocalBuildInfo -> CopyDest -> FilePath
+mkDataDir pkg_descr lbi copydest =
+  datadir (absoluteInstallDirs pkg_descr lbi copydest)
+{-# DEPRECATED mkDataDir "use datadir :: InstallDirs -> FilePath" #-}

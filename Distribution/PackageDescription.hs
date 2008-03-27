@@ -74,6 +74,9 @@ module Distribution.PackageDescription (
         -- * package configuration
         GenericPackageDescription(..),
         Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..),
+
+        -- * Deprecated compat stuff
+        setupMessage,
   ) where
 
 import Data.List   (nub)
@@ -89,9 +92,10 @@ import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
-         ( Text(..) )
-import Distribution.Simple.Utils  (currentDir)
+         ( Text(..), display )
+import Distribution.Simple.Utils  (currentDir, notice)
 import Language.Haskell.Extension (Extension)
+import Distribution.Verbosity (Verbosity)
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -531,3 +535,11 @@ data CondTree v c a = CondNode
 --          nest 2 (ppCondTree thenTree disp))
 --        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t disp))
 --                   mElseTree)
+
+-- ---------------------------------------------------------------------------
+-- Deprecated compat stuff
+
+{-# DEPRECATED setupMessage "it's exported from the Utils module now" #-}
+setupMessage :: Verbosity -> String -> PackageDescription -> IO ()
+setupMessage verbosity msg pkg_descr =
+    notice verbosity (msg ++ ' ': display (packageId pkg_descr) ++ "...")

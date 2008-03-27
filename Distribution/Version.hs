@@ -51,11 +51,14 @@ module Distribution.Version (
   withinRange,
   isAnyVersion,
 
+  -- * Deprecated compat stuff
+  showVersion,
+  parseVersion,
  ) where
 
 import Data.Version	( Version(..) )
 
-import Distribution.Text ( Text(..) )
+import Distribution.Text ( Text(..), display )
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((+++))
 import qualified Text.PrettyPrint as Disp
@@ -152,3 +155,14 @@ instance Text VersionRange where
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
+
+-- ---------------------------------------------------------------------------
+-- Deprecated compat stuff
+
+{-# DEPRECATED showVersion "use the Text class instead" #-}
+showVersion :: Version -> String
+showVersion = display
+
+{-# DEPRECATED parseVersion "use the Text class instead" #-}
+parseVersion :: Parse.ReadP r Version
+parseVersion = parse
