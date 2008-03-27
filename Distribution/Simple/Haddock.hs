@@ -104,7 +104,7 @@ import Distribution.Version
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
   | not (hasLibs pkg_descr) && not (fromFlag $ haddockExecutables haddockFlags) =
-      warn (fromFlag $ haddockVerbose haddockFlags) $
+      warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
         ++ "a library. Perhaps you want to use the haddock command with the "
         ++ "--executables flag."
@@ -115,7 +115,7 @@ haddock pkg_descr lbi suffixes flags = do
     when hsColour $ hscolour pkg_descr lbi suffixes defaultHscolourFlags {
       hscolourCSS         = haddockHscolourCss flags,
       hscolourExecutables = haddockExecutables flags,
-      hscolourVerbose     = haddockVerbose flags
+      hscolourVerbosity   = haddockVerbosity flags
     }
 
     (confHaddock, _) <- requireProgram verbosity haddockProgram
@@ -255,7 +255,7 @@ haddock pkg_descr lbi suffixes flags = do
 
     removeDirectoryRecursive tmpDir
   where
-        verbosity = fromFlag (haddockVerbose flags)
+        verbosity = fromFlag (haddockVerbosity flags)
         mockPP inputArgs bi pref file
             = do let (filePref, fileName) = splitFileName file
                  let targetDir  = pref </> filePref
@@ -379,7 +379,7 @@ hscolour pkg_descr lbi suffixes flags = do
           Just s -> copyFile s (dir </> "hscolour.css")
         doExes     = fromFlag (hscolourExecutables flags)
         stylesheet = flagToMaybe (hscolourCSS flags)
-        verbosity  = fromFlag (hscolourVerbose flags)
+        verbosity  = fromFlag (hscolourVerbosity flags)
 
 
 --TODO: where to put this? it's duplicated in .Simple too
