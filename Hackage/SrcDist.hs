@@ -61,7 +61,7 @@ sdist flags = do
     notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
-    verbosity = fromFlag (sDistVerbose flags)
+    verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
 
 -- |Create an archive from a tree of source files, and clean up the tree.

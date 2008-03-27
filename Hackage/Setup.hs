@@ -41,7 +41,8 @@ import qualified Distribution.Simple.Setup as Cabal
   RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    sdistCommand,
                                          testCommand-})
-import Distribution.Simple.Setup (Flag(..), toFlag, flagToList, trueArg, optionVerbose)
+import Distribution.Simple.Setup
+         ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
 import Distribution.Verbosity (Verbosity, normal)
 import Hackage.Types (UnresolvedDependency(..), Username, Password)
 import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
@@ -76,7 +77,7 @@ fetchCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = usagePackages "fetch",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbose id const]
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 updateCommand  :: CommandUI (Flag Verbosity)
@@ -86,7 +87,7 @@ updateCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = usagePackages "update",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbose id const]
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 upgradeCommand  :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -119,7 +120,7 @@ infoCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = usagePackages "info",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbose id const]
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 checkCommand  :: CommandUI (Flag Verbosity)
@@ -157,7 +158,7 @@ listCommand = CommandUI {
     commandUsage        = usagePackages "list",
     commandDefaultFlags = defaultListFlags,
     commandOptions      = \_ -> [
-        optionVerbose listVerbosity (\v flags -> flags { listVerbosity = v })
+        optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
 
         , option [] ["installed"]
             "Only print installed packages"
@@ -278,7 +279,7 @@ uploadCommand = CommandUI {
       ++ "Flags for upload:",
     commandDefaultFlags = defaultUploadFlags,
     commandOptions      = \_ ->
-      [optionVerbose uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
+      [optionVerbosity uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
 
       ,option ['c'] ["check"]
          "Do not upload, just do QA checks."
