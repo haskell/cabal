@@ -244,7 +244,6 @@ data ConfigFlags = ConfigFlags {
 
     configVerbose   :: Verbosity, -- ^verbosity level (deprecated)
     configVerbosity :: Flag Verbosity, -- ^verbosity level
-    configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDB :: Flag PackageDB, -- ^Which package DB to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
