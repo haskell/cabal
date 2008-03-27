@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- #hide
 module Distribution.ParseUtils (
-        LineNo, PError(..), PWarning, locatedErrorMsg, syntaxError, warning,
+        LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
 	runP, runE, ParseResult(..), catchParseError, parseFail,
 	Field(..), fName, lineNo, 
 	FieldDescr(..), ppField, ppFields, readFields, 
@@ -83,11 +83,12 @@ type LineNo = Int
 data PError = AmbigousParse String LineNo
             | NoParse String LineNo
             | TabsError LineNo
-            | UTFError LineNo
             | FromString String (Maybe LineNo)
         deriving Show
 
-type PWarning = String
+data PWarning = PWarning String
+              | UTFWarning LineNo String
+        deriving Show
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
@@ -111,9 +112,11 @@ parseFail = ParseFailed
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
 runP line fieldname p s =
   case [ x | (x,"") <- results ] of
-    [a] -> ParseOk [] a
+    [a] -> ParseOk (utf8Warnings line fieldname s) a
+    --TODO: what is this double parse thing all about?
+    --      Can't we just do the all isSpace test the first time?
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
-             [a] -> ParseOk [] a
+             [a] -> ParseOk (utf8Warnings line fieldname s) a
              []  -> ParseFailed (NoParse fieldname line)
              _   -> ParseFailed (AmbigousParse fieldname line)
     _   -> ParseFailed (AmbigousParse fieldname line)
@@ -122,14 +125,19 @@ runP line fieldname p s =
 runE :: LineNo -> String -> ReadE a -> String -> ParseResult a
 runE line fieldname p s =
     case runReadE p s of
-      Right a -> ParseOk [] a
+      Right a -> ParseOk (utf8Warnings line fieldname s) a
       Left  e -> syntaxError line ("Parse of field '"++fieldname++"' failed ("++e++"): " )
+
+utf8Warnings :: LineNo -> String -> String -> [PWarning]
+utf8Warnings line fieldname s =
+  take 1 [ UTFWarning n fieldname
+         | (n,l) <- zip [line..] (lines s)
+         , '\xfffd' `elem` l ]
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
 locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'")
 locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed: ")
 locatedErrorMsg (TabsError n)       = (Just n, "Tab used as indentation.")
-locatedErrorMsg (UTFError  n)       = (Just n, "Invalid UTF-8 text.")
 locatedErrorMsg (FromString s n)    = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
@@ -138,11 +146,8 @@ syntaxError n s = ParseFailed $ FromString s (Just n)
 tabsError :: LineNo -> ParseResult a
 tabsError ln = ParseFailed $ TabsError ln
 
-utf8Error :: LineNo -> ParseResult a
-utf8Error ln = ParseFailed $ UTFError ln
-
 warning :: String -> ParseResult ()
-warning s = ParseOk [s] ()
+warning s = ParseOk [PWarning s] ()
 
 -- | Field descriptor.  The parameter @a@ parameterizes over where the field's
 --   value is stored in.
@@ -267,15 +272,9 @@ fName (Section _ n _ _) = n
 fName _ = error "fname: not a field or section"
 
 readFields :: String -> ParseResult [Field]
-readFields input =
-  case [ n | (n,l) <- zip [1..] ls
-           , '\xfffd' `elem` l ] of
-
-    (n:_) -> utf8Error n
-
-    []    -> ifelse
-         =<< mapM (mkField 0)
-         =<< mkTree tokens
+readFields input = ifelse
+               =<< mapM (mkField 0)
+               =<< mkTree tokens
 
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLine . trimLines) ls
