@@ -29,10 +29,10 @@ simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str
 
 instance Text Bool where
   disp  = Disp.text . show
-  parse = Parse.choice [ (Parse.string "true" Parse.<++
-                          Parse.string "True") >> return True
-                       , (Parse.string "false" Parse.<++
-                          Parse.string "False") >> return False ]
+  parse = Parse.choice [ (Parse.string "True" Parse.+++
+                          Parse.string "true") >> return True
+                       , (Parse.string "False" Parse.+++
+                          Parse.string "false") >> return False ]
 
 instance Text Version where
   disp (Version branch tags)
