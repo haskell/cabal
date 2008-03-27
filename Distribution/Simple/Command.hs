@@ -458,7 +458,8 @@ instance Functor CommandParse where
 
 data Command action = Command String String ([String] -> CommandParse action)
 
-commandAddAction :: CommandUI flags
+commandAddAction :: Monoid flags
+                 => CommandUI flags
                  -> (flags -> [String] -> action)
                  -> Command action
 commandAddAction command action =
@@ -468,7 +469,8 @@ commandAddAction command action =
          . commandParseArgs command False)
 
   where applyDefaultArgs mkflags args =
-          let flags = mkflags (commandDefaultFlags command)
+          let flags = commandDefaultFlags command
+                      `mappend` mkflags mempty
            in action flags args
 
 commandsRun :: CommandUI a
