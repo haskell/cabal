@@ -105,7 +105,7 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg_descr lbi regFlags
   | isNothing (library pkg_descr) = do
-    setupMessage (fromFlag $ regVerbose regFlags) "No package to register" (packageId pkg_descr)
+    setupMessage (fromFlag $ regVerbosity regFlags) "No package to register" (packageId pkg_descr)
     return ()
   | otherwise = do
     let isWindows = case buildOS of Windows -> True; _ -> False
@@ -114,7 +114,7 @@ register pkg_descr lbi regFlags
         genPkgConfigDefault = display (packageId pkg_descr) <.> "conf"
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (fromFlag (regGenPkgConf regFlags))
-        verbosity = fromFlag (regVerbose regFlags)
+        verbosity = fromFlag (regVerbosity regFlags)
         packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
 	inplace  = fromFlag (regInPlace regFlags)
         message | genPkgConf = "Writing package registration file: "
@@ -279,7 +279,7 @@ mkInstalledPackageInfo pkg_descr lbi inplace = do
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi regFlags = do
   let genScript = fromFlag (regGenScript regFlags)
-      verbosity = fromFlag (regVerbose regFlags)
+      verbosity = fromFlag (regVerbosity regFlags)
       packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
       installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
   setupMessage verbosity "Unregistering" (packageId pkg_descr)

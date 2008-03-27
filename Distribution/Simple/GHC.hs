@@ -641,7 +641,7 @@ mkGHCiLibName lib = "HS" ++ display lib <.> "o"
 makefile :: PackageDescription -> LocalBuildInfo -> MakefileFlags -> IO ()
 makefile pkg_descr lbi flags = do
   let file = fromFlagOrDefault "Makefile"(makefileFile flags)
-      verbosity = fromFlag (makefileVerbose flags)
+      verbosity = fromFlag (makefileVerbosity flags)
   targetExists <- doesFileExist file
   when targetExists $
     die ("Not overwriting existing copy of " ++ file)
