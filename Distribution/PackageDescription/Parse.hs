@@ -201,8 +201,7 @@ storeXFieldsExe _ _ = Nothing
 
 binfoFieldDescrs :: [FieldDescr BuildInfo]
 binfoFieldDescrs =
- [ simpleField "buildable"
-           disp               parse
+ [ boolField "buildable"
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
            disp               parseBuildTool
@@ -276,8 +275,7 @@ flagFieldDescrs =
     [ simpleField "description"
         showFreeText     (munch (const True))
         flagDescription  (\val fl -> fl{ flagDescription = val })
-    , simpleField "default"
-        disp             parse
+    , boolField "default"
         flagDefault      (\val fl -> fl{ flagDefault = val })
     ]
 

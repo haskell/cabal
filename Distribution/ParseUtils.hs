@@ -55,7 +55,7 @@ module Distribution.ParseUtils (
 	parseSepList, parseCommaList, parseOptCommaList,
 	showFilePath, showToken, showTestedWith, showFreeText,
 	field, simpleField, listField, commaListField, optsField, liftField,
-        parseQuoted,
+        boolField, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -68,7 +68,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
          ( Text(..) )
-import Distribution.Simple.Utils (intercalate)
+import Distribution.Simple.Utils (intercalate, lowercase)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
@@ -205,6 +205,24 @@ optsField name flavor get set =
 	update f opts ((f',opts'):rest)
            | f == f'   = (f, opts ++ opts') : rest
            | otherwise = (f',opts') : update f opts rest
+
+-- TODO: this is a bit smelly hack. It's because we want to parse bool fields
+--       liberally but not accept new parses. We cannot do that with ReadP
+--       because it does not support warnings. We need a new parser framwork!
+boolField :: String -> (b -> Bool) -> (Bool -> b -> b) -> FieldDescr b
+boolField name get set = liftField get set (FieldDescr name showF readF)
+  where
+    showF = text . show
+    readF line str _
+      |  str == "True"  = ParseOk [] True
+      |  str == "False" = ParseOk [] False
+      | lstr == "true"  = ParseOk [caseWarning] True
+      | lstr == "false" = ParseOk [caseWarning] False
+      | otherwise       = ParseFailed (NoParse name line)
+      where
+        lstr = lowercase str
+        caseWarning = PWarning
+          "Bool fields are case sensitive, use 'True' or 'False'."
 
 ppFields :: a -> [FieldDescr a] -> Doc
 ppFields _ [] = empty
