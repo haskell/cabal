@@ -511,7 +511,7 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = mempty
   }
   mappend a b =  ConfigFlags {
-    configPrograms      = configPrograms b,
+    configPrograms      = configPrograms a,
     configProgramPaths  = combine configProgramPaths,
     configProgramArgs   = combine configProgramArgs,
     configHcFlavor      = combine configHcFlavor,
