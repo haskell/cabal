@@ -45,7 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- #hide
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
-	runP, runE, ParseResult(..), catchParseError, parseFail,
+	runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
 	Field(..), fName, lineNo, 
 	FieldDescr(..), ppField, ppFields, readFields, 
 	parseFilePathQ, parseTokenQ,
@@ -89,6 +89,11 @@ data PError = AmbigousParse String LineNo
 data PWarning = PWarning String
               | UTFWarning LineNo String
         deriving Show
+
+showPWarning :: FilePath -> PWarning -> String
+showPWarning _ (PWarning msg) = msg
+showPWarning fpath (UTFWarning line fname) =
+  fpath ++ ":" ++ show line ++ ": Invalid UTF-8 text in the '" ++ fname ++ "' field."
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show

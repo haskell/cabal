@@ -297,13 +297,7 @@ readAndParseFile readFile' parser verbosity fpath = do
         let (line, message) = locatedErrorMsg e
         dieWithLocation fpath line message
     ParseOk warnings x -> do
-        mapM_ (warn verbosity)
-          [ case w of
-              PWarning msg -> msg
-              UTFWarning line fname ->
-                fpath ++ ":" ++ show line
-                      ++ ": Invalid UTF-8 text in the '" ++ fname ++ "' field."
-          | w <- reverse warnings ]
+        mapM_ (warn verbosity . showPWarning fpath) $ reverse warnings
         return x
 
 readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
