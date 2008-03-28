@@ -221,8 +221,8 @@ boolField name get set = liftField get set (FieldDescr name showF readF)
       | otherwise       = ParseFailed (NoParse name line)
       where
         lstr = lowercase str
-        caseWarning = PWarning
-          "Bool fields are case sensitive, use 'True' or 'False'."
+        caseWarning = PWarning $
+          "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
 ppFields :: a -> [FieldDescr a] -> Doc
 ppFields _ [] = empty
