@@ -34,7 +34,7 @@ import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.PackageDescription.Parse (ParseResult(..))
 import Distribution.ParseUtils
          ( FieldDescr(..), simpleField, listField, liftField, field
-         , parseFilePathQ, parseTokenQ, PWarning(..) )
+         , parseFilePathQ, parseTokenQ, showPWarning )
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
@@ -165,9 +165,8 @@ loadConfig verbosity configFile =
                        return defaultConf
          Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
                        ParseOk ws conf -> 
-                           do when (not $ null ws) $
-                                warn verbosity $ "Config file: "
-                                  ++ unlines [ m | PWarning m <- ws ]
+                           do when (not $ null ws) $ warn verbosity $
+                                unlines (map (showPWarning configFile) ws)
                               return conf
                        ParseFailed err -> 
                            do warn verbosity $ "Error parsing config file " 
