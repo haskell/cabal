@@ -33,9 +33,11 @@ Executable cabal
     Main-Is:            Main.hs
     Ghc-Options:        -Wall
     Other-Modules:
+        Hackage.Check
         Hackage.Clean
         Hackage.Config
         Hackage.Dependency
+        Hackage.DepGraph
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils
@@ -44,6 +46,7 @@ Executable cabal
         Hackage.List
         Hackage.ParseUtils
         Hackage.Setup
+        Hackage.SrcDist
         Hackage.Tar
         Hackage.Types
         Hackage.Update
