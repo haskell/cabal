@@ -110,7 +110,7 @@ mkLibName :: PackageIdentifier -> String
 mkLibName lib = "libHS" ++ display lib <.> "a"
 
 mkProfLibName :: PackageIdentifier -> String
-mkProfLibName lib = mkLibName lib { pkgName = pkgName lib ++ "_p" }
+mkProfLibName lib =  "libHS" ++ display lib ++ "_p" <.> "a"
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
