@@ -172,7 +172,7 @@ checkLibrary lib =
 
   , check (not (null moduleDuplicates)) $
        PackageBuildWarning $
-         "Dulicate modules in library: " ++ commaSep moduleDuplicates
+         "Duplicate modules in library: " ++ commaSep moduleDuplicates
   ]
 
   where moduleDuplicates = [ module_
@@ -196,7 +196,7 @@ checkExecutable exe =
 
   , check (not (null moduleDuplicates)) $
        PackageBuildWarning $
-            "Dulicate modules in executable '" ++ exeName exe ++ "': "
+            "Duplicate modules in executable '" ++ exeName exe ++ "': "
          ++ commaSep moduleDuplicates
   ]
 
