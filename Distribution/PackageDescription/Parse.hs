@@ -61,11 +61,11 @@ module Distribution.PackageDescription.Parse (
 import Data.Char  (isSpace, toLower)
 import Data.Maybe (listToMaybe)
 import Data.List  (nub, unfoldr, partition, (\\))
-import Control.Monad (liftM, foldM, when)
+import Control.Monad (liftM, foldM, when, unless)
 import System.Directory (doesFileExist)
 
 import Distribution.Text
-         ( Text(disp, parse) )
+         ( Text(disp, parse), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
 import Distribution.Compat.ReadP hiding (get)
 
@@ -75,12 +75,13 @@ import Distribution.Package
          ( PackageIdentifier(..), packageName, packageVersion, parsePackageName
          , Dependency(..) )
 import Distribution.Version
-        ( isAnyVersion )
+        ( VersionRange(AnyVersion), isAnyVersion, withinRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils
-         ( die, dieWithLocation, warn, intercalate, readUTF8File, writeUTF8File )
+         ( die, dieWithLocation, warn, intercalate, cabalVersion
+         , readUTF8File, writeUTF8File )
 
 
 -- -----------------------------------------------------------------------------
@@ -425,18 +426,25 @@ parsePackageDescription file = do
                                                 , lineNo' >= tabLineNo ]
                    _ -> parseFail err
 
-    let sf = sectionizeFields fields0
-    fields <- mapSimpleFields deprecField sf
+    let cabalVersionNeeded =
+          head $ [ versionRange
+                 | Just versionRange <- [ simpleParse v
+                                        | F _ "cabal-version" v <- fields0 ] ]
+              ++ [AnyVersion]
+    handleFutureVersionParseFailure cabalVersionNeeded $ do
 
-    flip evalStT fields $ do
-      hfs <- getHeader []
-      pkg <- lift $ parseFields pkgDescrFieldDescrs storeXFieldsPD emptyPackageDescription hfs
-      (flags, mlib, exes) <- getBody
-      warnIfRest
-      when (not (oldSyntax fields0)) $
-        maybeWarnCabalVersion pkg
-      checkForUndefinedFlags flags mlib exes
-      return (GenericPackageDescription pkg flags mlib exes)
+      let sf = sectionizeFields fields0
+      fields <- mapSimpleFields deprecField sf
+
+      flip evalStT fields $ do
+        hfs <- getHeader []
+        pkg <- lift $ parseFields pkgDescrFieldDescrs storeXFieldsPD emptyPackageDescription hfs
+        (flags, mlib, exes) <- getBody
+        warnIfRest
+        when (not (oldSyntax fields0)) $
+          maybeWarnCabalVersion pkg
+        checkForUndefinedFlags flags mlib exes
+        return (GenericPackageDescription pkg flags mlib exes)
 
   where
     oldSyntax flds = all isSimpleField flds
@@ -451,6 +459,16 @@ parsePackageDescription file = do
             "A package using section syntax should require\n" 
             ++ "\"Cabal-Version: >= 1.2\" or equivalent."
 
+    handleFutureVersionParseFailure cabalVersionNeeded parseBody =
+      (unless versionOk (warning message) >> parseBody)
+        `catchParseError` \parseError -> case parseError of
+        TabsError _   -> parseFail parseError
+        _ | versionOk -> parseFail parseError
+          | otherwise -> fail message
+      where versionOk = cabalVersion `withinRange` cabalVersionNeeded
+            message   = "This package requires Cabal version: "
+                     ++ display cabalVersionNeeded
+
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
     --
     --  * all global fields at the beginning, followed by
@@ -461,6 +479,7 @@ parsePackageDescription file = do
     -- The current implementatition just gathers all library-specific fields
     -- in a library section and wraps all executable stanzas in an executable
     -- section.
+    sectionizeFields :: [Field] -> [Field]
     sectionizeFields fs
       | oldSyntax fs =
           let 
