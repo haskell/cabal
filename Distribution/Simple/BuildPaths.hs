@@ -63,7 +63,7 @@ module Distribution.Simple.BuildPaths (
 import System.FilePath (FilePath, (</>), (<.>))
 
 import Distribution.Package
-         ( PackageIdentifier(pkgName), packageName )
+         ( PackageIdentifier, packageName )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.PackageDescription (PackageDescription)
