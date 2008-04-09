@@ -106,7 +106,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( when, unless )
+    ( when, unless, filterM )
 import Data.List
     ( nub, unfoldr, isPrefixOf, tails, intersperse )
 import Data.Char as Char
@@ -124,7 +124,8 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( takeDirectory, splitFileName, takeExtension, (</>), (<.>), pathSeparator )
+    ( takeDirectory, splitFileName, splitExtension
+    , (</>), (<.>), pathSeparator )
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
 import System.IO
@@ -597,22 +598,24 @@ currentDir = "."
 -- * Finding the description file
 -- ------------------------------------------------------------
 
-buildInfoExt  :: String
-buildInfoExt = "buildinfo"
-
 -- |Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: Verbosity -> IO FilePath
-defaultPackageDesc verbosity
-    = getCurrentDirectory >>= findPackageDesc verbosity
+defaultPackageDesc _verbosity = getCurrentDirectory >>= findPackageDesc
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
-findPackageDesc :: Verbosity   -- ^Verbosity
-                -> FilePath    -- ^Where to look
+findPackageDesc :: FilePath    -- ^Where to look
                 -> IO FilePath -- ^<pkgname>.cabal
-findPackageDesc _verbosity dir
+findPackageDesc dir
  = do files <- getDirectoryContents dir
-      case filter ((==".cabal") . takeExtension) files of
+      -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
+      -- file we filter to exclude dirs and null base file names:
+      cabalFiles <- filterM doesFileExist
+                       [ dir </> file
+                       | file <- files
+                       , let (name, ext) = splitExtension file
+                       , not (null name) && ext == ".cabal" ]
+      case cabalFiles of
         []          -> noDesc
         [cabalFile] -> return cabalFile
         multiple    -> multiDesc multiple
@@ -637,12 +640,19 @@ findHookedPackageDesc
     :: FilePath			-- ^Directory to search
     -> IO (Maybe FilePath)	-- ^/dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc dir = do
-    ns <- getDirectoryContents dir
-    case [dir </>  n |
-		n <- ns, takeExtension n == '.':buildInfoExt] of
+    files <- getDirectoryContents dir
+    buildInfoFiles <- filterM doesFileExist
+                        [ dir </> file
+                        | file <- files
+                        , let (name, ext) = splitExtension file
+                        , not (null name) && ext == buildInfoExt ]
+    case buildInfoFiles of
 	[] -> return Nothing
 	[f] -> return (Just f)
 	_ -> die ("Multiple files with extension " ++ buildInfoExt)
+
+buildInfoExt  :: String
+buildInfoExt = ".buildinfo"
 
 -- ------------------------------------------------------------
 -- * Unicode stuff
