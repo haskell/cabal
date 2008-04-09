@@ -124,7 +124,7 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( takeDirectory, splitFileName, splitExtension
+    ( takeDirectory, splitFileName, splitExtension, normalise
     , (</>), (<.>), pathSeparator )
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
@@ -176,9 +176,11 @@ cabalBootstrapping = True
 
 -- ------------------------------------------------------------------------------- Utils for setup
 
-dieWithLocation :: FilePath -> (Maybe Int) -> String -> IO a
-dieWithLocation fname Nothing msg = die (fname ++ ": " ++ msg)
-dieWithLocation fname (Just n) msg = die (fname ++ ":" ++ show n ++ ": " ++ msg)
+dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
+dieWithLocation filename lineno msg =
+  die $ normalise filename
+     ++ maybe "" (\n -> ":" ++ show n) lineno
+     ++ ": " ++ msg
 
 die :: String -> IO a
 die msg = do
@@ -600,7 +602,7 @@ currentDir = "."
 
 -- |Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: Verbosity -> IO FilePath
-defaultPackageDesc _verbosity = getCurrentDirectory >>= findPackageDesc
+defaultPackageDesc _verbosity = findPackageDesc currentDir
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
@@ -632,7 +634,7 @@ findPackageDesc dir
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
-defaultHookedPackageDesc = getCurrentDirectory >>= findHookedPackageDesc
+defaultHookedPackageDesc = findHookedPackageDesc currentDir
 
 -- |Find auxiliary package information in the given directory.
 -- Looks for @.buildinfo@ files.
