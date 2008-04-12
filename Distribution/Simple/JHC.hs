@@ -157,8 +157,8 @@ constructJHCCmdLine lbi bi _odir verbosity =
      ++ extensionsToFlags (compiler lbi) (extensions bi)
      ++ hcOptions JHC bi
      ++ ["--noauto","-i-"]
-     ++ ["-i", autogenModulesDir lbi]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
+     ++ ["-i", autogenModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (concat [ ["-p", display pkg] | pkg <- packageDeps lbi ])
 
