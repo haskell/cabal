@@ -64,6 +64,7 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
          , die, setupMessage, intercalate
@@ -173,7 +174,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         setupMessage verbosity "Preprocessing library" (packageId pkg_descr)
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
-        sequence_ [ preprocessModule (hsSourceDirs bi) (buildDir lbi) forSDist 
+        sequence_ [ preprocessModule (hsSourceDirs bi ++ [autogenModulesDir lbi]) (buildDir lbi) forSDist
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- libModules pkg_descr]
     unless (null (executables pkg_descr)) $
@@ -182,7 +183,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
         let exeDir = buildDir lbi </> exeName theExe </> exeName theExe ++ "-tmp"
-        sequence_ [ preprocessModule (hsSourceDirs bi) exeDir forSDist
+        sequence_ [ preprocessModule (hsSourceDirs bi ++ [autogenModulesDir lbi]) exeDir forSDist
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
         preprocessModule (hsSourceDirs bi) exeDir forSDist
