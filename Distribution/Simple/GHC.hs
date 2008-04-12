@@ -588,9 +588,9 @@ ghcOptions lbi bi odir
      =  ["-hide-all-packages"]
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
-     ++ ["-i" ++ autogenModulesDir lbi]
      ++ ["-i" ++ odir]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+     ++ ["-i" ++ autogenModulesDir lbi]
      ++ ["-I" ++ odir]
      ++ ["-I" ++ dir | dir <- includeDirs bi]
      ++ ["-optP" ++ opt | opt <- cppOptions bi]

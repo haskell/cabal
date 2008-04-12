@@ -322,8 +322,8 @@ ghcSimpleOptions lbi bi mockDir
   ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
   ++ ["-i"]
   ++ hcOptions GHC bi
-  ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+  ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ mockDir]
   ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
   ++ ["-odir", mockDir]
