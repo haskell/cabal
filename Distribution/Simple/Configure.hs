@@ -296,6 +296,7 @@ configure (pkg_descr0, pbi) cfg
                        Distribution.System.buildOS
                        Distribution.System.buildArch
                        (flavor, version)
+                       (configConstraints cfg)
                        ppd
                 of Right r -> return r
                    Left missing -> 
