@@ -25,7 +25,7 @@ import Network.HTTP (ConnError(..), Response(..))
 
 import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
                       PkgInfo, packageURL, packageFile, packageDir)
-import Hackage.Dependency (resolveDependencies, packagesToInstall)
+import Hackage.Dependency (resolveDependencies)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Utils (showDependencies)
@@ -128,8 +128,7 @@ fetch verbosity packageDB repos comp conf deps
     = do installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
-         let depTree = resolveDependencies comp installed available deps'
-         case packagesToInstall depTree of
+         case resolveDependencies comp installed available deps' of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched)
                                       [ pkg | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs ]

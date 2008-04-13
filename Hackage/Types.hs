@@ -76,21 +76,10 @@ repoName = remoteRepoName . repoRemote
 repoURL :: Repo -> String
 repoURL = remoteRepoURL . repoRemote
 
-data ResolvedDependency
-       = InstalledDependency Dependency PackageIdentifier
-       | AvailableDependency Dependency PkgInfo FlagAssignment [ResolvedDependency]
-       | UnavailableDependency Dependency
-       deriving (Show)
-
 -- | Explicit user's assignment of configurations flags,
 -- eg --flags=foo --flags=-bar
 -- becomes [("foo", True), ("bar", False)]
 type FlagAssignment = [(String, Bool)]
-
-fulfills :: ResolvedDependency -> Dependency
-fulfills (InstalledDependency d _) = d
-fulfills (AvailableDependency d _ _ _) = d
-fulfills (UnavailableDependency d) = d
 
 data UnresolvedDependency
     = UnresolvedDependency
