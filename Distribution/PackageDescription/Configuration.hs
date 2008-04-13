@@ -70,6 +70,7 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
+import Data.Map ( Map, unionsWith, fromListWith, toList )
 import Data.Monoid
 
 ------------------------------------------------------------------------------
@@ -223,19 +224,20 @@ resolveWithFlags :: Monoid a =>
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> (CompilerFlavor, Version) -- ^ Compiler flavour + version
-  -> [CondTree ConfVar [d] a]    
-  -> ([d] -> DepTestRslt [d])  -- ^ Dependency test function.
-  -> (Either [d] -- missing dependencies
-       ([a], [d], [(String, Bool)]))
+  -> [CondTree ConfVar [Dependency] a]    
+  -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
+  -> (Either [Dependency] -- missing dependencies
+       ([a], [Dependency], [(String, Bool)]))
 resolveWithFlags dom os arch impl trees checkDeps =
     case try dom [] of
       Right r -> Right r
       Left dbt -> Left $ findShortest dbt
   where 
-    -- Check dependencies only once; might avoid some duplicate efforts.
-    preCheckedTrees = map ( mapTreeConstrs (\d -> (checkDeps d,d))
-                          . mapTreeConds (fst . simplifyWithSysParams os arch impl) )
-                        trees
+    -- simplify trees by (partially) evaluating all conditions and converting
+    -- dependencies to dependency maps.
+    simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
+                          . mapTreeConds (fst . simplifyWithSysParams os arch impl))
+                          trees
 
     -- @try@ recursively tries all possible flag assignments in the domain and
     -- either succeeds or returns a binary tree with the missing dependencies
@@ -244,8 +246,9 @@ resolveWithFlags dom os arch impl trees checkDeps =
     try [] flags = 
         let (depss, as) = unzip 
                          . map (simplifyCondTree (env flags)) 
-                         $ preCheckedTrees
-        in case mconcat depss of
+                         $ simplifiedTrees
+            deps = (fromDepMap $ unionsWith IntersectVersionRanges depss)
+        in case (checkDeps deps, deps) of
              (DepOk, ds) -> Right (as, ds, flags)
              (MissingDeps mds, _) -> Left (BTN mds)
     try ((n, vals):rest) flags = 
@@ -281,7 +284,11 @@ resolveWithFlags dom os arch impl trees checkDeps =
     lazyLengthCmp _ [] = False
     lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
 
+toDepMap :: [Dependency] -> Map String VersionRange
+toDepMap ds = fromListWith IntersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
 
+fromDepMap :: Map String VersionRange -> [Dependency]
+fromDepMap m = [ Dependency p vr | (p,vr) <- toList m ]
 
 simplifyCondTree :: (Monoid a, Monoid d) =>
                     (v -> Either v Bool) 
