@@ -56,7 +56,7 @@ module Distribution.Simple.Configure (configure,
     where
 
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler, compilerFlavor, compilerVersion
+    ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
     ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
@@ -157,25 +157,25 @@ tryGetConfigStateFile filename = do
       return str
     checkHeader :: String -> Maybe String
     checkHeader header = case parseHeader header of
-      Just (cabalId, compilerId)
+      Just (cabalId, compId)
         | cabalId
        == currentCabalId -> Nothing
-        | otherwise      -> Just (badVersion cabalId compilerId)
+        | otherwise      -> Just (badVersion cabalId compId)
       Nothing            -> Just cantParse
 
     missing   = "Run the 'configure' command first."
     cantParse = "Saved package config file seems to be corrupt. "
              ++ "Try re-running the 'configure' command."
-    badVersion cabalId compilerId
+    badVersion cabalId compId
               = "You need to re-run the 'configure' command. "
              ++ "The version of Cabal being used has changed (was "
              ++ display cabalId ++ ", now "
              ++ display currentCabalId ++ ")."
-             ++ badcompiler compilerId
-    badcompiler compilerId | compilerId == currentCompilerId = ""
-                           | otherwise
+             ++ badcompiler compId
+    badcompiler compId | compId == currentCompilerId = ""
+                       | otherwise
               = " Additionally the compiler is different (was "
-             ++ display compilerId ++ ", now "
+             ++ display compId ++ ", now "
              ++ display currentCompilerId
              ++ ") which is probably the cause of the problem."
 
@@ -295,7 +295,7 @@ configure (pkg_descr0, pbi) cfg
                        maybePackageIndex
                        Distribution.System.buildOS
                        Distribution.System.buildArch
-                       (flavor, version)
+                       (compilerId comp)
                        (configConstraints cfg)
                        ppd
                 of Right r -> return r
