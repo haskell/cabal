@@ -14,7 +14,6 @@ module Hackage.Dependency
     (
       resolveDependencies
     , resolveDependenciesLocal
-    , packagesToInstall
     , getUpgradableDeps
     ) where
 
@@ -23,7 +22,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.DepGraph as DepGraph
-import Hackage.Types (ResolvedDependency(..), UnresolvedDependency(..),
+import Hackage.Types (UnresolvedDependency(..),
                       PkgInfo(..), FlagAssignment)
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
 import Distribution.PackageDescription 
@@ -41,18 +40,17 @@ import Data.Maybe (fromMaybe, catMaybes)
 import Data.Monoid (Monoid(mappend))
 import qualified Distribution.System (buildOS, buildArch)
 
---TODO: never expose the [ResolvedDependency], always gust make a DepGraph
-
 resolveDependencies :: Compiler
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex PkgInfo
                     -> [UnresolvedDependency]
-                    -> [ResolvedDependency]
+                    -> Either [Dependency] DepGraph.DepGraph
 resolveDependencies comp (Just installed) available deps =
-  [ resolveDependency comp installed available dep flags
-  | UnresolvedDependency dep flags <- deps]
+  packagesToInstall
+    [ resolveDependency comp installed available dep flags
+    | UnresolvedDependency dep flags <- deps]
 resolveDependencies _ Nothing available deps =
-  resolveDependenciesBogusly available deps
+  packagesToInstall (resolveDependenciesBogusly available deps)
 
 -- | We're using a compiler where we cannot track installed packages so just
 -- pretend everything is installed and hope for the best. Yay!
@@ -72,13 +70,14 @@ resolveDependenciesLocal :: Compiler
                          -> PackageIndex PkgInfo
                          -> GenericPackageDescription
                          -> FlagAssignment
-                         -> [ResolvedDependency]
+                         -> Either [Dependency] DepGraph.DepGraph
 resolveDependenciesLocal comp (Just installed) available desc flags =
-  [ resolveDependency comp installed available dep flags
-  | dep <- getDependencies comp installed available desc flags ]
+  packagesToInstall
+    [ resolveDependency comp installed available dep flags
+    | dep <- getDependencies comp installed available desc flags ]
 
 -- When we do not know what is installed, let us just hope everything is ok:
-resolveDependenciesLocal _ Nothing _ _ _ = []
+resolveDependenciesLocal _ Nothing _ _ _ = packagesToInstall []
 
 resolveDependency :: Compiler
                   -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
@@ -159,6 +158,13 @@ packagesToInstall deps0 = case unzipEithers (map getDeps deps0) of
                          in Right (Just $ packageId pkg, resolved)
         (missing, _) -> Left (concat missing)
     getDeps (UnavailableDependency dep) = Left [dep]
+
+-- TODO: kill this data type
+data ResolvedDependency
+       = InstalledDependency Dependency PackageIdentifier
+       | AvailableDependency Dependency PkgInfo FlagAssignment [ResolvedDependency]
+       | UnavailableDependency Dependency
+       deriving (Show)
 
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.

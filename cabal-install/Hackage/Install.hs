@@ -22,9 +22,9 @@ import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
-import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal, packagesToInstall)
+import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal)
 import Hackage.Fetch (fetchPackage)
-import qualified Hackage.Info as Info
+-- import qualified Hackage.Info as Info
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Setup (InstallFlags(..))
@@ -116,11 +116,11 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootC
       desc <- readPackageDescription verbosity cabalFile
       installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
-      let resolvedDeps = resolveDependenciesLocal comp installed available desc
-                           (Cabal.configConfigurationsFlags configFlags)
-      details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
-      info verbosity $ unlines (map ("  "++) (concat details))
-      buildResults <- case packagesToInstall resolvedDeps of
+      --TODO:
+      -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
+      -- info verbosity $ unlines (map ("  "++) (concat details))
+      buildResults <- case resolveDependenciesLocal comp installed available desc
+                             (Cabal.configConfigurationsFlags configFlags) of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> do
             if dryRun
@@ -156,10 +156,9 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootC
     do installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
        deps' <- IndexUtils.disambiguateDependencies available deps
-       let resolvedDeps = resolveDependencies comp installed available deps'
-       details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
-       info verbosity $ unlines (map ("  "++) (concat details))
-       case packagesToInstall resolvedDeps of
+       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
+       -- info verbosity $ unlines (map ("  "++) (concat details))
+       case resolveDependencies comp installed available deps' of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right pkgs
            | DepGraph.empty pkgs -> notice verbosity
