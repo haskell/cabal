@@ -32,7 +32,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
 import Distribution.Simple.Compiler
-         ( Compiler, compilerFlavor, compilerVersion )
+         ( Compiler(compilerId) )
 import Distribution.Simple.Utils (comparing)
 
 import Control.Monad (mplus)
@@ -135,8 +135,7 @@ getDependencies comp installed available pkg flags
                   in Just (flatten available `mappend` flatten installed))
                 Distribution.System.buildOS
                 Distribution.System.buildArch
-                (compilerFlavor comp, compilerVersion comp)
-                pkg
+                (compilerId comp) [] pkg
 
 packagesToInstall :: [ResolvedDependency]
                   -> Either [Dependency] DepGraph.DepGraph
