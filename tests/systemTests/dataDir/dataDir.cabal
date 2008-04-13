@@ -1,0 +1,13 @@
+name: test
+version: 0.1
+build-type: Simple
+cabal-version: >= 1.2
+data-files: data-file
+
+-- This test passes if running the below executeable doesn't return an
+-- 'exitFailure' status code.
+
+executable exe
+  main-is: Exe.hs
+--  other-modules: Paths_test
+  build-depends: base, directory

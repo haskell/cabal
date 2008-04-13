@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Build
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -47,7 +47,7 @@ module Distribution.Simple.Build (
 
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
-import Distribution.PackageDescription 
+import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )
 import Distribution.Package
@@ -173,7 +173,8 @@ buildPathsModule pkg_descr lbi =
 	"\t) where\n"++
 	"\n"++
 	foreign_imports++
-	"import Data.Version"++
+	"import Data.Version\n"++
+        "import System.Environment"++
 	"\n"++
 	"\nversion :: Version"++
 	"\nversion = " ++ show (packageVersion pkg_descr)++
@@ -190,11 +191,13 @@ buildPathsModule pkg_descr lbi =
 	  "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
 	  "getBinDir = return bindir\n"++
 	  "getLibDir = return libdir\n"++
-	  "getDataDir = return datadir\n"++
+	  "getDataDir = "++mkGetEnvOr "DATA_DIR" "return datadir"++"\n"++
 	  "getLibexecDir = return libexecdir\n" ++
 	  "\n"++
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
-	  "getDataFileName name = return (datadir ++ "++path_sep++" ++ name)\n"
+	  "getDataFileName name = do\n"++
+	  "  dir <- getDataDir\n"++
+          "  return (dir ++ "++path_sep++" ++ name)\n"
 	| otherwise =
 	  "\nprefix        = " ++ show flat_prefix ++
 	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
@@ -204,7 +207,8 @@ buildPathsModule pkg_descr lbi =
 	  "getLibDir :: IO FilePath\n"++
 	  "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
 	  "getDataDir :: IO FilePath\n"++
-	  "getDataDir =  "++mkGetDir flat_datadir flat_datadirrel++"\n\n"++
+	  "getDataDir =  "++ mkGetEnvOr "DATA_DIR"
+                              (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
 	  "getLibexecDir :: IO FilePath\n"++
 	  "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
@@ -238,9 +242,12 @@ buildPathsModule pkg_descr lbi =
           libexecdir = flat_libexecdirrel,
           progdir    = flat_progdirrel
         } = prefixRelativeInstallDirs pkg_descr lbi
-	
+
 	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
+
+        mkGetEnvOr var expr = "catch (getEnv \""++var++"\")"++
+                              " (const $ "++expr++")"
 
         -- In several cases we cannot make relocatable installations
         absolute =
