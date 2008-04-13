@@ -81,4 +81,3 @@ readP_to_E err r =
                          , all isSpace s ]
                     of [] -> Left (err txt)
                        (p:_) -> Right p
-    

@@ -56,8 +56,9 @@ import Distribution.PackageDescription
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
-         ( Version(..), VersionRange(..), withinRange )
-import Distribution.Compiler (CompilerFlavor)
+         ( VersionRange(..), withinRange )
+import Distribution.Compiler
+         ( CompilerId(CompilerId) )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (currentDir, lowercase)
@@ -112,9 +113,9 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: OS -> Arch -> (CompilerFlavor, Version) -> Condition ConfVar
+simplifyWithSysParams :: OS -> Arch -> CompilerId -> Condition ConfVar
                       -> (Condition ConfFlag, [String])
-simplifyWithSysParams os arch (comp, compVer) cond = (cond', flags)
+simplifyWithSysParams os arch (CompilerId comp compVer) cond = (cond', flags)
   where
     (cond', fvs) = simplifyCondition cond interp 
     interp (OS os')    = Right $ os' == os
@@ -224,7 +225,7 @@ resolveWithFlags :: Monoid a =>
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
-  -> (CompilerFlavor, Version) -- ^ Compiler flavour + version
+  -> CompilerId -- ^ Compiler flavour + version
   -> [Dependency]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] a]    
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
@@ -383,7 +384,7 @@ finalizePackageDescription ::
                               -- this is unknown.
   -> OS     -- ^ OS-name
   -> Arch   -- ^ Arch-name
-  -> (CompilerFlavor, Version) -- ^ Compiler + Version
+  -> CompilerId -- ^ Compiler + Version
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
