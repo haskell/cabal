@@ -68,7 +68,8 @@ module Distribution.Simple.Setup (
 
 import Distribution.Compiler ()
 import Distribution.ReadE
-import Distribution.Text (display)
+import Distribution.Text (display, parse)
+import Distribution.Package ( Dependency(..) )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
@@ -248,6 +249,8 @@ data ConfigFlags = ConfigFlags {
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
+    configConstraints :: [Dependency], -- ^Additional constraints for
+                                       -- dependencies
     configConfigurationsFlags :: [(String, Bool)]
   }
   deriving Show
@@ -457,6 +460,12 @@ configureOptions showOrParseArgs =
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
+      ,option "" ["constraint"]
+         "A list of additional constraints on the dependencies."
+         configConstraints (\v flags -> flags { configConstraints = v})
+         (reqArg "DEPENDENCY" 
+                 (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
+                 (map (\x -> display x)))
       ]
   where     
     readFlagList :: String -> [(String, Bool)]
@@ -504,6 +513,7 @@ instance Monoid ConfigFlags where
     configSplitObjs     = mempty,
     configStripExes     = mempty,
     configExtraLibDirs  = mempty,
+    configConstraints   = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty
   }
@@ -531,6 +541,7 @@ instance Monoid ConfigFlags where
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configSplitObjs,
     configExtraLibDirs  = combine configExtraLibDirs,
+    configConstraints   = combine configConstraints,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags
   }
