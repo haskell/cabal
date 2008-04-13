@@ -337,8 +337,29 @@ instance Monoid PDTagged where
     Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
     _ `mappend` _ = bug "Cannot combine incompatible tags"
 
-finalizePackageDescription
-  :: Package pkg
+-- | Create a package description with all configurations resolved.
+--
+-- This function takes a `GenericPackageDescription` and several environment
+-- parameters and tries to generate `PackageDescription` by finding a flag
+-- assignment that result in satisfiable dependencies.
+--
+-- It takes as inputs a not necessarily complete specifications of flags
+-- assignments, an optional package index as well as platform parameters.  If
+-- some flags are not assigned explicitly, this function will try to pick an
+-- assignment that causes this function to succeed.  The package index is
+-- optional since on some platforms we cannot determine which packages have
+-- been installed before.  When no package index is supplied, every dependency
+-- is assumed to be satisfiable, therefore all not explicitly assigned flags
+-- will get their default values.
+--
+-- This function will fail if it cannot find a flag assignment that leads to
+-- satisfiable dependencies.  (It will not try alternative assignments for
+-- explicitly specified flags.)  In case of failure it will return a /minimum/
+-- number of dependencies that could not be satisfied.  On success, it will
+-- return the package description and the full flag assignment chosen.
+-- 
+finalizePackageDescription ::
+     Package pkg
   => [(String,Bool)]  -- ^ Explicitly specified flag assignments
   -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
                               -- this is unknown.
@@ -403,7 +424,7 @@ finalizePackageDescription userflags mpkgs os arch impl
 -- description, due to the use of exclusive choices (if ... else ...).
 --
 -- XXX: One particularly tricky case is defaulting.  In the original package
--- description, e.g., the source dirctory might either be the default or a
+-- description, e.g., the source directory might either be the default or a
 -- certain, explicitly set path.  Since defaults are filled in only after the
 -- package has been resolved and when no explicit value has been set, the
 -- default path will be missing from the package description returned by this
