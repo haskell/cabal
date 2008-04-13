@@ -71,6 +71,7 @@ import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
 import Data.Map ( Map, unionsWith, fromListWith, toList )
+import qualified Data.Map as M
 import Data.Monoid
 
 ------------------------------------------------------------------------------
@@ -224,20 +225,36 @@ resolveWithFlags :: Monoid a =>
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> (CompilerFlavor, Version) -- ^ Compiler flavour + version
+  -> [Dependency]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] a]    
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
   -> (Either [Dependency] -- missing dependencies
        ([a], [Dependency], [(String, Bool)]))
-resolveWithFlags dom os arch impl trees checkDeps =
+       -- ^ In the returned dependencies, there will be no duplicates by name
+resolveWithFlags dom os arch impl constrs trees checkDeps =
     case try dom [] of
       Right r -> Right r
       Left dbt -> Left $ findShortest dbt
   where 
+    extraConstrs = toDepMap constrs
+ 
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
     simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
+
+    -- version to combine dependencies where the result will only contain keys
+    -- from the left (first) map.  If a key also exists in the right map, both
+    -- constraints will be intersected.
+    leftJoin :: Map String VersionRange -> Map String VersionRange
+             -> Map String VersionRange
+    leftJoin left extra =
+        M.foldWithKey tightenConstraint left extra
+      where tightenConstraint n c l =
+                case M.lookup n l of
+                  Nothing -> l
+                  Just vr -> M.insert n (IntersectVersionRanges vr c) l
 
     -- @try@ recursively tries all possible flag assignments in the domain and
     -- either succeeds or returns a binary tree with the missing dependencies
@@ -247,7 +264,8 @@ resolveWithFlags dom os arch impl trees checkDeps =
         let (depss, as) = unzip 
                          . map (simplifyCondTree (env flags)) 
                          $ simplifiedTrees
-            deps = (fromDepMap $ unionsWith IntersectVersionRanges depss)
+            deps = fromDepMap $ leftJoin (unionsWith IntersectVersionRanges depss)
+                                         extraConstrs
         in case (checkDeps deps, deps) of
              (DepOk, ds) -> Right (as, ds, flags)
              (MissingDeps mds, _) -> Left (BTN mds)
@@ -366,12 +384,13 @@ finalizePackageDescription ::
   -> OS     -- ^ OS-name
   -> Arch   -- ^ Arch-name
   -> (CompilerFlavor, Version) -- ^ Compiler + Version
+  -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, [(String,Bool)])
 	     -- ^ Either missing dependencies or the resolved package
 	     -- description along with the flag assignments chosen.
-finalizePackageDescription userflags mpkgs os arch impl
+finalizePackageDescription userflags mpkgs os arch impl constraints
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of
       Right ((mlib, exes'), deps, flagVals) ->
@@ -396,7 +415,7 @@ finalizePackageDescription userflags mpkgs os arch impl
         untag PDNull x = x  -- actually this should not happen, but let's be liberal
 
     resolveFlags =
-        case resolveWithFlags flagChoices os arch impl condTrees check of
+        case resolveWithFlags flagChoices os arch impl constraints condTrees check of
           Right (as, ds, fs) ->
               let (mlib, exes) = untagRslts as in
               Right ( (fmap libFillInDefaults mlib,
