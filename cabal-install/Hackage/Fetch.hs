@@ -33,10 +33,13 @@ import Hackage.HttpUtils (getHTTP)
 
 import Distribution.Package
          ( Package(..) )
-import Distribution.Simple.Compiler (Compiler, PackageDB)
+import Distribution.Simple.Compiler
+         ( Compiler(compilerId), PackageDB )
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Utils (die, notice, debug, setupMessage)
+import Distribution.System
+         ( buildOS, buildArch )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity (Verbosity)
@@ -128,7 +131,8 @@ fetch verbosity packageDB repos comp conf deps
     = do installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
-         case resolveDependencies comp installed available deps' of
+         case resolveDependencies buildOS buildArch
+                (compilerId comp) installed available deps' of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
            Right pkgs   -> do ps <- filterM (fmap not . isFetched)
                                       [ pkg | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs ]
