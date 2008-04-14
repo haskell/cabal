@@ -34,7 +34,8 @@ import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
 import Hackage.Utils (showDependencies)
 import Paths_cabal_install (getBinDir)
 
-import Distribution.Simple.Compiler (Compiler, PackageDB(..))
+import Distribution.Simple.Compiler
+         ( Compiler(compilerId), PackageDB(..) )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Command (commandShowOptions)
@@ -47,6 +48,8 @@ import Distribution.Package
 import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
+import Distribution.System
+         ( buildOS, buildArch )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity (Verbosity)
@@ -119,7 +122,8 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootC
       --TODO:
       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
       -- info verbosity $ unlines (map ("  "++) (concat details))
-      buildResults <- case resolveDependenciesLocal comp installed available desc
+      buildResults <- case resolveDependenciesLocal buildOS buildArch
+                             (compilerId comp) installed available desc
                              (Cabal.configConfigurationsFlags configFlags) of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> do
@@ -158,7 +162,8 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootC
        deps' <- IndexUtils.disambiguateDependencies available deps
        -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
        -- info verbosity $ unlines (map ("  "++) (concat details))
-       case resolveDependencies comp installed available deps' of
+       case resolveDependencies buildOS buildArch (compilerId comp)
+              installed available deps' of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
          Right pkgs
            | DepGraph.empty pkgs -> notice verbosity
