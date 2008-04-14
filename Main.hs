@@ -123,6 +123,9 @@ configureAction flags extraArgs = do
   setupWrapper args Nothing
 
 installAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
+installAction (_,iflags) _
+  | Cabal.fromFlag (installOnly iflags) = setupWrapper ["install"] Nothing
+
 installAction (cflags,iflags) extraArgs = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   configFile <- defaultConfigFile --FIXME
