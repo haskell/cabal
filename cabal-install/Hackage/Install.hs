@@ -74,15 +74,14 @@ install :: Verbosity
         -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps = do
   let dryRun = Cabal.fromFlag (installDryRun installFlags)
-      onlyInstall = Cabal.fromFlag (installOnly installFlags)
       -- ignore --root-cmd if --user.
       rootCmd | Cabal.fromFlag (Cabal.configUserInstall configFlags) = Nothing
               | otherwise = Cabal.flagToMaybe (installRootCmd installFlags)
-  buildResults <- if null deps 
-    then if onlyInstall -- used only internally, we assume there's no other interesting flag.
-           then installLocalPackageOnly verbosity
-           else installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootCmd
-    else installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootCmd deps
+  buildResults <- if null deps
+    then installLocalPackage verbosity
+           packageDB repos comp conf configFlags dryRun rootCmd
+    else installRepoPackages verbosity
+           packageDB repos comp conf configFlags dryRun rootCmd deps
   case filter (buildFailed . snd) buildResults of
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
@@ -119,7 +118,7 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootC
       desc <- readPackageDescription verbosity cabalFile
       installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
-      --TODO:
+      --TODO: print the info again
       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
       -- info verbosity $ unlines (map ("  "++) (concat details))
       buildResults <- case resolveDependenciesLocal buildOS buildArch
@@ -135,16 +134,6 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootC
         --TODO: don't run if buildResult failed
         else do buildResult <- installUnpackedPkg verbosity configFlags Nothing rootCmd
                 return ((packageId (packageDescription desc), buildResult) : buildResults)
-
--- | Installs the package without also configuring and building. i.e. copy + register
-installLocalPackageOnly :: Verbosity -> IO [(PackageIdentifier, BuildResult)]
-installLocalPackageOnly verbosity =
-  do cabalFile <- defaultPackageDesc verbosity
-     desc <- readPackageDescription verbosity cabalFile
-     buildResult <- onFailure InstallFailed $ do
-                      setupWrapper ["install"] Nothing
-                      return BuildOk
-     return [(packageId (packageDescription desc), buildResult)]
 
 installRepoPackages :: Verbosity
                     -> PackageDB
