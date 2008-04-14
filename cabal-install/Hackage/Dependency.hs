@@ -30,26 +30,29 @@ import Distribution.PackageDescription
     , GenericPackageDescription )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
-import Distribution.Simple.Compiler
-         ( Compiler(compilerId) )
+import Distribution.Compiler
+         ( CompilerId )
+import Distribution.System
+         ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
 
 import Control.Monad (mplus)
 import Data.List (maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Monoid (Monoid(mappend))
-import qualified Distribution.System (buildOS, buildArch)
 
-resolveDependencies :: Compiler
+resolveDependencies :: OS
+                    -> Arch
+                    -> CompilerId
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex PkgInfo
                     -> [UnresolvedDependency]
                     -> Either [Dependency] DepGraph.DepGraph
-resolveDependencies comp (Just installed) available deps =
+resolveDependencies os arch comp (Just installed) available deps =
   packagesToInstall
-    [ resolveDependency comp installed available dep flags
+    [ resolveDependency os arch comp installed available dep flags
     | UnresolvedDependency dep flags <- deps]
-resolveDependencies _ Nothing available deps =
+resolveDependencies _ _ _ Nothing available deps =
   packagesToInstall (resolveDependenciesBogusly available deps)
 
 -- | We're using a compiler where we cannot track installed packages so just
@@ -65,34 +68,38 @@ resolveDependenciesBogusly available = map resolveFromAvailable
 
 -- | Resolve dependencies of a local package description. This is used
 -- when the top-level package does not come from hackage.
-resolveDependenciesLocal :: Compiler
+resolveDependenciesLocal :: OS
+                         -> Arch
+                         -> CompilerId
                          -> Maybe (PackageIndex InstalledPackageInfo)
                          -> PackageIndex PkgInfo
                          -> GenericPackageDescription
                          -> FlagAssignment
                          -> Either [Dependency] DepGraph.DepGraph
-resolveDependenciesLocal comp (Just installed) available desc flags =
+resolveDependenciesLocal os arch comp (Just installed) available desc flags =
   packagesToInstall
-    [ resolveDependency comp installed available dep flags
-    | dep <- getDependencies comp installed available desc flags ]
+    [ resolveDependency os arch comp installed available dep flags
+    | dep <- getDependencies os arch comp installed available desc flags ]
 
 -- When we do not know what is installed, let us just hope everything is ok:
-resolveDependenciesLocal _ Nothing _ _ _ = packagesToInstall []
+resolveDependenciesLocal _ _ _ Nothing _ _ _ = packagesToInstall []
 
-resolveDependency :: Compiler
+resolveDependency :: OS
+                  -> Arch
+                  -> CompilerId
                   -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
                   -> PackageIndex PkgInfo -- ^ Installable packages
                   -> Dependency
                   -> FlagAssignment
                   -> ResolvedDependency
-resolveDependency comp installed available dep flags
+resolveDependency os arch comp installed available dep flags
     = fromMaybe (UnavailableDependency dep) $ resolveFromInstalled `mplus` resolveFromAvailable
   where
     resolveFromInstalled = fmap (InstalledDependency dep) $ latestInstalledSatisfying installed dep
     resolveFromAvailable = 
         do pkg <- latestAvailableSatisfying available dep
-           let deps = getDependencies comp installed available (pkgDesc pkg) flags
-               resolved = map (\d -> resolveDependency comp installed available d []) deps
+           let deps = getDependencies os arch comp installed available (pkgDesc pkg) flags
+               resolved = map (\d -> resolveDependency os arch comp installed available d []) deps
            return $ AvailableDependency dep pkg flags resolved
 
 -- | Gets the latest installed package satisfying a dependency.
@@ -110,7 +117,9 @@ latestAvailableSatisfying index dep =
     pkgs -> Just (maximumBy (comparing (pkgVersion . packageId)) pkgs)
 
 -- | Gets the dependencies of an available package.
-getDependencies :: Compiler 
+getDependencies :: OS
+                -> Arch
+                -> CompilerId
                 -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
                 -> PackageIndex PkgInfo -- ^ Available packages
                 -> GenericPackageDescription
@@ -119,7 +128,7 @@ getDependencies :: Compiler
                    -- ^ If successful, this is the list of dependencies.
                    -- If flag assignment failed, this is the list of
                    -- missing dependencies.
-getDependencies comp installed available pkg flags
+getDependencies os arch comp installed available pkg flags
     = case e of
         Left missing   -> missing
         Right (desc,_) -> buildDepends desc
@@ -132,9 +141,7 @@ getDependencies comp installed available pkg flags
                      flatten = PackageIndex.fromList . map packageId
                              . PackageIndex.allPackages
                   in Just (flatten available `mappend` flatten installed))
-                Distribution.System.buildOS
-                Distribution.System.buildArch
-                (compilerId comp) [] pkg
+                os arch comp [] pkg
 
 packagesToInstall :: [ResolvedDependency]
                   -> Either [Dependency] DepGraph.DepGraph
