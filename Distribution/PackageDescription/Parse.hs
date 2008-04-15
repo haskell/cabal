@@ -58,7 +58,7 @@ module Distribution.PackageDescription.Parse (
         showHookedBuildInfo,        
   ) where
 
-import Data.Char  (isSpace, toLower)
+import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe)
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless)
@@ -80,7 +80,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils
-         ( die, dieWithLocation, warn, intercalate, cabalVersion
+         ( die, dieWithLocation, warn, intercalate, lowercase, cabalVersion
          , readUTF8File, writeUTF8File )
 
 
@@ -562,7 +562,7 @@ parsePackageDescription file = do
               fl <- lift $ parseFields
                       flagFieldDescrs
                       warnUnrec
-                      (MkFlag (map toLower sl) "" True)
+                      (MkFlag (FlagName (lowercase sl)) "" True)
                       fs 
               skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
@@ -636,12 +636,12 @@ parsePackageDescription file = do
         maybe (return ()) (checkCondTreeFlags definedFlags) mlib
         mapM_ (checkCondTreeFlags definedFlags . snd) exes
 
-    checkCondTreeFlags :: [String] -> CondTree ConfVar c a -> PM ()
+    checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
     checkCondTreeFlags definedFlags ct = do
         let fv = nub $ freeVars ct
         when (not . all (`elem` definedFlags) $ fv) $
-            fail $ "These flags are used without having been defined: " ++
-                    (intercalate " " (fv \\ definedFlags))
+            fail $ "These flags are used without having been defined: "
+                ++ intercalate ", " [ n | FlagName n <- fv \\ definedFlags ]
 
 
 -- | Parse a list of fields, given a list of field descriptions,
@@ -716,12 +716,12 @@ parseHookedBuildInfo inp = do
   where
     parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
     parseLib (bi@((F _ inFieldName _):_))
-        | map toLower inFieldName /= "executable" = liftM Just (parseBI bi)
+        | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
 
     parseExe :: [Field] -> ParseResult (String, BuildInfo)
     parseExe ((F line inFieldName mName):bi)
-        | map toLower inFieldName == "executable"
+        | lowercase inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
         | otherwise = syntaxError line "expecting 'executable' at top of stanza"

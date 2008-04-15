@@ -70,7 +70,8 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
-    , HookedBuildInfo, updatePackageDescription, allBuildInfo)
+    , HookedBuildInfo, updatePackageDescription, allBuildInfo
+    , FlagName(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
@@ -310,8 +311,9 @@ configure (pkg_descr0, pbi) cfg
         let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
         when (not (null flags)) $
-          info verbosity $ "Flags chosen: " ++ (intercalate ", " .
-                      map (\(n,b) -> n ++ "=" ++ show b) $ flags)
+          info verbosity $ "Flags chosen: "
+                        ++ intercalate ", " [ name ++ "=" ++ display value
+                                            | (FlagName name, value) <- flags ]
 
         checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
 
