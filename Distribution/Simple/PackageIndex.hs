@@ -16,11 +16,12 @@ module Distribution.Simple.PackageIndex (
   -- * Package index data type
   PackageIndex,
 
-  -- * Creating the index
+  -- * Creating an index
   fromList,
 
-  -- * Merging indexes
+  -- * Updates
   merge,
+  insert,
 
   -- * Queries
 
@@ -40,7 +41,7 @@ module Distribution.Simple.PackageIndex (
   -- ** Special queries
   brokenPackages,
   dependencyClosure,
-  dependencyInconsistencies
+  dependencyInconsistencies,
   ) where
 
 import Prelude hiding (lookup)
@@ -127,8 +128,8 @@ fromList pkgs =
 
 -- | Merge two indexes.
 --
--- Packages from the first mask packages of the same exact name
--- (case-sensitively) from the second.
+-- Packages from the second mask packages of the same exact name
+-- (case-sensitively) from the first.
 --
 merge :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
 merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
@@ -136,7 +137,19 @@ merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
   let index = PackageIndex (Map.unionWith mergeBuckets m1 m2)
    in assert (invariant index) index
 
-  where mergeBuckets pkgs1 pkgs2 = stripDups (pkgs1 ++ pkgs2)
+-- | Elements in the second list mask those in the first.
+mergeBuckets :: Package pkg => [pkg] -> [pkg] -> [pkg]
+mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
+
+-- | Insert's a single package into the index.
+--
+-- This is equivalent to (but slightly quicker than) using 'mappend' or
+-- 'merge' with a singleton index.
+--
+insert :: Package pkg => PackageIndex pkg -> pkg -> PackageIndex pkg
+insert (PackageIndex index) pkg = PackageIndex $
+  let key = (lowercase . packageName) pkg
+   in Map.insertWith (flip mergeBuckets) key [pkg] index
 
 -- | Get all the packages from the index.
 --
@@ -214,9 +227,9 @@ lookupDependency index (Dependency name versionRange) =
         , packageName pkg == name
         , packageVersion pkg `withinRange` versionRange ]
 
--- | All packages that have depends that are not in the index.
+-- | All packages that have dependencies that are not in the index.
 --
--- Returns such packages along with the depends that they're missing.
+-- Returns such packages along with the dependencies that they're missing.
 --
 brokenPackages :: PackageFixedDeps pkg
                => PackageIndex pkg
@@ -233,7 +246,7 @@ brokenPackages index =
 -- If the transative closure is complete then it returns that subset of the
 -- index. Otherwise it returns the broken packages as in 'brokenPackages'.
 --
--- * Note that if any of the result is @Right []@ it is because at least one of
+-- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 --
 dependencyClosure :: PackageFixedDeps pkg
