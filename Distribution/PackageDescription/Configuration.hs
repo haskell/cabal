@@ -52,7 +52,8 @@ import Distribution.Package (Package, Dependency(..))
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
-         , Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..) )
+         , Flag(..), FlagName(..), FlagAssignment
+         , CondTree(..), ConfVar(..), Condition(..) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
@@ -114,16 +115,15 @@ simplifyCondition cond i = fv . walk $ cond
 -- | Simplify a configuration condition using the os and arch names.  Returns
 --   the names of all the flags occurring in the condition.
 simplifyWithSysParams :: OS -> Arch -> CompilerId -> Condition ConfVar
-                      -> (Condition ConfFlag, [String])
+                      -> (Condition FlagName, [FlagName])
 simplifyWithSysParams os arch (CompilerId comp compVer) cond = (cond', flags)
   where
-    (cond', fvs) = simplifyCondition cond interp 
+    (cond', flags) = simplifyCondition cond interp
     interp (OS os')    = Right $ os' == os
     interp (Arch arch') = Right $ arch' == arch
     interp (Impl comp' vr) = Right $ comp' == comp
                                   && compVer `withinRange` vr
     interp (Flag  f)   = Left f
-    flags = [ fname | ConfFlag fname <- fvs ]
 
 -- XXX: Add instances and check
 --
@@ -159,7 +159,7 @@ parseCondition = condOr
     boolLiteral   = fmap Lit  parse
     archIdent     = fmap Arch parse
     osIdent       = fmap OS   parse
-    flagIdent     = fmap (Flag . ConfFlag . lowercase) (munch1 isIdentChar)
+    flagIdent     = fmap (Flag . FlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
@@ -221,7 +221,7 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 -- implemented unless we really need it.
 --   
 resolveWithFlags :: Monoid a =>
-     [(String,[Bool])] 
+     [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
@@ -229,8 +229,8 @@ resolveWithFlags :: Monoid a =>
   -> [Dependency]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] a]    
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
-  -> (Either [Dependency] -- missing dependencies
-       ([a], [Dependency], [(String, Bool)]))
+  -> Either [Dependency] -- missing dependencies
+       ([a], [Dependency], FlagAssignment)
        -- ^ In the returned dependencies, there will be no duplicates by name
 resolveWithFlags dom os arch impl constrs trees checkDeps =
     case try dom [] of
@@ -283,7 +283,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- `mzero'
     mz = Left (BTN [])
 
-    env flags flag@(ConfFlag n) = maybe (Left flag) Right . lookup n $ flags 
+    env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
     -- for the error case we inspect our lazy tree of missing dependencies and
     -- pick the shortest list of missing dependencies
@@ -330,8 +330,8 @@ ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
   where f (_, t, me) = ignoreConditions t 
                        : maybeToList (fmap ignoreConditions me)
 
-freeVars :: CondTree ConfVar c a  -> [String]
-freeVars t = [ s | Flag (ConfFlag s) <- freeVars' t ]
+freeVars :: CondTree ConfVar c a  -> [FlagName]
+freeVars t = [ f | Flag f <- freeVars' t ]
   where
     freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
     compfv (c, ct, mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
@@ -379,7 +379,7 @@ instance Monoid PDTagged where
 -- 
 finalizePackageDescription ::
      Package pkg
-  => [(String,Bool)]  -- ^ Explicitly specified flag assignments
+  => FlagAssignment  -- ^ Explicitly specified flag assignments
   -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
                               -- this is unknown.
   -> OS     -- ^ OS-name
@@ -388,7 +388,7 @@ finalizePackageDescription ::
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
-            (PackageDescription, [(String,Bool)])
+            (PackageDescription, FlagAssignment)
 	     -- ^ Either missing dependencies or the resolved package
 	     -- description along with the flag assignments chosen.
 finalizePackageDescription userflags mpkgs os arch impl constraints

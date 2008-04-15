@@ -70,19 +70,22 @@ import Distribution.Compiler ()
 import Distribution.ReadE
 import Distribution.Text (display, parse)
 import Distribution.Package ( Dependency(..) )
+import Distribution.PackageDescription
+         ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , OptimisationLevel(..), flagToOptimisationLevel )
-import Distribution.Simple.Utils (wrapLine)
+import Distribution.Simple.Utils
+         ( wrapLine, lowercase )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
 import Data.List (sort)
-import Data.Char( toLower, isSpace )
+import Data.Char (isSpace)
 import Data.Monoid (Monoid(..))
 import Distribution.Verbosity
 
@@ -251,7 +254,7 @@ data ConfigFlags = ConfigFlags {
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies
-    configConfigurationsFlags :: [(String, Bool)]
+    configConfigurationsFlags :: FlagAssignment
   }
   deriving Show
 
@@ -468,13 +471,14 @@ configureOptions showOrParseArgs =
                  (map (\x -> display x)))
       ]
   where     
-    readFlagList :: String -> [(String, Bool)]
+    readFlagList :: String -> FlagAssignment
     readFlagList = map tagWithValue . words
-      where tagWithValue ('-':fname) = (map toLower fname, False)
-            tagWithValue fname       = (map toLower fname, True)
+      where tagWithValue ('-':fname) = (FlagName (lowercase fname), False)
+            tagWithValue fname       = (FlagName (lowercase fname), True)
     
-    showFlagList :: [(String, Bool)] -> [String]
-    showFlagList fs = [ if not set then '-':fname else fname | (fname, set) <- fs]
+    showFlagList :: FlagAssignment -> [String]
+    showFlagList fs = [ if not set then '-':fname else fname
+                      | (FlagName fname, set) <- fs]
 
     installDirArg _sf _lf d get set = reqArgFlag "DIR" _sf _lf d
       (fmap fromPathTemplate.get.configInstallDirs)
