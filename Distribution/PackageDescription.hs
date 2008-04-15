@@ -73,7 +73,8 @@ module Distribution.PackageDescription (
 
         -- * package configuration
         GenericPackageDescription(..),
-        Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..),
+        Flag(..), FlagName(..), FlagAssignment,
+        CondTree(..), ConfVar(..), Condition(..),
   ) where
 
 import Data.List   (nub)
@@ -471,20 +472,27 @@ instance Show GenericPackageDescription where
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
 data Flag = MkFlag
-    { flagName        :: String
+    { flagName        :: FlagName
     , flagDescription :: String
     , flagDefault     :: Bool
     }
     deriving Show
 
--- | A @ConfFlag@ represents an user-defined flag
-newtype ConfFlag = ConfFlag String
-    deriving (Eq, Show)
+-- | A 'FlagName' is the name of a user-defined configuration flag
+newtype FlagName = FlagName String
+    deriving (Eq, Ord, Show)
+
+-- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
+-- 'Bool' flag values. It represents the flags chosen by the user or
+-- discovered during configuration. For example @--flags=foo --flags=-bar@
+-- becomes @[("foo", True), ("bar", False)]@
+--
+type FlagAssignment = [(FlagName, Bool)]
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS
              | Arch Arch
-             | Flag ConfFlag
+             | Flag FlagName
              | Impl CompilerFlavor VersionRange
     deriving (Eq, Show)
 
