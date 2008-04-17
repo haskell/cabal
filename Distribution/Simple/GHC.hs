@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
         configure, getInstalledPackages, build, makefile, installLib, installExe,
+        ghcOptions,
         ghcVerbosityOptions
  ) where
 
