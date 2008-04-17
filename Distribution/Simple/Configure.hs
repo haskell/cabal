@@ -51,6 +51,7 @@ module Distribution.Simple.Configure (configure,
 				      configDependency,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
+                                      tryGetConfigStateFile,
                                      )
     where
 
