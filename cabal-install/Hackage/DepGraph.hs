@@ -23,6 +23,8 @@ module Hackage.DepGraph (
 import Hackage.Types
 import Distribution.Package
          ( PackageIdentifier, Package(..), PackageFixedDeps(..) )
+import Distribution.PackageDescription
+         ( FlagAssignment )
 import Distribution.Text
          ( display )
 import Distribution.Simple.Utils

@@ -14,7 +14,8 @@ module Hackage.Types where
 
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), Dependency )
-import Distribution.PackageDescription (GenericPackageDescription)
+import Distribution.PackageDescription
+         ( GenericPackageDescription, FlagAssignment )
 import Distribution.Text
          ( display )
 import Distribution.Simple.Utils (intercalate)
@@ -75,11 +76,6 @@ repoName = remoteRepoName . repoRemote
 
 repoURL :: Repo -> String
 repoURL = remoteRepoURL . repoRemote
-
--- | Explicit user's assignment of configurations flags,
--- eg --flags=foo --flags=-bar
--- becomes [("foo", True), ("bar", False)]
-type FlagAssignment = [(String, Bool)]
 
 data UnresolvedDependency
     = UnresolvedDependency
