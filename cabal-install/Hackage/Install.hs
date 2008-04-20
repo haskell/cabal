@@ -29,8 +29,8 @@ import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
-import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), FlagAssignment,
-                      Repo)
+import Hackage.Types
+         ( UnresolvedDependency(..), PkgInfo(..), Repo )
 import Hackage.Utils (showDependencies)
 import Paths_cabal_install (getBinDir)
 
@@ -45,7 +45,8 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..) )
-import Distribution.PackageDescription (GenericPackageDescription(packageDescription))
+import Distribution.PackageDescription
+         ( GenericPackageDescription(packageDescription), FlagAssignment )
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils as Utils (notice, info, debug, die)
 import Distribution.System

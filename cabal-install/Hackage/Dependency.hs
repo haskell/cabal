@@ -22,12 +22,12 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.DepGraph as DepGraph
-import Hackage.Types (UnresolvedDependency(..),
-                      PkgInfo(..), FlagAssignment)
+import Hackage.Types
+         ( UnresolvedDependency(..), PkgInfo(..) )
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
 import Distribution.PackageDescription 
-    (PackageDescription(buildDepends)
-    , GenericPackageDescription )
+         ( PackageDescription(buildDepends), GenericPackageDescription
+         , FlagAssignment )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription)
 import Distribution.Compiler
