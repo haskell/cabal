@@ -423,7 +423,7 @@ unionBuildInfo b1 b2
          hsSourceDirs      = combineNub hsSourceDirs,
          otherModules      = combineNub otherModules,
          extensions        = combineNub extensions,
-         extraLibs         = combineNub extraLibs,
+         extraLibs         = combine    extraLibs,
          extraLibDirs      = combineNub extraLibDirs,
          includeDirs       = combineNub includeDirs,
          includes          = combineNub includes,
