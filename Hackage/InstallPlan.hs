@@ -28,7 +28,7 @@ module Hackage.InstallPlan (
   ) where
 
 import Hackage.Types
-         ( PkgInfo(pkgDesc), FlagAssignment )
+         ( PkgInfo(pkgDesc) )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..) )
 import Distribution.InstalledPackageInfo
@@ -36,11 +36,11 @@ import Distribution.InstalledPackageInfo
 import Distribution.PackageDescription
          ( GenericPackageDescription(genPackageFlags)
          , PackageDescription(buildDepends)
-         , Flag(MkFlag, flagName) )
+         , Flag(MkFlag, flagName), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, insertPackage)
+         ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Utils
          ( comparing, equating )
