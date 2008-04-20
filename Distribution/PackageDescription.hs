@@ -411,28 +411,31 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 
 unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
 unionBuildInfo b1 b2
-    = b1{buildable         = buildable b1 && buildable b2,
-         buildTools        = combine buildTools,
-         cppOptions         = combine cppOptions,
-         ccOptions         = combine ccOptions,
-         ldOptions         = combine ldOptions,
-         pkgconfigDepends  = combine pkgconfigDepends,
-         frameworks        = combine frameworks,
-         cSources          = combine cSources,
-         hsSourceDirs      = combine hsSourceDirs,
-         otherModules      = combine otherModules,
-         extensions        = combine extensions,
-         extraLibs         = combine extraLibs,
-         extraLibDirs      = combine extraLibDirs,
-         includeDirs       = combine includeDirs,
-         includes          = combine includes,
-         installIncludes   = combine installIncludes,
-         options           = combine options,
-         customFieldsBI    = combine customFieldsBI
+    = BuildInfo {
+         buildable         = buildable b1 && buildable b2,
+         buildTools        = combineNub buildTools,
+         cppOptions        = combine    cppOptions,
+         ccOptions         = combine    ccOptions,
+         ldOptions         = combine    ldOptions,
+         pkgconfigDepends  = combineNub pkgconfigDepends,
+         frameworks        = combineNub frameworks,
+         cSources          = combineNub cSources,
+         hsSourceDirs      = combineNub hsSourceDirs,
+         otherModules      = combineNub otherModules,
+         extensions        = combineNub extensions,
+         extraLibs         = combineNub extraLibs,
+         extraLibDirs      = combineNub extraLibDirs,
+         includeDirs       = combineNub includeDirs,
+         includes          = combineNub includes,
+         installIncludes   = combineNub installIncludes,
+         options           = combine    options,
+         ghcProfOptions    = combine    ghcProfOptions,
+         ghcSharedOptions  = combine    ghcSharedOptions,
+         customFieldsBI    = combine    customFieldsBI
         }
-      where 
-      combine :: (Eq a) => (BuildInfo -> [a]) -> [a]
-      combine f = nub $ f b1 ++ f b2
+  where
+    combine    f = f b1 ++ f b2
+    combineNub f = nub (combine f)
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
