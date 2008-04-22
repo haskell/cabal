@@ -68,7 +68,7 @@ module Distribution.Simple.Setup (
 
 import Distribution.Compiler ()
 import Distribution.ReadE
-import Distribution.Text (display, parse)
+import Distribution.Text (display, Text(parse))
 import Distribution.Package ( Dependency(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
