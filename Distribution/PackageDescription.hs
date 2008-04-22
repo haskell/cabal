@@ -73,7 +73,11 @@ module Distribution.PackageDescription (
 
         -- * package configuration
         GenericPackageDescription(..),
-        Flag(..), CondTree(..), ConfVar(..), ConfFlag(..), Condition(..),
+        Flag(..), FlagName(..), FlagAssignment,
+        CondTree(..), ConfVar(..), Condition(..),
+
+        -- * Deprecated compat stuff
+        setupMessage,
   ) where
 
 import Data.List   (nub)
