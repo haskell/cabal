@@ -91,9 +91,11 @@ data PWarning = PWarning String
         deriving Show
 
 showPWarning :: FilePath -> PWarning -> String
-showPWarning _ (PWarning msg) = msg
+showPWarning fpath (PWarning msg) =
+  fpath ++ ": " ++ msg
 showPWarning fpath (UTFWarning line fname) =
-  fpath ++ ":" ++ show line ++ ": Invalid UTF-8 text in the '" ++ fname ++ "' field."
+  fpath ++ ":" ++ show line
+        ++ ": Invalid UTF-8 text in the '" ++ fname ++ "' field."
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
