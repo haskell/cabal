@@ -6,6 +6,7 @@
 -- |
 -- Module      :  Distribution.Simple.Utils
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
+--                portions Copyright (c) 2007, Galois Inc.
 -- 
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
@@ -660,25 +661,47 @@ buildInfoExt = ".buildinfo"
 -- * Unicode stuff
 -- ------------------------------------------------------------
 
--- This is a modification of the UTF8 code from gtk2hs
+-- This is a modification of the UTF8 code from gtk2hs and the
+-- utf8-string package.
 
 fromUTF8 :: String -> String
 fromUTF8 []     = []
 fromUTF8 (c:cs)
   | c <= '\x7F' = c : fromUTF8 cs
   | c <= '\xBF' = replacementChar : fromUTF8 cs
-  | c <= '\xDF' = twoBytes   c cs
-  | c <= '\xEF' = threeBytes c cs
+  | c <= '\xDF' = twoBytes c cs
+  | c <= '\xEF' = moreBytes 3 0x800     cs (ord c .&. 0xF)
+  | c <= '\xF7' = moreBytes 4 0x10000   cs (ord c .&. 0x7)
+  | c <= '\xFB' = moreBytes 5 0x200000  cs (ord c .&. 0x3)
+  | c <= '\xFD' = moreBytes 6 0x4000000 cs (ord c .&. 0x1)
   | otherwise   = replacementChar : fromUTF8 cs
   where
-    twoBytes c1 (c2:cs') = chr (((ord c1 .&. 0x1F) `shiftL` 6) .|.
-                                 (ord c2 .&. 0x3F)) : fromUTF8 cs'
-    twoBytes _  _        = replacementChar : []
+    twoBytes c0 (c1:cs')
+      | ord c1 .&. 0xC0 == 0x80
+      = let d = ((ord c0 .&. 0x1F) `shiftL` 6)
+             .|. (ord c1 .&. 0x3F)
+         in if d >= 0x80
+               then  chr d           : fromUTF8 cs'
+               else  replacementChar : fromUTF8 cs'
+    twoBytes _ cs' = replacementChar : fromUTF8 cs'
 
-    threeBytes c1 (c2:c3:cs') = chr (((ord c1 .&. 0x0F) `shiftL` 12) .|.
-                                     ((ord c2 .&. 0x3F) `shiftL`  6) .|.
-                                      (ord c3 .&. 0x3F)) : fromUTF8 cs'
-    threeBytes _  _           = replacementChar : []
+    moreBytes :: Int -> Int -> [Char] -> Int -> [Char]
+    moreBytes 1 overlong cs' acc
+      | overlong <= acc && acc <= 0x10FFFF
+     && (acc < 0xD800 || 0xDFFF < acc)
+     && (acc < 0xFFFE || 0xFFFF < acc)
+      = chr acc : fromUTF8 cs'
+
+      | otherwise
+      = replacementChar : fromUTF8 cs'
+
+    moreBytes byteCount overlong (cn:cs') acc
+      | ord cn .&. 0xC0 == 0x80
+      = moreBytes (byteCount-1) overlong cs'
+          ((acc `shiftL` 6) .|. ord cn .&. 0x3F)
+
+    moreBytes _ _ cs' _
+      = replacementChar : fromUTF8 cs'
 
     replacementChar = '\xfffd'
 
@@ -690,7 +713,12 @@ toUTF8 (c:cs)
   | c <= '\x7FF' = chr (0xC0 .|. (w `shiftR` 6))
                  : chr (0x80 .|. (w .&. 0x3F))
                  : toUTF8 cs
-  | otherwise    = chr (0xE0 .|.  (w `shiftR` 12))
+  | c <= '\xFFFF'= chr (0xE0 .|.  (w `shiftR` 12))
+                 : chr (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
+                 : chr (0x80 .|.  (w .&. 0x3F))
+                 : toUTF8 cs
+  | otherwise    = chr (0xf0 .|.  (w `shiftR` 18))
+                 : chr (0x80 .|. ((w `shiftR` 12)  .&. 0x3F))
                  : chr (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
