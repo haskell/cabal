@@ -193,14 +193,18 @@ simpleField name showF readF get set
 commaListField :: String -> (a -> Doc) -> (ReadP [a] a)
 		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListField name showF readF get set = 
-  liftField get set $ 
+  liftField get set' $
     field name (fsep . punctuate comma . map showF) (parseCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
 
 listField :: String -> (a -> Doc) -> (ReadP [a] a)
 		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listField name showF readF get set = 
-  liftField get set $ 
+  liftField get set' $
     field name (fsep . map showF) (parseOptCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set = 
@@ -211,7 +215,7 @@ optsField name flavor get set =
   where
         update f opts [] = [(f,opts)]
 	update f opts ((f',opts'):rest)
-           | f == f'   = (f, opts ++ opts') : rest
+           | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
