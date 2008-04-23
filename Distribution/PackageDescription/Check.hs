@@ -55,9 +55,14 @@ import System.Directory (doesFileExist, doesDirectoryExist)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
-import Distribution.Compiler(CompilerFlavor(..))
-import Distribution.License (License(..))
-import Distribution.Simple.Utils (cabalVersion, intercalate)
+import Distribution.Compiler
+         ( CompilerFlavor(..) )
+import Distribution.System
+         ( OS(..), Arch(..) )
+import Distribution.License
+         ( License(..) )
+import Distribution.Simple.Utils
+         ( cabalVersion, intercalate )
 
 import Distribution.Version
          ( Version(..), withinRange )
@@ -130,7 +135,7 @@ checkPackage :: GenericPackageDescription
              -> [PackageCheck]
 checkPackage gpkg mpkg =
      checkConfiguredPackage pkg
-
+  ++ checkConditionals gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -481,6 +486,44 @@ checkPaths pkg =
   where isOutsideTree dir = case splitDirectories dir of
                               "..":_ -> True
                               _      -> False
+
+-- ------------------------------------------------------------
+-- * Checks on the GenericPackageDescription
+-- ------------------------------------------------------------
+
+checkConditionals :: GenericPackageDescription -> [PackageCheck]
+checkConditionals pkg =
+  catMaybes [
+
+    check (not $ null unknownOSs) $
+      PackageDistInexcusable $
+           "Unknown operating system name "
+        ++ intercalate ", " (map quote unknownOSs)
+
+  , check (not $ null unknownArches) $
+      PackageDistInexcusable $
+           "Unknown architecture name "
+        ++ intercalate ", " (map quote unknownArches)
+
+  , check (not $ null unknownImpls) $
+      PackageDistInexcusable $
+           "Unknown compiler name "
+        ++ intercalate ", " (map quote unknownImpls)
+  ]
+  where
+    unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
+    unknownArches = [ arch | Arch (OtherArch arch)       <- conditions ]
+    unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
+    conditions = maybe [] freeVars (condLibrary pkg)
+              ++ concatMap (freeVars . snd) (condExecutables pkg)
+    freeVars (CondNode _ _ ifs) = concatMap compfv ifs
+    compfv (c, ct, mct) = condfv c ++ freeVars ct ++ maybe [] freeVars mct
+    condfv c = case c of
+      Var v      -> [v]
+      Lit _      -> []
+      CNot c1    -> condfv c1
+      COr  c1 c2 -> condfv c1 ++ condfv c2
+      CAnd c1 c2 -> condfv c1 ++ condfv c2
 
 -- ------------------------------------------------------------
 -- * Checks in IO
