@@ -75,7 +75,8 @@ import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
-    ( PackageCheck(..), checkPackage, checkPackageFiles )
+    ( PackageCheck(..)
+    , checkPackage, checkConfiguredPackage, checkPackageFiles )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -315,7 +316,9 @@ configure (pkg_descr0, pbi) cfg
                         ++ intercalate ", " [ name ++ "=" ++ display value
                                             | (FlagName name, value) <- flags ]
 
-        checkPackageProblems verbosity (updatePackageDescription pbi pkg_descr)
+        checkPackageProblems verbosity
+          (either Just (\_->Nothing) pkg_descr0) --TODO: make the Either go away
+          (updatePackageDescription pbi pkg_descr)
 
         let packageIndex = fromMaybe bogusPackageIndex maybePackageIndex
             -- FIXME: For Hugs, nhc98 and other compilers we do not know what
@@ -626,10 +629,15 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
 
 
 -- | Output package check warnings and errors. Exit if any errors.
-checkPackageProblems :: Verbosity -> PackageDescription -> IO ()
-checkPackageProblems verbosity pkg_descr = do
-  ioChecks      <- checkPackageFiles pkg_descr "."
-  let pureChecks = checkPackage      pkg_descr
+checkPackageProblems :: Verbosity
+                     -> Maybe GenericPackageDescription
+                     -> PackageDescription
+                     -> IO ()
+checkPackageProblems verbosity mgpkg pkg = do
+  ioChecks      <- checkPackageFiles pkg "."
+  let pureChecks = case mgpkg of
+                     Just gpkg -> checkPackage gpkg (Just pkg)
+                     Nothing   -> checkConfiguredPackage pkg
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
   if null errors

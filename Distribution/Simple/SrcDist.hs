@@ -308,7 +308,7 @@ copyFileTo verbosity dir file = do
 printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do
   ioChecks      <- checkPackageFiles pkg_descr "."
-  let pureChecks = checkPackage      pkg_descr
+  let pureChecks = checkConfiguredPackage pkg_descr
       isDistError (PackageDistSuspicious _) = False
       isDistError _                         = True
       (errors, warnings) = partition isDistError (pureChecks ++ ioChecks)

@@ -43,15 +43,18 @@ module Distribution.PackageDescription.Check (
         -- * Package Checking
         PackageCheck(..),
         checkPackage,
+        checkConfiguredPackage,
         checkPackageFiles
   ) where
 
-import Data.Maybe (isNothing, catMaybes)
+import Data.Maybe (isNothing, catMaybes, fromMaybe)
 import Data.List  (sort, group, isPrefixOf)
 import Control.Monad (filterM)
 import System.Directory (doesFileExist, doesDirectoryExist)
 
 import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration
+         ( flattenPackageDescription )
 import Distribution.Compiler(CompilerFlavor(..))
 import Distribution.License (License(..))
 import Distribution.Simple.Utils (cabalVersion, intercalate)
@@ -118,8 +121,23 @@ check True  pc = Just pc
 -- for checks that require looking at files within the package. For those
 -- see 'checkPackageFiles'.
 --
-checkPackage :: PackageDescription -> [PackageCheck]
-checkPackage pkg =
+-- It requires the 'GenericPackageDescription' and optionally a particular
+-- configuration of that package. If you pass 'Nothing' then we just check
+-- a version of the generic description using 'flattenPackageDescription'.
+--
+checkPackage :: GenericPackageDescription
+             -> Maybe PackageDescription
+             -> [PackageCheck]
+checkPackage gpkg mpkg =
+     checkConfiguredPackage pkg
+
+  where
+    pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
+
+--TODO: make this variant go away
+--      we should alwaws know the GenericPackageDescription
+checkConfiguredPackage :: PackageDescription -> [PackageCheck]
+checkConfiguredPackage pkg =
     checkSanity pkg
  ++ checkFields pkg
  ++ checkLicense pkg
