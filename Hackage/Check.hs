@@ -42,7 +42,7 @@ check verbosity = do
     --      the exact same errors as it will.
     let pkg_desc = flattenPackageDescription ppd
     ioChecks <- checkPackageFiles pkg_desc "."
-    let packageChecks = ioChecks ++ checkPackage pkg_desc
+    let packageChecks = ioChecks ++ checkPackage ppd (Just pkg_desc)
         buildImpossible = [ x | x@PackageBuildImpossible {} <- packageChecks ]
         buildWarning    = [ x | x@PackageBuildWarning {}    <- packageChecks ]
         distSuspicious  = [ x | x@PackageDistSuspicious {}  <- packageChecks ]
