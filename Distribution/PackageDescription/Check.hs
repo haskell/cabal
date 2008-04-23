@@ -69,7 +69,7 @@ import Distribution.Version
 import Distribution.Package
          ( packageName, packageVersion )
 import Distribution.Text
-         ( display )
+         ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
 
@@ -387,7 +387,13 @@ checkGhcOptions pkg =
                                   , Just extension <- [ghcExtension flag] ]
 
   , checkAlternatives "ghc-options" "extensions"
-      [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
+      [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options
+                          , case simpleParse extension of
+                              Just (UnknownExtension _) -> True
+                              Just ext -> ext `elem` compatExtensions
+                                       || not (Version [1,1,6] []
+                                 `withinRange` descCabalVersion pkg)
+                              Nothing  -> False ]
 
   , checkAlternatives "ghc-options" "cpp-options" $
          [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
@@ -436,6 +442,22 @@ checkGhcOptions pkg =
     ghcExtension ('-':'c':"pp")     = Just CPP
     ghcExtension _                  = Nothing
 
+    -- the known extensions in Cabal-1.1.6 that came with ghc-6.6:
+    -- we can drop this test when Cabal-1.4+ is widely deployed because
+    -- from that point on we can add new extensions without worrying about
+    -- breaking old versions of cabal.
+    compatExtensions =
+      [ OverlappingInstances, UndecidableInstances, IncoherentInstances
+      , RecursiveDo, ParallelListComp, MultiParamTypeClasses
+      , NoMonomorphismRestriction, FunctionalDependencies, Rank2Types
+      , RankNTypes, PolymorphicComponents, ExistentialQuantification
+      , ScopedTypeVariables, ImplicitParams, FlexibleContexts
+      , FlexibleInstances, EmptyDataDecls, CPP, BangPatterns
+      , TypeSynonymInstances, TemplateHaskell, ForeignFunctionInterface
+      , Arrows, Generics, NoImplicitPrelude, NamedFieldPuns, PatternGuards
+      , GeneralizedNewtypeDeriving, ExtensibleRecords, RestrictedTypeSynonyms
+      , HereDocuments
+      ]
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
 checkCCOptions pkg =
