@@ -75,6 +75,7 @@ import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
 import Data.Maybe	(fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
+import System.FilePath (normalise)
 
 -- -----------------------------------------------------------------------------
 
@@ -92,9 +93,9 @@ data PWarning = PWarning String
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning msg) =
-  fpath ++ ": " ++ msg
+  normalise fpath ++ ": " ++ msg
 showPWarning fpath (UTFWarning line fname) =
-  fpath ++ ":" ++ show line
+  normalise fpath ++ ":" ++ show line
         ++ ": Invalid UTF-8 text in the '" ++ fname ++ "' field."
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
