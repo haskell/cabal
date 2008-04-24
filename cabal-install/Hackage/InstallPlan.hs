@@ -15,16 +15,21 @@ module Hackage.InstallPlan (
   InstallPlan,
   ConfiguredPackage(..),
   PlanPackage(..),
-  valid,
-  complete,
-  consistent,
-  
+
+  -- * Operations on 'InstallPlan's
   new,
   toList,
   done,
   next,
   completed,
-  failed
+  failed,
+
+  -- * Checking valididy of plans
+  valid,
+  complete,
+  consistent,
+  acyclic,
+  validConfiguredPackage,
   ) where
 
 import Hackage.Types
@@ -59,8 +64,6 @@ import qualified Data.Graph as Graph
           ( SCC(..), stronglyConnCompR )
 import Control.Exception
          ( assert )
-import Debug.Trace
-         ( trace )
 
 -- When cabal tries to install a number of packages, including all their
 -- dependencies it has a non-trivial problem to solve.
@@ -98,6 +101,11 @@ import Debug.Trace
 -- also in the set. It is consistent if for every package in the set, all
 -- dependencies which target that package have the same version.
 
+-- | A 'ConfiguredPackage' is a not-yet-installed package along with the
+-- total configuration information. The configuration information is total in
+-- the sense that it provides all the configuration information and so the
+-- final configure process will be independent of the environment. 
+--
 data ConfiguredPackage = ConfiguredPackage
        PkgInfo             -- ^ package info, including repo
        FlagAssignment      -- ^ complete flag assignment for the package
@@ -134,51 +142,48 @@ data InstallPlan buildResult = InstallPlan {
     planOS       :: OS,
     planArch     :: Arch,
     planCompiler :: CompilerId
-  } 
+  }
   deriving Show
 
 toList :: InstallPlan buildResult -> [PlanPackage buildResult]
 toList = PackageIndex.allPackages . planIndex
 
+invariant :: InstallPlan a -> Bool
+invariant plan =
+  valid (planOS plan) (planArch plan) (planCompiler plan) (planIndex plan)
+
 -- A valid installation plan is a set of packages that is 'acyclic', 'complete'
 -- and 'consistent'.
 --
-valid :: InstallPlan buildResult -> Bool
-valid plan = noDuplicates plan
-          && acyclic      plan
-          && complete     plan
-          && consistent   plan
-          && validConfig  plan
+valid :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a) -> Bool
+valid os arch comp index =
+     acyclic      index
+  && complete     index
+  && consistent   index
+  && all (validConfiguredPackage os arch comp)
+         [ pkg | Configured pkg <- PackageIndex.allPackages index ]
 
--- | It is supposed to be a set afterall so each package in the plan must be
--- unique by its id.
+-- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
 --
-noDuplicates :: InstallPlan buildResult -> Bool
-noDuplicates =
-    all ((== 1) . length)
-  . groupBy (equating packageId)
-  . sortBy  (comparing packageId)
-  . toList
-
-acyclic :: InstallPlan buildResult -> Bool
-acyclic plan =
+acyclic :: PackageIndex (PlanPackage a) -> Bool
+acyclic index =
   null [ vs
        | Graph.CyclicSCC vs <- Graph.stronglyConnCompR
                                  [ (pkg, packageId pkg, depends pkg)
-                                 | pkg <- PackageIndex.allPackages (planIndex plan) ] ]
+                                 | pkg <- PackageIndex.allPackages index ] ]
 
 -- | An installation plan is complete if for every package in the set, all of
 -- its dependencies are also in the set.
 --
-complete :: InstallPlan buildResult -> Bool
-complete (InstallPlan { planIndex = index}) =
+complete :: PackageIndex (PlanPackage a) -> Bool
+complete index =
   all (isJust . PackageIndex.lookupPackageId index)
     (concatMap depends (PackageIndex.allPackages index))
 
 -- An installation plan is consistent if for every package in the set, all
 -- dependencies which target that package have the same version.
-consistent :: InstallPlan buildResult -> Bool
-consistent (InstallPlan { planIndex = index}) =
+consistent :: PackageIndex (PlanPackage a) -> Bool
+consistent index =
     all same
   . map (map snd)
   . groupBy (equating  fst)
@@ -190,21 +195,19 @@ consistent (InstallPlan { planIndex = index}) =
     same :: Eq a => [a] -> Bool
     same xs = and (zipWith (==) xs (tail xs))
 
-validConfig :: InstallPlan buildResult -> Bool
-validConfig (InstallPlan index os arch comp) =
-  flip all [ pkg | Configured pkg <- PackageIndex.allPackages index ] $
-    \(ConfiguredPackage pkginfo flags deps) ->
-         flagsTotal (pkgDesc pkginfo) flags
-      && depsValid  (pkgDesc pkginfo) flags deps
-  
+validConfiguredPackage :: OS -> Arch -> CompilerId -> ConfiguredPackage -> Bool
+validConfiguredPackage os arch comp (ConfiguredPackage pkginfo flags deps) =
+     flagsTotal (pkgDesc pkginfo)
+  && depsValid  (pkgDesc pkginfo)
+
   where
-    flagsTotal :: GenericPackageDescription -> FlagAssignment -> Bool
-    flagsTotal pkg flags =
+    flagsTotal :: GenericPackageDescription -> Bool
+    flagsTotal pkg =
          sort [ name | (name,_) <- flags ]
       == sort [ name | MkFlag { flagName = name } <- genPackageFlags pkg ]
 
-    depsValid :: GenericPackageDescription -> FlagAssignment -> [PackageIdentifier] -> Bool
-    depsValid pkg flags deps =
+    depsValid :: GenericPackageDescription -> Bool
+    depsValid pkg =
       --TODO: use something lower level than finalizePackageDescription
       case finalizePackageDescription flags (Nothing :: Maybe (PackageIndex PackageIdentifier)) os arch comp [] pkg of
         Right (pkg', _) -> flip all (buildDepends pkg') $ \dep ->
@@ -216,12 +219,10 @@ validConfig (InstallPlan index os arch comp) =
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: OS -> Arch -> CompilerId -> [PlanPackage buildResult] -> InstallPlan buildResult
-new os arch compiler pkgs =
-  let plan = InstallPlan (PackageIndex.fromList pkgs) os arch compiler
-   in if valid plan
-        then plan
-        else error "InstallPlan.new: invalid plan"
+new :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a) -> InstallPlan a
+new os arch compiler pkgs
+  | not (valid os arch compiler pkgs) = error "InstallPlan.new: invalid plan"
+  | otherwise                         = InstallPlan pkgs os arch compiler
 
 -- | Is the plan completed?
 --
@@ -234,7 +235,7 @@ done (InstallPlan { planIndex = index}) =
 -- * The graph must not be 'done'.
 --
 next :: InstallPlan buildResult -> ConfiguredPackage
-next plan@(InstallPlan { planIndex = index }) = assert (valid plan) $
+next plan@(InstallPlan { planIndex = index }) = assert (invariant plan) $
   let allReadyPackages =
         [ pkg
         | Configured pkg <- PackageIndex.allPackages index
@@ -260,7 +261,7 @@ completed :: PackageIdentifier
           -> InstallPlan buildResult -> InstallPlan buildResult
 completed pkgid plan =
   case PackageIndex.lookupPackageId index pkgid of
-    Just (Configured cp) -> plan { planIndex = PackageIndex.insertPackage index (Installed cp) }
+    Just (Configured cp) -> plan { planIndex = PackageIndex.insert index (Installed cp) }
     _ -> error "InstallPlan.completed: internal error; cannot mark package as completed"
   where index = planIndex plan
 
@@ -275,7 +276,7 @@ failed :: PackageIdentifier -> buildResult -> buildResult
 failed pkgid0 buildResult dependentBuildResult plan =
   case PackageIndex.lookupPackageId index0 pkgid0 of
     Just (Configured cp) ->
-      let index = PackageIndex.insertPackage index0 (Failed cp buildResult)
+      let index = PackageIndex.insert index0 (Failed cp buildResult)
       in plan { planIndex = markDepsAsFailed pkgid0 index }
     _ -> error ""
   where
@@ -284,7 +285,7 @@ failed pkgid0 buildResult dependentBuildResult plan =
   markDepsAsFailed pkgid index =
     case PackageIndex.lookupPackageId index pkgid of
       Just (Configured cp) ->
-        let index1 = PackageIndex.insertPackage index (Failed cp dependentBuildResult)
+        let index1 = PackageIndex.insert index (Failed cp dependentBuildResult)
             deps = depends cp
         in foldr markDepsAsFailed index1 deps
       _ -> index
