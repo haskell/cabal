@@ -72,7 +72,7 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
-import Data.Map ( Map, unionsWith, fromListWith, toList )
+import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as M
 import Data.Monoid
 
@@ -248,10 +248,11 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- version to combine dependencies where the result will only contain keys
     -- from the left (first) map.  If a key also exists in the right map, both
     -- constraints will be intersected.
-    leftJoin :: Map String VersionRange -> Map String VersionRange
-             -> Map String VersionRange
+    leftJoin :: DependencyMap -> DependencyMap -> DependencyMap
     leftJoin left extra =
-        M.foldWithKey tightenConstraint left extra
+        DependencyMap $
+          M.foldWithKey tightenConstraint (unDependencyMap left)
+                                          (unDependencyMap extra)
       where tightenConstraint n c l =
                 case M.lookup n l of
                   Nothing -> l
@@ -265,7 +266,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
         let (depss, as) = unzip 
                          . map (simplifyCondTree (env flags)) 
                          $ simplifiedTrees
-            deps = fromDepMap $ leftJoin (unionsWith IntersectVersionRanges depss)
+            deps = fromDepMap $ leftJoin (mconcat depss)
                                          extraConstrs
         in case (checkDeps deps, deps) of
              (DepOk, ds) -> Right (as, ds, flags)
@@ -303,11 +304,22 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     lazyLengthCmp _ [] = False
     lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
 
-toDepMap :: [Dependency] -> Map String VersionRange
-toDepMap ds = fromListWith IntersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+-- | A map of dependencies.  Newtyped since the default monoid instance is not
+--   appropriate.  The monoid instance uses 'IntersectVersionRanges'.
+newtype DependencyMap = DependencyMap { unDependencyMap :: Map String VersionRange }
+    deriving (Eq, Show, Read)
 
-fromDepMap :: Map String VersionRange -> [Dependency]
-fromDepMap m = [ Dependency p vr | (p,vr) <- toList m ]
+instance Monoid DependencyMap where
+    mempty = DependencyMap M.empty
+    (DependencyMap a) `mappend` (DependencyMap b) = 
+        DependencyMap (M.unionWith IntersectVersionRanges a b)
+
+toDepMap :: [Dependency] -> DependencyMap
+toDepMap ds = 
+  DependencyMap $ fromListWith IntersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+
+fromDepMap :: DependencyMap -> [Dependency]
+fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]
 
 simplifyCondTree :: (Monoid a, Monoid d) =>
                     (v -> Either v Bool) 
@@ -346,7 +358,7 @@ freeVars t = [ f | Flag f <- freeVars' t ]
 -- Convert GenericPackageDescription to PackageDescription
 --
 
-data PDTagged = Lib Library | Exe String Executable | PDNull
+data PDTagged = Lib Library | Exe String Executable | PDNull deriving Show
 
 instance Monoid PDTagged where
     mempty = PDNull
