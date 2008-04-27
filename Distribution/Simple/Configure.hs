@@ -130,7 +130,7 @@ import System.FilePath
 import qualified System.Info
     ( os, arch )
 import System.IO
-    ( hPutStrLn, stderr )
+    ( hPutStrLn, stderr, hGetContents, openFile, hClose, IOMode(ReadMode) )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
     
@@ -146,10 +146,16 @@ tryGetConfigStateFile filename = do
   let dieMsg = "error reading " ++ filename ++ 
                "; run \"setup configure\" command?\n"
   if (not e) then return $ Left dieMsg else do 
-    str <- readFile filename
+    str <- readFileStrict filename
     case reads str of
       [(bi,_)] -> return $ Right bi
       _        -> return $ Left  dieMsg
+  where
+    readFileStrict name = do
+      h <- openFile name ReadMode
+      str <- hGetContents h >>= \str -> length str `seq` return str
+      hClose h
+      return str
 
 -- internal function
 tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
