@@ -46,9 +46,6 @@ module Main where
 import qualified UnitTest.Distribution.Version as D.V (hunitTests)
 import qualified UnitTest.Distribution.PackageDescription as D.PD (hunitTests)
 
-import qualified Distribution.Simple.Configure as D.S.C (localBuildInfoFile)
-import qualified Distribution.Simple.Register as D.S.R (installedPkgConfigFile)
-
 import Distribution.Simple.Compiler (CompilerFlavor(..), compilerVersion)
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Version (Version(..))
@@ -220,10 +217,10 @@ tests currDir comp compConf compVersion = [
             assertCmd' compCmd "configure -v0" "configure failed"
             assertCmd' compCmd "unregister -v0 --user" "unregister failed"
 
-            system $ "touch " ++ D.S.C.localBuildInfoFile
-            system $ "touch " ++ D.S.R.installedPkgConfigFile
-            doesFileExist D.S.C.localBuildInfoFile >>=
-              assertBool ("touch " ++ D.S.C.localBuildInfoFile ++ " failed")
+            system $ "touch dist/setup-config"
+            system $ "touch dist/installed-pkg-config"
+            doesFileExist "dist/setup-config" >>=
+              assertBool ("touch dist/setup-config failed")
 
             -- Test clean:
             assertBuild
@@ -233,10 +230,10 @@ tests currDir comp compConf compVersion = [
             doesDirectoryExist "dist/build" >>=
               assertEqual "HUnit clean did not get rid of build directory" False
 
-            doesFileExist D.S.C.localBuildInfoFile >>=
-              assertEqual ("clean " ++ D.S.C.localBuildInfoFile ++ " failed") False
-            doesFileExist D.S.R.installedPkgConfigFile >>=
-              assertEqual ("clean " ++ D.S.R.installedPkgConfigFile ++ " failed") False
+            doesFileExist "dist/setup-config" >>=
+              assertEqual ("clean dist/setup-config failed") False
+            doesFileExist "dist/installed-pkg-config" >>=
+              assertEqual ("clean dist/installed-pkg-config failed") False
 
             assertConfigure ",tmp"
             assertHaddock
@@ -397,7 +394,7 @@ tests currDir comp compConf compVersion = [
                  (doesFileExist "/tmp/lib/HSQL/GHC/libHSsql.a" >>=
                    assertBool "libHSsql.a doesn't exist. copy failed.")-}
       ]
-    where testdir = currDir </> "tests"
+    where testdir = currDir </> "systemTests"
           compStr = show comp
           compVerStr = concat . intersperse "." . map show . versionBranch $ compVersion
           compCmd = command comp
