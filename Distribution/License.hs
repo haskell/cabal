@@ -123,6 +123,7 @@ instance Text License where
   --  ("GPL",               version) -> GPL  version
   --  ("LGPL",              version) -> LGPL version
       ("BSD3",              Nothing) -> BSD3
+      ("BSD4",              Nothing) -> BSD4
   --  ("MIT",               Nothing) -> MIT
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
