@@ -43,6 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module UnitTest.Distribution.Version (hunitTests) where
 
 import Distribution.Version
+import Distribution.Text ( simpleParse )
+
 import Data.Version	( Version(..), showVersion )
 
 import Control.Monad    ( liftM )
@@ -56,14 +58,6 @@ import Test.HUnit
 -- ------------------------------------------------------------
 -- * Testing
 -- ------------------------------------------------------------
-
--- |Simple version parser wrapper
-doVersionParse :: String -> Either String Version
-doVersionParse input = case results of
-                         [y] -> Right y
-                         []  -> Left "No parse"
-                         _   -> Left "Ambigous parse"
-  where results = [ x | (x,"") <- readP_to_S parseVersion input ]
 
 branch1 :: [Int]
 branch1 = [1]
@@ -87,9 +81,9 @@ hunitTests :: [Test]
 hunitTests
     = [
        "released version 1" ~: "failed"
-            ~: (Right $ release1) ~=? doVersionParse "1",
+            ~: (Just release1) ~=? simpleParse "1",
        "released version 3" ~: "failed"
-            ~: (Right $ release3) ~=? doVersionParse "1.2.3",
+            ~: (Just release3) ~=? simpleParse "1.2.3",
 
        "range comparison LaterVersion 1" ~: "failed"
             ~: True
