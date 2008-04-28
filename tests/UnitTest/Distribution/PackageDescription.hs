@@ -39,7 +39,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module PackageDescriptionTests (
+module UnitTest.Distribution.PackageDescription (
         -- * Debugging
         hunitTests,
 
@@ -47,14 +47,16 @@ module PackageDescriptionTests (
 
 
 import Distribution.ParseUtils
-import Distribution.Package   (PackageIdentifier(..))
-import Distribution.Version   (Version(..), VersionRange(..), Dependency(..))
-import Distribution.Compiler  (CompilerFlavor(..))
+import Distribution.Package   (PackageIdentifier(..), Dependency(..))
+import Distribution.Version   (Version(..), VersionRange(..))
+import Distribution.Compiler  (CompilerFlavor(..), CompilerId(..))
+import Distribution.System    (OS(..), buildOS, Arch(..), buildArch)
 
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Types
+import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
-import Distribution.PackageDescription.QA (sanityCheckPackage)
+import Distribution.PackageDescription.Check
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 
 import Data.Maybe (catMaybes)
 import Data.List  (sortBy)
@@ -123,7 +125,7 @@ compatTestPkgDesc = unlines [
 
 compatTestPkgDescAnswer :: PackageDescription
 compatTestPkgDescAnswer = 
-    PackageDescription 
+    emptyPackageDescription 
     { package = PackageIdentifier 
                 { pkgName = "Cabal",
                   pkgVersion = Version {versionBranch = [0,1,1,1,1],
@@ -187,7 +189,8 @@ compatTestPkgDescAnswer =
 compatParseDescription :: String -> ParseResult PackageDescription
 compatParseDescription descr = do
     gpd <- parsePackageDescription descr
-    case finalizePackageDescription [] Nothing "" "" ("",Version [] []) gpd of
+    case finalizePackageDescription [] (Nothing :: Maybe (PackageIndex.PackageIndex PackageIdentifier))
+           buildOS buildArch (CompilerId GHC (Version [] [])) [] gpd of
       Left _ -> syntaxError (-1) "finalize failed"
       Right (pd,_) -> return pd
 
@@ -251,7 +254,9 @@ hunitTests =
                             ++ (unlines $ comparePackageDescriptions d d'))
                 (d == d')
     , TestLabel "Sanity checker" $ TestCase $ do
-        (warns, ers) <- sanityCheckPackage emptyPackageDescription
+        let checks = checkConfiguredPackage emptyPackageDescription
+            ers   = [ s | PackageBuildImpossible s <- checks ]
+            warns = [ s | PackageBuildWarning    s <- checks ]
         assertEqual "Wrong number of errors"   2 (length ers)
         assertEqual "Wrong number of warnings" 3 (length warns)
     ]
@@ -395,17 +400,17 @@ test_finalizePD =
     case parsePackageDescription testFile of
       ParseFailed err -> print err
       ParseOk _ ppd -> do
-       case finalizePackageDescription [("debug",True)] (Just pkgs) os arch impl ppd of
+       case finalizePackageDescription [(FlagName "debug",True)] (Just pkgs) os arch impl [] ppd of
          Right (pd,fs) -> do putStrLn $ showPackageDescription pd
                              print fs
          Left missing -> putStrLn $ "missing: " ++ show missing
        putStrLn $ showPackageDescription $ 
                 flattenPackageDescription ppd
   where
-    pkgs = [ PackageIdentifier "blub" (Version [1,0] []) 
+    pkgs = PackageIndex.fromList[ PackageIdentifier "blub" (Version [1,0] []) 
            --, PackageIdentifier "hunit" (Version [1,1] []) 
            , PackageIdentifier "blab" (Version [0,1] []) 
            ]
-    os = "win32"
-    arch = "amd64"
-    impl = ("ghc", Version [6,6] [])
+    os = Windows
+    arch = X86_64
+    impl = CompilerId GHC (Version [6,6] [])
