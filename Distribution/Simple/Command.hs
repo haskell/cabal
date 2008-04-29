@@ -79,9 +79,8 @@ module Distribution.Simple.Command (
   ) where
 
 import Control.Monad
-import qualified Control.Exception as Exception
 import Data.Char (isAlpha, toLower)
-import Data.List (sortBy, isPrefixOf)
+import Data.List (sortBy)
 import Data.Maybe
 import Data.Monoid
 import qualified Distribution.GetOpt as GetOpt
@@ -91,8 +90,6 @@ import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils (die, intercalate)
 import Text.PrettyPrint.HughesPJ    ( punctuate, cat, comma, text, empty)
-import System.IO.Unsafe (unsafePerformIO)
-import System.Environment (getEnv)
 
 data CommandUI flags = CommandUI {
     -- | The name of the command as it would be entered on the command line.
@@ -212,11 +209,10 @@ choiceOptFromEnum _sf _lf d get = choiceOpt [ (x, (sf, [map toLower $ show x]), 
 
 commandGetOpts :: ShowOrParseArgs -> CommandUI flags -> [GetOpt.OptDescr (flags -> flags)]
 commandGetOpts showOrParse command =
-    concatMap (viewAsGetOpt (commandDefaultFlags command))
-              (commandOptions command showOrParse)
+    concatMap viewAsGetOpt (commandOptions command showOrParse)
 
-viewAsGetOpt :: a -> OptionField a -> [GetOpt.OptDescr (a->a)]
-viewAsGetOpt v (OptionField _n aa) = concatMap optDescrToGetOpt aa
+viewAsGetOpt :: OptionField a -> [GetOpt.OptDescr (a->a)]
+viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
   where
     optDescrToGetOpt (ReqArg d (cs,ss) arg_desc set _) =
          [GetOpt.Option cs ss (GetOpt.ReqArg set' arg_desc) d]
@@ -226,32 +222,10 @@ viewAsGetOpt v (OptionField _n aa) = concatMap optDescrToGetOpt aa
              where set' Nothing    = def
                    set' (Just txt) = readEOrFail set txt
     optDescrToGetOpt (ChoiceOpt alts) =
-         [GetOpt.Option sf lf (GetOpt.NoArg set) (highlight (isSet v) d)
-              | (d,(sf,lf),set,isSet) <- alts ]
-    optDescrToGetOpt (BoolOpt d (sfT,lfT) (sfF, lfF) set isSet) =
-         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True))
-                             (highlight (isSet v) $ "Enable " ++ d)
-         , GetOpt.Option sfF lfF (GetOpt.NoArg (set False))
-                             (highlight (not$ isSet v) $ "Disable " ++ d) ]
-    highlight False            = id
-    highlight True | do_bold   = highlight_bold
-                   | otherwise = highlight_textually
-    highlight_bold = (start_bold ++) . (++ end_bold)
-    highlight_textually = (++ " (default)")
-
--- For now, use ANSI bold on terminals that we know support it.
--- Otherwise, we add a line of carets under the active expression instead.
--- In particular, on Windows and when running the testsuite (which sets
--- TERM to vt100 for other reasons) we get carets.
--- We really ought to use a proper termcap/terminfo library.
-do_bold :: Bool
-do_bold = (`isPrefixOf` unsafePerformIO mTerm) `any` ["xterm", "linux"]
-    where mTerm = getEnv "TERM" `Exception.catch` \_ -> return "TERM not set"
-start_bold :: String
-start_bold = "\ESC[1m"
-end_bold :: String
-end_bold   = "\ESC[0m"
-
+         [GetOpt.Option sf lf (GetOpt.NoArg set) d | (d,(sf,lf),set,_) <- alts ]
+    optDescrToGetOpt (BoolOpt d (sfT,lfT) (sfF, lfF) set _) =
+         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True))  ("Enable " ++ d)
+         , GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) ("Disable " ++ d) ]
 
 -- | to view as a FieldDescr, we sort the list of interfaces (Req > Bool > Choice > Opt) and consider only the first one.
 viewAsFieldDescr :: OptionField a -> FieldDescr a
