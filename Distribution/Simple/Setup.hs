@@ -1154,10 +1154,10 @@ programConfigurationOptions progConf showOrParseArgs get set =
 -- ------------------------------------------------------------
 
 boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-boolOpt  = Command.boolOpt  (fromFlagOrDefault False) Flag
+boolOpt  = Command.boolOpt  flagToMaybe Flag
 
 boolOpt' :: OptFlags -> OptFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-boolOpt' = Command.boolOpt' (fromFlagOrDefault False) Flag
+boolOpt' = Command.boolOpt' flagToMaybe Flag
 
 trueArg, falseArg :: SFlags -> LFlags -> Description -> (b -> Flag Bool) ->
                      (Flag Bool -> (b -> b)) -> OptDescr b
