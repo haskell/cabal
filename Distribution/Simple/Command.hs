@@ -125,7 +125,7 @@ data OptionField a = OptionField {
 data OptDescr a  = ReqArg Description OptFlags ArgPlaceHolder (ReadE (a->a))         (a -> [String])
                  | OptArg Description OptFlags ArgPlaceHolder (ReadE (a->a)) (a->a)  (a -> [Maybe String])
                  | ChoiceOpt [(Description, OptFlags, a->a, a -> Bool)]
-                 | BoolOpt Description OptFlags{-True-} OptFlags{-False-} (Bool -> a->a) (a->Bool)
+                 | BoolOpt Description OptFlags{-True-} OptFlags{-False-} (Bool -> a -> a) (a-> Maybe Bool)
 
 -- | Short command line option strings
 type SFlags   = [Char]
@@ -180,13 +180,13 @@ optArg' ad mkflag showflag =
 noArg :: (Eq b, Monoid b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
 
-boolOpt :: (b -> Bool) -> (Bool -> b) -> SFlags -> SFlags -> MkOptDescr (a -> b) (b -> a -> a) a
+boolOpt :: (b -> Maybe Bool) -> (Bool -> b) -> SFlags -> SFlags -> MkOptDescr (a -> b) (b -> a -> a) a
 boolOpt g s sfT sfF _sf _lf@(n:_) d get set =
-    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g.get)
+    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g `fmap` get)
 boolOpt _ _ _ _ _ _ _ _ _ = error "Distribution.Simple.Setup.boolOpt: unreachable"
 
-boolOpt' :: (b -> Bool) -> (Bool -> b) -> OptFlags -> OptFlags -> MkOptDescr (a -> b) (b -> a -> a) a
-boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g.get)
+boolOpt' :: (b -> Maybe Bool) -> (Bool -> b) -> OptFlags -> OptFlags -> MkOptDescr (a -> b) (b -> a -> a) a
+boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g `fmap` get)
 
 -- | create a Choice option
 choiceOpt :: Eq b => [(b,OptFlags,Description)] -> MkOptDescr (a -> b) (b -> a -> a) a
@@ -311,7 +311,10 @@ commandShowOptions command v = concat
   where
     showOptDescr :: a -> OptDescr a -> [String]
     showOptDescr x (BoolOpt _ (_,lfT:_) (_,lfF:_) _ enabled)
-      = ["--" ++ if enabled x then lfT else lfF]
+      = case enabled x of
+          Nothing -> []
+          Just True  -> ["--" ++ lfT]
+          Just False -> ["--" ++ lfF]
     showOptDescr x c@ChoiceOpt{}
       = ["--" ++ val | val <- getCurrentChoice c x]
     showOptDescr x (ReqArg _ (_ssff,lf:_) _ _ showflag)
