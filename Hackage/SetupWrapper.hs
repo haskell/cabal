@@ -178,9 +178,13 @@ compileSetupExecutable :: Verbosity -> SetupScriptOptions -> FilePath -> IO ()
 compileSetupExecutable verbosity options setupHs = do
   outOfDate <- setupHs `moreRecentFile` setupProg
   when outOfDate $ do
-    cabalPkgId <- installedCabalLibVer verbosity options
+    (comp, conf) <- case useCompiler options of
+      Just comp -> return (comp, useProgramConfig options)
+      Nothing -> configCompiler (Just GHC) Nothing Nothing
+                   (useProgramConfig options) verbosity
+    cabalPkgId <- installedCabalLibVer verbosity options comp conf
     createDirectoryIfMissingVerbose verbosity True setupDir
-    rawSystemProgramConf verbosity ghcProgram (useProgramConfig options) $
+    rawSystemProgramConf verbosity ghcProgram conf $
         ghcVerbosityOptions verbosity
      ++ ["--make", setupHs, "-o", setupProg
         ,"-package", display cabalPkgId
@@ -190,18 +194,15 @@ compileSetupExecutable verbosity options setupHs = do
     setupDir  = distPref </> "setup"
     setupProg = setupDir </> "setup" <.> exeExtension
 
-installedCabalLibVer :: Verbosity -> SetupScriptOptions -> IO PackageIdentifier
-installedCabalLibVer verbosity options = do
+installedCabalLibVer :: Verbosity -> SetupScriptOptions
+                     -> Compiler -> ProgramConfiguration
+                     -> IO PackageIdentifier
+installedCabalLibVer verbosity options comp conf = do
   index <- case usePackageIndex options of
     Just index -> return index
-    Nothing    -> do
-      (comp, conf) <- case useCompiler options of
-        Just comp -> return (comp, useProgramConfig options)
-        Nothing -> configCompiler (Just GHC) Nothing Nothing
-                     (useProgramConfig options) verbosity
-      fromMaybe mempty `fmap`
-        getInstalledPackages verbosity comp UserPackageDB conf
-        -- user packages are *allowed* here, no portability problem
+    Nothing    -> fromMaybe mempty
+           `fmap` getInstalledPackages verbosity comp UserPackageDB conf
+                  -- user packages are *allowed* here, no portability problem
 
   let cabalDep = Dependency "Cabal" (useCabalVersion options)
   case PackageIndex.lookupDependency index cabalDep of
