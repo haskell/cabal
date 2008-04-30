@@ -62,11 +62,8 @@ globalCommand = Cabal.globalCommand {
       ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
   }
 
-cabalConfigureCommand :: CommandUI Cabal.ConfigFlags
-cabalConfigureCommand = Cabal.configureCommand defaultProgramConfiguration
-
 configureCommand :: CommandUI Cabal.ConfigFlags
-configureCommand = cabalConfigureCommand {
+configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandDefaultFlags = mempty
   }
 
@@ -91,14 +88,14 @@ updateCommand = CommandUI {
   }
 
 upgradeCommand  :: CommandUI (Cabal.ConfigFlags, InstallFlags)
-upgradeCommand = cabalConfigureCommand {
+upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "Upgrades installed packages to the latest available version",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
     commandDefaultFlags = (mempty, defaultInstallFlags),
     commandOptions      = \showOrParseArgs ->
-         liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
+         liftOptionsFst (commandOptions configureCommand showOrParseArgs)
       ++ liftOptionsSnd [optionDryRun]
   }
 
@@ -203,13 +200,13 @@ defaultInstallFlags = InstallFlags {
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
-installCommand = cabalConfigureCommand {
+installCommand = configureCommand {
     commandName         = "install",
     commandSynopsis     = "Installs a list of packages.",
     commandUsage        = usagePackages "install",
     commandDefaultFlags = (mempty, defaultInstallFlags),
     commandOptions      = \showOrParseArgs ->
-         liftOptionsFst (commandOptions cabalConfigureCommand showOrParseArgs)
+         liftOptionsFst (commandOptions configureCommand showOrParseArgs)
       ++ liftOptionsSnd 
              (optionDryRun : optionRootCmd :
               case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
