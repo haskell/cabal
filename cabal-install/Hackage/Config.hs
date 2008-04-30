@@ -39,9 +39,9 @@ import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Simple.Command (ShowOrParseArgs(..), viewAsFieldDescr)
-import Distribution.Simple.Program (defaultProgramConfiguration)
-import Distribution.Simple.Setup ( Flag(..), toFlag, fromFlag, fromFlagOrDefault
-                                 , ConfigFlags, defaultConfigFlags, configureOptions)
+import Distribution.Simple.Setup
+         ( Flag(..), toFlag, fromFlag, fromFlagOrDefault
+         , ConfigFlags, configureOptions )
 import qualified Distribution.Simple.Setup as ConfigFlags
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
@@ -129,7 +129,7 @@ defaultSavedConfig =
     do userInstallDirs <- defaultUserInstallDirs
        cacheDir        <- defaultCacheDir
        return SavedConfig
-         { configFlags = (defaultConfigFlags defaultProgramConfiguration){
+         { configFlags = mempty {
                            ConfigFlags.configHcFlavor    = toFlag defaultCompiler
                          , ConfigFlags.configVerbosity   = toFlag normal
                          , ConfigFlags.configUserInstall = toFlag True
