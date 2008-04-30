@@ -16,48 +16,37 @@ import Distribution.Package
          ( PackageIdentifier(..), Package(..), Dependency )
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
-import Distribution.Text
-         ( display )
-import Distribution.Simple.Utils (intercalate)
-
-import System.FilePath ((</>), (<.>))
 
 type Username = String
 type Password = String
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
-data PkgInfo = PkgInfo {
-    pkgInfoId :: PackageIdentifier,
-    pkgRepo   :: Repo,
-    pkgDesc   :: GenericPackageDescription
+data AvailablePackage = AvailablePackage {
+    packageInfoId      :: PackageIdentifier,
+    packageDescription :: GenericPackageDescription,
+    packageSource      :: AvailablePackageSource
   }
-  deriving (Show)
+  deriving Show
 
-instance Package PkgInfo where packageId = pkgInfoId
+instance Package AvailablePackage where packageId = packageInfoId
 
--- |Generate the full path to the locally cached copy of
--- the tarball for a given @PackageIdentifer@.
-packageFile :: PkgInfo -> FilePath
-packageFile pkg = packageDir pkg
-              </> display (packageId pkg)
-              <.> "tar.gz"
+data AvailablePackageSource =
 
--- |Generate the full path to the directory where the local cached copy of
--- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: PkgInfo -> FilePath
-packageDir PkgInfo { pkgInfoId = p, pkgRepo = repo } = 
-                         repoCacheDir repo
-                     </> pkgName p
-                     </> display (pkgVersion p)
+    -- | The unpacked package in the current dir
+    LocalUnpackedPackage
+    
+    -- | A package available as a tarball from a remote repository, with a
+    -- locally cached copy. ie a package available from hackage
+  | RepoTarballPackage Repo
 
--- | Generate the URL of the tarball for a given package.
-packageURL :: PkgInfo -> String
-packageURL pkg = intercalate "/"
-    [repoURL (pkgRepo pkg),
-     pkgName p, display (pkgVersion p),
-     display p ++ ".tar.gz"]
-    where p = packageId pkg
+--  | ScmPackage
+  deriving Show
+
+--TODO:
+--  * generalise local package to any local unpacked package, not just in the
+--      current dir, ie add a FilePath param
+--  * add support for darcs and other SCM style remote repos with a local cache
 
 data RemoteRepo = RemoteRepo {
     remoteRepoName :: String,

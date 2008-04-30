@@ -35,7 +35,7 @@ import Distribution.Verbosity (Verbosity)
 
 import qualified Hackage.IndexUtils as IndexUtils (readRepoIndex)
 import Hackage.Setup (ListFlags(..))
-import Hackage.Types (PkgInfo(..), Repo)
+import Hackage.Types (AvailablePackage(..), Repo)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler (Compiler,PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
@@ -131,7 +131,7 @@ showPackageInfo pkg =
 -- package name.
 --
 mergePackageInfo :: [InstalledPackageInfo]
-                 -> [PkgInfo]
+                 -> [AvailablePackage]
                  -> PackageDisplayInfo
 mergePackageInfo installed available =
   assert (length installed + length available > 0) $
@@ -153,7 +153,7 @@ mergePackageInfo installed available =
     combine f x g y = fromJust (fmap f x `mplus` fmap g y)
     latestInstalled = latestOf installed
     latestAvailable = latestOf available
-    latestAvailableDesc = fmap (Available.packageDescription . pkgDesc)
+    latestAvailableDesc = fmap (Available.packageDescription . packageDescription)
                           latestAvailable
     latestOf :: Package pkg => [pkg] -> Maybe pkg
     latestOf = listToMaybe . sortBy (comparing (pkgVersion . packageId))
@@ -162,8 +162,8 @@ mergePackageInfo installed available =
 -- same package by name. In the result pairs, the lists are guaranteed to not
 -- both be empty.
 --
-mergePackages ::   [InstalledPackageInfo] -> [PkgInfo]
-              -> [([InstalledPackageInfo],   [PkgInfo])]
+mergePackages ::   [InstalledPackageInfo] -> [AvailablePackage]
+              -> [([InstalledPackageInfo],   [AvailablePackage])]
 mergePackages installed available =
     map (\(is, as) -> (maybe [] snd is
                     ,maybe [] snd as))

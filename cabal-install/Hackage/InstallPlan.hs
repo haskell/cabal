@@ -33,7 +33,7 @@ module Hackage.InstallPlan (
   ) where
 
 import Hackage.Types
-         ( PkgInfo(pkgDesc) )
+         ( AvailablePackage(packageDescription), UnresolvedDependency )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..) )
 import Distribution.InstalledPackageInfo
@@ -107,7 +107,7 @@ import Control.Exception
 -- final configure process will be independent of the environment. 
 --
 data ConfiguredPackage = ConfiguredPackage
-       PkgInfo             -- ^ package info, including repo
+       AvailablePackage    -- ^ package info, including repo
        FlagAssignment      -- ^ complete flag assignment for the package
        [PackageIdentifier] -- ^ exact dependencies, must be consistent with the
                            -- version constraints in the package info
@@ -197,8 +197,8 @@ consistent index =
 
 validConfiguredPackage :: OS -> Arch -> CompilerId -> ConfiguredPackage -> Bool
 validConfiguredPackage os arch comp (ConfiguredPackage pkginfo flags deps) =
-     flagsTotal (pkgDesc pkginfo)
-  && depsValid  (pkgDesc pkginfo)
+     flagsTotal (packageDescription pkginfo)
+  && depsValid  (packageDescription pkginfo)
 
   where
     flagsTotal :: GenericPackageDescription -> Bool

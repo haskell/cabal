@@ -29,8 +29,8 @@ import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
-import Hackage.Types
-         ( UnresolvedDependency(..), PkgInfo(..), Repo )
+import Hackage.Types as Available
+         ( UnresolvedDependency(..), AvailablePackage(..), Repo )
 import Hackage.Utils (showDependencies)
 import Hackage.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..) )
@@ -48,7 +48,7 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..) )
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PackageDescription
          ( GenericPackageDescription(packageDescription), FlagAssignment )
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.InstalledPackageInfo
@@ -265,7 +265,7 @@ installPkg :: Verbosity
            -> SetupScriptOptions
            -> InstallMisc
            -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
-           -> PkgInfo
+           -> AvailablePackage
            -> FlagAssignment
            -> IO BuildResult
 installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
@@ -286,7 +286,8 @@ installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
           Cabal.configConfigurationsFlags =
           Cabal.configConfigurationsFlags configFlags ++ flags
         }
-    installUnpackedPkg verbosity scriptOptions miscOptions (pkgDesc pkg) configFlags' (Just path)
+    installUnpackedPkg verbosity scriptOptions miscOptions
+                       (Available.packageDescription pkg) configFlags' (Just path)
 
 installUnpackedPkg :: Verbosity
                    -> SetupScriptOptions
@@ -310,7 +311,8 @@ installUnpackedPkg verbosity scriptOptions miscOptions pkg configFlags mpath
     buildCommand     = Cabal.buildCommand     defaultProgramConfiguration
     setup cmd flags  = inDir mpath $
                          setupWrapper verbosity scriptOptions
-                           (Just $ packageDescription pkg) cmd flags []
+                           (Just $ PackageDescription.packageDescription pkg)
+                           cmd flags []
     reexec cmd = do
       -- look for our on executable file and re-exec ourselves using
       -- a helper program like sudo to elevate priviledges:

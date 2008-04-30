@@ -23,8 +23,9 @@ module Hackage.Fetch
 import Network.URI (URI,parseURI,uriScheme,uriPath)
 import Network.HTTP (ConnError(..), Response(..))
 
-import Hackage.Types (UnresolvedDependency (..), Repo(..), repoURL,
-                      PkgInfo, packageURL, packageFile, packageDir)
+import Hackage.Types
+         ( UnresolvedDependency (..), AvailablePackage(..)
+         , AvailablePackageSource(..), Repo(..), repoURL )
 import Hackage.Dependency (resolveDependencies)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.DepGraph as DepGraph
@@ -32,12 +33,13 @@ import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
 import Distribution.Package
-         ( Package(..) )
+         ( PackageIdentifier(..), Package(..) )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDB )
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Simple.Utils (die, notice, debug, setupMessage)
+import Distribution.Simple.Utils
+         ( die, notice, debug, setupMessage, intercalate )
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
@@ -81,7 +83,7 @@ downloadFile verbosity path url
 
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: Verbosity -> PkgInfo -> IO String
+downloadPackage :: Verbosity -> AvailablePackage -> IO String
 downloadPackage verbosity pkg
     = do let url = packageURL pkg
              dir = packageDir pkg
@@ -106,11 +108,11 @@ downloadIndex verbosity repo
            Nothing  -> return path
 
 -- |Returns @True@ if the package has already been fetched.
-isFetched :: PkgInfo -> IO Bool
+isFetched :: AvailablePackage -> IO Bool
 isFetched pkg = doesFileExist (packageFile pkg)
 
 -- |Fetch a package if we don't have it already.
-fetchPackage :: Verbosity -> PkgInfo -> IO String
+fetchPackage :: Verbosity -> AvailablePackage -> IO String
 fetchPackage verbosity pkg
     = do fetched <- isFetched pkg
          if fetched
@@ -140,3 +142,28 @@ fetch verbosity packageDB repos comp conf deps
 
 withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
 withBinaryFile name mode = bracket (openBinaryFile name mode) hClose
+
+-- |Generate the full path to the locally cached copy of
+-- the tarball for a given @PackageIdentifer@.
+packageFile :: AvailablePackage -> FilePath
+packageFile pkg = packageDir pkg
+              </> display (packageId pkg)
+              <.> "tar.gz"
+
+-- |Generate the full path to the directory where the local cached copy of
+-- the tarball for a given @PackageIdentifer@ is stored.
+packageDir :: AvailablePackage -> FilePath
+packageDir AvailablePackage { packageInfoId = p
+                            , packageSource = RepoTarballPackage repo } = 
+                         repoCacheDir repo
+                     </> pkgName p
+                     </> display (pkgVersion p)
+
+-- | Generate the URL of the tarball for a given package.
+packageURL :: AvailablePackage -> String
+packageURL AvailablePackage { packageInfoId = p
+                            , packageSource = RepoTarballPackage repo } =
+  intercalate "/"
+    [repoURL repo,
+     pkgName p, display (pkgVersion p),
+     display p ++ ".tar.gz"]

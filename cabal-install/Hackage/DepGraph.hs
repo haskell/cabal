@@ -35,7 +35,7 @@ import Data.List
 import Control.Exception
          ( assert )
 
-data ResolvedPackage = ResolvedPackage PkgInfo FlagAssignment [PackageIdentifier]
+data ResolvedPackage = ResolvedPackage AvailablePackage FlagAssignment [PackageIdentifier]
   deriving Show
 
 instance Package ResolvedPackage where
