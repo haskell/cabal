@@ -13,7 +13,6 @@
 module Hackage.Dependency
     (
       resolveDependencies
-    , resolveDependenciesLocal
     , getUpgradableDeps
     ) where
 
@@ -65,24 +64,6 @@ resolveDependenciesBogusly available = map resolveFromAvailable
           case latestAvailableSatisfying available dep of
             Nothing  -> UnavailableDependency dep
             Just pkg -> AvailableDependency dep pkg flags []
-
--- | Resolve dependencies of a local package description. This is used
--- when the top-level package does not come from hackage.
-resolveDependenciesLocal :: OS
-                         -> Arch
-                         -> CompilerId
-                         -> Maybe (PackageIndex InstalledPackageInfo)
-                         -> PackageIndex AvailablePackage
-                         -> GenericPackageDescription
-                         -> FlagAssignment
-                         -> Either [Dependency] DepGraph.DepGraph
-resolveDependenciesLocal os arch comp (Just installed) available desc flags =
-  packagesToInstall
-    [ resolveDependency os arch comp installed available dep flags
-    | dep <- getDependencies os arch comp installed available desc flags ]
-
--- When we do not know what is installed, let us just hope everything is ok:
-resolveDependenciesLocal _ _ _ Nothing _ _ _ = packagesToInstall []
 
 resolveDependency :: OS
                   -> Arch

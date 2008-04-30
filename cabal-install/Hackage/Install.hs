@@ -22,7 +22,7 @@ import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
-import Hackage.Dependency (resolveDependencies, resolveDependenciesLocal)
+import Hackage.Dependency (resolveDependencies)
 import Hackage.Fetch (fetchPackage)
 -- import qualified Hackage.Info as Info
 import qualified Hackage.IndexUtils as IndexUtils
@@ -30,7 +30,8 @@ import qualified Hackage.DepGraph as DepGraph
 import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types as Available
-         ( UnresolvedDependency(..), AvailablePackage(..), Repo )
+         ( UnresolvedDependency(..), AvailablePackage(..)
+         , AvailablePackageSource(..), Repo )
 import Hackage.Utils (showDependencies)
 import Hackage.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..) )
@@ -41,13 +42,14 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Setup as Cabal
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( flagToMaybe )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..) )
+         ( PackageIdentifier(..), Package(..), Dependency(..) )
 import Distribution.PackageDescription as PackageDescription
          ( GenericPackageDescription(packageDescription), FlagAssignment )
 import Distribution.PackageDescription.Parse (readPackageDescription)
@@ -134,23 +136,31 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       desc <- readPackageDescription verbosity cabalFile
       installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
-      let scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
+      let -- The trick is, we add the local package to the available index and
+          -- then ask to resolve a dependency on exactly that package. So the
+          -- resolver ends up having to pick the local package.
+          available' = PackageIndex.insert available localPackage
+          localPackage = AvailablePackage {
+              packageInfoId                = packageId desc,
+              Available.packageDescription = desc,
+              packageSource                = LocalUnpackedPackage
+            }
+          localDependency = UnresolvedDependency {
+              dependency = let PackageIdentifier n v = packageId localPackage
+                            in Dependency n (ThisVersion v),
+              depFlags   = Cabal.configConfigurationsFlags configFlags
+            }
+          scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
       --TODO: print the info again
       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
       -- info verbosity $ unlines (map ("  "++) (concat details))
-      buildResults <- case resolveDependenciesLocal buildOS buildArch
-                             (compilerId comp) installed available desc
-                             (Cabal.configConfigurationsFlags configFlags) of
+      case resolveDependencies buildOS buildArch (compilerId comp)
+                             installed available' [localDependency] of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> do
             if dryRun miscOptions
               then printDryRun verbosity pkgs >> return []
               else installPackages verbosity scriptOptions miscOptions configFlags pkgs
-      if dryRun miscOptions
-        then return []
-        --TODO: don't run if buildResult failed
-        else do buildResult <- installUnpackedPkg verbosity scriptOptions miscOptions desc configFlags Nothing
-                return ((packageId desc, buildResult) : buildResults)
 
 mkSetupScriptOptions :: PackageDB
                      -> Compiler
@@ -265,9 +275,20 @@ installPkg :: Verbosity
            -> SetupScriptOptions
            -> InstallMisc
            -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
-           -> AvailablePackage
+           -> AvailablePackage  -- TODO: change to ConfiguredPackage
            -> FlagAssignment
            -> IO BuildResult
+installPkg verbosity scriptOptions miscOptions configFlags
+           pkg@(AvailablePackage{
+                  packageSource = LocalUnpackedPackage
+                }) flags = do
+  let configFlags' = configFlags {
+          Cabal.configConfigurationsFlags =
+          Cabal.configConfigurationsFlags configFlags ++ flags
+        }
+  installUnpackedPkg verbosity scriptOptions miscOptions
+                     (Available.packageDescription pkg) configFlags' Nothing
+
 installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
   pkgPath <- fetchPackage verbosity pkg
   tmp <- getTemporaryDirectory
@@ -293,6 +314,7 @@ installUnpackedPkg :: Verbosity
                    -> SetupScriptOptions
                    -> InstallMisc
                    -> GenericPackageDescription
+               --  -> TODO: add flag assignment, or use ConfiguredPackage
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> IO BuildResult
