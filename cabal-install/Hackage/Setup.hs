@@ -43,7 +43,14 @@ import qualified Distribution.Simple.Setup as Cabal
                                          testCommand-})
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
+import Distribution.Version
+         ( Version )
+import Distribution.Text
+         ( Text(parse), display )
+import Distribution.ReadE
+         ( readP_to_E )
 import Distribution.Verbosity (Verbosity, normal)
+
 import Hackage.Types (UnresolvedDependency(..), Username, Password)
 import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
@@ -183,20 +190,21 @@ instance Monoid ListFlags where
 -- * Install flags
 -- ------------------------------------------------------------
 
--- Install takes exactly the same flags as configure, but with the addition
--- of doing --dry-run.
-
+-- | Install takes the same flags as configure along with a few extras.
+--
 data InstallFlags = InstallFlags {
-    installDryRun :: Flag Bool
-    ,installOnly :: Flag Bool
-    ,installRootCmd :: Flag String
+    installDryRun       :: Flag Bool,
+    installOnly         :: Flag Bool,
+    installRootCmd      :: Flag String,
+    installCabalVersion :: Flag Version
   }
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
-    installDryRun = Flag False
-    ,installOnly = Flag False
-    ,installRootCmd = mempty
+    installDryRun       = Flag False,
+    installOnly         = Flag False,
+    installRootCmd      = mempty,
+    installCabalVersion = mempty
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -208,11 +216,13 @@ installCommand = configureCommand {
     commandOptions      = \showOrParseArgs ->
          liftOptionsFst (commandOptions configureCommand showOrParseArgs)
       ++ liftOptionsSnd 
-             (optionDryRun : optionRootCmd :
-              case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
+             (optionDryRun
+             :optionRootCmd
+             :optionCabalVersion
+             :case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
                 ParseArgs -> [optionOnly]  -- reconfiguring/building with dep. analysis
                 _         -> [])           -- It's used by --root-cmd.
-                                          
+
   }
 
 optionDryRun :: OptionField InstallFlags
@@ -236,12 +246,23 @@ optionRootCmd =
     installRootCmd (\v flags -> flags { installRootCmd = v })
     (reqArg' "COMMAND" toFlag flagToList)
 
+optionCabalVersion :: OptionField InstallFlags
+optionCabalVersion =
+  option [] ["cabal-lib-version"]
+    ("Select which version of the Cabal lib to use to build packages "
+    ++ "(useful for testing).")
+    installCabalVersion (\v flags -> flags { installCabalVersion = v })
+    (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
+                                  (fmap toFlag parse))
+                      (map display . flagToList))
+
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
   mappend a b = InstallFlags {
-    installDryRun = combine installDryRun
-    ,installOnly = combine installOnly
-    ,installRootCmd = combine installRootCmd
+    installDryRun       = combine installDryRun,
+    installOnly         = combine installOnly,
+    installRootCmd      = combine installRootCmd,
+    installCabalVersion = combine installCabalVersion
   }
     where combine field = field a `mappend` field b
 
