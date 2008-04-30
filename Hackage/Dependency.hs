@@ -23,7 +23,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.DepGraph as DepGraph
 import Hackage.Types
-         ( UnresolvedDependency(..), PkgInfo(..) )
+         ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
 import Distribution.PackageDescription 
          ( PackageDescription(buildDepends), GenericPackageDescription
@@ -45,7 +45,7 @@ resolveDependencies :: OS
                     -> Arch
                     -> CompilerId
                     -> Maybe (PackageIndex InstalledPackageInfo)
-                    -> PackageIndex PkgInfo
+                    -> PackageIndex AvailablePackage
                     -> [UnresolvedDependency]
                     -> Either [Dependency] DepGraph.DepGraph
 resolveDependencies os arch comp (Just installed) available deps =
@@ -57,7 +57,7 @@ resolveDependencies _ _ _ Nothing available deps =
 
 -- | We're using a compiler where we cannot track installed packages so just
 -- pretend everything is installed and hope for the best. Yay!
-resolveDependenciesBogusly :: PackageIndex PkgInfo
+resolveDependenciesBogusly :: PackageIndex AvailablePackage
                            -> [UnresolvedDependency]
                            -> [ResolvedDependency]
 resolveDependenciesBogusly available = map resolveFromAvailable
@@ -72,7 +72,7 @@ resolveDependenciesLocal :: OS
                          -> Arch
                          -> CompilerId
                          -> Maybe (PackageIndex InstalledPackageInfo)
-                         -> PackageIndex PkgInfo
+                         -> PackageIndex AvailablePackage
                          -> GenericPackageDescription
                          -> FlagAssignment
                          -> Either [Dependency] DepGraph.DepGraph
@@ -88,7 +88,7 @@ resolveDependency :: OS
                   -> Arch
                   -> CompilerId
                   -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
-                  -> PackageIndex PkgInfo -- ^ Installable packages
+                  -> PackageIndex AvailablePackage -- ^ Installable packages
                   -> Dependency
                   -> FlagAssignment
                   -> ResolvedDependency
@@ -98,7 +98,7 @@ resolveDependency os arch comp installed available dep flags
     resolveFromInstalled = fmap (InstalledDependency dep) $ latestInstalledSatisfying installed dep
     resolveFromAvailable = 
         do pkg <- latestAvailableSatisfying available dep
-           let deps = getDependencies os arch comp installed available (pkgDesc pkg) flags
+           let deps = getDependencies os arch comp installed available (packageDescription pkg) flags
                resolved = map (\d -> resolveDependency os arch comp installed available d []) deps
            return $ AvailableDependency dep pkg flags resolved
 
@@ -110,7 +110,9 @@ latestInstalledSatisfying  index dep =
     pkgs -> Just (maximumBy (comparing pkgVersion) (map package pkgs))
 
 -- | Gets the latest available package satisfying a dependency.
-latestAvailableSatisfying :: PackageIndex PkgInfo -> Dependency -> Maybe PkgInfo
+latestAvailableSatisfying :: PackageIndex AvailablePackage
+                          -> Dependency
+                          -> Maybe AvailablePackage
 latestAvailableSatisfying index dep =
   case PackageIndex.lookupDependency index dep of
     []   -> Nothing
@@ -121,7 +123,7 @@ getDependencies :: OS
                 -> Arch
                 -> CompilerId
                 -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
-                -> PackageIndex PkgInfo -- ^ Available packages
+                -> PackageIndex AvailablePackage -- ^ Available packages
                 -> GenericPackageDescription
                 -> FlagAssignment
                 -> [Dependency] 
@@ -169,7 +171,7 @@ packagesToInstall deps0 = case unzipEithers (map getDeps deps0) of
 -- TODO: kill this data type
 data ResolvedDependency
        = InstalledDependency Dependency PackageIdentifier
-       | AvailableDependency Dependency PkgInfo FlagAssignment [ResolvedDependency]
+       | AvailableDependency Dependency AvailablePackage FlagAssignment [ResolvedDependency]
        | UnavailableDependency Dependency
        deriving (Show)
 
@@ -177,22 +179,22 @@ data ResolvedDependency
 -- out which packages can be upgraded.
 
 getUpgradableDeps :: PackageIndex InstalledPackageInfo
-                  -> PackageIndex PkgInfo
-                  -> [PkgInfo]
+                  -> PackageIndex AvailablePackage
+                  -> [AvailablePackage]
 getUpgradableDeps installed available =
   let latestInstalled = getLatestPackageVersions installed
       mNeedingUpgrade = map (flip newerAvailable available) latestInstalled
    in catMaybes mNeedingUpgrade
 
   where newerAvailable :: PackageIdentifier
-                       -> PackageIndex PkgInfo -- ^installable packages
-                       -> Maybe PkgInfo -- ^greatest available
+                       -> PackageIndex AvailablePackage -- ^installable packages
+                       -> Maybe AvailablePackage -- ^greatest available
         newerAvailable pkgToUpdate index
             = foldl (newerThan pkgToUpdate) Nothing (PackageIndex.allPackages index)
         newerThan :: PackageIdentifier 
-                  -> Maybe PkgInfo
-                  -> PkgInfo
-                  -> Maybe PkgInfo
+                  -> Maybe AvailablePackage
+                  -> AvailablePackage
+                  -> Maybe AvailablePackage
         newerThan pkgToUpdate mFound testPkg
             = case (pkgName pkgToUpdate == (pkgName $ packageId testPkg), mFound) of
                (False, _) -> mFound

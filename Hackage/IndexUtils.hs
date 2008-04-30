@@ -17,7 +17,9 @@ module Hackage.IndexUtils (
   ) where
 
 import Hackage.Tar
-import Hackage.Types (UnresolvedDependency(..), PkgInfo(..), Repo(..))
+import Hackage.Types
+         ( UnresolvedDependency(..), AvailablePackage(..)
+         , AvailablePackageSource(..), Repo(..) )
 
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(Dependency))
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -39,7 +41,7 @@ import System.IO.Error (isDoesNotExistError)
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
 --
-readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex PkgInfo)
+readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex AvailablePackage)
 readRepoIndex verbosity repo =
   let indexFile = repoCacheDir repo </> "00-index.tar"
    in fmap parseRepoIndex (BS.readFile indexFile)
@@ -52,9 +54,9 @@ readRepoIndex verbosity repo =
   where
     -- | Parse a repository index file from a 'ByteString'.
     --
-    -- All the 'PkgInfo's are marked as having come from the given 'Repo'.
+    -- All the 'AvailablePackage's are marked as having come from the given 'Repo'.
     --
-    parseRepoIndex :: ByteString -> PackageIndex PkgInfo
+    parseRepoIndex :: ByteString -> PackageIndex AvailablePackage
     parseRepoIndex s = PackageIndex.fromList $ do
       (hdr, content) <- readTarArchive s
       if takeExtension (tarFileName hdr) == ".cabal"
@@ -67,10 +69,10 @@ readRepoIndex verbosity repo =
                        _           -> error $ "Couldn't read cabal file "
                                            ++ show (tarFileName hdr)
                   in case simpleParse vers of
-                       Just ver -> return PkgInfo {
-                           pkgInfoId = PackageIdentifier pkgname ver,
-                           pkgRepo = repo,
-                           pkgDesc = descr
+                       Just ver -> return AvailablePackage {
+                           packageInfoId = PackageIdentifier pkgname ver,
+                           packageDescription = descr,
+                           packageSource = RepoTarballPackage repo
                          }
                        _ -> []
                _ -> []
@@ -79,7 +81,7 @@ readRepoIndex verbosity repo =
 -- | Disambiguate a set of packages using 'disambiguatePackage' and report any
 -- ambiguities to the user.
 --
-disambiguateDependencies :: PackageIndex PkgInfo
+disambiguateDependencies :: PackageIndex AvailablePackage
                          -> [UnresolvedDependency]
                          -> IO [UnresolvedDependency]
 disambiguateDependencies index deps = do
@@ -103,7 +105,7 @@ disambiguateDependencies index deps = do
 -- The only problem is if it matches multiple packages case-insensitively, in
 -- that case it is ambigious.
 --
-disambiguatePackageName :: PackageIndex PkgInfo
+disambiguatePackageName :: PackageIndex AvailablePackage
                         -> String
                         -> Either String [String]
 disambiguatePackageName index name =
