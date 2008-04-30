@@ -32,15 +32,18 @@ import Hackage.Tar (extractTarGzFile)
 import Hackage.Types
          ( UnresolvedDependency(..), PkgInfo(..), Repo )
 import Hackage.Utils (showDependencies)
+import Hackage.SetupWrapper
+         ( setupWrapper, SetupScriptOptions(..) )
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDB(..) )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Simple.Command (commandShowOptions)
-import Distribution.Simple.SetupWrapper (setupWrapper)
 import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.Setup
+         ( flagToMaybe )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package
@@ -48,12 +51,16 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription), FlagAssignment )
 import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.Utils as Utils (notice, info, debug, die)
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
+import Distribution.Version
+         ( Version, VersionRange(AnyVersion, ThisVersion) )
+import Distribution.Simple.Utils as Utils (notice, info, die)
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity, showForCabal)
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 data BuildResult = DependentFailed PackageIdentifier
@@ -62,6 +69,12 @@ data BuildResult = DependentFailed PackageIdentifier
                  | BuildFailed     Exception
                  | InstallFailed   Exception
                  | BuildOk
+
+data InstallMisc = InstallMisc {
+    dryRun     :: Bool,
+    rootCmd    :: Maybe FilePath,
+    libVersion :: Maybe Version
+  }
 
 -- |Installs the packages needed to satisfy a list of dependencies.
 install :: Verbosity
@@ -74,15 +87,11 @@ install :: Verbosity
         -> [UnresolvedDependency]
         -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps = do
-  let dryRun = Cabal.fromFlag (installDryRun installFlags)
-      -- ignore --root-cmd if --user.
-      rootCmd | Cabal.fromFlag (Cabal.configUserInstall configFlags) = Nothing
-              | otherwise = Cabal.flagToMaybe (installRootCmd installFlags)
   buildResults <- if null deps
     then installLocalPackage verbosity
-           packageDB repos comp conf configFlags dryRun rootCmd
+           packageDB repos comp conf miscOptions configFlags
     else installRepoPackages verbosity
-           packageDB repos comp conf configFlags dryRun rootCmd deps
+           packageDB repos comp conf miscOptions configFlags deps
   case filter (buildFailed . snd) buildResults of
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
@@ -103,6 +112,13 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
 
   where buildFailed BuildOk = False
         buildFailed _       = True
+        miscOptions = InstallMisc {
+          dryRun     = Cabal.fromFlag (installDryRun installFlags),
+          rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
+                         then Nothing      -- ignore --root-cmd if --user.
+                         else Cabal.flagToMaybe (installRootCmd installFlags),
+          libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
+        }
 
 -- | Install the unpacked package in the current directory, and all its dependencies.
 installLocalPackage :: Verbosity
@@ -110,15 +126,15 @@ installLocalPackage :: Verbosity
                     -> [Repo]
                     -> Compiler
                     -> ProgramConfiguration
+                    -> InstallMisc
                     -> Cabal.ConfigFlags
-                    -> Bool -- ^Dry run
-                    -> Maybe FilePath -- ^ RootCmd
                     -> IO [(PackageIdentifier, BuildResult)]
-installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootCmd =
+installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags =
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
       installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+      let scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
       --TODO: print the info again
       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
       -- info verbosity $ unlines (map ("  "++) (concat details))
@@ -127,28 +143,42 @@ installLocalPackage verbosity packageDB repos comp conf configFlags dryRun rootC
                              (Cabal.configConfigurationsFlags configFlags) of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right pkgs   -> do
-            if dryRun
+            if dryRun miscOptions
               then printDryRun verbosity pkgs >> return []
-              else installPackages verbosity configFlags rootCmd pkgs
-      if dryRun
+              else installPackages verbosity scriptOptions miscOptions configFlags pkgs
+      if dryRun miscOptions
         then return []
         --TODO: don't run if buildResult failed
-        else do buildResult <- installUnpackedPkg verbosity configFlags Nothing rootCmd
-                return ((packageId (packageDescription desc), buildResult) : buildResults)
+        else do buildResult <- installUnpackedPkg verbosity scriptOptions miscOptions desc configFlags Nothing
+                return ((packageId desc, buildResult) : buildResults)
+
+mkSetupScriptOptions :: PackageDB
+                     -> Compiler
+                     -> ProgramConfiguration
+                     -> InstallMisc
+                     -> Maybe (PackageIndex InstalledPackageInfo)
+                     -> SetupScriptOptions
+mkSetupScriptOptions packageDB comp conf miscOptions index =
+  SetupScriptOptions {
+    useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
+    useCompiler      = Just comp,
+    usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
+    useProgramConfig = conf
+  }
 
 installRepoPackages :: Verbosity
                     -> PackageDB
                     -> [Repo]
                     -> Compiler
                     -> ProgramConfiguration
+                    -> InstallMisc
                     -> Cabal.ConfigFlags
-                    -> Bool -- ^Dry run
-                    -> Maybe FilePath -- ^RootCmd
                     -> [UnresolvedDependency]
                     -> IO [(PackageIdentifier, BuildResult)]
-installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootCmd deps =
+installRepoPackages verbosity packageDB repos comp conf miscOptions configFlags deps =
     do installed <- getInstalledPackages verbosity comp packageDB conf
        available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+       let scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
        deps' <- IndexUtils.disambiguateDependencies available deps
        -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
        -- info verbosity $ unlines (map ("  "++) (concat details))
@@ -159,10 +189,10 @@ installRepoPackages verbosity packageDB repos comp conf configFlags dryRun rootC
            | DepGraph.empty pkgs -> notice verbosity
                      "All requested packages already installed. Nothing to do."
                      >> return []
-           | dryRun -> do
+           | dryRun miscOptions -> do
                 printDryRun verbosity pkgs
                 return []
-           | otherwise -> installPackages verbosity configFlags rootCmd pkgs
+           | otherwise -> installPackages verbosity scriptOptions miscOptions configFlags pkgs
 
 printDryRun :: Verbosity -> DepGraph.DepGraph -> IO ()
 printDryRun verbosity pkgs
@@ -179,11 +209,12 @@ printDryRun verbosity pkgs
                 in (pkgId : order (DepGraph.removeCompleted pkgId ps))
 
 installPackages :: Verbosity
+                -> SetupScriptOptions
+                -> InstallMisc
                 -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
-                -> Maybe FilePath    -- ^RootCmd
                 -> DepGraph.DepGraph
                 -> IO [(PackageIdentifier, BuildResult)]
-installPackages verbosity configFlags rootCmd = installPackagesErrs []
+installPackages verbosity scriptOptions miscOptions configFlags = installPackagesErrs []
   where
     installPackagesErrs :: [(PackageIdentifier, BuildResult)]
                         -> DepGraph.DepGraph
@@ -193,7 +224,7 @@ installPackages verbosity configFlags rootCmd = installPackagesErrs []
       | otherwise = case DepGraph.ready remaining of
       DepGraph.ResolvedPackage pkg flags _depids -> do--TODO build against exactly these deps
         let pkgid = packageId pkg
-        buildResult <- installPkg verbosity configFlags rootCmd pkg flags
+        buildResult <- installPkg verbosity scriptOptions miscOptions configFlags pkg flags
         case buildResult of
           BuildOk ->
             let remaining' = DepGraph.removeCompleted pkgid remaining
@@ -231,12 +262,13 @@ installPackages verbosity configFlags rootCmd = installPackagesErrs []
     * The installation finishes by deleting the unpacked tarball.
 -} 
 installPkg :: Verbosity
+           -> SetupScriptOptions
+           -> InstallMisc
            -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
-           -> Maybe FilePath    -- ^RootCmd
            -> PkgInfo
            -> FlagAssignment
            -> IO BuildResult
-installPkg verbosity configFlags rootCmd pkg flags = do
+installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
   pkgPath <- fetchPackage verbosity pkg
   tmp <- getTemporaryDirectory
   let pkgid = packageId pkg
@@ -254,39 +286,43 @@ installPkg verbosity configFlags rootCmd pkg flags = do
           Cabal.configConfigurationsFlags =
           Cabal.configConfigurationsFlags configFlags ++ flags
         }
-    installUnpackedPkg verbosity configFlags' (Just path) rootCmd
+    installUnpackedPkg verbosity scriptOptions miscOptions (pkgDesc pkg) configFlags' (Just path)
 
 installUnpackedPkg :: Verbosity
+                   -> SetupScriptOptions
+                   -> InstallMisc
+                   -> GenericPackageDescription
                    -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
-                   -> Maybe FilePath -- ^ Use this command to gain privileges while running install.
                    -> IO BuildResult
-installUnpackedPkg verbosity configFlags mpath rootCmd 
+installUnpackedPkg verbosity scriptOptions miscOptions pkg configFlags mpath
     = onFailure ConfigureFailed $ do
-        setup ("configure" : configureOptions)
+        setup configureCommand configFlags
         onFailure BuildFailed $ do
-          setup ["build"]
+          setup buildCommand Cabal.emptyBuildFlags
           onFailure InstallFailed $ do
-            case rootCmd of 
+            case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
-              Nothing    -> setup ["install"]
+              Nothing    -> setup Cabal.installCommand Cabal.emptyInstallFlags
             return BuildOk
   where
     configureCommand = Cabal.configureCommand defaultProgramConfiguration
-    configureOptions = commandShowOptions configureCommand configFlags
-    setup cmds
-        = do debug verbosity $
-               "setupWrapper in " ++ show mpath ++ " :\n " ++ show cmds
-             setupWrapper cmds mpath
-    reexec cmd = 
-        do bindir <- getBinDir
-           let self = bindir </> "cabal" <.> exeExtension
-           b <- doesFileExist self
-           if b then
-               inDir mpath $ 
-               rawSystemExit verbosity cmd [self,"install","--only"]
-             else 
-               die $ "Unable to find cabal executable at: " ++ self 
+    buildCommand     = Cabal.buildCommand     defaultProgramConfiguration
+    setup cmd flags  = inDir mpath $
+                         setupWrapper verbosity scriptOptions
+                           (Just $ packageDescription pkg) cmd flags []
+    reexec cmd = do
+      -- look for our on executable file and re-exec ourselves using
+      -- a helper program like sudo to elevate priviledges:
+      bindir <- getBinDir
+      let self = bindir </> "cabal" <.> exeExtension
+      weExist <- doesFileExist self
+      if weExist
+        then inDir mpath $
+               rawSystemExit verbosity cmd
+                 [self, "install", "--only"
+                 ,"--verbose=", showForCabal verbosity]
+        else die $ "Unable to find cabal executable at: " ++ self
                
 -- helper
 onFailure :: (Exception -> BuildResult) -> IO BuildResult -> IO BuildResult
