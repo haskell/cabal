@@ -19,12 +19,13 @@ import Distribution.Simple.Setup (Flag(..), fromFlag, fromFlagOrDefault,
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
-import Distribution.Simple.SetupWrapper (setupWrapper)
 import Distribution.Simple.Configure (configCompilerAux)
 import Distribution.Simple.Utils (cabalVersion, die, intercalate)
 import Distribution.Text
          ( display )
 
+import Hackage.SetupWrapper
+         ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  defaultConfigFile, loadConfig, configRepos,
                                  configPackageDB)
@@ -92,24 +93,24 @@ mainWorker args =
       ,uploadCommand          `commandAddAction` uploadAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
-      ,wrapperAction (Cabal.buildCommand     defaultProgramConfiguration)
-      ,wrapperAction Cabal.copyCommand
-      ,wrapperAction Cabal.haddockCommand
-      ,wrapperAction Cabal.cleanCommand
---      ,wrapperAction Cabal.sdistCommand
-      ,wrapperAction Cabal.hscolourCommand
-      ,wrapperAction Cabal.registerCommand
---      ,wrapperAction unregisterCommand
-      ,wrapperAction Cabal.testCommand
---      ,wrapperAction programaticaCommand
---      ,wrapperAction makefileCommand
+      ,wrapperAction (Cabal.buildCommand defaultProgramConfiguration) Cabal.buildVerbosity
+      ,wrapperAction Cabal.copyCommand     Cabal.copyVerbosity
+      ,wrapperAction Cabal.haddockCommand  Cabal.haddockVerbosity
+      ,wrapperAction Cabal.cleanCommand    Cabal.cleanVerbosity
+      ,wrapperAction Cabal.hscolourCommand Cabal.hscolourVerbosity
+      ,wrapperAction Cabal.registerCommand Cabal.regVerbosity
+      ,wrapperAction Cabal.testCommand     (const mempty)
       ]
 
-wrapperAction :: Monoid flags => CommandUI flags -> Command (IO ())
-wrapperAction command =
-  commandAddAction command $ \flags extraArgs ->
-  let args = commandName command : commandShowOptions command flags ++ extraArgs
-   in setupWrapper args Nothing
+wrapperAction :: Monoid flags
+              => CommandUI flags
+              -> (flags -> Flag Verbosity)
+              -> Command (IO ())
+wrapperAction command verbosityFlag =
+  commandAddAction command $ \flags extraArgs -> do
+    let verbosity = fromFlagOrDefault normal (verbosityFlag flags)
+    setupWrapper verbosity defaultSetupScriptOptions Nothing
+      command flags extraArgs
 
 configureAction :: Cabal.ConfigFlags -> [String] -> IO ()
 configureAction flags extraArgs = do
@@ -118,13 +119,20 @@ configureAction flags extraArgs = do
   config <- loadConfig verbosity configFile
   let flags' = savedConfigToConfigFlags (Cabal.configUserInstall flags) config
                `mappend` flags
-      args = commandName configureCommand
-           : commandShowOptions configureCommand flags' ++ extraArgs
-  setupWrapper args Nothing
+  (comp, conf) <- configCompilerAux flags'
+  let setupScriptOptions = defaultSetupScriptOptions {
+                             useCompiler      = Just comp,
+                             useProgramConfig = conf
+                           }
+  setupWrapper verbosity setupScriptOptions Nothing
+    configureCommand flags' extraArgs
 
 installAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
-installAction (_,iflags) _
-  | Cabal.fromFlag (installOnly iflags) = setupWrapper ["install"] Nothing
+installAction (cflags,iflags) _
+  | Cabal.fromFlag (installOnly iflags)
+  = let verbosity = fromFlagOrDefault normal (Cabal.configVerbosity cflags)
+    in setupWrapper verbosity defaultSetupScriptOptions Nothing
+         Cabal.installCommand mempty []
 
 installAction (cflags,iflags) extraArgs = do
   pkgs <- either die return (parsePackageArgs extraArgs)
