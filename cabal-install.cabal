@@ -12,11 +12,13 @@ Author:             Lemmih <lemmih@gmail.com>
                     Paolo Martini <paolo@nemail.it>
 		    Bjorn Bringert <bjorn@bringert.net>
 		    Isaac Potoczny-Jones <ijones@syntaxpolice.org>
+		    Duncan Coutts <duncan@haskell.org>
 Maintainer:         cabal-devel@haskell.org
 Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2006 Paolo Martini <paolo@nemail.it>
 		    2007 Bjorn Bringert <bjorn@bringert.net>
 		    2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
+		    2008 Duncan Coutts <duncan@haskell.org>
 Stability:          Experimental
 Category:           Distribution
 Build-type:         Simple
@@ -34,18 +36,20 @@ Executable cabal
     Ghc-Options:        -Wall
     Other-Modules:
         Hackage.Check
-        Hackage.Clean
+--        Hackage.Clean
         Hackage.Config
         Hackage.Dependency
         Hackage.DepGraph
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils
-        Hackage.Info
+--        Hackage.Info
         Hackage.Install
+--        Hackage.InstallPlan
         Hackage.List
         Hackage.ParseUtils
         Hackage.Setup
+        Hackage.SetupWrapper
         Hackage.SrcDist
         Hackage.Tar
         Hackage.Types
