@@ -342,11 +342,15 @@ commandListOptions command =
       ++ [ "--" ++  name  | name <- longNames ]
 
 -- | The help text for this command with descriptions of all the options.
-commandHelp :: CommandUI flags -> String
-commandHelp command =
-    GetOpt.usageInfo ""
+commandHelp :: CommandUI flags -> String -> String
+commandHelp command pname =
+    commandUsage command pname
+ ++ (GetOpt.usageInfo ""
   . addCommonFlags ShowArgs
-  $ commandGetOpts ShowArgs command
+  $ commandGetOpts ShowArgs command)
+ ++ case commandDescription command of
+      Nothing   -> ""
+      Just desc -> '\n': desc pname
 
 -- | Make a Command from standard 'GetOpt' options.
 makeCommand :: String                         -- ^ name
@@ -408,16 +412,11 @@ commandParseArgs command ordered args =
       | not (null [ () | Left ListOptionsFlag <- flags ])
                       -> CommandList (commandListOptions command)
       | not (null [ () | Left HelpFlag <- flags ])
-                      -> CommandHelp help
+                      -> CommandHelp (commandHelp command)
     (flags, opts, []) -> CommandReadyToGo (accumFlags flags , opts)
     (_,     _,  errs) -> CommandErrors errs
 
-  where help pname = commandUsage command pname
-                  ++ commandHelp command
-                  ++ case commandDescription command of
-                       Nothing   -> ""
-                       Just desc -> '\n': desc pname
-        -- Note: It is crucial to use reverse function composition here or to
+  where -- Note: It is crucial to use reverse function composition here or to
         -- reverse the flags here as we want to process the flags left to right
         -- but data flow in function compsition is right to left.
         accumFlags flags = foldr (flip (.)) id [ f | Right f <- flags ]
@@ -458,6 +457,7 @@ commandsRun globalCommand commands args =
     CommandList      opts          -> CommandList (opts ++ commandNames)
     CommandErrors    errs          -> CommandErrors errs
     CommandReadyToGo (mkflags, args') -> case args' of
+      ("help":cmdArgs) -> handleHelpCommand cmdArgs
       (name:cmdArgs) -> case lookupCommand name of
         [Command _ _ action] -> CommandReadyToGo (flags, action cmdArgs)
         _                    -> CommandReadyToGo (flags, badCommand name)
@@ -465,12 +465,13 @@ commandsRun globalCommand commands args =
       where flags = mkflags (commandDefaultFlags globalCommand)
 
   where
-    lookupCommand cname = [ cmd | cmd@(Command cname' _ _) <- commands
+    lookupCommand cname = [ cmd | cmd@(Command cname' _ _) <- commands'
                           , cname'==cname ]
     noCommand        = CommandErrors ["no command given (try --help)\n"]
     badCommand cname = CommandErrors ["unrecognised command: " ++ cname
                                    ++ " (try --help)\n"]
-    commandNames   = [ name | Command name _ _ <- commands ]
+    commands'      = commands ++ [commandAddAction helpCommandUI undefined]
+    commandNames   = [ name | Command name _ _ <- commands' ]
     globalCommand' = globalCommand {
       commandUsage = \pname ->
            "Usage: " ++ pname ++ " [GLOBAL FLAGS]\n"
@@ -479,13 +480,39 @@ commandsRun globalCommand commands args =
       commandDescription = Just $ \pname ->
            "Commands:\n"
         ++ unlines [ "  " ++ align name ++ "    " ++ description
-                   | Command name description _ <- commands ]
+                   | Command name description _ <- commands' ]
         ++ case commandDescription globalCommand of
              Nothing   -> ""
              Just desc -> '\n': desc pname
     }
-      where maxlen = maximum [ length name | Command name _ _ <- commands]
+      where maxlen = maximum [ length name | Command name _ _ <- commands' ]
             align str = str ++ replicate (maxlen - length str) ' '
+
+    -- A bit of a hack: support "prog help" as a synonym of "prog --help"
+    -- furthermore, support "prog help command" as "prog command --help"
+    handleHelpCommand cmdArgs =
+      case commandParseArgs helpCommandUI True cmdArgs of
+        CommandHelp      help    -> CommandHelp help
+        CommandList      list    -> CommandList (list ++ commandNames)
+        CommandErrors    _       -> CommandHelp globalHelp
+        CommandReadyToGo (_,[])  -> CommandHelp globalHelp
+        CommandReadyToGo (_,(name:cmdArgs')) ->
+          case lookupCommand name of
+            [Command _ _ action] ->
+              case action ("--help":cmdArgs') of
+                CommandHelp help -> CommandHelp help
+                CommandList _    -> CommandList []
+                _                -> CommandHelp globalHelp
+            _                    -> badCommand name
+
+      where globalHelp = commandHelp globalCommand'
+    helpCommandUI =
+      (makeCommand "help" "Help about commands" Nothing () (const [])) {
+        commandUsage = \pname ->
+             "Usage: " ++ pname ++ " help [FLAGS]\n"
+          ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n\n"
+          ++ "Flags for help:"
+      }
 
 -- | Utility function, many commands do not accept additional flags. This
 -- action fails with a helpful error message if the user supplies any extra.
