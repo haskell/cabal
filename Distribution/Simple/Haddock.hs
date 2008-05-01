@@ -104,12 +104,11 @@ import Distribution.Version
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
   |    not (hasLibs pkg_descr)
-    && not (fromFlag $ haddockExecutables haddockFlags)
-    && not (fromFlag $ haddockInternal haddockFlags) =
+    && not (fromFlag $ haddockExecutables haddockFlags) =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
         ++ "a library. Perhaps you want to use the haddock command with the "
-        ++ "--executables or --internal flag."
+        ++ "--executables."
 
 haddock pkg_descr lbi suffixes flags = do
     let doExes   = fromFlag (haddockExecutables flags)
