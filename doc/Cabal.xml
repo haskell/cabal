@@ -2825,6 +2825,15 @@ runhaskell Setup.hs build
           </listitem>
         </varlistentry>
 
+        <varlistentry id="setup-haddock-internal">
+          <term><option>--internal</option></term>
+          <listitem>
+            <para>Run &Haddock; for the all modules, including unexposed ones, and 
+            make &Haddock; generate documentation for unexported symbols
+            as well.</para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry id="setup-haddock-css">
 	  <term><option>--css</option>=<replaceable>path</replaceable></term>
 	  <listitem>
