@@ -186,7 +186,7 @@ boolOpt g s sfT sfF _sf _lf@(n:_) d get set =
 boolOpt _ _ _ _ _ _ _ _ _ = error "Distribution.Simple.Setup.boolOpt: unreachable"
 
 boolOpt' :: (b -> Maybe Bool) -> (Bool -> b) -> OptFlags -> OptFlags -> MkOptDescr (a -> b) (b -> a -> a) a
-boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g `fmap` get)
+boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g . get)
 
 -- | create a Choice option
 choiceOpt :: Eq b => [(b,OptFlags,Description)] -> MkOptDescr (a -> b) (b -> a -> a) a
