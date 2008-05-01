@@ -103,11 +103,13 @@ import Distribution.Version
 
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
-  | not (hasLibs pkg_descr) && not (fromFlag $ haddockExecutables haddockFlags) =
+  |    not (hasLibs pkg_descr)
+    && not (fromFlag $ haddockExecutables haddockFlags)
+    && not (fromFlag $ haddockInternal haddockFlags) =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
         ++ "a library. Perhaps you want to use the haddock command with the "
-        ++ "--executables flag."
+        ++ "--executables or --internal flag."
 
 haddock pkg_descr lbi suffixes flags = do
     let doExes   = fromFlag (haddockExecutables flags)
@@ -193,6 +195,8 @@ haddock pkg_descr lbi suffixes flags = do
                    | otherwise                       = PD.description pkg_descr
             subtitle | null (synopsis pkg_descr) = ""
                      | otherwise                 = ": " ++ synopsis pkg_descr
+            titleComment | fromFlag (haddockInternal flags) = " (internal documentation)"
+                         | otherwise                        = ""
         withTempFile distPref template $ \prologFileName prologFileHandle -> do
           hPutStrLn prologFileHandle prolog
           hClose prologFileHandle
@@ -201,10 +205,14 @@ haddock pkg_descr lbi suffixes flags = do
                 | otherwise  = replaceLitExts inFiles
           let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
           -- FIX: replace w/ rawSystemProgramConf?
+          let hideArgs | fromFlag (haddockInternal flags) = []
+                       | otherwise                        = map ("--hide=" ++) (otherModules bi)
+          let exportsFlags | fromFlag (haddockInternal flags) = ["--ignore-all-exports"]
+                           | otherwise                        = []
           rawSystemProgram verbosity confHaddock
                   ([ outputFlag
                    , "--odir=" ++ haddockPref pkg_descr
-                   , "--title=" ++ showPkg ++ subtitle
+                   , "--title=" ++ showPkg ++ subtitle ++ titleComment
                    , "--dump-interface=" ++ haddockFile
                    , "--prologue=" ++ prologFileName ]
                    ++ packageName
@@ -213,7 +221,8 @@ haddock pkg_descr lbi suffixes flags = do
                    ++ packageFlags
                    ++ programArgs confHaddock
                    ++ verboseFlags
-                   ++ map ("--hide=" ++) (otherModules bi)
+                   ++ hideArgs
+                   ++ exportsFlags
                    ++ haddock2options bi (buildDir lbi)
                    ++ targets
                   )
