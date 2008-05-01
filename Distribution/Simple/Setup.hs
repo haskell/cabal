@@ -892,6 +892,7 @@ data HaddockFlags = HaddockFlags {
     haddockHoogle       :: Flag Bool,
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
+    haddockInternal     :: Flag Bool,
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
@@ -905,6 +906,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHoogle       = Flag False,
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
+    haddockInternal     = Flag False,
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
     haddockHscolourCss  = NoFlag,
@@ -936,6 +938,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          haddockExecutables (\v flags -> flags { haddockExecutables = v })
          trueArg
 
+      ,option "" ["internal"]
+         "Run haddock for internal modules and include all symbols"
+         haddockInternal (\v flags -> flags { haddockInternal = v })
+         trueArg
+
       ,option "" ["css"]
          "Use PATH as the haddock stylesheet"
          haddockCss (\v flags -> flags { haddockCss = v })
@@ -960,6 +967,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = mempty,
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
+    haddockInternal     = mempty,
     haddockCss          = mempty,
     haddockHscolour     = mempty,
     haddockHscolourCss  = mempty,
@@ -970,6 +978,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = combine haddockHoogle,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
+    haddockInternal     = combine haddockInternal,
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,
