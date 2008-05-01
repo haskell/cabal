@@ -51,7 +51,8 @@ import Distribution.ReadE
          ( readP_to_E )
 import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Types (UnresolvedDependency(..), Username, Password)
+import Hackage.Types
+         ( UnresolvedDependency(..), Username(..), Password(..) )
 import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
 import Data.Monoid (Monoid(..))
@@ -275,7 +276,7 @@ data UploadFlags = UploadFlags {
     uploadUsername  :: Flag Username,
     uploadPassword  :: Flag Password,
     uploadVerbosity :: Flag Verbosity
-  } deriving (Show)
+  }
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
@@ -307,12 +308,14 @@ uploadCommand = CommandUI {
       ,option ['u'] ["username"]
         "Hackage username."
         uploadUsername (\v flags -> flags { uploadUsername = v })
-        (reqArg' "USERNAME" toFlag flagToList)
+        (reqArg' "USERNAME" (toFlag . Username)
+                            (flagToList . fmap unUsername))
 
       ,option ['p'] ["password"]
         "Hackage password."
         uploadPassword (\v flags -> flags { uploadPassword = v })
-        (reqArg' "PASSWORD" toFlag flagToList)
+        (reqArg' "PASSWORD" (toFlag . Password)
+                            (flagToList . fmap unPassword))
       ]
   }
 

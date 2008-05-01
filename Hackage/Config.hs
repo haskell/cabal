@@ -46,7 +46,8 @@ import qualified Distribution.Simple.Setup as ConfigFlags
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Types (RemoteRepo(..), Repo(..), Username, Password)
+import Hackage.Types
+         ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
 import Hackage.ParseUtils
 import Hackage.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
@@ -73,7 +74,6 @@ data SavedConfig = SavedConfig {
     configGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
     configFlags             :: ConfigFlags
   }
-  deriving (Show)
 
 configUserInstall     :: SavedConfig -> Flag Bool
 configUserInstall     =  ConfigFlags.configUserInstall . configFlags
@@ -200,12 +200,12 @@ configCabalInstallFieldDescrs =
                 (fmap emptyToNothing parseFilePathQ)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , simpleField "hackage-username"
-                (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing parseTokenQ)
+                (text . show . fromFlagOrDefault "" . fmap unUsername)
+                (fmap (fmap Username . emptyToNothing) parseTokenQ)
                 configUploadUsername    (\d cfg -> cfg { configUploadUsername = d })
     , simpleField "hackage-password"
-                (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing parseTokenQ)
+                (text . show . fromFlagOrDefault "" . fmap unPassword)
+                (fmap (fmap Password . emptyToNothing) parseTokenQ)
                 configUploadPassword    (\d cfg -> cfg { configUploadPassword = d })
     ]
     where emptyToNothing "" = mempty
