@@ -182,7 +182,7 @@ noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
 
 boolOpt :: (b -> Maybe Bool) -> (Bool -> b) -> SFlags -> SFlags -> MkOptDescr (a -> b) (b -> a -> a) a
 boolOpt g s sfT sfF _sf _lf@(n:_) d get set =
-    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g `fmap` get)
+    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g.get)
 boolOpt _ _ _ _ _ _ _ _ _ = error "Distribution.Simple.Setup.boolOpt: unreachable"
 
 boolOpt' :: (b -> Maybe Bool) -> (Bool -> b) -> OptFlags -> OptFlags -> MkOptDescr (a -> b) (b -> a -> a) a
