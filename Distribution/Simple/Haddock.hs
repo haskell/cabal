@@ -240,6 +240,8 @@ haddock pkg_descr lbi suffixes flags = do
         let template = showPkg ++ "-haddock-prolog.txt"
             prolog | null (PD.description pkg_descr) = synopsis pkg_descr
                    | otherwise                    = PD.description pkg_descr
+            titleComment | fromFlag (haddockInternal flags) = " (internal documentation)"
+                         | otherwise                        = ""
         withTempFile distPref template $ \prologFileName prologFileHandle -> do
           hPutStrLn prologFileHandle prolog
           hClose prologFileHandle
@@ -247,15 +249,18 @@ haddock pkg_descr lbi suffixes flags = do
                 | isVersion2 = srcMainPath : otherModules bi
                 | otherwise = replaceLitExts inFiles
           let preprocessDir = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
+          let exportsFlags | fromFlag (haddockInternal flags) = ["--ignore-all-exports"]
+                           | otherwise                        = []
           rawSystemProgram verbosity confHaddock
                   ([ outputFlag
                    , "--odir=" ++ exeTargetDir
-                   , "--title=" ++ exeName exe
+                   , "--title=" ++ exeName exe ++ titleComment
                    , "--prologue=" ++ prologFileName ]
                    ++ linkToHscolour
                    ++ packageFlags
                    ++ programArgs confHaddock
                    ++ verboseFlags
+                   ++ exportsFlags
                    ++ haddock2options bi preprocessDir
                    ++ targets
                   )
