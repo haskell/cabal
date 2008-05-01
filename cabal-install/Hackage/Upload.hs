@@ -3,7 +3,7 @@
 
 module Hackage.Upload (check, upload) where
 
-import Hackage.Types (Username, Password)
+import Hackage.Types (Username(..), Password(..))
 import Hackage.HttpUtils (proxy)
 
 import Distribution.Simple.Utils (debug, notice, warn)
@@ -18,7 +18,9 @@ import Network.URI (URI, parseURI)
 
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
-import System.IO        (hFlush, stdout, openBinaryFile, IOMode(ReadMode), hGetContents)
+import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
+                        ,openBinaryFile, IOMode(ReadMode), hGetContents)
+import Control.Exception (bracket)
 import System.Random    (randomRIO)
 
 
@@ -35,8 +37,8 @@ Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/che
 upload :: Verbosity -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
 upload verbosity mUsername mPassword paths = do
 
-          username <- maybe (prompt "username") return mUsername
-          password <- maybe (prompt "password") return mPassword
+          Username username <- maybe promptUsername return mUsername
+          Password password <- maybe promptPassword return mPassword
           let auth = addAuthority AuthBasic {
                        auRealm    = "Hackage",
                        auUsername = username,
@@ -48,10 +50,21 @@ upload verbosity mUsername mPassword paths = do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
 
-  where prompt thing = do
-          putStr ("Hackage " ++ thing ++ ": ")
-          hFlush stdout
-          getLine
+  where
+    promptUsername :: IO Username
+    promptUsername = do
+      putStr "Hackage username: "
+      hFlush stdout
+      fmap Username getLine
+
+    promptPassword :: IO Password
+    promptPassword = do
+      putStr "Hackage password: "
+      hFlush stdout
+      -- save/restore the terminal echoing status
+      bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
+        hSetEcho stdin False  -- no echoing for entering the password
+        fmap Password getLine
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do

@@ -17,8 +17,8 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
 
-type Username = String
-type Password = String
+newtype Username = Username { unUsername :: String }
+newtype Password = Password { unPassword :: String }
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
