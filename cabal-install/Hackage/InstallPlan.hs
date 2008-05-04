@@ -261,7 +261,7 @@ completed :: PackageIdentifier
           -> InstallPlan buildResult -> InstallPlan buildResult
 completed pkgid plan =
   case PackageIndex.lookupPackageId index pkgid of
-    Just (Configured cp) -> plan { planIndex = PackageIndex.insert index (Installed cp) }
+    Just (Configured cp) -> plan { planIndex = PackageIndex.insert (Installed cp) index }
     _ -> error "InstallPlan.completed: internal error; cannot mark package as completed"
   where index = planIndex plan
 
