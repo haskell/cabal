@@ -146,8 +146,8 @@ mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
 -- This is equivalent to (but slightly quicker than) using 'mappend' or
 -- 'merge' with a singleton index.
 --
-insert :: Package pkg => PackageIndex pkg -> pkg -> PackageIndex pkg
-insert (PackageIndex index) pkg = PackageIndex $
+insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
+insert pkg (PackageIndex index) = PackageIndex $
   let key = (lowercase . packageName) pkg
    in Map.insertWith (flip mergeBuckets) key [pkg] index
 
