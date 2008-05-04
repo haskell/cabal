@@ -42,6 +42,8 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
 
+import Hackage.Utils (mergeBy, MergeResult(..))
+
 -- |Show information about packages
 list :: Verbosity
      -> PackageDB
@@ -165,28 +167,16 @@ mergePackageInfo installed available =
 mergePackages ::   [InstalledPackageInfo] -> [AvailablePackage]
               -> [([InstalledPackageInfo],   [AvailablePackage])]
 mergePackages installed available =
-    map (\(is, as) -> (maybe [] snd is
-                    ,maybe [] snd as))
+    map collect
   $ mergeBy (\i a -> fst i `compare` fst a)
             (groupOn (pkgName . packageId) installed)
             (groupOn (pkgName . packageId) available)
+  where
+    collect (OnlyInLeft  (_,is)       ) = (is, [])
+    collect (    InBoth  (_,is) (_,as)) = (is, as)
+    collect (OnlyInRight        (_,as)) = ([], as)
 
 groupOn :: Ord key => (a -> key) -> [a] -> [(key,[a])]
 groupOn key = map (\xs -> (key (head xs), xs))
             . groupBy (equating key)
             . sortBy (comparing key)
-
--- | Generic merging utility. For sorted input lists this is a full outer join.
---
--- * The result list never contains @(Nothing, Nothing)@.
---
-mergeBy :: (a -> b -> Ordering) -> [a] -> [b] -> [(Maybe a, Maybe b)]
-mergeBy cmp = merge
-  where
-    merge []     ys     = [ (Nothing, Just y) | y <- ys]
-    merge xs     []     = [ (Just x, Nothing) | x <- xs]
-    merge (x:xs) (y:ys) =
-      case x `cmp` y of
-        GT -> (Nothing, Just y) : merge (x:xs) ys
-        EQ -> (Just x,  Just y) : merge xs     ys
-        LT -> (Just x, Nothing) : merge xs  (y:ys)
