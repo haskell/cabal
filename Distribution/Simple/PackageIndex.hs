@@ -42,12 +42,14 @@ module Distribution.Simple.PackageIndex (
   brokenPackages,
   dependencyClosure,
   dependencyInconsistencies,
+  dependencyCycles,
   ) where
 
 import Prelude hiding (lookup)
 import Control.Exception (assert)
 import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.Graph as Graph
 import Data.List (nubBy, group, sort, groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing)
@@ -298,3 +300,19 @@ dependencyInconsistencies index =
                                      else concat groups)
                      . groupBy (equating snd)
                      . sortBy (comparing snd)
+
+-- | Find if there are any cycles in the dependency graph. If there are no
+-- cycles the result is @[]@.
+--
+-- This actually computes the strongly connected components. So it gives us a
+-- list of groups of packages where within each group they all depend on each
+-- other, directly or indirectly.
+--
+dependencyCycles :: PackageFixedDeps pkg
+                 => PackageIndex pkg
+                 -> [[pkg]]
+dependencyCycles index =
+  [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
+  where
+    adjacencyList = [ (pkg, packageId pkg, depends pkg)
+                    | pkg <- allPackages index ]
