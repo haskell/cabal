@@ -139,7 +139,7 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       let -- The trick is, we add the local package to the available index and
           -- then ask to resolve a dependency on exactly that package. So the
           -- resolver ends up having to pick the local package.
-          available' = PackageIndex.insert available localPackage
+          available' = PackageIndex.insert localPackage available
           localPackage = AvailablePackage {
               packageInfoId                = packageId desc,
               Available.packageDescription = desc,
