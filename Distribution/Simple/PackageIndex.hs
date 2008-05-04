@@ -281,9 +281,8 @@ dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
 --
 dependencyInconsistencies :: PackageFixedDeps pkg
                           => PackageIndex pkg
-                          -> pkg
                           -> [(String, [(PackageIdentifier, Version)])]
-dependencyInconsistencies index topPkg =
+dependencyInconsistencies index =
   [ (name, inconsistencies)
   | (name, uses) <- Map.toList inverseIndex
   , let inconsistencies = duplicatesBy uses
@@ -291,7 +290,7 @@ dependencyInconsistencies index topPkg =
 
   where inverseIndex = Map.fromListWith (++)
           [ (packageName dep, [(packageId pkg, packageVersion dep)])
-          | pkg <- topPkg : allPackages index
+          | pkg <- allPackages index
           , dep <- depends pkg ]
 
         duplicatesBy = (\groups -> if length groups == 1

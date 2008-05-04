@@ -356,7 +356,9 @@ configure (pkg_descr0, pbi) cfg
                 InstalledPackageInfo.package = packageId pkg_descr,
                 InstalledPackageInfo.depends = dep_pkgs
               }
-        case PackageIndex.dependencyInconsistencies packageDependsIndex pseudoTopPkg of
+        case PackageIndex.dependencyInconsistencies
+           . PackageIndex.insert pseudoTopPkg
+           $ packageDependsIndex of
           [] -> return ()
           inconsistencies ->
             warn verbosity $
