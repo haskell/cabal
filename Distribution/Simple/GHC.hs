@@ -98,7 +98,10 @@ import System.Directory		( removeFile, renameFile,
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
-import Control.Exception (handle, try)
+import Control.Exception as Exception
+         ( Exception(ExitException), catch, handle, try, throwIO )
+import System.Exit
+         ( ExitCode(..) )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -280,6 +283,13 @@ getInstalledPackages' verbosity packagedbs conf
   sequence
     [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
                   ["describe", "*", packageDbGhcPkgFlag packagedb]
+           `Exception.catch` \exception -> case exception of
+             ExitException (ExitFailure 1) -> die $
+                  "ghc-pkg describe * failed. If you are using ghc-6.9 "
+               ++ "and have an empty user package database then this "
+               ++ "is probably due to ghc bug #2201. The workaround is to "
+               ++ "register at least one package in the user package db."
+             _ -> throwIO exception
          case parsePackages str of
 	   Left ok -> return (packagedb, ok)
 	   _       -> die "failed to parse output of 'ghc-pkg describe *'"
