@@ -26,7 +26,8 @@ import Hackage.Dependency (resolveDependencies)
 import Hackage.Fetch (fetchPackage)
 -- import qualified Hackage.Info as Info
 import qualified Hackage.IndexUtils as IndexUtils
-import qualified Hackage.DepGraph as DepGraph
+import qualified Hackage.InstallPlan as InstallPlan
+import Hackage.InstallPlan (InstallPlan)
 import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types as Available
@@ -157,10 +158,11 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       case resolveDependencies buildOS buildArch (compilerId comp)
                              installed available' [localDependency] of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-        Right pkgs   -> do
+        Right installPlan -> do
             if dryRun miscOptions
-              then printDryRun verbosity pkgs >> return []
-              else installPackages verbosity scriptOptions miscOptions configFlags pkgs
+              then printDryRun verbosity installPlan >> return []
+              else executeInstallPlan verbosity scriptOptions miscOptions
+                                      configFlags installPlan >> return []
 
 mkSetupScriptOptions :: PackageDB
                      -> Compiler
@@ -195,61 +197,51 @@ installRepoPackages verbosity packageDB repos comp conf miscOptions configFlags 
        case resolveDependencies buildOS buildArch (compilerId comp)
               installed available deps' of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-         Right pkgs
-           | DepGraph.empty pkgs -> notice verbosity
+         Right installPlan
+           | InstallPlan.done installPlan -> notice verbosity
                      "All requested packages already installed. Nothing to do."
                      >> return []
-           | dryRun miscOptions -> do
-                printDryRun verbosity pkgs
-                return []
-           | otherwise -> installPackages verbosity scriptOptions miscOptions configFlags pkgs
+           | dryRun miscOptions -> printDryRun verbosity installPlan >> return []
+           | otherwise -> executeInstallPlan verbosity scriptOptions miscOptions
+                                             configFlags installPlan >> return []
 
-printDryRun :: Verbosity -> DepGraph.DepGraph -> IO ()
+printDryRun :: Verbosity -> InstallPlan BuildResult -> IO ()
 printDryRun verbosity pkgs
-  | DepGraph.empty pkgs = notice verbosity "No packages to be installed."
+  | InstallPlan.done pkgs = notice verbosity "No packages to be installed."
   | otherwise = do
         notice verbosity $ "In order, the following would be installed:\n"
           ++ unlines (map display (order pkgs))
         where
         order ps
-            | DepGraph.empty ps = []
+            | InstallPlan.done ps = []
             | otherwise =
-                let (DepGraph.ResolvedPackage pkgInfo _ _) = DepGraph.ready ps
+                let (InstallPlan.ConfiguredPackage pkgInfo _ _) = InstallPlan.next ps
                     pkgId = packageId pkgInfo
-                in (pkgId : order (DepGraph.removeCompleted pkgId ps))
+                in (pkgId : order (InstallPlan.completed pkgId ps))
 
-installPackages :: Verbosity
-                -> SetupScriptOptions
-                -> InstallMisc
-                -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
-                -> DepGraph.DepGraph
-                -> IO [(PackageIdentifier, BuildResult)]
-installPackages verbosity scriptOptions miscOptions configFlags = installPackagesErrs []
+executeInstallPlan :: Verbosity
+                   -> SetupScriptOptions
+                   -> InstallMisc
+                   -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
+                   -> InstallPlan BuildResult
+                   -> IO (InstallPlan BuildResult)
+executeInstallPlan verbosity scriptOptions miscOptions configFlags = execute
   where
-    installPackagesErrs :: [(PackageIdentifier, BuildResult)]
-                        -> DepGraph.DepGraph
-                        -> IO [(PackageIdentifier, BuildResult)]
-    installPackagesErrs done remaining
-      | DepGraph.empty remaining = return (reverse done)
-      | otherwise = case DepGraph.ready remaining of
-      DepGraph.ResolvedPackage pkg flags _depids -> do--TODO build against exactly these deps
+    execute :: InstallPlan BuildResult -> IO (InstallPlan BuildResult)
+    execute plan
+      | InstallPlan.done plan = return plan
+      | otherwise = case InstallPlan.next plan of
+      InstallPlan.ConfiguredPackage pkg flags _depids -> do--TODO build against exactly these deps
         let pkgid = packageId pkg
         buildResult <- installPkg verbosity scriptOptions miscOptions configFlags pkg flags
         case buildResult of
-          BuildOk ->
-            let remaining' = DepGraph.removeCompleted pkgid remaining
-             in installPackagesErrs ((pkgid, buildResult):done) remaining'
-          _ ->
-            let (remaining', _:failed) = DepGraph.removeFailed pkgid remaining
-                -- So this first pkgid failed for whatever reason (buildResult)
-                -- all the other packages that depended on this pkgid which we
-                -- now cannot build (failed :: [ResolvedPackage]) we mark as
-                -- failing due to DependentFailed which kind of means it was
-                -- not their fault.
-                done' = (pkgid, buildResult)
-                      : [ (packageId pkg', DependentFailed pkgid)
-                        | pkg' <- failed ]
-             in installPackagesErrs (done'++done) remaining'
+          BuildOk -> execute $ InstallPlan.completed pkgid plan
+          _       -> execute $ InstallPlan.failed pkgid buildResult depResult plan
+            where depResult = DependentFailed pkgid
+            -- So this first pkgid failed for whatever reason (buildResult) all
+            -- the other packages that depended on this pkgid which we now
+            -- cannot build we mark as failing due to DependentFailed which
+            -- kind of means it was not their fault.
 
 {-|
   Download, build and install a given package with some given flags.

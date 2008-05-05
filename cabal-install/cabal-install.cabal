@@ -39,7 +39,6 @@ Executable cabal
 --        Hackage.Clean
         Hackage.Config
         Hackage.Dependency
-        Hackage.DepGraph
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils

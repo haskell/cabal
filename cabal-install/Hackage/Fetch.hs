@@ -28,7 +28,7 @@ import Hackage.Types
          , AvailablePackageSource(..), Repo(..), repoURL )
 import Hackage.Dependency (resolveDependencies)
 import qualified Hackage.IndexUtils as IndexUtils
-import qualified Hackage.DepGraph as DepGraph
+import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
@@ -136,9 +136,12 @@ fetch verbosity packageDB repos comp conf deps
          case resolveDependencies buildOS buildArch
                 (compilerId comp) installed available deps' of
            Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-           Right pkgs   -> do ps <- filterM (fmap not . isFetched)
-                                      [ pkg | (DepGraph.ResolvedPackage pkg _ _) <- DepGraph.toList pkgs ]
-                              mapM_ (fetchPackage verbosity) ps
+           Right pkgs   -> do
+             ps <- filterM (fmap not . isFetched)
+                     [ pkg | (InstallPlan.Configured
+                               (InstallPlan.ConfiguredPackage pkg _ _))
+                                 <- InstallPlan.toList pkgs ]
+             mapM_ (fetchPackage verbosity) ps
 
 withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
 withBinaryFile name mode = bracket (openBinaryFile name mode) hClose
