@@ -291,8 +291,10 @@ showPlanProblem (PackageInconsistency name inconsistencies) =
 problems :: OS -> Arch -> CompilerId
          -> PackageIndex (PlanPackage a) -> [PlanProblem a]
 problems os arch comp index =
-     [ PackageInvalid pkg (configuredPackageProblems os arch comp pkg)
-     | Configured pkg <- PackageIndex.allPackages index ]
+     [ PackageInvalid pkg packageProblems
+     | Configured pkg <- PackageIndex.allPackages index
+     , let packageProblems = configuredPackageProblems os arch comp pkg
+     , not (null packageProblems) ]
 
   ++ [ PackageMissingDeps pkg missingDeps
      | (pkg, missingDeps) <- PackageIndex.brokenPackages index ]
