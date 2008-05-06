@@ -124,7 +124,8 @@ type SetupMethod = Verbosity -> BuildType -> [String] -> IO ()
 
 internalSetupMethod :: SetupMethod
 internalSetupMethod verbosity bt args = do
-  debug verbosity $ "internalSetupMethod " ++ show bt ++ " " ++ show args
+  debug verbosity $ "Using internal setup method with build-type " ++ show bt
+                 ++ " and args:\n  " ++ show args
   buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
@@ -140,10 +141,13 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 -- ------------------------------------------------------------
 
 externalSetupMethod :: SetupScriptOptions -> SetupMethod
-externalSetupMethod options verbosity bt args =
-      updateSetupScript verbosity bt
-  >>= compileSetupExecutable verbosity options
-  >>  invokeSetupScript verbosity args
+externalSetupMethod options verbosity bt args = do
+  debug verbosity $ "Using external setup method with build-type " ++ show bt
+                 ++ " and args:\n  " ++ show args
+  setupHs <- updateSetupScript verbosity bt
+  debug verbosity $ "Using " ++ setupHs ++ " as setup script."
+  compileSetupExecutable verbosity options setupHs
+  invokeSetupScript verbosity args
 
 -- | Decide which Setup.hs script to use, creating it if necessary.
 --
@@ -178,6 +182,7 @@ compileSetupExecutable :: Verbosity -> SetupScriptOptions -> FilePath -> IO ()
 compileSetupExecutable verbosity options setupHs = do
   outOfDate <- setupHs `moreRecentFile` setupProg
   when outOfDate $ do
+    debug verbosity "Setup script is out of date, compiling..."
     (comp, conf) <- case useCompiler options of
       Just comp -> return (comp, useProgramConfig options)
       Nothing -> configCompiler (Just GHC) Nothing Nothing
