@@ -42,6 +42,7 @@ module Distribution.Simple.PackageIndex (
   -- ** Special queries
   brokenPackages,
   dependencyClosure,
+  reverseDependencyClosure,
   dependencyInconsistencies,
   dependencyCycles,
   dependencyGraph,
@@ -51,12 +52,13 @@ import Prelude hiding (lookup)
 import Control.Exception (assert)
 import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
 import Data.List (nubBy, group, sort, groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, fromMaybe)
 
 import Distribution.Package
          ( PackageIdentifier, Package(..), packageName, packageVersion
@@ -284,6 +286,25 @@ dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
         Nothing -> closure completed' failed pkgids'
           where completed' = insert pkg completed
                 pkgids'    = depends pkg ++ pkgids
+
+-- | Takes the transative closure of the packages reverse dependencies.
+--
+-- * The given 'PackageIdentifier's must be in the index.
+--
+reverseDependencyClosure :: PackageFixedDeps pkg
+                         => PackageIndex pkg
+                         -> [PackageIdentifier]
+                         -> [PackageIdentifier]
+reverseDependencyClosure index =
+    map vertexToPkgId
+  . concatMap Tree.flatten
+  . Graph.dfs reverseDepGraph
+  . map (fromMaybe noSuchPkgId . pkgIdToVertex)
+
+  where
+    (depGraph, vertexToPkgId, pkgIdToVertex) = dependencyGraph index
+    reverseDepGraph = Graph.transposeG depGraph
+    noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
