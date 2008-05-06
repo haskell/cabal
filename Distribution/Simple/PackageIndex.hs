@@ -272,20 +272,18 @@ dependencyClosure :: PackageFixedDeps pkg
                   -> [PackageIdentifier]
                   -> Either (PackageIndex pkg)
                             [(pkg, [PackageIdentifier])]
-dependencyClosure index pkgids0 = case closure [] [] pkgids0 of
-  (completed, []) -> Left  $ fromList completed
-  (completed, _)  -> Right $ brokenPackages (fromList completed)
-
+dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
+  (completed, []) -> Left completed
+  (completed, _)  -> Right (brokenPackages completed)
   where
-    closure completed failed [] = (completed, failed)
+    closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) = case lookupPackageId index pkgid of
-      Nothing  -> closure completed (pkgid:failed) pkgids
-               -- TODO: use more effecient test here:
-      Just pkg | packageId pkg `elem` map packageId completed
-               -> closure      completed   failed  pkgids
-               | otherwise
-               -> closure (pkg:completed)  failed  pkgids'
-               where pkgids' = depends pkg ++ pkgids
+      Nothing   -> closure completed (pkgid:failed) pkgids
+      Just pkg  -> case lookupPackageId completed (packageId pkg) of
+        Just _  -> closure completed  failed pkgids
+        Nothing -> closure completed' failed pkgids'
+          where completed' = insert pkg completed
+                pkgids'    = depends pkg ++ pkgids
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
