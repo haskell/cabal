@@ -158,6 +158,9 @@ invariant :: InstallPlan a -> Bool
 invariant plan =
   valid (planOS plan) (planArch plan) (planCompiler plan) (planIndex plan)
 
+internalError :: String -> a
+internalError msg = error $ "InstallPlan: internal error: " ++ msg
+
 -- | Build an installation plan from a valid set of resolved packages.
 --
 new :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a)
@@ -175,7 +178,8 @@ done :: InstallPlan buildResult -> Bool
 done (InstallPlan { planIndex = index}) =
   null [ () | Configured _ <- PackageIndex.allPackages index ]
 
--- | The next package, meaning a package which has no dependencies.
+-- | The next package, meaning a package which has all its dependencies
+-- installed already.
 --
 -- * The graph must not be 'done'.
 --
@@ -187,14 +191,17 @@ next plan@(InstallPlan { planIndex = index }) = assert (invariant plan) $
         , flip all (depends pkg) $ \dep ->
             case PackageIndex.lookupPackageId index dep of
               Just (Configured  _) -> False
-              Just (Failed    _ _) -> False
+              Just (Failed    _ _) -> internalError depOnFailed
               Just (PreExisting _) -> True
               Just (Installed   _) -> True
-              Nothing -> error "InstallPlan.next: incomplete install plan" ]
+              Nothing -> internalError incomplete ]
   in case allReadyPackages of
-    []      -> error $ "InstallPlan.next: internal error: no nodes with 0-outdegree\n"
-                    ++ unlines (map (display . packageId) (PackageIndex.allPackages index))
+    []      -> internalError noNextPkg
     (pkg:_) -> pkg
+  where
+    incomplete  = "install plan is not closed"
+    noNextPkg   = "no configured pkg with all installed deps"
+    depOnFailed = "configured package depends on failed package"
 
 -- | Marks a package in the graph as completed. Also saves the build result for
 -- the completed package in the plan.
@@ -342,6 +349,10 @@ closed = null . PackageIndex.brokenPackages
 consistent :: PackageIndex (PlanPackage a) -> Bool
 consistent = null . PackageIndex.dependencyInconsistencies
 
+-- | A 'ConfiguredPackage' is valid if the flag assignment is total and if
+-- in the configuration given by the flag assignment, all the package
+-- dependencies are satisfied by the specified packages.
+--
 configuredPackageValid :: OS -> Arch -> CompilerId -> ConfiguredPackage -> Bool
 configuredPackageValid os arch comp pkg =
   null (configuredPackageProblems os arch comp pkg)
