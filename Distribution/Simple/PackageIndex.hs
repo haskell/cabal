@@ -22,6 +22,7 @@ module Distribution.Simple.PackageIndex (
   -- * Updates
   merge,
   insert,
+  delete,
 
   -- * Queries
 
@@ -143,7 +144,7 @@ merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
 mergeBuckets :: Package pkg => [pkg] -> [pkg] -> [pkg]
 mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
 
--- | Insert's a single package into the index.
+-- | Inserts a single package into the index.
 --
 -- This is equivalent to (but slightly quicker than) using 'mappend' or
 -- 'merge' with a singleton index.
@@ -152,6 +153,18 @@ insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
 insert pkg (PackageIndex index) = PackageIndex $
   let key = (lowercase . packageName) pkg
    in Map.insertWith (flip mergeBuckets) key [pkg] index
+
+-- | Removes a single package from the index.
+--
+delete :: Package pkg => PackageIdentifier -> PackageIndex pkg -> PackageIndex pkg
+delete pkgid (PackageIndex index) = PackageIndex $
+  let key = (lowercase . packageName) pkgid
+   in Map.update filterBucket key index
+  where
+    filterBucket = deleteEmptyBucket
+                 . filter (\pkg -> packageId pkg /= pkgid)
+    deleteEmptyBucket []        = Nothing
+    deleteEmptyBucket remaining = Just remaining
 
 -- | Get all the packages from the index.
 --
