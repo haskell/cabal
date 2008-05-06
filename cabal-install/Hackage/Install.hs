@@ -138,9 +138,11 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       installed <- getInstalledPackages verbosity comp packageDB conf
       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
       let -- The trick is, we add the local package to the available index and
-          -- then ask to resolve a dependency on exactly that package. So the
-          -- resolver ends up having to pick the local package.
+          -- remove it from the installed index. Then we ask to resolve a
+          -- dependency on exactly that package. So the resolver ends up having
+          -- to pick the local package.
           available' = PackageIndex.insert localPackage available
+          installed' = PackageIndex.delete (packageId localPackage) `fmap` installed
           localPackage = AvailablePackage {
               packageInfoId                = packageId desc,
               Available.packageDescription = desc,
@@ -157,7 +159,7 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       -- info verbosity $ unlines (map ("  "++) (concat details))
       info verbosity "Resolving dependencies..."
       case resolveDependencies buildOS buildArch (compilerId comp)
-                             installed available' [localDependency] of
+                             installed' available' [localDependency] of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right installPlan -> do
             when (verbosity >= verbose || dryRun miscOptions) $
