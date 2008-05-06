@@ -44,6 +44,7 @@ module Distribution.Simple.PackageIndex (
   dependencyClosure,
   dependencyInconsistencies,
   dependencyCycles,
+  dependencyGraph,
   ) where
 
 import Prelude hiding (lookup)
@@ -51,6 +52,8 @@ import Control.Exception (assert)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import qualified Data.Graph as Graph
+import qualified Data.Array as Array
+import Data.Array ((!))
 import Data.List (nubBy, group, sort, groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing)
@@ -329,3 +332,34 @@ dependencyCycles index =
   where
     adjacencyList = [ (pkg, packageId pkg, depends pkg)
                     | pkg <- allPackages index ]
+
+-- | Builds a graph of the package dependencies.
+--
+-- Dependencies on other packages that are in the index are discarded.
+-- You can check if there are any such dependencies with 'brokenPackages'.
+--
+dependencyGraph :: PackageFixedDeps pkg
+                => PackageIndex pkg
+                -> (Graph.Graph,
+                    Graph.Vertex -> PackageIdentifier,
+                    PackageIdentifier -> Maybe Graph.Vertex)
+dependencyGraph index = (graph, vertexToPkgId, pkgIdToVertex)
+  where
+    graph = Array.listArray bounds
+              [ [ v | Just v <- map pkgIdToVertex (depends pkg) ]
+              | pkg <- pkgs ]
+    vertexToPkgId vertex = pkgIdTable ! vertex
+    pkgIdToVertex = binarySearch 0 topBound
+
+    pkgIdTable = Array.listArray bounds (map packageId pkgs)
+    pkgs = sortBy (comparing packageId) (allPackages index)
+    topBound = length pkgs - 1
+    bounds = (0, topBound)
+
+    binarySearch a b key
+      | a > b     = Nothing
+      | otherwise = case compare key (pkgIdTable ! mid) of
+          LT -> binarySearch a (mid-1) key
+          EQ -> Just mid
+          GT -> binarySearch (mid+1) b key
+      where mid = (a + b) `div` 2
