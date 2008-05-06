@@ -63,7 +63,7 @@ import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
-import Distribution.Verbosity (Verbosity, showForCabal)
+import Distribution.Verbosity (Verbosity, showForCabal, verbose)
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 data BuildResult = DependentFailed PackageIdentifier
@@ -155,12 +155,16 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
       --TODO: print the info again
       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
       -- info verbosity $ unlines (map ("  "++) (concat details))
+      info verbosity "Resolving dependencies..."
       case resolveDependencies buildOS buildArch (compilerId comp)
                              installed available' [localDependency] of
         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
         Right installPlan -> do
+            when (verbosity >= verbose || dryRun miscOptions) $
+              printDryRun verbosity installPlan
+
             if dryRun miscOptions
-              then printDryRun verbosity installPlan >> return []
+              then return []
               else executeInstallPlan verbosity scriptOptions miscOptions
                                       configFlags installPlan >> return []
 
