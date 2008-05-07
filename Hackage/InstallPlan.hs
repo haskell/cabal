@@ -246,26 +246,23 @@ failed :: PackageIdentifier -- ^ The id of the package that failed to install
        -> buildResult       -- ^ The build result to use for its dependencies
        -> InstallPlan buildResult
        -> InstallPlan buildResult
-failed pkgid buildResult dependentBuildResult
-       plan@(InstallPlan { planIndex = index }) =
-  case PackageIndex.lookupPackageId index pkgid of
-    Just (Configured cp) ->
-               plan {
-                 planIndex = markDepsAsFailed pkgid
-                           . PackageIndex.insert (Failed cp buildResult)
-                           $ index
-               }
-    Just _  -> error $ "InstallPlan.failed: not configured " ++ display pkgid
-    Nothing -> error $ "InstallPlan.failed: no such package " ++ display pkgid
+failed pkgid buildResult dependentBuildResult plan =
+  plan { planIndex = PackageIndex.merge (planIndex plan) failures }
   where
-  --markDepsAsFailed :: PackageIdentifier -> PackageIndex br -> PackageIndex br
-  markDepsAsFailed pkgid' index' =
-    case PackageIndex.lookupPackageId index' pkgid' of
-      Just (Configured cp) ->
-        let index'' = PackageIndex.insert (Failed cp dependentBuildResult) index'
-            deps    = depends cp
-        in foldr markDepsAsFailed index'' deps
-      _ -> index'
+    pkg = lookupConfiguredPackage plan pkgid
+    failures = PackageIndex.fromList
+             $ Failed pkg buildResult
+             : [ Failed pkg' dependentBuildResult
+               | pkgid' <- packagesThatDependOn plan pkgid
+               , let pkg' = lookupConfiguredPackage plan pkgid' ]
+
+-- | lookup the reachable packages in the reverse dependency graph
+--
+packagesThatDependOn :: InstallPlan a
+                     -> PackageIdentifier -> [PackageIdentifier]
+packagesThatDependOn plan = map (planPkgIdOf plan)
+                          . Graph.reachable (planGraphRev plan)
+                          . planVertexOf plan
 
 -- | lookup a package that we expect to be in the configured state
 --
