@@ -41,7 +41,7 @@ module Hackage.InstallPlan (
   ) where
 
 import Hackage.Types
-         ( AvailablePackage(packageDescription) )
+         ( AvailablePackage(packageDescription), ConfiguredPackage(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
          , packageName, Dependency(..) )
@@ -52,7 +52,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.PackageDescription
          ( GenericPackageDescription(genPackageFlags)
          , PackageDescription(buildDepends)
-         , Flag(flagName), FlagName(..), FlagAssignment )
+         , Flag(flagName), FlagName(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
@@ -113,24 +113,6 @@ import Control.Exception
 -- is closed if for every package in the set, all of its dependencies are
 -- also in the set. It is consistent if for every package in the set, all
 -- dependencies which target that package have the same version.
-
--- | A 'ConfiguredPackage' is a not-yet-installed package along with the
--- total configuration information. The configuration information is total in
--- the sense that it provides all the configuration information and so the
--- final configure process will be independent of the environment.
---
-data ConfiguredPackage = ConfiguredPackage
-       AvailablePackage    -- ^ package info, including repo
-       FlagAssignment      -- ^ complete flag assignment for the package
-       [PackageIdentifier] -- ^ exact dependencies, must be consistent with the
-                           -- version constraints in the package info
-  deriving Show
-
-instance Package ConfiguredPackage where
-  packageId (ConfiguredPackage pkg _ _) = packageId pkg
-
-instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ deps) = deps
 
 data PlanPackage buildResult = PreExisting InstalledPackageInfo
                              | Configured  ConfiguredPackage
