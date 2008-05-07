@@ -266,6 +266,7 @@ data PlanProblem a =
    | PackageMissingDeps   (PlanPackage a) [PackageIdentifier]
    | PackageCycle         [PlanPackage a]
    | PackageInconsistency String [(PackageIdentifier, Version)]
+   | PackageStateInvalid  (PlanPackage a) (PlanPackage a)
 
 showPlanProblem :: PlanProblem a -> String
 showPlanProblem (PackageInvalid pkg packageProblems) =
@@ -291,6 +292,18 @@ showPlanProblem (PackageInconsistency name inconsistencies) =
                             ++ display (PackageIdentifier name ver)
              | (pkg, ver) <- inconsistencies ]
 
+showPlanProblem (PackageStateInvalid pkg pkg') =
+     "Package " ++ display (packageId pkg)
+  ++ " is in the " ++ showPlanState pkg
+  ++ " state but it depends on package " ++ display (packageId pkg')
+  ++ " which is in the " ++ showPlanState pkg'
+  ++ " state"
+  where
+    showPlanState (PreExisting _) = "pre-existing"
+    showPlanState (Configured  _) = "configured"
+    showPlanState (Installed   _) = "installed"
+    showPlanState (Failed    _ _) = "failed"
+
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
@@ -311,6 +324,11 @@ problems os arch comp index =
 
   ++ [ PackageInconsistency name inconsistencies
      | (name, inconsistencies) <- PackageIndex.dependencyInconsistencies index ]
+
+  ++ [ PackageStateInvalid pkg pkg'
+     | pkg <- PackageIndex.allPackages index
+     , Just pkg' <- map (PackageIndex.lookupPackageId index) (depends pkg)
+     , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
 --
@@ -348,6 +366,26 @@ closed = null . PackageIndex.brokenPackages
 --
 consistent :: PackageIndex (PlanPackage a) -> Bool
 consistent = null . PackageIndex.dependencyInconsistencies
+
+-- | The states of packages have that depend on each other must respect
+-- this relation. That is for very case where package @a@ depends on
+-- package @b@ we require that @dependencyStatesOk a b = True@.
+--
+stateDependencyRelation :: PlanPackage a -> PlanPackage a -> Bool
+stateDependencyRelation (PreExisting _) (PreExisting _) = True
+
+stateDependencyRelation (Configured  _) (PreExisting _) = True
+stateDependencyRelation (Configured  _) (Configured  _) = True
+stateDependencyRelation (Configured  _) (Installed   _) = True
+
+stateDependencyRelation (Installed   _) (PreExisting _) = True
+stateDependencyRelation (Installed   _) (Installed   _) = True
+
+stateDependencyRelation (Failed    _ _) (PreExisting _) = True
+stateDependencyRelation (Failed    _ _) (Installed   _) = True
+stateDependencyRelation (Failed    _ _) (Failed    _ _) = True
+
+stateDependencyRelation _               _               = False
 
 -- | A 'ConfiguredPackage' is valid if the flag assignment is total and if
 -- in the configuration given by the flag assignment, all the package
