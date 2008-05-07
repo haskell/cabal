@@ -131,16 +131,22 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
            _ -> ""
          | (pkgid, reason) <- failed ]
 
-  where buildFailed BuildOk = False
-        buildFailed _       = True
-        setupScriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions
-        miscOptions = InstallMisc {
-          dryRun     = Cabal.fromFlag (installDryRun installFlags),
-          rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
-                         then Nothing      -- ignore --root-cmd if --user.
-                         else Cabal.flagToMaybe (installRootCmd installFlags),
-          libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
-        }
+  where
+    buildFailed BuildOk = False
+    buildFailed _       = True
+    setupScriptOptions index = SetupScriptOptions {
+      useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
+      useCompiler      = Just comp,
+      usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
+      useProgramConfig = conf
+    }
+    miscOptions = InstallMisc {
+      dryRun     = Cabal.fromFlag (installDryRun installFlags),
+      rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
+                     then Nothing      -- ignore --root-cmd if --user.
+                     else Cabal.flagToMaybe (installRootCmd installFlags),
+      libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
+    }
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
@@ -152,41 +158,26 @@ planLocalPackage :: Verbosity
                  -> PackageIndex AvailablePackage
                  -> IO (Either [Dependency] (InstallPlan BuildResult))
 planLocalPackage verbosity comp configFlags installed available = do
-   do cabalFile <- defaultPackageDesc verbosity
-      desc <- readPackageDescription verbosity cabalFile
-      let -- The trick is, we add the local package to the available index and
-          -- remove it from the installed index. Then we ask to resolve a
-          -- dependency on exactly that package. So the resolver ends up having
-          -- to pick the local package.
-          available' = PackageIndex.insert localPackage available
-          installed' = PackageIndex.delete (packageId localPackage) `fmap` installed
-          localPackage = AvailablePackage {
-              packageInfoId                = packageId desc,
-              Available.packageDescription = desc,
-              packageSource                = LocalUnpackedPackage
-            }
-          localDependency = UnresolvedDependency {
-              dependency = let PackageIdentifier n v = packageId localPackage
-                            in Dependency n (ThisVersion v),
-              depFlags   = Cabal.configConfigurationsFlags configFlags
-            }
+  pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
+  let -- The trick is, we add the local package to the available index and
+      -- remove it from the installed index. Then we ask to resolve a
+      -- dependency on exactly that package. So the resolver ends up having
+      -- to pick the local package.
+      available' = PackageIndex.insert localPkg available
+      installed' = PackageIndex.delete (packageId localPkg) `fmap` installed
+      localPkg = AvailablePackage {
+        packageInfoId                = packageId pkg,
+        Available.packageDescription = pkg,
+        packageSource                = LocalUnpackedPackage
+      }
+      localPkgDep = UnresolvedDependency {
+        dependency = let PackageIdentifier n v = packageId localPkg
+                      in Dependency n (ThisVersion v),
+        depFlags   = Cabal.configConfigurationsFlags configFlags
+      }
 
-      return $ resolveDependencies buildOS buildArch (compilerId comp)
-                                   installed' available' [localDependency]
-
-mkSetupScriptOptions :: PackageDB
-                     -> Compiler
-                     -> ProgramConfiguration
-                     -> InstallMisc
-                     -> Maybe (PackageIndex InstalledPackageInfo)
-                     -> SetupScriptOptions
-mkSetupScriptOptions packageDB comp conf miscOptions index =
-  SetupScriptOptions {
-    useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
-    useCompiler      = Just comp,
-    usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
-    useProgramConfig = conf
-  }
+  return $ resolveDependencies buildOS buildArch (compilerId comp)
+                               installed' available' [localPkgDep]
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
@@ -197,9 +188,9 @@ planRepoPackages :: Verbosity
                  -> [UnresolvedDependency]
                  -> IO (Either [Dependency] (InstallPlan BuildResult))
 planRepoPackages _verbosity comp installed available deps = do
-       deps' <- IndexUtils.disambiguateDependencies available deps
-       return $ resolveDependencies buildOS buildArch (compilerId comp)
-                                    installed available deps'
+  deps' <- IndexUtils.disambiguateDependencies available deps
+  return $ resolveDependencies buildOS buildArch (compilerId comp)
+                               installed available deps'
 
 printDryRun :: Verbosity -> InstallPlan BuildResult -> IO ()
 printDryRun verbosity pkgs
