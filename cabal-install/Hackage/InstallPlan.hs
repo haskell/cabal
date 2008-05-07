@@ -232,10 +232,9 @@ next plan@(InstallPlan { planIndex = index }) = assert (invariant plan) $
 completed :: PackageIdentifier
           -> InstallPlan buildResult -> InstallPlan buildResult
 completed pkgid plan =
-  case PackageIndex.lookupPackageId index pkgid of
-    Just (Configured cp) -> plan { planIndex = PackageIndex.insert (Installed cp) index }
-    _ -> error "InstallPlan.completed: internal error; cannot mark package as completed"
-  where index = planIndex plan
+  plan { planIndex = PackageIndex.insert installed (planIndex plan) }
+  where
+    installed = Installed (lookupConfiguredPackage plan pkgid)
 
 -- | Marks a package in the graph as having failed. It also marks all the
 -- packages that depended on it as having failed.
@@ -267,6 +266,16 @@ failed pkgid buildResult dependentBuildResult
             deps    = depends cp
         in foldr markDepsAsFailed index'' deps
       _ -> index'
+
+-- | lookup a package that we expect to be in the configured state
+--
+lookupConfiguredPackage :: InstallPlan a
+                        -> PackageIdentifier -> ConfiguredPackage
+lookupConfiguredPackage plan pkgid =
+  case PackageIndex.lookupPackageId (planIndex plan) pkgid of
+    Just (Configured pkg) -> pkg
+    Just _  -> error $ "InstallPlan: not configured " ++ display pkgid
+    Nothing -> error $ "InstallPlan: no such package " ++ display pkgid
 
 -- ------------------------------------------------------------
 -- * Checking valididy of plans
