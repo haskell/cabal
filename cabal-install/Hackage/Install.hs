@@ -200,6 +200,7 @@ installRepoPackages verbosity packageDB repos comp conf miscOptions configFlags 
        deps' <- IndexUtils.disambiguateDependencies available deps
        -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
        -- info verbosity $ unlines (map ("  "++) (concat details))
+       info verbosity "Resolving dependencies..."
        case resolveDependencies buildOS buildArch (compilerId comp)
               installed available deps' of
          Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
