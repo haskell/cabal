@@ -24,7 +24,9 @@ import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
-import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
+import Distribution.Package
+         ( PackageIdentifier(..), Dependency(..)
+         , Package(..), PackageFixedDeps(..) )
 import Distribution.PackageDescription 
          ( PackageDescription(buildDepends), GenericPackageDescription
          , FlagAssignment )
@@ -42,6 +44,7 @@ import Control.Monad (mplus)
 import Data.List (maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Monoid (Monoid(mappend))
+import Control.Exception (assert)
 
 resolveDependencies :: OS
                     -> Arch
@@ -51,9 +54,11 @@ resolveDependencies :: OS
                     -> [UnresolvedDependency]
                     -> Either [Dependency] (InstallPlan a)
 resolveDependencies os arch comp (Just installed) available deps =
-  packagesToInstall os arch comp installed
-    [ resolveDependency os arch comp installed available dep flags
+  assert (null $ PackageIndex.brokenPackages installed')
+  packagesToInstall os arch comp installed'
+    [ resolveDependency os arch comp installed' available dep flags
     | UnresolvedDependency dep flags <- deps]
+  where installed' = hideBrokenPackages installed
 resolveDependencies os arch comp Nothing available deps =
   packagesToInstall os arch comp undefined
     (resolveDependenciesBogusly available deps)
@@ -68,6 +73,13 @@ resolveDependenciesBogusly available = map resolveFromAvailable
           case latestAvailableSatisfying available dep of
             Nothing  -> UnavailableDependency dep
             Just pkg -> AvailableDependency dep pkg flags []
+
+hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
+hideBrokenPackages index =
+    foldr (PackageIndex.delete . packageId) index
+  . PackageIndex.reverseDependencyClosure index
+  . map (packageId . fst)
+  $ PackageIndex.brokenPackages index
 
 {-
 type DependencyResolver a = OS
