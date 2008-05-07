@@ -106,9 +106,9 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
         printDryRun verbosity installPlan
 
       unless (dryRun miscOptions) $ do
-        executeInstallPlan verbosity
-          (setupScriptOptions installed) miscOptions configFlags
-          installPlan
+        let installer = installPkg verbosity (setupScriptOptions installed)
+                                   miscOptions configFlags
+        executeInstallPlan installer installPlan
         return ()
 
   let buildResults :: [(PackageIdentifier, BuildResult)]
@@ -206,29 +206,24 @@ printDryRun verbosity pkgs
                     pkgId = packageId pkgInfo
                 in (pkgId : order (InstallPlan.completed pkgId ps))
 
-executeInstallPlan :: Verbosity
-                   -> SetupScriptOptions
-                   -> InstallMisc
-                   -> Cabal.ConfigFlags -- ^Options which will be passed to every package.
+executeInstallPlan :: (AvailablePackage -> FlagAssignment -> IO BuildResult)
                    -> InstallPlan BuildResult
                    -> IO (InstallPlan BuildResult)
-executeInstallPlan verbosity scriptOptions miscOptions configFlags = execute
-  where
-    execute :: InstallPlan BuildResult -> IO (InstallPlan BuildResult)
-    execute plan
-      | InstallPlan.done plan = return plan
-      | otherwise = case InstallPlan.next plan of
-      InstallPlan.ConfiguredPackage pkg flags _depids -> do--TODO build against exactly these deps
-        let pkgid = packageId pkg
-        buildResult <- installPkg verbosity scriptOptions miscOptions configFlags pkg flags
-        case buildResult of
-          BuildOk -> execute $ InstallPlan.completed pkgid plan
-          _       -> execute $ InstallPlan.failed pkgid buildResult depResult plan
-            where depResult = DependentFailed pkgid
-            -- So this first pkgid failed for whatever reason (buildResult) all
-            -- the other packages that depended on this pkgid which we now
-            -- cannot build we mark as failing due to DependentFailed which
-            -- kind of means it was not their fault.
+executeInstallPlan installer plan
+  | InstallPlan.done plan = return plan
+  | otherwise = do
+    let ConfiguredPackage pkg flags _deps = InstallPlan.next plan
+    buildResult <- installer pkg flags
+    let pkgid = packageId pkg
+        updatePlan = case buildResult of
+          BuildOk -> InstallPlan.completed pkgid
+          _       -> InstallPlan.failed    pkgid buildResult depsResult
+            where depsResult = DependentFailed pkgid
+            -- So this first pkgid failed for whatever reason (buildResult)
+            -- all the other packages that depended on this pkgid which we
+            -- now cannot build we mark as failing due to DependentFailed
+            -- which kind of means it was not their fault.
+    executeInstallPlan installer (updatePlan plan)
 
 {-|
   Download, build and install a given package with some given flags.
