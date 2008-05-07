@@ -13,12 +13,32 @@
 module Hackage.Types where
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), Dependency )
+         ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
+         , Dependency )
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
 
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
+
+-- | A 'ConfiguredPackage' is a not-yet-installed package along with the
+-- total configuration information. The configuration information is total in
+-- the sense that it provides all the configuration information and so the
+-- final configure process will be independent of the environment.
+--
+data ConfiguredPackage = ConfiguredPackage
+       AvailablePackage    -- ^ package info, including repo
+       FlagAssignment      -- ^ complete flag assignment for the package
+       [PackageIdentifier] -- ^ exact dependencies, must be consistent with the
+                           -- version constraints in the package info
+  deriving Show
+
+instance Package ConfiguredPackage where
+  packageId (ConfiguredPackage pkg _ _) = packageId pkg
+
+instance PackageFixedDeps ConfiguredPackage where
+  depends (ConfiguredPackage _ _ deps) = deps
+
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URL.
