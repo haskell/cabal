@@ -71,6 +71,10 @@ import Distribution.Simple.Utils
 
 import Data.List
          ( sort, sortBy )
+import Data.Maybe
+         ( fromMaybe )
+import qualified Data.Graph as Graph
+import Data.Graph (Graph)
 import Control.Exception
          ( assert )
 
@@ -148,11 +152,14 @@ instance PackageFixedDeps (PlanPackage buildResult) where
 
 data InstallPlan buildResult = InstallPlan {
     planIndex    :: PackageIndex (PlanPackage buildResult),
+    planGraph    :: Graph,
+    planGraphRev :: Graph,
+    planPkgIdOf  :: Graph.Vertex -> PackageIdentifier,
+    planVertexOf :: PackageIdentifier -> Graph.Vertex,
     planOS       :: OS,
     planArch     :: Arch,
     planCompiler :: CompilerId
   }
-  deriving Show
 
 invariant :: InstallPlan a -> Bool
 invariant plan =
@@ -165,9 +172,22 @@ internalError msg = error $ "InstallPlan: internal error: " ++ msg
 --
 new :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a)
     -> Either (InstallPlan a) [PlanProblem a]
-new os arch compiler index = case problems os arch compiler index of
-  []  -> Left (InstallPlan index os arch compiler)
-  ps  -> Right ps
+new os arch compiler index =
+  case problems os arch compiler index of
+    [] -> Left InstallPlan {
+            planIndex    = index,
+            planGraph    = graph,
+            planGraphRev = Graph.transposeG graph,
+            planPkgIdOf  = vertexToPkgId,
+            planVertexOf = fromMaybe noSuchPkgId . pkgIdToVertex,
+            planOS       = os,
+            planArch     = arch,
+            planCompiler = compiler
+          }
+      where (graph, vertexToPkgId, pkgIdToVertex) =
+              PackageIndex.dependencyGraph index
+            noSuchPkgId = internalError "package is not in the graph"
+    probs -> Right probs
 
 toList :: InstallPlan buildResult -> [PlanPackage buildResult]
 toList = PackageIndex.allPackages . planIndex
