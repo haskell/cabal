@@ -17,7 +17,8 @@ module Hackage.Install
 import Data.Monoid (Monoid(mconcat))
 import Control.Exception as Exception
          ( handle, Exception )
-import Control.Monad (when)
+import Control.Monad
+         ( when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
@@ -90,11 +91,28 @@ install :: Verbosity
         -> [UnresolvedDependency]
         -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps = do
-  buildResults <- if null deps
-    then installLocalPackage verbosity
-           packageDB repos comp conf miscOptions configFlags
-    else installRepoPackages verbosity
-           packageDB repos comp conf miscOptions configFlags deps
+  installed <- getInstalledPackages verbosity comp packageDB conf
+  available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+
+  maybePlan <- if null deps
+    then planLocalPackage verbosity comp configFlags installed available
+    else planRepoPackages verbosity comp             installed available deps
+
+  info verbosity "Resolving dependencies..."
+  case maybePlan of
+    Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
+    Right installPlan -> do
+      when (dryRun miscOptions || verbosity >= verbose) $
+        printDryRun verbosity installPlan
+
+      unless (dryRun miscOptions) $ do
+        executeInstallPlan verbosity
+          (setupScriptOptions installed) miscOptions configFlags
+          installPlan
+        return ()
+
+  let buildResults :: [(PackageIdentifier, BuildResult)]
+      buildResults = [] --FIXME: get build results from executeInstallPlan
   case filter (buildFailed . snd) buildResults of
     []     -> return () --TODO: return the build results
     failed -> die $ "Error: some packages failed to install:\n"
@@ -115,6 +133,7 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
 
   where buildFailed BuildOk = False
         buildFailed _       = True
+        setupScriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions
         miscOptions = InstallMisc {
           dryRun     = Cabal.fromFlag (installDryRun installFlags),
           rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
@@ -123,20 +142,18 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
           libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
         }
 
--- | Install the unpacked package in the current directory, and all its dependencies.
-installLocalPackage :: Verbosity
-                    -> PackageDB
-                    -> [Repo]
-                    -> Compiler
-                    -> ProgramConfiguration
-                    -> InstallMisc
-                    -> Cabal.ConfigFlags
-                    -> IO [(PackageIdentifier, BuildResult)]
-installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags =
+-- | Make an 'InstallPlan' for the unpacked package in the current directory,
+-- and all its dependencies.
+--
+planLocalPackage :: Verbosity
+                 -> Compiler
+                 -> Cabal.ConfigFlags
+                 -> Maybe (PackageIndex InstalledPackageInfo)
+                 -> PackageIndex AvailablePackage
+                 -> IO (Either [Dependency] (InstallPlan BuildResult))
+planLocalPackage verbosity comp configFlags installed available = do
    do cabalFile <- defaultPackageDesc verbosity
       desc <- readPackageDescription verbosity cabalFile
-      installed <- getInstalledPackages verbosity comp packageDB conf
-      available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
       let -- The trick is, we add the local package to the available index and
           -- remove it from the installed index. Then we ask to resolve a
           -- dependency on exactly that package. So the resolver ends up having
@@ -153,22 +170,9 @@ installLocalPackage verbosity packageDB repos comp conf miscOptions configFlags 
                             in Dependency n (ThisVersion v),
               depFlags   = Cabal.configConfigurationsFlags configFlags
             }
-          scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
-      --TODO: print the info again
-      -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
-      -- info verbosity $ unlines (map ("  "++) (concat details))
-      info verbosity "Resolving dependencies..."
-      case resolveDependencies buildOS buildArch (compilerId comp)
-                             installed' available' [localDependency] of
-        Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-        Right installPlan -> do
-            when (verbosity >= verbose || dryRun miscOptions) $
-              printDryRun verbosity installPlan
 
-            if dryRun miscOptions
-              then return []
-              else executeInstallPlan verbosity scriptOptions miscOptions
-                                      configFlags installPlan >> return []
+      return $ resolveDependencies buildOS buildArch (compilerId comp)
+                                   installed' available' [localDependency]
 
 mkSetupScriptOptions :: PackageDB
                      -> Compiler
@@ -184,33 +188,18 @@ mkSetupScriptOptions packageDB comp conf miscOptions index =
     useProgramConfig = conf
   }
 
-installRepoPackages :: Verbosity
-                    -> PackageDB
-                    -> [Repo]
-                    -> Compiler
-                    -> ProgramConfiguration
-                    -> InstallMisc
-                    -> Cabal.ConfigFlags
-                    -> [UnresolvedDependency]
-                    -> IO [(PackageIdentifier, BuildResult)]
-installRepoPackages verbosity packageDB repos comp conf miscOptions configFlags deps =
-    do installed <- getInstalledPackages verbosity comp packageDB conf
-       available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
-       let scriptOptions = mkSetupScriptOptions packageDB comp conf miscOptions installed
+-- | Make an 'InstallPlan' for the given dependencies.
+--
+planRepoPackages :: Verbosity
+                 -> Compiler
+                 -> Maybe (PackageIndex InstalledPackageInfo)
+                 -> PackageIndex AvailablePackage
+                 -> [UnresolvedDependency]
+                 -> IO (Either [Dependency] (InstallPlan BuildResult))
+planRepoPackages _verbosity comp installed available deps = do
        deps' <- IndexUtils.disambiguateDependencies available deps
-       -- details <- mapM Info.infoPkg (Info.flattenResolvedDependencies resolvedDeps)
-       -- info verbosity $ unlines (map ("  "++) (concat details))
-       info verbosity "Resolving dependencies..."
-       case resolveDependencies buildOS buildArch (compilerId comp)
-              installed available deps' of
-         Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
-         Right installPlan
-           | InstallPlan.done installPlan -> notice verbosity
-                     "All requested packages already installed. Nothing to do."
-                     >> return []
-           | dryRun miscOptions -> printDryRun verbosity installPlan >> return []
-           | otherwise -> executeInstallPlan verbosity scriptOptions miscOptions
-                                             configFlags installPlan >> return []
+       return $ resolveDependencies buildOS buildArch (compilerId comp)
+                                    installed available deps'
 
 printDryRun :: Verbosity -> InstallPlan BuildResult -> IO ()
 printDryRun verbosity pkgs
