@@ -32,7 +32,7 @@ import Hackage.Setup (InstallFlags(..))
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo )
+         , AvailablePackageSource(..), Repo, ConfiguredPackage(..) )
 import Hackage.Utils (showDependencies)
 import Hackage.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..) )
