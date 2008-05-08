@@ -53,7 +53,7 @@ import Distribution.Simple.Utils
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), Dependency(..) )
 import Distribution.PackageDescription as PackageDescription
-         ( GenericPackageDescription(packageDescription), FlagAssignment )
+         ( GenericPackageDescription(packageDescription) )
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -106,9 +106,11 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
         printDryRun verbosity installPlan
 
       unless (dryRun miscOptions) $ do
-        let installer = installPkg verbosity (setupScriptOptions installed)
-                                   miscOptions configFlags
-        executeInstallPlan installer installPlan
+        executeInstallPlan installPlan $ \cpkg ->
+          installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
+            installAvailablePackage verbosity apkg $
+              installUnpackedPackage verbosity (setupScriptOptions installed)
+                                     miscOptions configFlags'
         return ()
 
   let buildResults :: [(PackageIdentifier, BuildResult)]
@@ -206,14 +208,15 @@ printDryRun verbosity pkgs
                     pkgId = packageId pkgInfo
                 in (pkgId : order (InstallPlan.completed pkgId ps))
 
-executeInstallPlan :: (AvailablePackage -> FlagAssignment -> IO BuildResult)
-                   -> InstallPlan BuildResult
-                   -> IO (InstallPlan BuildResult)
-executeInstallPlan installer plan
+executeInstallPlan :: Monad m
+                   => InstallPlan BuildResult
+                   -> (ConfiguredPackage -> m BuildResult)
+                   -> m (InstallPlan BuildResult)
+executeInstallPlan plan installPkg
   | InstallPlan.done plan = return plan
   | otherwise = do
-    let ConfiguredPackage pkg flags _deps = InstallPlan.next plan
-    buildResult <- installer pkg flags
+    let pkg = InstallPlan.next plan
+    buildResult <- installPkg pkg
     let pkgid = packageId pkg
         updatePlan = case buildResult of
           BuildOk -> InstallPlan.completed pkgid
@@ -223,48 +226,34 @@ executeInstallPlan installer plan
             -- all the other packages that depended on this pkgid which we
             -- now cannot build we mark as failing due to DependentFailed
             -- which kind of means it was not their fault.
-    executeInstallPlan installer (updatePlan plan)
+    executeInstallPlan (updatePlan plan) installPkg
 
-{-|
-  Download, build and install a given package with some given flags.
+-- | Call an installer for an 'AvailablePackage' but override the configure
+-- flags with the ones given by the 'ConfiguredPackage'. In particular the 
+-- 'ConfiguredPackage' specifies an exact 'FlagAssignment' and exactly
+-- versioned package dependencies. So we ignore any previous partial flag
+-- assignment or dependency constraints and use the new ones.
+--
+installConfiguredPackage ::  Cabal.ConfigFlags -> ConfiguredPackage
+                         -> (Cabal.ConfigFlags -> AvailablePackage  -> a)
+                         -> a
+installConfiguredPackage configFlags (ConfiguredPackage pkg flags deps)
+  installPkg = installPkg configFlags {
+    Cabal.configConfigurationsFlags = flags,
+    Cabal.configConstraints = [ Dependency name (ThisVersion version)
+                              | PackageIdentifier name version  <- deps ]
+  } pkg
 
-  The process is divided up in a few steps:
+installAvailablePackage
+  :: Verbosity -> AvailablePackage
+  -> (GenericPackageDescription -> Maybe FilePath -> IO BuildResult)
+  -> IO BuildResult
+installAvailablePackage _ (AvailablePackage _ pkg LocalUnpackedPackage)
+  installPkg = installPkg pkg Nothing
 
-    * The package is downloaded to {config-dir}\/packages\/{pkg-id} (if not already there).
-
-    * The fetched tarball is then moved to a temporary directory (\/tmp on linux) and unpacked.
-
-    * setupWrapper (equivalent to cabal-setup) is called with the options
-      \'configure\' and the user specified options, \'--user\'
-      if the 'configUser' flag is @True@ and install directory flags depending on 
-      @configUserInstallDirs@ or @configGlobalInstallDirs@.
-
-    * setupWrapper \'build\' is called with no options.
-
-    * setupWrapper \'install\' is called with the \'--user\' flag if 'configUserInstall' is @True@.
-
-    * The installation finishes by deleting the unpacked tarball.
--} 
-installPkg :: Verbosity
-           -> SetupScriptOptions
-           -> InstallMisc
-           -> Cabal.ConfigFlags -- ^Options which will be parse to every package.
-           -> AvailablePackage  -- TODO: change to ConfiguredPackage
-           -> FlagAssignment
-           -> IO BuildResult
-installPkg verbosity scriptOptions miscOptions configFlags
-           pkg@(AvailablePackage{
-                  packageSource = LocalUnpackedPackage
-                }) flags = do
-  let configFlags' = configFlags {
-          Cabal.configConfigurationsFlags =
-          Cabal.configConfigurationsFlags configFlags ++ flags
-        }
-  installUnpackedPkg verbosity scriptOptions miscOptions
-                     (Available.packageDescription pkg) configFlags' Nothing
-
-installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
-  pkgPath <- fetchPackage verbosity pkg
+installAvailablePackage verbosity apkg@(AvailablePackage _ pkg _)
+  installPkg = do
+  pkgPath <- fetchPackage verbosity apkg
   tmp <- getTemporaryDirectory
   let pkgid = packageId pkg
       tmpDirPath = tmp </> ("TMP" ++ display pkgid)
@@ -277,22 +266,16 @@ installPkg verbosity scriptOptions miscOptions configFlags pkg flags = do
     exists <- doesFileExist descFilePath
     when (not exists) $
       die $ "Package .cabal file not found: " ++ show descFilePath
-    let configFlags' = configFlags {
-          Cabal.configConfigurationsFlags =
-          Cabal.configConfigurationsFlags configFlags ++ flags
-        }
-    installUnpackedPkg verbosity scriptOptions miscOptions
-                       (Available.packageDescription pkg) configFlags' (Just path)
+    installPkg pkg (Just path)
 
-installUnpackedPkg :: Verbosity
+installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
                    -> InstallMisc
+                   -> Cabal.ConfigFlags
                    -> GenericPackageDescription
-               --  -> TODO: add flag assignment, or use ConfiguredPackage
-                   -> Cabal.ConfigFlags -- ^ Arguments for this package
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> IO BuildResult
-installUnpackedPkg verbosity scriptOptions miscOptions pkg configFlags mpath
+installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
     = onFailure ConfigureFailed $ do
         setup configureCommand configFlags
         onFailure BuildFailed $ do
