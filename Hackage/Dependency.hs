@@ -16,6 +16,8 @@ module Hackage.Dependency
     , getUpgradableDeps
     ) where
 
+import Hackage.Dependency.Naive (naiveResolver)
+import Hackage.Dependency.Bogus (bogusResolver)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo_(package))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -23,28 +25,19 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
-         ( UnresolvedDependency(..), AvailablePackage(..)
-         , ConfiguredPackage(..) )
+         ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..)
          , Package(..), PackageFixedDeps(..) )
-import Distribution.PackageDescription 
-         ( PackageDescription(buildDepends), GenericPackageDescription
-         , FlagAssignment )
-import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription)
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( OS, Arch )
-import Distribution.Simple.Utils (comparing, intercalate)
-import Distribution.Text
-         ( display )
+import Distribution.Simple.Utils (comparing)
 
-import Control.Monad (mplus)
 import Data.List (maximumBy)
-import Data.Maybe (fromMaybe, catMaybes)
-import Data.Monoid (Monoid(mempty, mappend))
+import Data.Maybe (catMaybes)
+import Data.Monoid (Monoid(mempty))
 import Control.Exception (assert)
 
 resolveDependencies :: OS
@@ -101,153 +94,6 @@ failingResolver :: DependencyResolver a
 failingResolver _ _ _ _ _ deps = Left
   [ dep | UnresolvedDependency dep _ <- deps ]
 
--- | This resolver thinks that every package is already installed.
---
-bogusResolver :: DependencyResolver a
-bogusResolver os arch comp _ available deps =
-  case unzipEithers (map resolveFromAvailable deps) of
-    (ok, [])      -> Right ok
-    (_ , missing) -> Left missing
-  where
-    resolveFromAvailable (UnresolvedDependency dep flags) =
-      case latestAvailableSatisfying available dep of
-        Nothing  -> Right dep
-        Just apkg@(AvailablePackage _ pkg _) ->
-          case finalizePackageDescription flags none os arch comp [] pkg of
-            Right (_, flags') -> Left $ InstallPlan.Configured $
-                                   ConfiguredPackage apkg flags' []
-            --TODO: we actually have to delete the deps of pkg, otherwise
-            -- the install plan verifier will say we're missing deps.
-            _ -> error "bogusResolver: impossible happened"
-          where
-            none :: Maybe (PackageIndex PackageIdentifier)
-            none = Nothing
-
-naiveResolver :: DependencyResolver a
-naiveResolver os arch comp installed available deps =
-  packagesToInstall installed
-    [ resolveDependency os arch comp installed available dep flags
-    | UnresolvedDependency dep flags <- deps]
-
-resolveDependency :: OS
-                  -> Arch
-                  -> CompilerId
-                  -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
-                  -> PackageIndex AvailablePackage -- ^ Installable packages
-                  -> Dependency
-                  -> FlagAssignment
-                  -> ResolvedDependency
-resolveDependency os arch comp installed available dep flags
-    = fromMaybe (UnavailableDependency dep) $ resolveFromInstalled `mplus` resolveFromAvailable
-  where
-    resolveFromInstalled = fmap (InstalledDependency dep) $ latestInstalledSatisfying installed dep
-    resolveFromAvailable = 
-        do pkg <- latestAvailableSatisfying available dep
-           (deps, flags') <- getDependencies os arch comp installed available
-                                             (packageDescription pkg) flags
-           return $ AvailableDependency dep pkg flags'
-              [ resolveDependency os arch comp installed available dep' []
-              | dep' <- deps ]
-
--- | Gets the latest installed package satisfying a dependency.
-latestInstalledSatisfying :: PackageIndex InstalledPackageInfo -> Dependency -> Maybe PackageIdentifier
-latestInstalledSatisfying  index dep =
-  case PackageIndex.lookupDependency index dep of
-    []   -> Nothing
-    pkgs -> Just (maximumBy (comparing pkgVersion) (map package pkgs))
-
--- | Gets the latest available package satisfying a dependency.
-latestAvailableSatisfying :: PackageIndex AvailablePackage
-                          -> Dependency
-                          -> Maybe AvailablePackage
-latestAvailableSatisfying index dep =
-  case PackageIndex.lookupDependency index dep of
-    []   -> Nothing
-    pkgs -> Just (maximumBy (comparing (pkgVersion . packageId)) pkgs)
-
--- | Gets the dependencies of an available package.
-getDependencies :: OS
-                -> Arch
-                -> CompilerId
-                -> PackageIndex InstalledPackageInfo -- ^ Installed packages.
-                -> PackageIndex AvailablePackage -- ^ Available packages
-                -> GenericPackageDescription
-                -> FlagAssignment
-                -> Maybe ([Dependency], FlagAssignment)
-                   -- ^ If successful, this is the list of dependencies.
-                   -- If flag assignment failed, this is the list of
-                   -- missing dependencies.
-getDependencies os arch comp installed available pkg flags
-    = case e of
-        Left  _missing      -> Nothing
-        Right (desc,flags') -> Just (buildDepends desc, flags')
-    where 
-      e = finalizePackageDescription 
-                flags
-                (let --TODO: find a better way to do this:
-                     flatten :: Package pkg => PackageIndex pkg
-                                            -> PackageIndex PackageIdentifier
-                     flatten = PackageIndex.fromList . map packageId
-                             . PackageIndex.allPackages
-                  in Just (flatten available `mappend` flatten installed))
-                os arch comp [] pkg
-
-packagesToInstall :: PackageIndex InstalledPackageInfo
-                  -> [ResolvedDependency]
-                  -> Either [Dependency] [InstallPlan.PlanPackage a]
-                     -- ^ Either a list of missing dependencies, or a graph
-                     -- of packages to install, with their options.
-packagesToInstall allInstalled deps0 =
-  case unzipEithers (map getAvailable deps0) of
-    ([], ok)     ->
-      let selectedAvailable :: [InstallPlan.ConfiguredPackage]
-          selectedAvailable = concatMap snd ok
-
-          selectedInstalled :: [InstalledPackageInfo]
-          selectedInstalled = either PackageIndex.allPackages
-                              (\borked -> error $ unlines
-                                [ "Package " ++ display (packageId pkg)
-                                  ++ " depends on the following packages which are missing from the plan "
-                                  ++ intercalate ", " (map display missingDeps)
-                                | (pkg, missingDeps) <- borked ])
-                            $ PackageIndex.dependencyClosure
-                                allInstalled
-                                (getInstalled deps0)
-
-       in Right $ map InstallPlan.Configured selectedAvailable
-              ++ map InstallPlan.PreExisting selectedInstalled
-
-    (missing, _) -> Left $ concat missing
-
-  where
-    getAvailable :: ResolvedDependency
-                  -> Either [Dependency]
-                            (PackageIdentifier, [InstallPlan.ConfiguredPackage])
-    getAvailable (InstalledDependency _ pkgid    )          
-      = Right (pkgid, [])
-    getAvailable (AvailableDependency _ pkg flags deps) =
-      case unzipEithers (map getAvailable deps) of
-        ([], ok)     -> let resolved = InstallPlan.ConfiguredPackage pkg flags
-                                         [ pkgid | (pkgid, _) <- ok ]
-                                     : concatMap snd ok
-                         in Right (packageId pkg, resolved)
-        (missing, _) -> Left (concat missing)
-    getAvailable (UnavailableDependency dep) = Left [dep]
-    
-    getInstalled :: [ResolvedDependency] -> [PackageIdentifier]
-    getInstalled [] = []
-    getInstalled (dep:deps) = case dep of
-      InstalledDependency _ pkgid     -> pkgid : getInstalled deps
-      AvailableDependency _ _ _ deps' ->         getInstalled (deps'++deps)
-      UnavailableDependency _         ->         getInstalled deps
-
--- TODO: kill this data type
-data ResolvedDependency
-       = InstalledDependency Dependency PackageIdentifier
-       | AvailableDependency Dependency AvailablePackage FlagAssignment [ResolvedDependency]
-       | UnavailableDependency Dependency
-       deriving (Show)
-
 -- |Given the list of installed packages and installable packages, figure
 -- out which packages can be upgraded.
 
@@ -293,7 +139,3 @@ getLatestPackageVersions :: PackageIndex InstalledPackageInfo -> [PackageIdentif
 getLatestPackageVersions index =
   [ maximumBy (comparing pkgVersion) $ map package pkgs
   | pkgs <- PackageIndex.allPackagesByName index ]
-
-unzipEithers :: [Either a b] -> ([a], [b])
-unzipEithers = foldr (flip consEither) ([], [])
-  where consEither ~(ls,rs) = either (\l -> (l:ls,rs)) (\r -> (ls,r:rs))

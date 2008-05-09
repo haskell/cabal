@@ -39,6 +39,8 @@ Executable cabal
 --        Hackage.Clean
         Hackage.Config
         Hackage.Dependency
+        Hackage.Dependency.Bogus
+        Hackage.Dependency.Naive
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils
