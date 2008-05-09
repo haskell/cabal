@@ -669,6 +669,18 @@ Executable program2
 
           <varlistentry>
             <term>
+              <literal>data-dir:</literal>
+              <replaceable>directory</replaceable>
+            </term>
+            <listitem>
+              <para>The directory where Cabal looks for data files to install,
+                relative to the source directory. By default, Cabal will look
+                in the source directory itself.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
               <literal>extra-source-files:</literal>
               <replaceable>filename list</replaceable>
             </term>
