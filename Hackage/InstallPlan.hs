@@ -19,8 +19,7 @@ module Hackage.InstallPlan (
   -- * Operations on 'InstallPlan's
   new,
   toList,
-  done,
-  next,
+  ready,
   completed,
   failed,
 
@@ -114,6 +113,12 @@ import Control.Exception
 -- also in the set. It is consistent if for every package in the set, all
 -- dependencies which target that package have the same version.
 
+-- Note that plans do not necessarily compose. You might have a valid plan for
+-- package A and a valid plan for package B. That does not mean the composition
+-- is simultaniously valid for A and B. In particular you're most likely to
+-- have problems with inconsistent dependencies.
+-- On the other hand it is true that every closed sub plan is valid.
+
 data PlanPackage buildResult = PreExisting InstalledPackageInfo
                              | Configured  ConfiguredPackage
                              | Installed   ConfiguredPackage
@@ -174,35 +179,26 @@ new os arch compiler index =
 toList :: InstallPlan buildResult -> [PlanPackage buildResult]
 toList = PackageIndex.allPackages . planIndex
 
--- | Is the plan completed?
+-- | The packages that are ready to be installed. That is they are in the
+-- configured state and have all their dependencies installed already.
+-- The plan is complete if the result is @[]@.
 --
-done :: InstallPlan buildResult -> Bool
-done (InstallPlan { planIndex = index}) =
-  null [ () | Configured _ <- PackageIndex.allPackages index ]
-
--- | The next package, meaning a package which has all its dependencies
--- installed already.
---
--- * The graph must not be 'done'.
---
-next :: InstallPlan buildResult -> ConfiguredPackage
-next plan@(InstallPlan { planIndex = index }) = assert (invariant plan) $
-  let allReadyPackages =
-        [ pkg
-        | Configured pkg <- PackageIndex.allPackages index
-        , flip all (depends pkg) $ \dep ->
-            case PackageIndex.lookupPackageId index dep of
-              Just (Configured  _) -> False
-              Just (Failed    _ _) -> internalError depOnFailed
-              Just (PreExisting _) -> True
-              Just (Installed   _) -> True
-              Nothing -> internalError incomplete ]
-  in case allReadyPackages of
-    []      -> internalError noNextPkg
-    (pkg:_) -> pkg
+ready :: InstallPlan buildResult -> [ConfiguredPackage]
+ready plan = assert check readyPackages
   where
+    check = invariant plan
+         && null readyPackages <= null configuredPackages
+    configuredPackages =
+      [ pkg | Configured pkg <- PackageIndex.allPackages (planIndex plan) ]
+    readyPackages = filter (all isInstalled . depends) configuredPackages
+    isInstalled pkg =
+      case PackageIndex.lookupPackageId (planIndex plan) pkg of
+        Just (Configured  _) -> False
+        Just (Failed    _ _) -> internalError depOnFailed
+        Just (PreExisting _) -> True
+        Just (Installed   _) -> True
+        Nothing              -> internalError incomplete
     incomplete  = "install plan is not closed"
-    noNextPkg   = "no configured pkg with all installed deps"
     depOnFailed = "configured package depends on failed package"
 
 -- | Marks a package in the graph as completed. Also saves the build result for
