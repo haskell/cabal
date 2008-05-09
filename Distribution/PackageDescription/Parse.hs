@@ -143,6 +143,9 @@ pkgDescrFieldDescrs =
  , listField "data-files"  
            showFilePath           parseFilePathQ
            dataFiles              (\val pkg -> pkg{dataFiles=val})
+ , simpleField "data-dir"
+           showFilePath           parseFilePathQ
+           dataDir                (\val pkg -> pkg{dataDir=val})
  , listField "extra-source-files" 
            showFilePath    parseFilePathQ
            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})

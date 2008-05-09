@@ -150,8 +150,9 @@ prepareTree verbosity pkg_descr mb_lbi tmpDir pps = do
         Nothing -> findFile (hsSourceDirs exeBi) mainPath
         Just pp -> return pp
     copyFileTo verbosity targetDir srcMainFile
-  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
-    let dir = takeDirectory file
+  flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
+    let file = dataDir pkg_descr </> filename
+        dir = takeDirectory file
     createDirectoryIfMissingVerbose verbosity True (targetDir </> dir)
     copyFileVerbose verbosity file (targetDir </> file)
 
