@@ -104,7 +104,7 @@ install pkg_descr lbi flags = do
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
-      copyFileVerbose verbosity file (dataPref </> file)
+      copyFileVerbose verbosity (dataDir pkg_descr </> file) (dataPref </> file)
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       copyDirectoryRecursiveVerbose verbosity
