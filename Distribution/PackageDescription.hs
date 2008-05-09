@@ -129,6 +129,7 @@ data PackageDescription
         library        :: Maybe Library,
         executables    :: [Executable],
         dataFiles      :: [FilePath],
+        dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],
         extraTmpFiles  :: [FilePath]
     }
@@ -159,6 +160,7 @@ emptyPackageDescription
                       library      = Nothing,
                       executables  = [],
                       dataFiles    = [],
+                      dataDir      = "",
                       extraSrcFiles = [],
                       extraTmpFiles = []
                      }
