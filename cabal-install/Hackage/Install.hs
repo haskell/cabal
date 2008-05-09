@@ -14,6 +14,8 @@ module Hackage.Install
     ( install
     ) where
 
+import Data.List
+         ( unfoldr )
 import Data.Monoid (Monoid(mconcat))
 import Control.Exception as Exception
          ( handle, Exception )
@@ -195,27 +197,24 @@ planRepoPackages _verbosity comp installed available deps = do
                                installed available deps'
 
 printDryRun :: Verbosity -> InstallPlan BuildResult -> IO ()
-printDryRun verbosity pkgs
-  | InstallPlan.done pkgs = notice verbosity "No packages to be installed."
-  | otherwise = do
-        notice verbosity $ "In order, the following would be installed:\n"
-          ++ unlines (map display (order pkgs))
-        where
-        order ps
-            | InstallPlan.done ps = []
-            | otherwise =
-                let (InstallPlan.ConfiguredPackage pkgInfo _ _) = InstallPlan.next ps
-                    pkgId = packageId pkgInfo
-                in (pkgId : order (InstallPlan.completed pkgId ps))
+printDryRun verbosity plan = case unfoldr next plan of
+  []   -> notice verbosity "No packages to be installed."
+  pkgs -> notice verbosity $ unlines $
+            "In order, the following would be installed:"
+          : map display pkgs
+  where
+    next plan' = case InstallPlan.ready plan' of
+      []      -> Nothing
+      (pkg:_) -> Just (pkgid, InstallPlan.completed pkgid plan')
+        where pkgid = packageId pkg
 
 executeInstallPlan :: Monad m
                    => InstallPlan BuildResult
                    -> (ConfiguredPackage -> m BuildResult)
                    -> m (InstallPlan BuildResult)
-executeInstallPlan plan installPkg
-  | InstallPlan.done plan = return plan
-  | otherwise = do
-    let pkg = InstallPlan.next plan
+executeInstallPlan plan installPkg = case InstallPlan.ready plan of
+  [] -> return plan
+  (pkg: _) -> do
     buildResult <- installPkg pkg
     let pkgid = packageId pkg
         updatePlan = case buildResult of
