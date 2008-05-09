@@ -158,10 +158,10 @@ internalError msg = error $ "InstallPlan: internal error: " ++ msg
 -- | Build an installation plan from a valid set of resolved packages.
 --
 new :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a)
-    -> Either (InstallPlan a) [PlanProblem a]
+    -> Either [PlanProblem a] (InstallPlan a)
 new os arch compiler index =
   case problems os arch compiler index of
-    [] -> Left InstallPlan {
+    [] -> Right InstallPlan {
             planIndex    = index,
             planGraph    = graph,
             planGraphRev = Graph.transposeG graph,
@@ -174,7 +174,7 @@ new os arch compiler index =
       where (graph, vertexToPkgId, pkgIdToVertex) =
               PackageIndex.dependencyGraph index
             noSuchPkgId = internalError "package is not in the graph"
-    probs -> Right probs
+    probs -> Left probs
 
 toList :: InstallPlan buildResult -> [PlanPackage buildResult]
 toList = PackageIndex.allPackages . planIndex
