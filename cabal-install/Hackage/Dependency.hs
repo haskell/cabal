@@ -81,23 +81,37 @@ hideBrokenPackages index =
   . map (packageId . fst)
   $ PackageIndex.brokenPackages index
 
-{-
 type DependencyResolver a = OS
                          -> Arch
                          -> CompilerId
                          -> PackageIndex InstalledPackageInfo
                          -> PackageIndex AvailablePackage
                          -> [UnresolvedDependency]
-                         -> InstallPlan.InstallPlan a
+                         -> Either [InstallPlan.PlanPackage a] [Dependency]
 
--- | This is an example resolver that produces valid plans but plans where we
--- say that every package failed.
+dependencyResolver
+  :: DependencyResolver a
+  -> OS -> Arch -> CompilerId
+  -> PackageIndex InstalledPackageInfo
+  -> PackageIndex AvailablePackage
+  -> [UnresolvedDependency]
+  -> Either (InstallPlan a) [Dependency]
+dependencyResolver resolver os arch comp installed available deps =
+  case resolver os arch comp (hideBrokenPackages installed) available deps of
+    Left pkgs ->
+      case InstallPlan.new os arch comp (PackageIndex.fromList pkgs) of
+        Left  plan     -> Left plan
+        Right problems -> error $ unlines $
+            "internal error: could not construct a valid install plan."
+          : "The proposed (invalid) plan contained the following problems:"
+          : map InstallPlan.showPlanProblem problems
+    Right unresolved -> Right unresolved
+
+-- | This is an example resolver that says that every package failed.
 --
 failingResolver :: DependencyResolver a
-failingResolver os arch compiler _ _ deps =
-  InstallPlan.new os arch compiler $
-    PackageIndex.fromList (map InstallPlan.Unresolved deps)
--}
+failingResolver _ _ _ _ _ deps = Right
+  [ dep | UnresolvedDependency dep _ <- deps ]
 
 resolveDependency :: OS
                   -> Arch
