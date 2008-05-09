@@ -55,12 +55,10 @@ resolveDependencies :: OS
                     -> [UnresolvedDependency]
                     -> Either [Dependency] (InstallPlan a)
 resolveDependencies os arch comp (Just installed) available deps =
-  either Right Left $
   dependencyResolver naiveResolver
     os arch comp installed available deps
 
 resolveDependencies os arch comp Nothing available deps =
-  either Right Left $
   dependencyResolver bogusResolver
     os arch comp mempty available deps
 
@@ -77,7 +75,7 @@ type DependencyResolver a = OS
                          -> PackageIndex InstalledPackageInfo
                          -> PackageIndex AvailablePackage
                          -> [UnresolvedDependency]
-                         -> Either [InstallPlan.PlanPackage a] [Dependency]
+                         -> Either [Dependency] [InstallPlan.PlanPackage a]
 
 dependencyResolver
   :: DependencyResolver a
@@ -85,22 +83,22 @@ dependencyResolver
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
   -> [UnresolvedDependency]
-  -> Either (InstallPlan a) [Dependency]
+  -> Either [Dependency] (InstallPlan a)
 dependencyResolver resolver os arch comp installed available deps =
   case resolver os arch comp (hideBrokenPackages installed) available deps of
-    Left pkgs ->
+    Left unresolved -> Left unresolved
+    Right pkgs ->
       case InstallPlan.new os arch comp (PackageIndex.fromList pkgs) of
-        Left  plan     -> Left plan
-        Right problems -> error $ unlines $
+        Right plan     -> Right plan
+        Left  problems -> error $ unlines $
             "internal error: could not construct a valid install plan."
           : "The proposed (invalid) plan contained the following problems:"
           : map InstallPlan.showPlanProblem problems
-    Right unresolved -> Right unresolved
 
 -- | This is an example resolver that says that every package failed.
 --
 failingResolver :: DependencyResolver a
-failingResolver _ _ _ _ _ deps = Right
+failingResolver _ _ _ _ _ deps = Left
   [ dep | UnresolvedDependency dep _ <- deps ]
 
 -- | This resolver thinks that every package is already installed.
@@ -108,8 +106,8 @@ failingResolver _ _ _ _ _ deps = Right
 bogusResolver :: DependencyResolver a
 bogusResolver os arch comp _ available deps =
   case unzipEithers (map resolveFromAvailable deps) of
-    (ok, [])      -> Left ok
-    (_ , missing) -> Right missing
+    (ok, [])      -> Right ok
+    (_ , missing) -> Left missing
   where
     resolveFromAvailable (UnresolvedDependency dep flags) =
       case latestAvailableSatisfying available dep of
@@ -196,7 +194,7 @@ getDependencies os arch comp installed available pkg flags
 
 packagesToInstall :: PackageIndex InstalledPackageInfo
                   -> [ResolvedDependency]
-                  -> Either [InstallPlan.PlanPackage a] [Dependency]
+                  -> Either [Dependency] [InstallPlan.PlanPackage a]
                      -- ^ Either a list of missing dependencies, or a graph
                      -- of packages to install, with their options.
 packagesToInstall allInstalled deps0 =
@@ -216,10 +214,10 @@ packagesToInstall allInstalled deps0 =
                                 allInstalled
                                 (getInstalled deps0)
 
-       in Left $ map InstallPlan.Configured selectedAvailable
+       in Right $ map InstallPlan.Configured selectedAvailable
               ++ map InstallPlan.PreExisting selectedInstalled
 
-    (missing, _) -> Right $ concat missing
+    (missing, _) -> Left $ concat missing
 
   where
     getAvailable :: ResolvedDependency
