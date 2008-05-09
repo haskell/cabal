@@ -35,9 +35,8 @@ instance Text Bool where
                           Parse.string "false") >> return False ]
 
 instance Text Version where
-  disp (Version branch tags)
+  disp (Version branch _tags) -- Do not display the tags
     = Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
-   <> Disp.hcat (map (\tag -> Disp.char '-' <> Disp.text tag) tags)
 
   parse = do
       branch <- Parse.sepBy1 digits (Parse.char '.')
