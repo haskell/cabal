@@ -23,7 +23,8 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
-         ( UnresolvedDependency(..), AvailablePackage(..) )
+         ( UnresolvedDependency(..), AvailablePackage(..)
+         , ConfiguredPackage(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..)
          , Package(..), PackageFixedDeps(..) )
@@ -43,7 +44,7 @@ import Distribution.Text
 import Control.Monad (mplus)
 import Data.List (maximumBy)
 import Data.Maybe (fromMaybe, catMaybes)
-import Data.Monoid (Monoid(mappend))
+import Data.Monoid (Monoid(mempty, mappend))
 import Control.Exception (assert)
 
 resolveDependencies :: OS
@@ -54,25 +55,14 @@ resolveDependencies :: OS
                     -> [UnresolvedDependency]
                     -> Either [Dependency] (InstallPlan a)
 resolveDependencies os arch comp (Just installed) available deps =
-  assert (null $ PackageIndex.brokenPackages installed')
-  packagesToInstall os arch comp installed'
-    [ resolveDependency os arch comp installed' available dep flags
-    | UnresolvedDependency dep flags <- deps]
-  where installed' = hideBrokenPackages installed
-resolveDependencies os arch comp Nothing available deps =
-  packagesToInstall os arch comp undefined
-    (resolveDependenciesBogusly available deps)
+  either Right Left $
+  dependencyResolver naiveResolver
+    os arch comp installed available deps
 
--- | We're using a compiler where we cannot track installed packages so just
--- pretend everything is installed and hope for the best. Yay!
-resolveDependenciesBogusly :: PackageIndex AvailablePackage
-                           -> [UnresolvedDependency]
-                           -> [ResolvedDependency]
-resolveDependenciesBogusly available = map resolveFromAvailable
-  where resolveFromAvailable (UnresolvedDependency dep flags) =
-          case latestAvailableSatisfying available dep of
-            Nothing  -> UnavailableDependency dep
-            Just pkg -> AvailableDependency dep pkg flags []
+resolveDependencies os arch comp Nothing available deps =
+  either Right Left $
+  dependencyResolver bogusResolver
+    os arch comp mempty available deps
 
 hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
 hideBrokenPackages index =
@@ -112,6 +102,34 @@ dependencyResolver resolver os arch comp installed available deps =
 failingResolver :: DependencyResolver a
 failingResolver _ _ _ _ _ deps = Right
   [ dep | UnresolvedDependency dep _ <- deps ]
+
+-- | This resolver thinks that every package is already installed.
+--
+bogusResolver :: DependencyResolver a
+bogusResolver os arch comp _ available deps =
+  case unzipEithers (map resolveFromAvailable deps) of
+    (ok, [])      -> Left ok
+    (_ , missing) -> Right missing
+  where
+    resolveFromAvailable (UnresolvedDependency dep flags) =
+      case latestAvailableSatisfying available dep of
+        Nothing  -> Right dep
+        Just apkg@(AvailablePackage _ pkg _) ->
+          case finalizePackageDescription flags none os arch comp [] pkg of
+            Right (_, flags') -> Left $ InstallPlan.Configured $
+                                   ConfiguredPackage apkg flags' []
+            --TODO: we actually have to delete the deps of pkg, otherwise
+            -- the install plan verifier will say we're missing deps.
+            _ -> error "bogusResolver: impossible happened"
+          where
+            none :: Maybe (PackageIndex PackageIdentifier)
+            none = Nothing
+
+naiveResolver :: DependencyResolver a
+naiveResolver os arch comp installed available deps =
+  packagesToInstall installed
+    [ resolveDependency os arch comp installed available dep flags
+    | UnresolvedDependency dep flags <- deps]
 
 resolveDependency :: OS
                   -> Arch
@@ -176,13 +194,12 @@ getDependencies os arch comp installed available pkg flags
                   in Just (flatten available `mappend` flatten installed))
                 os arch comp [] pkg
 
-packagesToInstall :: OS -> Arch -> CompilerId
-                  -> PackageIndex InstalledPackageInfo
+packagesToInstall :: PackageIndex InstalledPackageInfo
                   -> [ResolvedDependency]
-                  -> Either [Dependency] (InstallPlan a)
+                  -> Either [InstallPlan.PlanPackage a] [Dependency]
                      -- ^ Either a list of missing dependencies, or a graph
                      -- of packages to install, with their options.
-packagesToInstall os arch comp allInstalled deps0 =
+packagesToInstall allInstalled deps0 =
   case unzipEithers (map getAvailable deps0) of
     ([], ok)     ->
       let selectedAvailable :: [InstallPlan.ConfiguredPackage]
@@ -198,16 +215,11 @@ packagesToInstall os arch comp allInstalled deps0 =
                             $ PackageIndex.dependencyClosure
                                 allInstalled
                                 (getInstalled deps0)
-          index     = PackageIndex.fromList
-                    $ map InstallPlan.Configured selectedAvailable
-                   ++ map InstallPlan.PreExisting selectedInstalled
-       in case InstallPlan.new os arch comp index of
-            Left  plan     -> Right plan
-            Right problems -> error $ unlines $
-                "internal error: could not construct a valid install plan."
-              : "The proposed (invalid) plan contained the following problems:"
-              : map InstallPlan.showPlanProblem problems
-    (missing, _)     -> Left  $ concat missing
+
+       in Left $ map InstallPlan.Configured selectedAvailable
+              ++ map InstallPlan.PreExisting selectedInstalled
+
+    (missing, _) -> Right $ concat missing
 
   where
     getAvailable :: ResolvedDependency
