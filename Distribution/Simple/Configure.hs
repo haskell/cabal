@@ -432,6 +432,8 @@ configure (pkg_descr0, pbi) cfg
         unless (isAbsolute (prefix dirs)) $ die $
             "expected an absolute directory name for --prefix: " ++ prefix dirs
 
+        info verbosity $ "Using " ++ display currentCabalId
+                      ++ " compiled by " ++ display currentCompilerId
         info verbosity $ "Using compiler: " ++ showCompilerId comp
         info verbosity $ "Using install prefix: " ++ prefix dirs
 
