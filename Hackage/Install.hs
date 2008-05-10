@@ -77,7 +77,6 @@ data BuildResult = DependentFailed PackageIdentifier
                  | BuildOk
 
 data InstallMisc = InstallMisc {
-    dryRun     :: Bool,
     rootCmd    :: Maybe FilePath,
     libVersion :: Maybe Version
   }
@@ -104,10 +103,10 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
   case maybePlan of
     Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
     Right installPlan -> do
-      when (dryRun miscOptions || verbosity >= verbose) $
+      when (dryRun || verbosity >= verbose) $
         printDryRun verbosity installPlan
 
-      unless (dryRun miscOptions) $ do
+      unless dryRun $ do
         executeInstallPlan installPlan $ \cpkg ->
           installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
             installAvailablePackage verbosity apkg $
@@ -144,8 +143,8 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
       usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
       useProgramConfig = conf
     }
-    miscOptions = InstallMisc {
-      dryRun     = Cabal.fromFlag (installDryRun installFlags),
+    dryRun       = Cabal.fromFlag (installDryRun installFlags)
+    miscOptions  = InstallMisc {
       rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
                      then Nothing      -- ignore --root-cmd if --user.
                      else Cabal.flagToMaybe (installRootCmd installFlags),
