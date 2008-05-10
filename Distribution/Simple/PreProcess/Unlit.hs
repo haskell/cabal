@@ -119,7 +119,7 @@ reclassify = blank -- begin in blank state
     latex []               = []
     latex (EndCode    :ls) = Blank "" : comment ls
     latex (BeginCode  :_ ) = [Error "\\begin{code} in code section"]
-    latex (BirdTrack l:ls) = Ordinary ('>':l) : bird ls
+    latex (BirdTrack l:ls) = Ordinary ('>':l) : latex ls
     latex (          l:ls) = l : latex ls
 
     blank []               = []
