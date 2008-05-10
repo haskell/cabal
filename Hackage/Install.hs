@@ -10,9 +10,10 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Hackage.Install
-    ( install
-    ) where
+module Hackage.Install (
+    install,
+    upgrade,
+  ) where
 
 import Data.List
          ( unfoldr )
@@ -25,7 +26,7 @@ import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
-import Hackage.Dependency (resolveDependencies)
+import Hackage.Dependency (resolveDependencies, upgradableDependencies)
 import Hackage.Fetch (fetchPackage)
 -- import qualified Hackage.Info as Info
 import qualified Hackage.IndexUtils as IndexUtils
@@ -98,6 +99,17 @@ install verbosity packageDB repos comp conf configFlags installFlags deps =
     planner :: Planner
     planner | null deps = planLocalPackage verbosity comp configFlags
             | otherwise = planRepoPackages           comp deps
+
+upgrade :: Verbosity
+        -> PackageDB
+        -> [Repo]
+        -> Compiler
+        -> ProgramConfiguration
+        -> Cabal.ConfigFlags
+        -> InstallFlags
+        -> IO ()
+upgrade verbosity packageDB repos comp =
+  installWithPlanner (planUpgradePackages comp) verbosity packageDB repos comp
 
 type Planner = Maybe (PackageIndex InstalledPackageInfo)
             -> PackageIndex AvailablePackage
@@ -193,6 +205,19 @@ planRepoPackages comp deps installed available = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   return $ resolveDependencies buildOS buildArch (compilerId comp)
                                installed available deps'
+
+planUpgradePackages :: Compiler
+                    -> Maybe (PackageIndex InstalledPackageInfo)
+                    -> PackageIndex AvailablePackage
+                    -> IO (Either [Dependency] (InstallPlan BuildResult))
+planUpgradePackages comp (Just installed) available = return $
+  resolveDependencies buildOS buildArch (compilerId comp) (Just installed) available
+    [ UnresolvedDependency dep []
+    | dep <- upgradableDependencies installed available ]
+planUpgradePackages comp _ _ =
+  die $ display (compilerId comp)
+     ++ " does not track installed packages so cabal cannot figure out what"
+     ++ " packages need to be upgraded."
 
 printDryRun :: Verbosity -> InstallPlan BuildResult -> IO ()
 printDryRun verbosity plan = case unfoldr next plan of
