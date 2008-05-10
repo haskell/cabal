@@ -13,12 +13,11 @@
 module Hackage.Dependency
     (
       resolveDependencies
-    , getUpgradableDeps
+    , upgradableDependencies
     ) where
 
 import Hackage.Dependency.Naive (naiveResolver)
 import Hackage.Dependency.Bogus (bogusResolver)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo_(package))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -27,16 +26,18 @@ import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Package
-         ( PackageIdentifier(..), Dependency(..)
-         , Package(..), PackageFixedDeps(..) )
+         ( PackageIdentifier(..), packageVersion, packageName
+         , Dependency(..), Package(..), PackageFixedDeps(..) )
+import Distribution.Version
+         ( VersionRange(LaterVersion) )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
+import Hackage.Utils (mergeBy, MergeResult(..))
 
 import Data.List (maximumBy)
-import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(mempty))
 import Control.Exception (assert)
 
@@ -97,48 +98,21 @@ failingResolver :: DependencyResolver a
 failingResolver _ _ _ _ _ deps = Left
   [ dep | UnresolvedDependency dep _ <- deps ]
 
--- |Given the list of installed packages and installable packages, figure
+-- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
-
-getUpgradableDeps :: PackageIndex InstalledPackageInfo
-                  -> PackageIndex AvailablePackage
-                  -> [AvailablePackage]
-getUpgradableDeps installed available =
-  let latestInstalled = getLatestPackageVersions installed
-      mNeedingUpgrade = map (flip newerAvailable available) latestInstalled
-   in catMaybes mNeedingUpgrade
-
-  where newerAvailable :: PackageIdentifier
-                       -> PackageIndex AvailablePackage -- ^installable packages
-                       -> Maybe AvailablePackage -- ^greatest available
-        newerAvailable pkgToUpdate index
-            = foldl (newerThan pkgToUpdate) Nothing (PackageIndex.allPackages index)
-        newerThan :: PackageIdentifier 
-                  -> Maybe AvailablePackage
-                  -> AvailablePackage
-                  -> Maybe AvailablePackage
-        newerThan pkgToUpdate mFound testPkg
-            = case (pkgName pkgToUpdate == (pkgName $ packageId testPkg), mFound) of
-               (False, _) -> mFound
-               (True, Nothing) -- compare to given package
-                   -> if ((packageId testPkg) `isNewer` pkgToUpdate)
-                      then Just testPkg
-                      else Nothing -- none found so far
-               (True, Just lastNewestPkg) -- compare to latest package
-                   -> if ((packageId testPkg) `isNewer` (packageId lastNewestPkg))
-                      then Just testPkg
-                      else mFound
-
-        -- trim out the old versions of packages with multiple versions installed
-        isNewer :: PackageIdentifier -> PackageIdentifier -> Bool
-        isNewer p1 p2 = pkgVersion p1 > pkgVersion p2
-
-
--- | Given the index of installed packages, get the latest version of each
--- package. That is, if multiple versions of this package are installed, figure
--- out which is the lastest one.
 --
-getLatestPackageVersions :: PackageIndex InstalledPackageInfo -> [PackageIdentifier]
-getLatestPackageVersions index =
-  [ maximumBy (comparing pkgVersion) $ map package pkgs
-  | pkgs <- PackageIndex.allPackagesByName index ]
+upgradableDependencies :: PackageIndex InstalledPackageInfo
+                       -> PackageIndex AvailablePackage
+                       -> [Dependency]
+upgradableDependencies installed available =
+  [ Dependency name (LaterVersion latestVersion)
+    -- This is really quick (linear time). The trick is that we're doing a
+    -- merge join of two tables. We can do it as a merge because they're in
+    -- a comparable order because we're getting them from the package indexs.
+  | InBoth latestInstalled allAvailable
+      <- mergeBy (\a (b:_) -> packageName a `compare` packageName b)
+                 [ maximumBy (comparing packageVersion) pkgs
+                 | pkgs <- PackageIndex.allPackagesByName installed ]
+                 (PackageIndex.allPackagesByName available)
+  , let (PackageIdentifier name latestVersion) = packageId latestInstalled
+  , any (\p -> packageVersion p > latestVersion) allAvailable ]
