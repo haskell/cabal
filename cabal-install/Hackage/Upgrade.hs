@@ -17,7 +17,7 @@ module Hackage.Upgrade
     ) where
 
 import qualified Hackage.IndexUtils as IndexUtils
-import Hackage.Dependency (getUpgradableDeps)
+import Hackage.Dependency (upgradableDependencies)
 import Hackage.Install (install)
 import Hackage.Types (UnresolvedDependency(..), Repo)
 import Hackage.Setup (InstallFlags(..))
@@ -25,8 +25,6 @@ import Hackage.Setup (InstallFlags(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Compiler (Compiler, PackageDB)
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(..))
-import Distribution.Version (VersionRange(..))
 import Distribution.Verbosity (Verbosity)
 import qualified Distribution.Simple.Setup as Cabal
 
@@ -42,11 +40,6 @@ upgrade :: Verbosity
 upgrade verbosity packageDB repos comp conf configFlags installFlags = do
   Just installed <- getInstalledPackages verbosity comp packageDB conf
   available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)      
-  let upgradable = getUpgradableDeps installed available
+  let upgradable = upgradableDependencies installed available
   install verbosity packageDB repos comp conf configFlags installFlags
-              [UnresolvedDependency (identifierToDependency $ packageId x) []
-                                  | x <- upgradable]
-
-identifierToDependency :: PackageIdentifier -> Dependency
-identifierToDependency (PackageIdentifier name version)
-    = Dependency name (ThisVersion version)
+    [ UnresolvedDependency dep [] | dep <- upgradable ]
