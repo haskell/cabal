@@ -107,36 +107,15 @@ install verbosity packageDB repos comp conf configFlags installFlags deps = do
         printDryRun verbosity installPlan
 
       unless dryRun $ do
-        executeInstallPlan installPlan $ \cpkg ->
-          installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
-            installAvailablePackage verbosity apkg $
-              installUnpackedPackage verbosity (setupScriptOptions installed)
-                                     miscOptions configFlags'
-        return ()
-
-  let buildResults :: [(PackageIdentifier, BuildResult)]
-      buildResults = [] --FIXME: get build results from executeInstallPlan
-  case filter (buildFailed . snd) buildResults of
-    []     -> return () --TODO: return the build results
-    failed -> die $ "Error: some packages failed to install:\n"
-      ++ unlines
-         [ display pkgid ++ case reason of
-           DependentFailed pkgid' -> " depends on " ++ display pkgid'
-                                  ++ " which failed to install."
-           UnpackFailed    e -> " failed while unpacking the package."
-                             ++ " The exception was:\n  " ++ show e
-           ConfigureFailed e -> " failed during the configure step."
-                             ++ " The exception was:\n  " ++ show e
-           BuildFailed     e -> " failed during the building phase."
-                             ++ " The exception was:\n  " ++ show e
-           InstallFailed   e -> " failed during the final install step."
-                             ++ " The exception was:\n  " ++ show e
-           _ -> ""
-         | (pkgid, reason) <- failed ]
+        installPlan' <-
+          executeInstallPlan installPlan $ \cpkg ->
+            installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
+              installAvailablePackage verbosity apkg $
+                installUnpackedPackage verbosity (setupScriptOptions installed)
+                                       miscOptions configFlags'
+        printBuildFailures installPlan'
 
   where
-    buildFailed BuildOk = False
-    buildFailed _       = True
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
@@ -206,6 +185,29 @@ printDryRun verbosity plan = case unfoldr next plan of
       []      -> Nothing
       (pkg:_) -> Just (pkgid, InstallPlan.completed pkgid plan')
         where pkgid = packageId pkg
+
+printBuildFailures :: InstallPlan BuildResult -> IO ()
+printBuildFailures plan =
+  case [ (pkg, reason)
+       | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
+    []     -> return ()
+    failed -> die . unlines
+            $ "Error: some packages failed to install:"
+            : [ display (packageId pkg) ++ printFailureReason reason
+              | (pkg, reason) <- failed ]
+  where
+    printFailureReason reason = case reason of
+      DependentFailed pkgid -> " depends on " ++ display pkgid
+                            ++ " which failed to install."
+      UnpackFailed    e -> " failed while unpacking the package."
+                        ++ " The exception was:\n  " ++ show e
+      ConfigureFailed e -> " failed during the configure step."
+                        ++ " The exception was:\n  " ++ show e
+      BuildFailed     e -> " failed during the building phase."
+                        ++ " The exception was:\n  " ++ show e
+      InstallFailed   e -> " failed during the final install step."
+                        ++ " The exception was:\n  " ++ show e
+      _ -> ""
 
 executeInstallPlan :: Monad m
                    => InstallPlan BuildResult
