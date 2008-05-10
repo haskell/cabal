@@ -30,9 +30,8 @@ import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
                                  defaultConfigFile, loadConfig, configRepos,
                                  configPackageDB)
 import Hackage.List             (list)
-import Hackage.Install          (install)
+import Hackage.Install          (install, upgrade)
 import Hackage.Update           (update)
-import Hackage.Upgrade          (upgrade)
 import Hackage.Fetch            (fetch)
 import Hackage.Check as Check   (check)
 --import Hackage.Clean            (clean)
