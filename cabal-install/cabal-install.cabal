@@ -55,7 +55,6 @@ Executable cabal
         Hackage.Tar
         Hackage.Types
         Hackage.Update
-        Hackage.Upgrade
         Hackage.Upload
         Hackage.Utils
 
