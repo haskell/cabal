@@ -92,7 +92,8 @@ import Distribution.Version
 import Distribution.Text
          ( simpleParse, display )
 import Distribution.Verbosity
-import System.Directory (doesFileExist, removeFile, findExecutable)
+import System.Directory (doesFileExist, removeFile, findExecutable,
+                         getTemporaryDirectory)
 import System.FilePath  (dropExtension)
 import System.IO (hClose)
 import System.IO.Error (try)
@@ -579,8 +580,9 @@ hsc2hsProgram = (simpleProgram "hsc2hs") {
       -- to see if it was indeed ghc or not.
       case maybeVersion of
         Nothing -> return Nothing
-	Just version ->
-          withTempFile "dist" ".hsc" $ \hsc hnd -> do
+	Just version -> do
+          tempDir <- getTemporaryDirectory
+          withTempFile tempDir ".hsc" $ \hsc hnd -> do
 	    hClose hnd
 	    (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
 	    try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
