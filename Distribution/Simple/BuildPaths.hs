@@ -42,7 +42,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.BuildPaths (
-    distPref, srcPref,
+    defaultDistPref, srcPref,
     hscolourPref, haddockPref,
     autogenModulesDir,
 
@@ -68,6 +68,7 @@ import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
+import Distribution.Simple.Setup (defaultDistPref)
 import Distribution.Text
          ( display )
 import Distribution.System (OS(..), buildOS)
@@ -75,17 +76,14 @@ import Distribution.System (OS(..), buildOS)
 -- ---------------------------------------------------------------------------
 -- Build directories and files
 
-distPref :: FilePath
-distPref = "dist"
+srcPref :: FilePath -> FilePath
+srcPref distPref = distPref </> "src"
 
-srcPref :: FilePath
-srcPref = distPref </> "src"
-
-hscolourPref :: PackageDescription -> FilePath
+hscolourPref :: FilePath -> PackageDescription -> FilePath
 hscolourPref = haddockPref
 
-haddockPref :: PackageDescription -> FilePath
-haddockPref pkg_descr
+haddockPref :: FilePath -> PackageDescription -> FilePath
+haddockPref distPref pkg_descr
     = distPref </> "doc" </> "html" </> packageName pkg_descr
 
 -- |The directory in which we put auto-generated modules
