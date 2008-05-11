@@ -94,11 +94,13 @@ import System.FilePath
 sdist :: PackageDescription -- ^information from the tarball
       -> Maybe LocalBuildInfo -- ^Information from configure
       -> SDistFlags -- ^verbosity & snapshot
-      -> FilePath -- ^build prefix (temp dir)
-      -> FilePath -- ^TargetPrefix
+      -> (FilePath -> FilePath) -- ^build prefix (temp dir)
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg mb_lbi flags tmpDir targetPref pps = do
+sdist pkg mb_lbi flags mkTmpDir pps = do
+  let distPref = fromFlag $ sDistDistPref flags
+      targetPref = distPref
+      tmpDir = mkTmpDir distPref
 
   -- do some QA
   printPackageProblems verbosity pkg

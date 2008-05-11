@@ -97,7 +97,7 @@ import Distribution.Simple.Configure(getPersistBuildConfig,
                                      configure, writePersistBuildConfig)
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.BuildPaths ( distPref, srcPref)
+import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
@@ -208,6 +208,7 @@ allSuffixHandlers hooks
 
 configureAction :: UserHooks -> ConfigFlags -> Args -> IO ()
 configureAction hooks flags args = do
+                let distPref = fromFlag $ configDistPref flags
                 pbi <- preConf hooks args flags
 
                 (mb_pd_file, pkg_descr0) <- confPkgDescr
@@ -223,7 +224,7 @@ configureAction hooks flags args = do
 
                 -- remember the .cabal filename if we know it
                 let localbuildinfo = localbuildinfo0{ pkgDescrFile = mb_pd_file }
-                writePersistBuildConfig localbuildinfo
+                writePersistBuildConfig distPref localbuildinfo
                 
 		let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags pkg_descr localbuildinfo
@@ -243,7 +244,8 @@ configureAction hooks flags args = do
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
-                lbi <- getBuildConfigIfUpToDate
+                let distPref = fromFlag $ buildDistPref flags
+                lbi <- getBuildConfigIfUpToDate distPref
                 let progs = foldr (uncurry userSpecifyArgs)
                                   (withPrograms lbi) (buildProgramArgs flags)
                 hookedAction preBuild buildHook postBuild
@@ -251,22 +253,32 @@ buildAction hooks flags args = do
                              hooks flags args
 
 makefileAction :: UserHooks -> MakefileFlags -> Args -> IO ()
-makefileAction = hookedAction preMakefile makefileHook postMakefile
-                              getBuildConfigIfUpToDate
+makefileAction hooks flags args
+    = do let distPref = fromFlag $ makefileDistPref flags
+         hookedAction preMakefile makefileHook postMakefile
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
-hscolourAction = hookedAction preHscolour hscolourHook postHscolour
-                              getBuildConfigIfUpToDate
+hscolourAction hooks flags args
+    = do let distPref = fromFlag $ hscolourDistPref flags
+         hookedAction preHscolour hscolourHook postHscolour
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
         
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
-haddockAction = hookedAction preHaddock haddockHook postHaddock
-                             getBuildConfigIfUpToDate
+haddockAction hooks flags args
+    = do let distPref = fromFlag $ haddockDistPref flags
+         hookedAction preHaddock haddockHook postHaddock
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
+                let distPref = fromFlag $ cleanDistPref flags
                 pbi <- preClean hooks args flags
 
-                mlbi <- maybeGetPersistBuildConfig
+                mlbi <- maybeGetPersistBuildConfig distPref
                 pdfile <- defaultPackageDesc verbosity
                 ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
@@ -277,18 +289,25 @@ cleanAction hooks flags args = do
   where verbosity = fromFlag (cleanVerbosity flags)
 
 copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
-copyAction = hookedAction preCopy copyHook postCopy
-                          getBuildConfigIfUpToDate
+copyAction hooks flags args
+    = do let distPref = fromFlag $ copyDistPref flags
+         hookedAction preCopy copyHook postCopy
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
-installAction = hookedAction preInst instHook postInst
-                             getBuildConfigIfUpToDate
+installAction hooks flags args
+    = do let distPref = fromFlag $ installDistPref flags
+         hookedAction preInst instHook postInst
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
 sdistAction hooks flags args = do
+                let distPref = fromFlag $ sDistDistPref flags
                 pbi <- preSDist hooks args flags
 
-                mlbi <- maybeGetPersistBuildConfig
+                mlbi <- maybeGetPersistBuildConfig distPref
                 pdfile <- defaultPackageDesc verbosity
                 ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
@@ -298,19 +317,26 @@ sdistAction hooks flags args = do
                 postSDist hooks args flags pkg_descr mlbi
   where verbosity = fromFlag (sDistVerbosity flags)
 
-testAction :: UserHooks -> () -> Args -> IO ()
-testAction hooks _flags args = do
-                localbuildinfo <- getBuildConfigIfUpToDate
+testAction :: UserHooks -> TestFlags -> Args -> IO ()
+testAction hooks flags args = do
+                let distPref = fromFlag $ testDistPref flags
+                localbuildinfo <- getBuildConfigIfUpToDate distPref
                 let pkg_descr = localPkgDescr localbuildinfo
                 runTests hooks args False pkg_descr localbuildinfo
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
-registerAction = hookedAction preReg regHook postReg
-                              getBuildConfigIfUpToDate
+registerAction hooks flags args
+    = do let distPref = fromFlag $ regDistPref flags
+         hookedAction preReg regHook postReg
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
-unregisterAction = hookedAction preUnreg unregHook postUnreg
-                                getBuildConfigIfUpToDate
+unregisterAction hooks flags args
+    = do let distPref = fromFlag $ regDistPref flags
+         hookedAction preUnreg unregHook postUnreg
+                      (getBuildConfigIfUpToDate distPref)
+                      hooks flags args
 
 hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
         -> (UserHooks -> PackageDescription -> LocalBuildInfo
@@ -330,12 +356,12 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
 
-getBuildConfigIfUpToDate :: IO LocalBuildInfo
-getBuildConfigIfUpToDate = do
-   lbi <- getPersistBuildConfig
+getBuildConfigIfUpToDate :: FilePath -> IO LocalBuildInfo
+getBuildConfigIfUpToDate distPref = do
+   lbi <- getPersistBuildConfig distPref
    case pkgDescrFile lbi of
      Nothing -> return ()
-     Just pkg_descr_file -> checkPersistBuildConfig pkg_descr_file
+     Just pkg_descr_file -> checkPersistBuildConfig distPref pkg_descr_file
    return lbi
 
 -- --------------------------------------------------------------------------
@@ -343,10 +369,11 @@ getBuildConfigIfUpToDate = do
 
 clean :: PackageDescription -> CleanFlags -> IO ()
 clean pkg_descr flags = do
+    let distPref = fromFlag $ cleanDistPref flags
     notice verbosity "cleaning..."
 
     maybeConfig <- if fromFlag (cleanSaveConf flags)
-                     then maybeGetPersistBuildConfig
+                     then maybeGetPersistBuildConfig distPref
                      else return Nothing
 
     -- remove the whole dist/ directory rather than tracking exactly what files
@@ -362,7 +389,7 @@ clean pkg_descr flags = do
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
     -- If the user wanted to save the config, write it back
-    maybe (return ()) writePersistBuildConfig maybeConfig
+    maybe (return ()) (writePersistBuildConfig distPref) maybeConfig
 
   where
         removeFileOrDirectory :: FilePath -> IO ()
@@ -387,7 +414,7 @@ simpleUserHooks =
        makefileHook = defaultMakefileHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        instHook  = defaultInstallHook,
-       sDistHook = \p l h f -> sdist p l f srcPref distPref (allSuffixHandlers h),
+       sDistHook = \p l h f -> sdist p l f srcPref (allSuffixHandlers h),
        cleanHook = \p _ _ f -> clean p f,
        hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f,
        haddockHook  = \p l h f -> haddock  p l (allSuffixHandlers h) f,
@@ -484,16 +511,18 @@ defaultInstallHook pkg_descr localbuildinfo _ flags = do
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
+  let distPref = fromFlag $ buildDistPref flags
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
-      writeInstalledConfig pkg_descr localbuildinfo False Nothing
+      writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
 defaultMakefileHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> MakefileFlags -> IO ()
 defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
+  let distPref = fromFlag $ makefileDistPref flags
   makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
-      writeInstalledConfig pkg_descr localbuildinfo False Nothing
+      writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
 	-> UserHooks -> RegisterFlags -> IO ()
