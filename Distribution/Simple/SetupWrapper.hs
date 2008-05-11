@@ -24,7 +24,7 @@ import Distribution.Simple.Configure
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription(..), BuildType(..) )
 import Distribution.PackageDescription.Parse ( readPackageDescription )
-import Distribution.Simple.BuildPaths ( distPref, exeExtension )
+import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,
                                      rawSystemProgramConf, ghcProgram )
@@ -57,10 +57,11 @@ import Data.Monoid		( Monoid(mempty) )
   --      dependencies here and building/installing the sub packages
   --      in the right order.
 setupWrapper :: 
-       [String] -- ^ Command-line arguments.
+       FilePath -- ^ "dist" prefix
+    -> [String] -- ^ Command-line arguments.
     -> Maybe FilePath -- ^ Directory to run in. If 'Nothing', the current directory is used.
     -> IO ()
-setupWrapper args mdir = inDir mdir $ do  
+setupWrapper distPref args mdir = inDir mdir $ do  
   let (flag_fn, _, _, errs) = getOpt' Permute opts args
   when (not (null errs)) $ die (unlines errs)
   let Flags { withCompiler = hc, withHcPkg = hcPkg, withVerbosity = verbosity

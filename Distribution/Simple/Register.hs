@@ -52,7 +52,7 @@ module Distribution.Simple.Register (
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            InstallDirs(..),
 					   absoluteInstallDirs)
-import Distribution.Simple.BuildPaths (distPref, haddockName)
+import Distribution.Simple.BuildPaths (haddockName)
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
@@ -108,7 +108,8 @@ register pkg_descr lbi regFlags
     setupMessage (fromFlag $ regVerbosity regFlags) "No package to register" (packageId pkg_descr)
     return ()
   | otherwise = do
-    let isWindows = case buildOS of Windows -> True; _ -> False
+    let distPref = fromFlag $ regDistPref regFlags
+        isWindows = case buildOS of Windows -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
         genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
         genPkgConfigDefault = display (packageId pkg_descr) <.> "conf"
@@ -132,12 +133,12 @@ register pkg_descr lbi regFlags
           SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
 	let instConf | genPkgConf = genPkgConfigFile
-                     | inplace    = inplacePkgConfigFile
-		     | otherwise  = installedPkgConfigFile
+                     | inplace    = inplacePkgConfigFile distPref
+		     | otherwise  = installedPkgConfigFile distPref
 
         when (genPkgConf || not genScript) $ do
           info verbosity ("create " ++ instConf)
-          writeInstalledConfig pkg_descr lbi inplace (Just instConf)
+          writeInstalledConfig distPref pkg_descr lbi inplace (Just instConf)
 
         let register_flags   = let conf = if genScript && not isWindows
 		                             then ["-"]
@@ -150,7 +151,7 @@ register pkg_descr lbi regFlags
         case () of
           _ | genPkgConf -> return ()
             | genScript ->
-              do cfg <- showInstalledConfig pkg_descr lbi inplace
+              do cfg <- showInstalledConfig distPref pkg_descr lbi inplace
                  rawSystemPipe pkgTool regScriptLocation cfg allFlags
           _ -> rawSystemProgram verbosity pkgTool allFlags
 
@@ -158,7 +159,7 @@ register pkg_descr lbi regFlags
 	when inplace $ die "--inplace is not supported with Hugs"
         let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
 	createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
-	copyFileVerbose verbosity installedPkgConfigFile
+	copyFileVerbose verbosity (installedPkgConfigFile distPref)
 	    (libdir installDirs </> "package.conf")
       JHC -> notice verbosity "registering for JHC (nothing to do)"
       NHC -> notice verbosity "registering nhc98 (nothing to do)"
@@ -169,26 +170,26 @@ register pkg_descr lbi regFlags
 
 -- |Register doesn't drop the register info file, it must be done in a
 -- separate step.
-writeInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
-                     -> Maybe FilePath -> IO ()
-writeInstalledConfig pkg_descr lbi inplace instConfOverride = do
-  pkg_config <- showInstalledConfig pkg_descr lbi inplace
-  let instConfDefault | inplace   = inplacePkgConfigFile
-                      | otherwise = installedPkgConfigFile
+writeInstalledConfig :: FilePath -> PackageDescription -> LocalBuildInfo
+                     -> Bool -> Maybe FilePath -> IO ()
+writeInstalledConfig distPref pkg_descr lbi inplace instConfOverride = do
+  pkg_config <- showInstalledConfig distPref pkg_descr lbi inplace
+  let instConfDefault | inplace   = inplacePkgConfigFile distPref
+                      | otherwise = installedPkgConfigFile distPref
       instConf = fromMaybe instConfDefault instConfOverride
   writeFile instConf (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
-showInstalledConfig :: PackageDescription -> LocalBuildInfo -> Bool
+showInstalledConfig :: FilePath -> PackageDescription -> LocalBuildInfo -> Bool
   -> IO String
-showInstalledConfig pkg_descr lbi inplace
-    = do cfg <- mkInstalledPackageInfo pkg_descr lbi inplace
+showInstalledConfig distPref pkg_descr lbi inplace
+    = do cfg <- mkInstalledPackageInfo distPref pkg_descr lbi inplace
          return (showInstalledPackageInfo cfg)
 
-removeInstalledConfig :: IO ()
-removeInstalledConfig = do
-  try $ removeFile installedPkgConfigFile
-  try $ removeFile inplacePkgConfigFile
+removeInstalledConfig :: FilePath -> IO ()
+removeInstalledConfig distPref = do
+  try $ removeFile $ installedPkgConfigFile distPref
+  try $ removeFile $ inplacePkgConfigFile distPref
   return ()
 
 removeRegScripts :: IO ()
@@ -197,21 +198,22 @@ removeRegScripts = do
   try $ removeFile unregScriptLocation
   return ()
 
-installedPkgConfigFile :: FilePath
-installedPkgConfigFile = distPref </> "installed-pkg-config"
+installedPkgConfigFile :: FilePath -> FilePath
+installedPkgConfigFile distPref = distPref </> "installed-pkg-config"
 
-inplacePkgConfigFile :: FilePath
-inplacePkgConfigFile = distPref </> "inplace-pkg-config"
+inplacePkgConfigFile :: FilePath -> FilePath
+inplacePkgConfigFile distPref = distPref </> "inplace-pkg-config"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
 
 mkInstalledPackageInfo
-	:: PackageDescription
+	:: FilePath
+    -> PackageDescription
 	-> LocalBuildInfo
 	-> Bool
 	-> IO InstalledPackageInfo
-mkInstalledPackageInfo pkg_descr lbi inplace = do 
+mkInstalledPackageInfo distPref pkg_descr lbi inplace = do 
   pwd <- getCurrentDirectory
   let 
 	lib = fromJust (library pkg_descr) -- checked for Nothing earlier

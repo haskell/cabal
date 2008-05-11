@@ -80,7 +80,8 @@ install :: PackageDescription -- ^information from the .cabal file
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
 install pkg_descr lbi flags = do
-  let verbosity = fromFlag (copyVerbosity flags)
+  let distPref  = fromFlag (copyDistPref flags)
+      verbosity = fromFlag (copyVerbosity flags)
       copydest  = fromFlag (copyDest flags)
       InstallDirs {
          bindir     = binPref,
@@ -97,8 +98,8 @@ install pkg_descr lbi flags = do
       progPrefixPref = substPathTemplate pkg_descr lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate pkg_descr lbi (progSuffix lbi)
   
-  docExists <- doesDirectoryExist $ haddockPref pkg_descr
-  info verbosity ("directory " ++ haddockPref pkg_descr ++
+  docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
+  info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
       let dir = takeDirectory file
@@ -106,7 +107,8 @@ install pkg_descr lbi flags = do
       copyFileVerbose verbosity file (dataPref </> file)
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
-      copyDirectoryRecursiveVerbose verbosity (haddockPref pkg_descr) htmlPref
+      copyDirectoryRecursiveVerbose verbosity
+          (haddockPref distPref pkg_descr) htmlPref
       -- setPermissionsRecursive [Read] htmlPref
       -- The haddock interface file actually already got installed
       -- in the recursive copy, but now we install it where we actually
@@ -114,7 +116,7 @@ install pkg_descr lbi flags = do
       -- copy in htmlPref first.
       createDirectoryIfMissingVerbose verbosity True interfacePref
       copyFileVerbose verbosity
-                      (haddockPref pkg_descr </> haddockName pkg_descr)
+                      (haddockPref distPref pkg_descr </> haddockName pkg_descr)
                       (interfacePref </> haddockName pkg_descr)
 
   let lfile = licenseFile pkg_descr

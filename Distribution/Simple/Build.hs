@@ -91,8 +91,9 @@ build    :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
-  let verbosity = fromFlag (buildVerbosity flags)
-  initialBuildSteps pkg_descr lbi verbosity suffixes
+  let distPref  = fromFlag (buildDistPref flags)
+      verbosity = fromFlag (buildVerbosity flags)
+  initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.build  pkg_descr lbi verbosity
@@ -107,8 +108,9 @@ makefile :: PackageDescription  -- ^mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
          -> IO ()
 makefile pkg_descr lbi flags suffixes = do
-  let verbosity = fromFlag (makefileVerbosity flags)
-  initialBuildSteps pkg_descr lbi verbosity suffixes
+  let distPref  = fromFlag (makefileDistPref flags)
+      verbosity = fromFlag (makefileVerbosity flags)
+  initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   when (not (hasLibs pkg_descr)) $
       die ("Makefile is only supported for libraries, currently.")
   setupMessage verbosity "Generating Makefile" (packageId pkg_descr)
@@ -117,12 +119,13 @@ makefile pkg_descr lbi flags suffixes = do
     _    -> die ("Generating a Makefile is not supported for this compiler.")
 
 
-initialBuildSteps :: PackageDescription  -- ^mostly information from the .cabal file
+initialBuildSteps :: FilePath -- ^"dist" prefix
+                  -> PackageDescription  -- ^mostly information from the .cabal file
                   -> LocalBuildInfo -- ^Configuration information
                   -> Verbosity -- ^The verbosity to use
                   -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
                   -> IO ()
-initialBuildSteps pkg_descr lbi verbosity suffixes = do
+initialBuildSteps distPref pkg_descr lbi verbosity suffixes = do
   -- check that there's something to build
   let buildInfos =
           map libBuildInfo (maybeToList (library pkg_descr)) ++
@@ -135,7 +138,7 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
 
   -- construct and write the Paths_<pkg>.hs file
   createDirectoryIfMissingVerbose verbosity True (autogenModulesDir lbi)
-  buildPathsModule pkg_descr lbi
+  buildPathsModule distPref pkg_descr lbi
 
   preprocessSources pkg_descr lbi False verbosity suffixes
 
@@ -147,8 +150,8 @@ initialBuildSteps pkg_descr lbi verbosity suffixes = do
 autogenModulesDir :: LocalBuildInfo -> String
 autogenModulesDir lbi = buildDir lbi </> "autogen"
 
-buildPathsModule :: PackageDescription -> LocalBuildInfo -> IO ()
-buildPathsModule pkg_descr lbi =
+buildPathsModule :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
+buildPathsModule distPref pkg_descr lbi =
    let pragmas
 	| absolute || isHugs = ""
 	| otherwise =
@@ -215,7 +218,7 @@ buildPathsModule pkg_descr lbi =
 	  get_prefix_stuff++
 	  "\n"++
 	  filename_stuff
-   in do btime <- getModificationTime localBuildInfoFile
+   in do btime <- getModificationTime (localBuildInfoFile distPref)
    	 exists <- doesFileExist paths_filepath
    	 ptime <- if exists
    	            then getModificationTime paths_filepath
