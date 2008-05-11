@@ -91,8 +91,6 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), absoluteInstallDirs
     , prefixRelativeInstallDirs )
-import Distribution.Simple.BuildPaths
-    ( distPref )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, comparing, cabalVersion, cabalBootstrapping )
@@ -182,30 +180,31 @@ tryGetConfigStateFile filename = do
              ++ ") which is probably the cause of the problem."
 
 -- internal function
-tryGetPersistBuildConfig :: IO (Either String LocalBuildInfo)
-tryGetPersistBuildConfig = tryGetConfigStateFile localBuildInfoFile
+tryGetPersistBuildConfig :: FilePath -> IO (Either String LocalBuildInfo)
+tryGetPersistBuildConfig distPref
+    = tryGetConfigStateFile (localBuildInfoFile distPref)
 
 -- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.  Also
 -- fail if the file containing LocalBuildInfo is older than the .cabal
 -- file, indicating that a re-configure is required.
-getPersistBuildConfig :: IO LocalBuildInfo
-getPersistBuildConfig = do
-  lbi <- tryGetPersistBuildConfig
+getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
+getPersistBuildConfig distPref = do
+  lbi <- tryGetPersistBuildConfig distPref
   either die return lbi
 
 -- |Try to read the 'localBuildInfoFile'.
-maybeGetPersistBuildConfig :: IO (Maybe LocalBuildInfo)
-maybeGetPersistBuildConfig = do
-  lbi <- tryGetPersistBuildConfig
+maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
+maybeGetPersistBuildConfig distPref = do
+  lbi <- tryGetPersistBuildConfig distPref
   return $ either (const Nothing) Just lbi
 
 -- |After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
-writePersistBuildConfig :: LocalBuildInfo -> IO ()
-writePersistBuildConfig lbi = do
+writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
+writePersistBuildConfig distPref lbi = do
   createDirectoryIfMissing False distPref
-  writeFile localBuildInfoFile $ showHeader pkgid
-                              ++ '\n' : show lbi
+  writeFile (localBuildInfoFile distPref)
+            (showHeader pkgid ++ '\n' : show lbi)
   where
     pkgid   = packageId (localPkgDescr lbi)
 
@@ -240,16 +239,16 @@ parseHeader header = case words header of
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
-checkPersistBuildConfig :: FilePath -> IO ()
-checkPersistBuildConfig pkg_descr_file = do
+checkPersistBuildConfig :: FilePath -> FilePath -> IO ()
+checkPersistBuildConfig distPref pkg_descr_file = do
   t0 <- getModificationTime pkg_descr_file
-  t1 <- getModificationTime localBuildInfoFile
+  t1 <- getModificationTime $ localBuildInfoFile distPref
   when (t0 > t1) $
     die (pkg_descr_file ++ " has been changed, please re-configure.")
 
 -- |@dist\/setup-config@
-localBuildInfoFile :: FilePath
-localBuildInfoFile = distPref </> "setup-config"
+localBuildInfoFile :: FilePath -> FilePath
+localBuildInfoFile distPref = distPref </> "setup-config"
 
 -- -----------------------------------------------------------------------------
 -- * Configuration
@@ -261,7 +260,8 @@ configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo) 
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  let verbosity = fromFlag (configVerbosity cfg)
+  = do  let distPref = fromFlag (configDistPref cfg)
+            verbosity = fromFlag (configVerbosity cfg)
 
 	setupMessage verbosity "Configuring"
                      (packageId (either packageDescription id pkg_descr0))
@@ -369,7 +369,7 @@ configure (pkg_descr0, pbi) cfg
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
-	removeInstalledConfig
+	removeInstalledConfig distPref
 
 	-- installation directories
 	defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
