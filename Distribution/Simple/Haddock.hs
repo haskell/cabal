@@ -69,7 +69,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         substPathTemplate,
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.BuildPaths ( distPref, haddockPref, haddockName,
+import Distribution.Simple.BuildPaths ( haddockPref, haddockName,
                                         hscolourPref, autogenModulesDir )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
          ( lookupPackageId )
@@ -111,7 +111,8 @@ haddock pkg_descr _ _ haddockFlags
         ++ "--executables."
 
 haddock pkg_descr lbi suffixes flags = do
-    let doExes   = fromFlag (haddockExecutables flags)
+    let distPref = fromFlag (haddockDistPref flags)
+        doExes   = fromFlag (haddockExecutables flags)
         hsColour = fromFlag (haddockHscolour flags)
     when hsColour $ hscolour pkg_descr lbi suffixes defaultHscolourFlags {
       hscolourCSS         = haddockHscolourCss flags,
@@ -124,7 +125,8 @@ haddock pkg_descr lbi suffixes flags = do
 
     let tmpDir = buildDir lbi </> "tmp"
     createDirectoryIfMissingVerbose verbosity True tmpDir
-    createDirectoryIfMissingVerbose verbosity True $ haddockPref pkg_descr
+    createDirectoryIfMissingVerbose verbosity True $
+        haddockPref distPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
@@ -182,7 +184,8 @@ haddock pkg_descr lbi suffixes flags = do
           then ("-B" ++ ghcLibDir) : map ("--optghc=" ++) (ghcSimpleOptions lbi bi preprocessDir)
           else []
 
-    when isVersion2 $ initialBuildSteps pkg_descr lbi verbosity suffixes
+    when isVersion2 $
+        initialBuildSteps distPref pkg_descr lbi verbosity suffixes
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -202,7 +205,8 @@ haddock pkg_descr lbi suffixes flags = do
           let targets
                 | isVersion2 = modules
                 | otherwise  = replaceLitExts inFiles
-          let haddockFile = haddockPref pkg_descr </> haddockName pkg_descr
+          let haddockFile = haddockPref distPref pkg_descr
+                        </> haddockName pkg_descr
           -- FIX: replace w/ rawSystemProgramConf?
           let hideArgs | fromFlag (haddockInternal flags) = []
                        | otherwise                        = map ("--hide=" ++) (otherModules bi)
@@ -210,7 +214,7 @@ haddock pkg_descr lbi suffixes flags = do
                            | otherwise                        = []
           rawSystemProgram verbosity confHaddock
                   ([ outputFlag
-                   , "--odir=" ++ haddockPref pkg_descr
+                   , "--odir=" ++ haddockPref distPref pkg_descr
                    , "--title=" ++ showPkg ++ subtitle ++ titleComment
                    , "--dump-interface=" ++ haddockFile
                    , "--prologue=" ++ prologFileName ]
@@ -226,11 +230,11 @@ haddock pkg_descr lbi suffixes flags = do
                    ++ targets
                   )
           notice verbosity $ "Documentation created: "
-                          ++ (haddockPref pkg_descr </> "index.html")
+                          ++ (haddockPref distPref pkg_descr </> "index.html")
 
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
-            exeTargetDir = haddockPref pkg_descr </> exeName exe
+            exeTargetDir = haddockPref distPref pkg_descr </> exeName exe
         createDirectoryIfMissingVerbose verbosity True exeTargetDir
         inFiles' <- getModulePaths lbi bi (otherModules bi)
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
@@ -350,10 +354,12 @@ ghcSimpleOptions lbi bi mockDir
 
 hscolour :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HscolourFlags -> IO ()
 hscolour pkg_descr lbi suffixes flags = do
+    let distPref = fromFlag $ hscolourDistPref flags
     (hscolourProg, _) <- requireProgram verbosity hscolourProgram
                          (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
 
-    createDirectoryIfMissingVerbose verbosity True $ hscolourPref pkg_descr
+    createDirectoryIfMissingVerbose verbosity True $
+        hscolourPref distPref pkg_descr
     preprocessSources pkg_descr lbi False verbosity suffixes
 
     setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
@@ -362,7 +368,7 @@ hscolour pkg_descr lbi suffixes flags = do
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
         let bi = libBuildInfo lib
             modules = PD.exposedModules lib ++ otherModules bi
-	    outputDir = hscolourPref pkg_descr </> "src"
+	    outputDir = hscolourPref distPref pkg_descr </> "src"
 	createDirectoryIfMissingVerbose verbosity True outputDir
 	copyCSS hscolourProg outputDir
         inFiles <- getModulePaths lbi bi modules
@@ -374,7 +380,7 @@ hscolour pkg_descr lbi suffixes flags = do
     withExe pkg_descr $ \exe -> when doExes $ do
         let bi = buildInfo exe
             modules = "Main" : otherModules bi
-            outputDir = hscolourPref pkg_descr </> exeName exe </> "src"
+            outputDir = hscolourPref distPref pkg_descr </> exeName exe </> "src"
         createDirectoryIfMissingVerbose verbosity True outputDir
         copyCSS hscolourProg outputDir
         srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
