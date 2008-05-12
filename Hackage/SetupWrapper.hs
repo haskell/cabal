@@ -41,7 +41,7 @@ import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , rawSystemProgramConf, ghcProgram )
 import Distribution.Simple.BuildPaths
-         ( distPref, exeExtension )
+         ( defaultDistPref, exeExtension )
 import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.GHC
@@ -69,7 +69,8 @@ data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
     useCompiler      :: Maybe Compiler,
     usePackageIndex  :: Maybe (PackageIndex InstalledPackageInfo),
-    useProgramConfig :: ProgramConfiguration
+    useProgramConfig :: ProgramConfiguration,
+    useDistPref      :: FilePath
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -77,7 +78,8 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion  = AnyVersion,
     useCompiler      = Nothing,
     usePackageIndex  = Nothing,
-    useProgramConfig = emptyProgramConfiguration
+    useProgramConfig = emptyProgramConfiguration,
+    useDistPref      = defaultDistPref
   }
 
 setupWrapper :: Verbosity
@@ -144,27 +146,27 @@ externalSetupMethod :: SetupScriptOptions -> SetupMethod
 externalSetupMethod options verbosity bt args = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
                  ++ " and args:\n  " ++ show args
-  setupHs <- updateSetupScript verbosity bt
+  setupHs <- updateSetupScript verbosity options bt
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
   compileSetupExecutable verbosity options setupHs
-  invokeSetupScript verbosity args
+  invokeSetupScript verbosity options args
 
 -- | Decide which Setup.hs script to use, creating it if necessary.
 --
-updateSetupScript :: Verbosity -> BuildType -> IO FilePath
-updateSetupScript _ Custom = do
+updateSetupScript :: Verbosity -> SetupScriptOptions -> BuildType -> IO FilePath
+updateSetupScript _ _ Custom = do
   useHs  <- doesFileExist "Setup.hs"
   useLhs <- doesFileExist "Setup.lhs"
   unless (useHs || useLhs) $ die
     "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
   return (if useHs then "Setup.hs" else "Setup.lhs")
 
-updateSetupScript verbosity bt = do
+updateSetupScript verbosity options bt = do
   createDirectoryIfMissingVerbose verbosity True setupDir
   rewriteFile setupHs (buildTypeScript bt)
   return setupHs
   where
-    setupDir = distPref </> "setup"
+    setupDir = useDistPref options </> "setup"
     setupHs  = setupDir </> "setup" <.> "hs"
 
 buildTypeScript :: BuildType -> String
@@ -196,7 +198,7 @@ compileSetupExecutable verbosity options setupHs = do
         ,"-odir", setupDir, "-hidir", setupDir]
 
   where
-    setupDir  = distPref </> "setup"
+    setupDir  = useDistPref options </> "setup"
     setupProg = setupDir </> "setup" <.> exeExtension
 
 installedCabalLibVer :: Verbosity -> SetupScriptOptions
@@ -216,10 +218,11 @@ installedCabalLibVer verbosity options comp conf = do
                ++ " but no suitable version is installed."
     pkgs -> return $ maximumBy (comparing packageVersion) (map packageId pkgs)
 
-invokeSetupScript :: Verbosity -> [String] -> IO ()
-invokeSetupScript verbosity args = rawSystemExit verbosity setupProg args
+invokeSetupScript :: Verbosity -> SetupScriptOptions -> [String] -> IO ()
+invokeSetupScript verbosity options args =
+    rawSystemExit verbosity setupProg args
   where
-    setupProg = distPref </> "setup" </> "setup" <.> exeExtension
+    setupProg = useDistPref options </> "setup" </> "setup" <.> exeExtension
 
 -- ------------------------------------------------------------
 -- * Utils
