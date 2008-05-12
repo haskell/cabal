@@ -92,24 +92,36 @@ mainWorker args =
       ,uploadCommand          `commandAddAction` uploadAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
-      ,wrapperAction (Cabal.buildCommand defaultProgramConfiguration) Cabal.buildVerbosity
-      ,wrapperAction Cabal.copyCommand     Cabal.copyVerbosity
-      ,wrapperAction Cabal.haddockCommand  Cabal.haddockVerbosity
-      ,wrapperAction Cabal.cleanCommand    Cabal.cleanVerbosity
-      ,wrapperAction Cabal.hscolourCommand Cabal.hscolourVerbosity
-      ,wrapperAction Cabal.registerCommand Cabal.regVerbosity
-      ,wrapperAction Cabal.testCommand     (const mempty)
+      ,wrapperAction (Cabal.buildCommand defaultProgramConfiguration)
+                     Cabal.buildVerbosity    Cabal.buildDistPref
+      ,wrapperAction Cabal.copyCommand
+                     Cabal.copyVerbosity     Cabal.copyDistPref
+      ,wrapperAction Cabal.haddockCommand
+                     Cabal.haddockVerbosity  Cabal.haddockDistPref
+      ,wrapperAction Cabal.cleanCommand
+                     Cabal.cleanVerbosity    Cabal.cleanDistPref
+      ,wrapperAction Cabal.hscolourCommand
+                     Cabal.hscolourVerbosity Cabal.hscolourDistPref
+      ,wrapperAction Cabal.registerCommand
+                     Cabal.regVerbosity      Cabal.regDistPref
+      ,wrapperAction Cabal.testCommand
+                     Cabal.testVerbosity     Cabal.testDistPref
       ]
 
 wrapperAction :: Monoid flags
               => CommandUI flags
               -> (flags -> Flag Verbosity)
+              -> (flags -> Flag String)
               -> Command (IO ())
-wrapperAction command verbosityFlag =
+wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command $ \flags extraArgs -> do
     let verbosity = fromFlagOrDefault normal (verbosityFlag flags)
-    setupWrapper verbosity defaultSetupScriptOptions Nothing
-      command flags extraArgs
+        setupScriptOptions = defaultSetupScriptOptions {
+          useDistPref = fromFlagOrDefault
+                          (useDistPref defaultSetupScriptOptions)
+                          (distPrefFlag flags)
+        }
+    setupWrapper verbosity setupScriptOptions Nothing command flags extraArgs
 
 configureAction :: Cabal.ConfigFlags -> [String] -> IO ()
 configureAction flags extraArgs = do
@@ -120,9 +132,12 @@ configureAction flags extraArgs = do
                `mappend` flags
   (comp, conf) <- configCompilerAux flags'
   let setupScriptOptions = defaultSetupScriptOptions {
-                             useCompiler      = Just comp,
-                             useProgramConfig = conf
-                           }
+        useCompiler      = Just comp,
+        useProgramConfig = conf,
+        useDistPref      = fromFlagOrDefault
+                             (useDistPref defaultSetupScriptOptions)
+                             (Cabal.configDistPref flags)
+      }
   setupWrapper verbosity setupScriptOptions Nothing
     configureCommand flags' extraArgs
 

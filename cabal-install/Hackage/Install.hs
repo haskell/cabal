@@ -39,7 +39,7 @@ import Hackage.Types as Available
          , AvailablePackageSource(..), Repo, ConfiguredPackage(..) )
 import Hackage.Utils (showDependencies)
 import Hackage.SetupWrapper
-         ( setupWrapper, SetupScriptOptions(..) )
+         ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -153,7 +153,10 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
       usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
-      useProgramConfig = conf
+      useProgramConfig = conf,
+      useDistPref      = Cabal.fromFlagOrDefault
+                           (useDistPref defaultSetupScriptOptions)
+                           (Cabal.configDistPref configFlags)
     }
     dryRun       = Cabal.fromFlag (installDryRun installFlags)
     miscOptions  = InstallMisc {
