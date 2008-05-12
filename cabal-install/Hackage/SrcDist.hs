@@ -18,7 +18,7 @@ import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.BuildPaths ( distPref, srcPref)
+import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
 import Distribution.Text
@@ -36,8 +36,8 @@ sdist flags = do
   pkg <- return . flattenPackageDescription
      =<< readPackageDescription verbosity
      =<< defaultPackageDesc verbosity
-  mb_lbi <- maybeGetPersistBuildConfig
-  let tmpDir = srcPref
+  mb_lbi <- maybeGetPersistBuildConfig distPref
+  let tmpDir = srcPref distPref
 
   -- do some QA
   printPackageProblems verbosity pkg
@@ -63,6 +63,7 @@ sdist flags = do
   where
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
+    distPref  = fromFlag (sDistDistPref flags)
 
 -- |Create an archive from a tree of source files, and clean up the tree.
 createArchive :: Verbosity
