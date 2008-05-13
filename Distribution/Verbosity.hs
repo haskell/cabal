@@ -79,7 +79,7 @@ moreVerbose Verbose   = Deafening
 moreVerbose Deafening = Deafening
 
 lessVerbose :: Verbosity -> Verbosity
-lessVerbose Deafening = Verbose
+lessVerbose Deafening = Deafening
 lessVerbose Verbose   = Normal
 lessVerbose Normal    = Silent
 lessVerbose Silent    = Silent

@@ -296,7 +296,10 @@ rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
   printRawCommandAndArgs verbosity path args
   hFlush stdout
-  maybeExit $ rawSystem path args
+  exitcode <- rawSystem path args
+  unless (exitcode == ExitSuccess) $ do
+    debug verbosity $ path ++ " returned " ++ show exitcode
+    exitWith exitcode
 
 -- | Run a command and return its output.
 --
@@ -335,6 +338,10 @@ rawSystemStdout' verbosity path args = do
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
+      unless (exitcode == ExitSuccess) $
+        debug verbosity $ path ++ " returned " ++ show exitcode
+                       ++ if null err then "" else
+                          " with error message:\n" ++ err
 
       return (output, exitcode)
 #else
@@ -343,6 +350,8 @@ rawSystemStdout' verbosity path args = do
     hClose tmpHandle
     let quote name = "'" ++ name ++ "'"
     exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+    unless (exitcode == ExitSuccess) $
+      debug verbosity $ path ++ " returned " ++ show exitcode
     output <- readFile tmpName
     length output `seq` return (output, exitCode)
 #endif
