@@ -6,7 +6,6 @@ module Distribution.Text (
 
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
-import Text.PrettyPrint ((<>))
 
 import Data.Version (Version(Version))
 import qualified Data.Char as Char (isDigit, isAlphaNum, isSpace)
