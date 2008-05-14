@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 				( PackageDescription(..), BuildInfo(..),
 				  Executable(..), Library(..) )
 import Distribution.Package
-         ( Package(..), packageVersion )
+         ( Package(..), packageName, packageVersion )
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
@@ -176,8 +176,8 @@ buildPathsModule distPref pkg_descr lbi =
 	"\t) where\n"++
 	"\n"++
 	foreign_imports++
-	"import Data.Version\n"++
-        "import System.Environment"++
+	"import Data.Version (Version(..))\n"++
+        "import System.Environment (getEnv)"++
 	"\n"++
 	"\nversion :: Version"++
 	"\nversion = " ++ show (packageVersion pkg_descr)++
@@ -194,7 +194,7 @@ buildPathsModule distPref pkg_descr lbi =
 	  "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
 	  "getBinDir = return bindir\n"++
 	  "getLibDir = return libdir\n"++
-	  "getDataDir = "++mkGetEnvOr "DATA_DIR" "return datadir"++"\n"++
+	  "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
 	  "getLibexecDir = return libexecdir\n" ++
 	  "\n"++
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
@@ -210,7 +210,7 @@ buildPathsModule distPref pkg_descr lbi =
 	  "getLibDir :: IO FilePath\n"++
 	  "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
 	  "getDataDir :: IO FilePath\n"++
-	  "getDataDir =  "++ mkGetEnvOr "DATA_DIR"
+	  "getDataDir =  "++ mkGetEnvOr "datadir"
                               (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
 	  "getLibexecDir :: IO FilePath\n"++
 	  "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
@@ -249,8 +249,9 @@ buildPathsModule distPref pkg_descr lbi =
 	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
 	mkGetDir dir Nothing       = "return " ++ show dir
 
-        mkGetEnvOr var expr = "catch (getEnv \""++var++"\")"++
-                              " (const $ "++expr++")"
+        mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
+                              " (\\_ -> "++expr++")"
+          where var' = packageName pkg_descr ++ "_" ++ var
 
         -- In several cases we cannot make relocatable installations
         absolute =
