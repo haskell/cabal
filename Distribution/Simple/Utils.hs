@@ -137,7 +137,7 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracket_, catch, finally )
+    ( bracket, bracket_, bracketOnError, catch, finally )
 
 import Distribution.Text
     ( display )
@@ -159,7 +159,6 @@ import qualified Control.Exception as Exception
     ( throwIO )
 #endif
 
-import Distribution.Compat.Exception as Exception (bracketOnError)
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
 import Distribution.Verbosity
 
