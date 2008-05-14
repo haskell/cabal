@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Configuration
@@ -315,6 +319,8 @@ newtype DependencyMap = DependencyMap { unDependencyMap :: Map String VersionRan
 #if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
 #else
+-- The Show/Read instance for Data.Map in ghc-6.4 is useless
+-- so we have to re-implement it here:
 instance Show DependencyMap where
   showsPrec d (DependencyMap m) =
       showParen (d > 10) (showString "DependencyMap" . shows (M.toList m))
