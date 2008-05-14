@@ -86,6 +86,8 @@ Library
   Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.TempFile
+        Distribution.Compat.Char
+        Distribution.Compat.Exception
         Distribution.Simple.GHC.Makefile
 
   Extensions: CPP
