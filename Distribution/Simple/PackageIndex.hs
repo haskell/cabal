@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.PackageIndex
@@ -90,6 +94,8 @@ data Package pkg => PackageIndex pkg = PackageIndex
 #if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
 #else
+-- The Show/Read instance for Data.Map in ghc-6.4 is useless
+-- so we have to re-implement it here:
 instance (Package pkg, Show pkg) => Show (PackageIndex pkg) where
   showsPrec d (PackageIndex m) =
       showParen (d > 10) (showString "PackageIndex" . shows (Map.toList m))
