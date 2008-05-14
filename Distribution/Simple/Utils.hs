@@ -350,11 +350,11 @@ rawSystemStdout' verbosity path args = do
   withTempFile tmpDir ".cmd.stdout" $ \tmpName tmpHandle -> do
     hClose tmpHandle
     let quote name = "'" ++ name ++ "'"
-    exitCode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+    exitcode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     unless (exitcode == ExitSuccess) $
       debug verbosity $ path ++ " returned " ++ show exitcode
     output <- readFile tmpName
-    length output `seq` return (output, exitCode)
+    length output `seq` return (output, exitcode)
 #endif
 
 -- | Like the unix xargs program. Useful for when we've got very long command
