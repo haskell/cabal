@@ -67,6 +67,11 @@ import Distribution.Version
          ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
 
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
+import Text.Read
+import qualified Text.Read.Lex as L
+#endif
+
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
 -- It can be searched effeciently by package name and version.
@@ -82,7 +87,32 @@ data Package pkg => PackageIndex pkg = PackageIndex
   --
   (Map String [pkg])
 
+#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
+#else
+instance (Package pkg, Show pkg) => Show (PackageIndex pkg) where
+  showsPrec d (PackageIndex m) =
+      showParen (d > 10) (showString "PackageIndex" . shows (Map.toList m))
+
+instance (Package pkg, Read pkg) => Read (PackageIndex pkg) where
+  readPrec = parens $ prec 10 $ do
+    Ident "PackageIndex" <- lexP
+    xs <- readPrec
+    return (PackageIndex (Map.fromList xs))
+      where parens :: ReadPrec a -> ReadPrec a
+            parens p = optional
+             where
+               optional  = p +++ mandatory
+               mandatory = paren optional
+
+            paren :: ReadPrec a -> ReadPrec a
+            paren p = do L.Punc "(" <- lexP
+                         x          <- reset p
+                         L.Punc ")" <- lexP
+                         return x
+
+  readListPrec = readListPrecDefault
+#endif
 
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex (Map.empty)

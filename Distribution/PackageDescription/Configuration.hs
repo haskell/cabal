@@ -76,6 +76,11 @@ import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as M
 import Data.Monoid
 
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
+import qualified Text.Read as R
+import qualified Text.Read.Lex as L
+#endif
+
 ------------------------------------------------------------------------------
 
 -- | Simplify the condition and return its free variables.
@@ -307,7 +312,32 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'IntersectVersionRanges'.
 newtype DependencyMap = DependencyMap { unDependencyMap :: Map String VersionRange }
-    deriving (Eq, Show, Read)
+#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
+  deriving (Show, Read)
+#else
+instance Show DependencyMap where
+  showsPrec d (DependencyMap m) =
+      showParen (d > 10) (showString "DependencyMap" . shows (M.toList m))
+
+instance Read DependencyMap where
+  readPrec = parens $ R.prec 10 $ do
+    R.Ident "DependencyMap" <- R.lexP
+    xs <- R.readPrec
+    return (DependencyMap (M.fromList xs))
+      where parens :: R.ReadPrec a -> R.ReadPrec a
+            parens p = optional
+             where
+               optional  = p R.+++ mandatory
+               mandatory = paren optional
+
+            paren :: R.ReadPrec a -> R.ReadPrec a
+            paren p = do L.Punc "(" <- R.lexP
+                         x          <- R.reset p
+                         L.Punc ")" <- R.lexP
+                         return x
+
+  readListPrec = R.readListPrecDefault
+#endif
 
 instance Monoid DependencyMap where
     mempty = DependencyMap M.empty
