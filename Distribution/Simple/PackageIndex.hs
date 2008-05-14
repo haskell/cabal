@@ -141,6 +141,10 @@ invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
 
         distinct = all ((==1). length) . group . sort
 
+mkPackageIndex :: Package pkg => Map String [pkg] -> PackageIndex pkg
+mkPackageIndex index = assert (invariant (PackageIndex index))
+                                         (PackageIndex index)
+
 internalError :: String -> a
 internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 
@@ -154,8 +158,7 @@ stripDups = nubBy (equating packageId)
 -- case-insensitively.
 --
 lookup :: Package pkg => PackageIndex pkg -> String -> [pkg]
-lookup index@(PackageIndex m) name =
-  assert (invariant index) $
+lookup (PackageIndex m) name =
   case Map.lookup (lowercase name) m of
     Nothing   -> []
     Just pkgs -> pkgs
@@ -165,12 +168,12 @@ lookup index@(PackageIndex m) name =
 -- If there are duplicates, earlier ones mask later one.
 --
 fromList :: Package pkg => [pkg] -> PackageIndex pkg
-fromList pkgs =
-  let index = (PackageIndex . Map.map stripDups . Map.fromListWith (++))
-                [ let key = (lowercase . packageName) pkg
+fromList pkgs = mkPackageIndex
+              . Map.map stripDups
+              . Map.fromListWith (++)
+              $ [ let key = (lowercase . packageName) pkg
                    in (key, [pkg])
                 | pkg <- pkgs ]
-   in assert (invariant index) index
 
 -- | Merge two indexes.
 --
@@ -180,8 +183,7 @@ fromList pkgs =
 merge :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
 merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
   assert (invariant i1 && invariant i2) $
-  let index = PackageIndex (Map.unionWith mergeBuckets m1 m2)
-   in assert (invariant index) index
+    mkPackageIndex (Map.unionWith mergeBuckets m1 m2)
 
 -- | Elements in the second list mask those in the first.
 mergeBuckets :: Package pkg => [pkg] -> [pkg] -> [pkg]
@@ -193,14 +195,14 @@ mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
 -- 'merge' with a singleton index.
 --
 insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
-insert pkg (PackageIndex index) = PackageIndex $
+insert pkg (PackageIndex index) = mkPackageIndex $
   let key = (lowercase . packageName) pkg
    in Map.insertWith (flip mergeBuckets) key [pkg] index
 
 -- | Removes a single package from the index.
 --
 delete :: Package pkg => PackageIdentifier -> PackageIndex pkg -> PackageIndex pkg
-delete pkgid (PackageIndex index) = PackageIndex $
+delete pkgid (PackageIndex index) = mkPackageIndex $
   let key = (lowercase . packageName) pkgid
    in Map.update filterBucket key index
   where
