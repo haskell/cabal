@@ -72,7 +72,7 @@ import Distribution.Simple.Utils (intercalate, lowercase)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
-import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
+import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isDigit)
 import Data.Maybe	(fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import System.FilePath (normalise)
@@ -546,7 +546,7 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
                         return (intercalate "-" ns)
   where component = do
           cs <- munch1 (\c -> isAlphaNum c
-                           || isSymbol   c
+                           || c == '+'
                            || c == '_'
                            && c /= '-')
           if all isDigit cs then pfail else return cs
