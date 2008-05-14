@@ -1,3 +1,5 @@
+{-# OPTIONS -cpp -fffi #-}
+-- OPTIONS required for ghc-6.4.x compat, and must appear first
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -cpp -fffi #-}
 {-# OPTIONS_NHC98 -cpp #-}
