@@ -137,7 +137,7 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracket_, bracketOnError, catch, finally )
+    ( bracket, bracket_, catch, handle, finally, throwIO )
 
 import Distribution.Text
     ( display )
@@ -153,10 +153,6 @@ import System.Process (runInteractiveProcess, waitForProcess)
 #else
 import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
-#endif
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-import qualified Control.Exception as Exception
-    ( throwIO )
 #endif
 
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
@@ -571,11 +567,10 @@ withTempDirectory verbosity tmpDir =
 --
 writeFileAtomic :: FilePath -> String -> IO ()
 writeFileAtomic targetFile content = do
-  Exception.bracketOnError
-    (openBinaryTempFile targetDir template)
-    (\(tmpFile, tmpHandle) -> IO.Error.try (hClose tmpHandle)
-                           >> IO.Error.try (removeFile tmpFile))
-    $ \(tmpFile, tmpHandle) -> do
+  (tmpFile, tmpHandle) <- openBinaryTempFile targetDir template
+  Exception.handle (\err -> do hClose tmpHandle
+                               removeFile tmpFile
+                               Exception.throwIO err) $ do
       hPutStr tmpHandle content
       hClose tmpHandle
 #if mingw32_HOST_OS || mingw32_TARGET_OS
