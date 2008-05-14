@@ -28,11 +28,14 @@ module Distribution.Simple.PackageIndex (
   -- * Updates
   merge,
   insert,
-  delete,
+  deletePackageName,
+  deletePackageId,
+  deleteDependency,
 
   -- * Queries
 
   -- ** Precise lookups
+  lookupPackageName,
   lookupPackageId,
   lookupDependency,
 
@@ -199,17 +202,35 @@ insert pkg (PackageIndex index) = mkPackageIndex $
   let key = (lowercase . packageName) pkg
    in Map.insertWith (flip mergeBuckets) key [pkg] index
 
--- | Removes a single package from the index.
+-- | Internal delete helper.
 --
-delete :: Package pkg => PackageIdentifier -> PackageIndex pkg -> PackageIndex pkg
-delete pkgid (PackageIndex index) = mkPackageIndex $
-  let key = (lowercase . packageName) pkgid
+delete :: Package pkg => String -> (pkg -> Bool) -> PackageIndex pkg -> PackageIndex pkg
+delete name p (PackageIndex index) = mkPackageIndex $
+  let key = lowercase name
    in Map.update filterBucket key index
   where
     filterBucket = deleteEmptyBucket
-                 . filter (\pkg -> packageId pkg /= pkgid)
+                 . filter (not . p)
     deleteEmptyBucket []        = Nothing
     deleteEmptyBucket remaining = Just remaining
+
+-- | Removes a single package from the index.
+--
+deletePackageId :: Package pkg => PackageIdentifier -> PackageIndex pkg -> PackageIndex pkg
+deletePackageId pkgid =
+  delete (packageName pkgid) (\pkg -> packageId pkg == pkgid)
+
+-- | Removes all packages with this (case-sensitive) name from the index.
+--
+deletePackageName :: Package pkg => String -> PackageIndex pkg -> PackageIndex pkg
+deletePackageName name =
+  delete name (\pkg -> packageName pkg == name)
+
+-- | Removes all packages satisfying this dependency from the index.
+--
+deleteDependency :: Package pkg => Dependency -> PackageIndex pkg -> PackageIndex pkg
+deleteDependency (Dependency name verstionRange) =
+  delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 
 -- | Get all the packages from the index.
 --
@@ -275,6 +296,13 @@ lookupPackageId index pkgid =
     []    -> Nothing
     [pkg] -> Just pkg
     _     -> internalError "lookupPackageIdentifier"
+
+-- | Does a case-sensitive search by package name.
+--
+lookupPackageName :: Package pkg => PackageIndex pkg -> String -> [pkg]
+lookupPackageName index name =
+  [ pkg | pkg <- lookup index name
+        , packageName pkg == name ]
 
 -- | Does a case-sensitive search by package name and a range of versions.
 --
