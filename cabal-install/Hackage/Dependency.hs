@@ -59,7 +59,7 @@ resolveDependencies os arch comp Nothing available deps =
 hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
 hideBrokenPackages index =
     check (null . PackageIndex.brokenPackages)
-  . foldr (PackageIndex.delete . packageId) index
+  . foldr (PackageIndex.deletePackageId . packageId) index
   . PackageIndex.reverseDependencyClosure index
   . map (packageId . fst)
   $ PackageIndex.brokenPackages index

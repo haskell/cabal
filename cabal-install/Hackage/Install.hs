@@ -182,7 +182,7 @@ planLocalPackage verbosity comp configFlags installed available = do
       -- dependency on exactly that package. So the resolver ends up having
       -- to pick the local package.
       available' = PackageIndex.insert localPkg available
-      installed' = PackageIndex.delete (packageId localPkg) `fmap` installed
+      installed' = PackageIndex.deletePackageId (packageId localPkg) `fmap` installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
