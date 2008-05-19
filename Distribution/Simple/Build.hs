@@ -192,10 +192,10 @@ buildPathsModule distPref pkg_descr lbi =
 	  "\nlibexecdir = " ++ show flat_libexecdir ++
 	  "\n"++
 	  "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
-	  "getBinDir = return bindir\n"++
-	  "getLibDir = return libdir\n"++
+	  "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
+	  "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
 	  "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
-	  "getLibexecDir = return libexecdir\n" ++
+	  "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
 	  "\n"++
 	  "getDataFileName :: FilePath -> IO FilePath\n"++
 	  "getDataFileName name = do\n"++
