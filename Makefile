@@ -63,7 +63,7 @@ $(HADDOCK_STAMP) : $(CONFIG_STAMP)
 
 XSLTPROC=xsltproc
 XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
-XSLTPROC_HTML_CSS=doc/fptools.css
+XSLTPROC_HTML_CSS=doc/Cabal.css
 XSLTPROC_HTML_PARAMS=\
 	--param use.id.as.filename 1 \
 	--param toc.section.depth 3 \
