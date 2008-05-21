@@ -66,6 +66,10 @@ hideBrokenPackages index =
   where
     check p x = assert (p x) x
 
+hideBasePackage :: Package p => PackageIndex p -> PackageIndex p
+hideBasePackage = PackageIndex.deletePackageName "base"
+                . PackageIndex.deletePackageName "ghc-prim"
+
 type DependencyResolver a = OS
                          -> Arch
                          -> CompilerId
@@ -82,7 +86,9 @@ dependencyResolver
   -> [UnresolvedDependency]
   -> Either [Dependency] (InstallPlan a)
 dependencyResolver resolver os arch comp installed available deps =
-  case resolver os arch comp (hideBrokenPackages installed) available deps of
+  let installed' = hideBrokenPackages installed
+      available' = hideBasePackage available
+   in case resolver os arch comp installed' available' deps of
     Left unresolved -> Left unresolved
     Right pkgs ->
       case InstallPlan.new os arch comp (PackageIndex.fromList pkgs) of
