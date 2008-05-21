@@ -85,7 +85,7 @@ import Data.Maybe
 import Data.Monoid
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
-         ( Text(parse) )
+         ( Text(disp, parse) )
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils (die, intercalate)
@@ -254,7 +254,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
                     ChoiceOpt alts ->
                      fromMaybe empty $ listToMaybe
                          [ text lf | (_,(_,lf:_), _,enabled) <- alts, enabled t]
-                    BoolOpt _ _ _ _ enabled -> (text . show . enabled) t
+                    BoolOpt _ _ _ _ enabled -> (maybe empty disp . enabled) t
           set line val a =
                   case optDescr of
                     ReqArg _ _ _ readE _    -> ($ a) `liftM` runE line n readE val
