@@ -92,12 +92,6 @@ dependencyResolver resolver os arch comp installed available deps =
           : "The proposed (invalid) plan contained the following problems:"
           : map InstallPlan.showPlanProblem problems
 
--- | This is an example resolver that says that every package failed.
---
-failingResolver :: DependencyResolver a
-failingResolver _ _ _ _ _ deps = Left
-  [ dep | UnresolvedDependency dep _ <- deps ]
-
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
 --
