@@ -435,7 +435,6 @@ simpleUserHooks =
 
 -- FIXME: do something sensible for windows, or do nothing in postConf.
 
-{-# DEPRECATED defaultUserHooks "Use simpleUserHooks or autoconfUserHooks" #-}
 defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
