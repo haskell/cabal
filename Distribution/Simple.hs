@@ -435,7 +435,8 @@ simpleUserHooks =
 
 -- FIXME: do something sensible for windows, or do nothing in postConf.
 
-{-# DEPRECATED defaultUserHooks "Use simpleUserHooks or autoconfUserHooks" #-}
+{-# DEPRECATED defaultUserHooks
+     "Use simpleUserHooks or autoconfUserHooks, unless you need Cabal-1.2\n             compatability in which case you must stick with defaultUserHooks" #-}
 defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
