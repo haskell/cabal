@@ -41,6 +41,7 @@ Executable cabal
         Hackage.Dependency
         Hackage.Dependency.Bogus
         Hackage.Dependency.Naive
+        Hackage.Dependency.Types
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils

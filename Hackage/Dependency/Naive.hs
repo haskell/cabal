@@ -24,6 +24,8 @@ import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
+import Hackage.Dependency.Types
+         ( DependencyResolver )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )
 import Distribution.PackageDescription
@@ -44,13 +46,7 @@ import Data.List (maximumBy)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(mappend))
 
-naiveResolver :: OS
-              -> Arch
-              -> CompilerId
-              -> PackageIndex InstalledPackageInfo
-              -> PackageIndex AvailablePackage
-              -> [UnresolvedDependency]
-              -> Either [Dependency] [InstallPlan.PlanPackage a]
+naiveResolver :: DependencyResolver a
 naiveResolver os arch comp installed available deps =
   packagesToInstall installed
     [ resolveDependency os arch comp installed available dep flags
