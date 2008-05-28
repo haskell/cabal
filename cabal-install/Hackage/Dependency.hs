@@ -25,6 +25,8 @@ import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
+import Hackage.Dependency.Types
+         ( DependencyResolver )
 import Distribution.Package
          ( PackageIdentifier(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
@@ -41,6 +43,9 @@ import Data.List (maximumBy)
 import Data.Monoid (Monoid(mempty))
 import Control.Exception (assert)
 
+defaultResolver :: DependencyResolver a
+defaultResolver = naiveResolver
+
 resolveDependencies :: OS
                     -> Arch
                     -> CompilerId
@@ -49,7 +54,7 @@ resolveDependencies :: OS
                     -> [UnresolvedDependency]
                     -> Either [Dependency] (InstallPlan a)
 resolveDependencies os arch comp (Just installed) available deps =
-  dependencyResolver naiveResolver
+  dependencyResolver defaultResolver
     os arch comp installed available deps
 
 resolveDependencies os arch comp Nothing available deps =
@@ -69,14 +74,6 @@ hideBrokenPackages index =
 hideBasePackage :: Package p => PackageIndex p -> PackageIndex p
 hideBasePackage = PackageIndex.deletePackageName "base"
                 . PackageIndex.deletePackageName "ghc-prim"
-
-type DependencyResolver a = OS
-                         -> Arch
-                         -> CompilerId
-                         -> PackageIndex InstalledPackageInfo
-                         -> PackageIndex AvailablePackage
-                         -> [UnresolvedDependency]
-                         -> Either [Dependency] [InstallPlan.PlanPackage a]
 
 dependencyResolver
   :: DependencyResolver a

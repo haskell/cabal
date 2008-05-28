@@ -17,19 +17,16 @@ module Hackage.Dependency.Bogus (
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
+import Hackage.Dependency.Types
+         ( DependencyResolver )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription)
-import Distribution.Compiler
-         ( CompilerId )
-import Distribution.System
-         ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
 
 import Data.List (maximumBy)
@@ -39,13 +36,7 @@ import Data.List (maximumBy)
 -- We need this for hugs and nhc98 which do not track installed packages.
 -- We just pretend that everything is installed and hope for the best.
 --
-bogusResolver :: OS
-              -> Arch
-              -> CompilerId
-              -> PackageIndex InstalledPackageInfo
-              -> PackageIndex AvailablePackage
-              -> [UnresolvedDependency]
-              -> Either [Dependency] [InstallPlan.PlanPackage a]
+bogusResolver :: DependencyResolver a
 bogusResolver os arch comp _ available deps =
   case unzipEithers (map resolveFromAvailable deps) of
     (ok, [])      -> Right ok
