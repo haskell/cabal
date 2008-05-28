@@ -18,6 +18,7 @@ module Hackage.Dependency
 
 import Hackage.Dependency.Naive (naiveResolver)
 import Hackage.Dependency.Bogus (bogusResolver)
+import Hackage.Dependency.TopDown (topDownResolver)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -45,6 +46,7 @@ import Control.Exception (assert)
 
 defaultResolver :: DependencyResolver a
 defaultResolver = naiveResolver
+--for the brave: try the new topDownResolver, but only with --dry-run !!!
 
 resolveDependencies :: OS
                     -> Arch

@@ -41,13 +41,16 @@ Executable cabal
         Hackage.Dependency
         Hackage.Dependency.Bogus
         Hackage.Dependency.Naive
+        Hackage.Dependency.TopDown
+        Hackage.Dependency.TopDown.Constraints
+        Hackage.Dependency.TopDown.Types
         Hackage.Dependency.Types
         Hackage.Fetch
         Hackage.HttpUtils
         Hackage.IndexUtils
 --        Hackage.Info
         Hackage.Install
---        Hackage.InstallPlan
+        Hackage.InstallPlan
         Hackage.List
         Hackage.ParseUtils
         Hackage.Setup
