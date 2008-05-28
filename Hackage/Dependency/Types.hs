@@ -12,6 +12,8 @@
 -----------------------------------------------------------------------------
 module Hackage.Dependency.Types (
     DependencyResolver,
+    Progress(..),
+    foldProgress,
   ) where
 
 import Hackage.Types
@@ -46,3 +48,28 @@ type DependencyResolver a = OS
                          -> PackageIndex AvailablePackage
                          -> [UnresolvedDependency]
                          -> Either [Dependency] [InstallPlan.PlanPackage a]
+
+-- | A type to represent the unfolding of an expensive long running
+-- calculation that may fail. We may get intermediate steps before the final
+-- retult which may be used to indicate progress and/or logging messages.
+--
+data Progress step fail done = Step step (Progress step fail done)
+                             | Fail fail
+                             | Done done
+
+-- | Consume a 'Progres' calculation. Much like 'foldr' for lists but with
+-- two base cases, one for a final result and one for failure.
+--
+-- Eg to convert into a simple 'Either' result use:
+--
+-- > foldProgress (flip const) Left Right
+--
+foldProgress :: (step -> a -> a) -> (fail -> a) -> (done -> a)
+             -> Progress step fail done -> a
+foldProgress step fail done = fold
+  where fold (Step s p) = step s (fold p)
+        fold (Fail f)   = fail f
+        fold (Done r)   = done r
+
+instance Functor (Progress step failure) where
+  fmap f = foldProgress Step Fail (Done . f)
