@@ -46,6 +46,8 @@ module Distribution.Package (
 
         -- * Package dependencies
         Dependency(..),
+        thisPackageVersion,
+        notThisPackageVersion,
 
 	-- * Package classes
 	Package(..), packageName, packageVersion,
@@ -55,7 +57,8 @@ module Distribution.Package (
   showPackageId,
   ) where
 
-import Distribution.Version (Version(..), VersionRange(AnyVersion))
+import Distribution.Version
+         ( Version(..), VersionRange(AnyVersion,ThisVersion), notThisVersion )
 
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
@@ -108,6 +111,14 @@ instance Text Dependency where
              ver <- parse <++ return AnyVersion
              Parse.skipSpaces
              return (Dependency name ver)
+
+thisPackageVersion :: PackageIdentifier -> Dependency
+thisPackageVersion (PackageIdentifier n v) =
+  Dependency n (ThisVersion v)
+
+notThisPackageVersion :: PackageIdentifier -> Dependency
+notThisPackageVersion (PackageIdentifier n v) =
+  Dependency n (notThisVersion v)
 
 -- | Class of things that can be identified by a 'PackageIdentifier'
 --
