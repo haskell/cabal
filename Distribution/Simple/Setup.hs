@@ -252,6 +252,8 @@ data ConfigFlags = ConfigFlags {
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
 
+    configDistPref :: Flag FilePath, -- ^"dist" prefix
+    configVerbose   :: Verbosity, -- ^verbosity level (deprecated)
     configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDB :: Flag PackageDB, -- ^Which package DB to use
@@ -275,6 +277,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
+    configDistPref     = Flag defaultDistPref,
+    configVerbose      = normal,
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
     configGHCiLib      = Flag True,
@@ -517,6 +521,8 @@ instance Monoid ConfigFlags where
     configProgSuffix    = mempty,
     configInstallDirs   = mempty,
     configScratchDir    = mempty,
+    configDistPref      = mempty,
+    configVerbose       = normal,
     configVerbosity     = mempty,
     configUserInstall   = mempty,
     configPackageDB     = mempty,
@@ -545,6 +551,8 @@ instance Monoid ConfigFlags where
     configProgSuffix    = combine configProgSuffix,
     configInstallDirs   = combine configInstallDirs,
     configScratchDir    = combine configScratchDir,
+    configDistPref      = combine configDistPref,
+    configVerbose       = fromFlagOrDefault (configVerbose a) (configVerbosity b),
     configVerbosity     = combine configVerbosity,
     configUserInstall   = combine configUserInstall,
     configPackageDB     = combine configPackageDB,
@@ -564,14 +572,20 @@ instance Monoid ConfigFlags where
 
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
 data CopyFlags = CopyFlags {
-    copyDest      :: Flag CopyDest,
+    copyDest      :: CopyDest,
+    copyDest'     :: Flag CopyDest,
+    copyDistPref  :: Flag FilePath,
+    copyVerbose   :: Verbosity,
     copyVerbosity :: Flag Verbosity
   }
   deriving Show
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
-    copyDest      = Flag NoCopyDest,
+    copyDest      = NoCopyDest,
+    copyDest'     = Flag NoCopyDest,
+    copyDistPref  = Flag defaultDistPref,
+    copyVerbose   = normal,
     copyVerbosity = Flag normal
   }
 
@@ -606,11 +620,17 @@ emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
   mempty = CopyFlags {
-    copyDest      = mempty,
+    copyDest      = NoCopyDest,
+    copyDest'     = mempty,
+    copyDistPref  = mempty,
+    copyVerbose   = normal,
     copyVerbosity = mempty
   }
   mappend a b = CopyFlags {
-    copyDest      = combine copyDest,
+    copyDest      = fromFlagOrDefault (copyDest a) (copyDest' b),
+    copyDest'     = combine copyDest',
+    copyDistPref  = combine copyDistPref,
+    copyVerbose   = fromFlagOrDefault (copyVerbose a) (copyVerbosity b),
     copyVerbosity = combine copyVerbosity
   }
     where combine field = field a `mappend` field b
@@ -622,6 +642,8 @@ instance Monoid CopyFlags where
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags {
     installPackageDB :: Flag PackageDB,
+    installDistPref  :: Flag FilePath,
+    installVerbose   :: Verbosity,
     installVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -629,6 +651,8 @@ data InstallFlags = InstallFlags {
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
     installPackageDB = NoFlag,
+    installDistPref  = Flag defaultDistPref,
+    installVerbose   = normal,
     installVerbosity = Flag normal
   }
 
@@ -659,10 +683,14 @@ emptyInstallFlags = mempty
 instance Monoid InstallFlags where
   mempty = InstallFlags{
     installPackageDB = mempty,
+    installDistPref  = mempty,
+    installVerbose   = normal,
     installVerbosity = mempty
   }
   mappend a b = InstallFlags{
     installPackageDB = combine installPackageDB,
+    installDistPref  = combine installDistPref,
+    installVerbose   = fromFlagOrDefault (installVerbose a) (installVerbosity b),
     installVerbosity = combine installVerbosity
   }
     where combine field = field a `mappend` field b
@@ -674,6 +702,8 @@ instance Monoid InstallFlags where
 -- | Flags to @sdist@: (snapshot, verbosity)
 data SDistFlags = SDistFlags {
     sDistSnapshot  :: Flag Bool,
+    sDistDistPref  :: Flag FilePath,
+    sDistVerbose   :: Verbosity,
     sDistVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -681,6 +711,8 @@ data SDistFlags = SDistFlags {
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
     sDistSnapshot  = Flag False,
+    sDistDistPref  = Flag defaultDistPref,
+    sDistVerbose   = normal,
     sDistVerbosity = Flag normal
   }
 
@@ -706,10 +738,14 @@ emptySDistFlags = mempty
 instance Monoid SDistFlags where
   mempty = SDistFlags {
     sDistSnapshot  = mempty,
+    sDistDistPref  = mempty,
+    sDistVerbose   = normal,
     sDistVerbosity = mempty
   }
   mappend a b = SDistFlags {
     sDistSnapshot  = combine sDistSnapshot,
+    sDistDistPref  = combine sDistDistPref,
+    sDistVerbose   = fromFlagOrDefault (sDistVerbose a) (sDistVerbosity b),
     sDistVerbosity = combine sDistVerbosity
   }
     where combine field = field a `mappend` field b
@@ -725,6 +761,8 @@ data RegisterFlags = RegisterFlags {
     regGenScript   :: Flag Bool,
     regGenPkgConf  :: Flag (Maybe FilePath),
     regInPlace     :: Flag Bool,
+    regDistPref    :: Flag FilePath,
+    regVerbose     :: Verbosity,
     regVerbosity   :: Flag Verbosity
   }
   deriving Show
@@ -735,6 +773,8 @@ defaultRegisterFlags = RegisterFlags {
     regGenScript   = Flag False,
     regGenPkgConf  = Flag Nothing,
     regInPlace     = Flag False,
+    regDistPref    = Flag defaultDistPref,
+    regVerbose     = normal,
     regVerbosity   = Flag normal
   }
 
@@ -803,6 +843,8 @@ instance Monoid RegisterFlags where
     regGenScript   = mempty,
     regGenPkgConf  = mempty,
     regInPlace     = mempty,
+    regDistPref    = mempty,
+    regVerbose     = normal,
     regVerbosity   = mempty
   }
   mappend a b = RegisterFlags {
@@ -810,6 +852,8 @@ instance Monoid RegisterFlags where
     regGenScript   = combine regGenScript,
     regGenPkgConf  = combine regGenPkgConf,
     regInPlace     = combine regInPlace,
+    regDistPref    = combine regDistPref,
+    regVerbose     = fromFlagOrDefault (regVerbose a) (regVerbosity b),
     regVerbosity   = combine regVerbosity
   }
     where combine field = field a `mappend` field b
@@ -821,6 +865,8 @@ instance Monoid RegisterFlags where
 data HscolourFlags = HscolourFlags {
     hscolourCSS         :: Flag FilePath,
     hscolourExecutables :: Flag Bool,
+    hscolourDistPref    :: Flag FilePath,
+    hscolourVerbose     :: Verbosity,
     hscolourVerbosity   :: Flag Verbosity
   }
   deriving Show
@@ -832,6 +878,8 @@ defaultHscolourFlags :: HscolourFlags
 defaultHscolourFlags = HscolourFlags {
     hscolourCSS         = NoFlag,
     hscolourExecutables = Flag False,
+    hscolourDistPref    = Flag defaultDistPref,
+    hscolourVerbose     = normal,
     hscolourVerbosity   = Flag normal
   }
 
@@ -839,11 +887,15 @@ instance Monoid HscolourFlags where
   mempty = HscolourFlags {
     hscolourCSS         = mempty,
     hscolourExecutables = mempty,
+    hscolourDistPref    = mempty,
+    hscolourVerbose     = normal,
     hscolourVerbosity   = mempty
   }
   mappend a b = HscolourFlags {
     hscolourCSS         = combine hscolourCSS,
     hscolourExecutables = combine hscolourExecutables,
+    hscolourDistPref    = combine hscolourDistPref,
+    hscolourVerbose     = fromFlagOrDefault (hscolourVerbose a) (hscolourVerbosity b),
     hscolourVerbosity   = combine hscolourVerbosity
   }
     where combine field = field a `mappend` field b
@@ -881,6 +933,8 @@ data HaddockFlags = HaddockFlags {
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
+    haddockDistPref     :: Flag FilePath,
+    haddockVerbose      :: Verbosity,
     haddockVerbosity    :: Flag Verbosity
   }
   deriving Show
@@ -894,6 +948,8 @@ defaultHaddockFlags  = HaddockFlags {
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
     haddockHscolourCss  = NoFlag,
+    haddockDistPref     = Flag defaultDistPref,
+    haddockVerbose      = normal,
     haddockVerbosity    = Flag normal
   }
 
@@ -955,6 +1011,8 @@ instance Monoid HaddockFlags where
     haddockCss          = mempty,
     haddockHscolour     = mempty,
     haddockHscolourCss  = mempty,
+    haddockDistPref     = mempty,
+    haddockVerbose      = normal,
     haddockVerbosity    = mempty
   }
   mappend a b = HaddockFlags {
@@ -965,6 +1023,8 @@ instance Monoid HaddockFlags where
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,
+    haddockDistPref     = combine haddockDistPref,
+    haddockVerbose      = fromFlagOrDefault (haddockVerbose a) (haddockVerbosity b),
     haddockVerbosity    = combine haddockVerbosity
   }
     where combine field = field a `mappend` field b
@@ -975,6 +1035,8 @@ instance Monoid HaddockFlags where
 
 data CleanFlags = CleanFlags {
     cleanSaveConf  :: Flag Bool,
+    cleanDistPref  :: Flag FilePath,
+    cleanVerbose   :: Verbosity,
     cleanVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -982,6 +1044,8 @@ data CleanFlags = CleanFlags {
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
     cleanSaveConf  = Flag False,
+    cleanDistPref  = Flag defaultDistPref,
+    cleanVerbose   = normal,
     cleanVerbosity = Flag normal
   }
 
@@ -1007,10 +1071,14 @@ emptyCleanFlags = mempty
 instance Monoid CleanFlags where
   mempty = CleanFlags {
     cleanSaveConf  = mempty,
+    cleanDistPref  = mempty,
+    cleanVerbose   = normal,
     cleanVerbosity = mempty
   }
   mappend a b = CleanFlags {
     cleanSaveConf  = combine cleanSaveConf,
+    cleanDistPref  = combine cleanDistPref,
+    cleanVerbose   = fromFlagOrDefault (cleanVerbose a) (cleanVerbosity b),
     cleanVerbosity = combine cleanVerbosity
   }
     where combine field = field a `mappend` field b
@@ -1021,6 +1089,8 @@ instance Monoid CleanFlags where
 
 data BuildFlags = BuildFlags {
     buildProgramArgs :: [(String, [String])],
+    buildDistPref    :: Flag FilePath,
+    buildVerbose     :: Verbosity,
     buildVerbosity   :: Flag Verbosity
   }
   deriving Show
@@ -1028,6 +1098,8 @@ data BuildFlags = BuildFlags {
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramArgs = [],
+    buildDistPref    = Flag defaultDistPref,
+    buildVerbose     = normal,
     buildVerbosity   = Flag normal
   }
 
@@ -1050,11 +1122,15 @@ emptyBuildFlags = mempty
 instance Monoid BuildFlags where
   mempty = BuildFlags {
     buildProgramArgs = mempty,
-    buildVerbosity   = mempty
+    buildVerbose     = normal,
+    buildVerbosity   = Flag normal,
+    buildDistPref    = mempty
   }
   mappend a b = BuildFlags {
     buildProgramArgs = combine buildProgramArgs,
-    buildVerbosity   = combine buildVerbosity
+    buildVerbose     = fromFlagOrDefault (buildVerbose a) (buildVerbosity b),
+    buildVerbosity   = combine buildVerbosity,
+    buildDistPref    = combine buildDistPref
   }
     where combine field = field a `mappend` field b
 
@@ -1064,6 +1140,8 @@ instance Monoid BuildFlags where
 
 data MakefileFlags = MakefileFlags {
     makefileFile      :: Flag FilePath,
+    makefileDistPref  :: Flag FilePath,
+    makefileVerbose   :: Verbosity,
     makefileVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -1071,6 +1149,8 @@ data MakefileFlags = MakefileFlags {
 defaultMakefileFlags :: MakefileFlags
 defaultMakefileFlags  = MakefileFlags {
     makefileFile      = NoFlag,
+    makefileDistPref  = Flag defaultDistPref,
+    makefileVerbose   = normal,
     makefileVerbosity = Flag normal
   }
 
@@ -1096,10 +1176,14 @@ emptyMakefileFlags  = mempty
 instance Monoid MakefileFlags where
   mempty = MakefileFlags {
     makefileFile      = mempty,
+    makefileDistPref  = mempty,
+    makefileVerbose   = normal,
     makefileVerbosity = mempty
   }
   mappend a b = MakefileFlags {
     makefileFile      = combine makefileFile,
+    makefileDistPref  = combine makefileDistPref,
+    makefileVerbose   = fromFlagOrDefault (makefileVerbose a) (makefileVerbosity b),
     makefileVerbosity = combine makefileVerbosity
   }
     where combine field = field a `mappend` field b
