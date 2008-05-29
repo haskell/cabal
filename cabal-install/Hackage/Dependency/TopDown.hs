@@ -31,14 +31,12 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier), Dependency(Dependency)
-         , Package(..), packageVersion )
+         ( PackageIdentifier, Package(packageId), packageVersion
+         , Dependency(Dependency), thisPackageVersion, notThisPackageVersion )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription)
-import Distribution.Version
-         ( VersionRange(..) )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -257,9 +255,6 @@ addPackageSelectConstraint pkgid constraints =
     dep    = TaggedDependency NoInstalledConstraint (thisPackageVersion pkgid)
     reason = SelectedOther pkgid
 
-thisPackageVersion :: PackageIdentifier -> Dependency
-thisPackageVersion (PackageIdentifier n v) = Dependency n (ThisVersion v)
-
 addPackageExcludeConstraint :: PackageIdentifier -> Constraints
                      -> Satisfiable Constraints ExclusionReason
 addPackageExcludeConstraint pkgid constraints =
@@ -268,9 +263,6 @@ addPackageExcludeConstraint pkgid constraints =
     dep    = TaggedDependency NoInstalledConstraint
                (notThisPackageVersion pkgid)
     reason = ExcludedByConfigureFail
-    notThisPackageVersion (PackageIdentifier n v) =
-      Dependency n (notThisVersion v)
-    notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
 
 addPackageDependencyConstraint :: PackageIdentifier -> TaggedDependency -> Constraints
                                -> Satisfiable Constraints ExclusionReason
