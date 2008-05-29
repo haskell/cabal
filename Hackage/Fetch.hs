@@ -135,7 +135,7 @@ fetch verbosity packageDB repos comp conf deps
          deps' <- IndexUtils.disambiguateDependencies available deps
          case resolveDependencies buildOS buildArch
                 (compilerId comp) installed available deps' of
-           Left missing -> die $ "Unresolved dependencies: " ++ showDependencies missing
+           Left message -> die message
            Right pkgs   -> do
              ps <- filterM (fmap not . isFetched)
                      [ pkg | (InstallPlan.Configured
