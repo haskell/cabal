@@ -64,7 +64,8 @@ import Distribution.Package (showPackageId, PackageIdentifier(pkgVersion))
 import Distribution.Version (Version(versionBranch), VersionRange(AnyVersion))
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose,
                                   smartCopySources, die, warn, notice,
-                                  findPackageDesc, findFile, copyFileVerbose)
+                                  findPackageDesc, findFile, findFileWithExtension,
+                                  copyFileVerbose)
 import Distribution.Simple.Setup (SDistFlags(..))
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -81,7 +82,7 @@ import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import Distribution.Compat.Directory (doesFileExist, doesDirectoryExist,
          getCurrentDirectory, removeDirectoryRecursive)
 import Distribution.Verbosity
-import System.FilePath ((</>), takeDirectory, isAbsolute)
+import System.FilePath ((</>), takeDirectory, isAbsolute, dropExtension)
 
 #ifdef DEBUG
 import Test.HUnit (Test)

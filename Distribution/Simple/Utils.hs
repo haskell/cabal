@@ -66,6 +66,8 @@ module Distribution.Simple.Utils (
         currentDir,
         dotToSep,
 	findFile,
+        findFileWithExtension,
+        findFileWithExtension',
         defaultPackageDesc,
         findPackageDesc,
 	defaultHookedPackageDesc,
@@ -359,13 +361,39 @@ moduleToPossiblePaths searchPref s possibleSuffixes =
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
-findFile prefPathsIn locPath = do
-  let prefPaths = nub prefPathsIn -- ignore dups
-  paths <- filterM doesFileExist [prefPath </> locPath | prefPath <- prefPaths]
-  case nub paths of -- also ignore dups, though above nub should fix this.
-    [path] -> return path
-    []     -> die (locPath ++ " doesn't exist")
-    paths' -> die (locPath ++ " is found in multiple places:" ++ unlines (map ((++) "    ") paths'))
+findFile searchPath fileName =
+  findFirstFile id
+    [ path </> fileName
+    | path <- nub searchPath]
+  >>= maybe (die $ fileName ++ " doesn't exist") return
+
+findFileWithExtension :: [String]
+                      -> [FilePath]
+                      -> FilePath
+                      -> IO (Maybe FilePath)
+findFileWithExtension extensions searchPath baseName =
+  findFirstFile id
+    [ path </> baseName <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+findFileWithExtension' :: [String]
+                       -> [FilePath]
+                       -> FilePath
+                       -> IO (Maybe (FilePath, FilePath))
+findFileWithExtension' extensions searchPath baseName =
+  findFirstFile (uncurry (</>))
+    [ (path, baseName <.> ext)
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
+findFirstFile file = findFirst
+  where findFirst []     = return Nothing
+        findFirst (x:xs) = do exists <- doesFileExist (file x)
+                              if exists
+                                then return (Just x)
+                                else findFirst xs
 
 dotToSep :: String -> String
 dotToSep = map dts
