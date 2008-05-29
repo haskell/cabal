@@ -1,5 +1,5 @@
 Name:               cabal-install
-Version:            0.4.6
+Version:            0.4.7
 Synopsis:           Automatic package handling for Haskell
 Description:        
     apt-get like tool for Haskell. The \'cabal\' command-line program
@@ -62,7 +62,7 @@ Executable cabal
         Hackage.Upload
         Hackage.Utils
 
-    build-depends: Cabal >= 1.3.10, filepath >= 1.0, network,
+    build-depends: Cabal >= 1.3.11 && < 1.5, filepath >= 1.0, network,
                    zlib >= 0.3, HTTP >= 3000.0 && < 3001.2
 
     if flag(old-base)
