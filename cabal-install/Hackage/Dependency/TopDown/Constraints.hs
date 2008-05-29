@@ -24,8 +24,8 @@ import Hackage.Dependency.TopDown.Types
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), packageVersion, packageName
-         , Dependency(..) )
+         ( PackageIdentifier, Package(packageId), packageVersion, packageName
+         , Dependency(Dependency) )
 import Distribution.Version
          ( withinRange )
 import Distribution.Simple.Utils

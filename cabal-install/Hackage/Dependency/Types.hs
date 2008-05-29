@@ -20,8 +20,6 @@ import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import qualified Hackage.InstallPlan as InstallPlan
 
-import Distribution.Package
-         ( Dependency )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.PackageIndex
@@ -47,7 +45,7 @@ type DependencyResolver a = OS
                          -> PackageIndex InstalledPackageInfo
                          -> PackageIndex AvailablePackage
                          -> [UnresolvedDependency]
-                         -> Either [Dependency] [InstallPlan.PlanPackage a]
+                         -> Progress String String [InstallPlan.PlanPackage a]
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final

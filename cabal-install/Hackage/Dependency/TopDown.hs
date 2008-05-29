@@ -56,8 +56,6 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Data.Graph as Graph
 
-import Debug.Trace (trace)
-
 -- ------------------------------------------------------------
 -- * Search state types
 -- ------------------------------------------------------------
@@ -173,10 +171,10 @@ search configure constraints =
 topDownResolver :: DependencyResolver a
 topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
   where
-    mapMessages :: Progress Log Failure a -> Either [Dependency] a
-    mapMessages = Progress.foldProgress (trace . showLog)
-                                        (error . showFailure)
-                                        Right
+    mapMessages :: Progress Log Failure a -> Progress String String a
+    mapMessages = Progress.foldProgress (Progress.Step . showLog)
+                                        (Progress.Fail . showFailure)
+                                         Progress.Done
 
 -- | The native resolver with detailed structured logging and failure types.
 --

@@ -25,7 +25,7 @@ import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Hackage.Dependency.Types
-         ( DependencyResolver )
+         ( DependencyResolver, Progress(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )
 import Distribution.PackageDescription
@@ -38,6 +38,8 @@ import Distribution.Compiler
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing, intercalate)
+import Hackage.Utils
+         ( showDependencies )
 import Distribution.Text
          ( display )
 
@@ -117,7 +119,7 @@ getDependencies os arch comp installed available pkg flags
 
 packagesToInstall :: PackageIndex InstalledPackageInfo
                   -> [ResolvedDependency]
-                  -> Either [Dependency] [InstallPlan.PlanPackage a]
+                  -> Progress String String [InstallPlan.PlanPackage a]
                      -- ^ Either a list of missing dependencies, or a graph
                      -- of packages to install, with their options.
 packagesToInstall allInstalled deps0 =
@@ -138,10 +140,11 @@ packagesToInstall allInstalled deps0 =
                 allInstalled
                 (getInstalled deps0)
 
-       in Right $ map InstallPlan.Configured selectedAvailable
+       in Done $ map InstallPlan.Configured selectedAvailable
               ++ map InstallPlan.PreExisting selectedInstalled
 
-    (missing, _) -> Left $ concat missing
+    (missing, _) -> Fail $ "Unresolved dependencies: "
+                        ++ showDependencies (concat missing)
 
   where
     getAvailable :: ResolvedDependency
