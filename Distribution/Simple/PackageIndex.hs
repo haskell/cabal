@@ -65,7 +65,7 @@ import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
-import Data.List (nubBy, group, sort, groupBy, sortBy, find)
+import Data.List (groupBy, sortBy, find)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
 
@@ -134,15 +134,15 @@ instance Package pkg => Monoid (PackageIndex pkg) where
 
 invariant :: Package pkg => PackageIndex pkg -> Bool
 invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
-  where goodBucket name pkgs =
-             lowercase name == name
-          && not (null pkgs)
-          && all ((lowercase name==) . lowercase . packageName) pkgs
---          && all (\pkg -> pkgInfoId pkg
---                       == (packageId . packageDescription . pkgDesc) pkg) pkgs
-          && distinct (map packageId pkgs)
-
-        distinct = all ((==1). length) . group . sort
+  where
+    goodBucket _    [] = False
+    goodBucket name (pkg0:pkgs0) = check (packageId pkg0) pkgs0
+      where
+        check pkgid []          = lowercase (packageName pkgid) == name
+        check pkgid (pkg':pkgs) = lowercase (packageName pkgid) == name
+                               && pkgid < pkgid'
+                               && check pkgid' pkgs
+          where pkgid' = packageId pkg'
 
 mkPackageIndex :: Package pkg => Map String [pkg] -> PackageIndex pkg
 mkPackageIndex index = assert (invariant (PackageIndex index))
@@ -150,12 +150,6 @@ mkPackageIndex index = assert (invariant (PackageIndex index))
 
 internalError :: String -> a
 internalError name = error ("PackageIndex." ++ name ++ ": internal error")
-
--- | When building or merging we have to eliminate duplicates of the exact
--- same package name and version (case-sensitively) to preserve the invariant.
---
-stripDups :: Package pkg => [pkg] -> [pkg]
-stripDups = nubBy (equating packageId)
 
 -- | Lookup a name in the index to get all packages that match that name
 -- case-insensitively.
@@ -168,15 +162,24 @@ lookup (PackageIndex m) name =
 
 -- | Build an index out of a bunch of 'Package's.
 --
--- If there are duplicates, earlier ones mask later one.
+-- If there are duplicates, later ones mask earlier ones.
 --
 fromList :: Package pkg => [pkg] -> PackageIndex pkg
 fromList pkgs = mkPackageIndex
-              . Map.map stripDups
+              . Map.map fixBucket
               . Map.fromListWith (++)
               $ [ let key = (lowercase . packageName) pkg
                    in (key, [pkg])
                 | pkg <- pkgs ]
+  where
+    fixBucket = -- out of groups of duplicates, later ones mask earlier ones
+                -- but Map.fromListWith (++) constructs groups in reverse order
+                map head
+                -- Eq instance for PackageIdentifier is wrong, so use Ord:
+              . groupBy (\a b -> EQ == comparing packageId a b)
+                -- relies on sortBy being a stable sort so we
+                -- can pick consistently among duplicates
+              . sortBy (comparing packageId)
 
 -- | Merge two indexes.
 --
@@ -190,7 +193,13 @@ merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
 
 -- | Elements in the second list mask those in the first.
 mergeBuckets :: Package pkg => [pkg] -> [pkg] -> [pkg]
-mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
+mergeBuckets []     ys     = ys
+mergeBuckets xs     []     = xs
+mergeBuckets xs@(x:xs') ys@(y:ys') =
+      case packageId x `compare` packageId y of
+        GT -> y : mergeBuckets xs  ys'
+        EQ -> y : mergeBuckets xs' ys'
+        LT -> x : mergeBuckets xs' ys
 
 -- | Inserts a single package into the index.
 --
@@ -200,7 +209,16 @@ mergeBuckets pkgs1 pkgs2 = stripDups (pkgs2 ++ pkgs1)
 insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
 insert pkg (PackageIndex index) = mkPackageIndex $
   let key = (lowercase . packageName) pkg
-   in Map.insertWith (flip mergeBuckets) key [pkg] index
+   in Map.alter insertBucket key index
+  where
+    insertBucket Nothing     = Just [pkg]
+    insertBucket (Just pkgs) = Just (insertNoDup pkgs)
+    pkgid = packageId pkg
+    insertNoDup []                = [pkg]
+    insertNoDup pkgs@(pkg':pkgs') = case compare pkgid (packageId pkg') of
+      LT -> pkg  : pkgs
+      EQ -> pkg  : pkgs'
+      GT -> pkg' : insertNoDup pkgs'
 
 -- | Internal delete helper.
 --
@@ -242,10 +260,8 @@ allPackages (PackageIndex m) = concat (Map.elems m)
 -- They are grouped by package name, case-sensitively.
 --
 allPackagesByName :: Package pkg => PackageIndex pkg -> [[pkg]]
-allPackagesByName (PackageIndex m) = concatMap groupByName (Map.elems m)
-  where groupByName :: Package pkg => [pkg] -> [[pkg]]
-        groupByName = groupBy (equating packageName)
-                    . sortBy (comparing packageName)
+allPackagesByName (PackageIndex m) =
+  concatMap (groupBy (equating packageName)) (Map.elems m)
 
 -- | Does a case-insensitive search by package name.
 --
@@ -261,9 +277,7 @@ allPackagesByName (PackageIndex m) = concatMap groupByName (Map.elems m)
 --
 searchByName :: Package pkg => PackageIndex pkg -> String -> SearchResult [pkg]
 searchByName index name =
-  case groupBy (equating  packageName)
-     . sortBy  (comparing packageName)
-     $ lookup index name of
+  case groupBy (equating packageName) (lookup index name) of
     []     -> None
     [pkgs] -> Unambiguous pkgs
     pkgss  -> case find ((name==) . packageName . head) pkgss of
