@@ -1,5 +1,19 @@
 -*-change-log-*-
 
+1.2.4.0 Duncan Coutts <duncan@haskell.org> May 2008
+	* Released with GHC 6.8.3
+	* Backported several fixes and minor improvements from Cabal-1.4
+	* Use a default colour scheme for sources with hscolour >=1.9
+	* Support --hyperlink-source for Haddock >= 2.0
+	* Fix for running in a non-writable directory
+	* Add OSX -framework arguments when linking executables
+	* Updates to the user guide
+	* Allow build-tools names to include + and _
+	* Export autoconfUserHooks and simpleUserHooks
+	* Export ccLdOptionsBuildInfo for Setup.hs scripts
+	* Export unionBuildInfo and make BuildInfo an instance of Monoid
+	* Fix to allow the 'main-is' module to use a pre-processor
+
 1.2.3.0 Duncan Coutts <duncan@haskell.org> Nov 2007
 	* Released with GHC 6.8.2
 	* Includes full list of GHC language extensions
