@@ -45,7 +45,7 @@ module Distribution.Version (
   Version(..),
 
   -- * Version ranges
-  VersionRange(..), 
+  VersionRange(..), notThisVersion,
   orLaterVersion, orEarlierVersion,
   betweenVersionsInclusive,
   withinRange,
@@ -80,6 +80,9 @@ data VersionRange
 isAnyVersion :: VersionRange -> Bool
 isAnyVersion AnyVersion = True
 isAnyVersion _ = False
+
+notThisVersion :: Version -> VersionRange
+notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
 
 orLaterVersion :: Version -> VersionRange
 orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
