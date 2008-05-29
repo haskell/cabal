@@ -62,7 +62,7 @@ import Distribution.Text ( Text(..), display )
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((+++))
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>))
+import Text.PrettyPrint ((<>), (<+>))
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -129,9 +129,9 @@ instance Text VersionRange where
   disp (UnionVersionRanges (EarlierVersion v2) (ThisVersion v1))
     | v1 == v2 = Disp.text "<=" <> disp v1
   disp (UnionVersionRanges r1 r2)
-    = disp r1 <> Disp.text "||" <> disp r2
+    = disp r1 <+> Disp.text "||" <+> disp r2
   disp (IntersectVersionRanges r1 r2)
-    = disp r1 <> Disp.text "&&" <> disp r2
+    = disp r1 <+> Disp.text "&&" <+> disp r2
 
   parse = do
     f1 <- factor
