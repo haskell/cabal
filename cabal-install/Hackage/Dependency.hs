@@ -27,7 +27,7 @@ import Hackage.InstallPlan (InstallPlan)
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Hackage.Dependency.Types
-         ( DependencyResolver )
+         ( DependencyResolver, Progress(..), foldProgress )
 import Distribution.Package
          ( PackageIdentifier(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
@@ -54,12 +54,14 @@ resolveDependencies :: OS
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex AvailablePackage
                     -> [UnresolvedDependency]
-                    -> Either [Dependency] (InstallPlan a)
+                    -> Either String (InstallPlan a)
 resolveDependencies os arch comp (Just installed) available deps =
+  foldProgress (flip const) Left Right $
   dependencyResolver defaultResolver
     os arch comp installed available deps
 
 resolveDependencies os arch comp Nothing available deps =
+  foldProgress (flip const) Left Right $
   dependencyResolver bogusResolver
     os arch comp mempty available deps
 
@@ -83,15 +85,16 @@ dependencyResolver
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
   -> [UnresolvedDependency]
-  -> Either [Dependency] (InstallPlan a)
-dependencyResolver resolver os arch comp installed available deps =
+  -> Progress String String (InstallPlan a)
+dependencyResolver resolver os arch comp installed available =
   let installed' = hideBrokenPackages installed
       available' = hideBasePackage available
-   in case resolver os arch comp installed' available' deps of
-    Left unresolved -> Left unresolved
-    Right pkgs ->
+   in fmap toPlan . resolver os arch comp installed' available'
+
+  where
+    toPlan pkgs =
       case InstallPlan.new os arch comp (PackageIndex.fromList pkgs) of
-        Right plan     -> Right plan
+        Right plan     -> plan
         Left  problems -> error $ unlines $
             "internal error: could not construct a valid install plan."
           : "The proposed (invalid) plan contained the following problems:"

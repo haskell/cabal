@@ -22,12 +22,14 @@ import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Hackage.Dependency.Types
-         ( DependencyResolver )
+         ( DependencyResolver, Progress(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription)
 import Distribution.Simple.Utils (comparing)
+import Hackage.Utils
+         ( showDependencies )
 
 import Data.List (maximumBy)
 
@@ -39,8 +41,9 @@ import Data.List (maximumBy)
 bogusResolver :: DependencyResolver a
 bogusResolver os arch comp _ available deps =
   case unzipEithers (map resolveFromAvailable deps) of
-    (ok, [])      -> Right ok
-    (_ , missing) -> Left missing
+    (ok, [])      -> Done ok
+    (_ , missing) -> Fail $ "Unresolved dependencies: "
+                         ++ showDependencies missing
   where
     resolveFromAvailable (UnresolvedDependency dep flags) =
       case latestAvailableSatisfying available dep of
