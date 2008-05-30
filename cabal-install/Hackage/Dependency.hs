@@ -1,20 +1,22 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Hackage.Dependency
--- Copyright   :  (c) David Himmelstrup 2005, Bjorn Bringert 2007
+-- Copyright   :  (c) David Himmelstrup 2005,
+--                    Bjorn Bringert 2007
+--                    Duncan Coutts 2008
 -- License     :  BSD-like
 --
--- Maintainer  :  lemmih@gmail.com
+-- Maintainer  :  cabal-devel@gmail.com
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Various kinds of dependency resolution and utilities.
+-- Top level interface to dependency resolution.
 -----------------------------------------------------------------------------
-module Hackage.Dependency
-    (
-      resolveDependencies
-    , upgradableDependencies
-    ) where
+module Hackage.Dependency (
+    resolveDependencies,
+    resolveDependenciesWithProgress,
+    upgradableDependencies,
+  ) where
 
 import Hackage.Dependency.Naive (naiveResolver)
 import Hackage.Dependency.Bogus (bogusResolver)
@@ -55,13 +57,22 @@ resolveDependencies :: OS
                     -> PackageIndex AvailablePackage
                     -> [UnresolvedDependency]
                     -> Either String (InstallPlan a)
-resolveDependencies os arch comp (Just installed) available deps =
+resolveDependencies os arch comp installed available deps =
   foldProgress (flip const) Left Right $
+    resolveDependenciesWithProgress os arch comp installed available deps
+
+resolveDependenciesWithProgress :: OS
+                                -> Arch
+                                -> CompilerId
+                                -> Maybe (PackageIndex InstalledPackageInfo)
+                                -> PackageIndex AvailablePackage
+                                -> [UnresolvedDependency]
+                                -> Progress String String (InstallPlan a)
+resolveDependenciesWithProgress os arch comp (Just installed) available deps =
   dependencyResolver defaultResolver
     os arch comp installed available deps
 
-resolveDependencies os arch comp Nothing available deps =
-  foldProgress (flip const) Left Right $
+resolveDependenciesWithProgress os arch comp Nothing available deps =
   dependencyResolver bogusResolver
     os arch comp mempty available deps
 
