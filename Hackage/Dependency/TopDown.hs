@@ -115,17 +115,18 @@ searchSpace configure constraints selected next =
       Left missing -> Failure $ ConfigureFailed pkg
                         [ (dep, Constraints.conflicting constraints dep)
                         | dep <- missing ]
-      Right pkg' -> case constrainDeps pkg' (packageConstraints pkg') constraints of
-        Left failure       -> Failure failure
-        Right constraints' -> searchSpace configure constraints'' selected' next'
-          where
-            selected' = PackageIndex.insert pkg' selected
-            next'     = Set.delete name $ foldr Set.insert next new
-            new       = [ name'
+      Right pkg' ->
+        let selected' = PackageIndex.insert pkg' selected
+            newPkgs   = [ name'
                         | dep <- packageConstraints pkg'
                         , let (Dependency name' _) = untagDependency dep
                         , null (PackageIndex.lookupPackageName selected' name') ]
-            Satisfiable constraints'' = addPackageSelectConstraint (packageId pkg) constraints'
+            newDeps   = packageConstraints pkg'
+            next'     = Set.delete name $ foldr Set.insert next newPkgs
+         in case constrainDeps pkg' newDeps constraints of
+              Left failure       -> Failure failure
+              Right constraints' -> searchSpace configure
+                                      constraints' selected' next'
 
 packageConstraints :: SelectedPackage -> [TaggedDependency]
 packageConstraints = either installedConstraints availableConstraints
@@ -142,7 +143,10 @@ packageConstraints = either installedConstraints availableConstraints
 
 constrainDeps :: SelectedPackage -> [TaggedDependency] -> Constraints
               -> Either Failure Constraints
-constrainDeps _   []         cs = Right cs
+constrainDeps pkg []         cs =
+  case addPackageSelectConstraint (packageId pkg) cs of
+    Satisfiable cs' -> Right cs'
+    _               -> impossible
 constrainDeps pkg (dep:deps) cs =
   case addPackageDependencyConstraint (packageId pkg) dep cs of
     Satisfiable cs' -> constrainDeps pkg deps cs'
@@ -189,15 +193,8 @@ topDownResolver' os arch comp installed available deps =
 
   where
     --TODO add actual constraints using addTopLevelDependencyConstraint
-    constraints = Constraints.empty installed' available
-
-    installed' = PackageIndex.fromList
-                   [ InstalledPackage pkg (transitiveDepends pkg)
-                   | pkg <- PackageIndex.allPackages installed ]   
-    transitiveDepends :: InstalledPackageInfo -> [PackageIdentifier]
-    transitiveDepends = map toPkgid . tail . Graph.reachable graph
-                      . fromJust . toVertex . packageId
-    (graph, toPkgid, toVertex) = PackageIndex.dependencyGraph installed
+    constraints = Constraints.empty (annotateInstalledPackages installed)
+                                    available
 
     initialDeps     = [ dep  | UnresolvedDependency dep _ <- deps ]
     initialPkgNames = Set.fromList [ name | Dependency name _ <- initialDeps ]
@@ -214,6 +211,20 @@ configurePackage os arch comp available spkg = case spkg of
       Left missing        -> Left missing
       Right (pkg, flags) -> Right $
         SemiConfiguredPackage apkg flags (buildDepends pkg)
+
+-- | Annotate each installed packages with its set of transative dependencies.
+--
+annotateInstalledPackages :: PackageIndex InstalledPackageInfo
+                          -> PackageIndex InstalledPackage
+annotateInstalledPackages installed =
+  PackageIndex.fromList
+    [ InstalledPackage pkg (transitiveDepends pkg)
+    | pkg <- PackageIndex.allPackages installed ]
+  where
+    transitiveDepends :: InstalledPackageInfo -> [PackageIdentifier]
+    transitiveDepends = map toPkgid . tail . Graph.reachable graph
+                      . fromJust . toVertex . packageId
+    (graph, toPkgid, toVertex) = PackageIndex.dependencyGraph installed
 
 finaliseSelectedPackages :: SelectedPackages
                          -> Constraints
@@ -246,7 +257,7 @@ finaliseSelectedPackages selected constraints =
 -- ------------------------------------------------------------
 
 addPackageSelectConstraint :: PackageIdentifier -> Constraints
-                    -> Satisfiable Constraints ExclusionReason
+                           -> Satisfiable Constraints ExclusionReason
 addPackageSelectConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
