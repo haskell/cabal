@@ -29,7 +29,6 @@ import Hackage.Types
 import Hackage.Dependency (resolveDependencies)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.Utils (showDependencies)
 import Hackage.HttpUtils (getHTTP)
 
 import Distribution.Package
