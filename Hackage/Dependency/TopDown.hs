@@ -29,14 +29,15 @@ import qualified Hackage.Dependency.Types as Progress
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo, depends )
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), packageVersion
+         ( PackageIdentifier, Package(packageId), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, notThisPackageVersion )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription)
+         ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -47,7 +48,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( maximumBy, deleteBy )
+         ( maximumBy, minimumBy, deleteBy, nub )
 import Data.Maybe
          ( fromJust )
 import Data.Monoid
@@ -55,13 +56,14 @@ import Data.Monoid
 import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Data.Graph as Graph
+import qualified Data.Array as Array
 
 -- ------------------------------------------------------------
 -- * Search state types
 -- ------------------------------------------------------------
 
 type Constraints  = Constraints.Constraints
-                      InstalledPackage AvailablePackage ExclusionReason
+                      InstalledPackage UnconfiguredPackage ExclusionReason
 type SelectedPackages = PackageIndex SelectedPackage
 
 -- ------------------------------------------------------------
@@ -81,14 +83,21 @@ explore :: SearchSpace a SelectablePackage
 
 explore (Failure failure)      = Progress.Fail failure
 explore (ChoiceNode result []) = Progress.Done result
-explore (ChoiceNode _ (choices@(defaultChoice:_))) =
+explore (ChoiceNode _ choices) =
   case [ choice | [choice] <- choices ] of
     ((pkg, node'):_) -> Progress.Step (Select pkg [])    (explore node')
     []               -> seq pkgs' -- avoid retaining defaultChoice
                       $ Progress.Step (Select pkg pkgs') (explore node')
       where
-        (pkg, node') = maximumBy (comparing (packageId . fst)) defaultChoice
-        pkgs' = deleteBy (equating packageId) pkg (map fst defaultChoice)
+        choice       = minimumBy (comparing topSortNumber) choices
+        (pkg, node') = maximumBy (comparing (packageId . fst)) choice
+        pkgs' = deleteBy (equating packageId) pkg (map fst choice)
+
+  where
+    topSortNumber choice = case fst (head choice) of
+      InstalledOnly           (InstalledPackage  _ i _) -> i
+      AvailableOnly           (UnconfiguredPackage _ i) -> i
+      InstalledAndAvailable _ (UnconfiguredPackage _ i) -> i
 
 -- ------------------------------------------------------------
 -- * Generate a search tree
@@ -135,7 +144,7 @@ packageConstraints = either installedConstraints availableConstraints
     preferAvailable (InstalledOnly           pkg) = Left pkg
     preferAvailable (AvailableOnly           pkg) = Right pkg
     preferAvailable (InstalledAndAvailable _ pkg) = Right pkg
-    installedConstraints (InstalledPackage      _   deps) =
+    installedConstraints (InstalledPackage      _ _ deps) =
       [ TaggedDependency InstalledConstraint (thisPackageVersion dep)
       | dep <- deps ]
     availableConstraints (SemiConfiguredPackage _ _ deps) =
@@ -193,8 +202,10 @@ topDownResolver' os arch comp installed available deps =
 
   where
     --TODO add actual constraints using addTopLevelDependencyConstraint
-    constraints = Constraints.empty (annotateInstalledPackages installed)
-                                    available
+    constraints = Constraints.empty
+                    (annotateInstalledPackages topSortNumber installed)
+                    (annotateAvailablePackages topSortNumber available)
+    topSortNumber = topologicalSortNumbering installed available
 
     initialDeps     = [ dep  | UnresolvedDependency dep _ <- deps ]
     initialPkgNames = Set.fromList [ name | Dependency name _ <- initialDeps ]
@@ -206,25 +217,81 @@ configurePackage os arch comp available spkg = case spkg of
   InstalledAndAvailable ipkg apkg -> fmap (InstalledAndAvailable ipkg)
                                           (configure apkg)
   where
-  configure apkg@(AvailablePackage _ p _) =
+  configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _) =
     case finalizePackageDescription [] (Just available) os arch comp [] p of
       Left missing        -> Left missing
       Right (pkg, flags) -> Right $
         SemiConfiguredPackage apkg flags (buildDepends pkg)
 
--- | Annotate each installed packages with its set of transative dependencies.
+-- | Annotate each installed packages with its set of transative dependencies
+-- and its topological sort number.
 --
-annotateInstalledPackages :: PackageIndex InstalledPackageInfo
+annotateInstalledPackages :: (PackageName -> TopologicalSortNumber)
+                          -> PackageIndex InstalledPackageInfo
                           -> PackageIndex InstalledPackage
-annotateInstalledPackages installed =
-  PackageIndex.fromList
-    [ InstalledPackage pkg (transitiveDepends pkg)
-    | pkg <- PackageIndex.allPackages installed ]
+annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
+  [ InstalledPackage pkg (dfsNumber (packageName pkg)) (transitiveDepends pkg)
+  | pkg <- PackageIndex.allPackages installed ]
   where
     transitiveDepends :: InstalledPackageInfo -> [PackageIdentifier]
     transitiveDepends = map toPkgid . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
     (graph, toPkgid, toVertex) = PackageIndex.dependencyGraph installed
+
+
+-- | Annotate each available packages with its topological sort number.
+--
+annotateAvailablePackages :: (PackageName -> TopologicalSortNumber)
+                          -> PackageIndex AvailablePackage
+                          -> PackageIndex UnconfiguredPackage
+annotateAvailablePackages dfsNumber available = PackageIndex.fromList
+  [ UnconfiguredPackage pkg (dfsNumber (packageName pkg))
+  | pkg <- PackageIndex.allPackages available ]
+
+-- | One of the heuristics we use when guessing which path to take in the
+-- search space is an ordering on the choices we make. It's generally better
+-- to make decisions about packages higer in the dep graph first since they
+-- place constraints on packages lower in the dep graph.
+--
+-- To pick them in that order we annotate each package with its topological
+-- sort number. So if package A depends on package B then package A will have
+-- a lower topological sort number than B and we'll make a choice about which
+-- version of A to pick before we make a choice about B (unless there is only
+-- one possible choice for B in which case we pick that immediately).
+--
+-- To construct these topological sort numbers we combine and flatten the
+-- installed and available package sets. We consider only dependencies between
+-- named packages, not including versions and for not-yet-configured packages
+-- we look at all the possible dependencies, not just those under any single
+-- flag assignment. This means we can actually get impossible combinations of
+-- edges and even cycles, but that doesn't really matter here, it's only a
+-- heuristic.
+--
+topologicalSortNumbering :: PackageIndex InstalledPackageInfo
+                         -> PackageIndex AvailablePackage
+                         -> (PackageName -> TopologicalSortNumber)
+topologicalSortNumbering installed available =
+    \pkgname -> let Just vertex = toVertex pkgname
+                 in topologicalSortNumbers Array.! vertex
+  where
+    topologicalSortNumbers = Array.array (Array.bounds graph)
+                                         (zip (Graph.topSort graph) [0..])
+    (graph, _, toVertex)   = Graph.graphFromEdges $
+         [ ((), packageName pkg, nub deps)
+         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName installed
+         , let deps = [ packageName dep
+                      | pkg' <- pkgs
+                      , dep  <- depends pkg' ] ]
+      ++ [ ((), packageName pkg, nub deps)
+         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName available
+         , let deps = [ depName
+                      | AvailablePackage _ pkg' _ <- pkgs
+                      , Dependency depName _ <-
+                          buildDepends (flattenPackageDescription pkg') ] ]
+
+-- ------------------------------------------------------------
+-- * Post processing the solution
+-- ------------------------------------------------------------
 
 finaliseSelectedPackages :: SelectedPackages
                          -> Constraints
@@ -243,7 +310,7 @@ finaliseSelectedPackages selected constraints =
         Just (InstalledAndAvailable _ _) -> finaliseAvailable apkg
         --TODO: improve the plan by picking installed packages where possible
 
-    finaliseInstalled (InstalledPackage pkg _) = InstallPlan.PreExisting pkg
+    finaliseInstalled (InstalledPackage pkg _ _) = InstallPlan.PreExisting pkg
     finaliseAvailable (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
       where deps' = [ packageId pkg'
