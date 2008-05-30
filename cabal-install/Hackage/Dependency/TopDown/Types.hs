@@ -27,18 +27,29 @@ import Distribution.PackageDescription
 
 type PackageName  = String
 
-type SelectablePackage = InstalledOrAvailable InstalledPackage AvailablePackage
-type SelectedPackage   = InstalledOrAvailable InstalledPackage SemiConfiguredPackage
+type SelectablePackage
+   = InstalledOrAvailable InstalledPackage UnconfiguredPackage
+
+type SelectedPackage
+   = InstalledOrAvailable InstalledPackage SemiConfiguredPackage
 
 data InstalledOrAvailable installed available
    = InstalledOnly         installed
    | AvailableOnly                   available
    | InstalledAndAvailable installed available
 
+type TopologicalSortNumber = Int
+
 data InstalledPackage
    = InstalledPackage
        InstalledPackageInfo
+       !TopologicalSortNumber
        [PackageIdentifier]
+
+data UnconfiguredPackage
+   = UnconfiguredPackage
+       AvailablePackage
+       !TopologicalSortNumber
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
@@ -48,7 +59,10 @@ data SemiConfiguredPackage
                          --   the flag assignment
 
 instance Package InstalledPackage where
-  packageId (InstalledPackage p _) = packageId p
+  packageId (InstalledPackage p _ _) = packageId p
+
+instance Package UnconfiguredPackage where
+  packageId (UnconfiguredPackage p _) = packageId p
 
 instance Package SemiConfiguredPackage where
   packageId (SemiConfiguredPackage p _ _) = packageId p
