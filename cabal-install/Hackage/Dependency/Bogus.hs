@@ -39,7 +39,7 @@ import Data.List (maximumBy)
 -- We just pretend that everything is installed and hope for the best.
 --
 bogusResolver :: DependencyResolver a
-bogusResolver os arch comp _ available deps =
+bogusResolver os arch comp _ available _ deps =
   case unzipEithers (map resolveFromAvailable deps) of
     (ok, [])      -> Done ok
     (_ , missing) -> Fail $ "Unresolved dependencies: "

@@ -26,7 +26,8 @@ import Network.HTTP (ConnError(..), Response(..))
 import Hackage.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo(..), repoURL )
-import Hackage.Dependency (resolveDependencies)
+import Hackage.Dependency
+         ( resolveDependencies, PackagesVersionPreference(..) )
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.HttpUtils (getHTTP)
@@ -132,8 +133,8 @@ fetch verbosity packageDB repos comp conf deps
     = do installed <- getInstalledPackages verbosity comp packageDB conf
          available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
          deps' <- IndexUtils.disambiguateDependencies available deps
-         case resolveDependencies buildOS buildArch
-                (compilerId comp) installed available deps' of
+         case resolveDependencies buildOS buildArch (compilerId comp)
+                installed available PreferLatestForSelected deps' of
            Left message -> die message
            Right pkgs   -> do
              ps <- filterM (fmap not . isFetched)
