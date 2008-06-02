@@ -49,7 +49,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(mappend))
 
 naiveResolver :: DependencyResolver a
-naiveResolver os arch comp installed available deps =
+naiveResolver os arch comp installed available _ deps =
   packagesToInstall installed
     [ resolveDependency os arch comp installed available dep flags
     | UnresolvedDependency dep flags <- deps]

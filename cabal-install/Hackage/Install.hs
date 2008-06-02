@@ -26,7 +26,9 @@ import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
-import Hackage.Dependency (resolveDependenciesWithProgress, upgradableDependencies)
+import Hackage.Dependency
+         ( resolveDependenciesWithProgress, PackagesVersionPreference(..)
+         , upgradableDependencies )
 import Hackage.Dependency.Types (Progress(..), foldProgress)
 import Hackage.Fetch (fetchPackage)
 -- import qualified Hackage.Info as Info
@@ -192,7 +194,7 @@ planLocalPackage verbosity comp configFlags installed available = do
       }
 
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-                               installed' available' [localPkgDep]
+             installed' available' PreferLatestForSelected [localPkgDep]
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
@@ -200,11 +202,12 @@ planRepoPackages :: Compiler -> [UnresolvedDependency] -> Planner
 planRepoPackages comp deps installed available = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-                               installed available deps'
+             installed available PreferLatestForSelected deps'
 
 planUpgradePackages :: Compiler -> Planner
 planUpgradePackages comp (Just installed) available = return $
-  resolveDependenciesWithProgress buildOS buildArch (compilerId comp) (Just installed) available
+  resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
+    (Just installed) available PreferAllLatest
     [ UnresolvedDependency dep []
     | dep <- upgradableDependencies installed available ]
 planUpgradePackages comp _ _ =

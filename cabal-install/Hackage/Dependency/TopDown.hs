@@ -25,7 +25,8 @@ import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Hackage.Dependency.Types
-         ( DependencyResolver, Progress(..), foldProgress )
+         ( PackageName, DependencyResolver, PackageVersionPreference(..)
+         , Progress(..), foldProgress )
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -186,7 +187,7 @@ search configure constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver a
-topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
+topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
@@ -196,9 +197,10 @@ topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
 topDownResolver' :: OS -> Arch -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
+                 -> (PackageName -> PackageVersionPreference)
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage a]
-topDownResolver' os arch comp installed available deps =
+topDownResolver' os arch comp installed available _ deps =
       fmap (uncurry finalise)
     . (\cs -> search (configurePackage os arch comp) cs initialPkgNames)
   =<< constrainTopLevelDeps deps constraints
