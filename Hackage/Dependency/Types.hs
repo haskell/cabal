@@ -69,5 +69,9 @@ foldProgress step fail done = fold
         fold (Fail f)   = fail f
         fold (Done r)   = done r
 
-instance Functor (Progress step failure) where
+instance Functor (Progress step fail) where
   fmap f = foldProgress Step Fail (Done . f)
+
+instance Monad (Progress step fail) where
+  return a = Done a
+  p >>= f  = foldProgress Step Fail f p
