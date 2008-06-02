@@ -25,8 +25,6 @@ import Distribution.PackageDescription
 -- * The various kinds of packages
 -- ------------------------------------------------------------
 
-type PackageName  = String
-
 type SelectablePackage
    = InstalledOrAvailable InstalledPackage UnconfiguredPackage
 

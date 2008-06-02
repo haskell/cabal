@@ -11,7 +11,9 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Hackage.Dependency.Types (
+    PackageName,
     DependencyResolver,
+    PackageVersionPreference(..),
     Progress(..),
     foldProgress,
   ) where
@@ -31,6 +33,8 @@ import Distribution.System
 
 import Prelude hiding (fail)
 
+type PackageName  = String
+
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
 -- solve for.
@@ -44,8 +48,17 @@ type DependencyResolver a = OS
                          -> CompilerId
                          -> PackageIndex InstalledPackageInfo
                          -> PackageIndex AvailablePackage
+                         -> (PackageName -> PackageVersionPreference)
                          -> [UnresolvedDependency]
                          -> Progress String String [InstallPlan.PlanPackage a]
+
+-- | A per-package preference on the version. It is a soft constraint that the
+-- 'DependencyResolver' should try to respect where possible.
+--
+-- It is not specified if preferences on some packages are more important than
+-- others.
+--
+data PackageVersionPreference = PreferInstalled | PreferLatest
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
