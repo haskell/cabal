@@ -345,23 +345,24 @@ improvePlan installed selected = foldl' improve selected
                                $ reverseTopologicalOrder selected
   where
     improve selected' = maybe selected' (flip PackageIndex.insert selected')
-                      . improvePkg
+                      . improvePkg selected'
 
     -- The idea is to improve the plan by swapping a configured package for
     -- an equivalent installed one. For a particular package the condition is
     -- that the package be in a configured state, that a the same version be
     -- already installed with the exact same dependencies and all the packages
     -- in the plan that it depends on are in the installed state
-    improvePkg pkgid = do
-      Configured pkg  <- PackageIndex.lookupPackageId selected  pkgid
+    improvePkg selected' pkgid = do
+      Configured pkg  <- PackageIndex.lookupPackageId selected' pkgid
       ipkg            <- PackageIndex.lookupPackageId installed pkgid
-      guard $ sort (depends pkg) == sort (depends ipkg)
-      guard $ all isInstalled (depends pkg)
+      guard $ sort (depends pkg) == nub (sort (depends ipkg))
+      guard $ all (isInstalled selected') (depends pkg)
       return (PreExisting ipkg)
 
-    isInstalled pkgid = case PackageIndex.lookupPackageId selected pkgid of
-      Just (PreExisting _) -> True
-      _                    -> False
+    isInstalled selected' pkgid =
+      case PackageIndex.lookupPackageId selected' pkgid of
+        Just (PreExisting _) -> True
+        _                    -> False
 
     reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg
                             -> [PackageIdentifier]
