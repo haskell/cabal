@@ -25,9 +25,7 @@ import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Hackage.Dependency.Types
-         ( DependencyResolver, Progress )
-import qualified Hackage.Dependency.Types as Progress
-         ( Progress(..), foldProgress )
+         ( DependencyResolver, Progress(..), foldProgress )
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -53,7 +51,7 @@ import Distribution.Text
 import Data.List
          ( foldl', maximumBy, minimumBy, deleteBy, nub, sort )
 import Data.Maybe
-         ( fromJust, catMaybes )
+         ( fromJust )
 import Data.Monoid
          ( Monoid(mempty) )
 import Control.Monad
@@ -86,13 +84,13 @@ data SearchSpace inherited pkg
 explore :: SearchSpace a SelectablePackage
         -> Progress Log Failure a
 
-explore (Failure failure)      = Progress.Fail failure
-explore (ChoiceNode result []) = Progress.Done result
+explore (Failure failure)      = Fail failure
+explore (ChoiceNode result []) = Done result
 explore (ChoiceNode _ choices) =
   case [ choice | [choice] <- choices ] of
-    ((pkg, node'):_) -> Progress.Step (Select pkg [])    (explore node')
+    ((pkg, node'):_) -> Step (Select pkg [])    (explore node')
     []               -> seq pkgs' -- avoid retaining defaultChoice
-                      $ Progress.Step (Select pkg pkgs') (explore node')
+                      $ Step (Select pkg pkgs') (explore node')
       where
         choice       = minimumBy (comparing topSortNumber) choices
         (pkg, node') = maximumBy (comparing (packageId . fst)) choice
@@ -191,9 +189,7 @@ topDownResolver :: DependencyResolver a
 topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
-    mapMessages = Progress.foldProgress (Progress.Step . showLog)
-                                        (Progress.Fail . showFailure)
-                                         Progress.Done
+    mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
 
 -- | The native resolver with detailed structured logging and failure types.
 --
@@ -203,8 +199,9 @@ topDownResolver' :: OS -> Arch -> CompilerId
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage a]
 topDownResolver' os arch comp installed available deps =
-    fmap (uncurry finalise)
-  $ search (configurePackage os arch comp) constraints initialPkgNames
+      fmap (uncurry finalise)
+    . (\cs -> search (configurePackage os arch comp) cs initialPkgNames)
+  =<< constrainTopLevelDeps deps constraints
 
   where
     --TODO add actual constraints using addTopLevelDependencyConstraint
@@ -220,6 +217,15 @@ topDownResolver' os arch comp installed available deps =
                       . improvePlan installed
                       . PackageIndex.fromList
                       . finaliseSelectedPackages selected
+
+constrainTopLevelDeps :: [UnresolvedDependency] -> Constraints
+                      -> Progress a Failure Constraints
+constrainTopLevelDeps []                                cs = Done cs
+constrainTopLevelDeps (UnresolvedDependency dep _:deps) cs =
+  case addTopLevelDependencyConstraint dep cs of
+    Satisfiable cs'         -> constrainTopLevelDeps deps cs'
+    Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
+    ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
 
 configurePackage :: OS -> Arch -> CompilerId -> ConfigurePackage
 configurePackage os arch comp available spkg = case spkg of
@@ -440,6 +446,10 @@ showExclusionReason pkgid ExcludedByConfigureFail =
 showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep) =
   display pkgid ++ " was excluded because " ++
   display pkgid' ++ " requires " ++ display (untagDependency dep)
+showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
+  display pkgid ++ " was excluded because of the top level dependency " ++
+  display dep
+
 
 -- ------------------------------------------------------------
 -- * Logging progress and failures
@@ -453,6 +463,11 @@ data Failure
    | DependencyConflict
        SelectedPackage TaggedDependency
        [(PackageIdentifier, [ExclusionReason])]
+   | TopLevelDependencyConflict
+       Dependency
+       [(PackageIdentifier, [ExclusionReason])]
+   | TopLevelDependencyUnsatisfiable
+       Dependency
 
 showLog :: Log -> String
 showLog (Select selected discarded) =
@@ -492,6 +507,16 @@ showFailure (DependencyConflict pkg (TaggedDependency _ dep) conflicts) =
   ++ displayPkg pkg ++ " requires " ++ display dep ++ " however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
+
+showFailure (TopLevelDependencyConflict dep conflicts) =
+     "dependencies conflict: "
+  ++ "top level dependency " ++ display dep ++ " however\n"
+  ++ unlines [ showExclusionReason (packageId pkg') reason
+             | (pkg', reasons) <- conflicts, reason <- reasons ]
+
+showFailure (TopLevelDependencyUnsatisfiable (Dependency name ver)) =
+     "There is no available version of " ++ name
+      ++ " that satisfies " ++ display ver
 
 -- ------------------------------------------------------------
 -- * Utils
