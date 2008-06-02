@@ -19,6 +19,8 @@ import qualified Hackage.Dependency.TopDown.Constraints as Constraints
 import Hackage.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import qualified Hackage.InstallPlan as InstallPlan
+import Hackage.InstallPlan
+         ( PlanPackage(..) )
 import Hackage.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
@@ -30,10 +32,11 @@ import qualified Hackage.Dependency.Types as Progress
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, depends )
+         ( InstalledPackageInfo )
 import Distribution.Package
          ( PackageIdentifier, Package(packageId), packageVersion, packageName
-         , Dependency(Dependency), thisPackageVersion, notThisPackageVersion )
+         , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
+         , PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.PackageDescription.Configuration
@@ -48,11 +51,13 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( maximumBy, minimumBy, deleteBy, nub )
+         ( foldl', maximumBy, minimumBy, deleteBy, nub, sort )
 import Data.Maybe
-         ( fromJust )
+         ( fromJust, catMaybes )
 import Data.Monoid
          ( Monoid(mempty) )
+import Control.Monad
+         ( guard )
 import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Data.Graph as Graph
@@ -131,7 +136,8 @@ searchSpace configure constraints selected next =
                         , let (Dependency name' _) = untagDependency dep
                         , null (PackageIndex.lookupPackageName selected' name') ]
             newDeps   = packageConstraints pkg'
-            next'     = Set.delete name $ foldr Set.insert next newPkgs
+            next'     = Set.delete name
+                      $ foldl' (flip Set.insert) next newPkgs
          in case constrainDeps pkg' newDeps constraints of
               Left failure       -> Failure failure
               Right constraints' -> searchSpace configure
@@ -195,9 +201,9 @@ topDownResolver' :: OS -> Arch -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
                  -> [UnresolvedDependency]
-                 -> Progress Log Failure [InstallPlan.PlanPackage a]
+                 -> Progress Log Failure [PlanPackage a]
 topDownResolver' os arch comp installed available deps =
-    fmap (uncurry finaliseSelectedPackages)
+    fmap (uncurry finalise)
   $ search (configurePackage os arch comp) constraints initialPkgNames
 
   where
@@ -209,6 +215,11 @@ topDownResolver' os arch comp installed available deps =
 
     initialDeps     = [ dep  | UnresolvedDependency dep _ <- deps ]
     initialPkgNames = Set.fromList [ name | Dependency name _ <- initialDeps ]
+
+    finalise selected = PackageIndex.allPackages
+                      . improvePlan installed
+                      . PackageIndex.fromList
+                      . finaliseSelectedPackages selected
 
 configurePackage :: OS -> Arch -> CompilerId -> ConfigurePackage
 configurePackage os arch comp available spkg = case spkg of
@@ -295,7 +306,7 @@ topologicalSortNumbering installed available =
 
 finaliseSelectedPackages :: SelectedPackages
                          -> Constraints
-                         -> [InstallPlan.PlanPackage a]
+                         -> [PlanPackage a]
 finaliseSelectedPackages selected constraints =
   map finaliseSelected (PackageIndex.allPackages selected)
   where
@@ -308,7 +319,6 @@ finaliseSelectedPackages selected constraints =
         Just (AvailableOnly _)           -> impossible --to constrain to avail only
         Just (InstalledOnly _)           -> finaliseInstalled ipkg
         Just (InstalledAndAvailable _ _) -> finaliseAvailable apkg
-        --TODO: improve the plan by picking installed packages where possible
 
     finaliseInstalled (InstalledPackage pkg _ _) = InstallPlan.PreExisting pkg
     finaliseAvailable (SemiConfiguredPackage pkg flags deps) =
@@ -318,6 +328,42 @@ finaliseSelectedPackages selected constraints =
                     , let pkg' = case PackageIndex.lookupDependency selected dep of
                                    [pkg''] -> pkg''
                                    _ -> impossible ]
+
+-- | Improve an existing installation plan by, where possible, swapping
+-- packages we plan to install with ones that are already installed.
+--
+improvePlan :: PackageIndex InstalledPackageInfo
+            -> PackageIndex (PlanPackage a)
+            -> PackageIndex (PlanPackage a)
+improvePlan installed selected = foldl' improve selected
+                               $ reverseTopologicalOrder selected
+  where
+    improve selected' = maybe selected' (flip PackageIndex.insert selected')
+                      . improvePkg
+
+    -- The idea is to improve the plan by swapping a configured package for
+    -- an equivalent installed one. For a particular package the condition is
+    -- that the package be in a configured state, that a the same version be
+    -- already installed with the exact same dependencies and all the packages
+    -- in the plan that it depends on are in the installed state
+    improvePkg pkgid = do
+      Configured pkg  <- PackageIndex.lookupPackageId selected  pkgid
+      ipkg            <- PackageIndex.lookupPackageId installed pkgid
+      guard $ sort (depends pkg) == sort (depends ipkg)
+      guard $ all isInstalled (depends pkg)
+      return (PreExisting ipkg)
+
+    isInstalled pkgid = case PackageIndex.lookupPackageId selected pkgid of
+      Just (PreExisting _) -> True
+      _                    -> False
+
+    reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg
+                            -> [PackageIdentifier]
+    reverseTopologicalOrder index = map toPkgId
+                                  . Graph.topSort
+                                  . Graph.transposeG
+                                  $ graph
+      where (graph, toPkgId, _) = PackageIndex.dependencyGraph index
 
 -- ------------------------------------------------------------
 -- * Adding and recording constraints
