@@ -82,19 +82,21 @@ data SearchSpace inherited pkg
 -- * Traverse a search tree
 -- ------------------------------------------------------------
 
-explore :: SearchSpace a SelectablePackage
+explore :: (PackageName -> PackageVersionPreference)
+        -> SearchSpace a SelectablePackage
         -> Progress Log Failure a
 
-explore (Failure failure)      = Fail failure
-explore (ChoiceNode result []) = Done result
-explore (ChoiceNode _ choices) =
+explore _    (Failure failure)      = Fail failure
+explore _explore    (ChoiceNode result []) = Done result
+explore pref (ChoiceNode _ choices) =
   case [ choice | [choice] <- choices ] of
-    ((pkg, node'):_) -> Step (Select pkg [])    (explore node')
+    ((pkg, node'):_) -> Step (Select pkg [])    (explore pref node')
     []               -> seq pkgs' -- avoid retaining defaultChoice
-                      $ Step (Select pkg pkgs') (explore node')
+                      $ Step (Select pkg pkgs') (explore pref node')
       where
         choice       = minimumBy (comparing topSortNumber) choices
-        (pkg, node') = maximumBy (comparing (packageId . fst)) choice
+        pkgname      = packageName . fst . head $ choice
+        (pkg, node') = maximumBy (bestByPref pkgname) choice
         pkgs' = deleteBy (equating packageId) pkg (map fst choice)
 
   where
@@ -102,6 +104,12 @@ explore (ChoiceNode _ choices) =
       InstalledOnly           (InstalledPackage  _ i _) -> i
       AvailableOnly           (UnconfiguredPackage _ i) -> i
       InstalledAndAvailable _ (UnconfiguredPackage _ i) -> i
+
+    bestByPref pkgname = case pref pkgname of
+      PreferLatest    -> comparing (\(p,_) ->                 packageId p)
+      PreferInstalled -> comparing (\(p,_) -> (isInstalled p, packageId p))
+      where isInstalled (AvailableOnly _) = False
+            isInstalled _                 = True
 
 -- ------------------------------------------------------------
 -- * Generate a search tree
@@ -173,11 +181,12 @@ constrainDeps pkg (dep:deps) cs =
 -- ------------------------------------------------------------
 
 search :: ConfigurePackage
+       -> (PackageName -> PackageVersionPreference)
        -> Constraints
        -> Set PackageName
        -> Progress Log Failure (SelectedPackages, Constraints)
-search configure constraints =
-  explore . searchSpace configure constraints mempty
+search configure pref constraints =
+  explore pref . searchSpace configure constraints mempty
 
 -- ------------------------------------------------------------
 -- * The top level resolver
@@ -200,13 +209,13 @@ topDownResolver' :: OS -> Arch -> CompilerId
                  -> (PackageName -> PackageVersionPreference)
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage a]
-topDownResolver' os arch comp installed available _ deps =
+topDownResolver' os arch comp installed available pref deps =
       fmap (uncurry finalise)
-    . (\cs -> search (configurePackage os arch comp) cs initialPkgNames)
+    . (\cs -> search configure pref cs initialPkgNames)
   =<< constrainTopLevelDeps deps constraints
 
   where
-    --TODO add actual constraints using addTopLevelDependencyConstraint
+    configure   = configurePackage os arch comp
     constraints = Constraints.empty
                     (annotateInstalledPackages topSortNumber installed)
                     (annotateAvailablePackages topSortNumber available)
@@ -238,7 +247,7 @@ configurePackage os arch comp available spkg = case spkg of
   where
   configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _) =
     case finalizePackageDescription [] (Just available) os arch comp [] p of
-      Left missing        -> Left missing
+      Left missing       -> Left missing
       Right (pkg, flags) -> Right $
         SemiConfiguredPackage apkg flags (buildDepends pkg)
 
