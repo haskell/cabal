@@ -340,7 +340,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
         then inDir mpath $
                rawSystemExit verbosity cmd
                  [self, "install", "--only"
-                 ,"--verbose=", showForCabal verbosity]
+                 ,"--verbose=" ++ showForCabal verbosity]
         else die $ "Unable to find cabal executable at: " ++ self
                
 -- helper
