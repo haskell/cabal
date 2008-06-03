@@ -186,8 +186,7 @@ toList = PackageIndex.allPackages . planIndex
 ready :: InstallPlan buildResult -> [ConfiguredPackage]
 ready plan = assert check readyPackages
   where
-    check = invariant plan
-         && null readyPackages <= null configuredPackages
+    check = if null readyPackages then null configuredPackages else True
     configuredPackages =
       [ pkg | Configured pkg <- PackageIndex.allPackages (planIndex plan) ]
     readyPackages = filter (all isInstalled . depends) configuredPackages
@@ -209,9 +208,11 @@ ready plan = assert check readyPackages
 --
 completed :: PackageIdentifier
           -> InstallPlan buildResult -> InstallPlan buildResult
-completed pkgid plan =
-  plan { planIndex = PackageIndex.insert installed (planIndex plan) }
+completed pkgid plan = assert (invariant plan') plan'
   where
+    plan'     = plan {
+                  planIndex = PackageIndex.insert installed (planIndex plan)
+                }
     installed = Installed (lookupConfiguredPackage plan pkgid)
 
 -- | Marks a package in the graph as having failed. It also marks all the
@@ -224,13 +225,15 @@ failed :: PackageIdentifier -- ^ The id of the package that failed to install
        -> buildResult       -- ^ The build result to use for its dependencies
        -> InstallPlan buildResult
        -> InstallPlan buildResult
-failed pkgid buildResult dependentBuildResult plan =
-  plan { planIndex = PackageIndex.merge (planIndex plan) failures }
+failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
   where
-    pkg = lookupConfiguredPackage plan pkgid
+    plan'    = plan {
+                 planIndex = PackageIndex.merge (planIndex plan) failures
+               }
+    pkg      = lookupConfiguredPackage plan pkgid
     failures = PackageIndex.fromList
              $ Failed pkg buildResult
-             : [ Failed pkg' dependentBuildResult
+             : [ Failed pkg' buildResult'
                | pkgid' <- packagesThatDependOn plan pkgid
                , let pkg' = lookupConfiguredPackage plan pkgid' ]
 
