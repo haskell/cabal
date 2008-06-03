@@ -183,7 +183,8 @@ updateAction verbosityFlag _extraArgs = do
   update verbosity (configRepos config)
 
 upgradeAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
-upgradeAction (cflags,iflags) _extraArgs = do
+upgradeAction (cflags,iflags) extraArgs = do
+  pkgs <- either die return (parsePackageArgs extraArgs)
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlagOrDefault normal (Cabal.configVerbosity cflags)
   config <- loadConfig verbosity configFile
@@ -192,7 +193,7 @@ upgradeAction (cflags,iflags) _extraArgs = do
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
           (configPackageDB cflags') (configRepos config)
-          comp conf cflags' iflags
+          comp conf cflags' iflags pkgs
 
 fetchAction :: Flag Verbosity -> [String] -> IO ()
 fetchAction verbosityFlag extraArgs = do
