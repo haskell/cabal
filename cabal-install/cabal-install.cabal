@@ -1,5 +1,5 @@
 Name:               cabal-install
-Version:            0.4.7
+Version:            0.4.8
 Synopsis:           Automatic package handling for Haskell
 Description:        
     apt-get like tool for Haskell. The \'cabal\' command-line program
