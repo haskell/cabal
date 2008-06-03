@@ -51,7 +51,7 @@ import Data.Set (Set)
 import Control.Exception (assert)
 
 defaultResolver :: DependencyResolver a
-defaultResolver = naiveResolver
+defaultResolver = topDownResolver
 --for the brave: try the new topDownResolver, but only with --dry-run !!!
 
 -- | Global policy for the versions of all packages.
