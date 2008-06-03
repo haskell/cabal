@@ -163,7 +163,7 @@ loadConfig verbosity configFile =
                        notice verbosity $ "Writing default configuration to " ++ configFile
                        writeDefaultConfigFile configFile defaultConf
                        return defaultConf
-         Just inp -> case parseBasicStanza configFieldDescrs defaultConf inp of
+         Just inp -> case parseBasicStanza configFieldDescrs defaultConf' inp of
                        ParseOk ws conf -> 
                            do when (not $ null ws) $ warn verbosity $
                                 unlines (map (showPWarning configFile) ws)
@@ -173,6 +173,7 @@ loadConfig verbosity configFile =
                                             ++ configFile ++ ": " ++ showPError err
                               warn verbosity $ "Using default configuration."
                               return defaultConf
+           where defaultConf' = defaultConf { configRemoteRepos = [] }
 
 writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 
