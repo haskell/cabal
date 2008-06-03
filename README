@@ -4,44 +4,35 @@ The automatic package manager for Haskell!
 
 Intended usage:
 
-    cabal install xmonad
+  cabal install xmonad
 
-Just works. Defaults make sense, and by default we don't fail unless it
-is unrecoverable.
+Just works. Defaults make sense.
+
+It also has all the other commands that runhaskell Setup.hs supports. Eg
+
+  cabal configure
+  cabal build
+  cabal install
+  cabal haddock
+  cabal sdist
+  cabal clean
+
+See cabal --help for the full list.
+
+There are also these extra commands:
+
+  cabal update         Updates the packages list from the hackage server
+  cabal list [pkgs]    List packages with the given search terms in their name
+  cabal upgrade [pkgs] Like install but also upgrade all dependencies
+  cabal upgrade        Upgrade all installed packages
+  cabal upload  [tar]  Upload a package tarball to the hackage server
+  cabal check          Check the package for common mistakes
 
 == Dependences ==
 
+Dependencies on standard libs:
    base >= 2.1, process, directory, pretty, bytestring >= 0.9
-   mtl, network, regex-compat, Cabal>=1.3,
-   zlib >= 0.4, HTTP >= 3000.0 && < 3000.1, filepath >= 1.0
+   network, filepath >= 1.0, Cabal >=1.3.11 && <1.5
 
-Kind of ironic we need cabal install to make it easier to build cabal
-install. 
-
-== Developer docs ==
-
-    CabalInstall, what happens under the hood.
-
-  FetchCmd:
-    cabal-install stores packages in [config-dir]/packages/ by their package id.
-    This can lead to clashes if there's two identical (same name, same version)
-    packages from two servers with different functionality.
-  CleanCmd:
-    Removes all fetched packages.
-  UpdateCmd:
-    Queries all known servers for their packages and stores it in [cfg-dir]/pkg.list.
-  InstallCmd:
-    Installed packages are determined, and dependencies of the to-be-installed packages
-    are resolved and fetched.
-    The fetched tarballs are moved to a temporary directory (usually /tmp) and extracted.
-    Distribution.Simple.SetupWrapper is used to configure, build and install the
-    unpacked package. The user can
-    only pass arguments to the 'configure' phase of the installation. '--user' is used
-    by default.
-  InfoCmd:
-    To be written.
-
-  Files used by cabal-install:
-    [cfg-dir]/config        configuration file
-    [cfg-dir]/00-index.tar         list of packages available from the servers.
-    [cfg-dir]/packages/        directory containing all fetched packages.
+Dependencies on other libs:
+   zlib >= 0.4, HTTP >= 3000.0 && < 3001.2
