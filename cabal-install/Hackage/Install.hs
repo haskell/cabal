@@ -85,33 +85,31 @@ data InstallMisc = InstallMisc {
   }
 
 -- |Installs the packages needed to satisfy a list of dependencies.
-install :: Verbosity
-        -> PackageDB
-        -> [Repo]
-        -> Compiler
-        -> ProgramConfiguration
-        -> Cabal.ConfigFlags
-        -> InstallFlags
-        -> [UnresolvedDependency]
-        -> IO ()
+install, upgrade
+  :: Verbosity
+  -> PackageDB
+  -> [Repo]
+  -> Compiler
+  -> ProgramConfiguration
+  -> Cabal.ConfigFlags
+  -> InstallFlags
+  -> [UnresolvedDependency]
+  -> IO ()
 install verbosity packageDB repos comp conf configFlags installFlags deps =
   installWithPlanner planner
         verbosity packageDB repos comp conf configFlags installFlags
   where
     planner :: Planner
     planner | null deps = planLocalPackage verbosity comp configFlags
-            | otherwise = planRepoPackages           comp deps
+            | otherwise = planRepoPackages PreferLatestForSelected comp deps
 
-upgrade :: Verbosity
-        -> PackageDB
-        -> [Repo]
-        -> Compiler
-        -> ProgramConfiguration
-        -> Cabal.ConfigFlags
-        -> InstallFlags
-        -> IO ()
-upgrade verbosity packageDB repos comp =
-  installWithPlanner (planUpgradePackages comp) verbosity packageDB repos comp
+upgrade verbosity packageDB repos comp conf configFlags installFlags deps =
+  installWithPlanner planner
+        verbosity packageDB repos comp conf configFlags installFlags
+  where
+    planner :: Planner
+    planner | null deps = planUpgradePackages comp
+            | otherwise = planRepoPackages PreferAllLatest comp deps
 
 type Planner = Maybe (PackageIndex InstalledPackageInfo)
             -> PackageIndex AvailablePackage
@@ -198,11 +196,12 @@ planLocalPackage verbosity comp configFlags installed available = do
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
-planRepoPackages :: Compiler -> [UnresolvedDependency] -> Planner
-planRepoPackages comp deps installed available = do
+planRepoPackages :: PackagesVersionPreference -> Compiler
+                 -> [UnresolvedDependency] -> Planner
+planRepoPackages pref comp deps installed available = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-             installed available PreferLatestForSelected deps'
+             installed available pref deps'
 
 planUpgradePackages :: Compiler -> Planner
 planUpgradePackages comp (Just installed) available = return $
