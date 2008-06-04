@@ -389,6 +389,10 @@ stateDependencyRelation (Installed   _) (PreExisting _) = True
 stateDependencyRelation (Installed   _) (Installed   _) = True
 
 stateDependencyRelation (Failed    _ _) (PreExisting _) = True
+-- failed can depends on configured because a package can depend on
+-- several other packages and if one of the deps fail then we fail
+-- but we still depend on the other ones that did not fail:
+stateDependencyRelation (Failed    _ _) (Configured  _) = True
 stateDependencyRelation (Failed    _ _) (Installed   _) = True
 stateDependencyRelation (Failed    _ _) (Failed    _ _) = True
 
