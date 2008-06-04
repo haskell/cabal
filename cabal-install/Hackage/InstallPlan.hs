@@ -234,8 +234,8 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
     failures = PackageIndex.fromList
              $ Failed pkg buildResult
              : [ Failed pkg' buildResult'
-               | pkgid' <- packagesThatDependOn plan pkgid
-               , let pkg' = lookupConfiguredPackage plan pkgid' ]
+               | Just pkg' <- map (lookupConfiguredPackage' plan)
+                            $ packagesThatDependOn plan pkgid ]
 
 -- | lookup the reachable packages in the reverse dependency graph
 --
@@ -252,8 +252,17 @@ lookupConfiguredPackage :: InstallPlan a
 lookupConfiguredPackage plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
     Just (Configured pkg) -> pkg
-    Just _  -> error $ "InstallPlan: not configured " ++ display pkgid
-    Nothing -> error $ "InstallPlan: no such package " ++ display pkgid
+    _  -> internalError $ "not configured or no such pkg " ++ display pkgid
+
+-- | lookup a package that we expect to be in the configured or failed state
+--
+lookupConfiguredPackage' :: InstallPlan a
+                         -> PackageIdentifier -> Maybe ConfiguredPackage
+lookupConfiguredPackage' plan pkgid =
+  case PackageIndex.lookupPackageId (planIndex plan) pkgid of
+    Just (Configured pkg)  -> Just pkg
+    Just (Failed _ reason) -> Nothing
+    _  -> internalError $ "not configured or no such pkg " ++ display pkgid
 
 -- ------------------------------------------------------------
 -- * Checking valididy of plans
