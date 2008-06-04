@@ -32,7 +32,9 @@ flag bytestring-in-base
 
 Executable cabal
     Main-Is:            Main.hs
-    Ghc-Options:        -Wall
+    -- We want assertion checking on even if people build with -O
+    -- although it is expensive, we want to catch problems early:
+    Ghc-Options:        -Wall -fno-ignore-asserts
     Other-Modules:
         Hackage.Check
 --        Hackage.Clean
