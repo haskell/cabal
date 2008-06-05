@@ -242,6 +242,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 packagesThatDependOn :: InstallPlan a
                      -> PackageIdentifier -> [PackageIdentifier]
 packagesThatDependOn plan = map (planPkgIdOf plan)
+                          . tail
                           . Graph.reachable (planGraphRev plan)
                           . planVertexOf plan
 
