@@ -72,9 +72,8 @@ import Distribution.Package --must not specify imports, since we're exporting mo
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription
          , updatePackageDescription, hasLibs
-         , HookedBuildInfo, emptyHookedBuildInfo )
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription, readHookedBuildInfo )
+         , HookedBuildInfo, emptyHookedBuildInfo
+         , readPackageDescription, readHookedBuildInfo )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program

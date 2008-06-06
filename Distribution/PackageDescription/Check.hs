@@ -52,7 +52,7 @@ import Data.List  (sort, group, isPrefixOf)
 import Control.Monad (filterM)
 import System.Directory (doesFileExist, doesDirectoryExist)
 
-import Distribution.PackageDescription
+import Distribution.PackageDescription hiding (freeVars)
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Compiler

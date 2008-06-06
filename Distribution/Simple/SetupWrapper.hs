@@ -22,8 +22,8 @@ import Distribution.Simple.Configure
 				( configCompiler, getInstalledPackages,
 		  	  	  configDependency )
 import Distribution.PackageDescription
-         ( PackageDescription(..), GenericPackageDescription(..), BuildType(..) )
-import Distribution.PackageDescription.Parse ( readPackageDescription )
+         ( PackageDescription(..), GenericPackageDescription(..), BuildType(..)
+         , readPackageDescription )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Program ( ProgramConfiguration,
                                      emptyProgramConfiguration,

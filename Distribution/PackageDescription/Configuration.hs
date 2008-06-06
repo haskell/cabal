@@ -48,10 +48,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.PackageDescription.Configuration (
     finalizePackageDescription,
     flattenPackageDescription,
-
-    -- Utils
-    parseCondition,
-    freeVars,
   ) where
 
 import Distribution.Package (Package, Dependency(..))
@@ -68,14 +64,8 @@ import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
          ( OS, Arch )
-import Distribution.Simple.Utils (currentDir, lowercase)
+import Distribution.Simple.Utils (currentDir)
 
-import Distribution.Text
-         ( Text(parse) )
-import Distribution.Compat.ReadP as ReadP hiding ( char )
-import qualified Distribution.Compat.ReadP as ReadP ( char )
-
-import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.List  ( nub )
 import Data.Map ( Map, fromListWith, toList )
@@ -152,31 +142,6 @@ simplifyWithSysParams os arch (CompilerId comp compVer) cond = (cond', flags)
 --     hasLits (CAnd l r) = hasLits l || hasLits r
 --     hasLits _ = False
 --
-
--- | Parse a configuration condition from a string.
-parseCondition :: ReadP r (Condition ConfVar)
-parseCondition = condOr
-  where
-    condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
-    condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
-    cond     = sp >> (boolLiteral +++ inparens condOr +++ notCond +++ osCond
-                      +++ archCond +++ flagCond +++ implCond )
-    inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
-    notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
-    osCond   = string "os" >> sp >> inparens osIdent >>= return . Var
-    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
-    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var
-    implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
-    boolLiteral   = fmap Lit  parse
-    archIdent     = fmap Arch parse
-    osIdent       = fmap OS   parse
-    flagIdent     = fmap (Flag . FlagName . lowercase) (munch1 isIdentChar)
-    isIdentChar c = isAlphaNum c || c == '_' || c == '-'
-    oper s        = sp >> string s >> sp
-    sp            = skipSpaces
-    implIdent     = do i <- parse
-                       vr <- sp >> option AnyVersion parse
-                       return $ Impl i vr
 
 ------------------------------------------------------------------------------
 
@@ -379,18 +344,6 @@ ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
   where f (_, t, me) = ignoreConditions t 
                        : maybeToList (fmap ignoreConditions me)
-
-freeVars :: CondTree ConfVar c a  -> [FlagName]
-freeVars t = [ f | Flag f <- freeVars' t ]
-  where
-    freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
-    compfv (c, ct, mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
-    condfv c = case c of
-      Var v      -> [v]
-      Lit _      -> []
-      CNot c'    -> condfv c'
-      COr c1 c2  -> condfv c1 ++ condfv c2
-      CAnd c1 c2 -> condfv c1 ++ condfv c2
 
 ------------------------------------------------------------------------------
 -- Convert GenericPackageDescription to PackageDescription
