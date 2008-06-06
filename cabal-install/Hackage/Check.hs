@@ -17,7 +17,7 @@ module Hackage.Check (
 
 import Control.Monad ( when, unless )
 
-import Distribution.PackageDescription.Parse ( readPackageDescription )
+import Distribution.PackageDescription ( readPackageDescription )
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
 import Distribution.Verbosity ( Verbosity )

@@ -10,14 +10,14 @@ import Hackage.Tar (createTarGzFile)
 
 import Distribution.Package
          ( Package(..) )
-import Distribution.PackageDescription (PackageDescription)
+import Distribution.PackageDescription
+         ( PackageDescription, readPackageDescription )
 import Distribution.Simple.Utils
          ( withTempDirectory , defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
-import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )

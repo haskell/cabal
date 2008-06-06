@@ -28,9 +28,7 @@ import Distribution.Package
          ( PackageIdentifier(..), packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
-         , PackageDescription(..), BuildType(..) )
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         , PackageDescription(..), BuildType(..), readPackageDescription )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Configure

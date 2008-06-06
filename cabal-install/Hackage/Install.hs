@@ -59,8 +59,8 @@ import Distribution.Simple.Utils
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), Dependency(..) )
 import Distribution.PackageDescription as PackageDescription
-         ( GenericPackageDescription(packageDescription) )
-import Distribution.PackageDescription.Parse (readPackageDescription)
+         ( GenericPackageDescription(packageDescription)
+         , readPackageDescription )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Version
