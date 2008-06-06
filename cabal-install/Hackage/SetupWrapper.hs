@@ -86,7 +86,7 @@ setupWrapper :: Verbosity
              -> SetupScriptOptions
              -> Maybe PackageDescription
              -> CommandUI flags
-             -> flags
+             -> (Version -> flags)
              -> [String]
              -> IO ()
 setupWrapper verbosity options mpkg cmd flags extraArgs = do
@@ -99,7 +99,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
                     }
       buildType'  = fromMaybe Custom (buildType pkg)
       mkArgs cabalLibVersion = commandName cmd
-                             : commandShowOptions cmd flags
+                             : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
   setupMethod verbosity pkg buildType' mkArgs
   where
@@ -166,8 +166,6 @@ externalSetupMethod options verbosity pkg bt mkargs = do
     case savedVersion of
       Just version | version `withinRange` useCabalVersion options
         -> return (version, options)
-      Nothing | packageName pkg == "Cabal"
-        -> return (packageVersion pkg, options)
       _ -> do (comp, conf, options') <- configureCompiler options
               version <- installedCabalVersion options comp conf
               writeFile setupVersionFile (show version ++ "\n")
@@ -181,6 +179,8 @@ externalSetupMethod options verbosity pkg bt mkargs = do
 
   installedCabalVersion :: SetupScriptOptions -> Compiler
                         -> ProgramConfiguration -> IO Version
+  installedCabalVersion _ _ _ | packageName pkg == "Cabal" =
+    return (packageVersion pkg)
   installedCabalVersion options' comp conf = do
     index <- case usePackageIndex options' of
       Just index -> return index

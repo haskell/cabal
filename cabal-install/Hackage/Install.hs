@@ -35,7 +35,8 @@ import Hackage.Fetch (fetchPackage)
 import qualified Hackage.IndexUtils as IndexUtils
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
-import Hackage.Setup (InstallFlags(..))
+import Hackage.Setup
+         ( InstallFlags(..), configureCommand, filterConfigureFlags )
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
@@ -132,7 +133,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
 
   progress <- planner installed available
 
-  info verbosity "Resolving dependencies..."
+  notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
                             (return . Left) (return . Right) progress
   case maybePlan of
@@ -317,17 +318,17 @@ installUnpackedPackage :: Verbosity
                    -> IO BuildResult
 installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
     = onFailure ConfigureFailed $ do
-        setup configureCommand configFlags
+        setup configureCommand (filterConfigureFlags configFlags)
         onFailure BuildFailed $ do
-          setup buildCommand Cabal.emptyBuildFlags
+          setup buildCommand (const Cabal.emptyBuildFlags)
           onFailure InstallFailed $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
-              Nothing    -> setup Cabal.installCommand Cabal.emptyInstallFlags
+              Nothing    -> setup Cabal.installCommand
+                                  (const Cabal.emptyInstallFlags)
             return BuildOk
   where
-    configureCommand = Cabal.configureCommand defaultProgramConfiguration
-    buildCommand     = Cabal.buildCommand     defaultProgramConfiguration
+    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     setup cmd flags  = inDir mpath $
                          setupWrapper verbosity scriptOptions
                            (Just $ PackageDescription.packageDescription pkg)

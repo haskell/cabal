@@ -121,7 +121,8 @@ wrapperAction command verbosityFlag distPrefFlag =
                           (useDistPref defaultSetupScriptOptions)
                           (distPrefFlag flags)
         }
-    setupWrapper verbosity setupScriptOptions Nothing command flags extraArgs
+    setupWrapper verbosity setupScriptOptions Nothing
+                 command (const flags) extraArgs
 
 configureAction :: Cabal.ConfigFlags -> [String] -> IO ()
 configureAction flags extraArgs = do
@@ -139,7 +140,7 @@ configureAction flags extraArgs = do
                              (Cabal.configDistPref flags)
       }
   setupWrapper verbosity setupScriptOptions Nothing
-    configureCommand flags' extraArgs
+    configureCommand (const flags') extraArgs
 
 installAction :: (Cabal.ConfigFlags, InstallFlags) -> [String] -> IO ()
 installAction (cflags,iflags) _
