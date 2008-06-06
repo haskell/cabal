@@ -11,60 +11,79 @@
 -- Report data structure
 --
 -----------------------------------------------------------------------------
-module Hackage.Reporting where
+module Hackage.Reporting (
+    BuildReport(..),
+    ConfigurePhase(..),
+    BuildPhase(..),
+    InstallPhase(..),
+    Outcome(..),
+    writeBuildReport,
+    makeSuccessReport,
+  ) where
 
+import Hackage.Types
+         ( ConfiguredPackage(..) )
 
 import Distribution.Package
+         ( PackageIdentifier, Package(packageId) )
+import Distribution.PackageDescription
+         ( FlagAssignment )
 import Distribution.System
+         ( OS, Arch )
 import Distribution.Compiler
-import Distribution.Version
+         ( CompilerId )
+
 import System.FilePath
+         ( takeDirectory )
+import System.Directory
+         ( createDirectoryIfMissing )
 
 
 data BuildReport = BuildReport {
-  -- | The package this build report is about
-  buildPackage           :: PackageIdentifier,
+    -- | The package this build report is about
+    buildPackage           :: PackageIdentifier,
 
-  -- | The OS and arch the package was built on
-  buildPlatform          :: (OS, String),
+    -- | The OS and Arch the package was built on
+    buildOS                :: OS,
+    buildArch              :: Arch,
 
-  -- | The Haskell compiler (and maybe version) used
-  buildCompiler          :: (CompilerFlavor, Maybe Version),
+    -- | The Haskell compiler (and hopefully version) used
+    buildCompiler          :: CompilerId,
 
-  -- | Configure outcome, did configure work ok?
-  buildOutcomeConfigure  :: Outcome ConfigurePhase
-}
+    -- | Configure outcome, did configure work ok?
+    buildOutcomeConfigure  :: Outcome ConfigurePhase
+  }
   deriving (Show, Read)
 
 
 data ConfigurePhase = ConfigurePhase {
-  -- | Which dependent packages we're using exactly
-  buildResolvedDeps    :: [PackageIdentifier],
+    -- | Which configurations flags we used
+    buildFlagAssignment  :: FlagAssignment,
 
-  -- | Which build tools where are using (with versions)
-  buildResolvedTools   :: [Dependency],
+    -- | Which dependent packages we were using exactly
+    buildResolvedDeps    :: [PackageIdentifier],
 
-  -- | Build outcome, did the build phase work ok?
-  buildOutcomeBuild    :: Outcome BuildPhase,
+    -- | Which build tools we were using (with versions)
+--    buildResolvedTools   :: [PackageIdentifier],
 
-  -- | Build outcome, did building the docs work?
-  buildOutcomeDocs     :: Outcome DocsPhase
-}
+    -- | Build outcome, did the build phase work ok?
+    buildOutcomeBuild    :: Outcome BuildPhase
+
+    -- | Build outcome, did building the docs work?
+--    buildOutcomeDocs     :: Outcome DocsPhase
+  }
   deriving (Show, Read)
 
 
 data BuildPhase = BuildPhase {
-  -- | Build outcome, did installing work ok?
-  buildOutcomeInstall  :: Outcome InstallPhase
-}
+    -- | Build outcome, did installing work ok?
+    buildOutcomeInstall  :: Outcome InstallPhase
+  }
   deriving (Show, Read)
 
-
-data DocsPhase = DocsPhase deriving (Show, Read)
-
+--data DocsPhase = DocsPhase deriving (Show, Read)
 
 data InstallPhase = InstallPhase deriving (Show, Read)
-
 
 data Outcome a = OutcomeOk a | OutcomeFailed | OutcomeNotTried
   deriving (Show, Read)
@@ -76,14 +95,22 @@ writeBuildReport file report = do
   writeFile file $ show report
 
 
-makeSuccessReport :: ConfiguredPackage -> (OS, String)
-                  -> (CompilerFlavor, Maybe Version) -> BuildReport
-makeSuccessReport (ConfiguredPackage pkgInfo flagAssignmnt pkgIds)
-                  platform compiler =  
+makeSuccessReport :: OS -> Arch -> CompilerId
+                  -> ConfiguredPackage -> BuildReport
+makeSuccessReport os arch comp (ConfiguredPackage pkg flags deps) =
   BuildReport {
-    buildPackage             = packageId pkgInfo,
-    buildPlatform            = platform,
-    buildCompiler            = compiler,
-    buildOutcomeConfigure    = OutcomeOk $ ConfigurePhase {
-    
-makeFailureReport :: 
+    buildPackage             = packageId pkg,
+    buildOS                  = os,
+    buildArch                = arch,
+    buildCompiler            = comp,
+    buildOutcomeConfigure    = OutcomeOk ConfigurePhase { 
+      buildFlagAssignment    = flags,
+      buildResolvedDeps      = deps,
+      buildOutcomeBuild      = OutcomeOk BuildPhase {
+        buildOutcomeInstall  = OutcomeOk InstallPhase
+      }
+    }
+  }
+
+--makeFailureReport :: OS -> Arch -> CompilerId
+--                  -> ConfiguredPackage -> BuildReport
