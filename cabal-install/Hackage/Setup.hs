@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Hackage.Setup
     ( globalCommand, Cabal.GlobalFlags(..)
-    , configureCommand
+    , configureCommand, filterConfigureFlags
     , installCommand, InstallFlags(..)
     , listCommand, ListFlags(..)
     , updateCommand
@@ -44,7 +44,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
 import Distribution.Version
-         ( Version )
+         ( Version(Version) )
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.ReadE
@@ -74,6 +74,13 @@ configureCommand :: CommandUI Cabal.ConfigFlags
 configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandDefaultFlags = mempty
   }
+
+filterConfigureFlags :: Cabal.ConfigFlags -> Version -> Cabal.ConfigFlags
+filterConfigureFlags flags cabalLibVersion
+  | cabalLibVersion >= Version [1,3,10] [] = flags
+    -- older Cabal does not grok the constraints flag:
+  | otherwise = flags { Cabal.configConstraints = [] }
+
 
 fetchCommand :: CommandUI (Flag Verbosity)
 fetchCommand = CommandUI {
