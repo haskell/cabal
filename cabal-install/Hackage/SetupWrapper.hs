@@ -23,9 +23,9 @@ module Hackage.SetupWrapper (
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
-         ( VersionRange(..), withinRange )
+         ( Version(Version), VersionRange(..), withinRange )
 import Distribution.Package
-         ( PackageIdentifier, packageVersion, packageId, Dependency(..) )
+         ( PackageIdentifier(..), packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), BuildType(..) )
@@ -49,7 +49,7 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
-         ( die, debug, comparing, cabalVersion, defaultPackageDesc
+         ( die, debug, cabalVersion, defaultPackageDesc
          , rawSystemExit, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
@@ -63,7 +63,7 @@ import Control.Monad     ( when, unless )
 import Control.Exception ( evaluate )
 import Data.Maybe        ( fromMaybe )
 import Data.Monoid       ( Monoid(mempty) )
-import Data.List         ( maximumBy )
+import Data.Char         ( isSpace )
 
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
@@ -98,10 +98,10 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
                                           (descCabalVersion pkg)
                     }
       buildType'  = fromMaybe Custom (buildType pkg)
-      args = commandName cmd
-           : commandShowOptions cmd flags
-          ++ extraArgs
-  setupMethod verbosity buildType' args
+      mkArgs cabalLibVersion = commandName cmd
+                             : commandShowOptions cmd flags
+                            ++ extraArgs
+  setupMethod verbosity pkg buildType' mkArgs
   where
     getPkg = defaultPackageDesc verbosity
          >>= readPackageDescription verbosity
@@ -118,14 +118,16 @@ determineSetupMethod options buildType'
       useCabalVersion options = internalSetupMethod
   | otherwise                 = externalSetupMethod options
 
-type SetupMethod = Verbosity -> BuildType -> [String] -> IO ()
+type SetupMethod = Verbosity -> PackageDescription -> BuildType
+                -> (Version -> [String]) -> IO ()
 
 -- ------------------------------------------------------------
 -- * Internal SetupMethod
 -- ------------------------------------------------------------
 
 internalSetupMethod :: SetupMethod
-internalSetupMethod verbosity bt args = do
+internalSetupMethod verbosity _ bt mkargs = do
+  let args = mkargs cabalVersion
   debug verbosity $ "Using internal setup method with build-type " ++ show bt
                  ++ " and args:\n  " ++ show args
   buildTypeAction bt args
@@ -143,86 +145,115 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 -- ------------------------------------------------------------
 
 externalSetupMethod :: SetupScriptOptions -> SetupMethod
-externalSetupMethod options verbosity bt args = do
+externalSetupMethod options verbosity pkg bt mkargs = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
-                 ++ " and args:\n  " ++ show args
-  setupHs <- updateSetupScript verbosity options bt
-  debug verbosity $ "Using " ++ setupHs ++ " as setup script."
-  compileSetupExecutable verbosity options setupHs
-  invokeSetupScript verbosity options args
-
--- | Decide which Setup.hs script to use, creating it if necessary.
---
-updateSetupScript :: Verbosity -> SetupScriptOptions -> BuildType -> IO FilePath
-updateSetupScript _ _ Custom = do
-  useHs  <- doesFileExist "Setup.hs"
-  useLhs <- doesFileExist "Setup.lhs"
-  unless (useHs || useLhs) $ die
-    "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
-  return (if useHs then "Setup.hs" else "Setup.lhs")
-
-updateSetupScript verbosity options bt = do
   createDirectoryIfMissingVerbose verbosity True setupDir
-  rewriteFile setupHs (buildTypeScript bt)
-  return setupHs
-  where
-    setupDir = useDistPref options </> "setup"
-    setupHs  = setupDir </> "setup" <.> "hs"
-
-buildTypeScript :: BuildType -> String
-buildTypeScript Simple    = "import Distribution.Simple; main = defaultMain"
-buildTypeScript Configure = "import Distribution.Simple; "
-                         ++ "main = defaultMainWithHooks autoconfUserHooks"
-buildTypeScript Make      = "import Distribution.Make; main = defaultMain"
-buildTypeScript Custom               = error "buildTypeScript Custom"
-buildTypeScript (UnknownBuildType _) = error "buildTypeScript UnknownBuildType"
-
--- | If the Setup.hs is out of date wrt the executable then recompile it.
--- Currently this is GHC only. It should really be generalised.
---
-compileSetupExecutable :: Verbosity -> SetupScriptOptions -> FilePath -> IO ()
-compileSetupExecutable verbosity options setupHs = do
-  outOfDate <- setupHs `moreRecentFile` setupProg
-  when outOfDate $ do
-    debug verbosity "Setup script is out of date, compiling..."
-    (comp, conf) <- case useCompiler options of
-      Just comp -> return (comp, useProgramConfig options)
-      Nothing -> configCompiler (Just GHC) Nothing Nothing
-                   (useProgramConfig options) verbosity
-    cabalPkgId <- installedCabalLibVer verbosity options comp conf
-    createDirectoryIfMissingVerbose verbosity True setupDir
-    rawSystemProgramConf verbosity ghcProgram conf $
-        ghcVerbosityOptions verbosity
-     ++ ["--make", setupHs, "-o", setupProg
-        ,"-package", display cabalPkgId
-        ,"-odir", setupDir, "-hidir", setupDir]
+  (cabalLibVersion, options') <- cabalLibVersionToUse
+  debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
+  setupHs <- updateSetupScript cabalLibVersion bt
+  debug verbosity $ "Using " ++ setupHs ++ " as setup script."
+  compileSetupExecutable options' cabalLibVersion setupHs
+  invokeSetupScript (mkargs cabalLibVersion)
 
   where
-    setupDir  = useDistPref options </> "setup"
-    setupProg = setupDir </> "setup" <.> exeExtension
+  setupDir         = useDistPref options </> "setup"
+  setupVersionFile = setupDir </> "setup" <.> "version"
+  setupProgFile    = setupDir </> "setup" <.> exeExtension
 
-installedCabalLibVer :: Verbosity -> SetupScriptOptions
-                     -> Compiler -> ProgramConfiguration
-                     -> IO PackageIdentifier
-installedCabalLibVer verbosity options comp conf = do
-  index <- case usePackageIndex options of
-    Just index -> return index
-    Nothing    -> fromMaybe mempty
-           `fmap` getInstalledPackages verbosity comp UserPackageDB conf
-                  -- user packages are *allowed* here, no portability problem
+  cabalLibVersionToUse :: IO (Version, SetupScriptOptions)
+  cabalLibVersionToUse = do
+    savedVersion <- savedCabalVersion
+    case savedVersion of
+      Just version | version `withinRange` useCabalVersion options
+        -> return (version, options)
+      Nothing | packageName pkg == "Cabal"
+        -> return (packageVersion pkg, options)
+      _ -> do (comp, conf, options') <- configureCompiler options
+              version <- installedCabalVersion options comp conf
+              writeFile setupVersionFile (show version ++ "\n")
+              return (version, options')
 
-  let cabalDep = Dependency "Cabal" (useCabalVersion options)
-  case PackageIndex.lookupDependency index cabalDep of
-    []   -> die $ "The package requires Cabal library version "
-               ++ display (useCabalVersion options)
-               ++ " but no suitable version is installed."
-    pkgs -> return $ maximumBy (comparing packageVersion) (map packageId pkgs)
+  savedCabalVersion = do
+    versionString <- readFile setupVersionFile `catch` \_ -> return ""
+    case reads versionString of
+      [(version,s)] | all isSpace s -> return (Just version)
+      _                             -> return Nothing
 
-invokeSetupScript :: Verbosity -> SetupScriptOptions -> [String] -> IO ()
-invokeSetupScript verbosity options args =
-    rawSystemExit verbosity setupProg args
-  where
-    setupProg = useDistPref options </> "setup" </> "setup" <.> exeExtension
+  installedCabalVersion :: SetupScriptOptions -> Compiler
+                        -> ProgramConfiguration -> IO Version
+  installedCabalVersion options' comp conf = do
+    index <- case usePackageIndex options' of
+      Just index -> return index
+      Nothing    -> fromMaybe mempty
+             `fmap` getInstalledPackages verbosity comp UserPackageDB conf
+                    -- user packages are *allowed* here, no portability problem
+
+    let cabalDep = Dependency "Cabal" (useCabalVersion options)
+    case PackageIndex.lookupDependency index cabalDep of
+      []   -> die $ "The package requires Cabal library version "
+                 ++ display (useCabalVersion options)
+                 ++ " but no suitable version is installed."
+      pkgs -> return $ maximum (map packageVersion pkgs)
+
+  configureCompiler :: SetupScriptOptions
+                    -> IO (Compiler, ProgramConfiguration, SetupScriptOptions)
+  configureCompiler options' = do
+    (comp, conf) <- case useCompiler options' of
+      Just comp -> return (comp, useProgramConfig options')
+      Nothing   -> configCompiler (Just GHC) Nothing Nothing
+                     (useProgramConfig options') verbosity
+    return (comp, conf, options' { useCompiler = Just comp,
+                                   useProgramConfig = conf })
+
+  -- | Decide which Setup.hs script to use, creating it if necessary.
+  --
+  updateSetupScript :: Version -> BuildType -> IO FilePath
+  updateSetupScript _ Custom = do
+    useHs  <- doesFileExist "Setup.hs"
+    useLhs <- doesFileExist "Setup.lhs"
+    unless (useHs || useLhs) $ die
+      "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
+    return (if useHs then "Setup.hs" else "Setup.lhs")
+
+  updateSetupScript cabalLibVersion _ = do
+    rewriteFile setupHs (buildTypeScript cabalLibVersion)
+    return setupHs
+    where
+      setupHs  = setupDir </> "setup" <.> "hs"
+
+  buildTypeScript :: Version -> String
+  buildTypeScript cabalLibVersion = case bt of
+    Simple    -> "import Distribution.Simple; main = defaultMain\n"
+    Configure -> "import Distribution.Simple; main = defaultMainWithHooks "
+              ++ if cabalLibVersion >= Version [1,3,10] []
+                   then "autoconfUserHooks\n"
+                   else "defaultUserHooks\n"
+    Make      -> "import Distribution.Make; main = defaultMain\n"
+    Custom             -> error "buildTypeScript Custom"
+    UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
+
+  -- | If the Setup.hs is out of date wrt the executable then recompile it.
+  -- Currently this is GHC only. It should really be generalised.
+  --
+  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath -> IO ()
+  compileSetupExecutable options' cabalLibVersion setupHsFile = do
+    setupHsNewer      <- setupHsFile      `moreRecentFile` setupProgFile
+    cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
+    let outOfDate = setupHsNewer || cabalVersionNewer
+    when outOfDate $ do
+      debug verbosity "Setup script is out of date, compiling..."
+      (_, conf, _) <- configureCompiler options'
+      rawSystemProgramConf verbosity ghcProgram conf $
+          ghcVerbosityOptions verbosity
+       ++ ["--make", setupHsFile, "-o", setupProgFile
+          ,"-odir", setupDir, "-hidir", setupDir]
+       ++ if packageName pkg == "Cabal"
+            then ["-i", "-i."]
+            else ["-package", display cabalPkgid ]
+    where cabalPkgid = PackageIdentifier "Cabal" cabalLibVersion
+
+  invokeSetupScript :: [String] -> IO ()
+  invokeSetupScript args = rawSystemExit verbosity setupProgFile args
 
 -- ------------------------------------------------------------
 -- * Utils
