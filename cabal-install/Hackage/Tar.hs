@@ -339,7 +339,7 @@ putTarFileType t =
                  TarDirectory       -> '5'
                  TarOther c         -> c
 
--- | Convert a native path to a unix/posix style path
+-- | Convert a native path to a unix\/posix style path
 -- and for directories add a trailing @\/@.
 --
 nativePathToTarPath :: TarFileType -> FilePath -> FilePath

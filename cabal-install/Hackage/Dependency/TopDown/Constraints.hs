@@ -48,10 +48,10 @@ data (Package installed, Package available)
   => Constraints installed available reason
    = Constraints
 
-       -- | Remaining available choices
+       -- Remaining available choices
        (PackageIndex (InstalledOrAvailable installed available))
        
-       -- | Choices that we have excluded for some reason
+       -- Choices that we have excluded for some reason
        -- usually by applying constraints
        (PackageIndex (ExcludedPackage PackageIdentifier reason))
 

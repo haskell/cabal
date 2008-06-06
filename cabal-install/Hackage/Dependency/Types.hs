@@ -62,7 +62,7 @@ data PackageVersionPreference = PreferInstalled | PreferLatest
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
--- retult which may be used to indicate progress and/or logging messages.
+-- retult which may be used to indicate progress and\/or logging messages.
 --
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
