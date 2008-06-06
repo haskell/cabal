@@ -54,6 +54,7 @@ Executable cabal
         Hackage.InstallPlan
         Hackage.List
         Hackage.ParseUtils
+        Hackage.Reporting
         Hackage.Setup
         Hackage.SetupWrapper
         Hackage.SrcDist
