@@ -24,7 +24,10 @@ import Hackage.Types
 import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(Dependency))
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription
+         ( parsePackageDescription )
+import Distribution.ParseUtils
+         ( ParseResult(..) )
 import Distribution.Text
          ( simpleParse )
 import Distribution.Verbosity (Verbosity)
