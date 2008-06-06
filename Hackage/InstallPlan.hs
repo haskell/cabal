@@ -261,8 +261,8 @@ lookupConfiguredPackage' :: InstallPlan a
                          -> PackageIdentifier -> Maybe ConfiguredPackage
 lookupConfiguredPackage' plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
-    Just (Configured pkg)  -> Just pkg
-    Just (Failed _ reason) -> Nothing
+    Just (Configured pkg) -> Just pkg
+    Just (Failed _ _)     -> Nothing
     _  -> internalError $ "not configured or no such pkg " ++ display pkgid
 
 -- ------------------------------------------------------------

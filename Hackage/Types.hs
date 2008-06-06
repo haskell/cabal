@@ -29,8 +29,10 @@ newtype Password = Password { unPassword :: String }
 data ConfiguredPackage = ConfiguredPackage
        AvailablePackage    -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
-       [PackageIdentifier] -- exact dependencies, must be consistent with the
-                           -- version constraints in the package info
+       [PackageIdentifier] -- set of exact dependencies. These must be
+                           -- consistent with the 'buildDepends' in the
+                           -- 'PackageDescrption' that you'd get by applying
+                           -- the flag assignment.
   deriving Show
 
 instance Package ConfiguredPackage where
