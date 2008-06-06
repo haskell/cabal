@@ -51,10 +51,10 @@ data UnconfiguredPackage
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
-       AvailablePackage  -- ^ package info
-       FlagAssignment    -- ^ total flag assignment for the package
-       [Dependency]      -- ^ dependencies we end up with when we apply
-                         --   the flag assignment
+       AvailablePackage  -- package info
+       FlagAssignment    -- total flag assignment for the package
+       [Dependency]      -- dependencies we end up with when we apply
+                         -- the flag assignment
 
 instance Package InstalledPackage where
   packageId (InstalledPackage p _ _) = packageId p

@@ -27,9 +27,9 @@ newtype Password = Password { unPassword :: String }
 -- final configure process will be independent of the environment.
 --
 data ConfiguredPackage = ConfiguredPackage
-       AvailablePackage    -- ^ package info, including repo
-       FlagAssignment      -- ^ complete flag assignment for the package
-       [PackageIdentifier] -- ^ exact dependencies, must be consistent with the
+       AvailablePackage    -- package info, including repo
+       FlagAssignment      -- complete flag assignment for the package
+       [PackageIdentifier] -- exact dependencies, must be consistent with the
                            -- version constraints in the package info
   deriving Show
 
