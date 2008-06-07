@@ -23,7 +23,7 @@ module Hackage.SetupWrapper (
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
-         ( Version(Version), VersionRange(..), withinRange )
+         ( Version(..), VersionRange(..), withinRange )
 import Distribution.Package
          ( PackageIdentifier(..), packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -47,7 +47,7 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
-         ( die, debug, cabalVersion, defaultPackageDesc
+         ( die, debug, cabalVersion, defaultPackageDesc, comparing
          , rawSystemExit, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
@@ -59,6 +59,7 @@ import System.FilePath   ( (</>), (<.>) )
 import System.IO.Error   ( isDoesNotExistError )
 import Control.Monad     ( when, unless )
 import Control.Exception ( evaluate )
+import Data.List         ( maximumBy )
 import Data.Maybe        ( fromMaybe )
 import Data.Monoid       ( Monoid(mempty) )
 import Data.Char         ( isSpace )
@@ -191,7 +192,19 @@ externalSetupMethod options verbosity pkg bt mkargs = do
       []   -> die $ "The package requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
-      pkgs -> return $ maximum (map packageVersion pkgs)
+      pkgs -> return $ bestVersion (map packageVersion pkgs)
+    where
+      bestVersion          = maximumBy (comparing preference)
+      preference version   = (sameVersion, sameMajorVersion
+                             ,stableVersion, latestVersion)
+        where
+          sameVersion      = version == cabalVersion
+          sameMajorVersion = majorVersion version == majorVersion cabalVersion
+          majorVersion     = take 2 . versionBranch
+          stableVersion    = case versionBranch version of
+                               (_:x:_) -> even x
+                               _       -> False
+          latestVersion    = version
 
   configureCompiler :: SetupScriptOptions
                     -> IO (Compiler, ProgramConfiguration, SetupScriptOptions)
