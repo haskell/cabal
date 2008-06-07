@@ -217,15 +217,17 @@ topDownResolver' os arch comp installed available pref deps =
   where
     configure   = configurePackage os arch comp
     constraints = Constraints.empty
-                    (annotateInstalledPackages topSortNumber installed)
-                    (annotateAvailablePackages topSortNumber available)
-    topSortNumber = topologicalSortNumbering installed available
+                    (annotateInstalledPackages topSortNumber installed')
+                    (annotateAvailablePackages topSortNumber available')
+    (installed', available') = selectNeededSubset installed available
+                                                  initialPkgNames
+    topSortNumber = topologicalSortNumbering installed' available'
 
     initialDeps     = [ dep  | UnresolvedDependency dep _ <- deps ]
     initialPkgNames = Set.fromList [ name | Dependency name _ <- initialDeps ]
 
     finalise selected = PackageIndex.allPackages
-                      . improvePlan installed
+                      . improvePlan installed'
                       . PackageIndex.fromList
                       . finaliseSelectedPackages selected
 
@@ -316,6 +318,42 @@ topologicalSortNumbering installed available =
                       | AvailablePackage _ pkg' _ <- pkgs
                       , Dependency depName _ <-
                           buildDepends (flattenPackageDescription pkg') ] ]
+
+-- | We don't need the entire index (which is rather large and costly if we
+-- force it by examining the whole thing). So trace out the maximul subset of
+-- each index that we could possibly ever need. Do this by flattening packages
+-- and looking at the names of all possible dependencies.
+--
+selectNeededSubset :: PackageIndex InstalledPackageInfo
+                   -> PackageIndex AvailablePackage
+                   -> Set PackageName
+                   -> (PackageIndex InstalledPackageInfo
+                      ,PackageIndex AvailablePackage)
+selectNeededSubset installed available = select mempty mempty
+  where
+    select :: PackageIndex InstalledPackageInfo
+           -> PackageIndex AvailablePackage
+           -> Set PackageName
+           -> (PackageIndex InstalledPackageInfo
+              ,PackageIndex AvailablePackage)
+    select installed' available' remaining
+      | Set.null remaining = (installed', available')
+      | otherwise = select installed'' available'' remaining''
+      where
+        (next, remaining') = Set.deleteFindMin remaining
+        moreInstalled = PackageIndex.lookupPackageName installed next
+        moreAvailable = PackageIndex.lookupPackageName available next
+        moreRemaining = nub
+                      $ [ packageName dep
+                        | pkg <- moreInstalled
+                        , dep <- depends pkg ]
+                     ++ [ name
+                        | AvailablePackage _ pkg _ <- moreAvailable
+                        , Dependency name _ <-
+                            buildDepends (flattenPackageDescription pkg) ]
+        installed''   = foldr PackageIndex.insert installed' moreInstalled
+        available''   = foldr PackageIndex.insert available' moreAvailable
+        remaining''   = foldr          Set.insert remaining' moreRemaining
 
 -- ------------------------------------------------------------
 -- * Post processing the solution
