@@ -18,6 +18,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
 
+import Network.URI (URI)
 import Control.Exception
          ( Exception )
 
@@ -46,7 +47,7 @@ instance PackageFixedDeps ConfiguredPackage where
 
 
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
--- field to store the tarball URL.
+-- field to store the tarball URI.
 data AvailablePackage = AvailablePackage {
     packageInfoId      :: PackageIdentifier,
     packageDescription :: GenericPackageDescription,
@@ -75,7 +76,7 @@ data AvailablePackageSource =
 
 data RemoteRepo = RemoteRepo {
     remoteRepoName :: String,
-    remoteRepoURL  :: String
+    remoteRepoURI  :: URI
   }
   deriving (Show,Eq)
 
@@ -88,8 +89,8 @@ data Repo = Repo {
 repoName :: Repo -> String
 repoName = remoteRepoName . repoRemote
 
-repoURL :: Repo -> String
-repoURL = remoteRepoURL . repoRemote
+repoURI :: Repo -> URI
+repoURI = remoteRepoURI . repoRemote
 
 data UnresolvedDependency
     = UnresolvedDependency

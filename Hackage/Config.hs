@@ -28,9 +28,11 @@ import Control.Monad (when)
 import Data.Monoid (Monoid(..))
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory)
+import Network.URI (parseAbsoluteURI, uriToString)
 import Text.PrettyPrint.HughesPJ (text)
 
-import Distribution.Compat.ReadP (ReadP, char, munch1)
+import Distribution.Compat.ReadP as ReadP
+         ( ReadP, char, munch1, pfail )
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.ParseUtils
          ( FieldDescr(..), simpleField, listField, liftField, field
@@ -150,9 +152,9 @@ defaultSavedConfig =
          }
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo =
-  RemoteRepo "hackage.haskell.org"
-             "http://hackage.haskell.org/packages/archive"
+defaultRemoteRepo = RemoteRepo "hackage.haskell.org" uri
+  where
+    Just uri = parseAbsoluteURI "http://hackage.haskell.org/packages/archive"
 
 --
 -- * Config file reading
@@ -262,11 +264,16 @@ modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
 modifyFieldName f d = d { fieldName = f (fieldName d) }
 
 showRepo :: RemoteRepo -> String
-showRepo repo = remoteRepoName repo ++ ":" ++ remoteRepoURL repo
+showRepo repo = remoteRepoName repo ++ ":"
+             ++ uriToString id (remoteRepoURI repo) []
 
 parseRepo :: ReadP r RemoteRepo
 parseRepo = do name <- munch1 (\c -> isAlphaNum c || c `elem` "_-.")
                char ':'
-               url <- munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
-               return $ RemoteRepo { remoteRepoName = name, remoteRepoURL = url }
+               uriStr <- munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
+               uri <- maybe ReadP.pfail return (parseAbsoluteURI uriStr)
+               return $ RemoteRepo {
+                 remoteRepoName = name,
+                 remoteRepoURI  = uri
+               }
 

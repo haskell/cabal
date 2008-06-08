@@ -59,7 +59,7 @@ data BuildReport
 
     -- | Which hackage server this package is from and thus which server this
     -- report should be sent to.
---    server          :: String,
+--    server          :: URI,
 
     -- | The OS and Arch the package was built on
     os              :: OS,
