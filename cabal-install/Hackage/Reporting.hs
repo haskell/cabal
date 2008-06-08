@@ -28,7 +28,8 @@ module Hackage.Reporting (
   ) where
 
 import Hackage.Types
-         ( ConfiguredPackage(..), BuildResult )
+         ( ConfiguredPackage(..), AvailablePackage(..)
+         , AvailablePackageSource(..), repoURI, BuildResult )
 import qualified Hackage.Types as BR
          ( BuildResult(..) )
 import qualified Hackage.InstallPlan as InstallPlan
@@ -50,7 +51,8 @@ import Distribution.Compiler
 
 import Data.Maybe
          ( catMaybes )
-
+import Network.URI
+         ( URI, uriToString )
 
 data BuildReport
    = BuildReport {
@@ -59,7 +61,7 @@ data BuildReport
 
     -- | Which hackage server this package is from and thus which server this
     -- report should be sent to.
---    server          :: URI,
+    server          :: String,
 
     -- | The OS and Arch the package was built on
     os              :: OS,
@@ -120,13 +122,13 @@ writeBuildReports reports = do
   appendFile file (unlines (map show reports))
 
 buildReport :: OS -> Arch -> CompilerId -- -> Version
-            -> ConfiguredPackage -> BR.BuildResult
+            -> URI -> ConfiguredPackage -> BR.BuildResult
             -> BuildReport
-buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
+buildReport os' arch' comp uri (ConfiguredPackage pkg flags deps) result =
   BuildReport {
     package               = packageId pkg,
     os                    = os',
---    server                = undefined,
+    server                = uriToString id uri [],
     arch                  = arch',
     compiler              = comp,
     flagAssignment        = flags,
@@ -162,7 +164,13 @@ installPlanBuildReports plan = catMaybes
 planPackageBuildReport :: OS -> Arch -> CompilerId
                        -> PlanPackage BuildResult -> Maybe BuildReport
 planPackageBuildReport os' arch' comp planPackage = case planPackage of
-  PreExisting _     -> Nothing
-  Configured  _     -> Nothing
-  Installed pkg     -> Just $ buildReport os' arch' comp pkg BR.BuildOk
-  Failed pkg result -> Just $ buildReport os' arch' comp pkg result
+
+  Installed pkg@(ConfiguredPackage (AvailablePackage {
+                   packageSource = RepoTarballPackage repo }) _ _)
+    -> Just $ buildReport os' arch' comp (repoURI repo) pkg BR.BuildOk
+
+  Failed pkg@(ConfiguredPackage (AvailablePackage {
+                   packageSource = RepoTarballPackage repo }) _ _) result
+    -> Just $ buildReport os' arch' comp (repoURI repo) pkg result
+
+  _ -> Nothing
