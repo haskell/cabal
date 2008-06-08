@@ -23,6 +23,11 @@ module Hackage.InstallPlan (
   completed,
   failed,
 
+  -- ** Query functions
+  planOS,
+  planArch,
+  planCompiler,
+
   -- * Checking valididy of plans
   valid,
   closed,
