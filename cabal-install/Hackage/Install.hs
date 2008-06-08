@@ -40,11 +40,12 @@ import Hackage.Setup
 import Hackage.Tar (extractTarGzFile)
 import Hackage.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo, ConfiguredPackage(..) )
+         , AvailablePackageSource(..), Repo, ConfiguredPackage(..)
+         , BuildResult(..) )
 import Hackage.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Hackage.Reporting
-         (  )
+         ( writeInstallPlanBuildReports )
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -74,13 +75,6 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity (Verbosity, showForCabal, verbose)
 import Distribution.Simple.BuildPaths ( exeExtension )
-
-data BuildResult = DependentFailed PackageIdentifier
-                 | UnpackFailed    Exception
-                 | ConfigureFailed Exception
-                 | BuildFailed     Exception
-                 | InstallFailed   Exception
-                 | BuildOk
 
 data InstallMisc = InstallMisc {
     rootCmd    :: Maybe FilePath,
@@ -151,8 +145,8 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
               installAvailablePackage verbosity apkg $
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags'
+        writeInstallPlanBuildReports installPlan'
         printBuildFailures installPlan'
---      writeBuildReports  installPlan'
 
   where
     setupScriptOptions index = SetupScriptOptions {
