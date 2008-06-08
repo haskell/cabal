@@ -31,7 +31,7 @@ update verbosity = mapM_ (updateRepo verbosity)
 updateRepo :: Verbosity -> Repo -> IO ()
 updateRepo verbosity repo = do
   notice verbosity $ "Downloading package list from server '"
-                  ++ repoURL repo ++ "'"
+                  ++ show (repoURI repo) ++ "'"
   indexPath <- downloadIndex verbosity repo
   BS.writeFile (dropExtension indexPath) . GZip.decompress
                                        =<< BS.readFile indexPath
