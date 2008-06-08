@@ -18,6 +18,9 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
 
+import Control.Exception
+         ( Exception )
+
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
 
@@ -94,3 +97,10 @@ data UnresolvedDependency
     , depFlags   :: FlagAssignment
     }
   deriving (Show)
+
+data BuildResult = DependentFailed PackageIdentifier
+                 | UnpackFailed    Exception
+                 | ConfigureFailed Exception
+                 | BuildFailed     Exception
+                 | InstallFailed   Exception
+                 | BuildOk

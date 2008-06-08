@@ -16,6 +16,7 @@ module Hackage.Config
     , configRepos
     , configPackageDB
     , defaultConfigFile
+    , defaultBuildReportFile
     , loadConfig
     , showConfig
     ) where
@@ -105,6 +106,10 @@ defaultCabalDir = getAppUserDataDirectory "cabal"
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do dir <- defaultCabalDir
                        return $ dir </> "config"
+
+defaultBuildReportFile :: IO FilePath
+defaultBuildReportFile = do dir <- defaultCabalDir
+                            return $ dir </> "build-reports"
 
 defaultCacheDir :: IO FilePath
 defaultCacheDir = do dir <- defaultCabalDir
