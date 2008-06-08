@@ -20,12 +20,13 @@ module Hackage.Fetch
     , downloadIndex
     ) where
 
-import Network.URI (URI,parseURI,uriScheme,uriPath)
+import Network.URI
+         ( URI(uriScheme, uriPath) )
 import Network.HTTP (ConnError(..), Response(..))
 
 import Hackage.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..), repoURL )
+         , AvailablePackageSource(..), Repo(..), repoURI )
 import Hackage.Dependency
          ( resolveDependencies, PackagesVersionPreference(..) )
 import qualified Hackage.IndexUtils as IndexUtils
@@ -72,25 +73,15 @@ downloadURI verbosity path uri
                                                           >> return Nothing
                | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
 
-downloadFile :: Verbosity
-             -> FilePath
-             -> String
-             -> IO (Maybe ConnError)
-downloadFile verbosity path url
-    = case parseURI url of
-        Just parsed -> downloadURI verbosity path parsed
-        Nothing -> return (Just (ErrorMisc ("Failed to parse url: " ++ show url)))
-
-
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: Verbosity -> AvailablePackage -> IO String
 downloadPackage verbosity pkg
-    = do let url = packageURL pkg
+    = do let uri = packageURI pkg
              dir = packageDir pkg
              path = packageFile pkg
-         debug verbosity $ "GET " ++ show url
+         debug verbosity $ "GET " ++ show uri
          createDirectoryIfMissing True dir
-         mbError <- downloadFile verbosity path url
+         mbError <- downloadURI verbosity path uri
          case mbError of
            Just err -> die $ "Failed to download '" ++ display (packageId pkg) ++ "': " ++ show err
            Nothing -> return path
@@ -98,11 +89,14 @@ downloadPackage verbosity pkg
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: Verbosity -> Repo -> IO FilePath
 downloadIndex verbosity repo
-    = do let url = repoURL repo ++ "/" ++ "00-index.tar.gz"
+    = do let uri = (repoURI repo) {
+                     uriPath = uriPath (repoURI repo)
+                            ++ "/" ++ "00-index.tar.gz"
+                   }
              dir = repoCacheDir repo
              path = dir </> "00-index" <.> "tar.gz"
          createDirectoryIfMissing True dir
-         mbError <- downloadFile verbosity path url
+         mbError <- downloadURI verbosity path uri
          case mbError of
            Just err -> die $ "Failed to download index '" ++ show err ++ "'"
            Nothing  -> return path
@@ -162,11 +156,13 @@ packageDir AvailablePackage { packageInfoId = p
                      </> pkgName p
                      </> display (pkgVersion p)
 
--- | Generate the URL of the tarball for a given package.
-packageURL :: AvailablePackage -> String
-packageURL AvailablePackage { packageInfoId = p
+-- | Generate the URI of the tarball for a given package.
+packageURI :: AvailablePackage -> URI
+packageURI AvailablePackage { packageInfoId = p
                             , packageSource = RepoTarballPackage repo } =
-  intercalate "/"
-    [repoURL repo,
-     pkgName p, display (pkgVersion p),
-     display p ++ ".tar.gz"]
+  (repoURI repo) {
+    uriPath = intercalate "/"
+      [uriPath (repoURI repo) ,
+       pkgName p, display (pkgVersion p),
+       display p ++ ".tar.gz"]
+  }
