@@ -133,12 +133,15 @@ haddock pkg_descr lbi suffixes flags = do
 
     let replaceLitExts = map ( (tmpDir </>) . (`replaceExtension` "hs") )
     let showPkg    = display (packageId pkg_descr)
-    let outputFlag = if fromFlag (haddockHoogle flags)
-                     then "--hoogle"
-                     else "--html"
+    let hoogle     = fromFlag (haddockHoogle flags)
+        outputFlag | hoogle    = "--hoogle"
+                   | otherwise = "--html"
     let Just version = programVersion confHaddock
     let have_src_hyperlink_flags = version >= Version [0,8] []
         isVersion2               = version >= Version [2,0] []
+
+    when (hoogle && isVersion2) $
+      die $ "haddock 2.x does not support the --hoogle flag."
 
     let mockFlags
           | isVersion2 = []
