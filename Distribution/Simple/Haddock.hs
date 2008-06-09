@@ -88,7 +88,7 @@ import Language.Haskell.Extension
 import System.Directory(removeFile, doesFileExist,
                         removeDirectoryRecursive, copyFile)
 
-import Control.Monad ( liftM, when, unless )
+import Control.Monad ( when, unless )
 import Data.Maybe    ( isJust, fromJust, listToMaybe )
 import Data.Char     (isSpace)
 import Data.List     (nub)
@@ -193,7 +193,7 @@ haddock pkg_descr lbi suffixes flags = do
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
             modules = PD.exposedModules lib ++ otherModules bi
-        inFiles <- getModulePaths lbi bi modules
+        inFiles <- getLibSourceFiles lbi lib
         unless isVersion2 $ mockAll bi inFiles
         let template = showPkg ++ "-haddock-prolog.txt"
             prolog | null (PD.description pkg_descr) = synopsis pkg_descr
@@ -239,9 +239,7 @@ haddock pkg_descr lbi suffixes flags = do
         let bi = buildInfo exe
             exeTargetDir = haddockPref distPref pkg_descr </> exeName exe
         createDirectoryIfMissingVerbose verbosity True exeTargetDir
-        inFiles' <- getModulePaths lbi bi (otherModules bi)
-        srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
-        let inFiles = srcMainPath : inFiles'
+        inFiles@(srcMainPath:_) <- getExeSourceFiles lbi exe
         mockAll bi inFiles
         let template = showPkg ++ "-haddock-prolog.txt"
             prolog | null (PD.description pkg_descr) = synopsis pkg_descr
@@ -374,7 +372,7 @@ hscolour pkg_descr lbi suffixes flags = do
 	    outputDir = hscolourPref distPref pkg_descr </> "src"
 	createDirectoryIfMissingVerbose verbosity True outputDir
 	copyCSS hscolourProg outputDir
-        inFiles <- getModulePaths lbi bi modules
+        inFiles <- getLibSourceFiles lbi lib
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) ->
             let outFile = outputDir </> replaceDot mo <.> "html"
              in rawSystemProgram verbosity hscolourProg
@@ -386,8 +384,7 @@ hscolour pkg_descr lbi suffixes flags = do
             outputDir = hscolourPref distPref pkg_descr </> exeName exe </> "src"
         createDirectoryIfMissingVerbose verbosity True outputDir
         copyCSS hscolourProg outputDir
-        srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
-        inFiles <- liftM (srcMainPath :) $ getModulePaths lbi bi (otherModules bi)
+        inFiles <- getExeSourceFiles lbi exe
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) ->
             let outFile = outputDir </> replaceDot mo <.> "html"
             in rawSystemProgram verbosity hscolourProg
@@ -404,10 +401,27 @@ hscolour pkg_descr lbi suffixes flags = do
         verbosity  = fromFlag (hscolourVerbosity flags)
 
 
---TODO: where to put this? it's duplicated in .Simple too
-getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
-getModulePaths lbi bi modules = sequence
-   [ findFileWithExtension ["hs", "lhs"] (buildDir lbi : hsSourceDirs bi)
-       (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
-   | module_ <- modules ]
-   where notFound module_ = die $ "can't find source for module " ++ module_
+getLibSourceFiles :: LocalBuildInfo -> Library -> IO [FilePath]
+getLibSourceFiles lbi lib = sequence
+  [ findFileWithExtension ["hs", "lhs"] (preprocessDir : hsSourceDirs bi)
+      (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
+  | module_ <- modules ]
+  where
+    bi               = libBuildInfo lib
+    modules          = PD.exposedModules lib ++ otherModules bi
+    preprocessDir    = buildDir lbi
+    notFound module_ = die $ "can't find source for module " ++ module_
+
+getExeSourceFiles :: LocalBuildInfo -> Executable -> IO [FilePath]
+getExeSourceFiles lbi exe = do
+  srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
+  moduleFiles <- sequence
+    [ findFileWithExtension ["hs", "lhs"] (preprocessDir : hsSourceDirs bi)
+        (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
+    | module_ <- modules ]
+  return (srcMainPath : moduleFiles)
+  where
+    bi               = buildInfo exe
+    modules          = otherModules bi
+    preprocessDir    = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
+    notFound module_ = die $ "can't find source for module " ++ module_
