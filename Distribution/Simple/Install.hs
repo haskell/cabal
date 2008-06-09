@@ -67,7 +67,8 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad (when, unless)
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath(takeDirectory, (</>), isAbsolute)
+import System.FilePath
+         ( takeFileName, takeDirectory, (</>), isAbsolute )
 
 import Distribution.Verbosity
 
@@ -122,7 +123,7 @@ install pkg_descr lbi flags = do
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
-    copyFileVerbose verbosity lfile (docPref </> lfile)
+    copyFileVerbose verbosity lfile (docPref </> takeFileName lfile)
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
