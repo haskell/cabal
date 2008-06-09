@@ -115,10 +115,16 @@ install pkg_descr lbi flags = do
       -- in the recursive copy, but now we install it where we actually
       -- want it to be (normally the same place). We could remove the
       -- copy in htmlPref first.
-      createDirectoryIfMissingVerbose verbosity True interfacePref
-      copyFileVerbose verbosity
-                      (haddockPref distPref pkg_descr </> haddockName pkg_descr)
-                      (interfacePref </> haddockName pkg_descr)
+      let haddockInterfaceFileSrc  = haddockPref distPref pkg_descr
+                                                   </> haddockName pkg_descr
+          haddockInterfaceFileDest = interfacePref </> haddockName pkg_descr
+      -- We only generate the haddock interface file for libs, So if the
+      -- package consists only of executables there will not be one:
+      exists <- doesFileExist haddockInterfaceFileSrc
+      when exists $ do
+        createDirectoryIfMissingVerbose verbosity True interfacePref
+        copyFileVerbose verbosity haddockInterfaceFileSrc
+                                  haddockInterfaceFileDest
 
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
