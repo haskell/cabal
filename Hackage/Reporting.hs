@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Hackage.Reporting
@@ -14,12 +15,15 @@
 module Hackage.Reporting (
     BuildReport(..),
     InstallOutcome(..),
-    DocsOutcome(..),
-    TestsOutcome(..),
+    Outcome(..),
 
     -- * Constructing and writing reports
     buildReport,
     writeBuildReports,
+
+    -- * parsing and pretty printing
+    parseBuildReport,
+    showBuildReport,
 
     -- * 'InstallPlan' variants
     planPackageBuildReport,
@@ -34,25 +38,37 @@ import qualified Hackage.Types as BR
          ( BuildResult(..) )
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan
-         ( InstallPlan, PlanPackage(..) )
+         ( InstallPlan, PlanPackage )
 import Hackage.Config
          ( defaultBuildReportFile )
+import Hackage.ParseUtils
+         ( showFields, parseBasicStanza )
 
 import Distribution.Package
          ( PackageIdentifier, Package(packageId) )
 import Distribution.PackageDescription
-         ( FlagAssignment )
+         ( FlagName(..), FlagAssignment )
 --import Distribution.Version
 --         ( Version )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
          ( CompilerId )
+import Distribution.Text
+         ( Text(disp, parse) )
+import Distribution.ParseUtils
+         ( FieldDescr(..), ParseResult(..), simpleField, listField )
+import qualified Distribution.Compat.ReadP as Parse
+         ( ReadP, pfail, munch1, char, option )
+import Text.PrettyPrint.HughesPJ as Disp
+         ( Doc, char, text, (<+>), (<>) )
 
 import Data.Maybe
          ( catMaybes )
+import Data.Char as Char
+         ( isAlpha, isAlphaNum )
 import Network.URI
-         ( URI, uriToString )
+         ( URI, uriToString, parseAbsoluteURI )
 
 data BuildReport
    = BuildReport {
@@ -61,7 +77,7 @@ data BuildReport
 
     -- | Which hackage server this package is from and thus which server this
     -- report should be sent to.
-    server          :: String,
+    server          :: URI,
 
     -- | The OS and Arch the package was built on
     os              :: OS,
@@ -86,12 +102,11 @@ data BuildReport
 --    tools      :: [PackageIdentifier],
 
     -- | Configure outcome, did configure work ok?
-    docsOutcome     :: DocsOutcome,
+    docsOutcome     :: Outcome,
 
     -- | Configure outcome, did configure work ok?
-    testsOutcome    :: TestsOutcome
+    testsOutcome    :: Outcome
   }
-  deriving (Show, Read)
 
 data InstallOutcome
    = DependencyFailed PackageIdentifier
@@ -102,24 +117,13 @@ data InstallOutcome
    | BuildFailed
    | InstallFailed
    | InstallOk
-   deriving (Show, Read)
 
-data DocsOutcome
-   = DocsNotTried
-   | DocsFailed
-   | DocsOk
-   deriving (Show, Read)
-
-data TestsOutcome
-   = TestsNotTried
-   | TestsFailed
-   | TestsOk
-   deriving (Show, Read)
+data Outcome = NotTried | Failed | Ok
 
 writeBuildReports :: [BuildReport] -> IO ()
 writeBuildReports reports = do
   file <- defaultBuildReportFile
-  appendFile file (unlines (map show reports))
+  appendFile file (concatMap (("\n\n"++) . showBuildReport) reports)
 
 buildReport :: OS -> Arch -> CompilerId -- -> Version
             -> URI -> ConfiguredPackage -> BR.BuildResult
@@ -128,7 +132,7 @@ buildReport os' arch' comp uri (ConfiguredPackage pkg flags deps) result =
   BuildReport {
     package               = packageId pkg,
     os                    = os',
-    server                = uriToString id uri [],
+    server                = uri,
     arch                  = arch',
     compiler              = comp,
     flagAssignment        = flags,
@@ -141,9 +145,122 @@ buildReport os' arch' comp uri (ConfiguredPackage pkg flags deps) result =
     BR.InstallFailed _   -> InstallFailed
     BR.BuildOk           -> InstallOk,
 --    cabalVersion          = undefined
-    docsOutcome           = DocsNotTried,
-    testsOutcome          = TestsNotTried
+    docsOutcome           = NotTried,
+    testsOutcome          = NotTried
   }
+
+-- ------------------------------------------------------------
+-- * External format
+-- ------------------------------------------------------------
+
+initialBuildReport :: BuildReport
+initialBuildReport = BuildReport {
+    package         = requiredField "package",
+    server          = requiredField "server",
+    os              = requiredField "os",
+    arch            = requiredField "arch",
+    compiler        = requiredField "compiler",
+    flagAssignment  = requiredField "flags",
+    dependencies    = requiredField "dependencies",
+    installOutcome  = requiredField "install-outcome",
+--    cabalVersion  = Nothing,
+--    tools         = [],
+    docsOutcome     = NotTried,
+    testsOutcome    = NotTried
+  }
+  where
+    requiredField fname = error ("required field: " ++ fname)
+
+-- -----------------------------------------------------------------------------
+-- Parsing
+
+parseBuildReport :: String -> ParseResult BuildReport
+parseBuildReport = parseBasicStanza fieldDescrs initialBuildReport
+
+-- -----------------------------------------------------------------------------
+-- Pretty-printing
+
+showBuildReport :: BuildReport -> String
+showBuildReport = showFields fieldDescrs
+
+-- -----------------------------------------------------------------------------
+-- Description of the fields, for parsing/printing
+
+fieldDescrs :: [FieldDescr BuildReport]
+fieldDescrs =
+ [ simpleField "package"         disp           parse
+                                 package        (\v r -> r { package = v })
+ , simpleField "server"          disp           parse
+                                 server         (\v r -> r { server = v })
+ , simpleField "os"              disp           parse
+                                 os             (\v r -> r { os = v })
+ , simpleField "arch"            disp           parse
+                                 arch           (\v r -> r { arch = v })
+ , simpleField "compiler"        disp           parse
+                                 compiler       (\v r -> r { compiler = v })
+ , listField   "flags"           dispFlag       parseFlag
+                                 flagAssignment (\v r -> r { flagAssignment = v })
+ , listField   "dependencies"    disp           parse
+                                 dependencies   (\v r -> r { dependencies = v })
+ , simpleField "install-outcome" disp           parse
+                                 installOutcome (\v r -> r { installOutcome = v })
+ , simpleField "docs-outcome"    disp           parse
+                                 docsOutcome    (\v r -> r { docsOutcome = v })
+ , simpleField "tests-outcome"   disp           parse
+                                 testsOutcome   (\v r -> r { testsOutcome = v })
+ ]
+
+dispFlag :: (FlagName, Bool) -> Disp.Doc
+dispFlag (FlagName name, True)  = Disp.char '-' <> Disp.text name
+dispFlag (FlagName name, False) =                  Disp.text name
+
+parseFlag :: Parse.ReadP r (FlagName, Bool)
+parseFlag = do
+  value <- Parse.option True (Parse.char '-' >> return False)
+  name  <- Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+  return (FlagName name, value)
+
+instance Text InstallOutcome where
+  disp (DependencyFailed pkgid) = Disp.text "DependencyFailed" <+> disp pkgid
+  disp DownloadFailed  = Disp.text "DownloadFailed"
+  disp UnpackFailed    = Disp.text "UnpackFailed"
+  disp SetupFailed     = Disp.text "SetupFailed"
+  disp ConfigureFailed = Disp.text "ConfigureFailed"
+  disp BuildFailed     = Disp.text "BuildFailed"
+  disp InstallFailed   = Disp.text "InstallFailed"
+  disp InstallOk       = Disp.text "InstallOk"
+
+  parse = do
+    name <- Parse.munch1 Char.isAlphaNum
+    case name of
+      "DependencyFailed" -> do pkgid <- parse
+                               return (DependencyFailed pkgid)
+      "DownloadFailed"   -> return DownloadFailed
+      "UnpackFailed"     -> return UnpackFailed
+      "SetupFailed"      -> return SetupFailed
+      "ConfigureFailed"  -> return ConfigureFailed
+      "BuildFailed"      -> return BuildFailed
+      "InstallFailed"    -> return InstallFailed
+      "InstallOk"        -> return InstallOk
+      _                  -> Parse.pfail
+
+instance Text Outcome where
+  disp NotTried = Disp.text "NotTried"
+  disp Failed   = Disp.text "Failed"
+  disp Ok       = Disp.text "Ok"
+  parse = do
+    name <- Parse.munch1 Char.isAlpha
+    case name of
+      "NotTried" -> return NotTried
+      "Failed"   -> return Failed
+      "Ok"       -> return Ok
+      _          -> Parse.pfail
+
+instance Text URI where
+  disp uri = Disp.text (uriToString id uri [])
+  parse = do
+    str <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
+    maybe Parse.pfail return (parseAbsoluteURI str)
 
 -- ------------------------------------------------------------
 -- * InstallPlan support
@@ -162,15 +279,16 @@ installPlanBuildReports plan = catMaybes
         comp  = InstallPlan.planCompiler plan
 
 planPackageBuildReport :: OS -> Arch -> CompilerId
-                       -> PlanPackage BuildResult -> Maybe BuildReport
+                       -> InstallPlan.PlanPackage BuildResult
+                       -> Maybe BuildReport
 planPackageBuildReport os' arch' comp planPackage = case planPackage of
 
-  Installed pkg@(ConfiguredPackage (AvailablePackage {
-                   packageSource = RepoTarballPackage repo }) _ _)
+  InstallPlan.Installed pkg@(ConfiguredPackage (AvailablePackage {
+                          packageSource = RepoTarballPackage repo }) _ _)
     -> Just $ buildReport os' arch' comp (repoURI repo) pkg BR.BuildOk
 
-  Failed pkg@(ConfiguredPackage (AvailablePackage {
-                   packageSource = RepoTarballPackage repo }) _ _) result
+  InstallPlan.Failed pkg@(ConfiguredPackage (AvailablePackage {
+                       packageSource = RepoTarballPackage repo }) _ _) result
     -> Just $ buildReport os' arch' comp (repoURI repo) pkg result
 
   _ -> Nothing
