@@ -324,7 +324,7 @@ getInstalledPackages' verbosity packagedbs conf = do
           (SpecificPackageDB specific, _)  -> return $ Just specific
           _ -> die "cannot read ghc-pkg package listing"
     pkgFiles' <- mapM dbFile packagedbs
-    sequence [ do content <- readFile file
+    sequence [ withFileContents file $ \content ->
                   case reads content of
                     [(pkgs, _)] -> return (db, pkgs)
                     _ -> die $ "cannot read ghc package database " ++ file
