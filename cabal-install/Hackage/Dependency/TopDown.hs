@@ -52,13 +52,14 @@ import Distribution.Text
 import Data.List
          ( foldl', maximumBy, minimumBy, deleteBy, nub, sort )
 import Data.Maybe
-         ( fromJust )
+         ( fromJust, fromMaybe )
 import Data.Monoid
          ( Monoid(mempty) )
 import Control.Monad
          ( guard )
 import qualified Data.Set as Set
 import Data.Set (Set)
+import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 
@@ -101,9 +102,9 @@ explore pref (ChoiceNode _ choices) =
 
   where
     topSortNumber choice = case fst (head choice) of
-      InstalledOnly           (InstalledPackage  _ i _) -> i
-      AvailableOnly           (UnconfiguredPackage _ i) -> i
-      InstalledAndAvailable _ (UnconfiguredPackage _ i) -> i
+      InstalledOnly           (InstalledPackage    _ i _) -> i
+      AvailableOnly           (UnconfiguredPackage _ i _) -> i
+      InstalledAndAvailable _ (UnconfiguredPackage _ i _) -> i
 
     bestByPref pkgname = case pref pkgname of
       PreferLatest    -> comparing (\(p,_) ->                 packageId p)
@@ -217,8 +218,8 @@ topDownResolver' os arch comp installed available pref deps =
   where
     configure   = configurePackage os arch comp
     constraints = Constraints.empty
-                    (annotateInstalledPackages topSortNumber installed')
-                    (annotateAvailablePackages topSortNumber available')
+                    (annotateInstalledPackages      topSortNumber installed')
+                    (annotateAvailablePackages deps topSortNumber available')
     (installed', available') = selectNeededSubset installed available
                                                   initialPkgNames
     topSortNumber = topologicalSortNumbering installed' available'
@@ -247,11 +248,11 @@ configurePackage os arch comp available spkg = case spkg of
   InstalledAndAvailable ipkg apkg -> fmap (InstalledAndAvailable ipkg)
                                           (configure apkg)
   where
-  configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _) =
-    case finalizePackageDescription [] (Just available) os arch comp [] p of
-      Left missing       -> Left missing
-      Right (pkg, flags) -> Right $
-        SemiConfiguredPackage apkg flags (buildDepends pkg)
+  configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _ flags) =
+    case finalizePackageDescription flags (Just available) os arch comp [] p of
+      Left missing        -> Left missing
+      Right (pkg, flags') -> Right $
+        SemiConfiguredPackage apkg flags' (buildDepends pkg)
 
 -- | Annotate each installed packages with its set of transative dependencies
 -- and its topological sort number.
@@ -269,14 +270,22 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
     (graph, toPkgid, toVertex) = PackageIndex.dependencyGraph installed
 
 
--- | Annotate each available packages with its topological sort number.
+-- | Annotate each available packages with its topological sort number and any
+-- user-supplied partial flag assignment.
 --
-annotateAvailablePackages :: (PackageName -> TopologicalSortNumber)
+annotateAvailablePackages :: [UnresolvedDependency]
+                          -> (PackageName -> TopologicalSortNumber)
                           -> PackageIndex AvailablePackage
                           -> PackageIndex UnconfiguredPackage
-annotateAvailablePackages dfsNumber available = PackageIndex.fromList
-  [ UnconfiguredPackage pkg (dfsNumber (packageName pkg))
-  | pkg <- PackageIndex.allPackages available ]
+annotateAvailablePackages deps dfsNumber available = PackageIndex.fromList
+  [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name)
+  | pkg <- PackageIndex.allPackages available
+  , let name = packageName pkg ]
+  where
+    flagsFor = fromMaybe [] . flip Map.lookup flagsMap
+    flagsMap = Map.fromList
+      [ (name, flags)
+      | UnresolvedDependency (Dependency name _) flags <- deps ]
 
 -- | One of the heuristics we use when guessing which path to take in the
 -- search space is an ordering on the choices we make. It's generally better
