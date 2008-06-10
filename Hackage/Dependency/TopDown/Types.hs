@@ -48,6 +48,7 @@ data UnconfiguredPackage
    = UnconfiguredPackage
        AvailablePackage
        !TopologicalSortNumber
+       FlagAssignment
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
@@ -60,7 +61,7 @@ instance Package InstalledPackage where
   packageId (InstalledPackage p _ _) = packageId p
 
 instance Package UnconfiguredPackage where
-  packageId (UnconfiguredPackage p _) = packageId p
+  packageId (UnconfiguredPackage p _ _) = packageId p
 
 instance Package SemiConfiguredPackage where
   packageId (SemiConfiguredPackage p _ _) = packageId p
