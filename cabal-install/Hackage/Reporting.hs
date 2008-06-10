@@ -229,8 +229,8 @@ fieldDescrs =
  ]
 
 dispFlag :: (FlagName, Bool) -> Disp.Doc
-dispFlag (FlagName name, True)  = Disp.char '-' <> Disp.text name
-dispFlag (FlagName name, False) =                  Disp.text name
+dispFlag (FlagName name, True)  =                  Disp.text name
+dispFlag (FlagName name, False) = Disp.char '-' <> Disp.text name
 
 parseFlag :: Parse.ReadP r (FlagName, Bool)
 parseFlag = do
