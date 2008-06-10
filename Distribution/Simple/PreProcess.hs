@@ -66,7 +66,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
+         ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , die, setupMessage, intercalate
          , findFileWithExtension, findFileWithExtension', dotToSep )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
@@ -272,9 +272,9 @@ ppUnlit :: PreProcessor
 ppUnlit =
   PreProcessor {
     platformIndependent = True,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity -> do
-      contents <- readUTF8File inFile
-      either (writeUTF8File outFile) die (unlit inFile contents)
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity ->
+      withUTF8FileContents inFile $ \contents ->
+        either (writeUTF8File outFile) die (unlit inFile contents)
   }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor

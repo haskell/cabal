@@ -68,7 +68,7 @@ import Distribution.Package
 import Distribution.Version
          ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, readUTF8File, writeUTF8File
+         ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , copyFiles, copyFileVerbose, findFile, findFileWithExtension
          , withTempDirectory, dotToSep, defaultPackageDesc
          , die, warn, notice, setupMessage )
@@ -225,9 +225,9 @@ prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps date = do
       -- We could just writePackageDescription targetDescFile pkg_descr,
       -- but that would lose comments and formatting.
       descFile <- defaultPackageDesc verbosity
-      writeUTF8File (targetDir </> descFile)
+      withUTF8FileContents descFile $
+        writeUTF8File (targetDir </> descFile)
           . unlines . map (replaceVersion version) . lines
-        =<< readUTF8File descFile
 
     replaceVersion :: Version -> String -> String
     replaceVersion version line
