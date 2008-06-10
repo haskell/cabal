@@ -81,7 +81,8 @@ import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
 import Distribution.Simple.Utils
          ( die, dieWithLocation, warn, intercalate, lowercase, cabalVersion
-         , readUTF8File, writeUTF8File )
+         , withFileContents, withUTF8FileContents
+         , writeFileAtomic, writeUTF8File )
 
 
 -- -----------------------------------------------------------------------------
@@ -288,15 +289,14 @@ flagFieldDescrs =
 
 -- | Given a parser and a filename, return the parse of the file,
 -- after checking if the file exists.
-readAndParseFile :: (FilePath -> IO String)
+readAndParseFile :: (FilePath -> (String -> IO a) -> IO a)
                  -> (String -> ParseResult a)
                  -> Verbosity
                  -> FilePath -> IO a
-readAndParseFile readFile' parser verbosity fpath = do
+readAndParseFile withFileContents' parser verbosity fpath = do
   exists <- doesFileExist fpath
   when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
-  str <- readFile' fpath
-  case parser str of
+  withFileContents' fpath $ \str -> case parser str of
     ParseFailed e -> do
         let (line, message) = locatedErrorMsg e
         dieWithLocation fpath line message
@@ -306,12 +306,12 @@ readAndParseFile readFile' parser verbosity fpath = do
 
 readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo =
-    readAndParseFile readFile parseHookedBuildInfo
+    readAndParseFile withFileContents parseHookedBuildInfo
 
 -- |Parse the given package file.
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription =
-    readAndParseFile readUTF8File parsePackageDescription
+    readAndParseFile withUTF8FileContents parsePackageDescription
 
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []

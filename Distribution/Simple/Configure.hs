@@ -93,7 +93,8 @@ import Distribution.Simple.LocalBuildInfo
     , prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate, comparing, cabalVersion, cabalBootstrapping )
+    , intercalate, comparing, cabalVersion, cabalBootstrapping
+    , withFileContents, writeFileAtomic )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -127,7 +128,7 @@ import System.FilePath
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
-    ( hPutStrLn, stderr, hGetContents, openFile, hClose, IOMode(ReadMode) )
+    ( hPutStrLn, stderr )
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
@@ -140,21 +141,15 @@ tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
   if not exists
     then return (Left missing)
-    else do
-      str <- readFileStrict filename
-      return $ case lines str of
+    else withFileContents filename $ \str ->
+      case lines str of
         [headder, rest] -> case checkHeader headder of
-          Just msg -> Left msg
+          Just msg -> return (Left msg)
           Nothing  -> case reads rest of
-            [(bi,_)] -> Right bi
-            _        -> Left cantParse
-        _            -> Left cantParse
+            [(bi,_)] -> return (Right bi)
+            _        -> return (Left cantParse)
+        _            -> return (Left cantParse)
   where
-    readFileStrict name = do 
-      h <- openFile name ReadMode
-      str <- hGetContents h >>= \str -> length str `seq` return str 
-      hClose h
-      return str
     checkHeader :: String -> Maybe String
     checkHeader header = case parseHeader header of
       Just (cabalId, compId)
