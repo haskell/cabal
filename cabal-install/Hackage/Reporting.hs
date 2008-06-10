@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Hackage.Reporting
@@ -34,14 +33,13 @@ module Hackage.Reporting (
 
 import Hackage.Types
          ( ConfiguredPackage(..), AvailablePackage(..)
-         , AvailablePackageSource(..), repoURI, BuildResult )
+         , AvailablePackageSource(..), BuildResult
+         , Repo(repoCacheDir), repoName )
 import qualified Hackage.Types as BR
          ( BuildResult(..) )
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan
          ( InstallPlan, PlanPackage )
-import Hackage.Config
-         ( defaultBuildReportFile )
 import Hackage.ParseUtils
          ( showFields, parseBasicStanza )
 
@@ -63,24 +61,22 @@ import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, pfail, munch1, char, option, skipSpaces )
 import Text.PrettyPrint.HughesPJ as Disp
          ( Doc, char, text, (<+>), (<>) )
+import Distribution.Simple.Utils
+         ( comparing, equating )
 
 import Data.List
-         ( unfoldr )
+         ( unfoldr, groupBy, sortBy )
 import Data.Maybe
          ( catMaybes )
 import Data.Char as Char
          ( isAlpha, isAlphaNum )
-import Network.URI
-         ( URI, uriToString, parseAbsoluteURI )
+import System.FilePath
+         ( (</>) )
 
 data BuildReport
    = BuildReport {
     -- | The package this build report is about
     package         :: PackageIdentifier,
-
-    -- | Which hackage server this package is from and thus which server this
-    -- report should be sent to.
-    server          :: URI,
 
     -- | The OS and Arch the package was built on
     os              :: OS,
@@ -123,19 +119,30 @@ data InstallOutcome
 
 data Outcome = NotTried | Failed | Ok
 
-writeBuildReports :: [BuildReport] -> IO ()
-writeBuildReports reports = do
-  file <- defaultBuildReportFile
-  appendFile file (concatMap (("\n\n"++) . showBuildReport) reports)
+writeBuildReports :: [(BuildReport, Repo)] -> IO ()
+writeBuildReports reports = sequence_
+  [ appendFile file (concatMap format reports')
+  | (repo, reports') <- separate reports
+  , let file = repoCacheDir repo </> "build-reports.log" ]
+  --TODO: make this concurrency safe, either lock the report file or make sure
+  -- the writes for each report are atomic (under 4k and flush at boundaries)
+
+  where
+    format r = '\n' : showBuildReport r ++ "\n"
+    separate :: [(BuildReport, Repo)] -> [(Repo, [BuildReport])]
+    separate = map (\rs@((_,repo):_) -> (repo, map fst rs))
+             . map concat
+             . groupBy (equating (repoName . snd . head))
+             . sortBy (comparing (repoName . snd . head))
+             . groupBy (equating (repoName . snd))
 
 buildReport :: OS -> Arch -> CompilerId -- -> Version
-            -> URI -> ConfiguredPackage -> BR.BuildResult
+            -> ConfiguredPackage -> BR.BuildResult
             -> BuildReport
-buildReport os' arch' comp uri (ConfiguredPackage pkg flags deps) result =
+buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
   BuildReport {
     package               = packageId pkg,
     os                    = os',
-    server                = uri,
     arch                  = arch',
     compiler              = comp,
     flagAssignment        = flags,
@@ -159,7 +166,6 @@ buildReport os' arch' comp uri (ConfiguredPackage pkg flags deps) result =
 initialBuildReport :: BuildReport
 initialBuildReport = BuildReport {
     package         = requiredField "package",
-    server          = requiredField "server",
     os              = requiredField "os",
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
@@ -204,8 +210,6 @@ fieldDescrs :: [FieldDescr BuildReport]
 fieldDescrs =
  [ simpleField "package"         disp           parse
                                  package        (\v r -> r { package = v })
- , simpleField "server"          disp           parse
-                                 server         (\v r -> r { server = v })
  , simpleField "os"              disp           parse
                                  os             (\v r -> r { os = v })
  , simpleField "arch"            disp           parse
@@ -271,12 +275,6 @@ instance Text Outcome where
       "Ok"       -> return Ok
       _          -> Parse.pfail
 
-instance Text URI where
-  disp uri = Disp.text (uriToString id uri [])
-  parse = do
-    str <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
-    maybe Parse.pfail return (parseAbsoluteURI str)
-
 -- ------------------------------------------------------------
 -- * InstallPlan support
 -- ------------------------------------------------------------
@@ -284,7 +282,7 @@ instance Text URI where
 writeInstallPlanBuildReports :: InstallPlan BuildResult -> IO ()
 writeInstallPlanBuildReports = writeBuildReports . installPlanBuildReports
 
-installPlanBuildReports :: InstallPlan BuildResult -> [BuildReport]
+installPlanBuildReports :: InstallPlan BuildResult -> [(BuildReport, Repo)]
 installPlanBuildReports plan = catMaybes
                              . map (planPackageBuildReport os' arch' comp)
                              . InstallPlan.toList
@@ -295,15 +293,15 @@ installPlanBuildReports plan = catMaybes
 
 planPackageBuildReport :: OS -> Arch -> CompilerId
                        -> InstallPlan.PlanPackage BuildResult
-                       -> Maybe BuildReport
+                       -> Maybe (BuildReport, Repo)
 planPackageBuildReport os' arch' comp planPackage = case planPackage of
 
   InstallPlan.Installed pkg@(ConfiguredPackage (AvailablePackage {
                           packageSource = RepoTarballPackage repo }) _ _)
-    -> Just $ buildReport os' arch' comp (repoURI repo) pkg BR.BuildOk
+    -> Just $ (buildReport os' arch' comp pkg BR.BuildOk, repo)
 
   InstallPlan.Failed pkg@(ConfiguredPackage (AvailablePackage {
                        packageSource = RepoTarballPackage repo }) _ _) result
-    -> Just $ buildReport os' arch' comp (repoURI repo) pkg result
+    -> Just $ (buildReport os' arch' comp pkg result, repo)
 
   _ -> Nothing
