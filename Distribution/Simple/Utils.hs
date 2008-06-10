@@ -92,10 +92,15 @@ module Distribution.Simple.Utils (
 	defaultHookedPackageDesc,
 	findHookedPackageDesc,
 
+        -- * reading and writing files safely
+        withFileContents,
+        writeFileAtomic,
+
         -- * Unicode
         fromUTF8,
         toUTF8,
         readUTF8File,
+        withUTF8FileContents,
         writeUTF8File,
 
         -- * generic utils
@@ -132,8 +137,8 @@ import System.FilePath
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
 import System.IO
-    ( Handle, openBinaryFile, IOMode(ReadMode), hSetBinaryMode, hGetContents
-    , stderr, stdout, hPutStr, hFlush, hClose )
+    ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
+    , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
@@ -350,8 +355,8 @@ rawSystemStdout' verbosity path args = do
     exitcode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
     unless (exitcode == ExitSuccess) $
       debug verbosity $ path ++ " returned " ++ show exitcode
-    output <- readFile tmpName
-    length output `seq` return (output, exitcode)
+    withFileContents tmpName $ \output ->
+      length output `seq` return (output, exitcode)
 #endif
 
 -- | Like the unix xargs program. Useful for when we've got very long command
@@ -542,6 +547,16 @@ withTempDirectory verbosity tmpDir =
   Exception.bracket_
     (createDirectoryIfMissingVerbose verbosity True tmpDir)
     (removeDirectoryRecursive tmpDir)
+
+-- | Gets the contents of a file, but guarantee that it gets closed.
+--
+-- The file is read lazily but if it is not fully consumed by the action then
+-- the remaining input is truncated and the file is closed.
+--
+withFileContents :: FilePath -> (String -> IO a) -> IO a
+withFileContents name action =
+  Exception.bracket (openFile name ReadMode) hClose
+                    (\hnd -> hGetContents hnd >>= action)
 
 -- | Writes a file atomically.
 --
@@ -736,6 +751,15 @@ toUTF8 (c:cs)
 --
 readUTF8File :: FilePath -> IO String
 readUTF8File f = fmap fromUTF8 . hGetContents =<< openBinaryFile f ReadMode
+
+-- | Reads a UTF8 encoded text file as a Unicode String
+--
+-- Same behaviour as 'withFileContents'.
+--
+withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
+withUTF8FileContents name action =
+  Exception.bracket (openBinaryFile name ReadMode) hClose
+                    (\hnd -> hGetContents hnd >>= action . fromUTF8)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --
