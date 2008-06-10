@@ -62,7 +62,8 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, readUTF8File
+         ( createDirectoryIfMissingVerbose
+	 , withUTF8FileContents, writeFileAtomic
 	 , findFile, dotToSep, findFileWithExtension, smartCopySources
          , die, info, notice )
 import Language.Haskell.Extension
@@ -203,8 +204,8 @@ build pkg_descr lbi verbosity = do
 
         -- Only compile FFI stubs for a file if it contains some FFI stuff
         testFFI :: FilePath -> IO Bool
-        testFFI file = do
-            inp <- readHaskellFile file
+        testFFI file =
+          withHaskellFile file $ \inp ->
             return ("foreign" `elem` symbols (stripComments False inp))
 
         compileFFI :: BuildInfo -> FilePath -> FilePath -> IO ()
@@ -234,13 +235,16 @@ build pkg_descr lbi verbosity = do
 
 	-- get C file names from CFILES pragmas throughout the source file
 	getCFiles :: FilePath -> IO [String]
-	getCFiles file = do
-	    inp <- readHaskellFile file
-	    return [normalise cfile |
-		"{-#" : "CFILES" : rest <-
-			map words $ lines $ stripComments True inp,
-		last rest == "#-}",
-		cfile <- init rest]
+	getCFiles file =
+          withHaskellFile file $ \inp ->
+            let cfiles =
+                  [ normalise cfile
+                  | "{-#" : "CFILES" : rest <- map words
+                                             $ lines
+                                             $ stripComments True inp
+                  , last rest == "#-}"
+                  , cfile <- init rest]
+             in seq (length cfiles) (return cfiles)
 
 	-- List of terminal symbols in a source file.
 	symbols :: String -> [String]
@@ -248,13 +252,13 @@ build pkg_descr lbi verbosity = do
 	    (sym, cs'):_ | not (null sym) -> sym : symbols cs'
 	    _ -> []
 
-	-- Get the non-literate source of a Haskell module.
-	readHaskellFile :: FilePath -> IO String
-	readHaskellFile file = do
-	    text <- readUTF8File file
-	    if ".lhs" `isSuffixOf` file
-              then either return die (unlit file text)
-              else return text
+-- Get the non-literate source of a Haskell module.
+withHaskellFile :: FilePath -> (String -> IO a) -> IO a
+withHaskellFile file action =
+    withUTF8FileContents file $ \text ->
+        if ".lhs" `isSuffixOf` file
+          then either action die (unlit file text)
+          else action text
 
 -- ------------------------------------------------------------
 -- * options in source files
@@ -268,15 +272,14 @@ getOptionsFromSource
            [(CompilerFlavor,[String])], -- OPTIONS_FOO pragmas
            [String]                     -- INCLUDE pragmas
           )
-getOptionsFromSource file = do
-    text <- readUTF8File file
-    text' <- if ".lhs" `isSuffixOf` file
-               then either return die (unlit file text)
-               else return text
-    return $ foldr appendOptions ([],[],[]) $ map getOptions $
-	takeWhileJust $ map getPragma $
-	filter textLine $ map (dropWhile isSpace) $ lines $
-	stripComments True text'
+getOptionsFromSource file =
+    withHaskellFile file $
+        return
+      . foldr appendOptions ([],[],[]) . map getOptions
+      . takeWhileJust . map getPragma
+      . filter textLine . map (dropWhile isSpace) . lines
+      . stripComments True
+
   where textLine [] = False
 	textLine ('#':_) = False
 	textLine _ = True
@@ -383,7 +386,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
                              let args = hugsOptions ++ [targetName, "\"$@\""]
                              in unlines ["#! /bin/sh",
                                          unwords ("runhugs" : args)]
-        writeFile exeFile script
+        writeFileAtomic exeFile script
         perms <- getPermissions exeFile
         setPermissions exeFile perms { executable = True, readable = True }
 
