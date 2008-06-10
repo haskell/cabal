@@ -23,6 +23,7 @@ module Hackage.Reporting (
 
     -- * parsing and pretty printing
     parseBuildReport,
+    parseBuildReports,
     showBuildReport,
 
     -- * 'InstallPlan' variants
@@ -59,10 +60,12 @@ import Distribution.Text
 import Distribution.ParseUtils
          ( FieldDescr(..), ParseResult(..), simpleField, listField )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, pfail, munch1, char, option )
+         ( ReadP, pfail, munch1, char, option, skipSpaces )
 import Text.PrettyPrint.HughesPJ as Disp
          ( Doc, char, text, (<+>), (<>) )
 
+import Data.List
+         ( unfoldr )
 import Data.Maybe
          ( catMaybes )
 import Data.Char as Char
@@ -160,8 +163,8 @@ initialBuildReport = BuildReport {
     os              = requiredField "os",
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
-    flagAssignment  = requiredField "flags",
-    dependencies    = requiredField "dependencies",
+    flagAssignment  = [],
+    dependencies    = [],
     installOutcome  = requiredField "install-outcome",
 --    cabalVersion  = Nothing,
 --    tools         = [],
@@ -176,6 +179,17 @@ initialBuildReport = BuildReport {
 
 parseBuildReport :: String -> ParseResult BuildReport
 parseBuildReport = parseBasicStanza fieldDescrs initialBuildReport
+
+parseBuildReports :: String -> [BuildReport]
+parseBuildReports str =
+  [ report | ParseOk [] report <- map parseBuildReport (split str) ]
+
+  where
+    split :: String -> [String]
+    split = filter (not . null) . unfoldr chunk . lines
+    chunk [] = Nothing
+    chunk ls = case break null ls of
+                 (r, rs) -> Just (unlines r, dropWhile null rs)
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
@@ -233,7 +247,8 @@ instance Text InstallOutcome where
   parse = do
     name <- Parse.munch1 Char.isAlphaNum
     case name of
-      "DependencyFailed" -> do pkgid <- parse
+      "DependencyFailed" -> do Parse.skipSpaces
+                               pkgid <- parse
                                return (DependencyFailed pkgid)
       "DownloadFailed"   -> return DownloadFailed
       "UnpackFailed"     -> return UnpackFailed
