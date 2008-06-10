@@ -42,9 +42,10 @@ import Hackage.InstallPlan
          ( InstallPlan, PlanPackage )
 import Hackage.ParseUtils
          ( showFields, parseBasicStanza )
+import qualified Paths_cabal_install (version)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId) )
+         ( PackageIdentifier(PackageIdentifier), Package(packageId) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 --import Distribution.Version
@@ -84,6 +85,9 @@ data BuildReport
 
     -- | The Haskell compiler (and hopefully version) used
     compiler        :: CompilerId,
+
+    -- | The uploading client, ie cabal-install-x.y.z
+    client          :: PackageIdentifier,
 
     -- | Which configurations flags we used
     flagAssignment  :: FlagAssignment,
@@ -145,6 +149,7 @@ buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
     os                    = os',
     arch                  = arch',
     compiler              = comp,
+    client                = cabalInstallID,
     flagAssignment        = flags,
     dependencies          = deps,
     installOutcome        = case result of
@@ -158,6 +163,9 @@ buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
     docsOutcome           = NotTried,
     testsOutcome          = NotTried
   }
+  where
+    cabalInstallID =
+      PackageIdentifier "cabal-install" Paths_cabal_install.version
 
 -- ------------------------------------------------------------
 -- * External format
@@ -169,6 +177,7 @@ initialBuildReport = BuildReport {
     os              = requiredField "os",
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
+    client          = requiredField "client",
     flagAssignment  = [],
     dependencies    = [],
     installOutcome  = requiredField "install-outcome",
@@ -216,6 +225,8 @@ fieldDescrs =
                                  arch           (\v r -> r { arch = v })
  , simpleField "compiler"        disp           parse
                                  compiler       (\v r -> r { compiler = v })
+ , simpleField "client"          disp           parse
+                                 client         (\v r -> r { client = v })
  , listField   "flags"           dispFlag       parseFlag
                                  flagAssignment (\v r -> r { flagAssignment = v })
  , listField   "dependencies"    disp           parse
