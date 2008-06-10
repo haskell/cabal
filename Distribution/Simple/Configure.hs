@@ -198,8 +198,8 @@ maybeGetPersistBuildConfig distPref = do
 writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
 writePersistBuildConfig distPref lbi = do
   createDirectoryIfMissing False distPref
-  writeFile (localBuildInfoFile distPref)
-            (showHeader pkgid ++ '\n' : show lbi)
+  writeFileAtomic (localBuildInfoFile distPref)
+                  (showHeader pkgid ++ '\n' : show lbi)
   where
     pkgid   = packageId (localPkgDescr lbi)
 
