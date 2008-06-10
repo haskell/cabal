@@ -757,7 +757,7 @@ ppCustomField :: (String,String) -> Doc
 ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath pbi = writeFile fpath (showHookedBuildInfo pbi)
+writeHookedBuildInfo fpath = writeFileAtomic fpath . showHookedBuildInfo
 
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
