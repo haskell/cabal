@@ -14,6 +14,8 @@
 module Main where
 
 import Hackage.Setup
+import Hackage.Types
+         ( UnresolvedDependency(UnresolvedDependency) )
 import Distribution.Simple.Setup (Flag(..), fromFlag, fromFlagOrDefault,
                                   flagToMaybe,SDistFlags,sdistCommand)
 import qualified Distribution.Simple.Setup as Cabal
@@ -159,7 +161,9 @@ installAction (cflags,iflags) extraArgs = do
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
           (configPackageDB cflags') (configRepos config)
-          comp conf cflags' iflags pkgs
+          comp conf cflags' iflags
+          [ UnresolvedDependency pkg (Cabal.configConfigurationsFlags cflags')
+          | pkg <- pkgs ]
 
 listAction :: ListFlags -> [String] -> IO ()
 listAction listFlags extraArgs = do
@@ -194,7 +198,9 @@ upgradeAction (cflags,iflags) extraArgs = do
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
           (configPackageDB cflags') (configRepos config)
-          comp conf cflags' iflags pkgs
+          comp conf cflags' iflags
+          [ UnresolvedDependency pkg (Cabal.configConfigurationsFlags cflags')
+          | pkg <- pkgs ]
 
 fetchAction :: Flag Verbosity -> [String] -> IO ()
 fetchAction verbosityFlag extraArgs = do
@@ -206,7 +212,9 @@ fetchAction verbosityFlag extraArgs = do
   (comp, conf) <- configCompilerAux flags
   fetch verbosity
         (configPackageDB flags) (configRepos config)
-        comp conf pkgs
+        comp conf
+        [ UnresolvedDependency pkg [] --TODO: flags?
+        | pkg <- pkgs ]
 
 uploadAction :: UploadFlags -> [String] -> IO ()
 uploadAction flags extraArgs = do

@@ -45,6 +45,8 @@ import Distribution.Simple.Setup
          ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
 import Distribution.Version
          ( Version(Version) )
+import Distribution.Package
+         ( Dependency )
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.ReadE
@@ -52,7 +54,7 @@ import Distribution.ReadE
 import Distribution.Verbosity (Verbosity, normal)
 
 import Hackage.Types
-         ( UnresolvedDependency(..), Username(..), Password(..) )
+         ( Username(..), Password(..) )
 import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
 import Data.Monoid (Monoid(..))
@@ -357,15 +359,12 @@ usagePackages name pname =
   ++ "   or: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n\n"
   ++ "Flags for " ++ name ++ ":"
 
-parsePackageArgs :: [String] -> Either String [UnresolvedDependency]
+--TODO: do we want to allow per-package flags?
+parsePackageArgs :: [String] -> Either String [Dependency]
 parsePackageArgs = parsePkgArgs []
   where
     parsePkgArgs ds [] = Right (reverse ds)
     parsePkgArgs ds (arg:args) =
       case readPToMaybe parseDependencyOrPackageId arg of
-        Just dep -> let d = UnresolvedDependency {
-                              dependency = dep,
-                              depFlags   = []
-                            }
-                     in parsePkgArgs (d:ds) args
+        Just dep -> parsePkgArgs (dep:ds) args
         Nothing  -> Left ("Failed to parse package dependency: " ++ show arg)
