@@ -23,7 +23,9 @@ Build-Type: Custom
 -- that we build Setup.lhs using our own local Cabal source code.
 
 Extra-Source-Files:
-        mkGHCMakefile.sh Distribution/Simple/GHC/Makefile.in
+        README changelog
+        Distribution/Simple/GHC/mkGHCMakefile.sh
+        Distribution/Simple/GHC/Makefile.in
 
 Flag small_base
   Description: Choose the new smaller, split-up base package.
