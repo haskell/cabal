@@ -1,87 +1,89 @@
-Cabal home page:
-http://www.haskell.org/cabal
-
-WARNING If you already have Cabal installed, and are using GHC 6.4.1
-or earlier, read "Working with older versions of Cabal" for
-information first!  If you do this out of order, stuff might get
-screwy.  If stuff gets screwy, post to libraries@haskell.org for help.
-
--= Installing as root / Administrator (GHC's global package file) =-
-
-This is the recommended method of installing Cabal.
-
-run "make install" as root
-
-The Makefile wraps the standard Cabal setup script; the
-Makefile is a convinience for bootstrapping the system. "sudo
-make install" should generate the setup script, configure, build,
-install, and register it in a standard location.
-
-Cabal should build just like any other Cabal-ized packagem, so if you
-you can't or don't want to use the Makefile, you can run:
-ghc -i. --make Setup.hs -o setup
-./setup configure
-./setup build
-sudo ./setup install
-
--= Installing as a user (no root or administer access) =-
-
-ghc -i. --make Setup.lhs -o setup
-./setup configure --prefix=$HOME --user
-./setup build
-./setup install
+[Cabal home page](http://www.haskell.org/cabal/)
 
 
-Additional notes for GHC-6.4.1 and older:
+Installing as a user (no root or administer access)
+===================================================
 
-If:
+    ghc --make Setup
+    ./Setup configure --user
+    ./Setup build
+    ./Setup install
 
-1) Cabal is installed in the global package file (use ghc-pkg list to see)
+This will install into `$HOME/.cabal/` or the equivalent on Windows.
+If you want to install elsewhere use the `--prefix=` flag at the
+configure step.
 
-2) You don't have root access
 
-3) You need to install a newer version of Cabal in your user directory, 
+Installing as root / Administrator
+==================================
 
-then this formula may help to hide the global version:
+    ghc --make Setup
+    ./Setup configure
+    ./Setup build
+    sudo ./Setup install
 
-  $ ghc-pkg describe Cabal-1.0 | ghc-pkg --user register -
-  $ ghc-pkg --user hide Cabal-1.0
+This will install into `/usr/local` on unix and on Windows it will
+install into `$ProgramFiles/Haskell`. If you want to install
+elsewhere use the `--prefix=` flag at the configure step.
 
--= Working with older versions of GHC and Cabal =-
 
-If you have GHC 6.4.2 or later then it's recommended just to leave the
-old version of Cabal installed (unless you are really sure that no
-existing packages still needs it).
+Working with older versions of GHC and Cabal
+============================================
+
+It is recommended just to leave any pre-existing version of Cabal
+installed. In particular it is *essential* to keep the version that
+came with GHC itself since other installed packages need it (eg the
+"ghc" api package).
 
 Prior to GHC 6.4.2 however, GHC didn't deal particularly well with
-having multiple versions of packages installed at once. So if you are
-using GHC 6.4.1 or older and you have an older version of Cabal
+having multiple versions of packages installed at once. So if you
+are using GHC 6.4.1 or older and you have an older version of Cabal
 installed, you probably just want to remove it:
 
-  $ ghc-pkg unregister Cabal
+    ghc-pkg unregister Cabal
 
 or if you had Cabal installed just for your user account then:
 
-  $ ghc-pkg unregister Cabal --user
+    ghc-pkg unregister Cabal --user
 
--= Your Help =-
 
-Portability is one of the most important things about this project.
-We don't expect the early releases to work on every system, but it
-should work on YOUR system!  If it doesn't please help us figure out
-why, and write a patch and test case to fix the problem, if you can!
-The codebase is a very manageable size.
+Your Help
+=========
 
--= Code =-
+To help us in the next round of development work it would be
+enormously helpful to know from our users what their most pressing
+problems are with Cabal and Hackage. You probably have a favourite
+Cabal bug or limitation. Take a look at our [bug tracker]. Make sure
+the problem is reported there and properly described. Comment on the
+ticket to tell us how much of a problem the bug is for you. Add
+yourself to the ticket's cc list so we can discuss requirements and
+keep you informed on progress. For feature requests it is very
+helpful if there is a description of how you would expect to
+interact with the new feature.
+
+[bug tracker]: http://hackage.haskell.org/trac/hackage/
+
+
+Code
+=======
 
 You can get the code from the web page; the version control system we
 use is very open and welcoming to new developers.
 
-darcs get --partial http://darcs.haskell.org/packages/Cabal
+You can get the main development branch:
 
--= Credits (in alphabetical order) =-
+> darcs get --partial http://darcs.haskell.org/cabal
 
-Cabal Coders:
+and you can get the stable 1.4 branch:
+
+> darcs get --partial http://darcs.haskell.org/cabal-branches/cabal-1.4
+
+
+Credits
+=======
+
+Cabal Coders (in alphabetical order):
+
 - Krasimir Angelov
 - Bjorn Bringert
 - Duncan Coutts
@@ -91,11 +93,11 @@ Cabal Coders:
 - Ross Patterson
 - Thomas Schilling
 - Martin Sjögren
-- Malcolm Wallace (via hmake)
-
+- Malcolm Wallace
 - and nearly 30 other people have contributed occasional patches
 
 Cabal spec:
+
 - Isaac Jones
 - Simon Marlow
 - Ross Patterson
