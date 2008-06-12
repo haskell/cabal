@@ -1,6 +1,8 @@
 -*-change-log-*-
 
-1.3.x (current development version)
+1.5.x (current development version)
+
+1.4.0.0 Duncan Coutts <duncan@haskell.org> June 2008
 	* Rewritten command line handling support
 	* Command line completion with bash
 	* Better support for Haddock 2
@@ -25,6 +27,7 @@
 	* Added warning about using inconsistent versions of dependencies
 	* Strip binary executable files by default with an option to disable
 	* New options to add site-specific include and library search paths
+	* Lift the restriction that libraries must have exposed-modules
 	* Many bugs fixed.
 	* Many internal structural improvements and code cleanups
 
