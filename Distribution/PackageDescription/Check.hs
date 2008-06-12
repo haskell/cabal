@@ -189,11 +189,7 @@ checkLibrary :: Library -> [PackageCheck]
 checkLibrary lib =
   catMaybes [
 
-    check (buildable (libBuildInfo lib) && null (exposedModules lib)) $
-       PackageBuildImpossible
-         "A library was specified, but no 'exposed-modules' list has been given."
-
-  , check (not (null moduleDuplicates)) $
+    check (not (null moduleDuplicates)) $
        PackageBuildWarning $
          "Duplicate modules in library: " ++ commaSep moduleDuplicates
   ]
