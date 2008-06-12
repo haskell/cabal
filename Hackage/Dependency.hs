@@ -19,7 +19,7 @@ module Hackage.Dependency (
     upgradableDependencies,
   ) where
 
-import Hackage.Dependency.Naive (naiveResolver)
+--import Hackage.Dependency.Naive (naiveResolver)
 import Hackage.Dependency.Bogus (bogusResolver)
 import Hackage.Dependency.TopDown (topDownResolver)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
