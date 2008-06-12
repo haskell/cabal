@@ -1,9 +1,11 @@
 Name: Cabal
 Version: 1.5.2
 Copyright: 2003-2006, Isaac Jones
+           2005-2008, Duncan Coutts
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
+        Duncan Coutts <duncan@haskell.org>
 Maintainer: cabal-devel@haskell.org
 Homepage: http://www.haskell.org/cabal/
 Synopsis: A framework for packaging Haskell software
