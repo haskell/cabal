@@ -55,8 +55,10 @@ sdist flags = do
     setupMessage verbosity "Building source dist for" (packageId pkg)
     if snapshot
       then getClockTime >>= toCalendarTime
-       >>= prepareSnapshotTree verbosity pkg mb_lbi tmpDir knownSuffixHandlers
-      else prepareTree         verbosity pkg mb_lbi tmpDir knownSuffixHandlers
+       >>= prepareSnapshotTree verbosity pkg mb_lbi
+                               distPref tmpDir knownSuffixHandlers
+      else prepareTree         verbosity pkg mb_lbi
+                               distPref tmpDir knownSuffixHandlers
     targzFile <- createArchive verbosity pkg tmpDir distPref
     notice verbosity $ "Source tarball created: " ++ targzFile
 
