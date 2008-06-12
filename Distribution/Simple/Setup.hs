@@ -750,7 +750,7 @@ defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags = RegisterFlags {
     regPackageDB   = NoFlag,
     regGenScript   = Flag False,
-    regGenPkgConf  = Flag Nothing,
+    regGenPkgConf  = NoFlag,
     regInPlace     = Flag False,
     regDistPref    = Flag defaultDistPref,
     regVerbosity   = Flag normal
