@@ -59,7 +59,7 @@ import Distribution.Simple.LocalBuildInfo
 				( LocalBuildInfo(..),
                                   InstallDirs(..), absoluteInstallDirs,
                                   prefixRelativeInstallDirs )
-import Distribution.Simple.BuildPaths ( autogenModuleName )
+import Distribution.Simple.BuildPaths ( autogenModuleName, autogenModulesDir )
 import Distribution.Simple.Configure
 				( localBuildInfoFile )
 import Distribution.Simple.Utils
@@ -145,10 +145,6 @@ initialBuildSteps distPref pkg_descr lbi verbosity suffixes = do
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs
 -- ------------------------------------------------------------
-
--- The directory in which we put auto-generated modules
-autogenModulesDir :: LocalBuildInfo -> String
-autogenModulesDir lbi = buildDir lbi </> "autogen"
 
 buildPathsModule :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildPathsModule distPref pkg_descr lbi =
