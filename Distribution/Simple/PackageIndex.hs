@@ -209,10 +209,8 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
 insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
 insert pkg (PackageIndex index) = mkPackageIndex $
   let key = (lowercase . packageName) pkg
-   in Map.alter insertBucket key index
+   in Map.insertWith (\_ -> insertNoDup) key [pkg] index
   where
-    insertBucket Nothing     = Just [pkg]
-    insertBucket (Just pkgs) = Just (insertNoDup pkgs)
     pkgid = packageId pkg
     insertNoDup []                = [pkg]
     insertNoDup pkgs@(pkg':pkgs') = case compare pkgid (packageId pkg') of
