@@ -30,11 +30,16 @@ Flag small_base
 
 Library
   if flag(small_base)
-    Build-Depends: base >= 3, directory, process, old-time,
-                              containers, array, pretty
+    Build-Depends: base       >= 3   && < 4,
+                   directory  >= 1   && < 1.1,
+                   process    >= 1   && < 1.1,
+                   old-time   >= 1   && < 1.1,
+                   containers >= 0.1 && < 0.2,
+                   array      >= 0.1 && < 0.2,
+                   pretty     >= 1   && < 1.1
   else
     Build-Depends: base < 3
-  Build-Depends: filepath
+  Build-Depends: filepath >= 1 && < 1.2
 
   GHC-Options: -Wall
   CPP-Options: "-DCABAL_VERSION=1,5,2"
