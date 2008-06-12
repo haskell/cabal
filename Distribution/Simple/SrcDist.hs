@@ -75,6 +75,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
 import Distribution.Text
@@ -118,8 +119,8 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
     setupMessage verbosity "Building source dist for" (packageId pkg)
     if snapshot
       then getClockTime >>= toCalendarTime
-       >>= prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps
-      else prepareTree         verbosity pkg mb_lbi tmpDir pps
+       >>= prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps
+      else prepareTree         verbosity pkg mb_lbi distPref tmpDir pps
     targzFile <- createArchive verbosity pkg mb_lbi tmpDir targetPref
     notice verbosity $ "Source tarball created: " ++ targzFile
 
@@ -131,19 +132,20 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
 prepareTree :: Verbosity          -- ^verbosity
             -> PackageDescription -- ^info from the cabal file
             -> Maybe LocalBuildInfo
+            -> FilePath           -- ^dist dir
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> IO FilePath        -- ^the name of the dir created and populated
 
-prepareTree verbosity pkg_descr mb_lbi tmpDir pps = do
+prepareTree verbosity pkg_descr mb_lbi distPref tmpDir pps = do
   let targetDir = tmpDir </> tarBallName pkg_descr
   createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
-  withLib $ \ l ->
-    prepareDir verbosity targetDir pps (exposedModules l) (libBuildInfo l)
+  withLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
+    prepareDir verbosity pkg_descr distPref targetDir pps modules libBi
   -- move the executables into place
   withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
-    prepareDir verbosity targetDir pps [] exeBi
+    prepareDir verbosity pkg_descr distPref targetDir pps [] exeBi
     srcMainFile <- do
       ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)
       case ppFile of
@@ -208,15 +210,16 @@ prepareTree verbosity pkg_descr mb_lbi tmpDir pps = do
 prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> PackageDescription -- ^info from the cabal file
                     -> Maybe LocalBuildInfo
+                    -> FilePath           -- ^dist dir
                     -> FilePath           -- ^source tree to populate
                     -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
                     -> CalendarTime       -- ^snapshot date
                     -> IO FilePath        -- ^the resulting temp dir
-prepareSnapshotTree verbosity pkg mb_lbi tmpDir pps date = do
+prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps date = do
   let pkgid   = packageId pkg
       pkgver' = snapshotVersion date (pkgVersion pkgid)
       pkg'    = pkg { package = pkgid { pkgVersion = pkgver' } }
-  targetDir <- prepareTree verbosity pkg' mb_lbi tmpDir pps
+  targetDir <- prepareTree verbosity pkg' mb_lbi distPref tmpDir pps
   overwriteSnapshotPackageDesc pkgver' targetDir
   return targetDir
   
@@ -279,15 +282,23 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
 
 -- |Move the sources into place based on buildInfo
 prepareDir :: Verbosity -- ^verbosity
+           -> PackageDescription -- ^info from the cabal file
+           -> FilePath           -- ^dist dir
            -> FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
            -> [String]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbosity inPref pps modules bi
-    = do sources <- sequence
+prepareDir verbosity pkg distPref inPref pps modules bi
+    = do let searchDirs = hsSourceDirs bi ++ [autogenModulesDir]
+             autogenModulesDir = distPref </> "build" </> "autogen"
+             autogenFile = autogenModulesDir </> autogenModuleName pkg <.> "hs"
+         -- the Paths_$pkgname module might be in the modules list. If it
+         -- turns out that resolves to the actual autogen file then we filter
+         -- it out because we do not want to put it into the tarball.
+         sources <- filter (/=autogenFile) `fmap` sequence
            [ let file = dotToSep module_
-              in findFileWithExtension suffixes (hsSourceDirs bi) file
+              in findFileWithExtension suffixes searchDirs file
              >>= maybe (notFound module_) return
            | module_ <- modules ++ otherModules bi ]
          bootFiles <- sequence
