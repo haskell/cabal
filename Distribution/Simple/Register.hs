@@ -58,8 +58,9 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
-import Distribution.Simple.Setup (RegisterFlags(..), CopyDest(..),
-                                  fromFlag, fromFlagOrDefault)
+import Distribution.Simple.Setup
+         ( RegisterFlags(..), CopyDest(..)
+         , fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.PackageDescription (PackageDescription(..),
                                               BuildInfo(..), Library(..))
 import Distribution.Package
@@ -111,7 +112,7 @@ register pkg_descr lbi regFlags
     let distPref = fromFlag $ regDistPref regFlags
         isWindows = case buildOS of Windows -> True; _ -> False
         genScript = fromFlag (regGenScript regFlags)
-        genPkgConf = isJust (fromFlag (regGenPkgConf regFlags))
+        genPkgConf = isJust (flagToMaybe (regGenPkgConf regFlags))
         genPkgConfigDefault = display (packageId pkg_descr) <.> "conf"
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (fromFlag (regGenPkgConf regFlags))
