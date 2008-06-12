@@ -11,7 +11,7 @@ DOWNLOAD:
 
 The Haskell Cabal has reached development version 1.5.2
 
-Download the Cabal here (source and debian versions available):
+Download the Cabal library here (source tarballs available):
 http://www.haskell.org/cabal/download.html
 
 BUGS:
@@ -39,19 +39,10 @@ decide where in the module name space their library should live; how
 users can find a package they want; how orphan packages find new
 owners; and so on.
 
-NOTES:
-
-This release is meant to provide the community with concrete
-information about how the interfaces are shaping up.  This release
-does NOT fix the interfaces, we can't promise not to break anything
-that relies on these interfaces.  We hope that Haskell authors will
-try to package their software using these tools, and let us know where
-they fall short.
-
 MORE INFORMATION:
 
-Please see the web site for the source code, interfaces, and
-especially the proposal, which will serve as documentation for this
-release:
-
+Please see the web site for the source code, interfaces, and user guide:
 http://www.haskell.org/cabal/
+
+There is some more information available on the development wiki:
+http://hackage.haskell.org/trac/hackage/wiki
