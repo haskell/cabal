@@ -181,7 +181,9 @@ listAction listFlags extraArgs = do
        extraArgs
 
 updateAction :: Flag Verbosity -> [String] -> IO ()
-updateAction verbosityFlag _extraArgs = do
+updateAction verbosityFlag extraArgs = do
+  unless (null extraArgs) $ do
+    die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   configFile <- defaultConfigFile --FIXME
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity configFile
