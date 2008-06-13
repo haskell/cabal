@@ -140,8 +140,9 @@ haddock pkg_descr lbi suffixes flags = do
     let have_src_hyperlink_flags = version >= Version [0,8] []
         isVersion2               = version >= Version [2,0] []
 
-    when (hoogle && isVersion2) $
-      die $ "haddock 2.x does not support the --hoogle flag."
+    when (hoogle && version > Version [2] []
+                 && version < Version [2,2] []) $
+      die $ "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
     let mockFlags
           | isVersion2 = []
