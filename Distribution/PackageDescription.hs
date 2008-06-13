@@ -356,7 +356,7 @@ nullBuildInfo = BuildInfo {
                      }
 
 emptyBuildInfo :: BuildInfo
-emptyBuildInfo = nullBuildInfo { hsSourceDirs = [currentDir] }
+emptyBuildInfo = nullBuildInfo
 
 -- | The 'BuildInfo' for the library (if there is one and it's buildable) and
 -- all the buildable executables. Useful for gathering dependencies.
