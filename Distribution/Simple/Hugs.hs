@@ -206,7 +206,7 @@ build pkg_descr lbi verbosity = do
         testFFI :: FilePath -> IO Bool
         testFFI file =
           withHaskellFile file $ \inp ->
-            return ("foreign" `elem` symbols (stripComments False inp))
+            return $! "foreign" `elem` symbols (stripComments False inp)
 
         compileFFI :: BuildInfo -> FilePath -> FilePath -> IO ()
         compileFFI bi modDir file = do
@@ -274,7 +274,7 @@ getOptionsFromSource
           )
 getOptionsFromSource file =
     withHaskellFile file $
-        return
+        (return $!)
       . foldr appendOptions ([],[],[]) . map getOptions
       . takeWhileJust . map getPragma
       . filter textLine . map (dropWhile isSpace) . lines
