@@ -76,6 +76,7 @@ Library
         Distribution.Simple.LocalBuildInfo,
         Distribution.Simple.NHC,
         Distribution.Simple.PackageIndex,
+        Distribution.Simple.PackageSet,
         Distribution.Simple.PreProcess,
         Distribution.Simple.PreProcess.Unlit,
         Distribution.Simple.Program,
