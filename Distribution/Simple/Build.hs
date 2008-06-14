@@ -247,7 +247,7 @@ buildPathsModule distPref pkg_descr lbi =
 
         mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
-          where var' = packageName pkg_descr ++ "_" ++ var
+          where var' = display (packageName pkg_descr) ++ "_" ++ var
 
         -- In several cases we cannot make relocatable installations
         absolute =

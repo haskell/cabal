@@ -72,8 +72,8 @@ import Distribution.Compat.ReadP hiding (get)
 import Distribution.ParseUtils
 import Distribution.PackageDescription
 import Distribution.Package
-         ( PackageIdentifier(..), packageName, packageVersion, parsePackageName
-         , Dependency(..) )
+         ( PackageName(..), PackageIdentifier(..), Dependency(..)
+         , packageName, packageVersion )
 import Distribution.Version
         ( VersionRange(AnyVersion), isAnyVersion, withinRange )
 import Distribution.Verbosity (Verbosity)
@@ -91,7 +91,7 @@ import Distribution.Simple.Utils
 pkgDescrFieldDescrs :: [FieldDescr PackageDescription]
 pkgDescrFieldDescrs =
     [ simpleField "name"
-           text                   parsePackageName
+           disp                   parse
            packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
            disp                   parse
@@ -456,7 +456,7 @@ parsePackageDescription file = do
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
     maybeWarnCabalVersion pkg =
-        when (packageName pkg /= "Cabal" -- supress warning for Cabal
+        when (packageName pkg /= PackageName "Cabal" -- supress warning for Cabal
 	   && isAnyVersion (descCabalVersion pkg)) $
           lift $ warning $
             "A package using section syntax should require\n" 

@@ -67,7 +67,7 @@ import Distribution.Simple.Utils
 import Distribution.Version
          ( Version(..), withinRange )
 import Distribution.Package
-         ( packageName, packageVersion )
+         ( PackageName(PackageName), packageName, packageVersion )
 import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
@@ -161,7 +161,7 @@ checkSanity :: PackageDescription -> [PackageCheck]
 checkSanity pkg =
   catMaybes [
 
-    check (null . packageName $ pkg) $
+    check (null . (\(PackageName n) -> n) . packageName $ pkg) $
       PackageBuildImpossible "No 'name' field."
 
   , check (null . versionBranch . packageVersion $ pkg) $

@@ -59,8 +59,8 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedExtensions, PackageDB(..) )
 import Distribution.Package
-    ( PackageIdentifier(PackageIdentifier), packageVersion, Package(..)
-    , Dependency(Dependency) )
+    ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
+    , packageVersion, Package(..), Dependency(Dependency) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -211,12 +211,12 @@ showHeader pkgid =
   where
 
 currentCabalId :: PackageIdentifier
-currentCabalId = PackageIdentifier "Cabal" currentVersion
+currentCabalId = PackageIdentifier (PackageName "Cabal") currentVersion
   where currentVersion | cabalBootstrapping = Version [0] []
                        | otherwise          = cabalVersion
 
 currentCompilerId :: PackageIdentifier
-currentCompilerId = PackageIdentifier System.Info.compilerName
+currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
 parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier) 
@@ -489,15 +489,14 @@ hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
 configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency -> IO PackageIdentifier
-configDependency verbosity index dep@(Dependency pkgname vrange) =
+configDependency verbosity index dep@(Dependency pkgname _) =
   case PackageIndex.lookupDependency index dep of
         [] -> die $ "cannot satisfy dependency "
-                      ++ pkgname ++ display vrange ++ "\n"
+                      ++ display dep ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
-                      ++ hackageUrl ++ pkgname ++ "?"
+                      ++ hackageUrl ++ display pkgname ++ "?"
         pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
-                   info verbosity $ "Dependency " ++ pkgname
-                                ++ display vrange
+                   info verbosity $ "Dependency " ++ display dep
                                 ++ ": using " ++ display pkgid
                    return pkgid
 
@@ -518,9 +517,9 @@ configureRequiredPrograms verbosity deps conf =
   foldM (configureRequiredProgram verbosity) conf deps
 
 configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency -> IO ProgramConfiguration
-configureRequiredProgram verbosity conf (Dependency progName verRange) =
+configureRequiredProgram verbosity conf (Dependency (PackageName progName) verRange) =
   case lookupKnownProgram progName conf of
-    Nothing -> die ("Unknown build tool " ++ show progName)
+    Nothing -> die ("Unknown build tool " ++ progName)
     Just prog -> snd `fmap` requireProgram verbosity prog verRange conf
 
 -- -----------------------------------------------------------------------------
@@ -545,7 +544,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
     pkgconfig = rawSystemProgramStdoutConf (lessVerbose verbosity)
                   pkgConfigProgram conf
 
-    requirePkg (Dependency pkg range) = do
+    requirePkg dep@(Dependency (PackageName pkg) range) = do
       version <- pkgconfig ["--modversion", pkg]
                  `Exception.catch` \_ -> die notFound
       case simpleParse version of
@@ -558,7 +557,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
         badVersion v = "The pkg-config package " ++ pkg ++ versionRequirement
                     ++ " is required but the version installed on the"
                     ++ " system is version " ++ display v
-        depSatisfied v = "Dependency " ++ pkg ++ display range
+        depSatisfied v = "Dependency " ++ display dep
                       ++ ": using version " ++ display v
 
         versionRequirement
@@ -576,7 +575,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
     pkgconfigBuildInfo pkgdeps = do
-      let pkgs = nub [ pkg | Dependency pkg _ <- pkgdeps ]
+      let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs"   : pkgs)
       return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))

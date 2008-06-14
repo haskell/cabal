@@ -410,7 +410,7 @@ initialPathTemplateEnv :: PackageIdentifier -> CompilerId
                        -> [(PathTemplateVariable, PathTemplate)]
 initialPathTemplateEnv pkgId compilerId =
   map (\(v,s) -> (v, PathTemplate [Ordinary s]))
-  [(PkgNameVar,  packageName pkgId)
+  [(PkgNameVar,  display (packageName pkgId))
   ,(PkgVerVar,   display (packageVersion pkgId))
   ,(PkgIdVar,    display pkgId)
   ,(CompilerVar, display compilerId)]

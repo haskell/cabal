@@ -84,7 +84,8 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Data.Char as Char (isAlphaNum)
 
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier), Dependency, Package(..) )
+         ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
+         , Dependency, Package(..) )
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
@@ -139,7 +140,9 @@ instance Package PackageDescription where
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
-    =  PackageDescription {package      = PackageIdentifier "" (Version [] []),
+    =  PackageDescription {
+                      package      = PackageIdentifier (PackageName "")
+                                                       (Version [] []),
                       license      = AllRightsReserved,
                       licenseFile  = "",
                       descCabalVersion = AnyVersion,

@@ -84,7 +84,7 @@ hscolourPref = haddockPref
 
 haddockPref :: FilePath -> PackageDescription -> FilePath
 haddockPref distPref pkg_descr
-    = distPref </> "doc" </> "html" </> packageName pkg_descr
+    = distPref </> "doc" </> "html" </> display (packageName pkg_descr)
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> String
@@ -94,12 +94,12 @@ autogenModulesDir lbi = buildDir lbi </> "autogen"
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> String
 autogenModuleName pkg_descr =
-    "Paths_" ++ map fixchar (packageName pkg_descr)
+    "Paths_" ++ map fixchar (display (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 
 haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = packageName pkg_descr <.> "haddock"
+haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
 
 -- ---------------------------------------------------------------------------
 -- Library file names

@@ -62,7 +62,8 @@ import Distribution.ParseUtils (
 	showFreeText)
 import Distribution.License 	( License(..) )
 import Distribution.Package
-         ( PackageIdentifier(..), packageName, packageVersion )
+         ( PackageName(..), PackageIdentifier(..)
+         , packageName, packageVersion )
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
 import Distribution.Version
@@ -122,7 +123,7 @@ type InstalledPackageInfo = InstalledPackageInfo_ String
 emptyInstalledPackageInfo :: InstalledPackageInfo_ m
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        package           = PackageIdentifier "" noVersion,
+        package           = PackageIdentifier (PackageName "") noVersion,
         license           = AllRightsReserved,
         copyright         = "",
         maintainer        = "",
@@ -199,7 +200,7 @@ all_fields = basicFieldDescrs ++ installedFieldDescrs
 basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
-                           text                   parsePackageNameQ
+                           disp                   parsePackageNameQ
                            packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
  , simpleField "version"
                            disp                   parseOptVersion

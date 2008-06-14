@@ -156,5 +156,6 @@ configCabalFlag verbosity range comp conf = do
   packageIndex <- fromMaybe mempty
            `fmap` getInstalledPackages verbosity comp UserPackageDB conf
 	-- user packages are *allowed* here, no portability problem
-  cabal_pkgid <- configDependency verbosity packageIndex (Dependency "Cabal" range)
+  cabal_pkgid <- configDependency verbosity packageIndex
+                   (Dependency (PackageName "Cabal") range)
   return ["-package", display cabal_pkgid]
