@@ -91,7 +91,6 @@ import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
          ( Text(..) )
-import Distribution.Simple.Utils  (currentDir)
 import Language.Haskell.Extension (Extension)
 
 -- -----------------------------------------------------------------------------
@@ -206,14 +205,11 @@ data Library = Library {
     deriving (Show, Eq, Read)
 
 instance Monoid Library where
-    mempty = nullLibrary
+    mempty = emptyLibrary
     mappend = unionLibrary
 
 emptyLibrary :: Library
 emptyLibrary = Library [] emptyBuildInfo
-
-nullLibrary :: Library
-nullLibrary = Library [] nullBuildInfo
 
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
@@ -256,7 +252,7 @@ data Executable = Executable {
     deriving (Show, Read, Eq)
 
 instance Monoid Executable where
-    mempty = nullExecutable
+    mempty = emptyExecutable
     mappend = unionExecutable
 
 emptyExecutable :: Executable
@@ -265,9 +261,6 @@ emptyExecutable = Executable {
                       modulePath = "",
                       buildInfo = emptyBuildInfo
                      }
-
-nullExecutable :: Executable
-nullExecutable = emptyExecutable { buildInfo = nullBuildInfo }
 
 -- |does this package have any executables?
 hasExes :: PackageDescription -> Bool
@@ -328,11 +321,11 @@ data BuildInfo = BuildInfo {
     deriving (Show,Read,Eq)
 
 instance Monoid BuildInfo where
-    mempty = nullBuildInfo
+    mempty = emptyBuildInfo
     mappend = unionBuildInfo
 
-nullBuildInfo :: BuildInfo
-nullBuildInfo = BuildInfo {
+emptyBuildInfo :: BuildInfo
+emptyBuildInfo = BuildInfo {
                       buildable         = True,
                       buildTools        = [],
                       cppOptions        = [],
@@ -354,9 +347,6 @@ nullBuildInfo = BuildInfo {
                       ghcSharedOptions  = [],
                       customFieldsBI    = []
                      }
-
-emptyBuildInfo :: BuildInfo
-emptyBuildInfo = nullBuildInfo
 
 -- | The 'BuildInfo' for the library (if there is one and it's buildable) and
 -- all the buildable executables. Useful for gathering dependencies.
