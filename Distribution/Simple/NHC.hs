@@ -70,6 +70,9 @@ import Distribution.Simple.Utils
 import Distribution.Version
         ( Version(..), VersionRange(..), orLaterVersion )
 import Distribution.Verbosity
+import Distribution.Text
+        ( display )
+
 import System.FilePath
         ( (</>), (<.>), normalise, takeDirectory, dropExtension )
 import System.Directory
@@ -147,7 +150,8 @@ build pkg_descr lbi verbosity = do
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
-      ++ concat [ ["-package", packageName pkg] | pkg <- packageDeps lbi ]
+      ++ concat [ ["-package", display (packageName pkg) ]
+                | pkg <- packageDeps lbi ]
       ++ inFiles
 {-
     -- build any C sources
@@ -205,7 +209,8 @@ build pkg_descr lbi verbosity = do
       ++ extensionFlags
       ++ maybe [] (hcOptions NHC . libBuildInfo)
                              (library pkg_descr)
-      ++ concat [ ["-package", packageName pkg] | pkg <- packageDeps lbi ]
+      ++ concat [ ["-package", display (packageName pkg) ]
+                | pkg <- packageDeps lbi ]
       ++ inFiles
       ++ [exeName exe]
 

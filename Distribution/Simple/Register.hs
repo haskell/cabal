@@ -230,7 +230,7 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
                       }
 	  where inplaceDocdir  = pwd </> distPref </> "doc"
 	        inplaceHtmldir = inplaceDocdir </> "html"
-		                               </> packageName pkg_descr
+		                               </> display (packageName pkg_descr)
         (absinc,relinc) = partition isAbsolute (includeDirs bi)
         installIncludeDir | null (installIncludes bi) = []
                           | otherwise = [includedir installDirs]
