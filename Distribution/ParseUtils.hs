@@ -63,7 +63,7 @@ module Distribution.ParseUtils (
 import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
-import Distribution.Package	( parsePackageName, Dependency(..) )
+import Distribution.Package	( PackageName(..), Dependency(..) )
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
@@ -537,13 +537,13 @@ parseBuildTool = do name <- parseBuildToolNameQ
                     skipSpaces
                     return $ Dependency name ver
 
-parseBuildToolNameQ :: ReadP r String
+parseBuildToolNameQ :: ReadP r PackageName
 parseBuildToolNameQ = parseQuoted parseBuildToolName <++ parseBuildToolName
 
 -- like parsePackageName but accepts symbols in components
-parseBuildToolName :: ReadP r String
+parseBuildToolName :: ReadP r PackageName
 parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
-                        return (intercalate "-" ns)
+                        return (PackageName (intercalate "-" ns))
   where component = do
           cs <- munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
           if all isDigit cs then pfail else return cs
@@ -556,10 +556,10 @@ parsePkgconfigDependency = do name <- munch1 (\c -> isAlphaNum c || c `elem` "+-
                               skipSpaces
                               ver <- parseVersionRangeQ <++ return AnyVersion
                               skipSpaces
-                              return $ Dependency name ver
+                              return $ Dependency (PackageName name) ver
 
-parsePackageNameQ :: ReadP r String
-parsePackageNameQ = parseQuoted parsePackageName <++ parsePackageName 
+parsePackageNameQ :: ReadP r PackageName
+parsePackageNameQ = parseQuoted parse <++ parse
 
 parseVersionRangeQ :: ReadP r VersionRange
 parseVersionRangeQ = parseQuoted parse <++ parse

@@ -41,8 +41,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Package (
 	-- * Package ids
+        PackageName(..),
 	PackageIdentifier(..),
-        parsePackageName,
 
         -- * Package dependencies
         Dependency(..),
@@ -65,45 +65,51 @@ import Text.PrettyPrint ((<>), (<+>))
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
+newtype PackageName = PackageName String
+    deriving (Read, Show, Eq, Ord)
+
+instance Text PackageName where
+  disp (PackageName n) = Disp.text n
+  parse = do
+    ns <- Parse.sepBy1 component (Parse.char '-')
+    return (PackageName (concat (intersperse "-" ns)))
+    where
+      component = do
+        cs <- Parse.munch1 Char.isAlphaNum
+        if all Char.isDigit cs then Parse.pfail else return cs
+        -- each component must contain an alphabetic character, to avoid
+        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
 -- | The name and version of a package.
 data PackageIdentifier
     = PackageIdentifier {
-	pkgName    :: String, -- ^The name of this package, eg. foo
+	pkgName    :: PackageName, -- ^The name of this package, eg. foo
 	pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
      deriving (Read, Show, Eq, Ord)
 
 instance Text PackageIdentifier where
   disp (PackageIdentifier n v) = case v of
-    Version [] _ -> Disp.text n -- if no version, don't show version.
-    _            -> Disp.text n <> Disp.char '-' <> disp v
+    Version [] _ -> disp n -- if no version, don't show version.
+    _            -> disp n <> Disp.char '-' <> disp v
 
   parse = do
-    n <- parsePackageName
+    n <- parse
     v <- (Parse.char '-' >> parse) <++ return (Version [] [])
     return (PackageIdentifier n v)
-
-parsePackageName :: Parse.ReadP r String
-parsePackageName = do ns <- Parse.sepBy1 component (Parse.char '-')
-                      return (concat (intersperse "-" ns))
-  where component = do 
-	   cs <- Parse.munch1 Char.isAlphaNum
-	   if all Char.isDigit cs then Parse.pfail else return cs
-	-- each component must contain an alphabetic character, to avoid
-	-- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 -- ------------------------------------------------------------
 -- * Package dependencies
 -- ------------------------------------------------------------
 
-data Dependency = Dependency String VersionRange
+data Dependency = Dependency PackageName VersionRange
                   deriving (Read, Show, Eq)
 
 instance Text Dependency where
   disp (Dependency name ver) =
-    Disp.text name <+> disp ver
+    disp name <+> disp ver
 
-  parse = do name <- parsePackageName
+  parse = do name <- parse
              Parse.skipSpaces
              ver <- parse <++ return AnyVersion
              Parse.skipSpaces
@@ -126,7 +132,7 @@ notThisPackageVersion (PackageIdentifier n v) =
 class Package pkg where
   packageId :: pkg -> PackageIdentifier
 
-packageName    :: Package pkg => pkg -> String
+packageName    :: Package pkg => pkg -> PackageName
 packageName     = pkgName    . packageId
 
 packageVersion :: Package pkg => pkg -> Version
