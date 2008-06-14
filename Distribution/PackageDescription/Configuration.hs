@@ -54,7 +54,8 @@ module Distribution.PackageDescription.Configuration (
     freeVars,
   ) where
 
-import Distribution.Package (Package, Dependency(..))
+import Distribution.Package
+         ( PackageName, Package, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
@@ -317,7 +318,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'IntersectVersionRanges'.
-newtype DependencyMap = DependencyMap { unDependencyMap :: Map String VersionRange }
+newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName VersionRange }
 #if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
 #else
