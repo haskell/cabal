@@ -29,7 +29,8 @@ import Hackage.Types
          , AvailablePackageSource(..), Repo(..), repoURI )
 import Hackage.Dependency
          ( resolveDependencies, PackagesVersionPreference(..) )
-import qualified Hackage.IndexUtils as IndexUtils
+import Hackage.IndexUtils as IndexUtils
+         ( getAvailablePackages, disambiguateDependencies )
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.HttpUtils (getHTTP)
 
@@ -47,7 +48,6 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity (Verbosity)
 
-import Data.Monoid (Monoid(mconcat))
 import Control.Exception (bracket)
 import Control.Monad (filterM)
 import System.Directory (doesFileExist, createDirectoryIfMissing)
@@ -125,7 +125,7 @@ fetch :: Verbosity
       -> IO ()
 fetch verbosity packageDB repos comp conf deps
     = do installed <- getInstalledPackages verbosity comp packageDB conf
-         available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+         available <- getAvailablePackages verbosity repos
          deps' <- IndexUtils.disambiguateDependencies available deps
          case resolveDependencies buildOS buildArch (compilerId comp)
                 installed available PreferLatestForSelected deps' of
