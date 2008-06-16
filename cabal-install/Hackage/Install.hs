@@ -60,7 +60,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), Dependency(..) )
+         ( PackageIdentifier(..), Package(..), thisPackageVersion )
 import Distribution.PackageDescription as PackageDescription
          ( GenericPackageDescription(packageDescription)
          , readPackageDescription )
@@ -184,8 +184,7 @@ planLocalPackage verbosity comp configFlags installed available = do
         packageSource                = LocalUnpackedPackage
       }
       localPkgDep = UnresolvedDependency {
-        dependency = let PackageIdentifier n v = packageId localPkg
-                      in Dependency n (ThisVersion v),
+        dependency = thisPackageVersion (packageId localPkg),
         depFlags   = Cabal.configConfigurationsFlags configFlags
       }
 
@@ -278,8 +277,7 @@ installConfiguredPackage ::  Cabal.ConfigFlags -> ConfiguredPackage
 installConfiguredPackage configFlags (ConfiguredPackage pkg flags deps)
   installPkg = installPkg configFlags {
     Cabal.configConfigurationsFlags = flags,
-    Cabal.configConstraints = [ Dependency name (ThisVersion version)
-                              | PackageIdentifier name version  <- deps ]
+    Cabal.configConstraints = map thisPackageVersion deps
   } pkg
 
 installAvailablePackage
