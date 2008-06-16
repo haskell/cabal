@@ -47,6 +47,8 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as ConfigFlags
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Verbosity (Verbosity, normal)
+import Distribution.System
+         ( OS(Windows), buildOS )
 
 import Hackage.Types
          ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
@@ -116,6 +118,13 @@ defaultCacheDir = do dir <- defaultCabalDir
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
+defaultUserInstall :: Bool
+defaultUserInstall = case buildOS of
+  -- We do global installs by default on Windows
+  Windows -> False
+  -- and per-user installs by default everywhere else
+  _       -> True
+
 defaultUserInstallDirs :: IO (InstallDirs (Flag PathTemplate))
 defaultUserInstallDirs =
     do userPrefix <- defaultCabalDir
@@ -130,15 +139,15 @@ defaultSavedConfig :: IO SavedConfig
 defaultSavedConfig =
     do userInstallDirs <- defaultUserInstallDirs
        cacheDir        <- defaultCacheDir
-       return SavedConfig
-         { configFlags = mempty {
-                           ConfigFlags.configHcFlavor    = toFlag defaultCompiler
-                         , ConfigFlags.configVerbosity   = toFlag normal
-                         , ConfigFlags.configUserInstall = toFlag True
-                         , ConfigFlags.configInstallDirs = error
-                             "ConfigFlags.installDirs: avoid this field. Use UserInstallDirs \
-                              \ or GlobalInstallDirs instead"
-                         }
+       return SavedConfig {
+           configFlags = mempty {
+               ConfigFlags.configHcFlavor    = toFlag defaultCompiler
+             , ConfigFlags.configVerbosity   = toFlag normal
+             , ConfigFlags.configUserInstall = toFlag defaultUserInstall
+             , ConfigFlags.configInstallDirs = error
+               "ConfigFlags.installDirs: avoid this field. Use UserInstallDirs \
+              \ or GlobalInstallDirs instead"
+             }
          , configUserInstallDirs   = userInstallDirs
          , configGlobalInstallDirs = defaultGlobalInstallDirs
          , configCacheDir          = toFlag cacheDir
