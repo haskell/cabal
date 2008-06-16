@@ -66,8 +66,8 @@ import Distribution.PackageDescription (PackageDescription(..),
 import Distribution.Package
          ( Package(..), packageName )
 import Distribution.InstalledPackageInfo
-	(InstalledPackageInfo, showInstalledPackageInfo, 
-	 emptyInstalledPackageInfo)
+         ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
+         , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
@@ -244,7 +244,7 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
          | inplace   = build_dir
          | otherwise = libdir installDirs
     in
-    return emptyInstalledPackageInfo{
+    return InstalledPackageInfo {
         IPI.package           = packageId pkg_descr,
         IPI.license           = license pkg_descr,
         IPI.copyright         = copyright pkg_descr,
@@ -262,6 +262,7 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
         IPI.libraryDirs       = libraryDir : extraLibDirs bi,
         IPI.hsLibraries       = ["HS" ++ display (packageId pkg_descr)],
         IPI.extraLibraries    = extraLibs bi,
+        IPI.extraGHCiLibraries= [],
         IPI.includeDirs       = absinc ++ if inplace
                                             then map (pwd </>) relinc
                                             else installIncludeDir,
