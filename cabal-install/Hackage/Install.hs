@@ -17,7 +17,6 @@ module Hackage.Install (
 
 import Data.List
          ( unfoldr )
-import Data.Monoid (Monoid(mconcat))
 import Control.Exception as Exception
          ( handle, Exception )
 import Control.Monad
@@ -32,7 +31,8 @@ import Hackage.Dependency
 import Hackage.Dependency.Types (Progress(..), foldProgress)
 import Hackage.Fetch (fetchPackage)
 -- import qualified Hackage.Info as Info
-import qualified Hackage.IndexUtils as IndexUtils
+import Hackage.IndexUtils as IndexUtils
+         ( getAvailablePackages, disambiguateDependencies )
 import qualified Hackage.InstallPlan as InstallPlan
 import Hackage.InstallPlan (InstallPlan)
 import Hackage.Setup
@@ -125,7 +125,7 @@ installWithPlanner ::
         -> IO ()
 installWithPlanner planner verbosity packageDB repos comp conf configFlags installFlags = do
   installed <- getInstalledPackages verbosity comp packageDB conf
-  available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+  available <- getAvailablePackages verbosity repos
 
   progress <- planner installed available
 

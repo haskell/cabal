@@ -11,6 +11,7 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Hackage.IndexUtils (
+  getAvailablePackages,
   readRepoIndex,
   disambiguatePackageName,
   disambiguateDependencies
@@ -31,15 +32,24 @@ import Distribution.ParseUtils
 import Distribution.Text
          ( simpleParse )
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die, warn, intercalate, fromUTF8)
+import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
 import Prelude hiding (catch)
-import Control.Exception (catch, Exception(IOException))
+import Data.Monoid (Monoid(mconcat))
+import Control.Exception (evaluate, catch, Exception(IOException))
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO.Error (isDoesNotExistError)
+
+
+getAvailablePackages :: Verbosity -> [Repo]
+                     -> IO (PackageIndex AvailablePackage)
+getAvailablePackages verbosity repos = do
+  info verbosity "Reading available packages..."
+  pkgss <- mapM (readRepoIndex verbosity) repos
+  evaluate (mconcat pkgss)
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.

@@ -16,7 +16,6 @@ module Hackage.List (
 
 import Data.List (sortBy, groupBy, sort, nub, intersperse)
 import Data.Maybe (listToMaybe, fromJust)
-import Data.Monoid (Monoid(mconcat))
 import Control.Monad (MonadPlus(mplus))
 import Control.Exception (assert)
 
@@ -33,7 +32,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version (Version)
 import Distribution.Verbosity (Verbosity)
 
-import qualified Hackage.IndexUtils as IndexUtils (readRepoIndex)
+import Hackage.IndexUtils (getAvailablePackages)
 import Hackage.Setup (ListFlags(..))
 import Hackage.Types (AvailablePackage(..), Repo)
 import Distribution.Simple.Configure (getInstalledPackages)
@@ -55,7 +54,7 @@ list :: Verbosity
      -> IO ()
 list verbosity packageDB repos comp conf listFlags pats = do
     Just installed <- getInstalledPackages verbosity comp packageDB conf
-    available <- fmap mconcat (mapM (IndexUtils.readRepoIndex verbosity) repos)
+    available <- getAvailablePackages verbosity repos
     let pkgs | null pats = (PackageIndex.allPackages installed
                            ,PackageIndex.allPackages available)
              | otherwise =
