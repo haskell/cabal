@@ -120,7 +120,7 @@ import Distribution.ParseUtils
 import Distribution.Text
          ( Text(..), display, simpleParse )
 import Distribution.Simple.Utils
-         ( currentDir, notice, die, dieWithLocation, warn, intercalate
+         ( notice, die, dieWithLocation, warn, intercalate
          , lowercase, cabalVersion, readUTF8File, writeUTF8File )
 import Language.Haskell.Extension (Extension)
 import Distribution.Verbosity (Verbosity)
