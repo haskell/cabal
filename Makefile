@@ -63,7 +63,7 @@ $(HADDOCK_STAMP) : $(CONFIG_STAMP)
 
 XSLTPROC=xsltproc
 XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
-XSLTPROC_HTML_CSS=doc/Cabal.css
+XSLTPROC_HTML_CSS=Cabal.css
 XSLTPROC_HTML_PARAMS=\
 	--param use.id.as.filename 1 \
 	--param toc.section.depth 3 \
@@ -74,7 +74,7 @@ XSLTPROC_HTML_STYLESHEET=/usr/share/sgml/docbook/xsl-stylesheets/xhtml/chunk.xsl
 users-guide: $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/Cabal.xml
 	$(XSLTPROC) $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET) $<
-	cp $(XSLTPROC_HTML_CSS) $(XSLTPROC_HTML_OUTDIR)
+	cp doc/$(XSLTPROC_HTML_CSS) $(XSLTPROC_HTML_OUTDIR)
 
 docs: haddock users-guide
 
