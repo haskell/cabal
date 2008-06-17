@@ -2,6 +2,10 @@
 
 1.5.x (current development version)
 
+1.4.0.1 Duncan Coutts <duncan@haskell.org> June 2008
+	* Fix a bug which caused '.' to always be in the sources search path
+	* Haddock-2.2 and later do now support the --hoogle flag
+
 1.4.0.0 Duncan Coutts <duncan@haskell.org> June 2008
 	* Rewritten command line handling support
 	* Command line completion with bash
