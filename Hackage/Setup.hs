@@ -300,8 +300,7 @@ uploadCommand = CommandUI {
     commandName         = "upload",
     commandSynopsis     = "Uploads source packages to Hackage",
     commandDescription  = Just $ \_ ->
-         "You can store your Hackage login in " ++ "FIXME: configFile"
-      ++ "\nusing the format (\"username\",\"password\").\n",
+         "You can store your Hackage login in the ~/.cabal/config file\n",
     commandUsage        = \pname ->
          "Usage: " ++ pname ++ " upload [FLAGS] [TARFILES]\n\n"
       ++ "Flags for upload:",
