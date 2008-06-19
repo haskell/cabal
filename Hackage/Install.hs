@@ -46,6 +46,8 @@ import Hackage.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Hackage.Reporting
          ( writeInstallPlanBuildReports )
+import Hackage.Logging
+         ( writeInstallPlanBuildLog )
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -146,6 +148,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags'
         writeInstallPlanBuildReports installPlan'
+        writeInstallPlanBuildLog     installPlan'
         printBuildFailures installPlan'
 
   where
