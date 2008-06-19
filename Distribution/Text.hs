@@ -15,7 +15,12 @@ class Text a where
   parse :: Parse.ReadP r a
 
 display :: Text a => a -> String
-display = Disp.render . disp
+display = Disp.renderStyle style . disp
+  where style = Disp.Style {
+          Disp.mode            = Disp.PageMode,
+          Disp.lineLength      = 79,
+          Disp.ribbonsPerLine  = 1.0
+        }
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str
