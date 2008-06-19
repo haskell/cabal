@@ -16,6 +16,7 @@ module Hackage.Config
     , configRepos
     , configPackageDB
     , defaultConfigFile
+    , defaultCabalDir
     , defaultCacheDir
     , loadConfig
     , showConfig
