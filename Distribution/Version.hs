@@ -60,6 +60,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((+++))
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>))
+import qualified Data.Char as Char (isDigit)
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -127,6 +128,11 @@ instance Text VersionRange where
     | v1 == v2 = Disp.text "<=" <> disp v1
   disp (UnionVersionRanges r1 r2)
     = disp r1 <+> Disp.text "||" <+> disp r2
+  disp (IntersectVersionRanges
+          (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
+          (EarlierVersion v3))
+    | v1 == v2 && isWildcardRange (versionBranch v1) (versionBranch v3)
+    = Disp.char '~' <> disp (VersionWildcard (versionBranch v1))
   disp (IntersectVersionRanges r1 r2)
     = disp r1 <+> Disp.text "&&" <+> disp r2
 
@@ -147,11 +153,48 @@ instance Text VersionRange where
      +++
      return f1)
    where 
-        factor   = Parse.choice ((Parse.string "-any" >> return AnyVersion) :
-                                    map parseRangeOp rangeOps)
+        factor   = Parse.choice $ parseAnyVersion
+                                : parseWildcardRange
+                                : map parseRangeOp rangeOps
+        parseAnyVersion    = Parse.string "-any" >> return AnyVersion
+        parseWildcardRange = Parse.char '~' >> Parse.skipSpaces
+                                            >> fmap wildcardRange parse
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
+
+newtype VersionWildcard = VersionWildcard [Int]
+
+instance Text VersionWildcard where
+  disp (VersionWildcard branch) =
+      Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
+   <> Disp.text ".*"
+  parse = do
+      branch <- Parse.sepBy1 digits (Parse.char '.')
+      Parse.char '.'
+      Parse.char '*'
+      return (VersionWildcard branch)
+    where
+      digits = do
+        first <- Parse.satisfy Char.isDigit
+        if first == '0'
+          then return 0
+          else do rest <- Parse.munch Char.isDigit
+                  return (read (first : rest))
+
+-- | @x.y.*@  becomes  @>= x.y && < x.(y+1)@
+wildcardRange :: VersionWildcard -> VersionRange
+wildcardRange (VersionWildcard branch) = orLaterVersion lowerBound
+                `IntersectVersionRanges` EarlierVersion upperBound
+  where
+    lowerBound = Version branch []
+    upperBound = Version (init branch ++ [last branch + 1]) []
+
+-- | isWildcardRange [x,y] [x,y+1] = True
+isWildcardRange :: [Int] -> [Int] -> Bool
+isWildcardRange (n:[]) (m:[]) | n+1 == m = True
+isWildcardRange (n:ns) (m:ms) | n   == m = isWildcardRange ns ms
+isWildcardRange _      _                 = False
