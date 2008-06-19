@@ -877,7 +877,7 @@ hscolourCommand = makeCommand name shortDesc longDesc defaultHscolourFlags optio
   where
     name       = "hscolour"
     shortDesc  = "Generate HsColour colourised code, in HTML format."
-    longDesc   = Just (\_ -> "Requires hscolour.")
+    longDesc   = Just (\_ -> "Requires hscolour.\n")
     options _  =
       [optionVerbosity hscolourVerbosity (\v flags -> flags { hscolourVerbosity = v })
       ,optionDistPref hscolourDistPref (\d flags -> flags { hscolourDistPref = d })
