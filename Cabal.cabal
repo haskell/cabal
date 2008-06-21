@@ -97,5 +97,7 @@ Library
         Distribution.GetOpt,
         Distribution.Compat.TempFile
         Distribution.Simple.GHC.Makefile
+        Distribution.Simple.GHC.IPI641
+        Distribution.Simple.GHC.IPI642
 
   Extensions: CPP
