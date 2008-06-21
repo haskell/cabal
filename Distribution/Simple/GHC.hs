@@ -49,6 +49,8 @@ module Distribution.Simple.GHC (
  ) where
 
 import Distribution.Simple.GHC.Makefile
+import qualified Distribution.Simple.GHC.IPI641 as IPI641
+import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.Simple.Setup ( MakefileFlags(..),
                                    fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription
@@ -324,11 +326,26 @@ getInstalledPackages' verbosity packagedbs conf = do
           (SpecificPackageDB specific, _)  -> return $ Just specific
           _ -> die "cannot read ghc-pkg package listing"
     pkgFiles' <- mapM dbFile packagedbs
-    sequence [ withFileContents file $ \content ->
-                  case reads content of
-                    [(pkgs, _)] -> return (db, pkgs)
-                    _ -> die $ "cannot read ghc package database " ++ file
+    sequence [ withFileContents file $ \content -> do
+                  pkgs <- readPackages file content
+                  return (db, pkgs)
              | (db , Just file) <- zip packagedbs pkgFiles' ]
+  where
+    -- Depending on the version of ghc we use a different type's Read
+    -- instance to parse the package file and then convert.
+    -- It's a bit yuck. But that's what we get for using Read/Show.
+    readPackages
+      | ghcVersion >= Version [6,4,2] []
+      = \file content -> case reads content of
+          [(pkgs, _)] -> return (map IPI642.toCurrent pkgs)
+          _           -> failToRead file
+      | otherwise
+      = \file content -> case reads content of
+          [(pkgs, _)] -> return (map IPI641.toCurrent pkgs)
+          _           -> failToRead file
+    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcVersion = programVersion ghcProg
+    failToRead file = die $ "cannot read ghc package database " ++ file
 
 -- -----------------------------------------------------------------------------
 -- Building
