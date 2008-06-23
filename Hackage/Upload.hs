@@ -9,9 +9,10 @@ import Hackage.HttpUtils (proxy)
 import Distribution.Simple.Utils (debug, notice, warn)
 import Distribution.Verbosity (Verbosity)
 
-import Network.Browser (BrowserAction, browse, request, 
-                        Authority(..), addAuthority,
-                        setOutHandler, setErrHandler, setProxy)
+import Network.Browser
+         ( BrowserAction, browse, request
+         , Authority(..), addAuthority, setAuthorityGen
+         , setOutHandler, setErrHandler, setProxy )
 import Network.HTTP (Header(..), HeaderName(..), Request(..),
                      RequestMethod(..), Response(..))
 import Network.URI (URI, parseURI)
@@ -82,6 +83,7 @@ handlePackage verbosity uri auth path =
                    setErrHandler (warn verbosity . ("http error: "++))
                    setOutHandler (debug verbosity)
                    auth
+                   setAuthorityGen (\_ _ -> return Nothing)
                    request req
      debug verbosity $ show resp
      case rspCode resp of
