@@ -65,13 +65,15 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check
 import Distribution.Package
          ( PackageIdentifier(pkgVersion), Package(..) )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
          ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , copyFiles, copyFileVerbose
          , findFile, findFileWithExtension, matchFileGlob
-         , withTempDirectory, dotToSep, defaultPackageDesc
+         , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
@@ -289,23 +291,24 @@ prepareDir :: Verbosity -- ^verbosity
            -> FilePath           -- ^dist dir
            -> FilePath  -- ^TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
-           -> [String]  -- ^Exposed modules
+           -> [ModuleName]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
 prepareDir verbosity pkg distPref inPref pps modules bi
     = do let searchDirs = hsSourceDirs bi ++ [autogenModulesDir]
              autogenModulesDir = distPref </> "build" </> "autogen"
-             autogenFile = autogenModulesDir </> autogenModuleName pkg <.> "hs"
+             autogenFile = autogenModulesDir
+                       </> ModuleName.toFilePath (autogenModuleName pkg) <.> "hs"
          -- the Paths_$pkgname module might be in the modules list. If it
          -- turns out that resolves to the actual autogen file then we filter
          -- it out because we do not want to put it into the tarball.
          sources <- filter (/=autogenFile) `fmap` sequence
-           [ let file = dotToSep module_
+           [ let file = ModuleName.toFilePath module_
               in findFileWithExtension suffixes searchDirs file
              >>= maybe (notFound module_) return
            | module_ <- modules ++ otherModules bi ]
          bootFiles <- sequence
-           [ let file = dotToSep module_
+           [ let file = ModuleName.toFilePath module_
               in findFileWithExtension ["hs-boot"] (hsSourceDirs bi) file
            | module_ <- modules ++ otherModules bi ]
 
@@ -313,7 +316,7 @@ prepareDir verbosity pkg distPref inPref pps modules bi
          copyFiles verbosity inPref (zip (repeat []) allSources)
 
     where suffixes = ppSuffixes pps ++ ["hs", "lhs"]
-          notFound m = die $ "Error: Could not find module: " ++ m
+          notFound m = die $ "Error: Could not find module: " ++ display m
                           ++ " with any suffix: " ++ show suffixes
 
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()

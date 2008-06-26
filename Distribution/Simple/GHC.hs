@@ -70,6 +70,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
          ( PackageIdentifier, Package(..) )
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , rawSystemProgram, rawSystemProgramConf
@@ -375,7 +376,7 @@ build pkg_descr lbi verbosity = do
       let ghcArgs =
                  ["-package-name", display pkgid ]
               ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
-              ++ (libModules pkg_descr)
+              ++ map display (libModules pkg_descr)
           ghcArgsProf = ghcArgs
               ++ ["-prof",
                   "-hisuf", "p_hi",
@@ -415,15 +416,15 @@ build pkg_descr lbi verbosity = do
 
       stubObjs <- fmap catMaybes $ sequence
         [ findFileWithExtension [objExtension] [libTargetDir]
-            (dotToSep x ++"_stub")
+            (ModuleName.toFilePath x ++"_stub")
         | x <- libModules pkg_descr ]
       stubProfObjs <- fmap catMaybes $ sequence
         [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
-            (dotToSep x ++"_stub")
+            (ModuleName.toFilePath x ++"_stub")
         | x <- libModules pkg_descr ]
       stubSharedObjs <- fmap catMaybes $ sequence
         [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
-            (dotToSep x ++"_stub")
+            (ModuleName.toFilePath x ++"_stub")
         | x <- libModules pkg_descr ]
 
       hObjs     <- getHaskellObjects pkg_descr libBi lbi
@@ -576,7 +577,7 @@ getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
  	-> FilePath -> String -> Bool -> IO [FilePath]
 getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
-	let dirs = [ pref </> (dotToSep x ++ "_split") 
+        let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
 		   | x <- libModules pkg_descr ]
 	objss <- mapM getDirectoryContents dirs
 	let objs = [ dir </> obj
@@ -585,7 +586,7 @@ getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext allow_split_objs
 		     '.':wanted_obj_ext == obj_ext ]
 	return objs
   | otherwise  = 
-	return [ pref </> dotToSep x <.> wanted_obj_ext
+	return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- libModules pkg_descr ]
 
 
@@ -682,7 +683,7 @@ makefile pkg_descr lbi flags = do
   let builddir = buildDir lbi
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
   let decls = [
-        ("modules", unwords (exposedModules lib ++ otherModules bi)),
+        ("modules", unwords (map display (exposedModules lib ++ otherModules bi))),
         ("GHC", programPath ghcProg),
         ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),

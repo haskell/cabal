@@ -194,7 +194,7 @@ checkLibrary lib =
          "Duplicate modules in library: " ++ commaSep moduleDuplicates
   ]
 
-  where moduleDuplicates = [ module_
+  where moduleDuplicates = [ display module_
                            | let modules = exposedModules lib
                                         ++ otherModules (libBuildInfo lib)
                            , (module_:_:_) <- group (sort modules) ]
@@ -219,7 +219,7 @@ checkExecutable exe =
          ++ commaSep moduleDuplicates
   ]
 
-  where moduleDuplicates = [ module_
+  where moduleDuplicates = [ display module_
                            | let modules = otherModules (buildInfo exe)
                            , (module_:_:_) <- group (sort modules) ]
 

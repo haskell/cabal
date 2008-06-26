@@ -61,6 +61,8 @@ import Distribution.PackageDescription (PackageDescription(..),
 					Library(..), withLib, libModules)
 import Distribution.Package
          ( Package(..) )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
@@ -68,7 +70,7 @@ import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , die, setupMessage, intercalate
-         , findFileWithExtension, findFileWithExtension', dotToSep )
+         , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              lookupProgram, programPath,
                              rawSystemProgramConf, rawSystemProgram,
@@ -187,7 +189,8 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
                                      modu verbosity builtinSuffixes biHandlers
                   | modu <- otherModules bi]
         preprocessModule (hsSourceDirs bi) exeDir forSDist
-                         (dropExtensions (modulePath theExe))
+                          --FIXME: we should not pretend it's a module name:
+                         (ModuleName.simple (dropExtensions (modulePath theExe)))
                          verbosity builtinSuffixes biHandlers
   where hc = compilerFlavor (compiler lbi)
 	builtinSuffixes
@@ -201,7 +204,7 @@ preprocessModule
     :: [FilePath]               -- ^source directories
     -> FilePath                 -- ^build directory
     -> Bool                     -- ^preprocess for sdist
-    -> String                   -- ^module name
+    -> ModuleName               -- ^module name
     -> Verbosity                -- ^verbosity
     -> [String]                 -- ^builtin suffixes
     -> [(String, PreProcessor)] -- ^possible preprocessors
@@ -209,14 +212,16 @@ preprocessModule
 preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
-    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc (dotToSep modu)
+    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc
+                   (ModuleName.toFilePath modu)
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
       Nothing -> do
-                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc (dotToSep modu)
+                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc
+                                (ModuleName.toFilePath modu)
                  case bsrcFiles of
-	          Nothing -> die ("can't find source for " ++ modu ++ " in "
-		                   ++ intercalate ", " searchLoc)
+	          Nothing -> die $ "can't find source for " ++ display modu
+                                ++ " in " ++ intercalate ", " searchLoc
 	          _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
@@ -235,7 +240,8 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
             when (not forSDist || forSDist && platformIndependent pp) $ do
               -- look for existing pre-processed source file in the dest dir to
               -- see if we really have to re-run the preprocessor.
-	      ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc] (dotToSep modu)
+	      ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc]
+                              (ModuleName.toFilePath modu)
 	      recomp <- case ppsrcFiles of
 	                  Nothing -> return True
 	                  Just ppsrcFile -> do
