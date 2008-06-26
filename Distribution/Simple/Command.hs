@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Command
 -- Copyright   :  Duncan Coutts 2007
--- 
+--
 -- Maintainer  :  Duncan Coutts <duncan@haskell.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -45,7 +45,7 @@ module Distribution.Simple.Command (
   -- * Command interface
   CommandUI(..),
   commandShowOptions,
-    
+
   -- ** Constructing commands
   ShowOrParseArgs(..),
   makeCommand,
@@ -54,7 +54,7 @@ module Distribution.Simple.Command (
   Command,
   commandAddAction,
   noExtraFlags,
-  
+
   -- ** Running commands
   CommandParse(..),
   commandsRun,

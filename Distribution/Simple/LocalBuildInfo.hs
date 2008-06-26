@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.LocalBuildInfo
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -43,10 +43,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.LocalBuildInfo ( 
-	LocalBuildInfo(..),
-	-- * Installation directories
-	module Distribution.Simple.InstallDirs,
+module Distribution.Simple.LocalBuildInfo (
+        LocalBuildInfo(..),
+        -- * Installation directories
+        module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
         substPathTemplate
   ) where
@@ -69,21 +69,21 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 -- 'Distribution.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
         installDirTemplates :: InstallDirTemplates,
-		-- ^ The installation directories for the various differnt
-		-- kinds of files
-	compiler      :: Compiler,
-		-- ^ The compiler we're building with
-	buildDir      :: FilePath,
-		-- ^ Where to build the package.
-	scratchDir    :: FilePath,
-		-- ^ Where to put the result of the Hugs build.
-	packageDeps   :: [PackageIdentifier],
-		-- ^ Which packages we depend on, /exactly/.
-		-- The 'Distribution.PackageDescription.PackageDescription'
-		-- specifies a set of build dependencies
-		-- that must be satisfied in terms of version ranges.  This
-		-- field fixes those dependencies to the specific versions
-		-- available on this machine for this compiler.
+                -- ^ The installation directories for the various differnt
+                -- kinds of files
+        compiler      :: Compiler,
+                -- ^ The compiler we're building with
+        buildDir      :: FilePath,
+                -- ^ Where to build the package.
+        scratchDir    :: FilePath,
+                -- ^ Where to put the result of the Hugs build.
+        packageDeps   :: [PackageIdentifier],
+                -- ^ Which packages we depend on, /exactly/.
+                -- The 'Distribution.PackageDescription.PackageDescription'
+                -- specifies a set of build dependencies
+                -- that must be satisfied in terms of version ranges.  This
+                -- field fixes those dependencies to the specific versions
+                -- available on this machine for this compiler.
         installedPkgs :: PackageIndex InstalledPackageInfo,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
@@ -99,7 +99,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
-	splitObjs     :: Bool, 	-- ^Use -split-objs with GHC, if available
+        splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
@@ -130,9 +130,8 @@ prefixRelativeInstallDirs pkg_descr lbi =
 
 substPathTemplate :: PackageDescription -> LocalBuildInfo
                   -> PathTemplate -> FilePath
-substPathTemplate pkg_descr lbi = fromPathTemplate 
+substPathTemplate pkg_descr lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
-    where env = initialPathTemplateEnv 
+    where env = initialPathTemplateEnv
                    (packageId pkg_descr)
                    (compilerId (compiler lbi))
-          

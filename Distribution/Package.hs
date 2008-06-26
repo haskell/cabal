@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Package
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -40,18 +40,18 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Package (
-	-- * Package ids
+        -- * Package ids
         PackageName(..),
-	PackageIdentifier(..),
+        PackageIdentifier(..),
 
         -- * Package dependencies
         Dependency(..),
         thisPackageVersion,
         notThisPackageVersion,
 
-	-- * Package classes
-	Package(..), packageName, packageVersion,
-	PackageFixedDeps(..),
+        -- * Package classes
+        Package(..), packageName, packageVersion,
+        PackageFixedDeps(..),
   ) where
 
 import Distribution.Version
@@ -83,8 +83,8 @@ instance Text PackageName where
 -- | The name and version of a package.
 data PackageIdentifier
     = PackageIdentifier {
-	pkgName    :: PackageName, -- ^The name of this package, eg. foo
-	pkgVersion :: Version -- ^the version of this package, eg 1.2
+        pkgName    :: PackageName, -- ^The name of this package, eg. foo
+        pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
      deriving (Read, Show, Eq, Ord)
 

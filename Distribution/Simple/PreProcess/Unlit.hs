@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.PreProcess.Unlit
 -- Copyright   :  ...
--- 
+--
 -- Maintainer  :  Malcolm Wallace <Malcolm.Wallace@cs.york.ac.uk>
 -- Stability   :  Stable
 -- Portability :  portable

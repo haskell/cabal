@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Configure
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -48,7 +48,7 @@ module Distribution.Simple.Configure (configure,
 --                                      getConfiguredPkgDescr,
                                       localBuildInfoFile,
                                       getInstalledPackages,
-				      configDependency,
+                                      configDependency,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
                                       tryGetConfigStateFile,
@@ -133,7 +133,7 @@ import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
-    
+
 import Prelude hiding (catch)
 
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
@@ -219,7 +219,7 @@ currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
-parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier) 
+parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier)
 parseHeader header = case words header of
   ["Saved", "package", "config", "for", pkgid,
    "written", "by", cabalid, "using", compilerid]
@@ -252,29 +252,29 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
 configure :: ( Either GenericPackageDescription PackageDescription
-             , HookedBuildInfo) 
+             , HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
             verbosity = fromFlag (configVerbosity cfg)
 
-	setupMessage verbosity "Configuring"
+        setupMessage verbosity "Configuring"
                      (packageId (either packageDescription id pkg_descr0))
 
-	createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
+        createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
-        let programsConfig = 
+        let programsConfig =
                 flip (foldr (uncurry userSpecifyArgs)) (configProgramArgs cfg)
               . flip (foldr (uncurry userSpecifyPath)) (configProgramPaths cfg)
               $ configPrograms cfg
             userInstall = fromFlag (configUserInstall cfg)
-	    defaultPackageDB | userInstall = UserPackageDB
-	                     | otherwise   = GlobalPackageDB
-	    packageDb   = fromFlagOrDefault defaultPackageDB
-	                                    (configPackageDB cfg)
+            defaultPackageDB | userInstall = UserPackageDB
+                             | otherwise   = GlobalPackageDB
+            packageDb   = fromFlagOrDefault defaultPackageDB
+                                            (configPackageDB cfg)
 
-	-- detect compiler
-	(comp, programsConfig') <- configCompiler
+        -- detect compiler
+        (comp, programsConfig') <- configCompiler
           (flagToMaybe $ configHcFlavor cfg)
           (flagToMaybe $ configHcPath cfg) (flagToMaybe $ configHcPkg cfg)
           programsConfig (lessVerbose verbosity)
@@ -286,8 +286,8 @@ configure (pkg_descr0, pbi) cfg
                                packageDb programsConfig'
 
         (pkg_descr0', flags) <- case pkg_descr0 of
-            Left ppd -> 
-                case finalizePackageDescription 
+            Left ppd ->
+                case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        maybePackageIndex
                        Distribution.System.buildOS
@@ -296,12 +296,12 @@ configure (pkg_descr0, pbi) cfg
                        (configConstraints cfg)
                        ppd
                 of Right r -> return r
-                   Left missing -> 
+                   Left missing ->
                        die $ "At least the following dependencies are missing:\n"
-                         ++ (render . nest 4 . sep . punctuate comma $ 
+                         ++ (render . nest 4 . sep . punctuate comma $
                              map disp missing)
             Right pd -> return (pd,[])
-              
+
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
         let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
@@ -364,11 +364,11 @@ configure (pkg_descr0, pbi) cfg
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
-	removeInstalledConfig distPref
+        removeInstalledConfig distPref
 
-	-- installation directories
-	defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
-	let installDirs = combineInstallDirs fromFlagOrDefault
+        -- installation directories
+        defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
+        let installDirs = combineInstallDirs fromFlagOrDefault
                             defaultDirs (configInstallDirs cfg)
 
         -- check extensions
@@ -382,41 +382,41 @@ configure (pkg_descr0, pbi) cfg
         programsConfig'' <-
               configureAllKnownPrograms (lessVerbose verbosity) programsConfig'
           >>= configureRequiredPrograms verbosity requiredBuildTools
-        
+
         (pkg_descr', programsConfig''') <- configurePkgconfigPackages verbosity
                                             pkg_descr programsConfig''
 
-	split_objs <- 
-	   if not (fromFlag $ configSplitObjs cfg)
-		then return False
-		else case flavor of
-			    GHC | version >= Version [6,5] [] -> return True
-	    		    _ -> do warn verbosity
+        split_objs <-
+           if not (fromFlag $ configSplitObjs cfg)
+                then return False
+                else case flavor of
+                            GHC | version >= Version [6,5] [] -> return True
+                            _ -> do warn verbosity
                                          ("this compiler does not support " ++
-					  "--enable-split-objs; ignoring")
-				    return False
+                                          "--enable-split-objs; ignoring")
+                                    return False
 
-	let lbi = LocalBuildInfo{
-		    installDirTemplates = installDirs,
-		    compiler            = comp,
-		    buildDir            = distPref </> "build",
-		    scratchDir          = fromFlagOrDefault
+        let lbi = LocalBuildInfo{
+                    installDirTemplates = installDirs,
+                    compiler            = comp,
+                    buildDir            = distPref </> "build",
+                    scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
-		    packageDeps         = dep_pkgs,
+                    packageDeps         = dep_pkgs,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
-		    localPkgDescr       = pkg_descr',
-		    withPrograms        = programsConfig''',
-		    withVanillaLib      = fromFlag $ configVanillaLib cfg,
-		    withProfLib         = fromFlag $ configProfLib cfg,
-		    withSharedLib       = fromFlag $ configSharedLib cfg,
-		    withProfExe         = fromFlag $ configProfExe cfg,
-		    withOptimization    = fromFlag $ configOptimization cfg,
-		    withGHCiLib         = fromFlag $ configGHCiLib cfg,
-		    splitObjs           = split_objs,
+                    localPkgDescr       = pkg_descr',
+                    withPrograms        = programsConfig''',
+                    withVanillaLib      = fromFlag $ configVanillaLib cfg,
+                    withProfLib         = fromFlag $ configProfLib cfg,
+                    withSharedLib       = fromFlag $ configSharedLib cfg,
+                    withProfExe         = fromFlag $ configProfExe cfg,
+                    withOptimization    = fromFlag $ configOptimization cfg,
+                    withGHCiLib         = fromFlag $ configGHCiLib cfg,
+                    splitObjs           = split_objs,
                     stripExes           = fromFlag $ configStripExes cfg,
-		    withPackageDB       = packageDb,
+                    withPackageDB       = packageDb,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
                     progSuffix          = fromFlag $ configProgSuffix cfg
                   }
@@ -449,7 +449,7 @@ configure (pkg_descr0, pbi) cfg
         sequence_ [ reportProgram verbosity prog configuredProg
                   | (prog, configuredProg) <- knownPrograms programsConfig''' ]
 
-	return lbi
+        return lbi
 
     where
       addExtraIncludeLibDirs pkg_descr =
@@ -538,8 +538,8 @@ configurePkgconfigPackages verbosity pkg_descr conf
     exes' <- mapM updateExecutable (executables pkg_descr)
     let pkg_descr' = pkg_descr { library = lib', executables = exes' }
     return (pkg_descr', conf')
-        
-  where 
+
+  where
     allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
     pkgconfig = rawSystemProgramStdoutConf (lessVerbose verbosity)
                   pkgConfigProgram conf
@@ -551,7 +551,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
         Nothing -> die "parsing output of pkg-config --modversion failed"
         Just v | not (withinRange v range) -> die (badVersion v)
                | otherwise                 -> info verbosity (depSatisfied v)
-      where 
+      where
         notFound     = "The pkg-config package " ++ pkg ++ versionRequirement
                     ++ " is required but it could not be found."
         badVersion v = "The pkg-config package " ++ pkg ++ versionRequirement
@@ -654,12 +654,12 @@ packageID = PackageIdentifier "Foo" (Version [1] [])
        do let simonMarGHCLoc = "/usr/bin/ghc"
           simonMarGHC <- configure emptyPackageDescription {package=packageID}
                                        (Just GHC,
-				       Just simonMarGHCLoc,
-				       Nothing, Nothing)
-	  assertEqual "finding ghc, etc on simonMar's machine failed"
-             (LocalBuildInfo "/usr" (Compiler GHC 
-	                    (Version [6,2,2] []) simonMarGHCLoc 
- 			    (simonMarGHCLoc ++ "-pkg")) [] [])
+                                       Just simonMarGHCLoc,
+                                       Nothing, Nothing)
+          assertEqual "finding ghc, etc on simonMar's machine failed"
+             (LocalBuildInfo "/usr" (Compiler GHC
+                            (Version [6,2,2] []) simonMarGHCLoc
+                            (simonMarGHCLoc ++ "-pkg")) [] [])
              simonMarGHC
       ]
 -}

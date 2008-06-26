@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.PackageDescription
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -100,10 +100,10 @@ import Language.Haskell.Extension (Extension)
 
 -- | This data type is the internal representation of the file @pkg.cabal@.
 -- It contains two kinds of information about the package: information
--- which is needed for all packages, such as the package name and version, and 
--- information which is needed for the simple build system only, such as 
+-- which is needed for all packages, such as the package name and version, and
+-- information which is needed for the simple build system only, such as
 -- the compiler options and library name.
--- 
+--
 data PackageDescription
     =  PackageDescription {
         -- the following are required by all packages:
@@ -120,8 +120,8 @@ data PackageDescription
         synopsis       :: String, -- ^A one-line summary of this package
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
-        customFieldsPD :: [(String,String)], -- ^Custom fields starting 
-                                             -- with x-, stored in a 
+        customFieldsPD :: [(String,String)], -- ^Custom fields starting
+                                             -- with x-, stored in a
                                              -- simple assoc-list.
         buildDepends   :: [Dependency],
         descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
@@ -293,7 +293,7 @@ unionExecutable e1 e2 =
                       (x, "") -> x
                       (x, y) -> error $ "Ambiguous values for executable field: '"
                                   ++ x ++ "' and '" ++ y ++ "'"
-  
+
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
@@ -301,7 +301,7 @@ unionExecutable e1 e2 =
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
         buildTools        :: [Dependency], -- ^ tools needed to build this bit
-	cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
+        cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
@@ -314,13 +314,13 @@ data BuildInfo = BuildInfo {
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
-	installIncludes   :: [FilePath], -- ^ .h files to install with the package
+        installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
         ghcProfOptions    :: [String],
         ghcSharedOptions  :: [String],
         customFieldsBI    :: [(String,String)]  -- ^Custom fields starting
                                                 -- with x-, stored in a
-                                                -- simple assoc-list.  
+                                                -- simple assoc-list.
     }
     deriving (Show,Read,Eq)
 
@@ -396,7 +396,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
                         -> [Executable]          -- ^list of executables to update
                         -> [Executable]          -- ^list with exeNames updated
       updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
-      
+
       updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
                        -> [Executable]        -- ^list of executables to update
                        -> [Executable]        -- ^libst with exeName updated

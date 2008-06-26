@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.PreProcess
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -50,7 +50,7 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
-				ppHappy, ppAlex, ppUnlit
+                                ppHappy, ppAlex, ppUnlit
                                )
     where
 
@@ -58,7 +58,7 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.PackageDescription (PackageDescription(..),
                                         BuildInfo(..), Executable(..), withExe,
-					Library(..), withLib, libModules)
+                                        Library(..), withLib, libModules)
 import Distribution.Package
          ( Package(..) )
 import Distribution.ModuleName (ModuleName)
@@ -132,7 +132,7 @@ data PreProcessor = PreProcessor {
   -- This matters since only platform independent generated code can be
   -- inlcuded into a source tarball.
   platformIndependent :: Bool,
-                              
+
   -- TODO: deal with pre-processors that have implementaion dependent output
   --       eg alex and happy have --ghc flags. However we can't really inlcude
   --       ghc-specific code into supposedly portable source tarballs.
@@ -193,10 +193,10 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
                          (ModuleName.simple (dropExtensions (modulePath theExe)))
                          verbosity builtinSuffixes biHandlers
   where hc = compilerFlavor (compiler lbi)
-	builtinSuffixes
-	  | hc == NHC = ["hs", "lhs", "gc"]
-	  | otherwise = ["hs", "lhs"]
-	localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
+        builtinSuffixes
+          | hc == NHC = ["hs", "lhs", "gc"]
+          | otherwise = ["hs", "lhs"]
+        localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
 
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
@@ -220,15 +220,15 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
                  bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc
                                 (ModuleName.toFilePath modu)
                  case bsrcFiles of
-	          Nothing -> die $ "can't find source for " ++ display modu
+                  Nothing -> die $ "can't find source for " ++ display modu
                                 ++ " in " ++ intercalate ", " searchLoc
-	          _       -> return ()
+                  _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
             let (srcStem, ext) = splitExtension psrcRelFile
                 psrcFile = psrcLoc </> psrcRelFile
-	        pp = fromMaybe (error "Internal error in preProcess module: Just expected")
-	                       (lookup (tailNotNull ext) handlers)
+                pp = fromMaybe (error "Internal error in preProcess module: Just expected")
+                               (lookup (tailNotNull ext) handlers)
             -- Preprocessing files for 'sdist' is different from preprocessing
             -- for 'build'.  When preprocessing for sdist we preprocess to
             -- avoid that the user has to have the preprocessors available.
@@ -240,14 +240,14 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
             when (not forSDist || forSDist && platformIndependent pp) $ do
               -- look for existing pre-processed source file in the dest dir to
               -- see if we really have to re-run the preprocessor.
-	      ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc]
+              ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc]
                               (ModuleName.toFilePath modu)
-	      recomp <- case ppsrcFiles of
-	                  Nothing -> return True
-	                  Just ppsrcFile -> do
+              recomp <- case ppsrcFiles of
+                          Nothing -> return True
+                          Just ppsrcFile -> do
                               btime <- getModificationTime ppsrcFile
-	                      ptime <- getModificationTime psrcFile
-	                      return (btime < ptime)
+                              ptime <- getModificationTime psrcFile
+                              return (btime < ptime)
               when recomp $ do
                 let destDir = buildLoc </> dirName srcStem
                 createDirectoryIfMissingVerbose verbosity True destDir
@@ -344,15 +344,15 @@ ppHsc2hs bi lbi = pp
   where pp = standardPP lbi hsc2hsProgram flags
         flags = case fmap versionTags . join . fmap programVersion
                    . lookupProgram hsc2hsProgram . withPrograms $ lbi of
-	  -- Just to make things complicated, the hsc2hs bundled with
-	  -- ghc uses ghc as the C compiler, so to pass C flags we
-	  -- have to use an additional layer of escaping. Grrr.
-	  Just ["ghc"] ->
+          -- Just to make things complicated, the hsc2hs bundled with
+          -- ghc uses ghc as the C compiler, so to pass C flags we
+          -- have to use an additional layer of escaping. Grrr.
+          Just ["ghc"] ->
              let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
               in [ "--cc=" ++ programPath ghcProg
                  , "--ld=" ++ programPath ghcProg ]
               ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
-	                                        ++ cppOptions bi ]
+                                                ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
                                           , opt <- ["-package"
                                                    ,display pkg] ]
@@ -360,8 +360,8 @@ ppHsc2hs bi lbi = pp
               ++ [ "--lflag=-optl" ++ opt | opt <- getLdOptions bi ]
 
           _   -> [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
-	      ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi ]
-	      ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
+              ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi ]
+              ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
               ++ [ "--lflag="   ++ opt | opt <- getLdOptions bi ]
 
 getLdOptions :: BuildInfo -> [String]
@@ -412,15 +412,15 @@ ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ lbi = pp { platformIndependent = True }
   where pp = standardPP lbi happyProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
-	hcFlags GHC = ["-agc"]
-	hcFlags _ = []
+        hcFlags GHC = ["-agc"]
+        hcFlags _ = []
 
 ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppAlex _ lbi = pp { platformIndependent = True }
   where pp = standardPP lbi alexProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
-	hcFlags GHC = ["-g"]
-	hcFlags _ = []
+        hcFlags GHC = ["-g"]
+        hcFlags _ = []
 
 standardPP :: LocalBuildInfo -> Program -> [String] -> PreProcessor
 standardPP lbi prog args =

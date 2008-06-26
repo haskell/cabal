@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.InstalledPackageInfo
 -- Copyright   :  (c) The University of Glasgow 2004
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  alpha
 -- Portability :  portable
@@ -46,21 +46,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- This module is meant to be local-only to Distribution...
 
 module Distribution.InstalledPackageInfo (
-	InstalledPackageInfo_(..), InstalledPackageInfo,
-	ParseResult(..), PError(..), PWarning,
-	emptyInstalledPackageInfo,
-	parseInstalledPackageInfo,
-	showInstalledPackageInfo,
-	showInstalledPackageInfoField,
+        InstalledPackageInfo_(..), InstalledPackageInfo,
+        ParseResult(..), PError(..), PWarning,
+        emptyInstalledPackageInfo,
+        parseInstalledPackageInfo,
+        showInstalledPackageInfo,
+        showInstalledPackageInfoField,
   ) where
 
 import Distribution.ParseUtils (
-	FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
-	Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields,
-	parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
-	showFilePath, showToken, boolField, parseOptVersion, parseQuoted,
-	showFreeText)
-import Distribution.License 	( License(..) )
+        FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
+        Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields,
+        parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
+        showFilePath, showToken, boolField, parseOptVersion, parseQuoted,
+        showFreeText)
+import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , packageName, packageVersion )
@@ -74,7 +74,7 @@ import Distribution.Text
          ( Text(disp, parse) )
 import qualified Distribution.Compat.ReadP as ReadP
 
-import Control.Monad	( foldM )
+import Control.Monad    ( foldM )
 import Text.PrettyPrint
 
 -- -----------------------------------------------------------------------------
@@ -82,36 +82,36 @@ import Text.PrettyPrint
 
 data InstalledPackageInfo_ m
    = InstalledPackageInfo {
-	-- these parts are exactly the same as PackageDescription
-	package           :: PackageIdentifier,
+        -- these parts are exactly the same as PackageDescription
+        package           :: PackageIdentifier,
         license           :: License,
         copyright         :: String,
         maintainer        :: String,
-	author            :: String,
+        author            :: String,
         stability         :: String,
-	homepage          :: String,
-	pkgUrl            :: String,
-	description       :: String,
-	category          :: String,
-	-- these parts are required by an installed package only:
+        homepage          :: String,
+        pkgUrl            :: String,
+        description       :: String,
+        category          :: String,
+        -- these parts are required by an installed package only:
         exposed           :: Bool,
-	exposedModules	  :: [m],
-	hiddenModules     :: [m],
+        exposedModules    :: [m],
+        hiddenModules     :: [m],
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
         libraryDirs       :: [FilePath],
         hsLibraries       :: [String],
         extraLibraries    :: [String],
-	extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
+        extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [PackageIdentifier],
-        hugsOptions	  :: [String],
-        ccOptions	  :: [String],
-        ldOptions	  :: [String],
+        hugsOptions       :: [String],
+        ccOptions         :: [String],
+        ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
-        frameworks	  :: [String],
-	haddockInterfaces :: [FilePath],
-	haddockHTMLs      :: [FilePath]
+        frameworks        :: [String],
+        haddockInterfaces :: [FilePath],
+        haddockHTMLs      :: [FilePath]
     }
     deriving (Read, Show)
 
@@ -129,30 +129,30 @@ emptyInstalledPackageInfo
         license           = AllRightsReserved,
         copyright         = "",
         maintainer        = "",
-	author		  = "",
+        author            = "",
         stability         = "",
-	homepage	  = "",
-	pkgUrl		  = "",
-	description	  = "",
-	category	  = "",
+        homepage          = "",
+        pkgUrl            = "",
+        description       = "",
+        category          = "",
         exposed           = False,
-	exposedModules	  = [],
-	hiddenModules     = [],
+        exposedModules    = [],
+        hiddenModules     = [],
         importDirs        = [],
         libraryDirs       = [],
         hsLibraries       = [],
         extraLibraries    = [],
         extraGHCiLibraries= [],
         includeDirs       = [],
-        includes	  = [],
+        includes          = [],
         depends           = [],
         hugsOptions       = [],
         ccOptions         = [],
         ldOptions         = [],
         frameworkDirs     = [],
         frameworks        = [],
-	haddockInterfaces = [],
-	haddockHTMLs      = []
+        haddockInterfaces = [],
+        haddockHTMLs      = []
     }
 
 noVersion :: Version
@@ -164,19 +164,19 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
 parseInstalledPackageInfo inp = do
   stLines <- readFields inp
-	-- not interested in stanzas, so just allow blank lines in
-	-- the package info.
+        -- not interested in stanzas, so just allow blank lines in
+        -- the package info.
   foldM (parseBasicStanza all_fields) emptyInstalledPackageInfo stLines
 
 parseBasicStanza :: [FieldDescr a]
-		    -> a
-		    -> Field
-		    -> ParseResult a
+                    -> a
+                    -> Field
+                    -> ParseResult a
 parseBasicStanza ((FieldDescr name _ set):fields) pkg (F lineNo f val)
   | name == f = set lineNo val pkg
   | otherwise = parseBasicStanza fields pkg (F lineNo f val)
 parseBasicStanza [] pkg _ = return pkg
-parseBasicStanza _ _ _ = 
+parseBasicStanza _ _ _ =
     error "parseBasicStanza must be called with a simple field."
 
 -- -----------------------------------------------------------------------------
@@ -186,12 +186,12 @@ showInstalledPackageInfo :: InstalledPackageInfo -> String
 showInstalledPackageInfo pkg = render (ppFields pkg all_fields)
 
 showInstalledPackageInfoField
-	:: String
-	-> Maybe (InstalledPackageInfo -> String)
+        :: String
+        -> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField field
   = case [ (f,get') | (FieldDescr f get' _) <- all_fields, f == field ] of
-	[]      -> Nothing
-	((f,get'):_) -> Just (render . ppField f . get')
+        []      -> Nothing
+        ((f,get'):_) -> Just (render . ppField f . get')
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -242,58 +242,58 @@ parseFreeText = ReadP.munch (const True)
 installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
    boolField "exposed"
-	exposed     	   (\val pkg -> pkg{exposed=val})
+        exposed            (\val pkg -> pkg{exposed=val})
  , listField   "exposed-modules"
-	disp               parseModuleNameQ
-	exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
+        disp               parseModuleNameQ
+        exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
  , listField   "hidden-modules"
-	disp               parseModuleNameQ
-	hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
+        disp               parseModuleNameQ
+        hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
  , listField   "import-dirs"
-	showFilePath       parseFilePathQ
-	importDirs         (\xs pkg -> pkg{importDirs=xs})
+        showFilePath       parseFilePathQ
+        importDirs         (\xs pkg -> pkg{importDirs=xs})
  , listField   "library-dirs"
-	showFilePath       parseFilePathQ
-	libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
+        showFilePath       parseFilePathQ
+        libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
  , listField   "hs-libraries"
-	showFilePath       parseTokenQ
-	hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})
+        showFilePath       parseTokenQ
+        hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})
  , listField   "extra-libraries"
-	showToken          parseTokenQ
-	extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
+        showToken          parseTokenQ
+        extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
  , listField   "extra-ghci-libraries"
-	showToken          parseTokenQ
-	extraGHCiLibraries (\xs pkg -> pkg{extraGHCiLibraries=xs})
+        showToken          parseTokenQ
+        extraGHCiLibraries (\xs pkg -> pkg{extraGHCiLibraries=xs})
  , listField   "include-dirs"
-	showFilePath       parseFilePathQ
-	includeDirs        (\xs pkg -> pkg{includeDirs=xs})
+        showFilePath       parseFilePathQ
+        includeDirs        (\xs pkg -> pkg{includeDirs=xs})
  , listField   "includes"
-	showFilePath       parseFilePathQ
-	includes           (\xs pkg -> pkg{includes=xs})
+        showFilePath       parseFilePathQ
+        includes           (\xs pkg -> pkg{includes=xs})
  , listField   "depends"
-	disp               parsePackageId'
-	depends            (\xs pkg -> pkg{depends=xs})
+        disp               parsePackageId'
+        depends            (\xs pkg -> pkg{depends=xs})
  , listField   "hugs-options"
-	showToken	   parseTokenQ
-	hugsOptions        (\path  pkg -> pkg{hugsOptions=path})
+        showToken          parseTokenQ
+        hugsOptions        (\path  pkg -> pkg{hugsOptions=path})
  , listField   "cc-options"
-	showToken	   parseTokenQ
-	ccOptions          (\path  pkg -> pkg{ccOptions=path})
+        showToken          parseTokenQ
+        ccOptions          (\path  pkg -> pkg{ccOptions=path})
  , listField   "ld-options"
-	showToken	   parseTokenQ
-	ldOptions          (\path  pkg -> pkg{ldOptions=path})
+        showToken          parseTokenQ
+        ldOptions          (\path  pkg -> pkg{ldOptions=path})
  , listField   "framework-dirs"
-	showFilePath       parseFilePathQ
-	frameworkDirs      (\xs pkg -> pkg{frameworkDirs=xs})
+        showFilePath       parseFilePathQ
+        frameworkDirs      (\xs pkg -> pkg{frameworkDirs=xs})
  , listField   "frameworks"
-	showToken          parseTokenQ
-	frameworks         (\xs pkg -> pkg{frameworks=xs})
+        showToken          parseTokenQ
+        frameworks         (\xs pkg -> pkg{frameworks=xs})
  , listField   "haddock-interfaces"
-	showFilePath       parseFilePathQ
-	haddockInterfaces  (\xs pkg -> pkg{haddockInterfaces=xs})
+        showFilePath       parseFilePathQ
+        haddockInterfaces  (\xs pkg -> pkg{haddockInterfaces=xs})
  , listField   "haddock-html"
-	showFilePath       parseFilePathQ
-	haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
+        showFilePath       parseFilePathQ
+        haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  ]
 
 parsePackageId' :: ReadP.ReadP [PackageIdentifier] PackageIdentifier

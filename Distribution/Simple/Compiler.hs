@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Compiler
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -41,8 +41,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Compiler (
         -- * Haskell implementations
-	module Distribution.Compiler,
-	Compiler(..),
+        module Distribution.Compiler,
+        Compiler(..),
         showCompilerId, compilerFlavor, compilerVersion,
 
         -- * Support for package databases
@@ -68,7 +68,7 @@ import Data.Maybe (catMaybes, isNothing)
 
 data Compiler = Compiler {
         compilerId              :: CompilerId,
-	compilerExtensions      :: [(Extension, String)]
+        compilerExtensions      :: [(Extension, String)]
     }
     deriving (Show, Read)
 

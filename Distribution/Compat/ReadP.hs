@@ -3,13 +3,13 @@
 -- Module      :  Distribution.Compat.ReadP
 -- Copyright   :  (c) The University of Glasgow 2002
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
 --
 -- This is a library of parser combinators, originally written by Koen Claessen.
--- It parses all alternatives in parallel, so it never keeps hold of 
+-- It parses all alternatives in parallel, so it never keeps hold of
 -- the beginning of the input string, a common source of space leaks with
 -- other parsers.  The '(+++)' choice combinator is genuinely commutative;
 -- it makes no difference which branch is \"shorter\".
@@ -23,17 +23,17 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Compat.ReadP
-  ( 
+  (
   -- * The 'ReadP' type
   ReadP,      -- :: * -> *; instance Functor, Monad, MonadPlus
-  
+
   -- * Primitive operations
   get,        -- :: ReadP Char
   look,       -- :: ReadP String
   (+++),      -- :: ReadP a -> ReadP a -> ReadP a
   (<++),      -- :: ReadP a -> ReadP a -> ReadP a
   gather,     -- :: ReadP a -> ReadP (String, a)
-  
+
   -- * Other operations
   pfail,      -- :: ReadP a
   satisfy,    -- :: (Char -> Bool) -> ReadP Char
@@ -60,12 +60,12 @@ module Distribution.Compat.ReadP
   chainl1,    -- :: ReadP a -> ReadP (a -> a -> a) -> ReadP a
   chainr1,    -- :: ReadP a -> ReadP (a -> a -> a) -> ReadP a
   manyTill,   -- :: ReadP a -> ReadP end -> ReadP [a]
-  
+
   -- * Running a parser
   ReadS,      -- :: *; = String -> [(a,String)]
   readP_to_S, -- :: ReadP a -> ReadS a
   readS_to_P  -- :: ReadS a -> ReadP a
-  
+
   -- * Properties
   -- $properties
   )
@@ -105,7 +105,7 @@ instance MonadPlus (P s) where
 
   -- most common case: two gets are combined
   Get f1     `mplus` Get f2     = Get (\c -> f1 c `mplus` f2 c)
-  
+
   -- results are delivered as soon as possible
   Result x p `mplus` q          = Result x (p `mplus` q)
   p          `mplus` Result x q = Result x (p `mplus` q)
@@ -206,9 +206,9 @@ gather :: ReadP (String -> P Char r) a -> ReadP r (String, a)
 -- ^ Transforms a parser into one that does the same, but
 --   in addition returns the exact characters read.
 --   IMPORTANT NOTE: 'gather' gives a runtime error if its first argument
---   is built using any occurrences of readS_to_P. 
+--   is built using any occurrences of readS_to_P.
 gather (R m) =
-  R (\k -> gath id (m (\a -> return (\s -> k (s,a)))))  
+  R (\k -> gath id (m (\a -> return (\s -> k (s,a)))))
  where
   gath l (Get f)      = Get (\c -> gath (l.(c:)) (f c))
   gath _ Fail         = Fail
@@ -437,7 +437,7 @@ Here follow the properties:
 >    xs +<+ _  = xs
 >
 >  prop_Gather s =
->    forAll readPWithoutReadS $ \p -> 
+>    forAll readPWithoutReadS $ \p ->
 >      readP_to_S (gather p) s =~
 >	 [ ((pre,x::Int),s')
 >	 | (x,s') <- readP_to_S p s

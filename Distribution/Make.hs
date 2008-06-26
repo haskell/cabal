@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Make
 -- Copyright   :  Martin Sj&#xF6;gren 2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -11,39 +11,39 @@
 -- Haskell tools using a backend build system based on make. Obviously we
 -- assume that there is a configure script, and that after the ConfigCmd has
 -- been run, there is a Makefile. Further assumptions:
--- 
+--
 -- [ConfigCmd] We assume the configure script accepts
--- 		@--with-hc@,
--- 		@--with-hc-pkg@,
--- 		@--prefix@,
--- 		@--bindir@,
--- 		@--libdir@,
--- 		@--libexecdir@,
--- 		@--datadir@.
--- 
+--              @--with-hc@,
+--              @--with-hc-pkg@,
+--              @--prefix@,
+--              @--bindir@,
+--              @--libdir@,
+--              @--libexecdir@,
+--              @--datadir@.
+--
 -- [BuildCmd] We assume that the default Makefile target will build everything.
--- 
+--
 -- [InstallCmd] We assume there is an @install@ target. Note that we assume that
 -- this does *not* register the package!
--- 
--- [CopyCmd]	We assume there is a @copy@ target, and a variable @$(destdir)@.
--- 		The @copy@ target should probably just invoke @make install@
---		recursively (e.g. @$(MAKE) install prefix=$(destdir)\/$(prefix)
---		bindir=$(destdir)\/$(bindir)@. The reason we can\'t invoke @make
---		install@ directly here is that we don\'t know the value of @$(prefix)@.
--- 
+--
+-- [CopyCmd]    We assume there is a @copy@ target, and a variable @$(destdir)@.
+--              The @copy@ target should probably just invoke @make install@
+--              recursively (e.g. @$(MAKE) install prefix=$(destdir)\/$(prefix)
+--              bindir=$(destdir)\/$(bindir)@. The reason we can\'t invoke @make
+--              install@ directly here is that we don\'t know the value of @$(prefix)@.
+--
 -- [SDistCmd] We assume there is a @dist@ target.
--- 
+--
 -- [RegisterCmd] We assume there is a @register@ target and a variable @$(user)@.
--- 
+--
 -- [UnregisterCmd] We assume there is an @unregister@ target.
--- 
+--
 -- [HaddockCmd] We assume there is a @docs@ or @doc@ target.
 
 
---			copy :
--- 				$(MAKE) install prefix=$(destdir)/$(prefix) \
--- 						bindir=$(destdir)/$(bindir) \
+--                      copy :
+--                              $(MAKE) install prefix=$(destdir)/$(prefix) \
+--                                              bindir=$(destdir)/$(bindir) \
 
 {- All rights reserved.
 
@@ -76,9 +76,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Make (
-	module Distribution.Package,
-	License(..), Version(..),
-	defaultMain, defaultMainArgs, defaultMainNoRead
+        module Distribution.Package,
+        License(..), Version(..),
+        defaultMain, defaultMainArgs, defaultMainNoRead
   ) where
 
 -- local
@@ -121,7 +121,7 @@ defaultMainHelper args =
         _ | fromFlag (globalVersion flags)        -> printVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
         CommandHelp     help           -> printHelp help
-	CommandList     opts           -> printOptionsList opts
+        CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> action
 
@@ -160,11 +160,11 @@ configureAction flags args = do
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   noExtraFlags args
-  let destArgs = case fromFlag $ copyDest flags of 
+  let destArgs = case fromFlag $ copyDest flags of
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
         CopyPrefix path -> ["install", "prefix=" ++ path]
-	        -- CopyPrefix is backwards compat, DEPRECATED
+                -- CopyPrefix is backwards compat, DEPRECATED
   rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
@@ -174,7 +174,7 @@ installAction flags args = do
   rawSystemExit (fromFlag $ installVerbosity flags) "make" ["register"]
 
 haddockAction :: HaddockFlags -> [String] -> IO ()
-haddockAction flags args = do 
+haddockAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
     `catch` \_ ->

@@ -8,7 +8,7 @@
 -- |
 -- Module      :  Distribution.Configuration
 -- Copyright   :  Thomas Schilling, 2007
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -181,7 +181,7 @@ parseCondition = condOr
 
 ------------------------------------------------------------------------------
 
-mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w) 
+mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w)
             -> CondTree v c a -> CondTree w d b
 mapCondTree fa fc fcnd (CondNode a c ifs) =
     CondNode (fa a) (fc c) (map g ifs)
@@ -200,7 +200,7 @@ mapTreeData f = mapCondTree f id id
 
 -- | Result of dependency test. Isomorphic to @Maybe d@ but renamed for
 --   clarity.
-data DepTestRslt d = DepOk | MissingDeps d 
+data DepTestRslt d = DepOk | MissingDeps d
 
 instance Monoid d => Monoid (DepTestRslt d) where
     mempty = DepOk
@@ -231,7 +231,7 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 --
 -- This would require some sort of SAT solving, though, thus it's not
 -- implemented unless we really need it.
---   
+--
 resolveWithFlags :: Monoid a =>
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
@@ -239,7 +239,7 @@ resolveWithFlags :: Monoid a =>
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerId -- ^ Compiler flavour + version
   -> [Dependency]  -- ^ Additional constraints
-  -> [CondTree ConfVar [Dependency] a]    
+  -> [CondTree ConfVar [Dependency] a]
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
   -> Either [Dependency] -- missing dependencies
        ([a], [Dependency], FlagAssignment)
@@ -248,9 +248,9 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     case try dom [] of
       Right r -> Right r
       Left dbt -> Left $ findShortest dbt
-  where 
+  where
     extraConstrs = toDepMap constrs
- 
+
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
     simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
@@ -274,16 +274,16 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- either succeeds or returns a binary tree with the missing dependencies
     -- encountered in each run.  Since the tree is constructed lazily, we
     -- avoid some computation overhead in the successful case.
-    try [] flags = 
-        let (depss, as) = unzip 
-                         . map (simplifyCondTree (env flags)) 
+    try [] flags =
+        let (depss, as) = unzip
+                         . map (simplifyCondTree (env flags))
                          $ simplifiedTrees
             deps = fromDepMap $ leftJoin (mconcat depss)
                                          extraConstrs
         in case (checkDeps deps, deps) of
              (DepOk, ds) -> Right (as, ds, flags)
              (MissingDeps mds, _) -> Left (BTN mds)
-    try ((n, vals):rest) flags = 
+    try ((n, vals):rest) flags =
         tryAll $ map (\v -> try rest ((n, v):flags)) vals
 
     tryAll = foldr mp mz
@@ -301,7 +301,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- for the error case we inspect our lazy tree of missing dependencies and
     -- pick the shortest list of missing dependencies
     findShortest (BTN x) = x
-    findShortest (BTB lt rt) = 
+    findShortest (BTB lt rt) =
         let l = findShortest lt
             r = findShortest rt
         in case (l,r) of
@@ -310,7 +310,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
              ([x], _) -> [x] -- single elem is optimum
              (_, [x]) -> [x]
              (xs, ys) -> if lazyLengthCmp xs ys
-                         then xs else ys 
+                         then xs else ys
     -- lazy variant of @\xs ys -> length xs <= length ys@
     lazyLengthCmp [] _ = True
     lazyLengthCmp _ [] = False
@@ -350,35 +350,35 @@ instance Read DependencyMap where
 
 instance Monoid DependencyMap where
     mempty = DependencyMap M.empty
-    (DependencyMap a) `mappend` (DependencyMap b) = 
+    (DependencyMap a) `mappend` (DependencyMap b) =
         DependencyMap (M.unionWith IntersectVersionRanges a b)
 
 toDepMap :: [Dependency] -> DependencyMap
-toDepMap ds = 
+toDepMap ds =
   DependencyMap $ fromListWith IntersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
 
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]
 
 simplifyCondTree :: (Monoid a, Monoid d) =>
-                    (v -> Either v Bool) 
-                 -> CondTree v d a 
+                    (v -> Either v Bool)
+                 -> CondTree v d a
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
     foldr mappend (d, a) $ catMaybes $ map simplifyIf ifs
   where
-    simplifyIf (cnd, t, me) = 
+    simplifyIf (cnd, t, me) =
         case simplifyCondition cnd env of
           (Lit True, _) -> Just $ simplifyCondTree env t
           (Lit False, _) -> fmap (simplifyCondTree env) me
-          _ -> error $ "Environment not defined for all free vars" 
+          _ -> error $ "Environment not defined for all free vars"
 
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
 --  choices this may not result in a \"sane\" result.
 ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
-  where f (_, t, me) = ignoreConditions t 
+  where f (_, t, me) = ignoreConditions t
                        : maybeToList (fmap ignoreConditions me)
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
@@ -427,7 +427,7 @@ instance Monoid PDTagged where
 -- explicitly specified flags.)  In case of failure it will return a /minimum/
 -- number of dependencies that could not be satisfied.  On success, it will
 -- return the package description and the full flag assignment chosen.
--- 
+--
 finalizePackageDescription ::
      Package pkg
   => FlagAssignment  -- ^ Explicitly specified flag assignments
@@ -440,8 +440,8 @@ finalizePackageDescription ::
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, FlagAssignment)
-	     -- ^ Either missing dependencies or the resolved package
-	     -- description along with the flag assignments chosen.
+             -- ^ Either missing dependencies or the resolved package
+             -- description along with the flag assignments chosen.
 finalizePackageDescription userflags mpkgs os arch impl constraints
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of

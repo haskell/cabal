@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.SrcDist
 -- Copyright   :  Simon Marlow 2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -227,7 +227,7 @@ prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps date = do
   targetDir <- prepareTree verbosity pkg' mb_lbi distPref tmpDir pps
   overwriteSnapshotPackageDesc pkgver' targetDir
   return targetDir
-  
+
   where
     overwriteSnapshotPackageDesc version targetDir = do
       -- We could just writePackageDescription targetDescFile pkg_descr,
@@ -337,10 +337,10 @@ printPackageProblems verbosity pkg_descr = do
                       ++ unlines (map explanation errors)
   unless (null warnings) $
       notice verbosity $ "Distribution quality warnings:\n"
-    	              ++ unlines (map explanation warnings)
+                      ++ unlines (map explanation warnings)
   unless (null errors) $
       notice verbosity
-	"Note: the public hackage server would reject this package."
+        "Note: the public hackage server would reject this package."
 
 ------------------------------------------------------------
 

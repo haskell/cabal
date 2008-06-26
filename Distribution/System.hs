@@ -82,7 +82,7 @@ buildOS = classifyOS Permissive System.Info.os
 
 data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
           | Arm   | Mips   | SH
-          | IA64  | S390 
+          | IA64  | S390
           | Alpha | Hppa   | Rs6000
           | M68k  | Vax
           | OtherArch String
@@ -91,7 +91,7 @@ data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
 knownArches :: [Arch]
 knownArches = [I386, X86_64, PPC, PPC64, Sparc
               ,Arm, Mips, SH
-              ,IA64, S390 
+              ,IA64, S390
               ,Alpha, Hppa, Rs6000
               ,M68k, Vax]
 

@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.JHC
 -- Copyright   :  Isaac Jones 2003-2006
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -41,24 +41,24 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.JHC (
-	configure, getInstalledPackages, build, installLib, installExe
+        configure, getInstalledPackages, build, installLib, installExe
  ) where
 
 import Distribution.PackageDescription as PD
-				( PackageDescription(..), BuildInfo(..),
-				  withLib,
-				  Executable(..), withExe, Library(..),
-				  libModules, hcOptions )
+                                ( PackageDescription(..), BuildInfo(..),
+                                  withLib,
+                                  Executable(..), withExe, Library(..),
+                                  libModules, hcOptions )
 import Distribution.InstalledPackageInfo
-				( InstalledPackageInfo, emptyInstalledPackageInfo )
+                                ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-				( InstalledPackageInfo_(package) )
+                                ( InstalledPackageInfo_(package) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..) )
+                                ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
-				( autogenModulesDir, exeExtension )
+                                ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
          , PackageDB, Flag, extensionsToFlags )
@@ -67,7 +67,7 @@ import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, lookupProgram,
                                   rawSystemProgram, rawSystemProgramStdoutConf )
-import Distribution.Version	( VersionRange(AnyVersion) )
+import Distribution.Version     ( VersionRange(AnyVersion) )
 import Distribution.Package
          ( Package(..) )
 import Distribution.Simple.Utils
@@ -80,8 +80,8 @@ import Distribution.Text
 import Distribution.Compat.ReadP
     ( readP_to_S, many, skipSpaces )
 
-import Data.List		( nub )
-import Data.Char		( isSpace )
+import Data.List                ( nub )
+import Data.Char                ( isSpace )
 
 
 

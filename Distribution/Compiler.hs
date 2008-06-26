@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Compiler
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable

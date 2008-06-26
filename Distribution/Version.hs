@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Version
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -53,7 +53,7 @@ module Distribution.Version (
 
  ) where
 
-import Data.Version	( Version(..) )
+import Data.Version     ( Version(..) )
 
 import Distribution.Text ( Text(..) )
 import qualified Distribution.Compat.ReadP as Parse
@@ -70,10 +70,10 @@ import qualified Data.Char as Char (isDigit)
 
 data VersionRange
   = AnyVersion
-  | ThisVersion		   Version -- = version
-  | LaterVersion	   Version -- > version  (NB. not >=)
-  | EarlierVersion	   Version -- < version
-	-- ToDo: are these too general?
+  | ThisVersion            Version -- = version
+  | LaterVersion           Version -- > version  (NB. not >=)
+  | EarlierVersion         Version -- < version
+        -- ToDo: are these too general?
   | UnionVersionRanges      VersionRange VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
@@ -105,12 +105,12 @@ v1 `earlierVersion` v2 = versionBranch v1 < versionBranch v2
 -- |Does this version fall within the given range?
 withinRange :: Version -> VersionRange -> Bool
 withinRange _  AnyVersion                = True
-withinRange v1 (ThisVersion v2) 	 = v1 == v2
+withinRange v1 (ThisVersion v2)          = v1 == v2
 withinRange v1 (LaterVersion v2)         = v1 `laterVersion` v2
 withinRange v1 (EarlierVersion v2)       = v1 `earlierVersion` v2
-withinRange v1 (UnionVersionRanges v2 v3) 
+withinRange v1 (UnionVersionRanges v2 v3)
    = v1 `withinRange` v2 || v1 `withinRange` v3
-withinRange v1 (IntersectVersionRanges v2 v3) 
+withinRange v1 (IntersectVersionRanges v2 v3)
    = v1 `withinRange` v2 && v1 `withinRange` v3
 
 instance Text VersionRange where
@@ -145,14 +145,14 @@ instance Text VersionRange where
        f2 <- factor
        return (UnionVersionRanges f1 f2)
      +++
-     do    
+     do
        Parse.string "&&"
        Parse.skipSpaces
        f2 <- factor
        return (IntersectVersionRanges f1 f2)
      +++
      return f1)
-   where 
+   where
         factor   = Parse.choice $ parseAnyVersion
                                 : parseWildcardRange
                                 : map parseRangeOp rangeOps

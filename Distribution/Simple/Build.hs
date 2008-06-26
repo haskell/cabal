@@ -42,14 +42,14 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
-	build, makefile, initialBuildSteps
+        build, makefile, initialBuildSteps
   ) where
 
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.PackageDescription
-				( PackageDescription(..), BuildInfo(..),
-				  Executable(..), Library(..) )
+                                ( PackageDescription(..), BuildInfo(..),
+                                  Executable(..), Library(..) )
 import Distribution.Package
          ( Package(..), packageName, packageVersion )
 import qualified Distribution.ModuleName as ModuleName
@@ -57,21 +57,21 @@ import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-				( LocalBuildInfo(..),
+                                ( LocalBuildInfo(..),
                                   InstallDirs(..), absoluteInstallDirs,
                                   prefixRelativeInstallDirs )
 import Distribution.Simple.BuildPaths ( autogenModuleName, autogenModulesDir )
 import Distribution.Simple.Configure
-				( localBuildInfoFile )
+                                ( localBuildInfoFile )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, die, setupMessage, writeUTF8File )
 import Distribution.System
 
 import System.FilePath          ( (</>), (<.>), pathSeparator )
 
-import Data.Maybe		( maybeToList, fromJust, isNothing )
-import Control.Monad 		( unless, when )
-import System.Directory		( getModificationTime, doesFileExist )
+import Data.Maybe               ( maybeToList, fromJust, isNothing )
+import Control.Monad            ( unless, when )
+import System.Directory         ( getModificationTime, doesFileExist )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -150,85 +150,85 @@ initialBuildSteps distPref pkg_descr lbi verbosity suffixes = do
 buildPathsModule :: FilePath -> PackageDescription -> LocalBuildInfo -> IO ()
 buildPathsModule distPref pkg_descr lbi =
    let pragmas
-	| absolute || isHugs = ""
-	| otherwise =
+        | absolute || isHugs = ""
+        | otherwise =
           "{-# LANGUAGE ForeignFunctionInterface #-}\n" ++
           "{-# OPTIONS_GHC -fffi #-}\n"++
           "{-# OPTIONS_JHC -fffi #-}\n"
 
        foreign_imports
-	| absolute = ""
-	| isHugs = "import System.Environment\n"
-	| otherwise =
-	  "import Foreign\n"++
-	  "import Foreign.C\n"++
-	  "import Data.Maybe\n"
+        | absolute = ""
+        | isHugs = "import System.Environment\n"
+        | otherwise =
+          "import Foreign\n"++
+          "import Foreign.C\n"++
+          "import Data.Maybe\n"
 
        header =
-	pragmas++
-	"module " ++ display paths_modulename ++ " (\n"++
-	"\tversion,\n"++
-	"\tgetBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
-	"\tgetDataFileName\n"++
-	"\t) where\n"++
-	"\n"++
-	foreign_imports++
-	"import Data.Version (Version(..))\n"++
+        pragmas++
+        "module " ++ display paths_modulename ++ " (\n"++
+        "\tversion,\n"++
+        "\tgetBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
+        "\tgetDataFileName\n"++
+        "\t) where\n"++
+        "\n"++
+        foreign_imports++
+        "import Data.Version (Version(..))\n"++
         "import System.Environment (getEnv)"++
-	"\n"++
-	"\nversion :: Version"++
-	"\nversion = " ++ show (packageVersion pkg_descr)++
-	"\n"
+        "\n"++
+        "\nversion :: Version"++
+        "\nversion = " ++ show (packageVersion pkg_descr)++
+        "\n"
 
        body
-	| absolute =
-	  "\nbindir, libdir, datadir, libexecdir :: FilePath\n"++
-	  "\nbindir     = " ++ show flat_bindir ++
-	  "\nlibdir     = " ++ show flat_libdir ++
-	  "\ndatadir    = " ++ show flat_datadir ++
-	  "\nlibexecdir = " ++ show flat_libexecdir ++
-	  "\n"++
-	  "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
-	  "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
-	  "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
-	  "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
-	  "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
-	  "\n"++
-	  "getDataFileName :: FilePath -> IO FilePath\n"++
-	  "getDataFileName name = do\n"++
-	  "  dir <- getDataDir\n"++
+        | absolute =
+          "\nbindir, libdir, datadir, libexecdir :: FilePath\n"++
+          "\nbindir     = " ++ show flat_bindir ++
+          "\nlibdir     = " ++ show flat_libdir ++
+          "\ndatadir    = " ++ show flat_datadir ++
+          "\nlibexecdir = " ++ show flat_libexecdir ++
+          "\n"++
+          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
+          "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
+          "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
+          "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
+          "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
+          "\n"++
+          "getDataFileName :: FilePath -> IO FilePath\n"++
+          "getDataFileName name = do\n"++
+          "  dir <- getDataDir\n"++
           "  return (dir ++ "++path_sep++" ++ name)\n"
-	| otherwise =
-	  "\nprefix        = " ++ show flat_prefix ++
-	  "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
-	  "\n\n"++
-	  "getBinDir :: IO FilePath\n"++
-	  "getBinDir = getPrefixDirRel bindirrel\n\n"++
-	  "getLibDir :: IO FilePath\n"++
-	  "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
-	  "getDataDir :: IO FilePath\n"++
-	  "getDataDir =  "++ mkGetEnvOr "datadir"
+        | otherwise =
+          "\nprefix        = " ++ show flat_prefix ++
+          "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
+          "\n\n"++
+          "getBinDir :: IO FilePath\n"++
+          "getBinDir = getPrefixDirRel bindirrel\n\n"++
+          "getLibDir :: IO FilePath\n"++
+          "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
+          "getDataDir :: IO FilePath\n"++
+          "getDataDir =  "++ mkGetEnvOr "datadir"
                               (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
-	  "getLibexecDir :: IO FilePath\n"++
-	  "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
-	  "getDataFileName :: FilePath -> IO FilePath\n"++
-	  "getDataFileName name = do\n"++
-	  "  dir <- getDataDir\n"++
-	  "  return (dir `joinFileName` name)\n"++
-	  "\n"++
-	  get_prefix_stuff++
-	  "\n"++
-	  filename_stuff
+          "getLibexecDir :: IO FilePath\n"++
+          "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
+          "getDataFileName :: FilePath -> IO FilePath\n"++
+          "getDataFileName name = do\n"++
+          "  dir <- getDataDir\n"++
+          "  return (dir `joinFileName` name)\n"++
+          "\n"++
+          get_prefix_stuff++
+          "\n"++
+          filename_stuff
    in do btime <- getModificationTime (localBuildInfoFile distPref)
-   	 exists <- doesFileExist paths_filepath
-   	 ptime <- if exists
-   	            then getModificationTime paths_filepath
-   	            else return btime
-	 if btime >= ptime
-	   then writeUTF8File paths_filepath (header++body)
-	   else return ()
+         exists <- doesFileExist paths_filepath
+         ptime <- if exists
+                    then getModificationTime paths_filepath
+                    else return btime
+         if btime >= ptime
+           then writeUTF8File paths_filepath (header++body)
+           else return ()
  where
-	InstallDirs {
+        InstallDirs {
           prefix     = flat_prefix,
           bindir     = flat_bindir,
           libdir     = flat_libdir,
@@ -243,8 +243,8 @@ buildPathsModule distPref pkg_descr lbi =
           progdir    = flat_progdirrel
         } = prefixRelativeInstallDirs pkg_descr lbi
 
-	mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
-	mkGetDir dir Nothing       = "return " ++ show dir
+        mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
+        mkGetDir dir Nothing       = "return " ++ show dir
 
         mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
@@ -262,18 +262,18 @@ buildPathsModule distPref pkg_descr lbi =
                            _         -> False
         supportsRelocatableProgs _    = False
 
-  	paths_modulename = autogenModuleName pkg_descr
-	paths_filename = ModuleName.toFilePath paths_modulename <.> "hs"
-	paths_filepath = autogenModulesDir lbi </> paths_filename
+        paths_modulename = autogenModuleName pkg_descr
+        paths_filename = ModuleName.toFilePath paths_modulename <.> "hs"
+        paths_filepath = autogenModulesDir lbi </> paths_filename
 
-	isHugs = compilerFlavor (compiler lbi) == Hugs
+        isHugs = compilerFlavor (compiler lbi) == Hugs
         get_prefix_stuff
           | isHugs    = "progdirrel :: String\n"++
                         "progdirrel = "++show (fromJust flat_progdirrel)++"\n\n"++
                         get_prefix_hugs
           | otherwise = get_prefix_win32
 
-	path_sep = show [pathSeparator]
+        path_sep = show [pathSeparator]
 
 get_prefix_win32 :: String
 get_prefix_win32 =

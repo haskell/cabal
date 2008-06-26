@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Install
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -42,12 +42,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Install (
-	install,
+        install,
   ) where
 
 import Distribution.PackageDescription (
-	PackageDescription(..), BuildInfo(..), Library(..),
-	hasLibs, withLib, hasExes, withExe )
+        PackageDescription(..), BuildInfo(..), Library(..),
+        hasLibs, withLib, hasExes, withExe )
 import Distribution.Package (Package(..))
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs,
@@ -95,10 +95,10 @@ install pkg_descr lbi flags = do
          haddockdir = interfacePref,
          includedir = incPref
       } = absoluteInstallDirs pkg_descr lbi copydest
-      
+
       progPrefixPref = substPathTemplate pkg_descr lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate pkg_descr lbi (progSuffix lbi)
-  
+
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
@@ -147,7 +147,7 @@ install pkg_descr lbi flags = do
      GHC  -> do withLib pkg_descr () $ \_ ->
                   GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
-		  GHC.installExe verbosity lbi binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
+                  GHC.installExe verbosity lbi binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
@@ -168,7 +168,7 @@ installIncludeFiles verbosity PackageDescription{library=Just l} incdir
    unless (null incs) $ do
      createDirectoryIfMissingVerbose verbosity True incdir
      sequence_ [ copyFileVerbose verbosity path (incdir </> f)
-	       | (f,path) <- incs ]
+               | (f,path) <- incs ]
   where
    relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
    lbi = libBuildInfo l
