@@ -86,6 +86,7 @@ import qualified Data.Char as Char (isAlphaNum)
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
+import Distribution.ModuleName (ModuleName)
 import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
@@ -202,7 +203,7 @@ instance Text BuildType where
 -- The Library type
 
 data Library = Library {
-        exposedModules    :: [String],
+        exposedModules    :: [ModuleName],
         libBuildInfo      :: BuildInfo
     }
     deriving (Show, Eq, Read)
@@ -232,7 +233,7 @@ withLib pkg_descr a f =
    maybe (return a) f (maybeHasLibs pkg_descr)
 
 -- |Get all the module names from the libraries in this package
-libModules :: PackageDescription -> [String]
+libModules :: PackageDescription -> [ModuleName]
 libModules PackageDescription{library=lib}
     = maybe [] exposedModules lib
        ++ maybe [] (otherModules . libBuildInfo) lib
@@ -276,7 +277,7 @@ withExe pkg_descr f =
   sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
 
 -- |Get all the module names from the exes in this package
-exeModules :: PackageDescription -> [String]
+exeModules :: PackageDescription -> [ModuleName]
 exeModules PackageDescription{executables=execs}
     = concatMap (otherModules . buildInfo) execs
 
@@ -307,7 +308,7 @@ data BuildInfo = BuildInfo {
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
-        otherModules      :: [String], -- ^ non-exposed or non-main modules
+        otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
         extensions        :: [Extension],
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraLibDirs      :: [String],

@@ -50,6 +50,8 @@ import Distribution.Package
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
           withLib, withExe, hcOptions )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.LocalBuildInfo
         ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
@@ -65,7 +67,7 @@ import Distribution.Simple.Program
           nhcProgram, hmakeProgram, ldProgram, arProgram,
           rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, info, findFileWithExtension, dotToSep,
+        ( die, info, findFileWithExtension,
           createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
 import Distribution.Version
         ( Version(..), VersionRange(..), orLaterVersion )
@@ -172,7 +174,7 @@ build pkg_descr lbi verbosity = do
     let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
         --        | cFile <- cSources bi ]
         libFilePath = targetDir </> mkLibName (packageId pkg_descr)
-        hObjs = [ targetDir </> dotToSep m <.> objExtension
+        hObjs = [ targetDir </> ModuleName.toFilePath m <.> objExtension
                 | m <- modules ]
 
     unless (null hObjs {-&& null cObjs-}) $ do
@@ -221,12 +223,12 @@ nhcVerbosityOptions verbosity
      | otherwise              = ["-q"]
 
 --TODO: where to put this? it's duplicated in .Simple too
-getModulePaths :: LocalBuildInfo -> BuildInfo -> [String] -> IO [FilePath]
+getModulePaths :: LocalBuildInfo -> BuildInfo -> [ModuleName] -> IO [FilePath]
 getModulePaths lbi bi modules = sequence
    [ findFileWithExtension ["hs", "lhs"] (buildDir lbi : hsSourceDirs bi)
-       (dotToSep module_) >>= maybe (notFound module_) (return . normalise)
+       (ModuleName.toFilePath module_) >>= maybe (notFound module_) (return . normalise)
    | module_ <- modules ]
-   where notFound module_ = die $ "can't find source for module " ++ module_
+   where notFound module_ = die $ "can't find source for module " ++ display module_
 
 -- -----------------------------------------------------------------------------
 -- Installing

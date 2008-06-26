@@ -64,6 +64,7 @@ import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
 import Distribution.Package	( PackageName(..), Dependency(..) )
+import Distribution.ModuleName (ModuleName)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
@@ -72,7 +73,7 @@ import Distribution.Simple.Utils (intercalate, lowercase)
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
-import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isDigit)
+import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
 import Data.Maybe	(fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import System.FilePath (normalise)
@@ -518,12 +519,8 @@ ifelse (f:fs) = do fs' <- ifelse fs
 ------------------------------------------------------------------------------
 
 -- |parse a module name
-parseModuleNameQ :: ReadP r String
-parseModuleNameQ = parseQuoted modu <++ modu
- where modu = do 
-	  c <- satisfy isUpper
-	  cs <- munch (\x -> isAlphaNum x || x `elem` "_'.")
-	  return (c:cs)
+parseModuleNameQ :: ReadP r ModuleName
+parseModuleNameQ = parseQuoted parse <++ parse
 
 parseFilePathQ :: ReadP r FilePath
 parseFilePathQ = parseTokenQ 
