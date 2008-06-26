@@ -66,6 +66,8 @@ import Distribution.Package
          , packageName, packageVersion )
 import qualified Distribution.Package as Package
          ( Package(..), PackageFixedDeps(..) )
+import Distribution.ModuleName
+         ( ModuleName )
 import Distribution.Version
          ( Version(..) )
 import Distribution.Text
@@ -118,7 +120,7 @@ instance Package.Package          (InstalledPackageInfo_ str) where
 instance Package.PackageFixedDeps (InstalledPackageInfo_ str) where
    depends   = depends
 
-type InstalledPackageInfo = InstalledPackageInfo_ String
+type InstalledPackageInfo = InstalledPackageInfo_ ModuleName
 
 emptyInstalledPackageInfo :: InstalledPackageInfo_ m
 emptyInstalledPackageInfo
@@ -242,10 +244,10 @@ installedFieldDescrs = [
    boolField "exposed"
 	exposed     	   (\val pkg -> pkg{exposed=val})
  , listField   "exposed-modules"
-	text               parseModuleNameQ
+	disp               parseModuleNameQ
 	exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
  , listField   "hidden-modules"
-	text               parseModuleNameQ
+	disp               parseModuleNameQ
 	hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
  , listField   "import-dirs"
 	showFilePath       parseFilePathQ

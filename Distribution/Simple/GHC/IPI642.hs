@@ -53,6 +53,8 @@ import qualified Distribution.Package as Current hiding (depends)
 import qualified Distribution.License as Current
 
 import Distribution.Version (Version)
+import Distribution.ModuleName (ModuleName)
+import Distribution.Text (simpleParse)
 
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
@@ -110,8 +112,8 @@ convertPackageId :: PackageIdentifier -> Current.PackageIdentifier
 convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
   Current.PackageIdentifier (Current.PackageName n) v
 
-convertModuleName :: String -> String
-convertModuleName s = s
+convertModuleName :: String -> ModuleName
+convertModuleName s = m where Just m = simpleParse s
 
 convertLicense :: License -> Current.License
 convertLicense GPL  = Current.GPL
