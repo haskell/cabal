@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.License
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -46,7 +46,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.License (
-	License(..)
+        License(..)
   ) where
 
 import Distribution.Version (Version)

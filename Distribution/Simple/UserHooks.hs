@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.UserHooks
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable

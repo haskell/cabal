@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.NHC
 -- Copyright   :  Isaac Jones 2003-2006
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -61,7 +61,7 @@ import Distribution.Simple.Compiler
         , Flag, extensionsToFlags )
 import Language.Haskell.Extension
         ( Extension(..) )
-import Distribution.Simple.Program 
+import Distribution.Simple.Program
         ( ProgramConfiguration, userMaybeSpecifyPath, requireProgram,
           lookupProgram, ConfiguredProgram(programVersion), programPath,
           nhcProgram, hmakeProgram, ldProgram, arProgram,

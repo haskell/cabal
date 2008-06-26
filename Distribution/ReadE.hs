@@ -76,7 +76,7 @@ readEOrFail :: ReadE a -> (String -> a)
 readEOrFail r = either error id . runReadE r
 
 readP_to_E :: (String -> ErrorMsg) -> ReadP a a -> ReadE a
-readP_to_E err r = 
+readP_to_E err r =
     ReadE $ \txt -> case [ p | (p, s) <- readP_to_S r txt
                          , all isSpace s ]
                     of [] -> Left (err txt)
