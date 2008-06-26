@@ -82,6 +82,9 @@ module Distribution.Simple.Utils (
         findFileWithExtension,
         findFileWithExtension',
 
+        -- * simple file globbing
+        matchFileGlob,
+
         -- * temp files and dirs
         withTempFile,
         withTempDirectory,
@@ -132,8 +135,8 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( takeDirectory, splitFileName, splitExtension, normalise
-    , (</>), (<.>), pathSeparator )
+    ( normalise, (</>), (<.>), pathSeparator, takeDirectory, splitFileName
+    , splitExtension, splitExtensions, takeExtensions )
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
 import System.IO
@@ -432,6 +435,34 @@ findFirstFile file = findFirst
                               if exists
                                 then return (Just x)
                                 else findFirst xs
+
+data FileGlob
+   -- | No glob at all, just an ordinary file
+   = NoGlob FilePath
+
+   -- | dir prefix and extension, like "foo/bar/*.baz" corresponds to
+   --    @FileGlob "foo/bar" (Just ".baz")@
+   | FileGlob FilePath String
+
+parseFileGlob :: FilePath -> Maybe FileGlob
+parseFileGlob filepath = case splitExtensions filepath of
+  (filepath', ext) -> case splitFileName filepath' of
+    (dir, "*") | '*' `elem` dir
+              || '*' `elem` ext      -> Nothing
+               | null dir            -> Just (FileGlob "." ext)
+               | otherwise           -> Just (FileGlob dir ext)
+    _          | '*' `elem` filepath -> Nothing
+               | otherwise           -> Just (NoGlob filepath)
+
+matchFileGlob :: FilePath -> IO [FilePath]
+matchFileGlob filepath = case parseFileGlob filepath of
+  Nothing -> die $ "invalid filepath '" ++ filepath
+                ++ "'. Wildcards '*' are only allowed in place of the file"
+                ++ " name, not in the directory name or file extension."
+  Just (NoGlob filepath') -> return [filepath']
+  Just (FileGlob dir ext) -> do
+    files <- getDirectoryContents dir
+    return [ dir </> file | file <- files, takeExtensions file == ext ]
 
 dotToSep :: String -> String
 dotToSep = map dts

@@ -69,7 +69,8 @@ import Distribution.Version
          ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , copyFiles, copyFileVerbose, findFile, findFileWithExtension
+         , copyFiles, copyFileVerbose
+         , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, dotToSep, defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
@@ -153,15 +154,17 @@ prepareTree verbosity pkg_descr mb_lbi distPref tmpDir pps = do
         Just pp -> return pp
     copyFileTo verbosity targetDir srcMainFile
   flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
-    let file = dataDir pkg_descr </> filename
-        dir = takeDirectory file
+    files <- matchFileGlob (dataDir pkg_descr </> filename)
+    let dir = takeDirectory (dataDir pkg_descr </> filename)
     createDirectoryIfMissingVerbose verbosity True (targetDir </> dir)
-    copyFileVerbose verbosity file (targetDir </> file)
+    sequence_ [ copyFileVerbose verbosity file (targetDir </> file)
+              | file <- files ]
 
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
-    copyFileTo verbosity targetDir fpath
+    files <- matchFileGlob fpath
+    sequence_ [ copyFileTo verbosity targetDir file | file <- files ]
 
   -- copy the install-include files
   withLib $ \ l -> do
