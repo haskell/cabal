@@ -49,8 +49,6 @@ Library
 
   Exposed-Modules:
         Distribution.Compiler,
-        Distribution.Extension,
-        Distribution.Setup,
         Distribution.InstalledPackageInfo,
         Distribution.License,
         Distribution.Make,
