@@ -122,7 +122,7 @@ mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
 
 -- ------------------------------------------------------------
 -- * Platform file extensions
--- ------------------------------------------------------------ 
+-- ------------------------------------------------------------
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
 -- | Extension for executable files

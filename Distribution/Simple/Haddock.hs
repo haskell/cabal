@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Haddock
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -55,7 +55,7 @@ import Distribution.PackageDescription as PD
           Executable(..), withExe)
 import Distribution.Simple.Compiler
          ( Compiler(..), CompilerFlavor(..), compilerVersion
-	 , extensionsToFlags )
+         , extensionsToFlags )
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgram
          , rawSystemProgram, rawSystemProgramStdoutConf, rawSystemProgramStdout
@@ -373,9 +373,9 @@ hscolour pkg_descr lbi suffixes flags = do
     withLib pkg_descr () $ \lib -> when (isJust $ library pkg_descr) $ do
         let bi = libBuildInfo lib
             modules = PD.exposedModules lib ++ otherModules bi
-	    outputDir = hscolourPref distPref pkg_descr </> "src"
-	createDirectoryIfMissingVerbose verbosity True outputDir
-	copyCSS hscolourProg outputDir
+            outputDir = hscolourPref distPref pkg_descr </> "src"
+        createDirectoryIfMissingVerbose verbosity True outputDir
+        copyCSS hscolourProg outputDir
         inFiles <- getLibSourceFiles lbi lib
         flip mapM_ (zip modules inFiles) $ \(mo, inFile) ->
             let outFile = outputDir </> moduleNameToHtmlFilePath mo

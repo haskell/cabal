@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.GHC.IPI642
 -- Copyright   :  (c) The University of Glasgow 2004
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  alpha
 -- Portability :  portable

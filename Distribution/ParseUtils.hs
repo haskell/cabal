@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.ParseUtils
 -- Copyright   :  (c) The University of Glasgow 2004
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  alpha
 -- Portability :  portable
@@ -45,16 +45,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 -- #hide
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
-	runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
-	Field(..), fName, lineNo, 
-	FieldDescr(..), ppField, ppFields, readFields, 
-	parseFilePathQ, parseTokenQ,
-	parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
+        runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
+        Field(..), fName, lineNo,
+        FieldDescr(..), ppField, ppFields, readFields,
+        parseFilePathQ, parseTokenQ,
+        parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
-	parseTestedWithQ, parseLicenseQ, parseExtensionQ, 
-	parseSepList, parseCommaList, parseOptCommaList,
-	showFilePath, showToken, showTestedWith, showFreeText,
-	field, simpleField, listField, commaListField, optsField, liftField,
+        parseTestedWithQ, parseLicenseQ, parseExtensionQ,
+        parseSepList, parseCommaList, parseOptCommaList,
+        showFilePath, showToken, showTestedWith, showFreeText,
+        field, simpleField, listField, commaListField, optsField, liftField,
         boolField, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
@@ -63,7 +63,7 @@ module Distribution.ParseUtils (
 import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
-import Distribution.Package	( PackageName(..), Dependency(..) )
+import Distribution.Package     ( PackageName(..), Dependency(..) )
 import Distribution.ModuleName (ModuleName)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
@@ -74,7 +74,7 @@ import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
-import Data.Maybe	(fromMaybe)
+import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import System.FilePath (normalise)
 
@@ -103,12 +103,12 @@ data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
 
 instance Monad ParseResult where
-	return x = ParseOk [] x
-	ParseFailed err >>= _ = ParseFailed err
-	ParseOk ws x >>= f = case f x of
-	                       ParseFailed err -> ParseFailed err
-			       ParseOk ws' x' -> ParseOk (ws'++ws) x'
-	fail s = ParseFailed (FromString s Nothing)
+        return x = ParseOk [] x
+        ParseFailed err >>= _ = ParseFailed err
+        ParseOk ws x >>= f = case f x of
+                               ParseFailed err -> ParseFailed err
+                               ParseOk ws' x' -> ParseOk (ws'++ws) x'
+        fail s = ParseFailed (FromString s Nothing)
 
 catchParseError :: ParseResult a -> (PError -> ParseResult a)
                 -> ParseResult a
@@ -160,8 +160,8 @@ warning s = ParseOk [PWarning s] ()
 
 -- | Field descriptor.  The parameter @a@ parameterizes over where the field's
 --   value is stored in.
-data FieldDescr a 
-  = FieldDescr 
+data FieldDescr a
+  = FieldDescr
       { fieldName     :: String
       , fieldGet      :: a -> Doc
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
@@ -171,7 +171,7 @@ data FieldDescr a
       }
 
 field :: String -> (a -> Doc) -> (ReadP a a) -> FieldDescr a
-field name showF readF = 
+field name showF readF =
   FieldDescr name showF (\line val _st -> runP line name readF val)
 
 -- Lift a field descriptor storing into an 'a' to a field descriptor storing
@@ -179,9 +179,9 @@ field name showF readF =
 liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
 liftField get set (FieldDescr name showF parseF)
  = FieldDescr name (\b -> showF (get b))
-	(\line str b -> do
-	    a <- parseF line str (get b)
-	    return (set a b))
+        (\line str b -> do
+            a <- parseF line str (get b)
+            return (set a b))
 
 -- Parser combinator for simple fields.  Takes a field name, a pretty printer,
 -- a parser function, an accessor, and a setter, returns a FieldDescr over the
@@ -192,30 +192,30 @@ simpleField name showF readF get set
   = liftField get set $ field name showF readF
 
 commaListField :: String -> (a -> Doc) -> (ReadP [a] a)
-		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField name showF readF get set = 
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListField name showF readF get set =
   liftField get set' $
     field name (fsep . punctuate comma . map showF) (parseCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
 
 listField :: String -> (a -> Doc) -> (ReadP [a] a)
-		 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-listField name showF readF get set = 
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+listField name showF readF get set =
   liftField get set' $
     field name (fsep . map showF) (parseOptCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
-optsField name flavor get set = 
-   liftField (fromMaybe [] . lookup flavor . get) 
-	     (\opts b -> set (update flavor opts (get b)) b) $
-	field name (hsep . map text)
-		   (sepBy parseTokenQ' (munch1 isSpace))
+optsField name flavor get set =
+   liftField (fromMaybe [] . lookup flavor . get)
+             (\opts b -> set (update flavor opts (get b)) b) $
+        field name (hsep . map text)
+                   (sepBy parseTokenQ' (munch1 isSpace))
   where
         update f opts [] = [(f,opts)]
-	update f opts ((f',opts'):rest)
+        update f opts ((f',opts'):rest)
            | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
 
@@ -266,14 +266,14 @@ ignoreUnrec _ x = Just x
 
 ------------------------------------------------------------------------------
 
--- The data type for our three syntactic categories 
-data Field 
+-- The data type for our three syntactic categories
+data Field
     = F LineNo String String
       -- ^ A regular @<property>: <value>@ field
     | Section LineNo String String [Field]
       -- ^ A section with a name and possible parameter.  The syntactic
       -- structure is:
-      -- 
+      --
       -- @
       --   <sectionname> <arg> {
       --     <field>*
@@ -324,13 +324,13 @@ trimLines ls = [ (lineno, indent, hastabs, (trimTrailing l'))
 
 -- | We parse generically based on indent level and braces '{' '}'. To do that
 -- we split into lines and then '{' '}' tokens and other spans within a line.
-data Token = 
+data Token =
        -- | The 'Line' token is for bits that /start/ a line, eg:
        --
        -- > "\n  blah blah { blah"
        --
        -- tokenises to:
-       -- 
+       --
        -- > [Line n 2 False "blah blah", OpenBracket, Span n "blah"]
        --
        -- so lines are the only ones that can have nested layout, since they
@@ -352,11 +352,11 @@ data Token =
        --
        -- but that's not so common, people would normally use layout or
        -- brackets not both in a single @if else@ construct.
-       -- 
+       --
        -- > if ... { foo : bar }
        -- > else
        -- >    other
-       -- 
+       --
        -- this is ok
        Line LineNo Indent HasTabs String
      | Span LineNo                String  -- ^ span in a line, following brackets
@@ -376,7 +376,7 @@ tokeniseLine (n0, i, t, l) = case split n0 l of
           ("", '{' : s') ->             OpenBracket  n : split n s'
           (w , '{' : s') -> mkspan n w (OpenBracket  n : split n s')
           ("", '}' : s') ->             CloseBracket n : split n s'
-          (w , '}' : s') -> mkspan n w (CloseBracket n : split n s') 
+          (w , '}' : s') -> mkspan n w (CloseBracket n : split n s')
           (w ,        _) -> mkspan n w []
 
         mkspan n s ss | null s'   =             ss
@@ -450,7 +450,7 @@ braces m a (Line n _ t l:OpenBracket n':ss) = do
     (sub, ss') <- braces n' [] ss
     braces m (Node (n,t,l) sub:a) ss'
 
-braces m a (Span n     l:OpenBracket n':ss) = do 
+braces m a (Span n     l:OpenBracket n':ss) = do
     (sub, ss') <- braces n' [] ss
     braces m (Node (n,False,l) sub:a) ss'
 
@@ -478,7 +478,7 @@ mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
                       if tabs && d >= 1
                         then tabsError n
                         else return $ F n (map toLower name)
-                                          (fieldValue rest' followingLines) 
+                                          (fieldValue rest' followingLines)
     rest'       -> do ts' <- mapM (mkField (d+1)) ts
                       return (Section n (map toLower name) rest' ts')
     where fieldValue firstLine followingLines =
@@ -513,7 +513,7 @@ ifelse (Section n "else" _ _:_) = syntaxError n "stray 'else' with no preceding 
 ifelse (Section n s a fs':fs) = do fs''  <- ifelse fs'
                                    fs''' <- ifelse fs
                                    return (Section n s a fs'' : fs''')
-ifelse (f:fs) = do fs' <- ifelse fs 
+ifelse (f:fs) = do fs' <- ifelse fs
                    return (f : fs')
 
 ------------------------------------------------------------------------------
@@ -523,7 +523,7 @@ parseModuleNameQ :: ReadP r ModuleName
 parseModuleNameQ = parseQuoted parse <++ parse
 
 parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseTokenQ 
+parseFilePathQ = parseTokenQ
   -- removed until normalise is no longer broken, was:
   --   liftM normalise parseTokenQ
 
@@ -545,7 +545,7 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
           cs <- munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
           if all isDigit cs then pfail else return cs
 
--- pkg-config allows versions and other letters in package names, 
+-- pkg-config allows versions and other letters in package names,
 -- eg "gtk+-2.0" is a valid pkg-config package _name_.
 -- It then has a package version number like 2.10.13
 parsePkgconfigDependency :: ReadP r Dependency
@@ -564,15 +564,15 @@ parseVersionRangeQ = parseQuoted parse <++ parse
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
   where ver = parse <++ return noVersion
-	noVersion = Version{ versionBranch=[], versionTags=[] }
+        noVersion = Version{ versionBranch=[], versionTags=[] }
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
   where tw = do compiler <- parseCompilerFlavorCompat
-		skipSpaces
-		version <- parse <++ return AnyVersion
-		skipSpaces
-		return (compiler,version)
+                skipSpaces
+                version <- parse <++ return AnyVersion
+                skipSpaces
+                return (compiler,version)
 
 parseLicenseQ :: ReadP r License
 parseLicenseQ = parseQuoted parse <++ parse
@@ -595,7 +595,7 @@ parseTokenQ' :: ReadP r String
 parseTokenQ' = parseHaskellString <++ munch1 (\x -> not (isSpace x))
 
 parseSepList :: ReadP r b
-	     -> ReadP r a -- ^The parser for the stuff between commas
+             -> ReadP r a -- ^The parser for the stuff between commas
              -> ReadP r [a]
 parseSepList sepr p = sepBy p separator
     where separator = skipSpaces >> sepr >> skipSpaces

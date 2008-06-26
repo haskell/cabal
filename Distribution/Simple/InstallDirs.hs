@@ -105,15 +105,15 @@ data InstallDirs dir = InstallDirs {
         prefix       :: dir,
         bindir       :: dir,
         libdir       :: dir,
-	libsubdir    :: dir,
+        libsubdir    :: dir,
         dynlibdir    :: dir,
         libexecdir   :: dir,
         progdir      :: dir,
         includedir   :: dir,
         datadir      :: dir,
-	datasubdir   :: dir,
+        datasubdir   :: dir,
         docdir       :: dir,
-	mandir       :: dir,
+        mandir       :: dir,
         htmldir      :: dir,
         haddockdir   :: dir
     } deriving (Read, Show)
@@ -157,8 +157,8 @@ instance Monoid dir => Monoid (InstallDirs dir) where
 
 combineInstallDirs :: (a -> b -> c)
                    -> InstallDirs a
-		   -> InstallDirs b
-		   -> InstallDirs c
+                   -> InstallDirs b
+                   -> InstallDirs c
 combineInstallDirs combine a b = InstallDirs {
     prefix       = prefix a     `combine` prefix b,
     bindir       = bindir a     `combine` bindir b,
@@ -242,7 +242,7 @@ defaultInstallDirs comp userInstall hasLibs = do
       datasubdir   = "$pkgid",
       docdir       = case buildOS of
         Windows   -> "$prefix"  </> "doc" </> "$pkgid"
-	_other    -> "$datadir" </> "doc" </> "$pkgid",
+        _other    -> "$datadir" </> "doc" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
       haddockdir   = "$htmldir"
@@ -314,7 +314,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
   $ substituteTemplates pkgId compilerId dirs {
       prefix = case copydest of
         -- possibly override the prefix
-	CopyPrefix p -> toPathTemplate p
+        CopyPrefix p -> toPathTemplate p
         _            -> prefix dirs
     }
 
@@ -445,17 +445,17 @@ instance Read PathTemplateVariable where
     | (varStr, var) <- vars
     , varStr `isPrefixOf` s ]
     where vars = [("prefix",     PrefixVar)
-	         ,("bindir",     BindirVar)
-	         ,("libdir",     LibdirVar)
-	         ,("libsubdir",  LibsubdirVar)
-	         ,("datadir",    DatadirVar)
-	         ,("datasubdir", DatasubdirVar)
-	         ,("docdir",     DocdirVar)
-		 ,("htmldir",    HtmldirVar)
-	         ,("pkgid",      PkgIdVar)
-	         ,("pkg",        PkgNameVar)
-	         ,("version",    PkgVerVar)
-	         ,("compiler",   CompilerVar)]
+                 ,("bindir",     BindirVar)
+                 ,("libdir",     LibdirVar)
+                 ,("libsubdir",  LibsubdirVar)
+                 ,("datadir",    DatadirVar)
+                 ,("datasubdir", DatasubdirVar)
+                 ,("docdir",     DocdirVar)
+                 ,("htmldir",    HtmldirVar)
+                 ,("pkgid",      PkgIdVar)
+                 ,("pkg",        PkgNameVar)
+                 ,("version",    PkgVerVar)
+                 ,("compiler",   CompilerVar)]
 
 instance Show PathComponent where
   show (Ordinary path) = path
@@ -469,8 +469,8 @@ instance Read PathComponent where
           lex0 ('$':'$':s') = lex0 ('$':s')
           lex0 ('$':s') = case [ (Variable var, s'')
                                | (var, s'') <- reads s' ] of
-		            [] -> lex1 "$" s'
-		            ok -> ok
+                            [] -> lex1 "$" s'
+                            ok -> ok
           lex0 s' = lex1 [] s'
           lex1 ""  ""      = []
           lex1 acc ""      = [(Ordinary (reverse acc), "")]
@@ -511,8 +511,8 @@ shGetFolderPath n =
   allocaBytes long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath
      if (r /= 0)
-	then return Nothing
-	else do s <- peekCString pPath; return (Just s)
+        then return Nothing
+        else do s <- peekCString pPath; return (Just s)
   where
     long_path_size      = 1024
 # endif

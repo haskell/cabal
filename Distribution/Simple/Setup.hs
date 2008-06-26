@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Setup
 -- Copyright   :  Isaac Jones 2003-2004
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -291,7 +291,7 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
     shortDesc  = "Prepare to build the package."
     longDesc   = Just (\_ -> programFlagsDescription progConf)
     defaultFlags = defaultConfigFlags progConf
-    options showOrParseArgs = 
+    options showOrParseArgs =
          configureOptions showOrParseArgs
       ++ programConfigurationPaths   progConf showOrParseArgs
            configProgramPaths (\v fs -> fs { configProgramPaths = v })
@@ -337,37 +337,37 @@ configureOptions showOrParseArgs =
          installDirArg
 
       ,option "" ["libsubdir"]
-	 "subdirectory of libdir in which libs are installed"
+         "subdirectory of libdir in which libs are installed"
          libsubdir (\v flags -> flags { libsubdir = v })
          installDirArg
 
       ,option "" ["libexecdir"]
-	 "installation directory for program executables"
+         "installation directory for program executables"
          libexecdir (\v flags -> flags { libexecdir = v })
          installDirArg
 
       ,option "" ["datadir"]
-	 "installation directory for read-only data"
+         "installation directory for read-only data"
          datadir (\v flags -> flags { datadir = v })
          installDirArg
 
       ,option "" ["datasubdir"]
-	 "subdirectory of datadir in which data files are installed"
+         "subdirectory of datadir in which data files are installed"
          datasubdir (\v flags -> flags { datasubdir = v })
          installDirArg
 
       ,option "" ["docdir"]
-	 "installation directory for documentation"
+         "installation directory for documentation"
          docdir (\v flags -> flags { docdir = v })
          installDirArg
 
       ,option "" ["htmldir"]
-	 "installation directory for HTML documentation"
+         "installation directory for HTML documentation"
          htmldir (\v flags -> flags { htmldir = v })
          installDirArg
 
       ,option "" ["haddockdir"]
-	 "installation directory for haddock interfaces"
+         "installation directory for haddock interfaces"
          haddockdir (\v flags -> flags { haddockdir = v })
          installDirArg
 
@@ -378,7 +378,7 @@ configureOptions showOrParseArgs =
 
       ,option "" ["program-prefix"]
           "prefix to be applied to installed executables"
-          configProgPrefix 
+          configProgPrefix
           (\v flags -> flags { configProgPrefix = v })
           (reqPathTemplateArgFlag "PREFIX")
 
@@ -475,16 +475,16 @@ configureOptions showOrParseArgs =
       ,option "" ["constraint"]
          "A list of additional constraints on the dependencies."
          configConstraints (\v flags -> flags { configConstraints = v})
-         (reqArg "DEPENDENCY" 
+         (reqArg "DEPENDENCY"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
                  (map (\x -> display x)))
       ]
-  where     
+  where
     readFlagList :: String -> FlagAssignment
     readFlagList = map tagWithValue . words
       where tagWithValue ('-':fname) = (FlagName (lowercase fname), False)
             tagWithValue fname       = (FlagName (lowercase fname), True)
-    
+
     showFlagList :: FlagAssignment -> [String]
     showFlagList fs = [ if not set then '-':fname else fname
                       | (FlagName fname, set) <- fs]
@@ -1242,7 +1242,7 @@ programConfigurationOptions progConf showOrParseArgs get set =
         get set
         (reqArg' "OPT" (\arg -> [(prog, [arg])])
            (\progArgs -> concat [ args | (prog', args) <- progArgs, prog==prog' ]))
-                
+
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
@@ -1308,7 +1308,7 @@ configureArgs bcHack flags
         hc_flag_name
             --TODO kill off thic bc hack when defaultUserHooks is removed.
             | bcHack    = "--with-hc="
-	    | otherwise = "--with-compiler="
+            | otherwise = "--with-compiler="
         optFlag name config_field = case config_field flags of
                         Flag p -> ["--" ++ name ++ "=" ++ p]
                         NoFlag -> []

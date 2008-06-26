@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Program
 -- Copyright   :  Isaac Jones 2006
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  GHC, Hugs
@@ -104,11 +104,11 @@ import Control.Exception as Exception (catch)
 data Program = Program {
         -- | The simple name of the program, eg. ghc
         programName :: String,
-        
+
         -- | A function to search for the program if it's location was not
-        -- specified by the user. Usually this will just be a 
+        -- specified by the user. Usually this will just be a
         programFindLocation :: Verbosity -> IO (Maybe FilePath),
-        
+
         -- | Try to find the version of the program. For many programs this is
         -- not possible or is not necessary so it's ok to return Nothing.
         programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version)
@@ -119,7 +119,7 @@ type ProgArg = String
 data ConfiguredProgram = ConfiguredProgram {
         -- | Just the name again
         programId :: String,
-        
+
         -- | The version of this program, if it is known.
         programVersion :: Maybe Version,
 
@@ -129,7 +129,7 @@ data ConfiguredProgram = ConfiguredProgram {
         programArgs :: [ProgArg],
 
         -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
-        programLocation :: ProgramLocation    
+        programLocation :: ProgramLocation
     } deriving (Read, Show)
 
 -- | Where a program was found. Also tells us whether it's specifed by user or
@@ -158,7 +158,7 @@ programPath = locationPath . programLocation
 -- > simpleProgram "foo" { programFindLocation = ... , programFindVersion ... }
 --
 simpleProgram :: String -> Program
-simpleProgram name = 
+simpleProgram name =
   Program name (findProgramOnPath name) (\_ _ -> return Nothing)
 
 -- | Look for a program on the path.
@@ -254,7 +254,7 @@ lookupKnownProgram name =
   fmap (\(p,_,_)->p) . Map.lookup name . unconfiguredProgs
 
 knownPrograms :: ProgramConfiguration -> [(Program, Maybe ConfiguredProgram)]
-knownPrograms conf = 
+knownPrograms conf =
   [ (p,p') | (p,_,_) <- Map.elems (unconfiguredProgs conf)
            , let p' = Map.lookup (programName p) (configuredProgs conf) ]
 
@@ -313,7 +313,7 @@ updateProgram prog = updateConfiguredProgs $
 
 -- | Try to configure a specific program. If the program is already included in
 -- the colleciton of unconfigured programs then we use any user-supplied
--- location and arguments. If the program gets configured sucessfully it gets 
+-- location and arguments. If the program gets configured sucessfully it gets
 -- added to the configured collection.
 --
 -- Note that it is not a failure if the program cannot be configured. It's only
@@ -323,7 +323,7 @@ updateProgram prog = updateConfiguredProgs $
 -- The reason for it not being a failure at this stage is that we don't know up
 -- front all the programs we will need, so we try to configure them all.
 -- To verify that a program was actually sucessfully configured use
--- 'requireProgram'. 
+-- 'requireProgram'.
 --
 configureProgram :: Verbosity
                  -> Program
@@ -373,12 +373,12 @@ configureAllKnownPrograms verbosity conf =
 requireProgram :: Verbosity -> Program -> VersionRange -> ProgramConfiguration
                -> IO (ConfiguredProgram, ProgramConfiguration)
 requireProgram verbosity prog range conf = do
-  
+
   -- If it's not already been configured, try to configure it now
   conf' <- case lookupProgram prog conf of
     Nothing -> configureProgram verbosity prog conf
     Just _  -> return conf
-  
+
   case lookupProgram prog conf' of
     Nothing                           -> die notFound
     Just configuredProg
@@ -580,16 +580,16 @@ hsc2hsProgram = (simpleProgram "hsc2hs") {
       -- to see if it was indeed ghc or not.
       case maybeVersion of
         Nothing -> return Nothing
-	Just version -> do
+        Just version -> do
           tempDir <- getTemporaryDirectory
           withTempFile tempDir ".hsc" $ \hsc hnd -> do
-	    hClose hnd
-	    (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
-	    try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
-	    case words str of
-	      (_:"Glorious":"Glasgow":"Haskell":_)
-	        -> return $ Just version { versionTags = ["ghc"] }
-	      _ -> return $ Just version
+            hClose hnd
+            (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
+            try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
+            case words str of
+              (_:"Glorious":"Glasgow":"Haskell":_)
+                -> return $ Just version { versionTags = ["ghc"] }
+              _ -> return $ Just version
 
   }
 

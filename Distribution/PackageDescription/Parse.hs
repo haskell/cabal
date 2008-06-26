@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.PackageDescription.Parse
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -55,7 +55,7 @@ module Distribution.PackageDescription.Parse (
         readHookedBuildInfo,
         parseHookedBuildInfo,
         writeHookedBuildInfo,
-        showHookedBuildInfo,        
+        showHookedBuildInfo,
   ) where
 
 import Data.Char  (isSpace)
@@ -141,16 +141,16 @@ pkgDescrFieldDescrs =
  , listField "tested-with"
            showTestedWith         parseTestedWithQ
            testedWith             (\val pkg -> pkg{testedWith=val})
- , listField "data-files"  
+ , listField "data-files"
            showFilePath           parseFilePathQ
            dataFiles              (\val pkg -> pkg{dataFiles=val})
  , simpleField "data-dir"
            showFilePath           parseFilePathQ
            dataDir                (\val pkg -> pkg{dataDir=val})
- , listField "extra-source-files" 
+ , listField "extra-source-files"
            showFilePath    parseFilePathQ
            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
- , listField "extra-tmp-files" 
+ , listField "extra-tmp-files"
            showFilePath       parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
  ]
@@ -168,12 +168,12 @@ libFieldDescrs :: [FieldDescr Library]
 libFieldDescrs = map biToLib binfoFieldDescrs
   ++ [
       listField "exposed-modules" disp parseModuleNameQ
-	 exposedModules (\mods lib -> lib{exposedModules=mods})
+         exposedModules (\mods lib -> lib{exposedModules=mods})
      ]
   where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
 
 storeXFieldsLib :: UnrecFieldParser Library
-storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) = 
+storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) =
     Just $ l {libBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi) }}
 storeXFieldsLib _ _ = Nothing
 
@@ -182,7 +182,7 @@ storeXFieldsLib _ _ = Nothing
 
 
 executableFieldDescrs :: [FieldDescr Executable]
-executableFieldDescrs = 
+executableFieldDescrs =
   [ -- note ordering: configuration must come first, for
     -- showPackageDescription.
     simpleField "executable"
@@ -199,7 +199,7 @@ storeXFieldsExe :: UnrecFieldParser Executable
 storeXFieldsExe (f@('x':'-':_), val) e@(Executable { buildInfo = bi }) =
     Just $ e {buildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
 storeXFieldsExe _ _ = Nothing
-  
+
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
@@ -250,10 +250,10 @@ binfoFieldDescrs =
  , listField   "hs-source-dirs"
            showFilePath       parseFilePathQ
            hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
- , listField   "other-modules"         
+ , listField   "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
- , listField   "ghc-prof-options"         
+ , listField   "ghc-prof-options"
            text               parseTokenQ
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
  , listField   "ghc-shared-options"
@@ -316,7 +316,7 @@ readPackageDescription =
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []
 stanzas (f:fields) = (f:this) : stanzas rest
-  where 
+  where
     (this, rest) = break isStanzaHeader fields
 
 isStanzaHeader :: Field -> Bool
@@ -326,13 +326,13 @@ isStanzaHeader _ = False
 ------------------------------------------------------------------------------
 
 
-mapSimpleFields :: (Field -> ParseResult Field) -> [Field] 
+mapSimpleFields :: (Field -> ParseResult Field) -> [Field]
                 -> ParseResult [Field]
 mapSimpleFields f fs = mapM walk fs
   where
     walk fld@(F _ _ _) = f fld
-    walk (IfBlock l c fs1 fs2) = do 
-      fs1' <- mapM walk fs1 
+    walk (IfBlock l c fs1 fs2) = do
+      fs1' <- mapM walk fs1
       fs2' <- mapM walk fs2
       return (IfBlock l c fs1' fs2')
     walk (Section ln n l fs1) = do
@@ -340,7 +340,7 @@ mapSimpleFields f fs = mapM walk fs
       return (Section ln n l fs1')
 
 -- prop_isMapM fs = mapSimpleFields return fs == return fs
-      
+
 
 -- names of fields that represents dependencies, thus consrca
 constraintFieldNames :: [String]
@@ -351,22 +351,22 @@ constraintFieldNames = ["build-depends"]
 -- are.  This way we would completely reuse the parsing knowledge from the
 -- field descriptor.
 parseConstraint :: Field -> ParseResult [Dependency]
-parseConstraint (F l n v) 
+parseConstraint (F l n v)
     | n == "build-depends" = runP l n (parseCommaList parse) v
 parseConstraint f = bug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 {-
 headerFieldNames :: [String]
-headerFieldNames = filter (\n -> not (n `elem` constraintFieldNames)) 
+headerFieldNames = filter (\n -> not (n `elem` constraintFieldNames))
                  . map fieldName $ pkgDescrFieldDescrs
 -}
 
 libFieldNames :: [String]
-libFieldNames = map fieldName libFieldDescrs 
+libFieldNames = map fieldName libFieldDescrs
                 ++ buildInfoNames ++ constraintFieldNames
 
 -- exeFieldNames :: [String]
--- exeFieldNames = map fieldName executableFieldDescrs 
+-- exeFieldNames = map fieldName executableFieldDescrs
 --                 ++ buildInfoNames
 
 buildInfoNames :: [String]
@@ -403,7 +403,7 @@ type PM a = StT [Field] ParseResult a
 
 
 -- return look-ahead field or nothing if we're at the end of the file
-peekField :: PM (Maybe Field) 
+peekField :: PM (Maybe Field)
 peekField = get >>= return . listToMaybe
 
 -- Unconditionally discard the first field in our state.  Will error when it
@@ -414,7 +414,7 @@ skipField = modify tail
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
--- with sections and possibly indented property descriptions.  
+-- with sections and possibly indented property descriptions.
 parsePackageDescription :: String -> ParseResult GenericPackageDescription
 parsePackageDescription file = do
     let tabs = findIndentTabs file
@@ -457,9 +457,9 @@ parsePackageDescription file = do
           ++ "  Tabs were used at (line,column): " ++ show tabs
     maybeWarnCabalVersion pkg =
         when (packageName pkg /= PackageName "Cabal" -- supress warning for Cabal
-	   && isAnyVersion (descCabalVersion pkg)) $
+           && isAnyVersion (descCabalVersion pkg)) $
           lift $ warning $
-            "A package using section syntax should require\n" 
+            "A package using section syntax should require\n"
             ++ "\"Cabal-Version: >= 1.2\" or equivalent."
 
     handleFutureVersionParseFailure cabalVersionNeeded parseBody =
@@ -485,7 +485,7 @@ parsePackageDescription file = do
     sectionizeFields :: [Field] -> [Field]
     sectionizeFields fs
       | oldSyntax fs =
-          let 
+          let
             -- "build-depends" is a local field now.  To be backwards
             -- compatible, we still allow it as a global field in old-style
             -- package description files and translate it to a local field by
@@ -498,14 +498,14 @@ parsePackageDescription file = do
 
             exes = unfoldr toExe exes0
             toExe [] = Nothing
-            toExe (F l e n : r) 
-              | e == "executable" = 
+            toExe (F l e n : r)
+              | e == "executable" =
                   let (efs, r') = break ((=="executable") . fName) r
                   in Just (Section l "executable" n (deps ++ efs), r')
             toExe _ = bug "unexpeced input to 'toExe'"
-          in 
-            hdr ++ 
-           (if null libfs then [] 
+          in
+            hdr ++
+           (if null libfs then []
             else [Section (lineNo (head libfs)) "library" "" (deps ++ libfs)])
             ++ exes
       | otherwise = fs
@@ -515,9 +515,9 @@ parsePackageDescription file = do
 
     -- warn if there's something at the end of the file
     warnIfRest :: PM ()
-    warnIfRest = do 
+    warnIfRest = do
       s <- get
-      case s of 
+      case s of
         [] -> return ()
         _ -> lift $ warning "Ignoring trailing declarations."  -- add line no.
 
@@ -527,12 +527,12 @@ parsePackageDescription file = do
     getHeader acc = peekField >>= \mf -> case mf of
         Just f@(F _ _ _) -> skipField >> getHeader (f:acc)
         _ -> return (reverse acc)
-      
+
     --
     -- body ::= flag* { library | executable }+   -- at most one lib
-    --        
+    --
     -- The body consists of an optional sequence of flag declarations and after
-    -- that an arbitrary number of executables and an optional library.  The 
+    -- that an arbitrary number of executables and an optional library.  The
     -- order of the latter doesn't play a role.
     getBody :: PM ([Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
@@ -540,33 +540,33 @@ parsePackageDescription file = do
     getBody = do
       mf <- peekField
       case mf of
-        Just (Section _ sn _label _fields) 
-          | sn == "flag"    -> do 
+        Just (Section _ sn _label _fields)
+          | sn == "flag"    -> do
               -- don't skipField here.  it's simpler to let getFlags do it
               -- itself
               flags <- getFlags []
               (lib, exes) <- getLibOrExe
               return (flags, lib, exes)
-          | otherwise -> do 
+          | otherwise -> do
               (lib,exes) <- getLibOrExe
               return ([], lib, exes)
         Nothing -> do lift $ warning "No library or executable specified"
                       return ([], Nothing, [])
-        Just f -> lift $ syntaxError (lineNo f) $ 
+        Just f -> lift $ syntaxError (lineNo f) $
                "Construct not supported at this position: " ++ show f
-    
-    -- 
-    -- flags ::= "flag:" name { flag_prop } 
+
+    --
+    -- flags ::= "flag:" name { flag_prop }
     --
     getFlags :: [Flag] -> StT [Field] ParseResult [Flag]
     getFlags acc = peekField >>= \mf -> case mf of
-        Just (Section _ sn sl fs) 
+        Just (Section _ sn sl fs)
           | sn == "flag" -> do
               fl <- lift $ parseFields
                       flagFieldDescrs
                       warnUnrec
                       (MkFlag (FlagName (lowercase sl)) "" True)
-                      fs 
+                      fs
               skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
 
@@ -600,7 +600,7 @@ parsePackageDescription file = do
 
     -- extracts all fields in a block, possibly add dependencies to the
     -- guard condition
-    collectFields :: ([Field] -> PM a) -> [Field] 
+    collectFields :: ([Field] -> PM a) -> [Field]
                   -> PM (CondTree ConfVar [Dependency] a)
     collectFields parser allflds = do
         a <- parser dataFlds
@@ -624,7 +624,7 @@ parsePackageDescription file = do
         processIfs _ = bug "processIfs called with wrong field type"
 
     parseLibFields :: [Field] -> StT s ParseResult Library
-    parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary 
+    parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary
 
     parseExeFields :: [Field] -> StT s ParseResult Executable
     parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
@@ -650,22 +650,22 @@ parsePackageDescription file = do
 -- | Parse a list of fields, given a list of field descriptions,
 --   a structure to accumulate the parsed fields, and a function
 --   that can decide what to do with fields which don't match any
---   of the field descriptions.  
+--   of the field descriptions.
 parseFields :: [FieldDescr a]      -- ^ list of parseable fields
             -> UnrecFieldParser a  -- ^ possibly do something with
                                    --   unrecognized fields
             -> a                   -- ^ accumulator
             -> [Field]             -- ^ fields to be parsed
             -> ParseResult a
-parseFields descrs unrec ini fields = 
+parseFields descrs unrec ini fields =
     do (a, unknowns) <- foldM (parseField descrs unrec) (ini, []) fields
        when (not (null unknowns)) $ do
-         warning $ render $ 
-           text "Unknown fields:" <+> 
-                commaSep (map (\(l,u) -> u ++ " (line " ++ show l ++ ")") 
-                              (reverse unknowns)) 
+         warning $ render $
+           text "Unknown fields:" <+>
+                commaSep (map (\(l,u) -> u ++ " (line " ++ show l ++ ")")
+                              (reverse unknowns))
            $+$
-           text "Fields allowed in this section:" $$ 
+           text "Fields allowed in this section:" $$
              nest 4 (commaSep $ map fieldName descrs)
        return a
   where
@@ -687,7 +687,7 @@ parseField [] unrec (a,us) (F l f val) = return $
 parseField _ _ _ _ = bug "'parseField' called on a non-field"
 
 deprecatedFields :: [(String,String)]
-deprecatedFields = 
+deprecatedFields =
     deprecatedFieldsPkgDescr ++ deprecatedFieldsBuildInfo
 
 deprecatedFieldsPkgDescr :: [(String,String)]
@@ -708,7 +708,7 @@ deprecField (F line fld val) = do
   return (F line fld' val)
 deprecField _ = bug "'deprecField' called on a non-field"
 
-   
+
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   fields <- readFields inp

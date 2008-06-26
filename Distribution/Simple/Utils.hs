@@ -9,7 +9,7 @@
 -- Module      :  Distribution.Simple.Utils
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 --                portions Copyright (c) 2007, Galois Inc.
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -61,7 +61,7 @@ module Distribution.Simple.Utils (
         -- * running programs
         rawSystemExit,
         rawSystemStdout,
-	rawSystemStdout',
+        rawSystemStdout',
         maybeExit,
         xargs,
         inDir,
@@ -77,7 +77,7 @@ module Distribution.Simple.Utils (
         currentDir,
 
         -- * finding files
-	findFile,
+        findFile,
         findFileWithExtension,
         findFileWithExtension',
 
@@ -91,8 +91,8 @@ module Distribution.Simple.Utils (
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
         findPackageDesc,
-	defaultHookedPackageDesc,
-	findHookedPackageDesc,
+        defaultHookedPackageDesc,
+        findHookedPackageDesc,
 
         -- * reading and writing files safely
         withFileContents,
@@ -202,7 +202,7 @@ die msg = do
 -- We display these at the 'normal' verbosity level.
 --
 warn :: Verbosity -> String -> IO ()
-warn verbosity msg = 
+warn verbosity msg =
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutStr stderr (wrapText ("Warning: " ++ msg))
@@ -224,7 +224,7 @@ setupMessage verbosity msg pkgid =
     notice verbosity (msg ++ ' ': display pkgid ++ "...")
 
 -- | More detail on the operation of some action.
--- 
+--
 -- We display these messages when the verbosity level is 'verbose'
 --
 info :: Verbosity -> String -> IO ()
@@ -336,7 +336,7 @@ rawSystemStdout' verbosity path args = do
       -- NB. do the hGetContents synchronously, otherwise the outer
       -- bracket can exit before this thread has run, and hGetContents
       -- will fail.
-      err <- hGetContents errh 
+      err <- hGetContents errh
       forkIO $ do evaluate (length err); return ()
 
       -- wait for all the output
@@ -368,7 +368,7 @@ rawSystemStdout' verbosity path args = do
 -- need to invoke a command multiple times to get all the args in.
 --
 -- Use it with either of the rawSystem variants above. For example:
--- 
+--
 -- > xargs (32*1024) (rawSystemExit verbosity) prog fixedArgs bigArgs
 --
 xargs :: Int -> ([String] -> IO ())
@@ -687,8 +687,8 @@ defaultHookedPackageDesc = findHookedPackageDesc currentDir
 -- |Find auxiliary package information in the given directory.
 -- Looks for @.buildinfo@ files.
 findHookedPackageDesc
-    :: FilePath			-- ^Directory to search
-    -> IO (Maybe FilePath)	-- ^/dir/@\/@/pkgname/@.buildinfo@, if present
+    :: FilePath                 -- ^Directory to search
+    -> IO (Maybe FilePath)      -- ^/dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc dir = do
     files <- getDirectoryContents dir
     buildInfoFiles <- filterM doesFileExist
@@ -697,9 +697,9 @@ findHookedPackageDesc dir = do
                         , let (name, ext) = splitExtension file
                         , not (null name) && ext == buildInfoExt ]
     case buildInfoFiles of
-	[] -> return Nothing
-	[f] -> return (Just f)
-	_ -> die ("Multiple files with extension " ++ buildInfoExt)
+        [] -> return Nothing
+        [f] -> return (Just f)
+        _ -> die ("Multiple files with extension " ++ buildInfoExt)
 
 buildInfoExt  :: String
 buildInfoExt = ".buildinfo"
