@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple
 -- Copyright   :  Isaac Jones 2003-2005
--- 
+--
 -- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
 -- Stability   :  alpha
 -- Portability :  portable
@@ -47,17 +47,17 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple (
-	module Distribution.Package,
-	module Distribution.Version,
-	module Distribution.License,
-	module Distribution.Simple.Compiler,
-	module Language.Haskell.Extension,
+        module Distribution.Package,
+        module Distribution.Version,
+        module Distribution.License,
+        module Distribution.Simple.Compiler,
+        module Language.Haskell.Extension,
         -- * Simple interface
-	defaultMain, defaultMainNoRead, defaultMainArgs,
+        defaultMain, defaultMainNoRead, defaultMainArgs,
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultMainWithHooksArgs,
-	-- ** Standard sets of hooks
+        -- ** Standard sets of hooks
         simpleUserHooks,
         autoconfUserHooks,
         defaultUserHooks, emptyUserHooks,
@@ -84,14 +84,14 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build	( build, makefile )
-import Distribution.Simple.SrcDist	( sdist )
-import Distribution.Simple.Register	( register, unregister,
+import Distribution.Simple.Build        ( build, makefile )
+import Distribution.Simple.SrcDist      ( sdist )
+import Distribution.Simple.Register     ( register, unregister,
                                           writeInstalledConfig,
                                           removeRegScripts
                                         )
 
-import Distribution.Simple.Configure(getPersistBuildConfig, 
+import Distribution.Simple.Configure(getPersistBuildConfig,
                                      maybeGetPersistBuildConfig,
                                      checkPersistBuildConfig,
                                      configure, writePersistBuildConfig)
@@ -192,7 +192,7 @@ defaultMainHelper hooks args =
 -- into cabal.
 allPrograms :: UserHooks
             -> ProgramConfiguration -- combine defaults w/ user programs
-allPrograms h = foldl (flip addKnownProgram) 
+allPrograms h = foldl (flip addKnownProgram)
                       defaultProgramConfiguration
                       (hookedPrograms h)
 
@@ -220,13 +220,13 @@ configureAction hooks flags args = do
                 --(warns, ers) <- sanityCheckPackage pkg_descr
                 --errorOut (configVerbosity flags') warns ers
 
-		localbuildinfo0 <- confHook hooks epkg_descr flags
+                localbuildinfo0 <- confHook hooks epkg_descr flags
 
                 -- remember the .cabal filename if we know it
                 let localbuildinfo = localbuildinfo0{ pkgDescrFile = mb_pd_file }
                 writePersistBuildConfig distPref localbuildinfo
-                
-		let pkg_descr = localPkgDescr localbuildinfo
+
+                let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags pkg_descr localbuildinfo
               where
                 verbosity = fromFlag (configVerbosity flags)
@@ -265,7 +265,7 @@ hscolourAction hooks flags args
          hookedAction preHscolour hscolourHook postHscolour
                       (getBuildConfigIfUpToDate distPref)
                       hooks flags args
-        
+
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args
     = do let distPref = fromFlag $ haddockDistPref flags
@@ -404,10 +404,10 @@ clean pkg_descr flags = do
 -- --------------------------------------------------------------------------
 -- Default hooks
 
--- | Hooks that correspond to a plain instantiation of the 
+-- | Hooks that correspond to a plain instantiation of the
 -- \"simple\" build system
 simpleUserHooks :: UserHooks
-simpleUserHooks = 
+simpleUserHooks =
     emptyUserHooks {
        confHook  = configure,
        buildHook = defaultBuildHook,
@@ -440,10 +440,10 @@ simpleUserHooks =
 defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
-	               let verbosity = fromFlag (configVerbosity flags)
-		       warn verbosity $
-		         "defaultUserHooks in Setup script is deprecated."
-	               confHook autoconfUserHooks pkg flags,
+                       let verbosity = fromFlag (configVerbosity flags)
+                       warn verbosity $
+                         "defaultUserHooks in Setup script is deprecated."
+                       confHook autoconfUserHooks pkg flags,
           postConf = oldCompatPostConf
     }
     -- This is the annoying old version that only runs configure if it exists.
@@ -481,7 +481,7 @@ autoconfUserHooks
                    if confExists
                      then rawSystemExit verbosity "sh" $
                             "configure"
-			  : configureArgs backwardsCompatHack flags
+                          : configureArgs backwardsCompatHack flags
                      else die "configure script not found."
           backwardsCompatHack = False
 
@@ -510,7 +510,7 @@ defaultInstallHook pkg_descr localbuildinfo _ flags = do
       }
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
-	-> UserHooks -> BuildFlags -> IO ()
+        -> UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   let distPref = fromFlag $ buildDistPref flags
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
@@ -518,7 +518,7 @@ defaultBuildHook pkg_descr localbuildinfo hooks flags = do
       writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
 defaultMakefileHook :: PackageDescription -> LocalBuildInfo
-	-> UserHooks -> MakefileFlags -> IO ()
+        -> UserHooks -> MakefileFlags -> IO ()
 defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
   let distPref = fromFlag $ makefileDistPref flags
   makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
@@ -526,7 +526,7 @@ defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
       writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
-	-> UserHooks -> RegisterFlags -> IO ()
+        -> UserHooks -> RegisterFlags -> IO ()
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags

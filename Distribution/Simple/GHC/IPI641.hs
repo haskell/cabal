@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.GHC.IPI641
 -- Copyright   :  (c) The University of Glasgow 2004
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  alpha
 -- Portability :  portable
@@ -49,7 +49,7 @@ import Distribution.Simple.GHC.IPI642
          ( PackageIdentifier, convertPackageId
          , License, convertLicense, convertModuleName )
 
--- | This is the InstalledPackageInfo type used by ghc-6.4 and 6.4.1. 
+-- | This is the InstalledPackageInfo type used by ghc-6.4 and 6.4.1.
 --
 -- It's here purely for the 'Read' instance so that we can read the package
 -- database used by those ghc versions. It is a little hacky to read the
