@@ -64,6 +64,8 @@ import System.FilePath (FilePath, (</>), (<.>))
 
 import Distribution.Package
          ( PackageIdentifier, packageName )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.PackageDescription (PackageDescription)
@@ -92,9 +94,9 @@ autogenModulesDir lbi = buildDir lbi </> "autogen"
 
 
 -- |The name of the auto-generated module associated with a package
-autogenModuleName :: PackageDescription -> String
+autogenModuleName :: PackageDescription -> ModuleName
 autogenModuleName pkg_descr =
-    "Paths_" ++ map fixchar (display (packageName pkg_descr))
+  ModuleName.simple $ "Paths_" ++ map fixchar (display (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 

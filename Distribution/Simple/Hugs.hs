@@ -47,6 +47,8 @@ module Distribution.Simple.Hugs (
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), hcOptions,
            Executable(..), withExe, Library(..), withLib, libModules )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag )
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
@@ -64,7 +66,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
 	 , withUTF8FileContents, writeFileAtomic
-	 , findFile, dotToSep, findFileWithExtension, smartCopySources
+	 , findFile, findFileWithExtension, smartCopySources
          , die, info, notice )
 import Language.Haskell.Extension
 				( Extension(..) )
@@ -72,6 +74,8 @@ import System.FilePath        	( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.System
          ( OS(..), buildOS )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
 
 import Data.Char		( isSpace )
@@ -142,7 +146,8 @@ build pkg_descr lbi verbosity = do
   where
 	srcDir = buildDir lbi
 
-	paths_modulename = autogenModuleName pkg_descr ++ ".hs"
+	paths_modulename = ModuleName.toFilePath (autogenModuleName pkg_descr)
+                             <.> ".hs"
 
 	compileExecutable :: FilePath -> Executable -> IO ()
 	compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
@@ -159,7 +164,7 @@ build pkg_descr lbi verbosity = do
 	
 	compileBuildInfo :: FilePath -- ^output directory
                          -> [FilePath] -- ^library source dirs, if building exes
-                         -> [String] -- ^Modules
+                         -> [ModuleName] -- ^Modules
                          -> BuildInfo -> IO ()
 	compileBuildInfo destDir mLibSrcDirs mods bi = do
 	    -- Pass 1: copy or cpp files from build directory to scratch directory
@@ -167,17 +172,17 @@ build pkg_descr lbi verbosity = do
 	    let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
             info verbosity $ "Source directories: " ++ show srcDirs
             flip mapM_ mods $ \ m -> do
-                fs <- findFileWithExtension suffixes srcDirs (dotToSep m)
+                fs <- findFileWithExtension suffixes srcDirs (ModuleName.toFilePath m)
                 case fs of
                   Nothing ->
-                    die ("can't find source for module " ++ m)
+                    die ("can't find source for module " ++ display m)
                   Just srcFile -> do
                     let ext = takeExtension srcFile
                     copyModule useCpp bi srcFile
-                        (destDir </> dotToSep m <.> ext)
+                        (destDir </> ModuleName.toFilePath m <.> ext)
 	    -- Pass 2: compile foreign stubs in scratch directory
 	    stubsFileLists <- fmap catMaybes $ sequence
-              [ findFileWithExtension suffixes [destDir] (dotToSep modu)
+              [ findFileWithExtension suffixes [destDir] (ModuleName.toFilePath modu)
               | modu <- mods]
             compileFiles bi destDir stubsFileLists
 
@@ -368,7 +373,9 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         let targetDir = targetProgDir </> exeName exe
         try $ removeDirectoryRecursive installDir
         smartCopySources verbosity [theBuildDir] installDir
-            ("Main" : autogenModuleName pkg_descr : otherModules (buildInfo exe)) hugsInstallSuffixes
+            (ModuleName.main : autogenModuleName pkg_descr
+                             : otherModules (buildInfo exe))
+            hugsInstallSuffixes
         let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43

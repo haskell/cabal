@@ -167,7 +167,7 @@ storeXFieldsPD _ _ = Nothing
 libFieldDescrs :: [FieldDescr Library]
 libFieldDescrs = map biToLib binfoFieldDescrs
   ++ [
-      listField "exposed-modules" text parseModuleNameQ
+      listField "exposed-modules" disp parseModuleNameQ
 	 exposedModules (\mods lib -> lib{exposedModules=mods})
      ]
   where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
@@ -251,7 +251,7 @@ binfoFieldDescrs =
            showFilePath       parseFilePathQ
            hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
  , listField   "other-modules"         
-           text               parseModuleNameQ
+           disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
  , listField   "ghc-prof-options"         
            text               parseTokenQ

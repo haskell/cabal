@@ -75,7 +75,6 @@ module Distribution.Simple.Utils (
 
         -- * file names
         currentDir,
-        dotToSep,
 
         -- * finding files
 	findFile,
@@ -135,7 +134,7 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( normalise, (</>), (<.>), pathSeparator, takeDirectory, splitFileName
+    ( normalise, (</>), (<.>), takeDirectory, splitFileName
     , splitExtension, splitExtensions, takeExtensions )
 import System.Directory
     ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
@@ -151,6 +150,8 @@ import Distribution.Text
     ( display )
 import Distribution.Package
     ( PackageIdentifier )
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
     (Version(..))
 
@@ -464,12 +465,6 @@ matchFileGlob filepath = case parseFileGlob filepath of
     files <- getDirectoryContents dir
     return [ dir </> file | file <- files, takeExtensions file == ext ]
 
-dotToSep :: String -> String
-dotToSep = map dts
-  where
-    dts '.' = pathSeparator
-    dts c   = c
-
 -- |Copy the source files into the right directory.  Looks in the
 -- build prefix for files that look like the input modules, based on
 -- the input search suffixes.  It copies the files into the target
@@ -478,16 +473,16 @@ dotToSep = map dts
 smartCopySources :: Verbosity -- ^verbosity
             -> [FilePath] -- ^build prefix (location of objects)
             -> FilePath -- ^Target directory
-            -> [String] -- ^Modules
+            -> [ModuleName] -- ^Modules
             -> [String] -- ^search suffixes
             -> IO ()
 smartCopySources verbosity srcDirs targetDir sources searchSuffixes
     = mapM moduleToFPErr sources >>= copyFiles verbosity targetDir
 
     where moduleToFPErr m
-              = findFileWithExtension' searchSuffixes srcDirs (dotToSep m)
+              = findFileWithExtension' searchSuffixes srcDirs (ModuleName.toFilePath m)
             >>= maybe notFound return
-            where notFound = die $ "Error: Could not find module: " ++ m
+            where notFound = die $ "Error: Could not find module: " ++ display m
                                 ++ " with any suffix: " ++ show searchSuffixes
 
 createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()

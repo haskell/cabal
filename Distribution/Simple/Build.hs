@@ -52,6 +52,7 @@ import Distribution.PackageDescription
 				  Executable(..), Library(..) )
 import Distribution.Package
          ( Package(..), packageName, packageVersion )
+import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Setup ( CopyDest(..), BuildFlags(..),
                                   MakefileFlags(..), fromFlag )
 import Distribution.Simple.PreProcess  ( preprocessSources, PPSuffixHandler )
@@ -66,7 +67,7 @@ import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, die, setupMessage, writeUTF8File )
 import Distribution.System
 
-import System.FilePath          ( (</>), pathSeparator )
+import System.FilePath          ( (</>), (<.>), pathSeparator )
 
 import Data.Maybe		( maybeToList, fromJust, isNothing )
 import Control.Monad 		( unless, when )
@@ -165,7 +166,7 @@ buildPathsModule distPref pkg_descr lbi =
 
        header =
 	pragmas++
-	"module " ++ paths_modulename ++ " (\n"++
+	"module " ++ display paths_modulename ++ " (\n"++
 	"\tversion,\n"++
 	"\tgetBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
 	"\tgetDataFileName\n"++
@@ -262,7 +263,7 @@ buildPathsModule distPref pkg_descr lbi =
         supportsRelocatableProgs _    = False
 
   	paths_modulename = autogenModuleName pkg_descr
-	paths_filename = paths_modulename ++ ".hs"
+	paths_filename = ModuleName.toFilePath paths_modulename <.> "hs"
 	paths_filepath = autogenModulesDir lbi </> paths_filename
 
 	isHugs = compilerFlavor (compiler lbi) == Hugs

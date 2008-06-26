@@ -138,7 +138,8 @@ build pkg_descr lbi verbosity = do
       info verbosity "Building library..."
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
-      rawSystemProgram verbosity jhcProg (["-c"] ++ args ++ libModules pkg_descr)
+      rawSystemProgram verbosity jhcProg $
+        ["-c"] ++ args ++ map display (libModules pkg_descr)
       let pkgid = display (packageId pkg_descr)
           pfile = buildDir lbi </> "jhc-pkg.conf"
           hlfile= buildDir lbi </> (pkgid ++ ".hl")
@@ -166,7 +167,7 @@ jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
       Just lib = library pd
-      comma = intercalate ","
+      comma = intercalate "," . map display
   in unlines [sline "name" (display . packageId)
              ,"exposed-modules: " ++ (comma (PD.exposedModules lib))
              ,"hidden-modules: " ++ (comma (otherModules $ libBuildInfo lib))
