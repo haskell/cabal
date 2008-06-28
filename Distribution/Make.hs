@@ -3,9 +3,17 @@
 -- Module      :  Distribution.Make
 -- Copyright   :  Martin Sj&#xF6;gren 2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
+--
+-- This is an alternative build system that delegates everything to the @make@
+-- program. All the commands just end up calling @make@ with appropriate
+-- arguments. The intention was to allow preexisting packages that used
+-- makefiles to be wrapped into Cabal packages. In practice essentially all
+-- such packages were converted over to the \"Simple\" build system instead.
+-- Consequently this module is not used much and it certainly only sees cursory
+-- maintenance and no testing. Perhaps at some point we should stop pretending
+-- that it works.
 --
 -- Uses the parsed command-line from Distribution.Setup in order to build
 -- Haskell tools using a backend build system based on make. Obviously we

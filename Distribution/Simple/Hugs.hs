@@ -3,11 +3,11 @@
 -- Module      :  Distribution.Simple.Hugs
 -- Copyright   :  Isaac Jones 2003-2006
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Build and install functionality for Hugs.
+-- This module contains most of the NHC-specific code for configuring, building
+-- and installing packages.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.

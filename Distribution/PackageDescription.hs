@@ -3,11 +3,21 @@
 -- Module      :  Distribution.PackageDescription
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Package description and parsing.
+-- This defines the data structure for the @.cabal@ file format. There are
+-- several parts to this structure. It has top level info and then 'Library'
+-- and 'Executable' sections each of which have associated 'BuildInfo' data
+-- that's used to build the library or exe. To further complicate things there
+-- is both a 'PackageDescription' and a 'GenericPackageDescription'. This
+-- distinction relates to cabal configurations. When we initially read a
+-- @.cabal@ file we get a 'GenericPackageDescription' which has all the
+-- conditional sections. Before actually building a package we have to decide
+-- on each conditional. Once we've done that we get a 'PackageDescription'.
+-- It was done this way initially to avoid breaking too much stuff when the
+-- feature was introduced. It could probably do with being rationalised at some
+-- point to make it simpler.
 
 {- All rights reserved.
 
