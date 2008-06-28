@@ -81,7 +81,6 @@ Library
         Distribution.Simple.Program,
         Distribution.Simple.Register,
         Distribution.Simple.Setup,
-        Distribution.Simple.SetupWrapper,
         Distribution.Simple.SrcDist,
         Distribution.Simple.UserHooks,
         Distribution.Simple.Utils,
@@ -94,9 +93,9 @@ Library
 
   Other-Modules:
         Distribution.GetOpt,
-        Distribution.Compat.TempFile
-        Distribution.Simple.GHC.Makefile
-        Distribution.Simple.GHC.IPI641
+        Distribution.Compat.TempFile,
+        Distribution.Simple.GHC.Makefile,
+        Distribution.Simple.GHC.IPI641,
         Distribution.Simple.GHC.IPI642
 
   Extensions: CPP
