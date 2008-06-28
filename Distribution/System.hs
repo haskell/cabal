@@ -1,3 +1,18 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.System
+-- Copyright   :  Duncan Coutts 2007-2008
+--
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+--
+-- Cabal often needs to do slightly different things on specific platforms. You
+-- probably know about the 'System.Info.os' however using that is very
+-- inconvenient because it is a string and different Haskell implementations
+-- do not agree on using the same strings for the same platforms! (In
+-- particular see the controversy over "windows" vs "ming32"). So to make it
+-- more consistent and easy to use we have an 'OS' enumeration.
+--
 module Distribution.System (
   -- * Operating System
   OS(..),

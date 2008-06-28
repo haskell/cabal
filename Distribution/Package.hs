@@ -3,11 +3,13 @@
 -- Module      :  Distribution.Package
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Packages are fundamentally just a name and a version.
+-- Defines a package identifier along with a parser and pretty printer for it.
+-- 'PackageIdentifier's consist of a name and an exact version. It also defines
+-- a 'Dependency' data type. A dependency is a package name and a version
+-- range, like @\"foo >= 1.2 && < 2\"@.
 
 {- All rights reserved.
 

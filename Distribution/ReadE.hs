@@ -3,8 +3,7 @@
 -- Module      :  Distribution.ReadE
 -- Copyright   :  Jose Iborra 2008
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- Simple parsing with failure

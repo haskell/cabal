@@ -1,19 +1,20 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.PreProcess
+-- Copyright   :  (c) 2003-2005, Isaac Jones, Malcolm Wallace
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
---
--- PreProcessors are programs or functions which input a filename and
--- output a Haskell file.  The general form of a preprocessor is input
--- Foo.pp and output Foo.hs (where /pp/ is a unique extension that
--- tells us which preprocessor to use eg. gc, ly, cpphs, x, y, etc.).
--- Once a PreProcessor has been added to Cabal, either here or with
--- 'Distribution.Simple.UserHooks', if Cabal finds a Foo.pp, it'll run the given
--- preprocessor which should output a Foo.hs.
+-- This defines a 'PreProcessor' abstraction which represents a pre-processor
+-- that can transform one kind of file into another. There is also a
+-- 'PPSuffixHandler' which is a combination of a file extension and a function
+-- for configuring a 'PreProcessor'. It defines a bunch of known built-in
+-- preprocessors like @cpp@, @cpphs@, @c2hs@, @hsc2hs@, @happy@, @alex@ etc and
+-- lists them in 'knownSuffixHandlers'. On top of this it provides a function
+-- for actually preprocessing some sources given a bunch of known suffix
+-- handlers. This module is not as good as it could be, it could really do with
+-- a rewrite to address some of the problems we have with pre-processors.
 
 {- Copyright (c) 2003-2005, Isaac Jones, Malcolm Wallace
 All rights reserved.

@@ -3,15 +3,16 @@
 -- Module      :  Distribution.Simple.LocalBuildInfo
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Definition of the 'LocalBuildInfo' data type.  This is basically
--- the information that is gathered by the end of the configuration
--- step which could include package information from ghc-pkg, flags
--- the user passed to configure, and the location of tools in the
--- PATH.
+-- Once a package has been configured we have resolved conditionals and
+-- dependencies, configured the compiler and other needed external programs.
+-- The 'LocalBuildInfo' is used to hold all this information. It holds the
+-- install dirs, the compiler, the exact package dependencies, the configured
+-- programs, the package database to use and a bunch of miscellaneous configure
+-- flags. It gets saved and reloaded from a file (@dist/setup-config@). It gets
+-- passed in to very many subsequent build actions.
 
 {- All rights reserved.
 

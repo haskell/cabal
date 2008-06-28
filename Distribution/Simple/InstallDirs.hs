@@ -9,15 +9,17 @@
 -- Module      :  Distribution.Simple.InstallDirs
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Definition of the 'LocalBuildInfo' data type.  This is basically
--- the information that is gathered by the end of the configuration
--- step which could include package information from ghc-pkg, flags
--- the user passed to configure, and the location of tools in the
--- PATH.
+-- This manages everything to do with where files get installed (though does
+-- not get involved with actually doing any installation). It provides an
+-- 'InstallDirs' type which is a set of directories for where to install
+-- things. It also handles the fact that we use templates in these install
+-- dirs. For example most install dirs are relative to some @$prefix@ and by
+-- changing the prefix all other dirs still end up changed appropriately. So it
+-- provides a 'PathTemplate' type and functions for substituting for these
+-- templates.
 
 {- All rights reserved.
 

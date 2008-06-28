@@ -3,11 +3,23 @@
 -- Module      :  Distribution.Compiler
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Haskell compiler flavors
+-- This has an enumeration of the various compilers that Cabal knows about. It
+-- also specifies the default compiler. Sadly you'll often see code that does
+-- case analysis on this compiler flavour enumeration like:
+--
+-- > case compilerFlavor comp of
+-- >   GHC -> GHC.getInstalledPackages verbosity packageDb progconf
+-- >   JHC -> JHC.getInstalledPackages verbosity packageDb progconf
+--
+-- Obviously it would be better to use the proper 'Compiler' abstraction
+-- because that would keep all the compiler-specific code together.
+-- Unfortunately we cannot make this change yet without breaking the
+-- 'UserHooks' api, which would break all custom @Setup.hs@ files, so for the
+-- moment we just have to live with this deficiency. If you're interested, see
+-- ticket #50.
 
 {- All rights reserved.
 

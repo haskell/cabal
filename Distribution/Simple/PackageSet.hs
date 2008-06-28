@@ -10,14 +10,12 @@
 -- Copyright   :  (c) David Himmelstrup 2005,
 --                    Bjorn Bringert 2007,
 --                    Duncan Coutts 2008
--- License     :  BSD-like
 --
--- Maintainer  :  Duncan Coutts <duncan@haskell.org>
--- Stability   :  provisional
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- An set of packages.
------------------------------------------------------------------------------
+-- A set of packages.
+--
 module Distribution.Simple.PackageSet (
   -- * Package set data type
   PackageSet,
