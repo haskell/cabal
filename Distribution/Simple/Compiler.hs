@@ -3,11 +3,19 @@
 -- Module      :  Distribution.Simple.Compiler
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Haskell implementations.
+-- This should be a much more sophisticated abstraction than it is. Currently
+-- it's just a bit of data about the compiler, like it's flavour and name and
+-- version. The reason it's just data is because currently it has to be in
+-- 'Read' and 'Show' so it can be saved along with the 'LocalBuildInfo'. The
+-- only interesting bit of info it contains is a mapping between language
+-- extensions and compiler command line flags. This module also defines a
+-- 'PackageDB' type which is used to refer to package databases. Most compilers
+-- only know about a single global package collection but GHC has a global and
+-- per-user one and it lets you create arbitrary other package databases. We do
+-- not yet fully support this latter feature.
 
 {- All rights reserved.
 

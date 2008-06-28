@@ -3,12 +3,17 @@
 -- Module      :  Distribution.ParseUtils
 -- Copyright   :  (c) The University of Glasgow 2004
 --
--- Maintainer  :  libraries@haskell.org
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Utilities for parsing PackageDescription and InstalledPackageInfo.
-
+-- Utilities for parsing 'PackageDescription' and 'InstalledPackageInfo'.
+--
+-- The @.cabal@ file format is not trivial, especially with the introduction
+-- of configurations and the section syntax that goes with that. This module
+-- has a bunch of parsing functions that is used by the @.cabal@ parser and a
+-- couple others. It has the parsing framework code and also little parsers for
+-- many of the formats we get in various @.cabal@ file fields, like module
+-- names, comma separated lists etc.
 
 {- All rights reserved.
 

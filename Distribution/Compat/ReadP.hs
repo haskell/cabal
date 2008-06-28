@@ -5,7 +5,6 @@
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 --
 -- Maintainer  :  libraries@haskell.org
--- Stability   :  provisional
 -- Portability :  portable
 --
 -- This is a library of parser combinators, originally written by Koen Claessen.

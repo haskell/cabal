@@ -3,13 +3,18 @@
 -- Module      :  Distribution.Simple.Haddock
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Invokes haddock to generate api documentation for libraries and optinally
--- executables in this package. Also has support for generating
--- syntax-highlighted source with HsColour and linking the haddock docs to it.
+-- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is
+-- a rather complicated module. It deals with two versions of haddock (0.x and
+-- 2.x). It has to do pre-processing for haddock 0.x which involves
+-- \'unlit\'ing and using @-DHADDOCK@ for any source code that uses @cpp@. It
+-- uses information about installed packages (from @ghc-pkg@) to find the
+-- locations of documentation for dependent packages, so it can create links.
+--
+-- The @hscolour@ support allows generating html versions of the original
+-- source, with coloured syntax highlighting.
 
 {- All rights reserved.
 

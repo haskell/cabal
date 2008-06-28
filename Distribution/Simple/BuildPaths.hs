@@ -4,8 +4,7 @@
 -- Copyright   :  Isaac Jones 2003-2004,
 --                Duncan Coutts 2008
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- A bunch of dirs, paths and file names used for intermediate build steps.

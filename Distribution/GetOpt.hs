@@ -5,7 +5,6 @@
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 --
 -- Maintainer  :  libraries@haskell.org
--- Stability   :  experimental
 -- Portability :  portable
 --
 -- This library provides facilities for parsing the command-line options

@@ -3,11 +3,12 @@
 -- Module      :  Distribution.Version
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Versions for packages, based on the 'Version' datatype.
+-- Exports the 'Version' type along with a parser and pretty printer. A version
+-- is something like @\"1.3.3\"@. It also defines the 'VersionRange' data
+-- types. Version ranges are like @\">= 1.2 && < 2\"@.
 
 {- Copyright (c) 2003-2004, Isaac Jones
 All rights reserved.

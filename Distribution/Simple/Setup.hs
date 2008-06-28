@@ -2,13 +2,29 @@
 -- |
 -- Module      :  Distribution.Simple.Setup
 -- Copyright   :  Isaac Jones 2003-2004
+--                Duncan Coutts 2007
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Data types and parser for the standard command-line
--- setup.  Will also return commands it doesn't know about.
+-- This is a big module, but not very complicated. The code is very regular
+-- and repetitive. It defines the command line interface for all the Cabal
+-- commands. For each command (like @configure@, @build@ etc) it defines a type
+-- that holds all the flags, the default set of flags and a 'CommandUI' that
+-- maps command line flags to and from the corresponding flags type.
+--
+-- All the flags types are instances of 'Monoid', see
+-- <http://www.haskell.org/pipermail/cabal-devel/2007-December/001509.html>
+-- for an explanation.
+--
+-- The types defined here get used in the front end and especially in
+-- @cabal-install@ which has to do quite a bit of manipulating sets of command
+-- line flags.
+--
+-- This is actually relatively nice, it works quite well. The main change it
+-- needs is to unify it with the code for managing sets of fields that can be
+-- read and written from files. This would allow us to save configure flags in
+-- config files.
 
 {- All rights reserved.
 

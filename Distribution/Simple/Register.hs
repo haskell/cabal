@@ -3,12 +3,24 @@
 -- Module      :  Distribution.Simple.Register
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Perform the \"@.\/setup register@\" action.
--- Uses a drop-file for HC-PKG.  See also "Distribution.InstalledPackageInfo".
+-- This module deals with registering and unregistering packages. There are a
+-- couple ways it can do this, one is to do it directly. Another is to generate
+-- a script that can be run later to do it. The idea here being that the user
+-- is shielded from the details of what command to use for package registration
+-- for a particular compiler. In practice this aspect was not especially
+-- popular so we also provide a way to simply generate the package registration
+-- file which then must be manually passed to @ghc-pkg@. It is possible to
+-- generate registration information for where the package is to be installed,
+-- or alternatively to register the package inplace in the build tree. The
+-- latter is occasionally handy, and will become more important when we try to
+-- build multi-package systems.
+--
+-- This module does not delegate anything to the per-compiler modules but just
+-- mixes it all in in this module, which is rather unsatisfactory. The script
+-- generation and the unregister feature are not well used or tested.
 
 {- Copyright (c) 2003-2004, Isaac Jones
 All rights reserved.

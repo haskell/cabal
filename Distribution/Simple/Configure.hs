@@ -3,12 +3,22 @@
 -- Module      :  Distribution.Simple.Configure
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Perform the \"@.\/setup configure@\" action.
--- Outputs the @dist\/setup-config@ file.
+-- This deals with the /configure/ phase. It provides the 'configure' action
+-- which is given the package description and configure flags. It then tries
+-- to: configure the compiler; resolves any conditionals in the package
+-- description; resolve the package dependencies; check if all the extensions
+-- used by this package are supported by the compiler; check that all the build
+-- tools are available (including version checks if appropriate); checks for
+-- any required @pkg-config@ packages (updating the 'BuildInfo' with the
+-- results)
+-- 
+-- Then based on all this it saves the info in the 'LocalBuildInfo' and writes
+-- it out to the @dist\/setup-config@ file. It also displays various details to
+-- the user, the amount of information displayed depending on the verbosity
+-- level.
 
 {- All rights reserved.
 

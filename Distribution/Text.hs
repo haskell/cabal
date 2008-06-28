@@ -1,3 +1,16 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.Text
+-- Copyright   :  Duncan Coutts 2007
+--
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+--
+-- This defines a 'Text' class which is a bit like the 'Read' and 'Show'
+-- classes. The difference is that is uses a modern pretty printer and parser
+-- system and the format is not expected to be Haskell concrete syntax but
+-- rather the external human readable representation used by Cabal.
+--
 module Distribution.Text (
   Text(..),
   display,

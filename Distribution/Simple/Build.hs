@@ -3,12 +3,23 @@
 -- Module      :  Distribution.Simple.Build
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Invokes the "Distribution.Compiler"s to build the library and
--- executables in this package.
+-- This is the entry point to actually building the modules in a package. It
+-- doesn't actually do much itself, most of the work is delegated to
+-- compiler-specific actions. It does do some non-compiler specific bits like
+-- running pre-processors.
+--
+-- There's some stuff to do with generating @makefiles@ which is a well hidden
+-- feature that's used to build libraries inside the GHC build system but which
+-- we'd like to kill off and replace with something better (doing our own
+-- dependency analysis properly).
+--
+-- Half the module is dedicated to generating the @Paths_@/pkgname/ module.
+-- This is a module that Cabal generates for the benefit of packages. It
+-- enables them to find their version number and find any installed data files
+-- at runtime. This code should probably be split off into another module.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.

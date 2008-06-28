@@ -3,11 +3,21 @@
 -- Module      :  Distribution.PackageDescription.Check
 -- Copyright   :  Lennart Kolmodin 2008
 --
--- Maintainer  :  Lennart Kolmodin <kolmodin@gentoo.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This module provides functionality to check for common mistakes.
+-- This has code for checking for various problems in packages. There is one
+-- set of checks that just looks at a 'PackageDescription' in isolation and
+-- another set of checks that also looks at files in the package. Some of the
+-- checks are basic sanity checks, others are portability standards that we'd
+-- like to encourage. There is a 'PackageCheck' type that distinguishes the
+-- different kinds of check so we can see which ones are appropriate to report
+-- in different situations. This code gets uses when configuring a package when
+-- we consider only basic problems. The higher standard is uses when when
+-- preparing a source tarball and by hackage when uploading new packages. The
+-- reason for this is that we want to hold packages that are expected to be
+-- distributed to a higher standard than packages that are only ever expected
+-- to be used on the author's own environment.
 
 {- All rights reserved.
 

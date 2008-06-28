@@ -3,18 +3,24 @@
 -- Module      :  Distribution.Simple.UserHooks
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Simple build system; basically the interface for
--- Distribution.Simple.\* modules.  When given the parsed command-line
--- args and package information, is able to perform basic commands
--- like configure, build, install, register, etc.
+-- This defines the API that @Setup.hs@ scripts can use to customise the way
+-- the build works. This module just defines the 'UserHooks' type. The
+-- predefined sets of hooks that implement the @Simple@, @Make@ and @Configure@
+-- build systems are defined in "Distribution.Simple". The 'UserHooks' is a big
+-- record of functions. There are 3 for each action, a pre, post and the action
+-- itself. There are few other miscellaneous hooks, ones to extend the set of
+-- programs and preprocessors and one to override the function used to read the
+-- @.cabal@ file.
 --
--- This module isn't called \"Simple\" because it's simple.  Far from
--- it.  It's called \"Simple\" because it does complicated things to
--- simple software.
+-- This hooks type is widely agreed to not be the right solution. Partly this
+-- is because changes to it usually break custom @Setup.hs@ files and yet many
+-- internal code changes do require changes to the hooks. For example we cannot
+-- pass any extra parameters to most of the functions that implement the
+-- various phases because it would involve changing the types of the
+-- corresponding hook. At some point it will have to be replaced.
 
 {- All rights reserved.
 

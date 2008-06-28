@@ -10,12 +10,14 @@
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 --                portions Copyright (c) 2007, Galois Inc.
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Misc. Utilities, especially file-related utilities.
--- Stuff used by multiple modules that doesn't fit elsewhere.
+-- A large and somewhat miscellaneous collection of utility functions used
+-- throughout the rest of the Cabal lib and in other tools that use the Cabal
+-- lib like @cabal-install@. It has a very simple set of logging actions. It
+-- has low level functions for running programs, a bunch of wrappers for
+-- various directory and file functions that do extra logging.
 
 {- All rights reserved.
 
@@ -441,8 +443,8 @@ data FileGlob
    -- | No glob at all, just an ordinary file
    = NoGlob FilePath
 
-   -- | dir prefix and extension, like "foo/bar/*.baz" corresponds to
-   --    @FileGlob "foo/bar" (Just ".baz")@
+   -- | dir prefix and extension, like @\"foo\/bar\/\*.baz\"@ corresponds to
+   --    @FileGlob \"foo\/bar\" (Just \".baz\")@
    | FileGlob FilePath String
 
 parseFileGlob :: FilePath -> Maybe FileGlob

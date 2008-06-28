@@ -3,10 +3,13 @@
 -- Module      :  Distribution.Verbosity
 -- Copyright   :  Ian Lynagh 2007
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
+-- A simple 'Verbosity' type with associated utilities. There are 4 standard
+-- verbosity levels from 'silent', 'normal', 'verbose' up to 'deafening'. This
+-- is used for deciding what logging messages to print.
+
 -- Verbosity for Cabal functions
 
 {- Copyright (c) 2007, Ian Lynagh

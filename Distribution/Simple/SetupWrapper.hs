@@ -3,8 +3,7 @@
 -- Module      :  Distribution.SetupWrapper
 -- Copyright   :  (c) The University of Glasgow 2006
 --
--- Maintainer  :  http://hackage.haskell.org/trac/hackage
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- The user interface to building and installing Cabal packages.

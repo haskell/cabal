@@ -3,13 +3,13 @@
 -- Module      :  Distribution.Simple.Install
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Perform the \"@.\/setup install@\" and \"@.\/setup
--- copy@\" actions.  Move files into place based on the prefix
--- argument.
+-- This is the entry point into installing a built package. Performs the
+-- \"@.\/setup install@\" and \"@.\/setup copy@\" actions. It moves files into
+-- place based on the prefix argument. It does the generic bits and then calls
+-- compiler-specific functions to do the rest.
 
 {- All rights reserved.
 

@@ -3,18 +3,26 @@
 -- Module      :  Distribution.Simple
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Simple build system; basically the interface for
--- Distribution.Simple.\* modules.  When given the parsed command-line
--- args and package information, is able to perform basic commands
--- like configure, build, install, register, etc.
+-- This is the command line front end to the Simple build system. When given
+-- the parsed command-line args and package information, is able to perform
+-- basic commands like configure, build, install, register, etc.
+--
+-- This module exports the main functions that Setup.hs scripts use. It
+-- re-exports the 'UserHooks' type, the standard entry points like
+-- 'defaultMain' and 'defaultMainWithHooks' and the predefined sets of
+-- 'UserHooks' that custom @Setup.hs@ scripts can extend to add their own
+-- behaviour.
 --
 -- This module isn't called \"Simple\" because it's simple.  Far from
 -- it.  It's called \"Simple\" because it does complicated things to
 -- simple software.
+--
+-- The original idea was that there could be different build systems that all
+-- presented the same compatible command line interfaces. There is still a
+-- "Distribution.Make" system but in practice no packages use it.
 
 {- All rights reserved.
 

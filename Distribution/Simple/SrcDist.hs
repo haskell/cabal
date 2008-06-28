@@ -3,13 +3,18 @@
 -- Module      :  Distribution.Simple.SrcDist
 -- Copyright   :  Simon Marlow 2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Implements the \"@.\/setup sdist@\" command, which creates a source
--- distribution for this package.  That is, packs up the source code
--- into a tarball.
+-- This handles the @sdist@ command. The module exports an 'sdist' action but
+-- also some of the phases that make it up so that other tools can use just the
+-- bits they need. In particular the preparation of the tree of files to go
+-- into the source tarball is separated from actually building the source
+-- tarball.
+--
+-- The 'createArchive' action uses the external @tar@ program and assumes that
+-- it accepts the @-z@ flag. Neither of these assumptions are valid on Windows.
+-- The 'sdist' action now also does some distribution QA checks.
 
 {- Copyright (c) 2003-2004, Simon Marlow
 All rights reserved.

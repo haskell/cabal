@@ -3,12 +3,22 @@
 -- Module      :  Distribution.Simple.Program
 -- Copyright   :  Isaac Jones 2006
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
--- Portability :  GHC, Hugs
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
 --
--- Explanation: A program is basically a name, a location, and some
--- arguments.
+-- This provides an abstraction which deals with configuring and running
+-- programs. A 'Program' is a static notion of a known program. A
+-- 'ConfiguredProgram' is a 'Program' that has been found on the current
+-- machine and is ready to be run (possibly with some user-supplied default
+-- args). Configuring a program involves finding its location and if necessary
+-- finding its version. There is also a 'ProgramConfiguration' type which holds
+-- configured and not-yet configured programs. It is the parameter to lots of
+-- actions elsewhere in Cabal that need to look up and run programs. If we had
+-- a Cabal monad, the 'ProgramConfiguration' would probably be a reader or
+-- state component of it. 
+--
+-- The module also defines all the known built-in 'Program's and the
+-- 'defaultProgramConfiguration' which contains them all.
 --
 -- One nice thing about using it is that any program that is
 -- registered with Cabal will get some \"configure\" and \".cabal\"

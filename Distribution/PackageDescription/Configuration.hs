@@ -9,11 +9,14 @@
 -- Module      :  Distribution.Configuration
 -- Copyright   :  Thomas Schilling, 2007
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Configurations
+-- This is about the cabal configurations feature. It exports
+-- 'finalizePackageDescription' and 'flattenPackageDescription' which are
+-- functions for converting 'GenericPackageDescription's down to
+-- 'PackageDescription's. It has code for working with the tree of conditions
+-- and resolving or flattening conditions.
 
 {- All rights reserved.
 
