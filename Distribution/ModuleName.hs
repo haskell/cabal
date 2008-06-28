@@ -3,11 +3,10 @@
 -- Module      :  Distribution.ModuleName
 -- Copyright   :  Duncan Coutts 2008
 --
--- Maintainer  :  Duncan Coutts <duncan@haskell.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Haskell module names
+-- Data type for Haskell module names.
 
 {- All rights reserved.
 

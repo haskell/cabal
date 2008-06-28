@@ -3,12 +3,16 @@
 -- Module      :  Distribution.Simple.Command
 -- Copyright   :  Duncan Coutts 2007
 --
--- Maintainer  :  Duncan Coutts <duncan@haskell.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Explanation: Data types and parser for the standard command-line
--- setup.
+-- This is to do with command line handling. The Cabal command line is
+-- organised into a number of named sub-commands (much like darcs). The
+-- 'CommandUI' abstraction represents one of these sub-commands, with a name,
+-- description, a set of flags. Commands can be associated with actions and
+-- run. It handles some common stuff automatically, like the @--help@ and
+-- command line completion flags. It is designed to allow other tools make
+-- derived commands. This feature is used heavily in @cabal-install@.
 
 {- All rights reserved.
 

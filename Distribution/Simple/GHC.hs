@@ -3,13 +3,34 @@
 -- Module      :  Distribution.Simple.GHC
 -- Copyright   :  Isaac Jones 2003-2007
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Build and Install implementations for GHC.  See
--- 'Distribution.Simple.GHC.PackageConfig.GHCPackageConfig' for
--- registration-related stuff.
+-- This is a fairly large module. It contains most of the GHC-specific code for
+-- configuring, building and installing packages. It also exports a function
+-- for finding out what packages are already installed. Configuring involves
+-- finding the @ghc@ and @ghc-pkg@ programs, finding what language extensions
+-- this version of ghc supports and returning a 'Compiler' value.
+--
+-- 'getInstalledPackages' involves calling the @ghc-pkg@ program to find out
+-- what packages are installed.
+--
+-- Building is somewhat complex as there is quite a bit of information to take
+-- into account. We have to build libs and programs, possibly for profiling and
+-- shared libs. We have to support building libraries that will be usable by
+-- GHCi and also ghc's @-split-objs@ feature. We have to compile any C files
+-- using ghc. Linking, especially for @split-objs@ is remarkably complex,
+-- partly because there tend to be 1,000's of @.o@ files and this can often be
+-- more than we can pass to the @ld@ or @ar@ programs in one go.
+--
+-- There is also some code for generating @Makefiles@ but the less said about
+-- that the better.
+--
+-- Installing for libs and exes involves finding the right files and copying
+-- them to the right places. One of the more tricky things about this module is
+-- remembering the layout of files in the build directory (which is not
+-- explicitly documented) and thus what search dirs are used for various kinds
+-- of files.
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.

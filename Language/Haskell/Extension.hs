@@ -3,8 +3,7 @@
 -- Module      :  Language.Haskell.Extension
 -- Copyright   :  Isaac Jones 2003-2004
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  libraries@haskell.org
 -- Portability :  portable
 --
 -- Haskell language extensions

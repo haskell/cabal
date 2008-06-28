@@ -3,11 +3,13 @@
 -- Module      :  Distribution.PackageDescription.Parse
 -- Copyright   :  Isaac Jones 2003-2005
 --
--- Maintainer  :  Isaac Jones <ijones@syntaxpolice.org>
--- Stability   :  alpha
+-- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Package description and parsing.
+-- This defined parsers and partial pretty printers for the @.cabal@ format.
+-- Some of the complexity in this module is due to the fact that we have to be
+-- backwards compatible with old @.cabal@ files, so there's code to translate
+-- into the newer structure.
 
 {- All rights reserved.
 
