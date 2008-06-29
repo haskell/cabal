@@ -586,6 +586,8 @@ instance Monoid ConfigFlags where
 data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
+    copyUseWrapper :: Flag Bool,
+    copyInPlace    :: Flag Bool,
     copyVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -594,6 +596,8 @@ defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = Flag defaultDistPref,
+    copyUseWrapper = Flag False,
+    copyInPlace    = Flag False,
     copyVerbosity = Flag normal
   }
 
@@ -607,7 +611,18 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
        ++ "Without the --destdir flag, configure determines location.\n"
     options _  =
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
+
+      ,option "" ["shell-wrappers"]
+         "using shell script wrappers around executables"
+         copyUseWrapper (\v flags -> flags { copyUseWrapper = v })
+         (boolOpt [] [])
+
       ,optionDistPref copyDistPref (\d flags -> flags { copyDistPref = d })
+
+      ,option "" ["inplace"]
+         "copy the package in the install subdirectory of the dist prefix, so it can be used without being installed"
+         copyInPlace (\v flags -> flags { copyInPlace = v })
+         trueArg
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
@@ -630,11 +645,15 @@ instance Monoid CopyFlags where
   mempty = CopyFlags {
     copyDest      = mempty,
     copyDistPref  = mempty,
+    copyUseWrapper = mempty,
+    copyInPlace    = mempty,
     copyVerbosity = mempty
   }
   mappend a b = CopyFlags {
     copyDest      = combine copyDest,
     copyDistPref  = combine copyDistPref,
+    copyUseWrapper = combine copyUseWrapper,
+    copyInPlace    = combine copyInPlace,
     copyVerbosity = combine copyVerbosity
   }
     where combine field = field a `mappend` field b
@@ -647,6 +666,8 @@ instance Monoid CopyFlags where
 data InstallFlags = InstallFlags {
     installPackageDB :: Flag PackageDB,
     installDistPref  :: Flag FilePath,
+    installUseWrapper :: Flag Bool,
+    installInPlace    :: Flag Bool,
     installVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -655,6 +676,8 @@ defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
     installPackageDB = NoFlag,
     installDistPref  = Flag defaultDistPref,
+    installUseWrapper = Flag False,
+    installInPlace    = Flag False,
     installVerbosity = Flag normal
   }
 
@@ -671,6 +694,16 @@ installCommand = makeCommand name shortDesc longDesc defaultInstallFlags options
       [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
       ,optionDistPref installDistPref (\d flags -> flags { installDistPref = d })
 
+      ,option "" ["inplace"]
+         "install the package in the install subdirectory of the dist prefix, so it can be used without being installed"
+         installInPlace (\v flags -> flags { installInPlace = v })
+         trueArg
+
+      ,option "" ["shell-wrappers"]
+         "using shell script wrappers around executables"
+         installUseWrapper (\v flags -> flags { installUseWrapper = v })
+         (boolOpt [] [])
+
       ,option "" ["packageDB"] ""
          installPackageDB (\v flags -> flags { installPackageDB = v })
          (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
@@ -686,11 +719,15 @@ instance Monoid InstallFlags where
   mempty = InstallFlags{
     installPackageDB = mempty,
     installDistPref  = mempty,
+    installUseWrapper = mempty,
+    installInPlace    = mempty,
     installVerbosity = mempty
   }
   mappend a b = InstallFlags{
     installPackageDB = combine installPackageDB,
     installDistPref  = combine installDistPref,
+    installUseWrapper = combine installUseWrapper,
+    installInPlace    = combine installInPlace,
     installVerbosity = combine installVerbosity
   }
     where combine field = field a `mappend` field b
