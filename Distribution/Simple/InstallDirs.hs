@@ -186,7 +186,7 @@ appendSubdirs append dirs = dirs {
     datasubdir = error "internal error InstallDirs.datasubdir"
   }
 
--- | The installation dirctories in terms of 'PathTemplate's that contain
+-- | The installation directories in terms of 'PathTemplate's that contain
 -- variables.
 --
 -- The defaults for most of the directories are relative to each other, in
