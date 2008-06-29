@@ -66,6 +66,7 @@ module Distribution.Simple.InstallDirs (
         fromPathTemplate,
         substPathTemplate,
         initialPathTemplateEnv,
+        fullPathTemplateEnv,
   ) where
 
 
@@ -380,6 +381,7 @@ data PathTemplateVariable =
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
+     | ExecutableNameVar -- ^ The executable name; used in shell wrappers
   deriving Eq
 
 -- | Convert a 'FilePath' to a 'PathTemplate' including any template vars.
@@ -417,6 +419,26 @@ initialPathTemplateEnv pkgId compilerId =
   ,(PkgIdVar,    display pkgId)
   ,(CompilerVar, display compilerId)]
 
+fullPathTemplateEnv :: PackageIdentifier -> CompilerId
+                    -> InstallDirs FilePath
+                    -> [(PathTemplateVariable, PathTemplate)]
+fullPathTemplateEnv pkgId compilerId dirs = env ++ dirEnv
+    where -- The initial environment has all the static stuff but no paths
+          env = initialPathTemplateEnv pkgId compilerId
+          -- And here are all the paths
+          dirEnv = [(PrefixVar,     toPathTemplate $ prefix     dirs),
+                    (BindirVar,     toPathTemplate $ bindir     dirs),
+                    (LibdirVar,     toPathTemplate $ libdir     dirs),
+                    -- This isn't defined in an InstallDirs FilePath
+                    -- as its value has already been appended to libdir:
+                    -- (LibsubdirVar,  toPathTemplate $ libsubdir  dirs),
+                    (DatadirVar,    toPathTemplate $ datadir    dirs),
+                    -- This isn't defined in an InstallDirs FilePath
+                    -- as its value has already been appended to datadir:
+                    -- (DatasubdirVar, toPathTemplate $ datasubdir dirs),
+                    (DocdirVar,     toPathTemplate $ docdir     dirs),
+                    (HtmldirVar,    toPathTemplate $ htmldir    dirs)]
+
 -- ---------------------------------------------------------------------------
 -- Parsing and showing path templates:
 
@@ -439,6 +461,7 @@ instance Show PathTemplateVariable where
   show PkgVerVar     = "version"
   show PkgIdVar      = "pkgid"
   show CompilerVar   = "compiler"
+  show ExecutableNameVar = "executablename"
 
 instance Read PathTemplateVariable where
   readsPrec _ s =
@@ -457,7 +480,8 @@ instance Read PathTemplateVariable where
                  ,("pkgid",      PkgIdVar)
                  ,("pkg",        PkgNameVar)
                  ,("version",    PkgVerVar)
-                 ,("compiler",   CompilerVar)]
+                 ,("compiler",   CompilerVar)
+                 ,("executablename", ExecutableNameVar)]
 
 instance Show PathComponent where
   show (Ordinary path) = path

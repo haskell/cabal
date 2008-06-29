@@ -72,7 +72,7 @@ module Distribution.Simple.GHC (
 import Distribution.Simple.GHC.Makefile
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
-import Distribution.Simple.Setup ( MakefileFlags(..),
+import Distribution.Simple.Setup ( CopyFlags(..), MakefileFlags(..),
                                    fromFlag, fromFlagOrDefault)
 import Distribution.PackageDescription
                                 ( PackageDescription(..), BuildInfo(..),
@@ -86,7 +86,8 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
-                                ( LocalBuildInfo(..) )
+                                ( LocalBuildInfo(..), InstallDirs(..) )
+import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
@@ -118,7 +119,9 @@ import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(mconcat) )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
-                                  getTemporaryDirectory )
+                                  getTemporaryDirectory,
+                                  Permissions(..),
+                                  getPermissions, setPermissions )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
@@ -743,20 +746,54 @@ makefile pkg_descr lbi flags = do
 -- Installing
 
 -- |Install executables for GHC.
-installExe :: Verbosity -- ^verbosity
+installExe :: CopyFlags -- ^verbosity
            -> LocalBuildInfo
-           -> FilePath  -- ^install location
+           -> InstallDirs FilePath -- ^Where to copy the files to
+           -> InstallDirs FilePath -- ^Where to pretend the files are (i.e. ignores --destdir)
            -> FilePath  -- ^Build location
            -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
            -> IO ()
-installExe verbosity lbi pref buildPref (progprefix, progsuffix) pkg_descr
-    = do createDirectoryIfMissingVerbose verbosity True pref
+installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progsuffix) pkg_descr
+    = do let verbosity = fromFlag (copyVerbosity flags)
+             useWrapper = fromFlag (copyUseWrapper flags)
+             binDir = bindir installDirs
+         createDirectoryIfMissingVerbose verbosity True binDir
          withExe pkg_descr $ \Executable { exeName = e } -> do
              let exeFileName = e <.> exeExtension
-                 fixedExeFileName = (progprefix ++ e ++ progsuffix) <.> exeExtension
-             copyFileVerbose verbosity (buildPref </> e </> exeFileName) (pref </> fixedExeFileName)
-             stripExe verbosity lbi exeFileName (pref </> fixedExeFileName)
+                 fixedExeBaseName = progprefix ++ e ++ progsuffix
+                 installBinary dest = do
+                     copyFileVerbose verbosity
+                                     (buildPref </> e </> exeFileName) dest
+                     stripExe verbosity lbi exeFileName dest
+             if useWrapper
+                 then do
+                     let libExecDir = libexecdir installDirs
+                         absExeFileName =
+                             libExecDir </> fixedExeBaseName <.> exeExtension
+                         wrapperFileName = binDir </> fixedExeBaseName
+                         myPkgId = packageId (package (localPkgDescr lbi))
+                         myCompilerId = compilerId (compiler lbi)
+                         env = (ExecutableNameVar,
+                                toPathTemplate absExeFileName)
+                             : fullPathTemplateEnv myPkgId myCompilerId
+                                                   pretendInstallDirs
+                     createDirectoryIfMissingVerbose verbosity True libExecDir
+                     -- XXX Should probably look somewhere more sensible
+                     -- than just . for wrappers
+                     wrapperTemplate <- readFile (e <.> "wrapper")
+                     let wrapper = fromPathTemplate
+                                 $ substPathTemplate env
+                                 $ toPathTemplate wrapperTemplate
+                     writeFileAtomic wrapperFileName wrapper
+                     perms <- getPermissions wrapperFileName
+                     let perms' = perms {executable = True}
+                     setPermissions wrapperFileName perms'
+                     installBinary absExeFileName
+                 else do
+                     let absExeFileName =
+                             binDir </> fixedExeBaseName <.> exeExtension
+                     installBinary absExeFileName
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
@@ -766,29 +803,35 @@ stripExe verbosity lbi name path = when (stripExes lbi) $
                                 ++ "' (missing the 'strip' program)"
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
-installLib    :: Verbosity -- ^verbosity
+installLib    :: CopyFlags -- ^verbosity
               -> LocalBuildInfo
               -> FilePath  -- ^install location
               -> FilePath  -- ^install location for dynamic librarys
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{library=Just _} = do
-  -- copy .hi files over:
-  let copyModuleFiles ext =
-        smartCopySources verbosity [builtDir] targetDir (libModules pkg) [ext]
-  ifVanilla $ copyModuleFiles "hi"
-  ifProf    $ copyModuleFiles "p_hi"
+installLib flags lbi targetDir dynlibTargetDir builtDir
+              pkg@PackageDescription{library=Just _} =
+    unless (fromFlag $ copyInPlace flags) $ do
+        -- copy .hi files over:
+        let verbosity = fromFlag (copyVerbosity flags)
+            copy src dst n = copyFileVerbose verbosity (src </> n) (dst </> n)
+            copyModuleFiles ext =
+                smartCopySources verbosity [builtDir] targetDir
+                                 (libModules pkg) [ext]
+        ifVanilla $ copyModuleFiles "hi"
+        ifProf    $ copyModuleFiles "p_hi"
 
-  -- copy the built library files over:
-  ifVanilla $ copy builtDir targetDir vanillaLibName
-  ifProf    $ copy builtDir targetDir profileLibName
-  ifGHCi    $ copy builtDir targetDir ghciLibName
-  ifShared  $ copy builtDir dynlibTargetDir sharedLibName
+        -- copy the built library files over:
+        ifVanilla $ copy builtDir targetDir vanillaLibName
+        ifProf    $ copy builtDir targetDir profileLibName
+        ifGHCi    $ copy builtDir targetDir ghciLibName
+        ifShared  $ copy builtDir dynlibTargetDir sharedLibName
 
-  -- run ranlib if necessary:
-  ifVanilla $ updateLibArchive verbosity lbi (targetDir </> vanillaLibName)
-  ifProf    $ updateLibArchive verbosity lbi (targetDir </> profileLibName)
+        -- run ranlib if necessary:
+        ifVanilla $ updateLibArchive verbosity lbi
+                                     (targetDir </> vanillaLibName)
+        ifProf    $ updateLibArchive verbosity lbi
+                                     (targetDir </> profileLibName)
 
   where
     vanillaLibName = mkLibName pkgid
@@ -797,7 +840,6 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir
     sharedLibName  = mkSharedLibName pkgid (compilerId (compiler lbi))
 
     pkgid          = packageId pkg
-    copy src dst n = copyFileVerbose verbosity (src </> n) (dst </> n)
 
     ifVanilla = when (withVanillaLib lbi)
     ifProf    = when (withProfLib    lbi)
