@@ -201,7 +201,7 @@ appendSubdirs append dirs = dirs {
 -- together with @\/@. The reason for this is compatability with other unix
 -- build systems which also support @--libdir@ and @--datadir@. We would like
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
--- because by default we want to support installing multiplve versions of
+-- because by default we want to support installing multiple versions of
 -- packages and building the same package for multiple compilers we append the
 -- libsubdir to get: @\/usr\/lib64\/$pkgid\/$compiler@.
 --
