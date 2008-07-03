@@ -11,7 +11,7 @@
 -- The 'LocalBuildInfo' is used to hold all this information. It holds the
 -- install dirs, the compiler, the exact package dependencies, the configured
 -- programs, the package database to use and a bunch of miscellaneous configure
--- flags. It gets saved and reloaded from a file (@dist/setup-config@). It gets
+-- flags. It gets saved and reloaded from a file (@dist\/setup-config@). It gets
 -- passed in to very many subsequent build actions.
 
 {- All rights reserved.
