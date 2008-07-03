@@ -635,6 +635,9 @@ ghcVerbosityOptions verbosity
 ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
      =  ["-hide-all-packages"]
+     ++ (case withPackageDB lbi of
+         SpecificPackageDB db -> ["-package-conf", db]
+         _ -> [])
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ odir]
