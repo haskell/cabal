@@ -93,6 +93,7 @@ Library
 
   Other-Modules:
         Distribution.GetOpt,
+        Distribution.Compat.Map,
         Distribution.Compat.TempFile,
         Distribution.Simple.GHC.Makefile,
         Distribution.Simple.GHC.IPI641,
