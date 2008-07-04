@@ -55,6 +55,8 @@ import Distribution.Version (Version)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Text (simpleParse)
 
+import Data.Maybe
+
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
 -- It's here purely for the 'Read' instance so that we can read the package
@@ -112,7 +114,7 @@ convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
   Current.PackageIdentifier (Current.PackageName n) v
 
 convertModuleName :: String -> ModuleName
-convertModuleName s = m where Just m = simpleParse s
+convertModuleName s = fromJust $ simpleParse s
 
 convertLicense :: License -> Current.License
 convertLicense GPL  = Current.GPL
