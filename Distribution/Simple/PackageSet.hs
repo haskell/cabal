@@ -53,7 +53,7 @@ module Distribution.Simple.PackageSet (
 import Prelude hiding (lookup)
 import Control.Exception (assert)
 import qualified Data.Map                as Map
-import qualified Distribution.Compat.Map as Map
+import qualified Distribution.Compat.Map as Map hiding (alter)
 import Data.Map (Map)
 import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
