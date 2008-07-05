@@ -13,7 +13,7 @@ module Distribution.Compat.Map
 
 import Data.Map as Map
 
-#if __GLASGOW_HASKELL__ < 605
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 605
 alter :: Ord k => (Maybe a -> Maybe a) -> k -> Map k a -> Map k a
 alter f k m = case Map.lookup k m of
               Nothing -> case f Nothing of
