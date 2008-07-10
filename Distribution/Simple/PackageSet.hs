@@ -52,8 +52,7 @@ module Distribution.Simple.PackageSet (
 
 import Prelude hiding (lookup)
 import Control.Exception (assert)
-import qualified Data.Map                as Map
-import qualified Distribution.Compat.Map as Map hiding (alter)
+import qualified Data.Map as Map
 import Data.Map (Map)
 import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
@@ -197,10 +196,8 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
 --
 insert :: Package pkg => pkg -> PackageSet pkg -> PackageSet pkg
 insert pkg (PackageSet index) = mkPackageSet $
-  Map.alter insertBucket (packageName pkg) index
+  Map.insertWith (\_ -> insertNoDup) (packageName pkg) [pkg] index
   where
-    insertBucket Nothing     = Just [pkg]
-    insertBucket (Just pkgs) = Just (insertNoDup pkgs)
     pkgid = packageId pkg
     insertNoDup []                = [pkg]
     insertNoDup pkgs@(pkg':pkgs') = case compare pkgid (packageId pkg') of
