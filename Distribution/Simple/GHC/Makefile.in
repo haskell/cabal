@@ -85,17 +85,17 @@ else
 odir_ =
 endif
 
-$(odir_)%.$(osuf) : $(srcdir)/%.hs
-	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
-
-$(odir_)%.$(osuf) : $(srcdir)/%.lhs	 
-	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
-
 # The .hs files might be in $(odir) if they were preprocessed
 $(odir_)%.$(osuf) : $(odir_)%.hs
 	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
 
 $(odir_)%.$(osuf) : $(odir_)%.lhs
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+$(odir_)%.$(osuf) : $(srcdir)/%.hs
+	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+
+$(odir_)%.$(osuf) : $(srcdir)/%.lhs	 
 	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
 
 $(odir_)%.$(osuf) : $(srcdir)/%.c
