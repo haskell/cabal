@@ -274,9 +274,11 @@ configure (pkg_descr0, pbi) cfg
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
         let programsConfig =
-                flip (foldr (uncurry userSpecifyArgs)) (configProgramArgs cfg)
-              . flip (foldr (uncurry userSpecifyPath)) (configProgramPaths cfg)
+                flip (foldl userSpecifyArgs') (configProgramArgs cfg)
+              . flip (foldl userSpecifyPath') (configProgramPaths cfg)
               $ configPrograms cfg
+            userSpecifyArgs' conf (prog, args) = userSpecifyArgs prog args conf
+            userSpecifyPath' conf (prog, path) = userSpecifyPath prog path conf
             userInstall = fromFlag (configUserInstall cfg)
             defaultPackageDB | userInstall = UserPackageDB
                              | otherwise   = GlobalPackageDB

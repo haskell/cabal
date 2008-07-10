@@ -254,8 +254,10 @@ buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
                 let distPref = fromFlag $ buildDistPref flags
                 lbi <- getBuildConfigIfUpToDate distPref
-                let progs = foldr (uncurry userSpecifyArgs)
+                let progs = foldl userSpecifyArgs'
                                   (withPrograms lbi) (buildProgramArgs flags)
+                      where userSpecifyArgs' conf (prog, args') =
+                              userSpecifyArgs prog args' conf
                 hookedAction preBuild buildHook postBuild
                              (return lbi { withPrograms = progs })
                              hooks flags args
