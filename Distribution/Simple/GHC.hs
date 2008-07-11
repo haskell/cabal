@@ -114,7 +114,7 @@ import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad            ( unless, when )
 import Data.Char
-import Data.List                ( nub )
+import Data.List                ( nub, intersperse )
 import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(mconcat) )
 import System.Directory         ( removeFile, renameFile,
@@ -715,9 +715,7 @@ makefile pkg_descr lbi flags = do
         ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
         ("odir", builddir),
-        ("srcdir", case hsSourceDirs bi of
-                        [one] -> one
-                        _     -> error "makefile: can't cope with multiple hs-source-dirs yet, sorry"),
+        ("srcdirs", concat $ intersperse " " $ hsSourceDirs bi),
         ("package", packageIdStr),
         ("GHC_OPTS", unwords (
                            ["-package-name", packageIdStr ]

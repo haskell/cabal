@@ -92,33 +92,37 @@ $(odir_)%.$(osuf) : $(odir_)%.hs
 $(odir_)%.$(osuf) : $(odir_)%.lhs
 	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
 
-$(odir_)%.$(osuf) : $(srcdir)/%.hs
-	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+define makeRules
+$$(odir_)%.$$(osuf) : $(1)/%.hs
+	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@  -ohi $$(basename $$@).$$(hisuf)
 
-$(odir_)%.$(osuf) : $(srcdir)/%.lhs
-	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
+$$(odir_)%.$$(osuf) : $(1)/%.lhs
+	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@  -ohi $$(basename $$@).$$(hisuf)
 
-$(odir_)%.$(osuf) : $(srcdir)/%.c
-	@$(RM) $@
-	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+$$(odir_)%.$$(osuf) : $(1)/%.c
+	@$$(RM) $$@
+	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
 
-$(odir_)%.$(osuf) : $(srcdir)/%.$(way_)s
-	@$(RM) $@
-	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+$$(odir_)%.$$(osuf) : $(1)/%.$$(way_)s
+	@$$(RM) $$@
+	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
 
-$(odir_)%.$(osuf) : $(srcdir)/%.S
-	@$(RM) $@
-	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
+$$(odir_)%.$$(osuf) : $(1)/%.S
+	@$$(RM) $$@
+	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
 
-$(odir_)%.$(way_)s : $(srcdir)/%.c
-	@$(RM) $@
-	$(GHC) $(GHC_CC_OPTS) -S $< -o $@
+$$(odir_)%.$$(way_)s : $(1)/%.c
+	@$$(RM) $$@
+	$$(GHC) $$(GHC_CC_OPTS) -S $$< -o $$@
 
-$(odir_)%.$(osuf)-boot : $(srcdir)/%.hs-boot
-	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot
+$$(odir_)%.$$(osuf)-boot : $(1)/%.hs-boot
+	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@ -ohi $$(basename $$@).$$(way_)hi-boot
 
-$(odir_)%.$(osuf)-boot : $(srcdir)/%.lhs-boot
-	$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot
+$$(odir_)%.$$(osuf)-boot : $(1)/%.lhs-boot
+	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@ -ohi $$(basename $$@).$$(way_)hi-boot
+endef
+
+$(foreach srcdir,$(srcdirs),$(eval $(call makeRules,$(srcdir))))
 
 %.$(hisuf) : %.$(osuf)
 	@if [ ! -f $@ ] ; then \
