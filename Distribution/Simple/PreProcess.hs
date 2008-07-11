@@ -81,7 +81,7 @@ import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 import Distribution.Text
-         ( display, simpleParse )
+         ( display )
 
 import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
@@ -350,16 +350,15 @@ ppHsc2hs bi lbi = pp
           -- have to use an additional layer of escaping. Grrr.
           Just ["ghc"] ->
              let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+                 Just ghcVersion = programVersion ghcProg
               in [ "--cc=" ++ programPath ghcProg
                  , "--ld=" ++ programPath ghcProg ]
               ++ -- Don't magically link in haskell98, rts and base
                  -- This is particularly important during the GHC build
                  -- itself, as they might not exist yet
-                 ( case (programVersion ghcProg, simpleParse "6.9") of
-                   (Just v1, Just v2)
-                    | v1 >= v2 -> [ "--lflag=-no-auto-link-packages" ]
-                   _           -> []
-                 )
+                 (if ghcVersion >= Version [6,9] []
+                    then [ "--lflag=-no-auto-link-packages" ]
+                    else [])
               ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
                                                 ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
