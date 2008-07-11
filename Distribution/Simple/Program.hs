@@ -140,7 +140,7 @@ data ConfiguredProgram = ConfiguredProgram {
 
         -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
         programLocation :: ProgramLocation
-    } deriving (Read, Show)
+    } deriving (Read, Show, Eq)
 
 -- | Where a program was found. Also tells us whether it's specifed by user or
 -- not.  This includes not just the path, but the program as well.
@@ -150,7 +150,7 @@ data ProgramLocation
       -- eg. --ghc-path=\/usr\/bin\/ghc-6.6
     | FoundOnSystem { locationPath :: FilePath }
       -- ^The location of the program, as located by searching PATH.
-      deriving (Read, Show)
+      deriving (Read, Show, Eq)
 
 -- ------------------------------------------------------------
 -- * Programs functions
