@@ -70,7 +70,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , die, setupMessage, intercalate
+         , die, setupMessage, intercalate, copyFileVerbose
          , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
                              lookupProgram, programPath,
@@ -81,14 +81,14 @@ import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 import Distribution.Text
-         ( display )
+         ( display, simpleParse )
 
 import Control.Monad (when, unless, join)
 import Data.Maybe (fromMaybe)
-import System.Directory (getModificationTime)
+import System.Directory (getModificationTime, doesFileExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
-                        takeDirectory, normalise)
+                        takeDirectory, normalise, replaceExtension)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -352,6 +352,14 @@ ppHsc2hs bi lbi = pp
              let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
               in [ "--cc=" ++ programPath ghcProg
                  , "--ld=" ++ programPath ghcProg ]
+              ++ -- Don't magically link in haskell98, rts and base
+                 -- This is particularly important during the GHC build
+                 -- itself, as they might not exist yet
+                 ( case (programVersion ghcProg, simpleParse "6.9") of
+                   (Just v1, Just v2)
+                    | v1 >= v2 -> [ "--lflag=-no-auto-link-packages" ]
+                   _           -> []
+                 )
               ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
                                                 ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
@@ -428,8 +436,21 @@ standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity prog (withPrograms lbi)
-        (args ++ ["-o", outFile, inFile])
+      do rawSystemProgramConf verbosity prog (withPrograms lbi)
+                              (args ++ ["-o", outFile, inFile])
+         -- XXX This is a nasty hack. GHC requires that hs-boot files
+         -- be in the same place as the hs files, so if we put the hs
+         -- file in dist/... then we need to copy the hs-boot file
+         -- there too. This should probably be done another way, e.g.
+         -- by preprocessing all files, with and "id" preprocessor if
+         -- nothing else, so the hs-boot files automatically get copied
+         -- into the right place.
+         -- Possibly we should also be looking for .lhs-boot files, but
+         -- I think that preprocessors only produce .hs files.
+         let inBoot  = replaceExtension inFile  "hs-boot"
+             outBoot = replaceExtension outFile "hs-boot"
+         exists <- doesFileExist inBoot
+         when exists $ copyFileVerbose verbosity inBoot outBoot
   }
 
 -- |Convenience function; get the suffixes of these preprocessors.
