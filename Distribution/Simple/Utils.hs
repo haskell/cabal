@@ -85,6 +85,7 @@ module Distribution.Simple.Utils (
 
         -- * simple file globbing
         matchFileGlob,
+        matchDirFileGlob,
 
         -- * temp files and dirs
         withTempFile,
@@ -466,6 +467,16 @@ matchFileGlob filepath = case parseFileGlob filepath of
   Just (FileGlob dir ext) -> do
     files <- getDirectoryContents dir
     return [ dir </> file | file <- files, takeExtensions file == ext ]
+
+matchDirFileGlob :: FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob dir filepath = case parseFileGlob filepath of
+  Nothing -> die $ "invalid filepath '" ++ filepath
+                ++ "'. Wildcards '*' are only allowed in place of the file"
+                ++ " name, not in the directory name or file extension."
+  Just (NoGlob filepath') -> return [filepath']
+  Just (FileGlob dir' ext) -> do
+    files <- getDirectoryContents (dir </> dir')
+    return [ dir' </> file | file <- files, takeExtensions file == ext ]
 
 -- |Copy the source files into the right directory.  Looks in the
 -- build prefix for files that look like the input modules, based on
