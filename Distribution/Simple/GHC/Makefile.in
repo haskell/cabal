@@ -99,7 +99,7 @@ $$(odir_)%.$$(osuf) : $(1)/%.hs
 $$(odir_)%.$$(osuf) : $(1)/%.lhs
 	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@  -ohi $$(basename $$@).$$(hisuf)
 
-$$(odir_)%.$$(osuf) : $(1)/%.c
+$$(odir_)%.$$(osuf) : %.c
 	@$$(RM) $$@
 	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
 
@@ -111,7 +111,7 @@ $$(odir_)%.$$(osuf) : $(1)/%.S
 	@$$(RM) $$@
 	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
 
-$$(odir_)%.$$(way_)s : $(1)/%.c
+$$(odir_)%.$$(way_)s : %.c
 	@$$(RM) $$@
 	$$(GHC) $$(GHC_CC_OPTS) -S $$< -o $$@
 
