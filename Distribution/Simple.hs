@@ -510,15 +510,17 @@ defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
 defaultInstallHook pkg_descr localbuildinfo _ flags = do
   let copyFlags = defaultCopyFlags {
+                      copyDistPref   = installDistPref flags,
                       copyInPlace    = installInPlace flags,
                       copyUseWrapper = installUseWrapper flags,
-                      copyDest      = toFlag NoCopyDest,
-                      copyVerbosity = installVerbosity flags
+                      copyDest       = toFlag NoCopyDest,
+                      copyVerbosity  = installVerbosity flags
                   }
   install pkg_descr localbuildinfo copyFlags
   let registerFlags = defaultRegisterFlags {
-                          regInPlace    = installInPlace flags,
-                          regPackageDB  = installPackageDB flags,
+                          regDistPref  = installDistPref flags,
+                          regInPlace   = installInPlace flags,
+                          regPackageDB = installPackageDB flags,
                           regVerbosity = installVerbosity flags
                       }
   when (hasLibs pkg_descr) $ register pkg_descr localbuildinfo registerFlags
