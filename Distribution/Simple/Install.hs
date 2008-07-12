@@ -55,7 +55,7 @@ import Distribution.Simple.LocalBuildInfo (
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyDirectoryRecursiveVerbose
-         , copyFileVerbose, die, info, notice, matchFileGlob )
+         , copyFileVerbose, die, info, notice, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
@@ -113,10 +113,12 @@ install pkg_descr lbi flags = do
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
   flip mapM_ (dataFiles pkg_descr) $ \ file -> do
-      files <- matchFileGlob (dataDir pkg_descr </> file)
+      let srcDataDir = dataDir pkg_descr
+      files <- matchDirFileGlob srcDataDir file
       let dir = takeDirectory file
       createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
-      sequence_ [ copyFileVerbose verbosity file' (dataPref </> file')
+      sequence_ [ copyFileVerbose verbosity (srcDataDir </> file')
+                                            (dataPref </> file')
                 | file' <- files ]
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
