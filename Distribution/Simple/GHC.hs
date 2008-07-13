@@ -677,6 +677,9 @@ constructCcCmdLine lbi bi pref filename verbosity
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcCcOptions lbi bi odir
      =  ["-I" ++ dir | dir <- includeDirs bi]
+     ++ (case withPackageDB lbi of
+             SpecificPackageDB db -> ["-package-conf", db]
+             _ -> [])
      ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
      ++ ["-optc" ++ opt | opt <- ccOptions bi]
      ++ (case withOptimization lbi of
