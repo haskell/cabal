@@ -65,7 +65,8 @@ import Distribution.Package
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
+         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion,
+           PackageDB(..) )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
@@ -359,6 +360,12 @@ ppHsc2hs bi lbi = pp
                  (if ghcVersion >= Version [6,9] []
                     then [ "--lflag=-no-auto-link-packages" ]
                     else [])
+              ++ (case withPackageDB lbi of
+                  SpecificPackageDB db -> ["--cflag=-package-conf",
+                                           "--cflag=" ++ db,
+                                           "--lflag=-package-conf",
+                                           "--lflag=" ++ db]
+                  _ -> [])
               ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
                                                 ++ cppOptions bi ]
               ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
