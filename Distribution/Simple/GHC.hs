@@ -656,6 +656,9 @@ ghcOptions lbi bi odir
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
+     ++ (case lookupProgram ghcProgram (withPrograms lbi) of
+         Just p  -> programArgs p
+         Nothing -> [])
      ++ hcOptions GHC bi
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
