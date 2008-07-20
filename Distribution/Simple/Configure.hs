@@ -75,8 +75,8 @@ import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
     ( InstalledPackageInfo_(package,depends) )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageSet as PackageSet
+import Distribution.Simple.PackageSet (PackageSet)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
@@ -294,14 +294,14 @@ configure (pkg_descr0, pbi) cfg
             flavor  = compilerFlavor comp
 
         -- FIXME: currently only GHC has hc-pkg
-        maybePackageIndex <- getInstalledPackages (lessVerbose verbosity) comp
+        maybePackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                packageDb programsConfig'
 
         (pkg_descr0', flags) <- case pkg_descr0 of
             Left ppd ->
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
-                       maybePackageIndex
+                       maybePackageSet
                        Distribution.System.buildOS
                        Distribution.System.buildArch
                        (compilerId comp)
@@ -327,7 +327,7 @@ configure (pkg_descr0, pbi) cfg
           (either Just (\_->Nothing) pkg_descr0) --TODO: make the Either go away
           (updatePackageDescription pbi pkg_descr)
 
-        let packageIndex = fromMaybe bogusPackageIndex maybePackageIndex
+        let packageSet = fromMaybe bogusPackageSet maybePackageSet
             -- FIXME: For Hugs, nhc98 and other compilers we do not know what
             -- packages are already installed, so we just make some up, pretend
             -- that they do exist and just hope for the best. We make them up
@@ -335,19 +335,19 @@ configure (pkg_descr0, pbi) cfg
             -- happens to depend on. See 'inventBogusPackageId' below.
             -- Let's hope they really are installed... :-)
             bogusDependencies = map inventBogusPackageId (buildDepends pkg_descr)
-            bogusPackageIndex = PackageIndex.fromList
+            bogusPackageSet = PackageSet.fromList
               [ emptyInstalledPackageInfo {
                   InstalledPackageInfo.package = bogusPackageId
                   -- note that these bogus packages have no other dependencies
                 }
               | bogusPackageId <- bogusDependencies ]
         dep_pkgs <- case flavor of
-          GHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
-          JHC -> mapM (configDependency verbosity packageIndex) (buildDepends pkg_descr)
+          GHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
+          JHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
           _   -> return bogusDependencies
 
         packageDependsIndex <-
-          case PackageIndex.dependencyClosure packageIndex dep_pkgs of
+          case PackageSet.dependencyClosure packageSet dep_pkgs of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -363,8 +363,8 @@ configure (pkg_descr0, pbi) cfg
                 InstalledPackageInfo.package = packageId pkg_descr,
                 InstalledPackageInfo.depends = dep_pkgs
               }
-        case PackageIndex.dependencyInconsistencies
-           . PackageIndex.insert pseudoTopPkg
+        case PackageSet.dependencyInconsistencies
+           . PackageSet.insert pseudoTopPkg
            $ packageDependsIndex of
           [] -> return ()
           inconsistencies ->
@@ -500,9 +500,9 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
-configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency -> IO PackageIdentifier
+configDependency :: Verbosity -> PackageSet InstalledPackageInfo -> Dependency -> IO PackageIdentifier
 configDependency verbosity index dep@(Dependency pkgname _) =
-  case PackageIndex.lookupDependency index dep of
+  case PackageSet.lookupDependency index dep of
         [] -> die $ "cannot satisfy dependency "
                       ++ display dep ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
@@ -513,7 +513,7 @@ configDependency verbosity index dep@(Dependency pkgname _) =
                    return pkgid
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
-                     -> IO (Maybe (PackageIndex InstalledPackageInfo))
+                     -> IO (Maybe (PackageSet InstalledPackageInfo))
 getInstalledPackages verbosity comp packageDb progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of

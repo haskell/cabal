@@ -77,7 +77,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( haddockPref, haddockName,
                                         hscolourPref, autogenModulesDir )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Simple.PackageSet as PackageSet
          ( lookupPackageId )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
@@ -330,7 +330,7 @@ haddockPackageFlags lbi htmlTemplate = do
   where
     interfaceAndHtmlPath :: PackageIdentifier -> Maybe (FilePath, FilePath)
     interfaceAndHtmlPath pkgId = do
-      pkg <- PackageIndex.lookupPackageId (installedPkgs lbi) pkgId
+      pkg <- PackageSet.lookupPackageId (installedPkgs lbi) pkgId
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
       html <- case htmlTemplate of
         Nothing -> listToMaybe (InstalledPackageInfo.haddockHTMLs pkg)
