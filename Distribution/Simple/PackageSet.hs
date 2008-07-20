@@ -324,15 +324,15 @@ dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
 reverseDependencyClosure :: PackageFixedDeps pkg
                          => PackageSet pkg
                          -> [PackageIdentifier]
-                         -> [PackageIdentifier]
+                         -> [pkg]
 reverseDependencyClosure index =
-    map vertexToPkgId
+    map vertexToPkg
   . concatMap Tree.flatten
   . Graph.dfs reverseDepGraph
   . map (fromMaybe noSuchPkgId . pkgIdToVertex)
 
   where
-    (depGraph, vertexToPkgId, pkgIdToVertex) = dependencyGraph index
+    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
     reverseDepGraph = Graph.transposeG depGraph
     noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
 
@@ -390,16 +390,17 @@ dependencyCycles index =
 dependencyGraph :: PackageFixedDeps pkg
                 => PackageSet pkg
                 -> (Graph.Graph,
-                    Graph.Vertex -> PackageIdentifier,
+                    Graph.Vertex -> pkg,
                     PackageIdentifier -> Maybe Graph.Vertex)
-dependencyGraph index = (graph, vertexToPkgId, pkgIdToVertex)
+dependencyGraph index = (graph, vertexToPkg, pkgIdToVertex)
   where
     graph = Array.listArray bounds
               [ [ v | Just v <- map pkgIdToVertex (depends pkg) ]
               | pkg <- pkgs ]
-    vertexToPkgId vertex = pkgIdTable ! vertex
+    vertexToPkg vertex = pkgTable ! vertex
     pkgIdToVertex = binarySearch 0 topBound
 
+    pkgTable   = Array.listArray bounds pkgs
     pkgIdTable = Array.listArray bounds (map packageId pkgs)
     pkgs = sortBy (comparing packageId) (allPackages index)
     topBound = length pkgs - 1
