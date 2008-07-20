@@ -76,6 +76,7 @@ module Distribution.Simple.Program (
     , jhcProgram
     , hugsProgram
     , ffihugsProgram
+    , gccProgram
     , ranlibProgram
     , arProgram
     , stripProgram
@@ -481,6 +482,7 @@ builtinPrograms =
     , cpphsProgram
     , greencardProgram
     -- platform toolchain
+    , gccProgram
     , ranlibProgram
     , arProgram
     , stripProgram
@@ -563,6 +565,15 @@ alexProgram = (simpleProgram "alex") {
         _           -> ""
   }
 
+gccProgram :: Program
+gccProgram = (simpleProgram "gcc") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "gcc --version" gives a string like
+      -- "gcc (GCC) 4.1.2 (Gentoo 4.1.2)"
+      case words str of
+          (_:_:ver:_) -> ver
+          _           -> ""
+  }
 
 ranlibProgram :: Program
 ranlibProgram = simpleProgram "ranlib"
