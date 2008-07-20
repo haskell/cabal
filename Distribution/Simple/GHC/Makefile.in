@@ -6,20 +6,6 @@ GHC_OPTS += -i$(odir)
 # For adding options on the command-line
 GHC_OPTS += $(EXTRA_HC_OPTS)
 
-WAY_p_OPTS = -prof
-WAY_dyn_OPTS = -fPIC -dynamic
-WAY_dyn_CC_OPTS = -fPIC
-
-ifneq "$(way)" ""
-way_ := $(way)_
-_way := _$(way)
-GHC_OPTS += $(WAY_$(way)_OPTS)
-GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(osuf)
-GHC_CC_OPTS += $(WAY_$(way)_CC_OPTS)
-endif
-osuf  = $(way_)o
-hisuf = $(way_)hi
-
 HS_OBJS = $(patsubst %,$(odir)/%.$(osuf),$(subst .,/,$(modules)))
 HS_IFS  = $(patsubst %,$(odir)/%.$(hisuf),$(subst .,/,$(modules)))
 C_OBJS  = $(patsubst %.c,$(odir)/%.$(osuf),$(C_SRCS))
@@ -79,12 +65,6 @@ endif
 
 # suffix rules
 
-ifneq "$(odir)" ""
-odir_ = $(odir)/
-else
-odir_ =
-endif
-
 # The .hs files might be in $(odir) if they were preprocessed
 $(odir_)%.$(osuf) : $(odir_)%.hs
 	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
@@ -92,37 +72,13 @@ $(odir_)%.$(osuf) : $(odir_)%.hs
 $(odir_)%.$(osuf) : $(odir_)%.lhs
 	$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)
 
-define makeRules
-$$(odir_)%.$$(osuf) : $(1)/%.hs
-	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@  -ohi $$(basename $$@).$$(hisuf)
+$(odir_)%.$(osuf) : %.c
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -c $< -o $@
 
-$$(odir_)%.$$(osuf) : $(1)/%.lhs
-	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@  -ohi $$(basename $$@).$$(hisuf)
-
-$$(odir_)%.$$(osuf) : %.c
-	@$$(RM) $$@
-	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
-
-$$(odir_)%.$$(osuf) : $(1)/%.$$(way_)s
-	@$$(RM) $$@
-	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
-
-$$(odir_)%.$$(osuf) : $(1)/%.S
-	@$$(RM) $$@
-	$$(GHC) $$(GHC_CC_OPTS) -c $$< -o $$@
-
-$$(odir_)%.$$(way_)s : %.c
-	@$$(RM) $$@
-	$$(GHC) $$(GHC_CC_OPTS) -S $$< -o $$@
-
-$$(odir_)%.$$(osuf)-boot : $(1)/%.hs-boot
-	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@ -ohi $$(basename $$@).$$(way_)hi-boot
-
-$$(odir_)%.$$(osuf)-boot : $(1)/%.lhs-boot
-	$$(GHC) $$(GHC_OPTS) -c $$< -o $$@ -ohi $$(basename $$@).$$(way_)hi-boot
-endef
-
-$(foreach srcdir,$(srcdirs),$(eval $(call makeRules,$(srcdir))))
+$(odir_)%.$(way_)s : %.c
+	@$(RM) $@
+	$(GHC) $(GHC_CC_OPTS) -S $< -o $@
 
 %.$(hisuf) : %.$(osuf)
 	@if [ ! -f $@ ] ; then \
