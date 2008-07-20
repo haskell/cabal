@@ -57,35 +57,40 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 
 
 import Distribution.Simple.PreProcess.Unlit (unlit)
-import Distribution.PackageDescription (PackageDescription(..),
-                                        BuildInfo(..), Executable(..), withExe,
-                                        Library(..), withLib, libModules)
 import Distribution.Package
          ( Package(..) )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
+import Distribution.PackageDescription
+         ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
+         , Library(..), withLib, libModules )
+import qualified Distribution.InstalledPackageInfo as Installed
+         ( InstalledPackageInfo_(..) )
+import qualified Distribution.Simple.PackageSet as PackageSet
+         ( topologicalOrder )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion,
-           PackageDB(..) )
+         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , die, setupMessage, intercalate, copyFileVerbose
          , findFileWithExtension, findFileWithExtension' )
-import Distribution.Simple.Program (Program(..), ConfiguredProgram(..),
-                             lookupProgram, programPath,
-                             rawSystemProgramConf, rawSystemProgram,
-                             greencardProgram, cpphsProgram, hsc2hsProgram,
-                             c2hsProgram, happyProgram, alexProgram,
-                             haddockProgram, ghcProgram)
+import Distribution.Simple.Program
+         ( Program(..), ConfiguredProgram(..), lookupProgram, programPath
+         , rawSystemProgramConf, rawSystemProgram
+         , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
+         , happyProgram, alexProgram, haddockProgram, ghcProgram, gccProgram )
+import Distribution.System
+         ( OS(OSX), buildOS )
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
 import Distribution.Text
          ( display )
 
-import Control.Monad (when, unless, join)
+import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
+import Data.List (nub)
 import System.Directory (getModificationTime, doesFileExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
@@ -342,42 +347,39 @@ use_optP_P lbi
      _                               -> True
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHsc2hs bi lbi = pp
-  where pp = standardPP lbi hsc2hsProgram flags
-        flags = case fmap versionTags . join . fmap programVersion
-                   . lookupProgram hsc2hsProgram . withPrograms $ lbi of
-          -- Just to make things complicated, the hsc2hs bundled with
-          -- ghc uses ghc as the C compiler, so to pass C flags we
-          -- have to use an additional layer of escaping. Grrr.
-          Just ["ghc"] ->
-             let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
-                 Just ghcVersion = programVersion ghcProg
-              in [ "--cc=" ++ programPath ghcProg
-                 , "--ld=" ++ programPath ghcProg ]
-              ++ -- Don't magically link in haskell98, rts and base
-                 -- This is particularly important during the GHC build
-                 -- itself, as they might not exist yet
-                 (if ghcVersion >= Version [6,9] []
-                    then [ "--lflag=-no-auto-link-packages" ]
-                    else [])
-              ++ (case withPackageDB lbi of
-                  SpecificPackageDB db -> ["--cflag=-package-conf",
-                                           "--cflag=" ++ db,
-                                           "--lflag=-package-conf",
-                                           "--lflag=" ++ db]
-                  _ -> [])
-              ++ [ "--cflag=-optc" ++ opt | opt <- ccOptions bi
-                                                ++ cppOptions bi ]
-              ++ [ "--cflag="      ++ opt | pkg <- packageDeps lbi
-                                          , opt <- ["-package"
-                                                   ,display pkg] ]
-              ++ [ "--cflag=-I"    ++ dir | dir <- includeDirs bi]
-              ++ [ "--lflag=-optl" ++ opt | opt <- getLdOptions bi ]
+ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
+    [ "--cc=" ++ programPath gccProg
+    , "--ld=" ++ programPath gccProg ]
 
-          _   -> [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
-              ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi ]
-              ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
-              ++ [ "--lflag="   ++ opt | opt <- getLdOptions bi ]
+    -- OSX frameworks:
+ ++ [ "--cflag=-F" ++ opt
+    | isOSX
+    , opt <- nub (concatMap Installed.frameworkDirs pkgs) ]
+ ++ [ "--cflag=-framework" ++ opt
+    | isOSX
+    , opt <- frameworks bi ++ concatMap Installed.frameworks pkgs ]
+
+    -- Options from the current package:
+ ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
+ ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
+ ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi
+                                ++ cppOptions   bi ]
+ ++ [ "--lflag="   ++ opt | opt <- getLdOptions bi ]
+
+    -- Options from dependent packages
+ ++ [ "--cflag=" ++ opt
+    | pkg <- pkgs
+    , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
+          ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
+ ++ [ "--lflag=" ++ opt
+    | pkg <- pkgs
+    , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
+          ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
+          ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+  where
+    pkgs = PackageSet.topologicalOrder (installedPkgs lbi)
+    Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
+    isOSX = case buildOS of OSX -> True; _ -> False
 
 getLdOptions :: BuildInfo -> [String]
 getLdOptions bi = map ("-L" ++) (extraLibDirs bi)
