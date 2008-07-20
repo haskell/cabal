@@ -45,6 +45,8 @@ module Distribution.Simple.PackageSet (
   brokenPackages,
   dependencyClosure,
   reverseDependencyClosure,
+  topologicalOrder,
+  reverseTopologicalOrder,
   dependencyInconsistencies,
   dependencyCycles,
   dependencyGraph,
@@ -335,6 +337,19 @@ reverseDependencyClosure index =
     (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
     reverseDepGraph = Graph.transposeG depGraph
     noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
+
+topologicalOrder :: PackageFixedDeps pkg => PackageSet pkg -> [pkg]
+topologicalOrder index = map toPkgId
+                       . Graph.topSort
+                       $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
+
+reverseTopologicalOrder :: PackageFixedDeps pkg => PackageSet pkg -> [pkg]
+reverseTopologicalOrder index = map toPkgId
+                              . Graph.topSort
+                              . Graph.transposeG
+                              $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
