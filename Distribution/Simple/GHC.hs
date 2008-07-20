@@ -99,7 +99,7 @@ import Distribution.Simple.Program
          , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, updateProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
-         , stripProgram )
+         , gccProgram, stripProgram )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
@@ -156,19 +156,24 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
-  -- finding ghc's local ld is a bit tricky as it's not on the path:
-  let ldProgram' = case buildOS of
+  -- finding ghc's local gcc and ld is a bit tricky as it's not on the path:
+  let (gccProgram', ldProgram') = case buildOS of
         Windows ->
           let compilerDir  = takeDirectory (programPath ghcProg)
               baseDir      = takeDirectory compilerDir
+              binInstallCc = baseDir </> "gcc-lib" </> "gcc.exe"
               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
-           in ldProgram {
-                  programFindLocation = \_ -> return (Just binInstallLd)
+           in (gccProgram {
+                  programFindLocation = \_ -> return (Just binInstallCc)
                 }
-        _ -> ldProgram
+              ,ldProgram {
+                  programFindLocation = \_ -> return (Just binInstallLd)
+                })
+        _ -> (gccProgram, ldProgram)
 
+  (_, conf''') <- requireProgram verbosity gccProgram' AnyVersion conf''
   -- we need to find out if ld supports the -x flag
-  (ldProg, conf''') <- requireProgram verbosity ldProgram' AnyVersion conf''
+  (ldProg, conf'''') <- requireProgram verbosity ldProgram' AnyVersion conf'''
   tempDir <- getTemporaryDirectory
   ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
          withTempFile tempDir ".o" $ \testofile testohnd -> do
@@ -182,9 +187,9 @@ configure verbosity hcPath hcPkgPath conf = do
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
-  let conf'''' = updateProgram ldProg {
+  let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
-                } conf'''
+                } conf''''
   -- Yeah yeah, so obviously conf''''' is totally rediculious and the program
   -- configuration needs to be in a state monad. That is exactly the plan
   -- (along with some other stuff to give Cabal a better DSL).
@@ -208,7 +213,7 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerId             = CompilerId GHC ghcVersion,
         compilerExtensions     = languageExtensions
       }
-  return (comp, conf'''')
+  return (comp, conf''''')
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding ghc-pkg, we try looking for both a versioned and unversioned
