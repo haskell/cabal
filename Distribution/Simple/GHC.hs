@@ -854,12 +854,15 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
   case lookupProgram stripProgram (withPrograms lbi) of
-    Just strip -> rawSystemProgram verbosity strip options
+    Just strip -> rawSystemProgram verbosity strip args
     Nothing    -> warn verbosity $ "Unable to strip executable '" ++ name
                                 ++ "' (missing the 'strip' program)"
   where
-    options = path : case buildOS of
-       OSX -> ["-x"]
+    args = path : case buildOS of
+       OSX -> ["-x"] -- By default, stripping the ghc binary on at least
+                     -- some OS X installations causes:
+                     --     HSbase-3.0.o: unknown symbol `_environ'"
+                     -- The -x flag fixes that.
        _   -> []
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
