@@ -95,19 +95,15 @@ module Distribution.Simple.Program (
     ) where
 
 import qualified Data.Map as Map
-import Distribution.Simple.Utils (die, debug, warn, rawSystemExit,
-                                  rawSystemStdout, rawSystemStdout',
-                                  withTempFile)
+import Distribution.Simple.Utils
+         (die, debug, warn, rawSystemExit, rawSystemStdout)
 import Distribution.Version
          ( Version(..), VersionRange(AnyVersion), withinRange )
 import Distribution.Text
          ( simpleParse, display )
 import Distribution.Verbosity
-import System.Directory (doesFileExist, removeFile, findExecutable,
-                         getTemporaryDirectory)
-import System.FilePath  (dropExtension)
-import System.IO (hClose)
-import System.IO.Error (try)
+import System.Directory
+         ( doesFileExist, findExecutable )
 import Control.Monad (join, foldM)
 import Control.Exception as Exception (catch)
 
@@ -586,32 +582,12 @@ stripProgram = simpleProgram "strip"
 
 hsc2hsProgram :: Program
 hsc2hsProgram = (simpleProgram "hsc2hs") {
-    programFindVersion = \verbosity path -> do
-      maybeVersion <- findProgramVersion "--version" (\str ->
+    programFindVersion =
+      findProgramVersion "--version" $ \str ->
         -- Invoking "hsc2hs --version" gives a string like "hsc2hs version 0.66"
         case words str of
           (_:_:ver:_) -> ver
-          _           -> "") verbosity path
-
-      -- It turns out that it's important to know if hsc2hs is using gcc or ghc
-      -- as it's C compiler since this affects how we escape C options.
-      -- So here's a cunning hack, we make a temp .hsc file and call:
-      -- hsch2s tmp.hsc --cflag=--version
-      -- which passes --version through to ghc/gcc and we look at the result
-      -- to see if it was indeed ghc or not.
-      case maybeVersion of
-        Nothing -> return Nothing
-        Just version -> do
-          tempDir <- getTemporaryDirectory
-          withTempFile tempDir ".hsc" $ \hsc hnd -> do
-            hClose hnd
-            (str, _) <- rawSystemStdout' verbosity path [hsc, "--cflag=--version"]
-            try $ removeFile (dropExtension hsc ++ "_hsc_make.c")
-            case words str of
-              (_:"Glorious":"Glasgow":"Haskell":_)
-                -> return $ Just version { versionTags = ["ghc"] }
-              _ -> return $ Just version
-
+          _           -> ""
   }
 
 c2hsProgram :: Program
