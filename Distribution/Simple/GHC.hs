@@ -122,11 +122,12 @@ import System.Directory         ( removeFile, renameFile,
                                   getTemporaryDirectory,
                                   Permissions(..),
                                   getPermissions, setPermissions )
+import System.Exit              ( ExitCode(..) )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
 import Control.Exception as Exception
-         ( catch, handle, try )
+         ( catch, handle, try, Exception(..) )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -308,11 +309,16 @@ getInstalledPackages' verbosity packagedbs conf
   sequence
     [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
                   ["describe", "*", packageDbGhcPkgFlag packagedb]
-           `Exception.catch` \_ -> die $
-                  "ghc-pkg describe * failed. If you are using ghc-6.9 "
-               ++ "and have an empty user package database then this "
-               ++ "is probably due to ghc bug #2201. The workaround is to "
-               ++ "register at least one package in the user package db."
+           `Exception.catch` \e ->
+               case e of
+               ExitException (ExitFailure 2) ->
+                   -- exit code 2 means no packages found
+                   return ""
+               _ -> die $
+                      "ghc-pkg describe * failed. If you are using ghc-6.9 "
+                   ++ "and have an empty user package database then this "
+                   ++ "is probably due to ghc bug #2201. The workaround is to "
+                   ++ "register at least one package in the user package db."
          case parsePackages str of
            Left ok -> return (packagedb, ok)
            _       -> die "failed to parse output of 'ghc-pkg describe *'"
