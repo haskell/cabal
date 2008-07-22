@@ -30,7 +30,7 @@ MKSTUBOBJS = find $(odir) -name "*_stub.$(osuf)" -print
 all :: $(odir)/.depend $(LIB)
 
 $(odir)/.depend : $(MAKEFILE)
-	$(GHC) -M -optdep-f -optdep$(odir)/.depend $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)
+	$(GHC) -M $(GENERATE_DOT_DEPEND) $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)
 	for dir in $(sort $(foreach mod,$(HS_OBJS) $(C_OBJS),$(dir $(mod)))); do \
 		if test ! -d $$dir; then mkdir -p $$dir; fi \
 	done
