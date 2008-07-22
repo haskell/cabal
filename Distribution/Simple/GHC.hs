@@ -721,6 +721,7 @@ makefile pkg_descr lbi flags = do
                    (withPrograms lbi)
   let builddir = buildDir lbi
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+      Just ghcVersion = programVersion ghcProg
   let decls = [
         ("modules", unwords (map display (exposedModules lib ++ otherModules bi))),
         ("GHC", programPath ghcProg),
@@ -741,7 +742,10 @@ makefile pkg_descr lbi flags = do
                                  ++ ["-l"++libName | libName <- extraLibs bi]
                                  ++ ["-L"++libDir | libDir <- extraLibDirs bi])),
         ("AR", programPath arProg),
-        ("LD", programPath ldProg ++ concat [" " ++ arg | arg <- programArgs ldProg ])
+        ("LD", programPath ldProg ++ concat [" " ++ arg | arg <- programArgs ldProg ]),
+        ("GENERATE_DOT_DEPEND", if ghcVersion >= Version [6,9] []
+                                then "-dep-makefile $(odir)/.depend"
+                                else "-optdep-f -optdep$(odir)/.depend")
         ]
       mkRules srcdir = [
         "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.hs",
