@@ -82,6 +82,8 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+                                ( InstalledPackageInfo_(..) )
 import Distribution.Simple.PackageSet (PackageSet)
 import qualified Distribution.Simple.PackageSet as PackageSet
 import Distribution.ParseUtils  ( ParseResult(..) )
@@ -116,7 +118,6 @@ import Control.Monad            ( unless, when )
 import Data.Char
 import Data.List                ( nub )
 import Data.Maybe               ( catMaybes )
-import Data.Monoid              ( Monoid(mconcat) )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory,
@@ -302,8 +303,15 @@ getInstalledPackages verbosity packagedb conf = do
         GlobalPackageDB -> [GlobalPackageDB]
         _               -> [GlobalPackageDB, packagedb]
   pkgss <- getInstalledPackages' verbosity packagedbs conf
-  return $ mconcat [ PackageSet.fromList pkgs
-                   | (_, pkgs) <- pkgss ]
+  let pkgs = concatMap snd pkgss
+      -- On Windows, various fields have $topdir/foo rather than full
+      -- paths. We need to substitute the right value in so that when
+      -- we, for example, call gcc, we have proper paths to give it
+      Just ghcProg = lookupProgram ghcProgram conf
+      compilerDir  = takeDirectory (programPath ghcProg)
+      topDir       = takeDirectory compilerDir
+      pkgs'        = map (substTopDir topDir) pkgs
+  return $ PackageSet.fromList pkgs'
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
@@ -382,6 +390,25 @@ getInstalledPackages' verbosity packagedbs conf = do
     Just ghcProg = lookupProgram ghcProgram conf
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
+
+substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
+substTopDir topDir ipo
+ = ipo {
+       InstalledPackageInfo.importDirs
+           = map f (InstalledPackageInfo.importDirs ipo),
+       InstalledPackageInfo.libraryDirs
+           = map f (InstalledPackageInfo.libraryDirs ipo),
+       InstalledPackageInfo.includeDirs
+           = map f (InstalledPackageInfo.includeDirs ipo),
+       InstalledPackageInfo.frameworkDirs
+           = map f (InstalledPackageInfo.frameworkDirs ipo),
+       InstalledPackageInfo.haddockInterfaces
+           = map f (InstalledPackageInfo.haddockInterfaces ipo),
+       InstalledPackageInfo.haddockHTMLs
+           = map f (InstalledPackageInfo.haddockHTMLs ipo)
+   }
+    where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
+          f x = x
 
 -- -----------------------------------------------------------------------------
 -- Building
