@@ -161,7 +161,7 @@ configure verbosity hcPath hcPkgPath conf = do
         Windows ->
           let compilerDir  = takeDirectory (programPath ghcProg)
               baseDir      = takeDirectory compilerDir
-              binInstallCc = baseDir </> "gcc-lib" </> "gcc.exe"
+              binInstallCc = baseDir </> "gcc.exe"
               binInstallLd = baseDir </> "gcc-lib" </> "ld.exe"
            in (gccProgram {
                   programFindLocation = \_ -> return (Just binInstallCc)
