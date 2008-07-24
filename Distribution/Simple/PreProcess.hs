@@ -61,7 +61,7 @@ import Distribution.Package
          ( Package(..) )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), withLib, libModules )
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -357,14 +357,14 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     , opt <- nub (concatMap Installed.frameworkDirs pkgs) ]
  ++ [ "--cflag=-framework" ++ opt
     | isOSX
-    , opt <- frameworks bi ++ concatMap Installed.frameworks pkgs ]
+    , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs ]
 
     -- Options from the current package:
- ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
- ++ [ "--cflag=-I" ++ dir | dir <- includeDirs  bi ]
- ++ [ "--cflag="   ++ opt | opt <- ccOptions    bi
-                                ++ cppOptions   bi ]
- ++ [ "--lflag="   ++ opt | opt <- getLdOptions bi ]
+ ++ [ "--cflag="   ++ opt | opt <-    hcDefines (compiler lbi) ]
+ ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
+ ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
+                                ++ PD.cppOptions   bi ]
+ ++ [ "--lflag="   ++ opt | opt <-    getLdOptions bi ]
 
     -- Options from dependent packages
  ++ [ "--cflag=" ++ opt
@@ -384,7 +384,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
 getLdOptions :: BuildInfo -> [String]
 getLdOptions bi = map ("-L" ++) (extraLibDirs bi)
                ++ map ("-l" ++) (extraLibs bi)
-               ++ ldOptions bi
+               ++ PD.ldOptions bi
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppC2hs bi lbi
@@ -403,8 +403,8 @@ ppC2hs bi lbi
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi
     = hcDefines (compiler lbi)
-   ++ ["-I" ++ dir | dir <- includeDirs bi]
-   ++ [opt | opt@('-':c:_) <- ccOptions bi, c `elem` "DIU"]
+   ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
+   ++ [opt | opt@('-':c:_) <- PD.ccOptions bi, c `elem` "DIU"]
 
 hcDefines :: Compiler -> [String]
 hcDefines comp =
