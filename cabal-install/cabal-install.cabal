@@ -1,7 +1,7 @@
 Name:               cabal-install
 Version:            0.5.1
 Synopsis:           The command-line interface for Cabal and Hackage.
-Description:        
+Description:
     The \'cabal\' command-line program simplifies the process of managing
     Haskell software by automating the fetching, configuration, compilation
     and installation of Haskell libraries and programs.
@@ -53,6 +53,7 @@ Executable cabal
         Hackage.Install
         Hackage.InstallPlan
         Hackage.List
+        Hackage.Logging
         Hackage.ParseUtils
         Hackage.Reporting
         Hackage.Setup
