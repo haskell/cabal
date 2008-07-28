@@ -105,7 +105,7 @@ import Distribution.Verbosity
 import System.Directory
          ( doesFileExist, findExecutable )
 import Control.Monad (join, foldM)
-import Control.Exception as Exception (catch)
+import qualified Control.Exception as Exception (catch)
 
 -- | Represents a program which can be configured.
 data Program = Program {
