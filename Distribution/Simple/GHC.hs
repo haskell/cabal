@@ -74,7 +74,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.Simple.Setup ( CopyFlags(..), MakefileFlags(..),
                                    fromFlag, fromFlagOrDefault)
-import Distribution.PackageDescription
+import Distribution.PackageDescription as PD
                                 ( PackageDescription(..), BuildInfo(..),
                                   withLib,
                                   Executable(..), withExe, Library(..),
@@ -611,10 +611,10 @@ build pkg_descr lbi verbosity = do
                          ++ constructGHCCmdLine lbi exeBi exeDir verbosity
                          ++ [exeDir </> x | x <- cObjs]
                          ++ [srcMainFile]
-                         ++ ldOptions exeBi
+                         ++ PD.ldOptions exeBi
                          ++ ["-l"++lib | lib <- extraLibs exeBi]
                          ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
-                         ++ concat [["-framework", f] | f <- frameworks exeBi]
+                         ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
                          ++ if profExe
                                then ["-prof",
                                      "-hisuf", "p_hi",
@@ -682,10 +682,10 @@ ghcOptions lbi bi odir
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
      ++ ["-i" ++ autogenModulesDir lbi]
      ++ ["-I" ++ odir]
-     ++ ["-I" ++ dir | dir <- includeDirs bi]
+     ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ["-optP" ++ opt | opt <- cppOptions bi]
-     ++ ["-optc" ++ opt | opt <- ccOptions bi]
-     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
+     ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
+     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- PD.includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
@@ -717,12 +717,12 @@ constructCcCmdLine lbi bi pref filename verbosity
 
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcCcOptions lbi bi odir
-     =  ["-I" ++ dir | dir <- includeDirs bi]
+     =  ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ (case withPackageDB lbi of
              SpecificPackageDB db -> ["-package-conf", db]
              _ -> [])
      ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
-     ++ ["-optc" ++ opt | opt <- ccOptions bi]
+     ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []
            _              -> ["-optc-O2"])
@@ -755,7 +755,7 @@ makefile pkg_descr lbi flags = do
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
       Just ghcVersion = programVersion ghcProg
   let decls = [
-        ("modules", unwords (map display (exposedModules lib ++ otherModules bi))),
+        ("modules", unwords (map display (PD.exposedModules lib ++ otherModules bi))),
         ("GHC", programPath ghcProg),
         ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
@@ -870,7 +870,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                          absExeFileName =
                              libExecDir </> fixedExeBaseName <.> exeExtension
                          wrapperFileName = binDir </> fixedExeBaseName
-                         myPkgId = packageId (package (localPkgDescr lbi))
+                         myPkgId = packageId (PD.package (localPkgDescr lbi))
                          myCompilerId = compilerId (compiler lbi)
                          env = (ExecutableNameVar,
                                 toPathTemplate absExeFileName)
