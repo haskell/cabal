@@ -127,8 +127,9 @@ import System.Exit              ( ExitCode(..) )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
+import qualified Control.Exception as Exception (catch)
 import Control.Exception as Exception
-         ( catch, handle, try, Exception(..) )
+         ( handle, try, Exception(..) )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
