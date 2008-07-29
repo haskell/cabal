@@ -675,8 +675,10 @@ ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
 ghcOptions lbi bi odir
      =  ["-hide-all-packages"]
      ++ (case withPackageDB lbi of
-         SpecificPackageDB db -> ["-package-conf", db]
-         _ -> [])
+           GlobalPackageDB      -> ["-no-user-package-conf"]
+           UserPackageDB        -> []
+           SpecificPackageDB db -> ["-no-user-package-conf"
+                                   ,"-package-conf", db])
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ odir]
