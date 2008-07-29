@@ -1929,7 +1929,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -1944,7 +1946,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -1960,7 +1964,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -1979,7 +1985,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -1998,7 +2006,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2027,7 +2037,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2043,7 +2055,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2064,7 +2078,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2086,7 +2102,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2101,7 +2119,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2119,7 +2139,9 @@ runhaskell Setup.hs unregister --gen-script</screen>
                 <replaceable>$pkgid</replaceable>,
                 <replaceable>$pkg</replaceable>,
                 <replaceable>$version</replaceable>,
-                <replaceable>$compiler</replaceable>
+                <replaceable>$compiler</replaceable>,
+		<replaceable>$os</replaceable>,
+		<replaceable>$arch</replaceable>
               </para>
 	    </listitem>
 	  </varlistentry>
@@ -2223,6 +2245,25 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	      <listitem>
 	        <para>The compiler being used to build the package, eg
                   <literal>ghc-6.6.1</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$os</replaceable></term>
+	      <listitem>
+	        <para>The operating system of the computer being used to build
+		the package, eg <literal>linux</literal>,
+		<literal>windows</literal>, <literal>osx</literal>,
+		<literal>freebsd</literal> or <literal>solaris</literal></para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><replaceable>$arch</replaceable></term>
+	      <listitem>
+	        <para>The architecture of the computer being used to build the
+		package, eg <literal>i386</literal>, <literal>x86_64</literal>,
+		<literal>ppc</literal> or <literal>sparc</literal></para>
 	      </listitem>
 	    </varlistentry>
 
