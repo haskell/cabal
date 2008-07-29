@@ -58,7 +58,7 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
-         ( Package(..), packageName )
+         ( Package(..), PackageName(..), packageName )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
@@ -383,7 +383,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
                              -- package is rts, then we don't put the
                              -- ldOptions in
                              (compilerFlavor (compiler lbi) /= GHC) ||
-                                 (display (packageName pkg) /= "rts"),
+                                 (packageName pkg /= PackageName "rts"),
                              opt <- Installed.ldOptions      pkg ] ]
   where
     pkgs = PackageSet.topologicalOrder (installedPkgs lbi)
