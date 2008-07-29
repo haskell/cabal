@@ -471,10 +471,13 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
   Just (NoGlob filepath') -> return [filepath']
   Just (FileGlob dir' ext) -> do
     files <- getDirectoryContents (dir </> dir')
-    return [ dir' </> file
+    case   [ dir' </> file
            | file <- files
            , let (name, ext') = splitExtensions file
-           , not (null name) && ext' == ext ]
+           , not (null name) && ext' == ext ] of
+      []      -> die $ "filepath wildcard '" ++ filepath
+                    ++ "' does not match any files."
+      matches -> return matches
 
 -- |Copy the source files into the right directory.  Looks in the
 -- build prefix for files that look like the input modules, based on
