@@ -664,6 +664,30 @@ Executable program2
                 or code templates.  For details on how to find these
                 files at run-time, see
                 <xref linkend="paths-module"/>.</para>
+              <para>
+		A limited form of <literal>*</literal> wildcards in file names,
+		for example <literal>data-files: images/*.png</literal> matches
+		all the <literal>.png</literal> files in the
+		<literal>images</literal> directory.
+	      </para>
+	      <para>
+		The limitation is that <literal>*</literal> wildcards are only
+		allowed in place of the file name, not in the directory name or
+		file extension.  In particular, wildcards do not include
+		directories contents recursively. Furthermore, if a wildcard is
+		used it must be used with an extension, so <literal>data-files:
+		data/*</literal> is not allowed. When matching a wildcard plus
+		extension, a file's full extension must match exactly, so
+		<literal>*.gz</literal> matches <literal>foo.gz</literal> but
+		not <literal>foo.tar.gz</literal>. A wildcard that does not
+		match any files is an error.
+	      </para>
+	      <para>
+		The reason for providing only a very limited form of wildcard
+		is to concisely express the common case of a large number of
+		related files of the same file type without making it too easy
+		to accidentally include unwanted files.
+	      </para>
             </listitem>
           </varlistentry>
 
@@ -688,6 +712,8 @@ Executable program2
               <para>A list of additional files to be included in source
                 distributions built with <command>setup sdist</command>
                 (see <xref linkend="setup-sdist"/>).</para>
+              <para>As with <literal>data-files</literal> it can use a limited
+		form of <literal>*</literal> wildcards in file names.</para>
             </listitem>
           </varlistentry>
 
