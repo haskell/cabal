@@ -58,7 +58,7 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), packageName )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
@@ -375,7 +375,16 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     | pkg <- pkgs
     , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
           ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
-          ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+          ++ [         opt | -- We don't link in the actual Haskell
+                             -- libraries of our dependencies, so the
+                             -- -u flags in the ldOptions of the rts
+                             -- package mean linking fails on OS X.
+                             -- Thus if we are using GHC, and if the
+                             -- package is rts, then we don't put the
+                             -- ldOptions in
+                             (compilerFlavor (compiler lbi) /= GHC) ||
+                                 (display (packageName pkg) /= "rts"),
+                             opt <- Installed.ldOptions      pkg ] ]
   where
     pkgs = PackageSet.topologicalOrder (installedPkgs lbi)
     Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
