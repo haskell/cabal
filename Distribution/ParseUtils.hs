@@ -59,8 +59,8 @@ module Distribution.ParseUtils (
         parseTestedWithQ, parseLicenseQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText,
-        field, simpleField, listField, commaListField, optsField, liftField,
-        boolField, parseQuoted,
+        field, simpleField, listField, spaceListField, commaListField,
+        optsField, liftField, boolField, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -201,6 +201,14 @@ commaListField :: String -> (a -> Doc) -> (ReadP [a] a)
 commaListField name showF readF get set =
   liftField get set' $
     field name (fsep . punctuate comma . map showF) (parseCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+
+spaceListField :: String -> (a -> Doc) -> (ReadP [a] a)
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+spaceListField name showF readF get set =
+  liftField get set' $
+    field name (fsep . map showF) (parseSpaceList readF)
   where
     set' xs b = set (get b ++ xs) b
 
@@ -604,6 +612,10 @@ parseSepList :: ReadP r b
              -> ReadP r [a]
 parseSepList sepr p = sepBy p separator
     where separator = skipSpaces >> sepr >> skipSpaces
+
+parseSpaceList :: ReadP r a -- ^The parser for the stuff between commas
+               -> ReadP r [a]
+parseSpaceList p = sepBy p skipSpaces
 
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
