@@ -58,7 +58,7 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
-         ( Package(..), PackageName(..), packageName )
+         ( Package(..), PackageName(..) )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
@@ -67,7 +67,7 @@ import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageSet as PackageSet
-         ( topologicalOrder )
+         ( topologicalOrder, lookupPackageName, insert )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
@@ -377,20 +377,22 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     | pkg <- pkgs
     , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
           ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
-          ++ [         opt | -- We don't link in the actual Haskell
-                             -- libraries of our dependencies, so the
-                             -- -u flags in the ldOptions of the rts
-                             -- package mean linking fails on OS X.
-                             -- Thus if we are using GHC, and if the
-                             -- package is rts, then we don't put the
-                             -- ldOptions in
-                             (compilerFlavor (compiler lbi) /= GHC) ||
-                                 (packageName pkg /= PackageName "rts"),
-                             opt <- Installed.ldOptions      pkg ] ]
+          ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
   where
-    pkgs = PackageSet.topologicalOrder (installedPkgs lbi)
+    pkgs = PackageSet.topologicalOrder (packageHacks (installedPkgs lbi))
     Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
     isOSX = case buildOS of OSX -> True; _ -> False
+    packageHacks = case compilerFlavor (compiler lbi) of
+      GHC -> hackRtsPackage
+      _   -> id
+    -- We don't link in the actual Haskell libraries of our dependencies, so
+    -- the -u flags in the ldOptions of the rts package mean linking fails on
+    -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
+    -- ldOptions for GHC's rts package:
+    hackRtsPackage index =
+      case PackageSet.lookupPackageName index (PackageName "rts") of
+        [rts] -> PackageSet.insert rts { Installed.ldOptions = [] } index
+        _ -> error "No (or multiple) ghc rts package is registered!!"
 
 getLdOptions :: BuildInfo -> [String]
 getLdOptions bi = map ("-L" ++) (extraLibDirs bi)
