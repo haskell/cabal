@@ -832,20 +832,6 @@ Executable program2
         <variablelist>
           <varlistentry>
             <term>
-              <literal>buildable:</literal> <replaceable>Boolean</replaceable>
-              (default: <literal>True</literal>)
-            </term>
-            <listitem>
-              <para>Is the component buildable?
-                Like some of the other fields below, this field is
-                more useful with the slightly more elaborate form of
-                the simple build infrastructure described in
-                <xref linkend="system-dependent"/>.</para>
-            </listitem>
-          </varlistentry>
-
-          <varlistentry>
-            <term>
               <literal>other-modules:</literal>
               <replaceable>identifier list</replaceable>
             </term>
@@ -913,6 +899,20 @@ Executable program2
                 e.g. <literal>c2hs > 0.15, cpphs</literal>.
                 If no version constraint is specified, any version is
                 assumed to be acceptable.</para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
+              <literal>buildable:</literal> <replaceable>Boolean</replaceable>
+              (default: <literal>True</literal>)
+            </term>
+            <listitem>
+              <para>Is the component buildable?
+                Like some of the other fields below, this field is
+                more useful with the slightly more elaborate form of
+                the simple build infrastructure described in
+                <xref linkend="system-dependent"/>.</para>
             </listitem>
           </varlistentry>
 
