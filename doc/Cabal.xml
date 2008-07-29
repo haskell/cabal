@@ -751,20 +751,6 @@ Executable program2
               <para>A list of modules added by this package.</para>
             </listitem>
           </varlistentry>
-	  <varlistentry>
-            <term>
-              <literal>build-depends:</literal>
-              <replaceable>package list</replaceable>
-            </term>
-            <listitem>
-              <para>A list of packages, possibly annotated with versions,
-                needed to build this one,
-                e.g. <literal>foo > 1.2, bar</literal>.
-                If no version constraint is specified, any version is
-                assumed to be acceptable.</para>
-            </listitem>
-          </varlistentry>
-
 
         </variablelist>
 
@@ -802,19 +788,6 @@ Executable program2
               </para>
             </listitem>
           </varlistentry>
-	  <varlistentry>
-            <term>
-              <literal>build-depends:</literal>
-              <replaceable>package list</replaceable>
-            </term>
-            <listitem>
-              <para>A list of packages, possibly annotated with versions,
-                needed to build this executable,
-                e.g. <literal>foo > 1.2, bar</literal>.
-                If no version constraint is specified, any version is
-                assumed to be acceptable.</para>
-            </listitem>
-          </varlistentry>
         </variablelist>
 
       </sect3>
@@ -830,6 +803,44 @@ Executable program2
         fields.</para>
 
         <variablelist>
+	  <varlistentry>
+            <term>
+              <literal>build-depends:</literal>
+              <replaceable>package list</replaceable>
+            </term>
+            <listitem>
+              <para>A list of packages needed to build this one. Each package
+	      can be annotated with a version constraint.
+	      </para>
+	      <para>
+                Version constraints use the operators <literal>==, >=, >,
+		&lt;, &lt;=</literal> and a version number. Multiple
+		constraints can be combined using <literal>&amp;&amp;</literal>
+		or <literal>||</literal>. If no version constraint is
+		specified, any version is assumed to be	acceptable.
+		For example:
+	      </para>
+              <programlisting>
+library
+  build-depends:
+    base >= 2,
+    foo >= 1.2 &amp;&amp; &lt; 1.3,
+    bar
+</programlisting>
+	      <para>
+	        Dependencies like <literal>foo >= 1.2 &amp;&amp; &lt; 1.3</literal> turn
+		out to be very common because it is recommended	practise for
+		package versions to correspond to API versions. There is a
+		special syntax to support this use:
+	      </para>
+              <programlisting>build-depends: foo ==1.2.*</programlisting>
+	      <para>
+	        It is only syntactic sugar. It is exactly equivalent to
+		<literal>foo >= 1.2 &amp;&amp; &lt; 1.3</literal>.
+	      </para>
+            </listitem>
+          </varlistentry>
+
           <varlistentry>
             <term>
               <literal>other-modules:</literal>
