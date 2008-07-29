@@ -160,7 +160,7 @@ haddock pkg_descr lbi suffixes flags = do
     let cssFileFlag = case flagToMaybe $ haddockCss flags of
                         Nothing -> []
                         Just cssFile -> ["--css=" ++ cssFile]
-    let verboseFlags = if verbosity > deafening then ["--verbose"] else []
+    let verboseFlags = if verbosity >= deafening then ["--verbose"] else []
     when (hsColour && not have_src_hyperlink_flags) $
          die "haddock --hyperlink-source requires Haddock version 0.8 or later"
     let linkToHscolour = if hsColour
