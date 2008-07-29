@@ -133,7 +133,7 @@ instance Text VersionRange where
           (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
           (EarlierVersion v3))
     | v1 == v2 && isWildcardRange (versionBranch v1) (versionBranch v3)
-    = Disp.char '~' <> disp (VersionWildcard (versionBranch v1))
+    = Disp.text "==" <> disp (VersionWildcard (versionBranch v1))
   disp (IntersectVersionRanges r1 r2)
     = disp r1 <+> Disp.text "&&" <+> disp r2
 
@@ -158,8 +158,8 @@ instance Text VersionRange where
                                 : parseWildcardRange
                                 : map parseRangeOp rangeOps
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
-        parseWildcardRange = Parse.char '~' >> Parse.skipSpaces
-                                            >> fmap wildcardRange parse
+        parseWildcardRange = Parse.string "==" >> Parse.skipSpaces
+                                               >> fmap wildcardRange parse
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
