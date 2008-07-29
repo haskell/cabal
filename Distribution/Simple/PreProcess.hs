@@ -360,7 +360,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs ]
 
     -- Options from the current package:
- ++ [ "--cflag="   ++ opt | opt <-    hcDefines (compiler lbi) ]
+ ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
  ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
  ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                 ++ PD.cppOptions   bi ]
