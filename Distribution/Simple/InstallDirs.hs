@@ -82,7 +82,7 @@ import System.FilePath (dropDrive)
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion )
 import Distribution.System
-         ( OS(..), buildOS )
+         ( OS(..), buildOS, buildArch )
 import Distribution.Compiler
          ( CompilerId, CompilerFlavor(..) )
 import Distribution.Text
@@ -381,6 +381,8 @@ data PathTemplateVariable =
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
+     | OSVar         -- ^ The operating system name, eg @windows@ or @linux@
+     | ArchVar       -- ^ The cpu architecture name, eg @i386@ or @x86_64@
      | ExecutableNameVar -- ^ The executable name; used in shell wrappers
   deriving Eq
 
@@ -417,7 +419,10 @@ initialPathTemplateEnv pkgId compilerId =
   [(PkgNameVar,  display (packageName pkgId))
   ,(PkgVerVar,   display (packageVersion pkgId))
   ,(PkgIdVar,    display pkgId)
-  ,(CompilerVar, display compilerId)]
+  ,(CompilerVar, display compilerId)
+  ,(OSVar,       display buildOS)    --these should be params if we want to be
+  ,(ArchVar,     display buildArch)  --able to do cross-platform configuation
+  ]
 
 fullPathTemplateEnv :: PackageIdentifier -> CompilerId
                     -> InstallDirs FilePath
@@ -461,6 +466,8 @@ instance Show PathTemplateVariable where
   show PkgVerVar     = "version"
   show PkgIdVar      = "pkgid"
   show CompilerVar   = "compiler"
+  show OSVar         = "os"
+  show ArchVar       = "arch"
   show ExecutableNameVar = "executablename"
 
 instance Read PathTemplateVariable where
@@ -481,6 +488,8 @@ instance Read PathTemplateVariable where
                  ,("pkg",        PkgNameVar)
                  ,("version",    PkgVerVar)
                  ,("compiler",   CompilerVar)
+                 ,("os",         OSVar)
+                 ,("arch",       ArchVar)
                  ,("executablename", ExecutableNameVar)]
 
 instance Show PathComponent where
