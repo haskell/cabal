@@ -714,7 +714,7 @@ constructCcCmdLine lbi bi pref filename verbosity
      in
         (odir,
          ghcCcOptions lbi bi odir
-         ++ (if verbosity > deafening then ["-v"] else [])
+         ++ (if verbosity >= deafening then ["-v"] else [])
          ++ ["-c",filename])
 
 
