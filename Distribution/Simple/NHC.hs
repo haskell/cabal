@@ -160,7 +160,7 @@ build pkg_descr lbi verbosity = do
     -- build any C sources
     unless (null (cSources bi)) $ do
        info verbosity "Building C Sources..."
-       let commonCcArgs = (if verbosity > deafening then ["-v"] else [])
+       let commonCcArgs = (if verbosity >= deafening then ["-v"] else [])
                        ++ ["-I" ++ dir | dir <- includeDirs bi]
                        ++ [opt | opt <- ccOptions bi]
                        ++ (if withOptimization lbi then ["-O2"] else [])
