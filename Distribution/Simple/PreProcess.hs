@@ -352,12 +352,14 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     , "--ld=" ++ programPath gccProg ]
 
     -- OSX frameworks:
- ++ [ "--cflag=-F" ++ opt
+ ++ [ what ++ "=-F" ++ opt
     | isOSX
-    , opt <- nub (concatMap Installed.frameworkDirs pkgs) ]
- ++ [ "--cflag=-framework" ++ opt
+    , opt <- nub (concatMap Installed.frameworkDirs pkgs)
+    , what <- ["--cflag", "--lflag"] ]
+ ++ [ "--lflag=" ++ arg
     | isOSX
-    , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs ]
+    , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
+    , arg <- ["-framework", opt] ]
 
     -- Options from the current package:
  ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
