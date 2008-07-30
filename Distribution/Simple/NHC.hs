@@ -81,9 +81,9 @@ import System.FilePath
 import System.Directory
         ( removeFile )
 
-import Control.Exception (try)
 import Data.List ( nub )
 import Control.Monad ( when, unless )
+import Distribution.Compat.Exception
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -179,7 +179,8 @@ build pkg_descr lbi verbosity = do
                 | m <- modules ]
 
     unless (null hObjs {-&& null cObjs-}) $ do
-      try (removeFile libFilePath) -- first remove library if it exists
+      -- first remove library if it exists
+      removeFile libFilePath `catchIO` \_ -> return ()
 
       let arVerbosity | verbosity >= deafening = "v"
                       | verbosity >= normal = ""
