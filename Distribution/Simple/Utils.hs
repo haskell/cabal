@@ -145,7 +145,7 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracket_, catch, handle, throwIO )
+    ( bracket, bracket_, catch, handle, finally, throwIO )
 
 import Distribution.Text
     ( display )
@@ -166,6 +166,7 @@ import System.Directory (getTemporaryDirectory)
 #endif
 
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
+import Distribution.Compat.Exception (catchIO, onException)
 import Distribution.Verbosity
 
 -- We only get our own version number when we're building with ourselves
@@ -248,7 +249,7 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()   -- ^ the action itself
           -> IO ()
 chattyTry desc action =
-  Exception.catch action $ \exception ->
+  catchIO action $ \exception ->
     putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- -----------------------------------------------------------------------------
@@ -613,10 +614,7 @@ withFileContents name action =
 writeFileAtomic :: FilePath -> String -> IO ()
 writeFileAtomic targetFile content = do
   (tmpFile, tmpHandle) <- openBinaryTempFile targetDir template
-  Exception.handle (\err -> do hClose tmpHandle
-                               removeFile tmpFile
-                               Exception.throwIO err) $ do
-      hPutStr tmpHandle content
+  do  hPutStr tmpHandle content
       hClose tmpHandle
 #if mingw32_HOST_OS || mingw32_TARGET_OS
       renameFile tmpFile targetFile
@@ -633,6 +631,8 @@ writeFileAtomic targetFile content = do
 #else
       renameFile tmpFile targetFile
 #endif
+   `onException` do hClose tmpHandle
+                    removeFile tmpFile
   where
     template = targetName <.> "tmp"
     targetDir | null targetDir_ = currentDir

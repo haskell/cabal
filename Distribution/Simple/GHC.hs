@@ -127,9 +127,7 @@ import System.Exit              ( ExitCode(..) )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
-import qualified Control.Exception as Exception (catch)
-import Control.Exception as Exception
-         ( handle, try, Exception(..) )
+import Distribution.Compat.Exception (catchExit, catchIO)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -184,11 +182,12 @@ configure verbosity hcPath hcPkgPath conf = do
            rawSystemProgram verbosity ghcProg ["-c", testcfile,
                                                "-o", testofile]
            withTempFile tempDir ".o" $ \testofile' testohnd' ->
-             handle (\_ -> return False) $ do
+             do
                hClose testohnd'
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
+             `catchIO` (\_ -> return False)
   let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
                 } conf''''
@@ -323,9 +322,9 @@ getInstalledPackages' verbosity packagedbs conf
   sequence
     [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
                   ["describe", "*", packageDbGhcPkgFlag packagedb]
-           `Exception.catch` \e ->
+           `catchExit` \e ->
                case e of
-               ExitException (ExitFailure 2) ->
+               ExitFailure 2 ->
                    -- exit code 2 means no packages found
                    return ""
                _ -> die $
@@ -506,7 +505,7 @@ build pkg_descr lbi verbosity = do
       unless (null hObjs && null cObjs && null stubObjs) $ do
         -- first remove library files if they exists
         sequence_
-          [ try (removeFile libFilePath)
+          [ removeFile libFilePath `catchIO` \_ -> return ()
           | libFilePath <- [vanillaLibFilePath, profileLibFilePath
                            ,sharedLibFilePath,  ghciLibFilePath] ]
 
