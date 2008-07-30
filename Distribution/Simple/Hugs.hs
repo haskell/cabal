@@ -81,12 +81,11 @@ import Distribution.Verbosity
 import Data.Char                ( isSpace )
 import Data.Maybe               ( mapMaybe, catMaybes )
 import Control.Monad            ( unless, when, filterM )
-import Control.Exception        ( try )
 import Data.List                ( nub, sort, isSuffixOf )
 import System.Directory         ( Permissions(..), getPermissions,
                                   setPermissions, copyFile,
                                   removeDirectoryRecursive )
-
+import Distribution.Compat.Exception
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -362,7 +361,7 @@ install
     -> PackageDescription
     -> IO ()
 install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
-    try $ removeDirectoryRecursive libDir
+    removeDirectoryRecursive libDir `catchIO` \_ -> return ()
     smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes
     let buildProgDir = buildPref </> "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
@@ -371,7 +370,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         let theBuildDir = buildProgDir </> exeName exe
         let installDir = installProgDir </> exeName exe
         let targetDir = targetProgDir </> exeName exe
-        try $ removeDirectoryRecursive installDir
+        removeDirectoryRecursive installDir `catchIO` \_ -> return ()
         smartCopySources verbosity [theBuildDir] installDir
             (ModuleName.main : autogenModuleName pkg_descr
                              : otherModules (buildInfo exe))

@@ -121,8 +121,6 @@ import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad
     ( when, unless, foldM )
-import Control.Exception as Exception
-    ( catch )
 import Data.List
     ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
@@ -143,6 +141,7 @@ import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
     ( comma, punctuate, render, nest, sep )
+import Distribution.Compat.Exception ( catchIO )
 
 import Prelude hiding (catch)
 
@@ -558,7 +557,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
 
     requirePkg dep@(Dependency (PackageName pkg) range) = do
       version <- pkgconfig ["--modversion", pkg]
-                 `Exception.catch` \_ -> die notFound
+                 `catchIO` \_ -> die notFound
       case simpleParse version of
         Nothing -> die "parsing output of pkg-config --modversion failed"
         Just v | not (withinRange v range) -> die (badVersion v)
