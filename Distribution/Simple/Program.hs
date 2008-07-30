@@ -105,7 +105,7 @@ import Distribution.Verbosity
 import System.Directory
          ( doesFileExist, findExecutable )
 import Control.Monad (join, foldM)
-import qualified Control.Exception as Exception (catch)
+import Distribution.Compat.Exception (catchIO)
 
 -- | Represents a program which can be configured.
 data Program = Program {
@@ -190,7 +190,7 @@ findProgramVersion :: ProgArg            -- ^ version args
                    -> IO (Maybe Version)
 findProgramVersion versionArg selectVersion verbosity path = do
   str <- rawSystemStdout verbosity path [versionArg]
-         `Exception.catch` \_ -> return ""
+         `catchIO` \_ -> return ""
   let version :: Maybe Version
       version = simpleParse (selectVersion str)
   case version of
