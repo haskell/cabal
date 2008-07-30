@@ -111,9 +111,7 @@ upgradeCommand = configureCommand {
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
     commandDefaultFlags = (mempty, defaultInstallFlags),
-    commandOptions      = \showOrParseArgs ->
-         liftOptionsFst (commandOptions configureCommand showOrParseArgs)
-      ++ liftOptionsSnd [optionDryRun]
+    commandOptions      = commandOptions installCommand
   }
 
 {-
@@ -226,7 +224,10 @@ installCommand = configureCommand {
   commandOptions      = \showOrParseArgs ->
     liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
     liftOptionsSnd
-     ([ optionDryRun
+     ([ option [] ["dry-run"]
+          "Do not install anything, only print what would be installed."
+          installDryRun (\v flags -> flags { installDryRun = v })
+          trueArg
 
       , option [] ["root-cmd"]
           "Command used to gain root privileges, when installing with --global."
@@ -249,13 +250,6 @@ installCommand = configureCommand {
              : []
           _ -> [])
   }
-
-optionDryRun :: OptionField InstallFlags
-optionDryRun =
-  option [] ["dry-run"]
-    "Do not install anything, only print what would be installed."
-    installDryRun (\v flags -> flags { installDryRun = v })
-    trueArg
 
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
