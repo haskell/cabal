@@ -167,11 +167,13 @@ storeXFieldsPD _ _ = Nothing
 -- The Library type
 
 libFieldDescrs :: [FieldDescr Library]
-libFieldDescrs = map biToLib binfoFieldDescrs
-  ++ [
-      listField "exposed-modules" disp parseModuleNameQ
-         exposedModules (\mods lib -> lib{exposedModules=mods})
-     ]
+libFieldDescrs =
+  [ listField "exposed-modules" disp parseModuleNameQ
+      exposedModules (\mods lib -> lib{exposedModules=mods})
+
+  , boolField "exposed"
+      libExposed     (\val lib -> lib{libExposed=val})
+  ] ++ map biToLib binfoFieldDescrs
   where biToLib = liftField libBuildInfo (\bi lib -> lib{libBuildInfo=bi})
 
 storeXFieldsLib :: UnrecFieldParser Library

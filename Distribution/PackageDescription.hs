@@ -214,6 +214,7 @@ instance Text BuildType where
 
 data Library = Library {
         exposedModules    :: [ModuleName],
+        libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
     deriving (Show, Eq, Read)
@@ -221,10 +222,12 @@ data Library = Library {
 instance Monoid Library where
   mempty = Library {
     exposedModules = mempty,
+    libExposed     = True,
     libBuildInfo   = mempty
   }
   mappend a b = Library {
     exposedModules = combine exposedModules,
+    libExposed     = libExposed a && libExposed b, -- so False propagates
     libBuildInfo   = combine libBuildInfo
   }
     where combine field = field a `mappend` field b
