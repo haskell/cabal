@@ -54,7 +54,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import System.Directory  ( doesFileExist, getModificationTime )
+import System.Directory  ( doesFileExist, getModificationTime, getCurrentDirectory )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO.Error   ( isDoesNotExistError )
 import System.IO         ( Handle )
@@ -281,7 +281,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     Just logHandle -> do
       info verbosity $ unwords (setupProgFile : args)
       info verbosity $ "Redirecting build log to " ++ show logHandle
-      process <- runProcess setupProgFile args
+      currentDir <- getCurrentDirectory
+      process <- runProcess (currentDir </> setupProgFile) args
                    (useWorkingDir options) Nothing
                    Nothing (Just logHandle) (Just logHandle)
       exitCode <- waitForProcess process
