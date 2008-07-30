@@ -48,7 +48,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, defaultPackageDesc, comparing
-         , rawSystemExit, createDirectoryIfMissingVerbose )
+         , rawSystemExit, createDirectoryIfMissingVerbose, inDir )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -63,7 +63,7 @@ import System.Process    ( runProcess, waitForProcess )
 import Control.Monad     ( when, unless )
 import Control.Exception ( evaluate )
 import Data.List         ( maximumBy )
-import Data.Maybe        ( fromMaybe )
+import Data.Maybe        ( fromMaybe, isJust )
 import Data.Monoid       ( Monoid(mempty) )
 import Data.Char         ( isSpace )
 
@@ -107,7 +107,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
       mkArgs cabalLibVersion = commandName cmd
                              : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
-  setupMethod verbosity pkg buildType' mkArgs
+  setupMethod verbosity options pkg buildType' mkArgs
   where
     getPkg = defaultPackageDesc verbosity
          >>= readPackageDescription verbosity
@@ -119,12 +119,16 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType'
-  | buildType' == Custom      = externalSetupMethod options
+  | isJust (useLoggingHandle options)
+ || buildType' == Custom      = externalSetupMethod
   | cabalVersion `withinRange`
       useCabalVersion options = internalSetupMethod
-  | otherwise                 = externalSetupMethod options
+  | otherwise                 = externalSetupMethod
 
-type SetupMethod = Verbosity -> PackageDescription -> BuildType
+type SetupMethod = Verbosity
+                -> SetupScriptOptions
+                -> PackageDescription
+                -> BuildType
                 -> (Version -> [String]) -> IO ()
 
 -- ------------------------------------------------------------
@@ -132,11 +136,12 @@ type SetupMethod = Verbosity -> PackageDescription -> BuildType
 -- ------------------------------------------------------------
 
 internalSetupMethod :: SetupMethod
-internalSetupMethod verbosity _ bt mkargs = do
+internalSetupMethod verbosity options _ bt mkargs = do
   let args = mkargs cabalVersion
   debug verbosity $ "Using internal setup method with build-type " ++ show bt
                  ++ " and args:\n  " ++ show args
-  buildTypeAction bt args
+  inDir (useWorkingDir options) $
+    buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -150,8 +155,8 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 -- * External SetupMethod
 -- ------------------------------------------------------------
 
-externalSetupMethod :: SetupScriptOptions -> SetupMethod
-externalSetupMethod options verbosity pkg bt mkargs = do
+externalSetupMethod :: SetupMethod
+externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, options') <- cabalLibVersionToUse
