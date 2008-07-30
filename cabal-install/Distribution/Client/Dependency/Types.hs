@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency.Types
+-- Module      :  Distribution.Client.Dependency.Types
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
-module Hackage.Dependency.Types (
+module Distribution.Client.Dependency.Types (
     PackageName,
     DependencyResolver,
     PackageVersionPreference(..),
@@ -18,9 +18,9 @@ module Hackage.Dependency.Types (
     foldProgress,
   ) where
 
-import Hackage.Types
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
-import qualified Hackage.InstallPlan as InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )

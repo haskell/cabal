@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency.TopDown.Types
+-- Module      :  Distribution.Client.Dependency.TopDown.Types
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -10,9 +10,9 @@
 --
 -- Types for the top-down dependency resolver.
 -----------------------------------------------------------------------------
-module Hackage.Dependency.TopDown.Types where
+module Distribution.Client.Dependency.TopDown.Types where
 
-import Hackage.Types
+import Distribution.Client.Types
          ( AvailablePackage(..) )
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)

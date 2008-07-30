@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists 
 -----------------------------------------------------------------------------
-module Hackage.HttpUtils (getHTTP, proxy) where
+module Distribution.Client.HttpUtils (getHTTP, proxy) where
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
@@ -10,8 +10,9 @@ import Network.HTTP
 import Network.URI
          ( URI (..), URIAuth (..), parseAbsoluteURI )
 import Network.Stream (Result)
-import Network.Browser (Proxy (..), Authority (..), browse,
-                        setOutHandler, setErrHandler, setProxy, request)
+import Network.Browser
+         ( Proxy (..), Authority (..), browse
+         , setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad
          ( mplus, join )
 #ifdef WIN32

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Setup
+-- Module      :  Distribution.Client.Setup
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Hackage.Setup
+module Distribution.Client.Setup
     ( globalCommand, Cabal.GlobalFlags(..)
     , configureCommand, filterConfigureFlags
     , installCommand, InstallFlags(..)
@@ -53,9 +53,9 @@ import Distribution.ReadE
          ( readP_to_E )
 import Distribution.Verbosity (Verbosity, normal)
 
-import Hackage.Types
+import Distribution.Client.Types
          ( Username(..), Password(..) )
-import Hackage.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
+import Distribution.Client.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
 
 import Data.Monoid (Monoid(..))
 

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.SetupWrapper
+-- Module      :  Distribution.Client.SetupWrapper
 -- Copyright   :  (c) The University of Glasgow 2006,
 --                    Duncan Coutts 2008
 --
@@ -14,7 +14,7 @@
 -- setup actions directly.  Otherwise it builds the setup script and
 -- runs it with the given arguments.
 
-module Hackage.SetupWrapper (
+module Distribution.Client.SetupWrapper (
     setupWrapper,
     SetupScriptOptions(..),
     defaultSetupScriptOptions,

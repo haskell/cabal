@@ -9,15 +9,15 @@ License:            BSD3
 License-File:       LICENSE
 Author:             Lemmih <lemmih@gmail.com>
                     Paolo Martini <paolo@nemail.it>
-		    Bjorn Bringert <bjorn@bringert.net>
-		    Isaac Potoczny-Jones <ijones@syntaxpolice.org>
-		    Duncan Coutts <duncan@haskell.org>
+                    Bjorn Bringert <bjorn@bringert.net>
+                    Isaac Potoczny-Jones <ijones@syntaxpolice.org>
+                    Duncan Coutts <duncan@haskell.org>
 Maintainer:         cabal-devel@haskell.org
 Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2006 Paolo Martini <paolo@nemail.it>
-		    2007 Bjorn Bringert <bjorn@bringert.net>
-		    2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
-		    2008 Duncan Coutts <duncan@haskell.org>
+                    2007 Bjorn Bringert <bjorn@bringert.net>
+                    2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
+                    2008 Duncan Coutts <duncan@haskell.org>
 Stability:          Experimental
 Category:           Distribution
 Build-type:         Simple
@@ -36,34 +36,34 @@ Executable cabal
     -- although it is expensive, we want to catch problems early:
     Ghc-Options:        -Wall -fno-ignore-asserts
     Other-Modules:
-        Hackage.Check
---        Hackage.Clean
-        Hackage.Config
-        Hackage.Dependency
-        Hackage.Dependency.Bogus
-        Hackage.Dependency.Naive
-        Hackage.Dependency.TopDown
-        Hackage.Dependency.TopDown.Constraints
-        Hackage.Dependency.TopDown.Types
-        Hackage.Dependency.Types
-        Hackage.Fetch
-        Hackage.HttpUtils
-        Hackage.IndexUtils
---        Hackage.Info
-        Hackage.Install
-        Hackage.InstallPlan
-        Hackage.List
-        Hackage.Logging
-        Hackage.ParseUtils
-        Hackage.Reporting
-        Hackage.Setup
-        Hackage.SetupWrapper
-        Hackage.SrcDist
-        Hackage.Tar
-        Hackage.Types
-        Hackage.Update
-        Hackage.Upload
-        Hackage.Utils
+        Distribution.Client.Check
+--        Distribution.Client.Clean
+        Distribution.Client.Config
+        Distribution.Client.Dependency
+        Distribution.Client.Dependency.Bogus
+        Distribution.Client.Dependency.Naive
+        Distribution.Client.Dependency.TopDown
+        Distribution.Client.Dependency.TopDown.Constraints
+        Distribution.Client.Dependency.TopDown.Types
+        Distribution.Client.Dependency.Types
+        Distribution.Client.Fetch
+        Distribution.Client.HttpUtils
+        Distribution.Client.IndexUtils
+--        Distribution.Client.Info
+        Distribution.Client.Install
+        Distribution.Client.InstallPlan
+        Distribution.Client.List
+        Distribution.Client.Logging
+        Distribution.Client.ParseUtils
+        Distribution.Client.Reporting
+        Distribution.Client.Setup
+        Distribution.Client.SetupWrapper
+        Distribution.Client.SrcDist
+        Distribution.Client.Tar
+        Distribution.Client.Types
+        Distribution.Client.Update
+        Distribution.Client.Upload
+        Distribution.Client.Utils
 
     build-depends: Cabal >= 1.4 && < 1.5,
                    filepath >= 1.0,
