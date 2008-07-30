@@ -47,7 +47,7 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
-         ( die, debug, cabalVersion, defaultPackageDesc, comparing
+         ( die, debug, info, cabalVersion, defaultPackageDesc, comparing
          , rawSystemExit, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
@@ -57,6 +57,9 @@ import Distribution.Verbosity
 import System.Directory  ( doesFileExist, getModificationTime )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO.Error   ( isDoesNotExistError )
+import System.IO         ( Handle )
+import System.Exit       ( ExitCode(..), exitWith )
+import System.Process    ( runProcess, waitForProcess )
 import Control.Monad     ( when, unless )
 import Control.Exception ( evaluate )
 import Data.List         ( maximumBy )
@@ -69,7 +72,9 @@ data SetupScriptOptions = SetupScriptOptions {
     useCompiler      :: Maybe Compiler,
     usePackageIndex  :: Maybe (PackageIndex InstalledPackageInfo),
     useProgramConfig :: ProgramConfiguration,
-    useDistPref      :: FilePath
+    useDistPref      :: FilePath,
+    useLoggingHandle :: Maybe Handle,
+    useWorkingDir    :: Maybe FilePath
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -78,7 +83,9 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useCompiler      = Nothing,
     usePackageIndex  = Nothing,
     useProgramConfig = emptyProgramConfiguration,
-    useDistPref      = defaultDistPref
+    useDistPref      = defaultDistPref,
+    useLoggingHandle = Nothing,
+    useWorkingDir    = Nothing
   }
 
 setupWrapper :: Verbosity
@@ -264,7 +271,16 @@ externalSetupMethod options verbosity pkg bt mkargs = do
     where cabalPkgid = PackageIdentifier "Cabal" cabalLibVersion
 
   invokeSetupScript :: [String] -> IO ()
-  invokeSetupScript args = rawSystemExit verbosity setupProgFile args
+  invokeSetupScript args = case useLoggingHandle options of
+    Nothing -> rawSystemExit verbosity setupProgFile args
+    Just logHandle -> do
+      info verbosity $ unwords (setupProgFile : args)
+      info verbosity $ "Redirecting build log to " ++ show logHandle
+      process <- runProcess setupProgFile args
+                   (useWorkingDir options) Nothing
+                   Nothing (Just logHandle) (Just logHandle)
+      exitCode <- waitForProcess process
+      unless (exitCode == ExitSuccess) $ exitWith exitCode
 
 -- ------------------------------------------------------------
 -- * Utils
