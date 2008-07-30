@@ -23,7 +23,10 @@ import Control.Monad
          ( when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesFileExist )
-import System.FilePath ((</>),(<.>))
+import System.FilePath
+         ( (</>), (<.>) )
+import System.IO
+         ( openFile, IOMode(AppendMode) )
 
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress, PackagesVersionPreference(..)
@@ -61,6 +64,9 @@ import Distribution.Simple.Setup
          ( flagToMaybe )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
+import Distribution.Simple.InstallDirs
+         ( fromPathTemplate, toPathTemplate
+         , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), thisPackageVersion )
 import Distribution.PackageDescription as PackageDescription
@@ -144,9 +150,10 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         installPlan' <-
           executeInstallPlan installPlan $ \cpkg ->
             installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
-              installAvailablePackage verbosity apkg $
+              installAvailablePackage verbosity apkg $ \pkg mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags'
+                                       pkg mpath useLogFile
         writeInstallPlanBuildReports installPlan'
         writeInstallPlanBuildLog     installPlan'
         printBuildFailures installPlan'
@@ -163,6 +170,14 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
+    useLogFile :: Maybe (PackageIdentifier -> FilePath)
+    useLogFile = fmap substLogFileName
+                   (Cabal.flagToMaybe (installLogFile installFlags))
+    substLogFileName path pkg = fromPathTemplate
+                              . substPathTemplate env
+                              . toPathTemplate
+                              $ path
+      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
     dryRun       = Cabal.fromFlag (installDryRun installFlags)
     miscOptions  = InstallMisc {
       rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
@@ -315,8 +330,10 @@ installUnpackedPackage :: Verbosity
                    -> Cabal.ConfigFlags
                    -> GenericPackageDescription
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
+                   -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
-installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
+installUnpackedPackage verbosity scriptOptions miscOptions configFlags
+                       pkg workingDir useLogFile
     = onFailure ConfigureFailed $ do
         setup configureCommand (filterConfigureFlags configFlags)
         onFailure BuildFailed $ do
@@ -329,9 +346,14 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
             return BuildOk
   where
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
-    setup cmd flags  =
+    setup cmd flags  = do
+      logFileHandle <- case useLogFile of
+        Nothing          -> return Nothing
+        Just logFileName -> fmap Just $
+                              openFile (logFileName (packageId pkg)) AppendMode
       setupWrapper verbosity
-        scriptOptions { useWorkingDir = mpath }
+        scriptOptions { useLoggingHandle = logFileHandle
+                      , useWorkingDir    = workingDir }
         (Just $ PackageDescription.packageDescription pkg)
         cmd flags []
     reexec cmd = do
@@ -341,7 +363,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
       let self = bindir </> "cabal" <.> exeExtension
       weExist <- doesFileExist self
       if weExist
-        then inDir mpath $
+        then inDir workingDir $
                rawSystemExit verbosity cmd
                  [self, "install", "--only"
                  ,"--verbose=" ++ showForCabal verbosity]
