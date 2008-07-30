@@ -329,10 +329,11 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags pkg mpath
             return BuildOk
   where
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
-    setup cmd flags  = inDir mpath $
-                         setupWrapper verbosity scriptOptions
-                           (Just $ PackageDescription.packageDescription pkg)
-                           cmd flags []
+    setup cmd flags  =
+      setupWrapper verbosity
+        scriptOptions { useWorkingDir = mpath }
+        (Just $ PackageDescription.packageDescription pkg)
+        cmd flags []
     reexec cmd = do
       -- look for our on executable file and re-exec ourselves using
       -- a helper program like sudo to elevate priviledges:
