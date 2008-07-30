@@ -159,7 +159,9 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useProgramConfig = conf,
       useDistPref      = Cabal.fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)
-                           (Cabal.configDistPref configFlags)
+                           (Cabal.configDistPref configFlags),
+      useLoggingHandle = Nothing,
+      useWorkingDir    = Nothing
     }
     dryRun       = Cabal.fromFlag (installDryRun installFlags)
     miscOptions  = InstallMisc {
