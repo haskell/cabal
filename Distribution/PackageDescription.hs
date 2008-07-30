@@ -219,11 +219,18 @@ data Library = Library {
     deriving (Show, Eq, Read)
 
 instance Monoid Library where
-    mempty = emptyLibrary
-    mappend = unionLibrary
+  mempty = Library {
+    exposedModules = mempty,
+    libBuildInfo   = mempty
+  }
+  mappend a b = Library {
+    exposedModules = combine exposedModules,
+    libBuildInfo   = combine libBuildInfo
+  }
+    where combine field = field a `mappend` field b
 
 emptyLibrary :: Library
-emptyLibrary = Library [] emptyBuildInfo
+emptyLibrary = mempty
 
 -- |does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
@@ -248,13 +255,6 @@ libModules PackageDescription{library=lib}
     = maybe [] exposedModules lib
        ++ maybe [] (otherModules . libBuildInfo) lib
 
-unionLibrary :: Library -> Library -> Library
-unionLibrary l1 l2 =
-    l1 { exposedModules = combine exposedModules
-       , libBuildInfo = unionBuildInfo (libBuildInfo l1) (libBuildInfo l2)
-       }
-  where combine f = f l1 ++ f l2
-
 -- ---------------------------------------------------------------------------
 -- The Executable type
 
@@ -266,15 +266,26 @@ data Executable = Executable {
     deriving (Show, Read, Eq)
 
 instance Monoid Executable where
-    mempty = emptyExecutable
-    mappend = unionExecutable
+  mempty = Executable {
+    exeName    = mempty,
+    modulePath = mempty,
+    buildInfo  = mempty
+  }
+  mappend a b = Executable{
+    exeName    = combine' exeName,
+    modulePath = combine modulePath,
+    buildInfo  = combine buildInfo
+  }
+    where combine field = field a `mappend` field b
+          combine' field = case (field a, field b) of
+                      ("","") -> ""
+                      ("", x) -> x
+                      (x, "") -> x
+                      (x, y) -> error $ "Ambiguous values for executable field: '"
+                                  ++ x ++ "' and '" ++ y ++ "'"
 
 emptyExecutable :: Executable
-emptyExecutable = Executable {
-                      exeName = "",
-                      modulePath = "",
-                      buildInfo = emptyBuildInfo
-                     }
+emptyExecutable = mempty
 
 -- |does this package have any executables?
 hasExes :: PackageDescription -> Bool
@@ -290,19 +301,6 @@ withExe pkg_descr f =
 exeModules :: PackageDescription -> [ModuleName]
 exeModules PackageDescription{executables=execs}
     = concatMap (otherModules . buildInfo) execs
-
-unionExecutable :: Executable -> Executable -> Executable
-unionExecutable e1 e2 =
-    e1 { exeName = combine exeName
-       , modulePath = combine modulePath
-       , buildInfo = unionBuildInfo (buildInfo e1) (buildInfo e2)
-       }
-  where combine f = case (f e1, f e2) of
-                      ("","") -> ""
-                      ("", x) -> x
-                      (x, "") -> x
-                      (x, y) -> error $ "Ambiguous values for executable field: '"
-                                  ++ x ++ "' and '" ++ y ++ "'"
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -335,32 +333,56 @@ data BuildInfo = BuildInfo {
     deriving (Show,Read,Eq)
 
 instance Monoid BuildInfo where
-    mempty = emptyBuildInfo
-    mappend = unionBuildInfo
+  mempty = BuildInfo {
+    buildable         = True,
+    buildTools        = [],
+    cppOptions        = [],
+    ccOptions         = [],
+    ldOptions         = [],
+    pkgconfigDepends  = [],
+    frameworks        = [],
+    cSources          = [],
+    hsSourceDirs      = [],
+    otherModules      = [],
+    extensions        = [],
+    extraLibs         = [],
+    extraLibDirs      = [],
+    includeDirs       = [],
+    includes          = [],
+    installIncludes   = [],
+    options           = [],
+    ghcProfOptions    = [],
+    ghcSharedOptions  = [],
+    customFieldsBI    = []
+  }
+  mappend a b = BuildInfo {
+    buildable         = buildable a && buildable b,
+    buildTools        = combineNub buildTools,
+    cppOptions        = combine    cppOptions,
+    ccOptions         = combine    ccOptions,
+    ldOptions         = combine    ldOptions,
+    pkgconfigDepends  = combineNub pkgconfigDepends,
+    frameworks        = combineNub frameworks,
+    cSources          = combineNub cSources,
+    hsSourceDirs      = combineNub hsSourceDirs,
+    otherModules      = combineNub otherModules,
+    extensions        = combineNub extensions,
+    extraLibs         = combine    extraLibs,
+    extraLibDirs      = combineNub extraLibDirs,
+    includeDirs       = combineNub includeDirs,
+    includes          = combineNub includes,
+    installIncludes   = combineNub installIncludes,
+    options           = combine    options,
+    ghcProfOptions    = combine    ghcProfOptions,
+    ghcSharedOptions  = combine    ghcSharedOptions,
+    customFieldsBI    = combine    customFieldsBI
+  }
+    where
+      combine    field = field a `mappend` field b
+      combineNub field = nub (combine field)
 
 emptyBuildInfo :: BuildInfo
-emptyBuildInfo = BuildInfo {
-                      buildable         = True,
-                      buildTools        = [],
-                      cppOptions        = [],
-                      ccOptions         = [],
-                      ldOptions         = [],
-                      pkgconfigDepends  = [],
-                      frameworks        = [],
-                      cSources          = [],
-                      hsSourceDirs      = [],
-                      otherModules      = [],
-                      extensions        = [],
-                      extraLibs         = [],
-                      extraLibDirs      = [],
-                      includeDirs       = [],
-                      includes          = [],
-                      installIncludes   = [],
-                      options           = [],
-                      ghcProfOptions    = [],
-                      ghcSharedOptions  = [],
-                      customFieldsBI    = []
-                     }
+emptyBuildInfo = mempty
 
 -- | The 'BuildInfo' for the library (if there is one and it's buildable) and
 -- all the buildable executables. Useful for gathering dependencies.
@@ -394,7 +416,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
        }
     where
       updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
-      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = unionBuildInfo bi (libBuildInfo lib)})
+      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
       updateLibrary Nothing   mb_lib     = mb_lib
 
        --the lib only exists in the buildinfo file.  FIX: Is this
@@ -412,36 +434,8 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
                        -> [Executable]        -- ^libst with exeName updated
       updateExecutable _                 []         = []
       updateExecutable exe_bi'@(name,bi) (exe:exes)
-        | exeName exe == name = exe{buildInfo = unionBuildInfo bi (buildInfo exe)} : exes
+        | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
         | otherwise           = exe : updateExecutable exe_bi' exes
-
-unionBuildInfo :: BuildInfo -> BuildInfo -> BuildInfo
-unionBuildInfo b1 b2
-    = BuildInfo {
-         buildable         = buildable b1 && buildable b2,
-         buildTools        = combineNub buildTools,
-         cppOptions        = combine    cppOptions,
-         ccOptions         = combine    ccOptions,
-         ldOptions         = combine    ldOptions,
-         pkgconfigDepends  = combineNub pkgconfigDepends,
-         frameworks        = combineNub frameworks,
-         cSources          = combineNub cSources,
-         hsSourceDirs      = combineNub hsSourceDirs,
-         otherModules      = combineNub otherModules,
-         extensions        = combineNub extensions,
-         extraLibs         = combine    extraLibs,
-         extraLibDirs      = combineNub extraLibDirs,
-         includeDirs       = combineNub includeDirs,
-         includes          = combineNub includes,
-         installIncludes   = combineNub installIncludes,
-         options           = combine    options,
-         ghcProfOptions    = combine    ghcProfOptions,
-         ghcSharedOptions  = combine    ghcSharedOptions,
-         customFieldsBI    = combine    customFieldsBI
-        }
-  where
-    combine    f = f b1 ++ f b2
-    combineNub f = nub (combine f)
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
