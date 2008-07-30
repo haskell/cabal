@@ -127,8 +127,7 @@ import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 
 import System.Directory
-    ( getDirectoryContents, getCurrentDirectory, setCurrentDirectory, doesDirectoryExist
-    , doesFileExist, removeFile )
+    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile )
 import System.Environment
     ( getProgName )
 import System.Cmd
@@ -146,7 +145,7 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracket_, catch, handle, finally, throwIO )
+    ( bracket, bracket_, catch, handle, throwIO )
 
 import Distribution.Text
     ( display )
