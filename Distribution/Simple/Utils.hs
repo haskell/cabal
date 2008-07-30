@@ -66,7 +66,6 @@ module Distribution.Simple.Utils (
         rawSystemStdout',
         maybeExit,
         xargs,
-        inDir,
 
         -- * copying files
         smartCopySources,
@@ -390,14 +389,6 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
           | len' < len = chunk (s:acc) (len-len'-1) ss
           | otherwise  = (reverse acc, s:ss)
           where len' = length s
-
--- | Executes the action in the specified directory.
-inDir :: Maybe FilePath -> IO () -> IO ()
-inDir Nothing m = m
-inDir (Just d) m = do
-  old <- getCurrentDirectory
-  setCurrentDirectory d
-  m `Exception.finally` setCurrentDirectory old
 
 -- ------------------------------------------------------------
 -- * File Utilities
