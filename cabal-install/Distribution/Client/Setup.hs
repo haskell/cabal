@@ -219,20 +219,35 @@ defaultInstallFlags = InstallFlags {
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
 installCommand = configureCommand {
-    commandName         = "install",
-    commandSynopsis     = "Installs a list of packages.",
-    commandUsage        = usagePackages "install",
-    commandDefaultFlags = (mempty, defaultInstallFlags),
-    commandOptions      = \showOrParseArgs ->
-         liftOptionsFst (commandOptions configureCommand showOrParseArgs)
-      ++ liftOptionsSnd 
-             (optionDryRun
-             :optionRootCmd
-             :optionCabalVersion
-             :case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
-                ParseArgs -> [optionOnly]  -- reconfiguring/building with dep. analysis
-                _         -> [])           -- It's used by --root-cmd.
+  commandName         = "install",
+  commandSynopsis     = "Installs a list of packages.",
+  commandUsage        = usagePackages "install",
+  commandDefaultFlags = (mempty, defaultInstallFlags),
+  commandOptions      = \showOrParseArgs ->
+    liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
+    liftOptionsSnd
+     ([ optionDryRun
 
+      , option [] ["root-cmd"]
+          "Command used to gain root privileges, when installing with --global."
+          installRootCmd (\v flags -> flags { installRootCmd = v })
+          (reqArg' "COMMAND" toFlag flagToList)
+
+      , option [] ["cabal-lib-version"]
+          ("Select which version of the Cabal lib to use to build packages "
+          ++ "(useful for testing).")
+          installCabalVersion (\v flags -> flags { installCabalVersion = v })
+          (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
+                                        (fmap toFlag parse))
+                            (map display . flagToList))
+      ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
+          ParseArgs ->
+            option [] ["only"]
+              "Only installs the package in the current directory."
+              installOnly (\v flags -> flags { installOnly = v })
+              trueArg
+             : []
+          _ -> [])
   }
 
 optionDryRun :: OptionField InstallFlags
@@ -241,30 +256,6 @@ optionDryRun =
     "Do not install anything, only print what would be installed."
     installDryRun (\v flags -> flags { installDryRun = v })
     trueArg
-
-optionOnly :: OptionField InstallFlags
-optionOnly =
-  option [] ["only"]
-    "Only installs the package in the current directory."
-    installOnly (\v flags -> flags { installOnly = v })
-    trueArg
-
-optionRootCmd :: OptionField InstallFlags
-optionRootCmd =
-  option [] ["root-cmd"]
-    "Command used to gain root privileges, when installing with --global."
-    installRootCmd (\v flags -> flags { installRootCmd = v })
-    (reqArg' "COMMAND" toFlag flagToList)
-
-optionCabalVersion :: OptionField InstallFlags
-optionCabalVersion =
-  option [] ["cabal-lib-version"]
-    ("Select which version of the Cabal lib to use to build packages "
-    ++ "(useful for testing).")
-    installCabalVersion (\v flags -> flags { installCabalVersion = v })
-    (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
-                                  (fmap toFlag parse))
-                      (map display . flagToList))
 
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
