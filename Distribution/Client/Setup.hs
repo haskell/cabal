@@ -204,7 +204,8 @@ data InstallFlags = InstallFlags {
     installDryRun       :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
-    installCabalVersion :: Flag Version
+    installCabalVersion :: Flag Version,
+    installLogFile      :: Flag FilePath
   }
 
 defaultInstallFlags :: InstallFlags
@@ -212,7 +213,8 @@ defaultInstallFlags = InstallFlags {
     installDryRun       = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
-    installCabalVersion = mempty
+    installCabalVersion = mempty,
+    installLogFile      = mempty
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -241,6 +243,12 @@ installCommand = configureCommand {
           (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
                                         (fmap toFlag parse))
                             (map display . flagToList))
+
+      , option [] ["log-builds"]
+          "Log all builds to file (name template can use $pkgid, $compiler, $os, $arch)"
+          installLogFile (\v flags -> flags { installLogFile = v })
+          (reqArg' "FILE" toFlag flagToList)
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -257,7 +265,8 @@ instance Monoid InstallFlags where
     installDryRun       = combine installDryRun,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
-    installCabalVersion = combine installCabalVersion
+    installCabalVersion = combine installCabalVersion,
+    installLogFile      = combine installLogFile
   }
     where combine field = field a `mappend` field b
 
