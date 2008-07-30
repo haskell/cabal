@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Config
+-- Module      :  Distribution.Client.Config
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- Utilities for handling saved state such as known packages, known servers and downloaded packages.
 -----------------------------------------------------------------------------
-module Hackage.Config
+module Distribution.Client.Config
     ( SavedConfig(..)
     , savedConfigToConfigFlags
     , configRepos
@@ -51,10 +51,10 @@ import Distribution.Verbosity (Verbosity, normal)
 import Distribution.System
          ( OS(Windows), buildOS )
 
-import Hackage.Types
+import Distribution.Client.Types
          ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
-import Hackage.ParseUtils
-import Hackage.Utils (readFileIfExists)
+import Distribution.Client.ParseUtils
+import Distribution.Client.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
 configPackageDB :: Cabal.ConfigFlags -> PackageDB

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Fetch
+-- Module      :  Distribution.Client.Fetch
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 --
 -----------------------------------------------------------------------------
-module Hackage.Fetch
+module Distribution.Client.Fetch
     (
      -- * Commands
      fetch
@@ -24,15 +24,15 @@ import Network.URI
          ( URI(uriScheme, uriPath) )
 import Network.HTTP (ConnError(..), Response(..))
 
-import Hackage.Types
+import Distribution.Client.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo(..), repoURI )
-import Hackage.Dependency
+import Distribution.Client.Dependency
          ( resolveDependencies, PackagesVersionPreference(..) )
-import Hackage.IndexUtils as IndexUtils
+import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.HttpUtils (getHTTP)
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.HttpUtils (getHTTP)
 
 import Distribution.Package
          ( PackageIdentifier(..), Package(..) )

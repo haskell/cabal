@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.InstallPlan
+-- Module      :  Distribution.Client.InstallPlan
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -11,7 +11,7 @@
 -- Package installation plan
 --
 -----------------------------------------------------------------------------
-module Hackage.InstallPlan (
+module Distribution.Client.InstallPlan (
   InstallPlan,
   ConfiguredPackage(..),
   PlanPackage(..),
@@ -44,7 +44,7 @@ module Hackage.InstallPlan (
   configuredPackageProblems
   ) where
 
-import Hackage.Types
+import Distribution.Client.Types
          ( AvailablePackage(packageDescription), ConfiguredPackage(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
@@ -68,7 +68,7 @@ import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
          ( CompilerId(..) )
-import Hackage.Utils
+import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, intercalate )

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Info
+-- Module      :  Distribution.Client.Info
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,14 +10,14 @@
 --
 -- High level interface to a dry-run package installation.
 -----------------------------------------------------------------------------
-module Hackage.Info (
+module Distribution.Client.Info (
     flattenResolvedDependencies,
     infoPkg
   ) where
 
-import Hackage.Fetch
-import Hackage.Types 
-import Hackage.Utils (showDependencies)
+import Distribution.Client.Fetch
+import Distribution.Client.Types
+import Distribution.Client.Utils (showDependencies)
 
 import Distribution.Package
          ( Package(..) )

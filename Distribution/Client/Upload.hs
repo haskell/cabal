@@ -1,10 +1,10 @@
 -- This is a quick hack for uploading packages to Hackage.
 -- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
 
-module Hackage.Upload (check, upload) where
+module Distribution.Client.Upload (check, upload) where
 
-import Hackage.Types (Username(..), Password(..))
-import Hackage.HttpUtils (proxy)
+import Distribution.Client.Types (Username(..), Password(..))
+import Distribution.Client.HttpUtils (proxy)
 
 import Distribution.Simple.Utils (debug, notice, warn)
 import Distribution.Verbosity (Verbosity)
@@ -13,8 +13,9 @@ import Network.Browser
          ( BrowserAction, browse, request
          , Authority(..), addAuthority, setAuthorityGen
          , setOutHandler, setErrHandler, setProxy )
-import Network.HTTP (Header(..), HeaderName(..), Request(..),
-                     RequestMethod(..), Response(..))
+import Network.HTTP
+         ( Header(..), HeaderName(..)
+         , Request(..), RequestMethod(..), Response(..) )
 import Network.URI (URI, parseURI)
 
 import Data.Char        (intToDigit)

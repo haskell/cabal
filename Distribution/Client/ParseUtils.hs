@@ -1,4 +1,4 @@
-module Hackage.ParseUtils where
+module Distribution.Client.ParseUtils where
 
 import Distribution.Compat.ReadP
          ( ReadP, readP_to_S, pfail, get, look, choice, (+++) )

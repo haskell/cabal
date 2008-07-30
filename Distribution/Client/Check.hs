@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Check
+-- Module      :  Distribution.Client.Check
 -- Copyright   :  (c) Lennart Kolmodin 2008
 -- License     :  BSD-like
 --
@@ -11,7 +11,7 @@
 -- Check a package for common mistakes
 --
 -----------------------------------------------------------------------------
-module Hackage.Check (
+module Distribution.Client.Check (
     check
   ) where
 

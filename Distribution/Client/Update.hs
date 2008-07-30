@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Update
+-- Module      :  Distribution.Client.Update
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,12 +10,12 @@
 --
 --
 -----------------------------------------------------------------------------
-module Hackage.Update
+module Distribution.Client.Update
     ( update
     ) where
 
-import Hackage.Types
-import Hackage.Fetch
+import Distribution.Client.Types
+import Distribution.Client.Fetch
 
 import Distribution.Simple.Utils (notice)
 import Distribution.Verbosity (Verbosity)

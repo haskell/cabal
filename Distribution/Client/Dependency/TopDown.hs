@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency.Types
+-- Module      :  Distribution.Client.Dependency.Types
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -10,21 +10,21 @@
 --
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
-module Hackage.Dependency.TopDown (
+module Distribution.Client.Dependency.TopDown (
     topDownResolver
   ) where
 
-import Hackage.Dependency.TopDown.Types
-import qualified Hackage.Dependency.TopDown.Constraints as Constraints
-import Hackage.Dependency.TopDown.Constraints
+import Distribution.Client.Dependency.TopDown.Types
+import qualified Distribution.Client.Dependency.TopDown.Constraints as Constraints
+import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
-import Hackage.Types
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
-import Hackage.Dependency.Types
+import Distribution.Client.Dependency.Types
          ( PackageName, DependencyResolver, PackageVersionPreference(..)
          , Progress(..), foldProgress )
 

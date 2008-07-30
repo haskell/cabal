@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Install
+-- Module      :  Distribution.Client.Install
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Hackage.Install (
+module Distribution.Client.Install (
     install,
     upgrade,
   ) where
@@ -25,28 +25,28 @@ import System.Directory
          ( getTemporaryDirectory, doesFileExist )
 import System.FilePath ((</>),(<.>))
 
-import Hackage.Dependency
+import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress, PackagesVersionPreference(..)
          , upgradableDependencies )
-import Hackage.Dependency.Types (Progress(..), foldProgress)
-import Hackage.Fetch (fetchPackage)
--- import qualified Hackage.Info as Info
-import Hackage.IndexUtils as IndexUtils
+import Distribution.Client.Dependency.Types (Progress(..), foldProgress)
+import Distribution.Client.Fetch (fetchPackage)
+-- import qualified Distribution.Client.Info as Info
+import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.InstallPlan (InstallPlan)
-import Hackage.Setup
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Setup
          ( InstallFlags(..), configureCommand, filterConfigureFlags )
-import Hackage.Tar (extractTarGzFile)
-import Hackage.Types as Available
+import Distribution.Client.Tar (extractTarGzFile)
+import Distribution.Client.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo, ConfiguredPackage(..)
          , BuildResult(..) )
-import Hackage.SetupWrapper
+import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
-import Hackage.Reporting
+import Distribution.Client.Reporting
          ( writeInstallPlanBuildReports )
-import Hackage.Logging
+import Distribution.Client.Logging
          ( writeInstallPlanBuildLog )
 import Paths_cabal_install (getBinDir)
 

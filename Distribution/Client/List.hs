@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Install
+-- Module      :  Distribution.Client.Install
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
-module Hackage.List (
+module Distribution.Client.List (
   list
   ) where
 
@@ -32,16 +32,16 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version (Version)
 import Distribution.Verbosity (Verbosity)
 
-import Hackage.IndexUtils (getAvailablePackages)
-import Hackage.Setup (ListFlags(..))
-import Hackage.Types (AvailablePackage(..), Repo)
+import Distribution.Client.IndexUtils (getAvailablePackages)
+import Distribution.Client.Setup (ListFlags(..))
+import Distribution.Client.Types (AvailablePackage(..), Repo)
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler (Compiler,PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
 
-import Hackage.Utils (mergeBy, MergeResult(..))
+import Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 -- |Show information about packages
 list :: Verbosity

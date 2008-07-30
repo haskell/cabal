@@ -1,4 +1,4 @@
-module Hackage.Utils where
+module Distribution.Client.Utils where
 
 import Distribution.Package
          ( Dependency(..) )
