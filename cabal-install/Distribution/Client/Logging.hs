@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Reporting
+-- Module      :  Distribution.Client.Logging
 -- Copyright   :  (c) David Waern 2008
 -- License     :  BSD-like
 --
@@ -8,39 +8,41 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Report data structure
+-- Build log data structure
 --
 -----------------------------------------------------------------------------
-module Hackage.Reporting (
-    BuildReport(..),
+module Distribution.Client.Logging (
+    BuildLogEntry(..),
     InstallOutcome(..),
     Outcome(..),
 
     -- * Constructing and writing reports
-    buildReport,
-    writeBuildReports,
+    buildLogEntry,
+    writeBuildLog,
 
     -- * parsing and pretty printing
-    parseBuildReport,
-    parseBuildReports,
-    showBuildReport,
+    parseBuildLogEntry,
+    parseBuildLog,
+    showBuildLogEntry,
 
     -- * 'InstallPlan' variants
-    planPackageBuildReport,
-    installPlanBuildReports,
-    writeInstallPlanBuildReports
+    planPackageBuildLogEntry,
+    installPlanBuildLog,
+    writeInstallPlanBuildLog
   ) where
 
-import Hackage.Types
-         ( ConfiguredPackage(..), AvailablePackage(..)
-         , AvailablePackageSource(..), BuildResult
-         , Repo(repoCacheDir), repoName )
-import qualified Hackage.Types as BR
+import Distribution.Client.Reporting
+         ( InstallOutcome(..), Outcome(..) )
+import Distribution.Client.Types
+         ( ConfiguredPackage(..), BuildResult )
+import Distribution.Client.Config
+         ( defaultCabalDir )
+import qualified Distribution.Client.Types as BR
          ( BuildResult(..) )
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
-import Hackage.ParseUtils
+import Distribution.Client.ParseUtils
          ( showFields, parseBasicStanza )
 import qualified Paths_cabal_install (version)
 
@@ -59,25 +61,30 @@ import Distribution.Text
 import Distribution.ParseUtils
          ( FieldDescr(..), ParseResult(..), simpleField, listField )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, pfail, munch1, char, option, skipSpaces )
+         ( ReadP, {-pfail,-} munch1, char, option )
 import Text.PrettyPrint.HughesPJ as Disp
-         ( Doc, char, text, (<+>), (<>) )
-import Distribution.Simple.Utils
-         ( comparing, equating )
+         ( Doc, char, text, (<>) )
 
 import Data.List
-         ( unfoldr, groupBy, sortBy )
+         ( unfoldr )
 import Data.Maybe
          ( catMaybes )
 import Data.Char as Char
-         ( isAlpha, isAlphaNum )
+         ( isAlphaNum )
 import System.FilePath
          ( (</>) )
+--import Network.URI
+--         ( URI, uriToString, parseAbsoluteURI )
 
-data BuildReport
-   = BuildReport {
+type BuildLog = [BuildLogEntry]
+
+data BuildLogEntry
+   = BuildLogEntry {
     -- | The package this build report is about
     package         :: PackageIdentifier,
+
+    -- | Which hackage server this package is from or local
+--    server          :: Maybe URI,
 
     -- | The OS and Arch the package was built on
     os              :: OS,
@@ -111,41 +118,24 @@ data BuildReport
     testsOutcome    :: Outcome
   }
 
-data InstallOutcome
-   = DependencyFailed PackageIdentifier
-   | DownloadFailed
-   | UnpackFailed
-   | SetupFailed
-   | ConfigureFailed
-   | BuildFailed
-   | InstallFailed
-   | InstallOk
-
-data Outcome = NotTried | Failed | Ok
-
-writeBuildReports :: [(BuildReport, Repo)] -> IO ()
-writeBuildReports reports = sequence_
-  [ appendFile file (concatMap format reports')
-  | (repo, reports') <- separate reports
-  , let file = repoCacheDir repo </> "build-reports.log" ]
+writeBuildLog :: BuildLog -> IO ()
+writeBuildLog reports = do
+  cabalDir <- defaultCabalDir
+  let file = cabalDir </> "build.log"
+  appendFile file (concatMap format reports)
   --TODO: make this concurrency safe, either lock the report file or make sure
   -- the writes for each report are atomic (under 4k and flush at boundaries)
 
   where
-    format r = '\n' : showBuildReport r ++ "\n"
-    separate :: [(BuildReport, Repo)] -> [(Repo, [BuildReport])]
-    separate = map (\rs@((_,repo):_) -> (repo, map fst rs))
-             . map concat
-             . groupBy (equating (repoName . snd . head))
-             . sortBy (comparing (repoName . snd . head))
-             . groupBy (equating (repoName . snd))
+    format r = '\n' : showBuildLogEntry r ++ "\n"
 
-buildReport :: OS -> Arch -> CompilerId -- -> Version
-            -> ConfiguredPackage -> BR.BuildResult
-            -> BuildReport
-buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
-  BuildReport {
+buildLogEntry :: OS -> Arch -> CompilerId -- -> Version
+              -> ConfiguredPackage -> BR.BuildResult
+              -> BuildLogEntry
+buildLogEntry os' arch' comp (ConfiguredPackage pkg flags deps) result =
+  BuildLogEntry {
     package               = packageId pkg,
+--    server                = Nothing,
     os                    = os',
     arch                  = arch',
     compiler              = comp,
@@ -171,9 +161,10 @@ buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
 -- * External format
 -- ------------------------------------------------------------
 
-initialBuildReport :: BuildReport
-initialBuildReport = BuildReport {
+initialBuildLogEntry :: BuildLogEntry
+initialBuildLogEntry = BuildLogEntry {
     package         = requiredField "package",
+--    server          = Nothing,
     os              = requiredField "os",
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
@@ -192,12 +183,12 @@ initialBuildReport = BuildReport {
 -- -----------------------------------------------------------------------------
 -- Parsing
 
-parseBuildReport :: String -> ParseResult BuildReport
-parseBuildReport = parseBasicStanza fieldDescrs initialBuildReport
+parseBuildLogEntry :: String -> ParseResult BuildLogEntry
+parseBuildLogEntry = parseBasicStanza fieldDescrs initialBuildLogEntry
 
-parseBuildReports :: String -> [BuildReport]
-parseBuildReports str =
-  [ report | ParseOk [] report <- map parseBuildReport (split str) ]
+parseBuildLog :: String -> [BuildLogEntry]
+parseBuildLog str =
+  [ report | ParseOk [] report <- map parseBuildLogEntry (split str) ]
 
   where
     split :: String -> [String]
@@ -209,16 +200,18 @@ parseBuildReports str =
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
-showBuildReport :: BuildReport -> String
-showBuildReport = showFields fieldDescrs
+showBuildLogEntry :: BuildLogEntry -> String
+showBuildLogEntry = showFields fieldDescrs
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
-fieldDescrs :: [FieldDescr BuildReport]
+fieldDescrs :: [FieldDescr BuildLogEntry]
 fieldDescrs =
  [ simpleField "package"         disp           parse
                                  package        (\v r -> r { package = v })
+-- , simpleField "server"          disp           parse
+--                                 server         (\v r -> r { server = v })
  , simpleField "os"              disp           parse
                                  os             (\v r -> r { os = v })
  , simpleField "arch"            disp           parse
@@ -249,70 +242,38 @@ parseFlag = do
   name  <- Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
   return (FlagName name, value)
 
-instance Text InstallOutcome where
-  disp (DependencyFailed pkgid) = Disp.text "DependencyFailed" <+> disp pkgid
-  disp DownloadFailed  = Disp.text "DownloadFailed"
-  disp UnpackFailed    = Disp.text "UnpackFailed"
-  disp SetupFailed     = Disp.text "SetupFailed"
-  disp ConfigureFailed = Disp.text "ConfigureFailed"
-  disp BuildFailed     = Disp.text "BuildFailed"
-  disp InstallFailed   = Disp.text "InstallFailed"
-  disp InstallOk       = Disp.text "InstallOk"
-
+{-
+instance Text URI where
+  disp uri = Disp.text (uriToString id uri [])
   parse = do
-    name <- Parse.munch1 Char.isAlphaNum
-    case name of
-      "DependencyFailed" -> do Parse.skipSpaces
-                               pkgid <- parse
-                               return (DependencyFailed pkgid)
-      "DownloadFailed"   -> return DownloadFailed
-      "UnpackFailed"     -> return UnpackFailed
-      "SetupFailed"      -> return SetupFailed
-      "ConfigureFailed"  -> return ConfigureFailed
-      "BuildFailed"      -> return BuildFailed
-      "InstallFailed"    -> return InstallFailed
-      "InstallOk"        -> return InstallOk
-      _                  -> Parse.pfail
-
-instance Text Outcome where
-  disp NotTried = Disp.text "NotTried"
-  disp Failed   = Disp.text "Failed"
-  disp Ok       = Disp.text "Ok"
-  parse = do
-    name <- Parse.munch1 Char.isAlpha
-    case name of
-      "NotTried" -> return NotTried
-      "Failed"   -> return Failed
-      "Ok"       -> return Ok
-      _          -> Parse.pfail
-
+    str <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
+    maybe Parse.pfail return (parseAbsoluteURI str)
+-}
 -- ------------------------------------------------------------
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-writeInstallPlanBuildReports :: InstallPlan BuildResult -> IO ()
-writeInstallPlanBuildReports = writeBuildReports . installPlanBuildReports
+writeInstallPlanBuildLog :: InstallPlan BuildResult -> IO ()
+writeInstallPlanBuildLog = writeBuildLog . installPlanBuildLog
 
-installPlanBuildReports :: InstallPlan BuildResult -> [(BuildReport, Repo)]
-installPlanBuildReports plan = catMaybes
-                             . map (planPackageBuildReport os' arch' comp)
+installPlanBuildLog :: InstallPlan BuildResult -> BuildLog
+installPlanBuildLog plan = catMaybes
+                             . map (planPackageBuildLogEntry os' arch' comp)
                              . InstallPlan.toList
                              $ plan
   where os'   = InstallPlan.planOS plan
         arch' = InstallPlan.planArch plan
         comp  = InstallPlan.planCompiler plan
 
-planPackageBuildReport :: OS -> Arch -> CompilerId
-                       -> InstallPlan.PlanPackage BuildResult
-                       -> Maybe (BuildReport, Repo)
-planPackageBuildReport os' arch' comp planPackage = case planPackage of
+planPackageBuildLogEntry :: OS -> Arch -> CompilerId
+                         -> InstallPlan.PlanPackage BuildResult
+                         -> Maybe BuildLogEntry
+planPackageBuildLogEntry os' arch' comp planPackage = case planPackage of
 
-  InstallPlan.Installed pkg@(ConfiguredPackage (AvailablePackage {
-                          packageSource = RepoTarballPackage repo }) _ _)
-    -> Just $ (buildReport os' arch' comp pkg BR.BuildOk, repo)
+  InstallPlan.Installed pkg
+    -> Just $ buildLogEntry os' arch' comp pkg BR.BuildOk
 
-  InstallPlan.Failed pkg@(ConfiguredPackage (AvailablePackage {
-                       packageSource = RepoTarballPackage repo }) _ _) result
-    -> Just $ (buildReport os' arch' comp pkg result, repo)
+  InstallPlan.Failed pkg result
+    -> Just $ buildLogEntry os' arch' comp pkg result
 
   _ -> Nothing

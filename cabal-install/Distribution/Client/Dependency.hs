@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency
+-- Module      :  Distribution.Client.Dependency
 -- Copyright   :  (c) David Himmelstrup 2005,
 --                    Bjorn Bringert 2007
 --                    Duncan Coutts 2008
@@ -12,24 +12,24 @@
 --
 -- Top level interface to dependency resolution.
 -----------------------------------------------------------------------------
-module Hackage.Dependency (
+module Distribution.Client.Dependency (
     resolveDependencies,
     resolveDependenciesWithProgress,
     PackagesVersionPreference(..),
     upgradableDependencies,
   ) where
 
---import Hackage.Dependency.Naive (naiveResolver)
-import Hackage.Dependency.Bogus (bogusResolver)
-import Hackage.Dependency.TopDown (topDownResolver)
+--import Distribution.Client.Dependency.Naive (naiveResolver)
+import Distribution.Client.Dependency.Bogus (bogusResolver)
+import Distribution.Client.Dependency.TopDown (topDownResolver)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.InstallPlan (InstallPlan)
-import Hackage.Types
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
-import Hackage.Dependency.Types
+import Distribution.Client.Dependency.Types
          ( PackageName, DependencyResolver, PackageVersionPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package
@@ -42,7 +42,7 @@ import Distribution.Compiler
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
-import Hackage.Utils (mergeBy, MergeResult(..))
+import Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import Data.List (maximumBy)
 import Data.Monoid (Monoid(mempty))

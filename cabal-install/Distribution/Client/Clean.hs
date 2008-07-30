@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Clean
+-- Module      :  Distribution.Client.Clean
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,12 +10,12 @@
 --
 -- 
 -----------------------------------------------------------------------------
-module Hackage.Clean
+module Distribution.Client.Clean
     ( clean
     ) where
 
-import Hackage.Types (ConfigFlags(..))
-import Hackage.Utils (fileNotFoundExceptions)
+import Distribution.Client.Types (ConfigFlags(..))
+import Distribution.Client.Utils (fileNotFoundExceptions)
 
 import System.Directory (removeDirectoryRecursive)
 import Control.Exception (catchJust)
@@ -25,5 +25,5 @@ clean :: ConfigFlags -> IO ()
 clean cfg
     = catchJust fileNotFoundExceptions
         (removeDirectoryRecursive (configCacheDir cfg))
-	-- The packages dir may not exist if it's already cleaned:
-	(const (return ()))
+        -- The packages dir may not exist if it's already cleaned:
+        (const (return ()))

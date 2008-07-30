@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency.TopDown.Constraints
+-- Module      :  Distribution.Client.Dependency.TopDown.Constraints
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- A set of satisfiable dependencies (package version constraints).
 -----------------------------------------------------------------------------
-module Hackage.Dependency.TopDown.Constraints (
+module Distribution.Client.Dependency.TopDown.Constraints (
   Constraints,
   empty,
   choices,
@@ -20,7 +20,7 @@ module Hackage.Dependency.TopDown.Constraints (
   conflicting,
   ) where
 
-import Hackage.Dependency.TopDown.Types
+import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Package
@@ -30,7 +30,7 @@ import Distribution.Version
          ( withinRange )
 import Distribution.Simple.Utils
          ( comparing )
-import Hackage.Utils
+import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 
 import Data.List

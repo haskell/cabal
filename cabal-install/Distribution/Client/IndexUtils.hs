@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.IndexUtils
+-- Module      :  Distribution.Client.IndexUtils
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -10,19 +10,20 @@
 --
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
-module Hackage.IndexUtils (
+module Distribution.Client.IndexUtils (
   getAvailablePackages,
   readRepoIndex,
   disambiguatePackageName,
   disambiguateDependencies
   ) where
 
-import Hackage.Tar
-import Hackage.Types
+import Distribution.Client.Tar
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo(..) )
 
-import Distribution.Package (PackageIdentifier(..), Package(..), Dependency(Dependency))
+import Distribution.Package
+         ( PackageIdentifier(..), Package(..), Dependency(Dependency) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription

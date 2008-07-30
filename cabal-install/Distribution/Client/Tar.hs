@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Check
+-- Module      :  Distribution.Client.Check
 -- Copyright   :  (c) 2007 Bjorn Bringert, 2008 Andrea Vezzosi
 -- License     :  BSD-like
 --
@@ -13,12 +13,12 @@
 -- Only handles the file names and file contents, ignores other file metadata.
 --
 -----------------------------------------------------------------------------
-module Hackage.Tar (
-  TarHeader(..),
-  TarFileType(..),
-  readTarArchive,
-  extractTarGzFile,
-  createTarGzFile
+module Distribution.Client.Tar (
+    TarHeader(..),
+    TarFileType(..),
+    readTarArchive,
+    extractTarGzFile,
+    createTarGzFile
   ) where
 
 import qualified Data.ByteString.Lazy as BS
@@ -36,7 +36,8 @@ import System.Directory
          , Permissions(..), setPermissions, getPermissions )
 import System.Time (ClockTime(..))
 import System.FilePath as FilePath
-         ( (</>), isValid, isAbsolute, splitFileName, splitDirectories, makeRelative )
+         ( (</>), isValid, isAbsolute, splitFileName, splitDirectories
+         , makeRelative )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( joinPath, pathSeparator )
 import System.Posix.Types (FileMode)

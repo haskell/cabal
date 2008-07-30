@@ -1,12 +1,12 @@
 -- Implements the \"@.\/cabal sdist@\" command, which creates a source
 -- distribution for this package.  That is, packs up the source code
 -- into a tarball, making use of the corresponding Cabal module.
-module Hackage.SrcDist (
-	 sdist
+module Distribution.Client.SrcDist (
+         sdist
   )  where
 import Distribution.Simple.SrcDist
          ( printPackageProblems, prepareTree, prepareSnapshotTree )
-import Hackage.Tar (createTarGzFile)
+import Distribution.Client.Tar (createTarGzFile)
 
 import Distribution.Package
          ( Package(..) )

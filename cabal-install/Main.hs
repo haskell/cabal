@@ -13,11 +13,13 @@
 
 module Main where
 
-import Hackage.Setup
-import Hackage.Types
+import Distribution.Client.Setup
+import Distribution.Client.Types
          ( UnresolvedDependency(UnresolvedDependency) )
-import Distribution.Simple.Setup (Flag(..), fromFlag, fromFlagOrDefault,
-                                  flagToMaybe,SDistFlags,sdistCommand)
+
+import Distribution.Simple.Setup
+         ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe
+         , SDistFlags, sdistCommand )
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
@@ -26,19 +28,19 @@ import Distribution.Simple.Utils (cabalVersion, die, intercalate)
 import Distribution.Text
          ( display )
 
-import Hackage.SetupWrapper
+import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
-import Hackage.Config           (SavedConfig(..), savedConfigToConfigFlags,
-                                 defaultConfigFile, loadConfig, configRepos,
-                                 configPackageDB)
-import Hackage.List             (list)
-import Hackage.Install          (install, upgrade)
-import Hackage.Update           (update)
-import Hackage.Fetch            (fetch)
-import Hackage.Check as Check   (check)
---import Hackage.Clean            (clean)
-import Hackage.Upload as Upload (upload, check)
-import Hackage.SrcDist(sdist)
+import Distribution.Client.Config
+         ( SavedConfig(..), savedConfigToConfigFlags, defaultConfigFile
+         , loadConfig, configRepos, configPackageDB )
+import Distribution.Client.List             (list)
+import Distribution.Client.Install          (install, upgrade)
+import Distribution.Client.Update           (update)
+import Distribution.Client.Fetch            (fetch)
+import Distribution.Client.Check as Check   (check)
+--import Distribution.Client.Clean            (clean)
+import Distribution.Client.Upload as Upload (upload, check)
+import Distribution.Client.SrcDist          (sdist)
 
 import Distribution.Verbosity   (Verbosity, normal)
 import qualified Paths_cabal_install (version)

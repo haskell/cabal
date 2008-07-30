@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency.Bogus
+-- Module      :  Distribution.Client.Dependency.Bogus
 -- Copyright   :  (c) David Himmelstrup 2005, Bjorn Bringert 2007
 --                    Duncan Coutts 2008
 -- License     :  BSD-like
@@ -11,16 +11,16 @@
 --
 -- A dependency resolver for when we do not know what packages are installed.
 -----------------------------------------------------------------------------
-module Hackage.Dependency.Bogus (
+module Distribution.Client.Dependency.Bogus (
     bogusResolver
   ) where
 
-import Hackage.Types
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
-import Hackage.Dependency.Types
+import Distribution.Client.Dependency.Types
          ( DependencyResolver, Progress(..) )
-import qualified Hackage.InstallPlan as InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )

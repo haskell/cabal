@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Dependency
+-- Module      :  Distribution.Client.Dependency
 -- Copyright   :  (c) David Himmelstrup 2005, Bjorn Bringert 2007,
 --                    Duncan Coutts 2008
 -- License     :  BSD-like
@@ -12,7 +12,7 @@
 -- A dependency resolver that is not very sophisticated.
 -- It often makes installation plans with inconsistent dependencies.
 -----------------------------------------------------------------------------
-module Hackage.Dependency.Naive (
+module Distribution.Client.Dependency.Naive (
     naiveResolver
   ) where
 
@@ -20,11 +20,11 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo_(package))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Hackage.InstallPlan as InstallPlan
-import Hackage.Types
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
-import Hackage.Dependency.Types
+import Distribution.Client.Dependency.Types
          ( DependencyResolver, Progress(..) )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), Package(..) )
@@ -32,13 +32,13 @@ import Distribution.PackageDescription
          ( PackageDescription(buildDepends), GenericPackageDescription
          , FlagAssignment )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription)
+         ( finalizePackageDescription)
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing, intercalate)
-import Hackage.Utils
+import Distribution.Client.Utils
          ( showDependencies )
 import Distribution.Text
          ( display )

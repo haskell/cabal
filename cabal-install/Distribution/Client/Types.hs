@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Hackage.Types
+-- Module      :  Distribution.Client.Types
 -- Copyright   :  (c) David Himmelstrup 2005
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- All data types for the entire cabal-install system gathered here to avoid some .hs-boot files.
 -----------------------------------------------------------------------------
-module Hackage.Types where
+module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
