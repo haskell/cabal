@@ -752,6 +752,32 @@ Executable program2
             </listitem>
           </varlistentry>
 
+          <varlistentry>
+            <term>
+              <literal>exposed:</literal> <replaceable>boolean</replaceable>
+              (default: <literal>True</literal>)
+            </term>
+            <listitem>
+              <para>
+		Some Haskell compilers (notably GHC) support the notion of
+		packages being <quote>exposed</quote> or <quote>hidden</quote>
+		which means the modules they provide can be easily imported
+		without always having to specify which package they come from.
+		However this only works effectively if the modules provided by
+		all exposed packages do not overlap (otherwise a module import
+		would be ambiguous).
+	      </para>
+	      <para>
+		Almost all new libraries use hierarchical module names that do
+		not clash, so it is very uncommon to have to use this field.
+		However it may be necessary to set <literal>exposed:
+		False</literal> for some old libraries that use a flat module
+		namespace or where it is known that the exposed modules would
+		clash with other common modules.
+	      </para>
+            </listitem>
+          </varlistentry>
+
         </variablelist>
 
         <para>The library section may also contain build information fields
@@ -915,7 +941,7 @@ library
 
           <varlistentry>
             <term>
-              <literal>buildable:</literal> <replaceable>Boolean</replaceable>
+              <literal>buildable:</literal> <replaceable>boolean</replaceable>
               (default: <literal>True</literal>)
             </term>
             <listitem>
@@ -1272,7 +1298,7 @@ Library {
           <varlistentry>
             <term>
               <literal>default:</literal>
-              <replaceable>Boolean</replaceable>
+              <replaceable>boolean</replaceable>
 	      (default: <literal>True</literal>)
             </term>
             <listitem>
