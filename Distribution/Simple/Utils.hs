@@ -145,7 +145,6 @@ import System.IO
 import System.IO.Error as IO.Error
     ( try )
 import qualified Control.Exception as Exception
-    ( bracket, bracket_ )
 
 import Distribution.Text
     ( display )
