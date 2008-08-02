@@ -37,7 +37,6 @@ Executable cabal
     Ghc-Options:        -Wall -fno-ignore-asserts
     Other-Modules:
         Distribution.Client.Check
---        Distribution.Client.Clean
         Distribution.Client.Config
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Bogus
