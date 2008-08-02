@@ -2,6 +2,15 @@
 
 1.5.x (current development version)
 
+1.4.0.2 (current stable version)
+	* Fix executable stripping default
+	* Fix striping exes on OSX that export dynamic symbols (like ghc)
+	* Correct the order of arguments given by --prog-options=
+	* Fix corner case with overlapping user and global packages
+	* Fix for modules that use pre-processing and .hs-boot files
+	* Clarify some points in the user guide and readme text
+	* Fix verbosity flags passed to sub-command like haddock
+
 1.4.0.1 Duncan Coutts <duncan@haskell.org> June 2008
 	* Fix a bug which caused '.' to always be in the sources search path
 	* Haddock-2.2 and later do now support the --hoogle flag
