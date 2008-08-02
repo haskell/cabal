@@ -77,7 +77,8 @@ data SavedConfig = SavedConfig {
     configUploadPassword    :: Flag Password,
     configUserInstallDirs   :: InstallDirs (Flag PathTemplate),
     configGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
-    configFlags             :: ConfigFlags
+    configFlags             :: ConfigFlags,
+    configSymlinkBinDir     :: Flag FilePath
   }
 
 configUserInstall     :: SavedConfig -> Flag Bool
@@ -155,6 +156,7 @@ defaultSavedConfig =
          , configRemoteRepos       = [defaultRemoteRepo]
          , configUploadUsername    = mempty
          , configUploadPassword    = mempty
+         , configSymlinkBinDir     = mempty
          }
 
 defaultRemoteRepo :: RemoteRepo
@@ -220,6 +222,10 @@ configCabalInstallFieldDescrs =
                 (text . show . fromFlagOrDefault "" . fmap unPassword)
                 (fmap (fmap Password . emptyToNothing) parseTokenQ)
                 configUploadPassword    (\d cfg -> cfg { configUploadPassword = d })
+    , simpleField "symlink-bindir"
+                (text . show . fromFlagOrDefault "")
+                (fmap emptyToNothing parseFilePathQ)
+                configSymlinkBinDir     (\d cfg -> cfg { configSymlinkBinDir = d })
     ]
     where emptyToNothing "" = mempty
           emptyToNothing f  = toFlag f
