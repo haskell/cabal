@@ -147,8 +147,8 @@ defaultSavedConfig =
              , ConfigFlags.configVerbosity   = toFlag normal
              , ConfigFlags.configUserInstall = toFlag defaultUserInstall
              , ConfigFlags.configInstallDirs = error
-               "ConfigFlags.installDirs: avoid this field. Use UserInstallDirs \
-              \ or GlobalInstallDirs instead"
+               "ConfigFlags.installDirs: avoid this field."
+               --use UserInstallDirs or GlobalInstallDirs instead
              }
          , configUserInstallDirs   = userInstallDirs
          , configGlobalInstallDirs = defaultGlobalInstallDirs
