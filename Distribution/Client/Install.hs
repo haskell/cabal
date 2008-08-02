@@ -337,12 +337,12 @@ installAvailablePackage
 installAvailablePackage _ (AvailablePackage _ pkg LocalUnpackedPackage)
   installPkg = installPkg pkg Nothing
 
-installAvailablePackage verbosity apkg@(AvailablePackage _ pkg _)
-  installPkg = do
-  pkgPath <- fetchPackage verbosity apkg
-  tmp <- getTemporaryDirectory
+installAvailablePackage verbosity
+  (AvailablePackage _ pkg (RepoTarballPackage repo)) installPkg = do
   let pkgid = packageId pkg
-      tmpDirPath = tmp </> ("TMP" ++ display pkgid)
+  pkgPath <- fetchPackage verbosity repo pkgid
+  tmp <- getTemporaryDirectory
+  let tmpDirPath = tmp </> ("TMP" ++ display pkgid)
       path = tmpDirPath </> display pkgid
   onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
     info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."

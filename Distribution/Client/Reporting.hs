@@ -32,9 +32,8 @@ module Distribution.Client.Reporting (
   ) where
 
 import Distribution.Client.Types
-         ( ConfiguredPackage(..), AvailablePackage(..)
-         , AvailablePackageSource(..), BuildResult
-         , Repo(repoCacheDir), repoName )
+         ( ConfiguredPackage(..), AvailablePackage(..), BuildResult
+         , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 import qualified Distribution.Client.Types as BR
          ( BuildResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -127,18 +126,26 @@ writeBuildReports :: [(BuildReport, Repo)] -> IO ()
 writeBuildReports reports = sequence_
   [ appendFile file (concatMap format reports')
   | (repo, reports') <- separate reports
-  , let file = repoCacheDir repo </> "build-reports.log" ]
+  , let file = repoLocalDir repo </> "build-reports.log" ]
   --TODO: make this concurrency safe, either lock the report file or make sure
   -- the writes for each report are atomic (under 4k and flush at boundaries)
 
   where
     format r = '\n' : showBuildReport r ++ "\n"
-    separate :: [(BuildReport, Repo)] -> [(Repo, [BuildReport])]
-    separate = map (\rs@((_,repo):_) -> (repo, map fst rs))
+    separate :: [(BuildReport, Repo)]
+             -> [(Repo, [BuildReport])]
+    separate = map (\rs@((_,repo,_):_) -> (repo, [ r | (r,_,_) <- rs ]))
              . map concat
-             . groupBy (equating (repoName . snd . head))
-             . sortBy (comparing (repoName . snd . head))
-             . groupBy (equating (repoName . snd))
+             . groupBy (equating (repoName . head))
+             . sortBy (comparing (repoName . head))
+             . groupBy (equating repoName)
+             . onlyRemote
+    repoName (_,_,rrepo) = remoteRepoName rrepo
+
+    onlyRemote :: [(BuildReport, Repo)] -> [(BuildReport, Repo, RemoteRepo)]
+    onlyRemote rs =
+      [ (report, repo, remoteRepo)
+      | (report, repo@Repo { repoKind = Left remoteRepo }) <- rs ]
 
 buildReport :: OS -> Arch -> CompilerId -- -> Version
             -> ConfiguredPackage -> BR.BuildResult

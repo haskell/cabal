@@ -61,8 +61,10 @@ data AvailablePackageSource =
 
     -- | The unpacked package in the current dir
     LocalUnpackedPackage
-    
-    -- | A package available as a tarball from a remote repository, with a
+
+    -- | A package available as a tarball from a repository.
+    --
+    -- It may be from a local repository or from a remote repository, with a
     -- locally cached copy. ie a package available from hackage
   | RepoTarballPackage Repo
 
@@ -74,6 +76,9 @@ data AvailablePackageSource =
 --      current dir, ie add a FilePath param
 --  * add support for darcs and other SCM style remote repos with a local cache
 
+data LocalRepo = LocalRepo
+  deriving (Show,Eq)
+
 data RemoteRepo = RemoteRepo {
     remoteRepoName :: String,
     remoteRepoURI  :: URI
@@ -81,16 +86,10 @@ data RemoteRepo = RemoteRepo {
   deriving (Show,Eq)
 
 data Repo = Repo {
-    repoRemote   :: RemoteRepo,
-    repoCacheDir :: FilePath
+    repoKind     :: Either RemoteRepo LocalRepo,
+    repoLocalDir :: FilePath
   }
   deriving (Show,Eq)
-
-repoName :: Repo -> String
-repoName = remoteRepoName . repoRemote
-
-repoURI :: Repo -> URI
-repoURI = remoteRepoURI . repoRemote
 
 data UnresolvedDependency
     = UnresolvedDependency

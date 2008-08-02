@@ -29,7 +29,8 @@ import Control.Monad (when)
 import Data.Monoid (Monoid(..))
 import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory)
-import Network.URI (parseAbsoluteURI, uriToString)
+import Network.URI
+         ( URI(..), URIAuth(..), parseAbsoluteURI, uriToString )
 import Text.PrettyPrint.HughesPJ (text)
 
 import Distribution.Compat.ReadP as ReadP
@@ -88,7 +89,7 @@ configRepos :: SavedConfig -> [Repo]
 configRepos config =
   [ let cacheDir = fromFlag (configCacheDir config)
                </> remoteRepoName remote
-     in Repo remote cacheDir
+     in Repo (Left remote) cacheDir
   | remote <- configRemoteRepos config ]
 
 savedConfigToConfigFlags :: Flag Bool -> SavedConfig -> Cabal.ConfigFlags
@@ -160,10 +161,10 @@ defaultSavedConfig =
          }
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo "hackage.haskell.org" uri
+defaultRemoteRepo = RemoteRepo name uri
   where
-    Just uri = parseAbsoluteURI "http://hackage.haskell.org/packages/archive"
-
+    name = "hackage.haskell.org"
+    uri  = URI "http:" (Just (URIAuth "" name "")) "/packages/archive" "" ""
 --
 -- * Config file reading
 --
