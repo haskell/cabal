@@ -48,7 +48,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, defaultPackageDesc, comparing
-         , rawSystemExit, createDirectoryIfMissingVerbose, inDir )
+         , createDirectoryIfMissingVerbose, inDir )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -276,17 +276,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     where cabalPkgid = PackageIdentifier "Cabal" cabalLibVersion
 
   invokeSetupScript :: [String] -> IO ()
-  invokeSetupScript args = case useLoggingHandle options of
-    Nothing -> rawSystemExit verbosity setupProgFile args
-    Just logHandle -> do
-      info verbosity $ unwords (setupProgFile : args)
-      info verbosity $ "Redirecting build log to " ++ show logHandle
-      currentDir <- getCurrentDirectory
-      process <- runProcess (currentDir </> setupProgFile) args
-                   (useWorkingDir options) Nothing
-                   Nothing (Just logHandle) (Just logHandle)
-      exitCode <- waitForProcess process
-      unless (exitCode == ExitSuccess) $ exitWith exitCode
+  invokeSetupScript args = do
+    info verbosity $ unwords (setupProgFile : args)
+    case useLoggingHandle options of
+      Nothing        -> return ()
+      Just logHandle -> info verbosity $ "Redirecting build log to "
+                                      ++ show logHandle
+    currentDir <- getCurrentDirectory
+    process <- runProcess (currentDir </> setupProgFile) args
+                 (useWorkingDir options) Nothing
+                 Nothing (useLoggingHandle options) (useLoggingHandle options)
+    exitCode <- waitForProcess process
+    unless (exitCode == ExitSuccess) $ exitWith exitCode
 
 -- ------------------------------------------------------------
 -- * Utils
