@@ -92,3 +92,4 @@ Executable cabal
       cpp-options: -DWIN32
     else
       build-depends: unix >= 2.2 && < 2.4
+    extensions: CPP

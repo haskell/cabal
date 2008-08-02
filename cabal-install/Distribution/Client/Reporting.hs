@@ -98,10 +98,10 @@ data BuildReport
     -- | Did installing work ok?
     installOutcome  :: InstallOutcome,
 
-    -- | Which version of the Cabal library was used to compile the Setup.hs
+    --   Which version of the Cabal library was used to compile the Setup.hs
 --    cabalVersion    :: Version,
 
-    -- | Which build tools we were using (with versions)
+    --   Which build tools we were using (with versions)
 --    tools      :: [PackageIdentifier],
 
     -- | Configure outcome, did configure work ok?
