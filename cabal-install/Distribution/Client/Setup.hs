@@ -205,7 +205,8 @@ data InstallFlags = InstallFlags {
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
     installCabalVersion :: Flag Version,
-    installLogFile      :: Flag FilePath
+    installLogFile      :: Flag FilePath,
+    installSymlinkBinDir:: Flag FilePath
   }
 
 defaultInstallFlags :: InstallFlags
@@ -214,7 +215,8 @@ defaultInstallFlags = InstallFlags {
     installOnly         = Flag False,
     installRootCmd      = mempty,
     installCabalVersion = mempty,
-    installLogFile      = mempty
+    installLogFile      = mempty,
+    installSymlinkBinDir= mempty
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -266,7 +268,8 @@ instance Monoid InstallFlags where
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
     installCabalVersion = combine installCabalVersion,
-    installLogFile      = combine installLogFile
+    installLogFile      = combine installLogFile,
+    installSymlinkBinDir= combine installSymlinkBinDir
   }
     where combine field = field a `mappend` field b
 
