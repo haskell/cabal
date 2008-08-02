@@ -163,7 +163,9 @@ installAction (cflags,iflags) extraArgs = do
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
           (configPackageDB cflags') (configRepos config)
-          comp conf cflags' iflags
+          comp conf cflags' iflags {
+            installSymlinkBinDir = configSymlinkBinDir config
+          }
           [ UnresolvedDependency pkg (Cabal.configConfigurationsFlags cflags')
           | pkg <- pkgs ]
 
@@ -202,7 +204,9 @@ upgradeAction (cflags,iflags) extraArgs = do
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
           (configPackageDB cflags') (configRepos config)
-          comp conf cflags' iflags
+          comp conf cflags' iflags {
+            installSymlinkBinDir = configSymlinkBinDir config
+          }
           [ UnresolvedDependency pkg (Cabal.configConfigurationsFlags cflags')
           | pkg <- pkgs ]
 
