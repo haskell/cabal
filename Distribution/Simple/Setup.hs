@@ -570,7 +570,7 @@ instance Monoid ConfigFlags where
     configPackageDB     = combine configPackageDB,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
-    configStripExes     = combine configSplitObjs,
+    configStripExes     = combine configStripExes,
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
