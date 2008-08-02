@@ -337,15 +337,22 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags
     = onFailure ConfigureFailed $ do
         setup configureCommand (filterConfigureFlags configFlags)
         onFailure BuildFailed $ do
-          setup buildCommand (const Cabal.emptyBuildFlags)
+          setup buildCommand buildFlags
           onFailure InstallFailed $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
-              Nothing    -> setup Cabal.installCommand
-                                  (const Cabal.emptyInstallFlags)
+              Nothing    -> setup Cabal.installCommand installFlags
             return BuildOk
   where
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
+    buildFlags   _   = Cabal.emptyBuildFlags {
+      Cabal.buildDistPref  = Cabal.configDistPref configFlags,
+      Cabal.buildVerbosity = Cabal.toFlag verbosity
+    }
+    installFlags _   = Cabal.emptyInstallFlags {
+      Cabal.installDistPref  = Cabal.configDistPref configFlags,
+      Cabal.installVerbosity = Cabal.toFlag verbosity
+    }
     setup cmd flags  = do
       logFileHandle <- case useLogFile of
         Nothing          -> return Nothing
