@@ -46,7 +46,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( Package(packageId) )
+         ( PackageIdentifier, Package(packageId) )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -70,6 +70,8 @@ import System.IO.Error
          ( catch, isDoesNotExistError, ioError )
 import Control.Exception
          ( assert )
+import Data.Maybe
+         ( catMaybes )
 
 -- | We would like by default to install binaries into some location that is on
 -- the user's PATH. For per-user installations on Unix systems that basically
@@ -93,23 +95,29 @@ import Control.Exception
 --
 symlinkBinaries :: ConfigFlags
                 -> InstallFlags
-                -> InstallPlan BuildResult -> IO ()
+                -> InstallPlan BuildResult
+                -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
-    Nothing            -> return ()
+    Nothing            -> return []
     Just symlinkBinDir -> do
       publicBinDir  <- canonicalizePath symlinkBinDir
-      sequence_
+      fmap catMaybes $ sequence
         [ let publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
-              prefix = substTemplate pkg prefixTemplate
-              suffix = substTemplate pkg suffixTemplate
+              prefix = substTemplate pkgid prefixTemplate
+              suffix = substTemplate pkgid suffixTemplate
           in do privateBinDir <- pkgBinDir pkg
-                symlinkBinary
-                  publicBinDir  privateBinDir
-                  publicExeName privateExeName
+                ok <- symlinkBinary
+                        publicBinDir  privateBinDir
+                        publicExeName privateExeName
+                if ok
+                  then return Nothing
+                  else return (Just (pkgid, publicExeName,
+                                     privateBinDir </> privateExeName))
         | InstallPlan.Installed cpkg <- InstallPlan.toList plan
-        , let pkg = pkgDescription cpkg
+        , let pkg   = pkgDescription cpkg
+              pkgid = packageId pkg
         , exe <- PackageDescription.executables pkg
         , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
   where
@@ -137,9 +145,9 @@ symlinkBinaries configFlags installFlags plan =
                            templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
-    substTemplate pkg = InstallDirs.fromPathTemplate
-                      . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv (packageId pkg) compilerId
+    substTemplate pkgid = InstallDirs.fromPathTemplate
+                        . InstallDirs.substPathTemplate env
+      where env = InstallDirs.initialPathTemplateEnv pkgid compilerId
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)

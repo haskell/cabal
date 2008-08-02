@@ -52,6 +52,7 @@ import Distribution.Client.Reporting
 import Distribution.Client.Logging
          ( writeInstallPlanBuildLog )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
+         ( symlinkBinaries )
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -77,7 +78,8 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Version
          ( Version, VersionRange(AnyVersion, ThisVersion) )
-import Distribution.Simple.Utils as Utils (notice, info, die)
+import Distribution.Simple.Utils as Utils
+         ( notice, info, warn, die, intercalate )
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
@@ -157,8 +159,8 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
                                        pkg mpath useLogFile
         writeInstallPlanBuildReports installPlan'
         writeInstallPlanBuildLog     installPlan'
+        symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
-        InstallSymlink.symlinkBinaries configFlags installFlags installPlan'
 
   where
     setupScriptOptions index = SetupScriptOptions {
@@ -244,6 +246,32 @@ printDryRun verbosity plan = case unfoldr next plan of
       []      -> Nothing
       (pkg:_) -> Just (pkgid, InstallPlan.completed pkgid plan')
         where pkgid = packageId pkg
+
+symlinkBinaries :: Verbosity
+                -> Cabal.ConfigFlags
+                -> InstallFlags
+                -> InstallPlan BuildResult -> IO ()
+symlinkBinaries verbosity configFlags installFlags plan = do
+  failed <- InstallSymlink.symlinkBinaries configFlags installFlags plan
+  case failed of
+    [] -> return ()
+    [(_, exe, path)] ->
+      warn verbosity $
+           "could not create a symlink in " ++ bindir ++ " for "
+        ++ exe ++ " because the file exists there already but is not "
+        ++ "managed by cabal. You can create a symlink for this executable "
+        ++ "manually if you wish. The executable file has been installed at "
+        ++ path
+    exes ->
+      warn verbosity $
+           "could not create symlinks in " ++ bindir ++ " for "
+        ++ intercalate ", " [ exe | (_, exe, _) <- exes ]
+        ++ " because the files exist there already and are not "
+        ++ "managed by cabal. You can create symlinks for these executables "
+        ++ "manually if you wish. The executable files have been installed at "
+        ++ intercalate ", " [ path | (_, _, path) <- exes ]
+  where
+    bindir = Cabal.fromFlag (installSymlinkBinDir installFlags)
 
 printBuildFailures :: InstallPlan BuildResult -> IO ()
 printBuildFailures plan =
