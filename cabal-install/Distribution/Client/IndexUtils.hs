@@ -57,7 +57,7 @@ getAvailablePackages verbosity repos = do
 --
 readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex AvailablePackage)
 readRepoIndex verbosity repo =
-  let indexFile = repoCacheDir repo </> "00-index.tar"
+  let indexFile = repoLocalDir repo </> "00-index.tar"
    in fmap parseRepoIndex (BS.readFile indexFile)
           `catch` (\e -> do case e of
                               IOException ioe | isDoesNotExistError ioe ->

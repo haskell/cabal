@@ -10,23 +10,21 @@
 --
 --
 -----------------------------------------------------------------------------
-module Distribution.Client.Fetch
-    (
-     -- * Commands
-     fetch
-    , -- * Utilities
-      fetchPackage
-    , isFetched
-    , downloadIndex
-    ) where
+module Distribution.Client.Fetch (
 
-import Network.URI
-         ( URI(uriScheme, uriPath) )
-import Network.HTTP (ConnError(..), Response(..))
+    -- * Commands
+    fetch,
+
+    -- * Utilities
+    fetchPackage,
+    isFetched,
+    downloadIndex,
+  ) where
 
 import Distribution.Client.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..), repoURI )
+         , AvailablePackageSource(..)
+         , Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Dependency
          ( resolveDependencies, PackagesVersionPreference(..) )
 import Distribution.Client.IndexUtils as IndexUtils
@@ -35,85 +33,100 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP)
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..) )
+         ( PackageIdentifier(..) )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDB )
-import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Simple.Configure (getInstalledPackages)
+import Distribution.Simple.Program
+         ( ProgramConfiguration )
+import Distribution.Simple.Configure
+         ( getInstalledPackages )
 import Distribution.Simple.Utils
-         ( die, notice, debug, setupMessage, intercalate )
+         ( die, notice, debug, setupMessage, intercalate
+         , copyFileVerbose, writeFileAtomic )
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity
+         ( Verbosity )
 
-import Control.Exception (bracket)
-import Control.Monad (filterM)
-import System.Directory (doesFileExist, createDirectoryIfMissing)
-import System.FilePath ((</>), (<.>))
-import System.Directory (copyFile)
-import System.IO (IOMode(..), hPutStr, Handle, hClose, openBinaryFile)
+import Control.Monad
+         ( filterM )
+import System.Directory
+         ( doesFileExist, createDirectoryIfMissing )
+import System.FilePath
+         ( (</>), (<.>) )
+import Network.URI
+         ( URI(uriScheme, uriPath) )
+import Network.HTTP
+         ( ConnError(..), Response(..) )
 
 
 downloadURI :: Verbosity
             -> FilePath -- ^ Where to put it
             -> URI      -- ^ What to download
             -> IO (Maybe ConnError)
-downloadURI verbosity path uri
-    | uriScheme uri == "file:" = do
-        copyFile (uriPath uri) path
-        return Nothing
-    | otherwise = do
-        eitherResult <- getHTTP verbosity uri
-        case eitherResult of
-           Left err -> return (Just err)
-           Right rsp
-               | rspCode rsp == (2,0,0) -> withBinaryFile path WriteMode (`hPutStr` rspBody rsp) 
-                                                          >> return Nothing
-               | otherwise -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
+downloadURI verbosity path uri | uriScheme uri == "file:" = do
+  copyFileVerbose verbosity (uriPath uri) path
+  return Nothing
+downloadURI verbosity path uri = do
+  eitherResult <- getHTTP verbosity uri
+  case eitherResult of
+    Left err -> return (Just err)
+    Right rsp
+      | rspCode rsp == (2,0,0)
+     -> writeFileAtomic path (rspBody rsp)
+     >> return Nothing
+
+      | otherwise
+     -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: Verbosity -> AvailablePackage -> IO String
-downloadPackage verbosity pkg
-    = do let uri = packageURI pkg
-             dir = packageDir pkg
-             path = packageFile pkg
-         debug verbosity $ "GET " ++ show uri
-         createDirectoryIfMissing True dir
-         mbError <- downloadURI verbosity path uri
-         case mbError of
-           Just err -> die $ "Failed to download '" ++ display (packageId pkg) ++ "': " ++ show err
-           Nothing -> return path
+downloadPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
+downloadPackage _ repo@Repo{ repoKind = Right LocalRepo } pkgid =
+  return (packageFile repo pkgid)
+
+downloadPackage verbosity repo@Repo{ repoKind = Left remoteRepo } pkgid = do
+  let uri  = packageURI remoteRepo pkgid
+      dir  = packageDir       repo pkgid
+      path = packageFile      repo pkgid
+  debug verbosity $ "GET " ++ show uri
+  createDirectoryIfMissing True dir
+  status <- downloadURI verbosity path uri
+  case status of
+    Just err -> die $ "Failed to download '" ++ display pkgid
+                   ++ "': " ++ show err
+    Nothing  -> return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
-downloadIndex :: Verbosity -> Repo -> IO FilePath
-downloadIndex verbosity repo
-    = do let uri = (repoURI repo) {
-                     uriPath = uriPath (repoURI repo)
-                            ++ "/" ++ "00-index.tar.gz"
-                   }
-             dir = repoCacheDir repo
-             path = dir </> "00-index" <.> "tar.gz"
-         createDirectoryIfMissing True dir
-         mbError <- downloadURI verbosity path uri
-         case mbError of
-           Just err -> die $ "Failed to download index '" ++ show err ++ "'"
-           Nothing  -> return path
+downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
+downloadIndex verbosity repo cacheDir = do
+  let uri = (remoteRepoURI repo) {
+              uriPath = uriPath (remoteRepoURI repo)
+                     ++ "/" ++ "00-index.tar.gz"
+            }
+      path = cacheDir </> "00-index" <.> "tar.gz"
+  createDirectoryIfMissing True cacheDir
+  mbError <- downloadURI verbosity path uri
+  case mbError of
+    Just err -> die $ "Failed to download index '" ++ show err ++ "'"
+    Nothing  -> return path
 
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: AvailablePackage -> IO Bool
-isFetched pkg = doesFileExist (packageFile pkg)
+isFetched (AvailablePackage pkgid _ source) = case source of
+  LocalUnpackedPackage    -> return True
+  RepoTarballPackage repo -> doesFileExist (packageFile repo pkgid)
 
 -- |Fetch a package if we don't have it already.
-fetchPackage :: Verbosity -> AvailablePackage -> IO String
-fetchPackage verbosity pkg
-    = do fetched <- isFetched pkg
-         if fetched
-            then do notice verbosity $ "'" ++ display (packageId pkg) ++ "' is cached."
-                    return (packageFile pkg)
-            else do setupMessage verbosity "Downloading" (packageId pkg)
-                    downloadPackage verbosity pkg
+fetchPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
+fetchPackage verbosity repo pkgid = do
+  fetched <- doesFileExist (packageFile repo pkgid)
+  if fetched
+    then do notice verbosity $ "'" ++ display pkgid ++ "' is cached."
+            return (packageFile repo pkgid)
+    else do setupMessage verbosity "Downloading" pkgid
+            downloadPackage verbosity repo pkgid
 
 -- |Fetch a list of packages and their dependencies.
 fetch :: Verbosity
@@ -123,46 +136,42 @@ fetch :: Verbosity
       -> ProgramConfiguration
       -> [UnresolvedDependency]
       -> IO ()
-fetch verbosity packageDB repos comp conf deps
-    = do installed <- getInstalledPackages verbosity comp packageDB conf
-         available <- getAvailablePackages verbosity repos
-         deps' <- IndexUtils.disambiguateDependencies available deps
-         case resolveDependencies buildOS buildArch (compilerId comp)
-                installed available PreferLatestForSelected deps' of
-           Left message -> die message
-           Right pkgs   -> do
-             ps <- filterM (fmap not . isFetched)
-                     [ pkg | (InstallPlan.Configured
-                               (InstallPlan.ConfiguredPackage pkg _ _))
-                                 <- InstallPlan.toList pkgs ]
-             mapM_ (fetchPackage verbosity) ps
-
-withBinaryFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
-withBinaryFile name mode = bracket (openBinaryFile name mode) hClose
+fetch verbosity packageDB repos comp conf deps = do
+  installed <- getInstalledPackages verbosity comp packageDB conf
+  available <- getAvailablePackages verbosity repos
+  deps' <- IndexUtils.disambiguateDependencies available deps
+  case resolveDependencies buildOS buildArch (compilerId comp)
+         installed available PreferLatestForSelected deps' of
+    Left message -> die message
+    Right pkgs   -> do
+      ps <- filterM (fmap not . isFetched)
+              [ pkg | (InstallPlan.Configured
+                        (InstallPlan.ConfiguredPackage pkg _ _))
+                          <- InstallPlan.toList pkgs ]
+      sequence_ 
+        [ fetchPackage verbosity repo pkgid
+        | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- ps ]
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.
-packageFile :: AvailablePackage -> FilePath
-packageFile pkg = packageDir pkg
-              </> display (packageId pkg)
-              <.> "tar.gz"
+packageFile :: Repo -> PackageIdentifier -> FilePath
+packageFile repo pkgid = packageDir repo pkgid
+                     </> display pkgid
+                     <.> "tar.gz"
 
 -- |Generate the full path to the directory where the local cached copy of
 -- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: AvailablePackage -> FilePath
-packageDir AvailablePackage { packageInfoId = p
-                            , packageSource = RepoTarballPackage repo } = 
-                         repoCacheDir repo
-                     </> pkgName p
-                     </> display (pkgVersion p)
+packageDir :: Repo -> PackageIdentifier -> FilePath
+packageDir repo pkgid = repoLocalDir repo
+                    </> pkgName pkgid
+                    </> display (pkgVersion pkgid)
 
 -- | Generate the URI of the tarball for a given package.
-packageURI :: AvailablePackage -> URI
-packageURI AvailablePackage { packageInfoId = p
-                            , packageSource = RepoTarballPackage repo } =
-  (repoURI repo) {
+packageURI :: RemoteRepo -> PackageIdentifier -> URI
+packageURI repo pkgid =
+  (remoteRepoURI repo) {
     uriPath = intercalate "/"
-      [uriPath (repoURI repo) ,
-       pkgName p, display (pkgVersion p),
-       display p ++ ".tar.gz"]
+      [uriPath (remoteRepoURI repo) ,
+       pkgName pkgid, display (pkgVersion pkgid),
+       display pkgid ++ ".tar.gz"]
   }
