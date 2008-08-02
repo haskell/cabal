@@ -51,6 +51,7 @@ import Distribution.Client.Reporting
          ( writeInstallPlanBuildReports )
 import Distribution.Client.Logging
          ( writeInstallPlanBuildLog )
+import qualified Distribution.Client.InstallSymlink as InstallSymlink
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -157,6 +158,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         writeInstallPlanBuildReports installPlan'
         writeInstallPlanBuildLog     installPlan'
         printBuildFailures installPlan'
+        InstallSymlink.symlinkBinaries configFlags installFlags installPlan'
 
   where
     setupScriptOptions index = SetupScriptOptions {
