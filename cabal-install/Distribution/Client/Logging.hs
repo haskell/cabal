@@ -83,7 +83,7 @@ data BuildLogEntry
     -- | The package this build report is about
     package         :: PackageIdentifier,
 
-    -- | Which hackage server this package is from or local
+    --   Which hackage server this package is from or local
 --    server          :: Maybe URI,
 
     -- | The OS and Arch the package was built on
@@ -105,10 +105,10 @@ data BuildLogEntry
     -- | Did installing work ok?
     installOutcome  :: InstallOutcome,
 
-    -- | Which version of the Cabal library was used to compile the Setup.hs
+    --   Which version of the Cabal library was used to compile the Setup.hs
 --    cabalVersion    :: Version,
 
-    -- | Which build tools we were using (with versions)
+    --   Which build tools we were using (with versions)
 --    tools      :: [PackageIdentifier],
 
     -- | Configure outcome, did configure work ok?
