@@ -10,25 +10,34 @@
 #endif
 
 module Distribution.Compat.Exception
-    (onException, catchIO, catchExit)
+    (onException, catchIO, catchExit, throwIOIO)
     where
 
 import System.Exit
-import Control.Exception as Exception
+import qualified Control.Exception as Exception
 
-#ifndef NEW_EXCEPTION
 onException :: IO a -> IO () -> IO a
+#ifdef NEW_EXCEPTION
+onException = Exception.onException
+#else
 onException io what = io `Exception.catch` \e -> do what
                                                     Exception.throw e
 #endif
 
-catchIO :: IO a -> (IOException -> IO a) -> IO a
+throwIOIO :: Exception.IOException -> IO a
+#ifdef NEW_EXCEPTION
+throwIOIO = Exception.throwIO
+#else
+throwIOIO ioe = Exception.throwIO (Exception.IOException ioe)
+#endif
+
+catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
 #ifdef NEW_EXCEPTION
 catchIO = Exception.catch
 #else
 catchIO io handler = io `Exception.catch` handler'
-    where handler' (IOException ioe) = handler ioe
-          handler' e                 = throw e
+    where handler' (Exception.IOException ioe) = handler ioe
+          handler' e                           = Exception.throw e
 #endif
 
 catchExit :: IO a -> (ExitCode -> IO a) -> IO a
@@ -36,7 +45,7 @@ catchExit :: IO a -> (ExitCode -> IO a) -> IO a
 catchExit = Exception.catch
 #else
 catchExit io handler = io `Exception.catch` handler'
-    where handler' (ExitException ee) = handler ee
-          handler' e                  = throw e
+    where handler' (Exception.ExitException ee) = handler ee
+          handler' e                            = Exception.throw e
 #endif
 

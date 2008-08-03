@@ -166,6 +166,9 @@ import System.Directory (getTemporaryDirectory)
 
 import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
 import Distribution.Compat.Exception (catchIO, onException)
+#if mingw32_HOST_OS || mingw32_TARGET_OS
+import Distribution.Compat.Exception (throwIOIO)
+#endif
 import Distribution.Verbosity
 
 -- We only get our own version number when we're building with ourselves
@@ -618,7 +621,7 @@ writeFileAtomic targetFile content = do
 #if mingw32_HOST_OS || mingw32_TARGET_OS
       renameFile tmpFile targetFile
         -- If the targetFile exists then renameFile will fail
-        `Exception.catch` \err -> do
+        `catchIO` \err -> do
           exists <- doesFileExist targetFile
           if exists
             then do removeFile targetFile
@@ -626,7 +629,7 @@ writeFileAtomic targetFile content = do
                     renameFile tmpFile targetFile
                     -- If the removeFile succeeds and the renameFile fails
                     -- then we've lost the atomic property.
-            else Exception.throwIO err
+            else throwIOIO err
 #else
       renameFile tmpFile targetFile
 #endif
