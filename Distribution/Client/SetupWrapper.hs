@@ -47,7 +47,7 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
-         ( die, debug, info, cabalVersion, defaultPackageDesc, comparing
+         ( die, debug, info, cabalVersion, findPackageDesc, comparing
          , createDirectoryIfMissingVerbose, inDir )
 import Distribution.Text
          ( display )
@@ -109,7 +109,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
                             ++ extraArgs
   setupMethod verbosity options pkg buildType' mkArgs
   where
-    getPkg = defaultPackageDesc verbosity
+    getPkg = findPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
          >>= return . packageDescription
 
@@ -167,7 +167,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   invokeSetupScript (mkargs cabalLibVersion)
 
   where
-  setupDir         = useDistPref options </> "setup"
+  workingDir       = fromMaybe "" (useWorkingDir options)
+  setupDir         = workingDir </> useDistPref options </> "setup"
   setupVersionFile = setupDir </> "setup" <.> "version"
   setupProgFile    = setupDir </> "setup" <.> exeExtension
 
@@ -232,17 +233,20 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   --
   updateSetupScript :: Version -> BuildType -> IO FilePath
   updateSetupScript _ Custom = do
-    useHs  <- doesFileExist "Setup.hs"
-    useLhs <- doesFileExist "Setup.lhs"
+    useHs  <- doesFileExist setupHs
+    useLhs <- doesFileExist setupLhs
     unless (useHs || useLhs) $ die
       "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
-    return (if useHs then "Setup.hs" else "Setup.lhs")
+    return (if useHs then setupHs else setupLhs)
+    where
+      setupHs  = workingDir </> "Setup.hs"
+      setupLhs = workingDir </> "Setup.lhs"
 
   updateSetupScript cabalLibVersion _ = do
     rewriteFile setupHs (buildTypeScript cabalLibVersion)
     return setupHs
     where
-      setupHs  = setupDir </> "setup" <.> "hs"
+      setupHs  = setupDir </> "setup.hs"
 
   buildTypeScript :: Version -> String
   buildTypeScript cabalLibVersion = case bt of
