@@ -255,6 +255,9 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
         libraryDir
          | inplace   = build_dir
          | otherwise = libdir installDirs
+        hasModules = not $ null (exposedModules lib)
+                        && null (otherModules bi)
+        hasLibrary = hasModules || not (null (cSources bi))
     in
     return InstalledPackageInfo {
         IPI.package           = packageId pkg_descr,
@@ -270,9 +273,12 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
         IPI.exposed           = libExposed lib,
         IPI.exposedModules    = exposedModules lib,
         IPI.hiddenModules     = otherModules bi,
-        IPI.importDirs        = [libraryDir],
-        IPI.libraryDirs       = libraryDir : extraLibDirs bi,
-        IPI.hsLibraries       = ["HS" ++ display (packageId pkg_descr)],
+        IPI.importDirs        = [ libraryDir | hasModules ],
+        IPI.libraryDirs       = if hasLibrary
+                                  then libraryDir : extraLibDirs bi
+                                  else              extraLibDirs bi,
+        IPI.hsLibraries       = ["HS" ++ display (packageId pkg_descr)
+                                | hasLibrary ],
         IPI.extraLibraries    = extraLibs bi,
         IPI.extraGHCiLibraries= [],
         IPI.includeDirs       = absinc ++ if inplace
