@@ -421,9 +421,16 @@ skipField = modify tail
 -- with sections and possibly indented property descriptions.
 parsePackageDescription :: String -> ParseResult GenericPackageDescription
 parsePackageDescription file = do
-    let tabs = findIndentTabs file
+
+    -- This function is quite complex because it needs to be able to parse
+    -- both pre-Cabal-1.2 and post-Cabal-1.2 files.  Additionally, it contains
+    -- a lot of parser-related noise since we do not want to depend on Parsec.
+    --
+    -- If we detect an pre-1.2 file we implicitly convert it to post-1.2
+    -- style.  See 'sectionizeFields' below for details about the conversion.
 
     fields0 <- readFields file `catchParseError` \err ->
+                 let tabs = findIndentTabs file in
                  case err of
                    -- In case of a TabsError report them all at once.
                    TabsError tabLineNo -> reportTabsError
@@ -438,18 +445,45 @@ parsePackageDescription file = do
                  | Just versionRange <- [ simpleParse v
                                         | F _ "cabal-version" v <- fields0 ] ]
               ++ [AnyVersion]
+
     handleFutureVersionParseFailure cabalVersionNeeded $ do
 
-      let sf = sectionizeFields fields0
+      let sf = sectionizeFields fields0  -- ensure 1.2 format
+
+        -- figure out and warn about deprecated stuff (warnings are collected
+        -- inside our parsing monad)
       fields <- mapSimpleFields deprecField sf
 
+        -- Our parsing monad takes the not-yet-parsed fields as its state.
+        -- After each successful parse we remove the field from the state
+        -- ('skipField') and move on to the next one.
+        --
+        -- Things are complicated a bit, because fields take a tree-like
+        -- structure -- they can be sections or "if"/"else" conditionals.
+
       flip evalStT fields $ do
-        hfs <- getHeader []
-        pkg <- lift $ parseFields pkgDescrFieldDescrs storeXFieldsPD emptyPackageDescription hfs
+
+          -- The header consists of all simple fields up to the first section
+          -- (flag, library, executable).
+        header_fields <- getHeader []
+
+          -- Parses just the header fields and stores them in a
+          -- 'PackageDescription'.  Note that our final result is a
+          -- 'GenericPackageDescription'; for pragmatic reasons we just store
+          -- the partially filled-out 'PackageDescription' inside the
+          -- 'GenericPackageDescription'.
+        pkg <- lift $ parseFields pkgDescrFieldDescrs
+                                  storeXFieldsPD
+                                  emptyPackageDescription
+                                  header_fields
+
+          -- 'getBody' assumes that the remaining fields only consist of
+          -- sections and requires all flag descriptions to come before any
+          -- library or executable section.
         (flags, mlib, exes) <- getBody
-        warnIfRest
-        when (not (oldSyntax fields0)) $
-          maybeWarnCabalVersion pkg
+        warnIfRest  -- warn if getBody did not parse up to the last field.
+        when (not (oldSyntax fields0)) $  -- warn if we use new syntax
+          maybeWarnCabalVersion pkg       -- without Cabal >= 1.2
         checkForUndefinedFlags flags mlib exes
         return (GenericPackageDescription pkg flags mlib exes)
 
@@ -479,9 +513,11 @@ parsePackageDescription file = do
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:
     --
     --  * all global fields at the beginning, followed by
+    --
     --  * all flag declarations, followed by
-    --  * an optional library section, and
-    --  * an arbitrary number of executable sections.
+    --
+    --  * an optional library section, and an arbitrary number of executable
+    --    sections (in any order).
     --
     -- The current implementatition just gathers all library-specific fields
     -- in a library section and wraps all executable stanzas in an executable
@@ -549,74 +585,84 @@ parsePackageDescription file = do
               -- don't skipField here.  it's simpler to let getFlags do it
               -- itself
               flags <- getFlags []
-              (lib, exes) <- getLibOrExe
+              (lib, exes) <- getLibOrExes
               return (flags, lib, exes)
           | otherwise -> do
-              (lib,exes) <- getLibOrExe
+              (lib,exes) <- getLibOrExes
               return ([], lib, exes)
         Nothing -> do lift $ warning "No library or executable specified"
                       return ([], Nothing, [])
         Just f -> lift $ syntaxError (lineNo f) $
                "Construct not supported at this position: " ++ show f
 
+    -- Parses a series of flag sections.
     --
     -- flags ::= "flag:" name { flag_prop }
     --
     getFlags :: [Flag] -> StT [Field] ParseResult [Flag]
     getFlags acc = peekField >>= \mf -> case mf of
-        Just (Section _ sn sl fs)
-          | sn == "flag" -> do
+        Just (Section _ sec_type sec_label sec_fields)
+          | sec_type == "flag" -> do
               fl <- lift $ parseFields
                       flagFieldDescrs
                       warnUnrec
-                      (MkFlag (FlagName (lowercase sl)) "" True)
-                      fs
+                      (MkFlag (FlagName (lowercase sec_label)) "" True)
+                      sec_fields
               skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
 
-    getLibOrExe :: PM (Maybe (CondTree ConfVar [Dependency] Library)
+    -- parses any number of executable sections and up to one library section
+    getLibOrExes :: PM (Maybe (CondTree ConfVar [Dependency] Library)
                       ,[(String, CondTree ConfVar [Dependency] Executable)])
-    getLibOrExe = peekField >>= \mf -> case mf of
-        Just (Section n sn sl fs)
-          | sn == "executable" -> do
-              when (null sl) $ lift $
-                syntaxError n "'executable' needs one argument (the executable's name)"
-              exename <- lift $ runP n "executable" parseTokenQ sl
-              flds <- collectFields parseExeFields fs
+    getLibOrExes = peekField >>= \mf -> case mf of
+        Just (Section line_no sec_type sec_label sec_fields)
+          | sec_type == "executable" -> do
+              when (null sec_label) $ lift $
+                syntaxError line_no "'executable' needs one argument (the executable's name)"
+              exename <- lift $ runP line_no "executable" parseTokenQ sec_label
+              flds <- collectFields parseExeFields sec_fields
               skipField
-              (lib, exes) <- getLibOrExe
+              (lib, exes) <- getLibOrExes
               return (lib, exes ++ [(exename, flds)])
-          | sn == "library" -> do
-              when (not (null sl)) $ lift $
-                syntaxError n "'library' expects no argument"
-              flds <- collectFields parseLibFields fs
+          | sec_type == "library" -> do
+              when (not (null sec_label)) $ lift $
+                syntaxError line_no "'library' expects no argument"
+              flds <- collectFields parseLibFields sec_fields
               skipField
-              (lib, exes) <- getLibOrExe
+              (lib, exes) <- getLibOrExes
               return (maybe (Just flds)
-                            (const (error "Multiple libraries specified"))
+                            (const (error "There can only be one library section in a package description."))
                             lib
                      , exes)
           | otherwise -> do
-              lift $ warning $ "Unknown section type: " ++ sn ++ " ignoring..."
+              lift $ warning $ "Unknown section type: " ++ sec_type ++ " ignoring..."
               return (Nothing, []) -- yep
         Just x -> lift $ syntaxError (lineNo x) $ "Section expected."
         Nothing -> return (Nothing, [])
 
-    -- extracts all fields in a block, possibly add dependencies to the
-    -- guard condition
+    -- Extracts all fields in a block and returns a 'CondTree'.
+    --
+    -- We have to recurse down into conditionals and we treat fields that
+    -- describe dependencies specially.
     collectFields :: ([Field] -> PM a) -> [Field]
                   -> PM (CondTree ConfVar [Dependency] a)
     collectFields parser allflds = do
+
+        let simplFlds = [ F l n v | F l n v <- allflds ]
+            condFlds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
+
+        let (depFlds, dataFlds) = partition isConstraint simplFlds
+
         a <- parser dataFlds
         deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
+
         ifs <- mapM processIfs condFlds
+
         return (CondNode a deps ifs)
       where
-        (depFlds, dataFlds) = partition isConstraint simplFlds
-        simplFlds = [ F l n v | F l n v <- allflds ]
-        condFlds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
         isConstraint (F _ n _) = n `elem` constraintFieldNames
         isConstraint _ = False
+
         processIfs (IfBlock l c t e) = do
             cnd <- lift $ runP l "if" parseCondition c
             t' <- collectFields parser t
@@ -627,10 +673,10 @@ parsePackageDescription file = do
             return (cnd, t', e')
         processIfs _ = bug "processIfs called with wrong field type"
 
-    parseLibFields :: [Field] -> StT s ParseResult Library
+    parseLibFields :: [Field] -> PM Library
     parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary
 
-    parseExeFields :: [Field] -> StT s ParseResult Executable
+    parseExeFields :: [Field] -> PM Executable
     parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
 
     checkForUndefinedFlags ::
@@ -655,7 +701,8 @@ parsePackageDescription file = do
 --   a structure to accumulate the parsed fields, and a function
 --   that can decide what to do with fields which don't match any
 --   of the field descriptions.
-parseFields :: [FieldDescr a]      -- ^ list of parseable fields
+parseFields :: [FieldDescr a]      -- ^ descriptions of fields we know how to
+                                   --   parse
             -> UnrecFieldParser a  -- ^ possibly do something with
                                    --   unrecognized fields
             -> a                   -- ^ accumulator
