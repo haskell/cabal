@@ -746,7 +746,7 @@ installLib    :: Verbosity -- ^verbosity
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{library=Just _} = do
+              pkg@PackageDescription{library=Just lib} = do
   -- copy .hi files over:
   let copyModuleFiles ext =
         smartCopySources verbosity [builtDir] targetDir (libModules pkg) [ext]
@@ -772,10 +772,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir
     pkgid          = packageId pkg
     copy src dst n = copyFileVerbose verbosity (src </> n) (dst </> n)
 
-    ifVanilla = when (withVanillaLib lbi)
-    ifProf    = when (withProfLib    lbi)
-    ifGHCi    = when (withGHCiLib    lbi)
-    ifShared  = when (withSharedLib  lbi)
+    hasLib    = not $ null (libModules pkg)
+                   && null (cSources (libBuildInfo lib))
+    ifVanilla = when (hasLib && withVanillaLib lbi)
+    ifProf    = when (hasLib && withProfLib    lbi)
+    ifGHCi    = when (hasLib && withGHCiLib    lbi)
+    ifShared  = when (hasLib && withSharedLib  lbi)
 
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
