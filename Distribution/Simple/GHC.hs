@@ -917,7 +917,7 @@ installLib    :: CopyFlags -- ^verbosity
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
 installLib flags lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{library=Just _} =
+              pkg@PackageDescription{library=Just lib} =
     unless (fromFlag $ copyInPlace flags) $ do
         -- copy .hi files over:
         let verbosity = fromFlag (copyVerbosity flags)
@@ -948,10 +948,12 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
 
     pkgid          = packageId pkg
 
-    ifVanilla = when (withVanillaLib lbi)
-    ifProf    = when (withProfLib    lbi)
-    ifGHCi    = when (withGHCiLib    lbi)
-    ifShared  = when (withSharedLib  lbi)
+    hasLib    = not $ null (libModules pkg)
+                   && null (cSources (libBuildInfo lib))
+    ifVanilla = when (hasLib && withVanillaLib lbi)
+    ifProf    = when (hasLib && withProfLib    lbi)
+    ifGHCi    = when (hasLib && withGHCiLib    lbi)
+    ifShared  = when (hasLib && withSharedLib  lbi)
 
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
