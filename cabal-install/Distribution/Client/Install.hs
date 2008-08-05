@@ -369,21 +369,42 @@ installUnpackedPackage :: Verbosity
                    -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
 installUnpackedPackage verbosity scriptOptions miscOptions configFlags
-                       pkg workingDir useLogFile
-    = onFailure ConfigureFailed $ do
-        setup configureCommand (filterConfigureFlags configFlags)
-        onFailure BuildFailed $ do
-          setup buildCommand buildFlags
-          onFailure InstallFailed $ do
-            case rootCmd miscOptions of
-              (Just cmd) -> reexec cmd
-              Nothing    -> setup Cabal.installCommand installFlags
-            return (Right (BuildOk DocsNotTried TestsNotTried))
+                       pkg workingDir useLogFile =
+
+  -- Configure phase
+  onFailure ConfigureFailed $ do
+    setup configureCommand (filterConfigureFlags configFlags)
+
+  -- Build phase
+    onFailure BuildFailed $ do
+      setup buildCommand buildFlags
+
+  -- Doc generation phase
+      docsResult <- if False --TODO: add flag to enable/disable haddock
+        then Exception.handle (\_ -> return DocsFailed) $ do
+               setup Cabal.haddockCommand haddockFlags
+               return DocsOk
+        else return DocsNotTried
+
+  -- Tests phase
+      testsResult <- return TestsNotTried  --TODO: add optional tests
+
+  -- Install phase
+      onFailure InstallFailed $ do
+        case rootCmd miscOptions of
+          (Just cmd) -> reexec cmd
+          Nothing    -> setup Cabal.installCommand installFlags
+        return (Right (BuildOk docsResult testsResult))
+
   where
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = Cabal.emptyBuildFlags {
       Cabal.buildDistPref  = Cabal.configDistPref configFlags,
       Cabal.buildVerbosity = Cabal.toFlag verbosity
+    }
+    haddockFlags _   = Cabal.emptyHaddockFlags {
+      Cabal.haddockDistPref  = Cabal.configDistPref configFlags,
+      Cabal.haddockVerbosity = Cabal.toFlag verbosity
     }
     installFlags _   = Cabal.emptyInstallFlags {
       Cabal.installDistPref  = Cabal.configDistPref configFlags,
