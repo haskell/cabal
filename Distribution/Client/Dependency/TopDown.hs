@@ -196,7 +196,7 @@ search configure pref constraints =
 -- | The main exported resolver, with string logging and failure types to fit
 -- the standard 'DependencyResolver' interface.
 --
-topDownResolver :: DependencyResolver a
+topDownResolver :: DependencyResolver
 topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
@@ -209,7 +209,7 @@ topDownResolver' :: OS -> Arch -> CompilerId
                  -> PackageIndex AvailablePackage
                  -> (PackageName -> PackageVersionPreference)
                  -> [UnresolvedDependency]
-                 -> Progress Log Failure [PlanPackage a]
+                 -> Progress Log Failure [PlanPackage]
 topDownResolver' os arch comp installed available pref deps =
       fmap (uncurry finalise)
     . (\cs -> search configure pref cs initialPkgNames)
@@ -370,7 +370,7 @@ selectNeededSubset installed available = select mempty mempty
 
 finaliseSelectedPackages :: SelectedPackages
                          -> Constraints
-                         -> [PlanPackage a]
+                         -> [PlanPackage]
 finaliseSelectedPackages selected constraints =
   map finaliseSelected (PackageIndex.allPackages selected)
   where
@@ -397,8 +397,8 @@ finaliseSelectedPackages selected constraints =
 -- packages we plan to install with ones that are already installed.
 --
 improvePlan :: PackageIndex InstalledPackageInfo
-            -> PackageIndex (PlanPackage a)
-            -> PackageIndex (PlanPackage a)
+            -> PackageIndex PlanPackage
+            -> PackageIndex PlanPackage
 improvePlan installed selected = foldl' improve selected
                                $ reverseTopologicalOrder selected
   where

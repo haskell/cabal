@@ -43,14 +43,14 @@ type PackageName  = String
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver a = OS
-                         -> Arch
-                         -> CompilerId
-                         -> PackageIndex InstalledPackageInfo
-                         -> PackageIndex AvailablePackage
-                         -> (PackageName -> PackageVersionPreference)
-                         -> [UnresolvedDependency]
-                         -> Progress String String [InstallPlan.PlanPackage a]
+type DependencyResolver = OS
+                       -> Arch
+                       -> CompilerId
+                       -> PackageIndex InstalledPackageInfo
+                       -> PackageIndex AvailablePackage
+                       -> (PackageName -> PackageVersionPreference)
+                       -> [UnresolvedDependency]
+                       -> Progress String String [InstallPlan.PlanPackage]
 
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible.
