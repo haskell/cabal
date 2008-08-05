@@ -45,7 +45,8 @@ module Distribution.Client.InstallPlan (
   ) where
 
 import Distribution.Client.Types
-         ( AvailablePackage(packageDescription), ConfiguredPackage(..) )
+         ( AvailablePackage(packageDescription), ConfiguredPackage(..)
+         , BuildFailure, BuildSuccess )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
          , packageName, Dependency(..) )
@@ -124,26 +125,25 @@ import Control.Exception
 -- have problems with inconsistent dependencies.
 -- On the other hand it is true that every closed sub plan is valid.
 
-data PlanPackage buildResult = PreExisting InstalledPackageInfo
-                             | Configured  ConfiguredPackage
-                             | Installed   ConfiguredPackage
-                             | Failed      ConfiguredPackage buildResult
-  deriving Show
+data PlanPackage = PreExisting InstalledPackageInfo
+                 | Configured  ConfiguredPackage
+                 | Installed   ConfiguredPackage BuildSuccess
+                 | Failed      ConfiguredPackage BuildFailure
 
-instance Package (PlanPackage buildResult) where
+instance Package PlanPackage where
   packageId (PreExisting pkg) = packageId pkg
-  packageId (Configured pkg)  = packageId pkg
-  packageId (Installed pkg)   = packageId pkg
-  packageId (Failed pkg _)    = packageId pkg
+  packageId (Configured  pkg) = packageId pkg
+  packageId (Installed pkg _) = packageId pkg
+  packageId (Failed    pkg _) = packageId pkg
 
-instance PackageFixedDeps (PlanPackage buildResult) where
+instance PackageFixedDeps PlanPackage where
   depends (PreExisting pkg) = depends pkg
-  depends (Configured pkg)  = depends pkg
-  depends (Installed pkg)   = depends pkg
-  depends (Failed pkg _)    = depends pkg
+  depends (Configured  pkg) = depends pkg
+  depends (Installed pkg _) = depends pkg
+  depends (Failed    pkg _) = depends pkg
 
-data InstallPlan buildResult = InstallPlan {
-    planIndex    :: PackageIndex (PlanPackage buildResult),
+data InstallPlan = InstallPlan {
+    planIndex    :: PackageIndex PlanPackage,
     planGraph    :: Graph,
     planGraphRev :: Graph,
     planPkgIdOf  :: Graph.Vertex -> PackageIdentifier,
@@ -153,7 +153,7 @@ data InstallPlan buildResult = InstallPlan {
     planCompiler :: CompilerId
   }
 
-invariant :: InstallPlan a -> Bool
+invariant :: InstallPlan -> Bool
 invariant plan =
   valid (planOS plan) (planArch plan) (planCompiler plan) (planIndex plan)
 
@@ -162,8 +162,8 @@ internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a)
-    -> Either [PlanProblem a] (InstallPlan a)
+new :: OS -> Arch -> CompilerId -> PackageIndex PlanPackage
+    -> Either [PlanProblem] InstallPlan
 new os arch compiler index =
   case problems os arch compiler index of
     [] -> Right InstallPlan {
@@ -181,14 +181,14 @@ new os arch compiler index =
             noSuchPkgId = internalError "package is not in the graph"
     probs -> Left probs
 
-toList :: InstallPlan buildResult -> [PlanPackage buildResult]
+toList :: InstallPlan -> [PlanPackage]
 toList = PackageIndex.allPackages . planIndex
 
 -- | The packages that are ready to be installed. That is they are in the
 -- configured state and have all their dependencies installed already.
 -- The plan is complete if the result is @[]@.
 --
-ready :: InstallPlan buildResult -> [ConfiguredPackage]
+ready :: InstallPlan -> [ConfiguredPackage]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages then null configuredPackages else True
@@ -200,7 +200,7 @@ ready plan = assert check readyPackages
         Just (Configured  _) -> False
         Just (Failed    _ _) -> internalError depOnFailed
         Just (PreExisting _) -> True
-        Just (Installed   _) -> True
+        Just (Installed _ _) -> True
         Nothing              -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
@@ -212,13 +212,14 @@ ready plan = assert check readyPackages
 -- * The package must have had no uninstalled dependent packages.
 --
 completed :: PackageIdentifier
-          -> InstallPlan buildResult -> InstallPlan buildResult
-completed pkgid plan = assert (invariant plan') plan'
+          -> BuildSuccess
+          -> InstallPlan -> InstallPlan
+completed pkgid buildResult plan = assert (invariant plan') plan'
   where
     plan'     = plan {
                   planIndex = PackageIndex.insert installed (planIndex plan)
                 }
-    installed = Installed (lookupConfiguredPackage plan pkgid)
+    installed = Installed (lookupConfiguredPackage plan pkgid) buildResult
 
 -- | Marks a package in the graph as having failed. It also marks all the
 -- packages that depended on it as having failed.
@@ -226,10 +227,10 @@ completed pkgid plan = assert (invariant plan') plan'
 -- * The package must exist in the graph and be in the configured state.
 --
 failed :: PackageIdentifier -- ^ The id of the package that failed to install
-       -> buildResult       -- ^ The build result to use for the failed package
-       -> buildResult       -- ^ The build result to use for its dependencies
-       -> InstallPlan buildResult
-       -> InstallPlan buildResult
+       -> BuildFailure      -- ^ The build result to use for the failed package
+       -> BuildFailure      -- ^ The build result to use for its dependencies
+       -> InstallPlan
+       -> InstallPlan
 failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
   where
     plan'    = plan {
@@ -244,7 +245,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 
 -- | lookup the reachable packages in the reverse dependency graph
 --
-packagesThatDependOn :: InstallPlan a
+packagesThatDependOn :: InstallPlan
                      -> PackageIdentifier -> [PackageIdentifier]
 packagesThatDependOn plan = map (planPkgIdOf plan)
                           . tail
@@ -253,7 +254,7 @@ packagesThatDependOn plan = map (planPkgIdOf plan)
 
 -- | lookup a package that we expect to be in the configured state
 --
-lookupConfiguredPackage :: InstallPlan a
+lookupConfiguredPackage :: InstallPlan
                         -> PackageIdentifier -> ConfiguredPackage
 lookupConfiguredPackage plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
@@ -262,7 +263,7 @@ lookupConfiguredPackage plan pkgid =
 
 -- | lookup a package that we expect to be in the configured or failed state
 --
-lookupConfiguredPackage' :: InstallPlan a
+lookupConfiguredPackage' :: InstallPlan
                          -> PackageIdentifier -> Maybe ConfiguredPackage
 lookupConfiguredPackage' plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
@@ -280,17 +281,17 @@ lookupConfiguredPackage' plan pkgid =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: OS -> Arch -> CompilerId -> PackageIndex (PlanPackage a) -> Bool
+valid :: OS -> Arch -> CompilerId -> PackageIndex PlanPackage -> Bool
 valid os arch comp index = null (problems os arch comp index)
 
-data PlanProblem a =
+data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
-   | PackageMissingDeps   (PlanPackage a) [PackageIdentifier]
-   | PackageCycle         [PlanPackage a]
+   | PackageMissingDeps   PlanPackage [PackageIdentifier]
+   | PackageCycle         [PlanPackage]
    | PackageInconsistency String [(PackageIdentifier, Version)]
-   | PackageStateInvalid  (PlanPackage a) (PlanPackage a)
+   | PackageStateInvalid  PlanPackage PlanPackage
 
-showPlanProblem :: PlanProblem a -> String
+showPlanProblem :: PlanProblem -> String
 showPlanProblem (PackageInvalid pkg packageProblems) =
      "Package " ++ display (packageId pkg)
   ++ " has an invalid configuration, in particular:\n"
@@ -323,7 +324,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
   where
     showPlanState (PreExisting _) = "pre-existing"
     showPlanState (Configured  _) = "configured"
-    showPlanState (Installed   _) = "installed"
+    showPlanState (Installed _ _) = "installed"
     showPlanState (Failed    _ _) = "failed"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
@@ -331,7 +332,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- Use 'showPlanProblem' for a human readable explanation.
 --
 problems :: OS -> Arch -> CompilerId
-         -> PackageIndex (PlanPackage a) -> [PlanProblem a]
+         -> PackageIndex PlanPackage -> [PlanProblem]
 problems os arch comp index =
      [ PackageInvalid pkg packageProblems
      | Configured pkg <- PackageIndex.allPackages index
@@ -357,7 +358,7 @@ problems os arch comp index =
 -- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
 --   which packages are involved in dependency cycles.
 --
-acyclic :: PackageIndex (PlanPackage a) -> Bool
+acyclic :: PackageIndex PlanPackage -> Bool
 acyclic = null . PackageIndex.dependencyCycles
 
 -- | An installation plan is closed if for every package in the set, all of
@@ -367,7 +368,7 @@ acyclic = null . PackageIndex.dependencyCycles
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: PackageIndex (PlanPackage a) -> Bool
+closed :: PackageIndex PlanPackage -> Bool
 closed = null . PackageIndex.brokenPackages
 
 -- | An installation plan is consistent if all dependencies that target a
@@ -386,29 +387,29 @@ closed = null . PackageIndex.brokenPackages
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 --
-consistent :: PackageIndex (PlanPackage a) -> Bool
+consistent :: PackageIndex PlanPackage -> Bool
 consistent = null . PackageIndex.dependencyInconsistencies
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
 -- package @b@ we require that @dependencyStatesOk a b = True@.
 --
-stateDependencyRelation :: PlanPackage a -> PlanPackage a -> Bool
+stateDependencyRelation :: PlanPackage -> PlanPackage -> Bool
 stateDependencyRelation (PreExisting _) (PreExisting _) = True
 
 stateDependencyRelation (Configured  _) (PreExisting _) = True
 stateDependencyRelation (Configured  _) (Configured  _) = True
-stateDependencyRelation (Configured  _) (Installed   _) = True
+stateDependencyRelation (Configured  _) (Installed _ _) = True
 
-stateDependencyRelation (Installed   _) (PreExisting _) = True
-stateDependencyRelation (Installed   _) (Installed   _) = True
+stateDependencyRelation (Installed _ _) (PreExisting _) = True
+stateDependencyRelation (Installed _ _) (Installed _ _) = True
 
 stateDependencyRelation (Failed    _ _) (PreExisting _) = True
 -- failed can depends on configured because a package can depend on
 -- several other packages and if one of the deps fail then we fail
 -- but we still depend on the other ones that did not fail:
 stateDependencyRelation (Failed    _ _) (Configured  _) = True
-stateDependencyRelation (Failed    _ _) (Installed   _) = True
+stateDependencyRelation (Failed    _ _) (Installed _ _) = True
 stateDependencyRelation (Failed    _ _) (Failed    _ _) = True
 
 stateDependencyRelation _               _               = False

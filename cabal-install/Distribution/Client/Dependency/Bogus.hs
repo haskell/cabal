@@ -45,7 +45,7 @@ import Data.List
 -- We need this for hugs and nhc98 which do not track installed packages.
 -- We just pretend that everything is installed and hope for the best.
 --
-bogusResolver :: DependencyResolver a
+bogusResolver :: DependencyResolver
 bogusResolver os arch comp _ available _ = resolveFromAvailable []
                                          . combineDependencies
   where

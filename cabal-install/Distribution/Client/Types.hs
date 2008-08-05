@@ -98,9 +98,13 @@ data UnresolvedDependency
     }
   deriving (Show)
 
-data BuildResult = DependentFailed PackageIdentifier
-                 | UnpackFailed    Exception
-                 | ConfigureFailed Exception
-                 | BuildFailed     Exception
-                 | InstallFailed   Exception
-                 | BuildOk
+type BuildResult  = Either BuildFailure BuildSuccess
+data BuildFailure = DependentFailed PackageIdentifier
+                  | UnpackFailed    Exception
+                  | ConfigureFailed Exception
+                  | BuildFailed     Exception
+                  | InstallFailed   Exception
+data BuildSuccess = BuildOk         DocsResult TestsResult
+
+data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
+data TestsResult = TestsNotTried | TestsFailed | TestsOk

@@ -38,7 +38,8 @@ import Distribution.Client.Types
 import Distribution.Client.Config
          ( defaultCabalDir )
 import qualified Distribution.Client.Types as BR
-         ( BuildResult(..) )
+         ( BuildFailure(..), BuildSuccess(..)
+         , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
@@ -130,7 +131,7 @@ writeBuildLog reports = do
     format r = '\n' : showBuildLogEntry r ++ "\n"
 
 buildLogEntry :: OS -> Arch -> CompilerId -- -> Version
-              -> ConfiguredPackage -> BR.BuildResult
+              -> ConfiguredPackage -> BuildResult
               -> BuildLogEntry
 buildLogEntry os' arch' comp (ConfiguredPackage pkg flags deps) result =
   BuildLogEntry {
@@ -142,20 +143,32 @@ buildLogEntry os' arch' comp (ConfiguredPackage pkg flags deps) result =
     client                = cabalInstallID,
     flagAssignment        = flags,
     dependencies          = deps,
-    installOutcome        = case result of
-    BR.DependentFailed p -> DependencyFailed p
-    BR.UnpackFailed _    -> UnpackFailed
-    BR.ConfigureFailed _ -> ConfigureFailed
-    BR.BuildFailed _     -> BuildFailed
-    BR.InstallFailed _   -> InstallFailed
-    BR.BuildOk           -> InstallOk,
+    installOutcome        = convertInstallOutcome,
 --    cabalVersion          = undefined
-    docsOutcome           = NotTried,
-    testsOutcome          = NotTried
+    docsOutcome           = convertDocsOutcome,
+    testsOutcome          = convertTestsOutcome
   }
   where
     cabalInstallID =
       PackageIdentifier "cabal-install" Paths_cabal_install.version
+
+    convertInstallOutcome = case result of
+      Left  (BR.DependentFailed p) -> DependencyFailed p
+      Left  (BR.UnpackFailed    _) -> UnpackFailed
+      Left  (BR.ConfigureFailed _) -> ConfigureFailed
+      Left  (BR.BuildFailed     _) -> BuildFailed
+      Left  (BR.InstallFailed   _) -> InstallFailed
+      Right (BR.BuildOk       _ _) -> InstallOk
+    convertDocsOutcome = case result of
+      Left _                                -> NotTried
+      Right (BR.BuildOk BR.DocsNotTried _)  -> NotTried
+      Right (BR.BuildOk BR.DocsFailed _)    -> Failed
+      Right (BR.BuildOk BR.DocsOk _)        -> Ok
+    convertTestsOutcome = case result of
+      Left _                                -> NotTried
+      Right (BR.BuildOk _ BR.TestsNotTried) -> NotTried
+      Right (BR.BuildOk _ BR.TestsFailed)   -> Failed
+      Right (BR.BuildOk _ BR.TestsOk)       -> Ok
 
 -- ------------------------------------------------------------
 -- * External format
@@ -253,10 +266,10 @@ instance Text URI where
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-writeInstallPlanBuildLog :: InstallPlan BuildResult -> IO ()
+writeInstallPlanBuildLog :: InstallPlan -> IO ()
 writeInstallPlanBuildLog = writeBuildLog . installPlanBuildLog
 
-installPlanBuildLog :: InstallPlan BuildResult -> BuildLog
+installPlanBuildLog :: InstallPlan -> BuildLog
 installPlanBuildLog plan = catMaybes
                              . map (planPackageBuildLogEntry os' arch' comp)
                              . InstallPlan.toList
@@ -266,14 +279,14 @@ installPlanBuildLog plan = catMaybes
         comp  = InstallPlan.planCompiler plan
 
 planPackageBuildLogEntry :: OS -> Arch -> CompilerId
-                         -> InstallPlan.PlanPackage BuildResult
+                         -> InstallPlan.PlanPackage
                          -> Maybe BuildLogEntry
 planPackageBuildLogEntry os' arch' comp planPackage = case planPackage of
 
-  InstallPlan.Installed pkg
-    -> Just $ buildLogEntry os' arch' comp pkg BR.BuildOk
+  InstallPlan.Installed pkg result
+    -> Just $ buildLogEntry os' arch' comp pkg (Right result)
 
   InstallPlan.Failed pkg result
-    -> Just $ buildLogEntry os' arch' comp pkg result
+    -> Just $ buildLogEntry os' arch' comp pkg (Left result)
 
   _ -> Nothing
