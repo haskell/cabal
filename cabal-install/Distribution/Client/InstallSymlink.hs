@@ -23,14 +23,13 @@ module Distribution.Client.InstallSymlink (
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 
-import Distribution.Client.Types (BuildResult)
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 
 symlinkBinaries :: ConfigFlags
                 -> InstallFlags
-                -> InstallPlan BuildResult -> IO ()
+                -> InstallPlan -> IO ()
 symlinkBinaries _ _ = symlinkBinary undefined undefined undefined undefined
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
@@ -39,7 +38,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( AvailablePackage(..), ConfiguredPackage(..), BuildResult )
+         ( AvailablePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -95,7 +94,7 @@ import Data.Maybe
 --
 symlinkBinaries :: ConfigFlags
                 -> InstallFlags
-                -> InstallPlan BuildResult
+                -> InstallPlan
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
@@ -115,7 +114,7 @@ symlinkBinaries configFlags installFlags plan =
                   then return Nothing
                   else return (Just (pkgid, publicExeName,
                                      privateBinDir </> privateExeName))
-        | InstallPlan.Installed cpkg <- InstallPlan.toList plan
+        | InstallPlan.Installed cpkg _ <- InstallPlan.toList plan
         , let pkg   = pkgDescription cpkg
               pkgid = packageId pkg
         , exe <- PackageDescription.executables pkg

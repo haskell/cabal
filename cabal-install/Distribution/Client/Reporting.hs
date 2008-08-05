@@ -35,7 +35,8 @@ import Distribution.Client.Types
          ( ConfiguredPackage(..), AvailablePackage(..), BuildResult
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 import qualified Distribution.Client.Types as BR
-         ( BuildResult(..) )
+         ( BuildResult, BuildFailure(..), BuildSuccess(..)
+         , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
@@ -159,20 +160,32 @@ buildReport os' arch' comp (ConfiguredPackage pkg flags deps) result =
     client                = cabalInstallID,
     flagAssignment        = flags,
     dependencies          = deps,
-    installOutcome        = case result of
-    BR.DependentFailed p -> DependencyFailed p
-    BR.UnpackFailed _    -> UnpackFailed
-    BR.ConfigureFailed _ -> ConfigureFailed
-    BR.BuildFailed _     -> BuildFailed
-    BR.InstallFailed _   -> InstallFailed
-    BR.BuildOk           -> InstallOk,
+    installOutcome        = convertInstallOutcome,
 --    cabalVersion          = undefined
-    docsOutcome           = NotTried,
-    testsOutcome          = NotTried
+    docsOutcome           = convertDocsOutcome,
+    testsOutcome          = convertTestsOutcome
   }
   where
     cabalInstallID =
       PackageIdentifier "cabal-install" Paths_cabal_install.version
+
+    convertInstallOutcome = case result of
+      Left  (BR.DependentFailed p) -> DependencyFailed p
+      Left  (BR.UnpackFailed    _) -> UnpackFailed
+      Left  (BR.ConfigureFailed _) -> ConfigureFailed
+      Left  (BR.BuildFailed     _) -> BuildFailed
+      Left  (BR.InstallFailed   _) -> InstallFailed
+      Right (BR.BuildOk       _ _) -> InstallOk
+    convertDocsOutcome = case result of
+      Left _                                -> NotTried
+      Right (BR.BuildOk BR.DocsNotTried _)  -> NotTried
+      Right (BR.BuildOk BR.DocsFailed _)    -> Failed
+      Right (BR.BuildOk BR.DocsOk _)        -> Ok
+    convertTestsOutcome = case result of
+      Left _                                -> NotTried
+      Right (BR.BuildOk _ BR.TestsNotTried) -> NotTried
+      Right (BR.BuildOk _ BR.TestsFailed)   -> Failed
+      Right (BR.BuildOk _ BR.TestsOk)       -> Ok
 
 -- ------------------------------------------------------------
 -- * External format
@@ -297,10 +310,10 @@ instance Text Outcome where
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-writeInstallPlanBuildReports :: InstallPlan BuildResult -> IO ()
+writeInstallPlanBuildReports :: InstallPlan -> IO ()
 writeInstallPlanBuildReports = writeBuildReports . installPlanBuildReports
 
-installPlanBuildReports :: InstallPlan BuildResult -> [(BuildReport, Repo)]
+installPlanBuildReports :: InstallPlan -> [(BuildReport, Repo)]
 installPlanBuildReports plan = catMaybes
                              . map (planPackageBuildReport os' arch' comp)
                              . InstallPlan.toList
@@ -310,16 +323,16 @@ installPlanBuildReports plan = catMaybes
         comp  = InstallPlan.planCompiler plan
 
 planPackageBuildReport :: OS -> Arch -> CompilerId
-                       -> InstallPlan.PlanPackage BuildResult
+                       -> InstallPlan.PlanPackage
                        -> Maybe (BuildReport, Repo)
 planPackageBuildReport os' arch' comp planPackage = case planPackage of
 
   InstallPlan.Installed pkg@(ConfiguredPackage (AvailablePackage {
-                          packageSource = RepoTarballPackage repo }) _ _)
-    -> Just $ (buildReport os' arch' comp pkg BR.BuildOk, repo)
+                          packageSource = RepoTarballPackage repo }) _ _) result
+    -> Just $ (buildReport os' arch' comp pkg (Right result), repo)
 
   InstallPlan.Failed pkg@(ConfiguredPackage (AvailablePackage {
                        packageSource = RepoTarballPackage repo }) _ _) result
-    -> Just $ (buildReport os' arch' comp pkg result, repo)
+    -> Just $ (buildReport os' arch' comp pkg (Left result), repo)
 
   _ -> Nothing

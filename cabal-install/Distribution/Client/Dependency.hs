@@ -50,7 +50,7 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Exception (assert)
 
-defaultResolver :: DependencyResolver a
+defaultResolver :: DependencyResolver
 defaultResolver = topDownResolver
 --for the brave: try the new topDownResolver, but only with --dry-run !!!
 
@@ -84,7 +84,7 @@ resolveDependencies :: OS
                     -> PackageIndex AvailablePackage
                     -> PackagesVersionPreference
                     -> [UnresolvedDependency]
-                    -> Either String (InstallPlan a)
+                    -> Either String InstallPlan
 resolveDependencies os arch comp installed available pref deps =
   foldProgress (flip const) Left Right $
     resolveDependenciesWithProgress os arch comp installed available pref deps
@@ -96,7 +96,7 @@ resolveDependenciesWithProgress :: OS
                                 -> PackageIndex AvailablePackage
                                 -> PackagesVersionPreference
                                 -> [UnresolvedDependency]
-                                -> Progress String String (InstallPlan a)
+                                -> Progress String String InstallPlan
 resolveDependenciesWithProgress os arch comp (Just installed) =
   dependencyResolver defaultResolver os arch comp installed
 
@@ -118,13 +118,13 @@ hideBasePackage = PackageIndex.deletePackageName "base"
                 . PackageIndex.deletePackageName "ghc-prim"
 
 dependencyResolver
-  :: DependencyResolver a
+  :: DependencyResolver
   -> OS -> Arch -> CompilerId
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
   -> PackagesVersionPreference
   -> [UnresolvedDependency]
-  -> Progress String String (InstallPlan a)
+  -> Progress String String InstallPlan
 dependencyResolver resolver os arch comp installed available pref deps =
   let installed' = hideBrokenPackages installed
       available' = hideBasePackage available
