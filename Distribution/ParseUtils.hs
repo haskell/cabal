@@ -58,7 +58,7 @@ module Distribution.ParseUtils (
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
         parseTestedWithQ, parseLicenseQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
-        showFilePath, showToken, showTestedWith, showFreeText,
+        showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, spaceListField, commaListField,
         optsField, liftField, boolField, parseQuoted,
 
@@ -627,6 +627,9 @@ parseOptCommaList = parseSepList (optional (ReadP.char ','))
 
 parseQuoted :: ReadP r a -> ReadP r a
 parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
+
+parseFreeText :: ReadP.ReadP s String
+parseFreeText = ReadP.munch (const True)
 
 -- --------------------------------------------
 -- ** Pretty printing
