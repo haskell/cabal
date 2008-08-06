@@ -53,6 +53,7 @@ module Distribution.ParseUtils (
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
         FieldDescr(..), ppField, ppFields, readFields,
+        showFields, showSingleNamedField, parseFields,
         parseFilePathQ, parseTokenQ,
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
@@ -81,6 +82,8 @@ import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
 import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
+import qualified Data.Map as Map
+import Control.Monad (foldM)
 import System.FilePath (normalise)
 
 -- -----------------------------------------------------------------------------
@@ -257,6 +260,29 @@ ppFields fields x = vcat [ ppField name (getter x)
 ppField :: String -> Doc -> Doc
 ppField name fielddoc = text name <> colon <+> fielddoc
 
+showFields :: [FieldDescr a] -> a -> String
+showFields fields = render . ppFields fields
+
+showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
+showSingleNamedField fields f =
+  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
+    []      -> Nothing
+    (get:_) -> Just (render . ppField f . get)
+
+parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
+parseFields fields initial = \str ->
+  readFields str >>= foldM setField initial
+  where
+    fieldMap = Map.fromList
+      [ (name, f) | f@(FieldDescr name _ _) <- fields ]
+    setField accum (F line name value) = case Map.lookup name fieldMap of
+      Just (FieldDescr _ _ set) -> set line value accum
+      Nothing -> do
+        warning ("Unrecognized field " ++ name ++ " on line " ++ show line)
+        return accum
+    setField accum f = do
+      warning ("Unrecognized stanza on line " ++ show (lineNo f))
+      return accum
 
 -- | The type of a function which, given a name-value pair of an
 --   unrecognized field, and the current structure being built,
