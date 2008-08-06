@@ -63,12 +63,12 @@ module Distribution.InstalledPackageInfo (
         showInstalledPackageInfoField,
   ) where
 
-import Distribution.ParseUtils (
-        FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning,
-        Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields,
-        parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ,
-        showFilePath, showToken, boolField, parseOptVersion, parseQuoted,
-        showFreeText)
+import Distribution.ParseUtils
+         ( FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning
+         , Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields
+         , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
+         , showFilePath, showToken, boolField, parseOptVersion, parseQuoted
+         , parseFreeText, showFreeText )
 import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
@@ -244,9 +244,6 @@ basicFieldDescrs =
                            showFreeText           parseFreeText
                            author                 (\val pkg -> pkg{author=val})
  ]
-
-parseFreeText :: ReadP.ReadP s String
-parseFreeText = ReadP.munch (const True)
 
 installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
