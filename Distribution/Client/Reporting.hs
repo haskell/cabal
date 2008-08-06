@@ -40,7 +40,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
 import Distribution.Client.ParseUtils
-         ( showFields, parseBasicStanza )
+         ( parseBasicStanza )
 import qualified Paths_cabal_install (version)
 
 import Distribution.Package
@@ -56,11 +56,11 @@ import Distribution.Compiler
 import Distribution.Text
          ( Text(disp, parse) )
 import Distribution.ParseUtils
-         ( FieldDescr(..), ParseResult(..), simpleField, listField )
+         ( FieldDescr(..), ParseResult(..), simpleField, listField, ppFields )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, pfail, munch1, char, option, skipSpaces )
 import Text.PrettyPrint.HughesPJ as Disp
-         ( Doc, char, text, (<+>), (<>) )
+         ( Doc, render, char, text, (<+>), (<>) )
 import Distribution.Simple.Utils
          ( comparing, equating )
 
@@ -217,7 +217,7 @@ parseBuildReports str =
 -- Pretty-printing
 
 showBuildReport :: BuildReport -> String
-showBuildReport = showFields fieldDescrs
+showBuildReport br = Disp.render (ppFields br fieldDescrs)
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
