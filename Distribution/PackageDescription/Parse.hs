@@ -70,7 +70,7 @@ import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
 
-import Distribution.ParseUtils
+import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..), Dependency(..)
