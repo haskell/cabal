@@ -25,39 +25,35 @@ module Distribution.Client.Setup
     , parsePackageArgs
     ) where
 
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Client.Types
+         ( Username(..), Password(..) )
+
+import Distribution.Simple.Program
+         ( defaultProgramConfiguration )
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Setup as Cabal
-  (GlobalFlags(..),  {-emptyGlobalFlags,-}   globalCommand,
-  ConfigFlags(..),   {-emptyConfigFlags,-}   configureCommand,
-{-  CopyFlags(..),     emptyCopyFlags,     copyCommand,
-  InstallFlags(..),  emptyInstallFlags,  installCommand,
-  HaddockFlags(..),  emptyHaddockFlags,  haddockCommand,
-  HscolourFlags(..), emptyHscolourFlags, hscolourCommand,
-  BuildFlags(..),    emptyBuildFlags,    buildCommand,
-  CleanFlags(..),    emptyCleanFlags,    cleanCommand,
-  PFEFlags(..),      emptyPFEFlags,      programaticaCommand,
-  MakefileFlags(..), emptyMakefileFlags, makefileCommand,
-  RegisterFlags(..), emptyRegisterFlags, registerCommand, unregisterCommand,
-  SDistFlags(..),    emptySDistFlags,    sdistCommand,
-                                         testCommand-})
+         ( GlobalFlags(..), globalCommand
+         , ConfigFlags(..), configureCommand )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
 import Distribution.Version
-         ( Version(Version) )
+         ( Version(Version), VersionRange(..) )
 import Distribution.Package
-         ( Dependency )
+         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.ReadE
          ( readP_to_E )
-import Distribution.Verbosity (Verbosity, normal)
+import Distribution.Compat.ReadP
+         ( ReadP, readP_to_S, (+++) )
+import Distribution.Verbosity
+         ( Verbosity, normal )
 
-import Distribution.Client.Types
-         ( Username(..), Password(..) )
-import Distribution.Client.ParseUtils (readPToMaybe, parseDependencyOrPackageId)
+import Data.Char     (isSpace)
+import Data.Maybe    (listToMaybe)
+import Data.Monoid   (Monoid(..))
+import Control.Monad (liftM)
 
-import Data.Monoid (Monoid(..))
 
 globalCommand :: CommandUI Cabal.GlobalFlags
 globalCommand = Cabal.globalCommand {
@@ -364,3 +360,14 @@ parsePackageArgs = parsePkgArgs []
       case readPToMaybe parseDependencyOrPackageId arg of
         Just dep -> parsePkgArgs (dep:ds) args
         Nothing  -> Left ("Failed to parse package dependency: " ++ show arg)
+
+readPToMaybe :: ReadP a a -> String -> Maybe a
+readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str, all isSpace s ]
+
+parseDependencyOrPackageId :: ReadP r Dependency
+parseDependencyOrPackageId = parse +++ liftM pkgidToDependency parse
+  where
+    pkgidToDependency :: PackageIdentifier -> Dependency
+    pkgidToDependency p = case packageVersion p of
+      Version [] _ -> Dependency (packageName p) AnyVersion
+      version      -> Dependency (packageName p) (ThisVersion version)
