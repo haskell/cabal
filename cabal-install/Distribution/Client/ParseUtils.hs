@@ -1,31 +1,28 @@
+--FIXME: make this whole module go away!
 module Distribution.Client.ParseUtils (
-    parseBasicStanza,
+    parseFields
   ) where
 
-import Distribution.ParseUtils 
+import Distribution.ParseUtils
          ( Field(..), FieldDescr(..), ParseResult(..)
          , readFields, warning, lineNo )
- 
+
 import Control.Monad (foldM)
-import Data.Maybe (listToMaybe)
+import qualified Data.Map as Map
 
-parseBasicStanza :: [FieldDescr a] -> a -> String -> ParseResult a
-parseBasicStanza fields empty inp = 
-    readFields inp >>= foldM (setField fields) empty
+--FIXME: this function is now in Cabal as of 1.5, so remove this local copy
+parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
+parseFields fields initial = \str ->
+  readFields str >>= foldM setField initial
+  where
+    fieldMap = Map.fromList
+      [ (name, f) | f@(FieldDescr name _ _) <- fields ]
+    setField accum (F line name value) = case Map.lookup name fieldMap of
+      Just (FieldDescr _ _ set) -> set line value accum
+      Nothing -> do
+        warning $ "Unrecognized field " ++ name ++ " on line " ++ show line
+        return accum
+    setField accum f = do
+      warning $ "Unrecognized stanza on line " ++ show (lineNo f)
+      return accum
 
-setField :: [FieldDescr a]
-         -> a
-         -> Field
-         -> ParseResult a
-setField fs x (F line f val) =
-    case lookupFieldDescr fs f of
-      Nothing -> 
-          do warning ("Unrecognized field " ++ f ++ " on line " ++ show line)
-             return x
-      Just (FieldDescr _ _ set) -> set line val x
-setField _ x s = 
-    do warning ("Unrecognized stanza on line " ++ show (lineNo s))
-       return x
-
-lookupFieldDescr :: [FieldDescr a] -> String -> Maybe (FieldDescr a)
-lookupFieldDescr fs n = listToMaybe [f | f@(FieldDescr name _ _) <- fs, name == n]
