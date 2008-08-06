@@ -54,13 +54,19 @@ module Distribution.PackageDescription.Check (
         PackageCheck(..),
         checkPackage,
         checkConfiguredPackage,
-        checkPackageFiles
+
+        -- ** Checking package contents
+        checkPackageFiles,
+        checkPackageContent,
+        CheckPackageContentOps(..),
   ) where
 
 import Data.Maybe (isNothing, catMaybes, fromMaybe)
 import Data.List  (sort, group, isPrefixOf)
-import Control.Monad (filterM)
-import System.Directory (doesFileExist, doesDirectoryExist)
+import Control.Monad
+         ( filterM, liftM )
+import qualified System.Directory as System
+         ( doesFileExist, doesDirectoryExist )
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
@@ -554,27 +560,55 @@ checkConditionals pkg =
       CAnd c1 c2 -> condfv c1 ++ condfv c2
 
 -- ------------------------------------------------------------
--- * Checks in IO
+-- * Checks involving files in the package
 -- ------------------------------------------------------------
 
--- | Sanity check things that requires IO. It looks at the files in the package
--- and expects to find the package unpacked in at the given filepath.
+-- | Sanity check things that requires IO. It looks at the files in the
+-- package and expects to find the package unpacked in at the given filepath.
 --
 checkPackageFiles :: PackageDescription -> FilePath -> IO [PackageCheck]
-checkPackageFiles pkg root = do
-    licenseError   <- checkLicenseExists pkg root
-    setupError     <- checkSetupExists pkg root
-    configureError <- checkConfigureExists pkg root
-    localPathErrors <- checkLocalPathsExist pkg root
+checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
+  where
+    checkFilesIO = CheckPackageContentOps {
+      doesFileExist      = System.doesFileExist      . relative,
+      doesDirectoryExist = System.doesDirectoryExist . relative
+    }
+    relative path = root </> path
 
-    return $ catMaybes [licenseError, setupError, configureError]
-                    ++ localPathErrors
+-- | A record of operations needed to check the contents of packages.
+-- Used by 'checkPackageContent'.
+--
+data CheckPackageContentOps m = CheckPackageContentOps {
+    doesFileExist      :: FilePath -> m Bool,
+    doesDirectoryExist :: FilePath -> m Bool
+  }
 
-checkLicenseExists :: PackageDescription -> FilePath -> IO (Maybe PackageCheck)
-checkLicenseExists pkg root
+-- | Sanity check things that requires looking at files in the package.
+-- This is a generalised version of 'checkPackageFiles' that can work in any
+-- monad for which you can provide 'CheckPackageContentOps' operations.
+--
+-- The point of this extra generality is to allow doing checks in some virtual
+-- file system, for example a tarball in memory.
+--
+checkPackageContent :: Monad m => CheckPackageContentOps m
+                    -> PackageDescription
+                    -> m [PackageCheck]
+checkPackageContent ops pkg = do
+  licenseError    <- checkLicenseExists   ops pkg
+  setupError      <- checkSetupExists     ops pkg
+  configureError  <- checkConfigureExists ops pkg
+  localPathErrors <- checkLocalPathsExist ops pkg
+
+  return $ catMaybes [licenseError, setupError, configureError]
+        ++ localPathErrors
+
+checkLicenseExists :: Monad m => CheckPackageContentOps m
+                   -> PackageDescription
+                   -> m (Maybe PackageCheck)
+checkLicenseExists ops pkg
   | null (licenseFile pkg) = return Nothing
   | otherwise = do
-    exists <- doesFileExist (root </> file)
+    exists <- doesFileExist ops file
     return $ check (not exists) $
       PackageBuildWarning $
            "The 'license-file' field refers to the file " ++ quote file
@@ -583,24 +617,30 @@ checkLicenseExists pkg root
   where
     file = licenseFile pkg
 
-checkSetupExists :: PackageDescription -> FilePath -> IO (Maybe PackageCheck)
-checkSetupExists _ root = do
-  hsexists  <- doesFileExist (root </> "Setup.hs")
-  lhsexists <- doesFileExist (root </> "Setup.lhs")
+checkSetupExists :: Monad m => CheckPackageContentOps m
+                 -> PackageDescription
+                 -> m (Maybe PackageCheck)
+checkSetupExists ops _ = do
+  hsexists  <- doesFileExist ops "Setup.hs"
+  lhsexists <- doesFileExist ops "Setup.lhs"
   return $ check (not hsexists && not lhsexists) $
     PackageDistInexcusable $
       "The package is missing a Setup.hs or Setup.lhs script."
 
-checkConfigureExists :: PackageDescription -> FilePath -> IO (Maybe PackageCheck)
-checkConfigureExists PackageDescription { buildType = Just Configure } root = do
-  exists <- doesFileExist (root </> "configure")
+checkConfigureExists :: Monad m => CheckPackageContentOps m
+                     -> PackageDescription
+                     -> m (Maybe PackageCheck)
+checkConfigureExists ops PackageDescription { buildType = Just Configure } = do
+  exists <- doesFileExist ops "configure"
   return $ check (not exists) $
     PackageBuildWarning $
       "The 'build-type' is 'Configure' but there is no 'configure' script."
 checkConfigureExists _ _ = return Nothing
 
-checkLocalPathsExist :: PackageDescription -> FilePath -> IO [PackageCheck]
-checkLocalPathsExist pkg root = do
+checkLocalPathsExist :: Monad m => CheckPackageContentOps m
+                     -> PackageDescription
+                     -> m [PackageCheck]
+checkLocalPathsExist ops pkg = do
   let dirs = [ (dir, kind)
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
@@ -608,7 +648,7 @@ checkLocalPathsExist pkg root = do
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
                ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelative dir ]
-  missing <- filterM (fmap not . doesDirectoryExist . (root </>) . fst) dirs
+  missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {
              explanation = quote (kind ++ ": " ++ dir)
                         ++ " directory does not exist."
