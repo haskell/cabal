@@ -31,13 +31,13 @@ import System.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import System.FilePath ((</>), takeDirectory)
 import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI, uriToString )
-import Text.PrettyPrint.HughesPJ (text)
+import Text.PrettyPrint.HughesPJ as Disp (text, render)
 
 import Distribution.Compat.ReadP as ReadP
          ( ReadP, char, munch1, pfail )
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.ParseUtils
-         ( FieldDescr(..), simpleField, listField, liftField, field
+         ( FieldDescr(..), ppFields, simpleField, listField, liftField, field
          , parseFilePathQ, parseTokenQ
          , ParseResult(..), showPWarning, locatedErrorMsg )
 import Distribution.Simple.Compiler (PackageDB(..))
@@ -55,7 +55,7 @@ import Distribution.System
 
 import Distribution.Client.Types
          ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
-import Distribution.Client.ParseUtils (showFields, parseBasicStanza)
+import Distribution.Client.ParseUtils (parseBasicStanza)
 import Distribution.Client.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
@@ -199,10 +199,10 @@ loadConfig verbosity configFile = do
 writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 
     do createDirectoryIfMissing True (takeDirectory file)
-       writeFile file $ showFields configWriteFieldDescrs cfg ++ "\n"
+       writeFile file $ Disp.render (ppFields cfg configWriteFieldDescrs) ++ "\n"
 
 showConfig :: SavedConfig -> String
-showConfig = showFields configFieldDescrs
+showConfig cfg = render $ ppFields cfg configFieldDescrs
 
 -- | All config file fields.
 configFieldDescrs :: [FieldDescr SavedConfig]
