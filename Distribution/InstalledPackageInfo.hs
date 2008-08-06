@@ -192,7 +192,7 @@ parseBasicStanza _ _ _ =
 -- Pretty-printing
 
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo pkg = render (ppFields pkg all_fields)
+showInstalledPackageInfo = render . ppFields all_fields
 
 showInstalledPackageInfoField
         :: String

@@ -250,10 +250,9 @@ boolField name get set = liftField get set (FieldDescr name showF readF)
         caseWarning = PWarning $
           "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
-ppFields :: a -> [FieldDescr a] -> Doc
-ppFields _ [] = empty
-ppFields pkg' ((FieldDescr name getter _):flds) =
-     ppField name (getter pkg') $$ ppFields pkg' flds
+ppFields :: [FieldDescr a] -> a -> Doc
+ppFields fields x = vcat [ ppField name (getter x)
+                         | FieldDescr name getter _ <- fields]
 
 ppField :: String -> Doc -> Doc
 ppField name fielddoc = text name <> colon <+> fielddoc
