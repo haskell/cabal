@@ -55,7 +55,7 @@ import Distribution.System
 
 import Distribution.Client.Types
          ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
-import Distribution.Client.ParseUtils (parseBasicStanza)
+import Distribution.Client.ParseUtils (parseFields)
 import Distribution.Client.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
@@ -180,7 +180,7 @@ loadConfig verbosity configFile = do
       notice verbosity $ "Writing default configuration to " ++ configFile
       writeDefaultConfigFile configFile defaultConf
       return defaultConf
-    Just inp -> case parseBasicStanza configFieldDescrs defaultConf' inp of
+    Just inp -> case parseConfig defaultConf' inp of
       ParseOk ws conf -> do
         when (not $ null ws) $ warn verbosity $
           unlines (map (showPWarning configFile) ws)
@@ -195,6 +195,8 @@ loadConfig verbosity configFile = do
 
       where defaultConf' = defaultConf { configRemoteRepos = [] }
 
+parseConfig :: SavedConfig -> String -> ParseResult SavedConfig
+parseConfig = parseFields configFieldDescrs
 
 writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 
