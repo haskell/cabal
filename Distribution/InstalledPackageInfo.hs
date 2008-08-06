@@ -64,8 +64,9 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils
-         ( FieldDescr(..), readFields, ParseResult(..), PError(..), PWarning
-         , Field(F), simpleField, listField, parseLicenseQ, ppField, ppFields
+         ( FieldDescr(..), ParseResult(..), PError(..), PWarning
+         , simpleField, listField, parseLicenseQ
+         , showFields, showSingleNamedField, parseFields
          , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
          , showFilePath, showToken, boolField, parseOptVersion, parseQuoted
          , parseFreeText, showFreeText )
@@ -82,9 +83,6 @@ import Distribution.Version
 import Distribution.Text
          ( Text(disp, parse) )
 import qualified Distribution.Compat.ReadP as ReadP
-
-import Control.Monad    ( foldM )
-import Text.PrettyPrint
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -171,36 +169,16 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 -- Parsing
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
-parseInstalledPackageInfo inp = do
-  stLines <- readFields inp
-        -- not interested in stanzas, so just allow blank lines in
-        -- the package info.
-  foldM (parseBasicStanza all_fields) emptyInstalledPackageInfo stLines
-
-parseBasicStanza :: [FieldDescr a]
-                    -> a
-                    -> Field
-                    -> ParseResult a
-parseBasicStanza ((FieldDescr name _ set):fields) pkg (F lineNo f val)
-  | name == f = set lineNo val pkg
-  | otherwise = parseBasicStanza fields pkg (F lineNo f val)
-parseBasicStanza [] pkg _ = return pkg
-parseBasicStanza _ _ _ =
-    error "parseBasicStanza must be called with a simple field."
+parseInstalledPackageInfo = parseFields all_fields emptyInstalledPackageInfo
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo = render . ppFields all_fields
+showInstalledPackageInfo = showFields all_fields
 
-showInstalledPackageInfoField
-        :: String
-        -> Maybe (InstalledPackageInfo -> String)
-showInstalledPackageInfoField field
-  = case [ (f,get') | (FieldDescr f get' _) <- all_fields, f == field ] of
-        []      -> Nothing
-        ((f,get'):_) -> Just (render . ppField f . get')
+showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
+showInstalledPackageInfoField = showSingleNamedField all_fields
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
