@@ -68,6 +68,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..) )
 import Distribution.PackageDescription.Check
+         ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
 import Distribution.Package
          ( PackageIdentifier(pkgVersion), Package(..) )
 import Distribution.ModuleName (ModuleName)
