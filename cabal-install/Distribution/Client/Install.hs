@@ -156,7 +156,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
             installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
               installAvailablePackage verbosity apkg $ \pkg mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
-                                       miscOptions configFlags'
+                                       miscOptions configFlags' installFlags
                                        pkg mpath useLogFile
         writeInstallPlanBuildReports installPlan'
         writeInstallPlanBuildLog     installPlan'
@@ -364,11 +364,13 @@ installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
                    -> InstallMisc
                    -> Cabal.ConfigFlags
+                   -> InstallFlags
                    -> GenericPackageDescription
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
-installUnpackedPackage verbosity scriptOptions miscOptions configFlags
+installUnpackedPackage verbosity scriptOptions miscOptions
+                       configFlags installConfigFlags
                        pkg workingDir useLogFile =
 
   -- Configure phase
@@ -380,7 +382,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags
       setup buildCommand buildFlags
 
   -- Doc generation phase
-      docsResult <- if False --TODO: add flag to enable/disable haddock
+      docsResult <- if shouldHaddock
         then Exception.handle (\_ -> return DocsFailed) $ do
                setup Cabal.haddockCommand haddockFlags
                return DocsOk
@@ -402,6 +404,8 @@ installUnpackedPackage verbosity scriptOptions miscOptions configFlags
       Cabal.buildDistPref  = Cabal.configDistPref configFlags,
       Cabal.buildVerbosity = Cabal.toFlag verbosity
     }
+    shouldHaddock    = Cabal.fromFlagOrDefault False
+                         (installDocumentation installConfigFlags)
     haddockFlags _   = Cabal.emptyHaddockFlags {
       Cabal.haddockDistPref  = Cabal.configDistPref configFlags,
       Cabal.haddockVerbosity = Cabal.toFlag verbosity
