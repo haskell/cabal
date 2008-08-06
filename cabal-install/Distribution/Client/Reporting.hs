@@ -40,7 +40,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
 import Distribution.Client.ParseUtils
-         ( parseBasicStanza )
+         ( parseFields )
 import qualified Paths_cabal_install (version)
 
 import Distribution.Package
@@ -200,7 +200,7 @@ initialBuildReport = BuildReport {
 -- Parsing
 
 parseBuildReport :: String -> ParseResult BuildReport
-parseBuildReport = parseBasicStanza fieldDescrs initialBuildReport
+parseBuildReport = parseFields fieldDescrs initialBuildReport
 
 parseBuildReports :: String -> [BuildReport]
 parseBuildReports str =
