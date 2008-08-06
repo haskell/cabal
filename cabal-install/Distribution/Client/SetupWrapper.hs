@@ -276,7 +276,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           ,"-odir", setupDir, "-hidir", setupDir]
        ++ if packageName pkg == "Cabal"
             then ["-i", "-i."]
-            else ["-package", display cabalPkgid ]
+            else ["-i", "-package", display cabalPkgid ]
     where cabalPkgid = PackageIdentifier "Cabal" cabalLibVersion
 
   invokeSetupScript :: [String] -> IO ()
