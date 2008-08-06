@@ -38,7 +38,8 @@ import Distribution.Compat.ReadP as ReadP
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.ParseUtils
          ( FieldDescr(..), simpleField, listField, liftField, field
-         , parseFilePathQ, parseTokenQ, showPWarning, ParseResult(..) )
+         , parseFilePathQ, parseTokenQ
+         , ParseResult(..), showPWarning, locatedErrorMsg )
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), PathTemplate, toPathTemplate, fromPathTemplate )
@@ -54,7 +55,7 @@ import Distribution.System
 
 import Distribution.Client.Types
          ( RemoteRepo(..), Repo(..), Username(..), Password(..) )
-import Distribution.Client.ParseUtils
+import Distribution.Client.ParseUtils (showFields, parseBasicStanza)
 import Distribution.Client.Utils (readFileIfExists)
 import Distribution.Simple.Utils (notice, warn)
 
@@ -170,25 +171,30 @@ defaultRemoteRepo = RemoteRepo name uri
 --
 
 loadConfig :: Verbosity -> FilePath -> IO SavedConfig
-loadConfig verbosity configFile = 
-    do defaultConf <- defaultSavedConfig
-       minp <- readFileIfExists configFile
-       case minp of
-         Nothing -> do notice verbosity $ "Config file " ++ configFile ++ " not found."
-                       notice verbosity $ "Writing default configuration to " ++ configFile
-                       writeDefaultConfigFile configFile defaultConf
-                       return defaultConf
-         Just inp -> case parseBasicStanza configFieldDescrs defaultConf' inp of
-                       ParseOk ws conf -> 
-                           do when (not $ null ws) $ warn verbosity $
-                                unlines (map (showPWarning configFile) ws)
-                              return conf
-                       ParseFailed err -> 
-                           do warn verbosity $ "Error parsing config file " 
-                                            ++ configFile ++ ": " ++ showPError err
-                              warn verbosity $ "Using default configuration."
-                              return defaultConf
-           where defaultConf' = defaultConf { configRemoteRepos = [] }
+loadConfig verbosity configFile = do
+  defaultConf <- defaultSavedConfig
+  minp <- readFileIfExists configFile
+  case minp of
+    Nothing -> do
+      notice verbosity $ "Config file " ++ configFile ++ " not found."
+      notice verbosity $ "Writing default configuration to " ++ configFile
+      writeDefaultConfigFile configFile defaultConf
+      return defaultConf
+    Just inp -> case parseBasicStanza configFieldDescrs defaultConf' inp of
+      ParseOk ws conf -> do
+        when (not $ null ws) $ warn verbosity $
+          unlines (map (showPWarning configFile) ws)
+        return conf
+      ParseFailed err -> do
+        let (line, msg) = locatedErrorMsg err
+        warn verbosity $
+            "Error parsing config file " ++ configFile
+          ++ maybe "" (\n -> ":" ++ show n) line ++ ": " ++ show msg
+        warn verbosity $ "Using default configuration."
+        return defaultConf
+
+      where defaultConf' = defaultConf { configRemoteRepos = [] }
+
 
 writeDefaultConfigFile :: FilePath -> SavedConfig -> IO ()
 writeDefaultConfigFile file cfg = 

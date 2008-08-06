@@ -1,34 +1,15 @@
-module Distribution.Client.ParseUtils where
+module Distribution.Client.ParseUtils (
+    parseBasicStanza,
+    showFields,
+  ) where
 
-import Distribution.Compat.ReadP
-         ( ReadP, readP_to_S, pfail, get, look, choice, (+++) )
-import Distribution.Package (PackageIdentifier(..), Dependency(..))
 import Distribution.ParseUtils 
-         ( Field(..), FieldDescr(..), ParseResult(..), PError
-         , field, liftField, readFields
-         , warning, lineNo, locatedErrorMsg)
-import Distribution.Text
-         ( Text(parse) )
-import Distribution.Version (Version(..), VersionRange(..))
-
-import Control.Monad (foldM, liftM)
-import Data.Char (isSpace, toLower)
+         ( Field(..), FieldDescr(..), ParseResult(..)
+         , readFields, warning, lineNo )
+ 
+import Control.Monad (foldM)
 import Data.Maybe (listToMaybe)
-import Text.PrettyPrint.HughesPJ (Doc, render, vcat, text, (<>), (<+>))
-
-
-showPError :: PError -> String
-showPError err = let (ml,msg) = locatedErrorMsg err
-                  in maybe "" (\l -> "On line " ++ show l ++ ": ") ml ++ msg
-
-
-
-readPToMaybe :: ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str, all isSpace s ]
-
-ignoreWarnings :: ParseResult a -> ParseResult a
-ignoreWarnings (ParseOk _ x) = ParseOk [] x
-ignoreWarnings r = r 
+import Text.PrettyPrint.HughesPJ (render, vcat, text, (<>), (<+>))
 
 parseBasicStanza :: [FieldDescr a] -> a -> String -> ParseResult a
 parseBasicStanza fields empty inp = 
@@ -51,32 +32,6 @@ setField _ x s =
 lookupFieldDescr :: [FieldDescr a] -> String -> Maybe (FieldDescr a)
 lookupFieldDescr fs n = listToMaybe [f | f@(FieldDescr name _ _) <- fs, name == n]
 
-boolField :: String -> (a -> Bool) -> (Bool -> a -> a) -> FieldDescr a
-boolField name g s = liftField g s $ field name showBool readBool
-  where
-    showBool :: Bool -> Doc
-    showBool True = text "true"
-    showBool False = text "false"
-
-    readBool :: ReadP r Bool
-    readBool = choice [ stringNoCase "true"  >> return True
-                      , stringNoCase "false" >> return False
-                      , stringNoCase "yes"   >> return True
-                      , stringNoCase "no"    >> return False]
-
 showFields :: [FieldDescr a] -> a -> String
-showFields fs x = render $ vcat [ text name <> text ":" <+> g x | FieldDescr name g _ <- fs]
-
-
-stringNoCase :: String -> ReadP r String
-stringNoCase this = look >>= scan this
- where
-  scan []     _                               = return this
-  scan (x:xs) (y:ys) | toLower x == toLower y = get >> scan xs ys
-  scan _      _                               = pfail
-
-parseDependencyOrPackageId :: ReadP r Dependency
-parseDependencyOrPackageId = parse +++ liftM pkgToDep parse
-  where pkgToDep p = case pkgVersion p of
-          Version [] _ -> Dependency (pkgName p) AnyVersion
-          version      -> Dependency (pkgName p) (ThisVersion version)
+showFields fields x = render $ vcat [ text name <> text ":" <+> getter x
+                                    | FieldDescr name getter _ <- fields ]
