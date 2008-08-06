@@ -30,12 +30,13 @@ import Distribution.Client.Types
 
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
-import Distribution.Simple.Command
+import Distribution.Simple.Command hiding (boolOpt)
+import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
          ( GlobalFlags(..), globalCommand
          , ConfigFlags(..), configureCommand )
 import Distribution.Simple.Setup
-         ( Flag(..), toFlag, flagToList, trueArg, optionVerbosity )
+         ( Flag(..), toFlag, flagToList, flagToMaybe, trueArg, optionVerbosity )
 import Distribution.Version
          ( Version(Version), VersionRange(..) )
 import Distribution.Package
@@ -197,6 +198,7 @@ instance Monoid ListFlags where
 -- | Install takes the same flags as configure along with a few extras.
 --
 data InstallFlags = InstallFlags {
+    installDocumentation:: Flag Bool,
     installDryRun       :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
@@ -207,6 +209,7 @@ data InstallFlags = InstallFlags {
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
+    installDocumentation= Flag False,
     installDryRun       = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
@@ -224,7 +227,12 @@ installCommand = configureCommand {
   commandOptions      = \showOrParseArgs ->
     liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
     liftOptionsSnd
-     ([ option [] ["dry-run"]
+     ([ option "" ["documentation"]
+          "building of documentation"
+          installDocumentation (\v flags -> flags { installDocumentation = v })
+          (boolOpt [] [])
+
+      , option [] ["dry-run"]
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
           trueArg
@@ -260,6 +268,7 @@ installCommand = configureCommand {
 instance Monoid InstallFlags where
   mempty = defaultInstallFlags
   mappend a b = InstallFlags {
+    installDocumentation= combine installDocumentation,
     installDryRun       = combine installDryRun,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
@@ -338,6 +347,9 @@ instance Monoid UploadFlags where
 -- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
+
+boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt  = Command.boolOpt  flagToMaybe Flag
 
 liftOptionsFst :: [OptionField a] -> [OptionField (a,b)]
 liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
