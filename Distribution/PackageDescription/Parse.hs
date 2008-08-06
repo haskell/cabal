@@ -791,14 +791,16 @@ writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription 
 
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
-  ppFields pkg pkgDescrFieldDescrs $$
-  ppCustomFields (customFieldsPD pkg) $$
-  (case library pkg of
-     Nothing  -> empty
-     Just lib -> ppFields lib libFieldDescrs) $$
-  vcat (map ppExecutable (executables pkg))
+     ppPackage pkg
+  $$ ppCustomFields (customFieldsPD pkg)
+  $$ (case library pkg of
+        Nothing  -> empty
+        Just lib -> ppLibrary lib)
+  $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
   where
-    ppExecutable exe = space $$ ppFields exe executableFieldDescrs
+    ppPackage    = ppFields pkgDescrFieldDescrs
+    ppLibrary    = ppFields libFieldDescrs
+    ppExecutable = ppFields executableFieldDescrs
 
 ppCustomFields :: [(String,String)] -> Doc
 ppCustomFields flds = vcat (map ppCustomField flds)
@@ -810,17 +812,17 @@ writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
 writeHookedBuildInfo fpath = writeFileAtomic fpath . showHookedBuildInfo
 
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo (mb_lib_bi, ex_bi) = render $
-  (case mb_lib_bi of
-     Nothing -> empty
-     Just bi -> ppFields bi binfoFieldDescrs) $$
-  vcat (map ppExeBuildInfo ex_bi)
+showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
+     (case mb_lib_bi of
+        Nothing -> empty
+        Just bi -> ppBuildInfo bi)
+  $$ vcat [    space
+            $$ text "executable:" <+> text name
+            $$ ppBuildInfo bi
+          | (name, bi) <- ex_bis ]
   where
-    ppExeBuildInfo (name, bi) =
-      space $$
-      text "executable:" <+> text name $$
-      ppFields bi binfoFieldDescrs $$
-      ppCustomFields (customFieldsBI bi)
+    ppBuildInfo bi = ppFields binfoFieldDescrs bi
+                  $$ ppCustomFields (customFieldsBI bi)
 
 -- replace all tabs used as indentation with whitespace, also return where
 -- tabs were found
