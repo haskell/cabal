@@ -69,7 +69,6 @@ import System.Directory (doesFileExist)
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
-import Distribution.Compat.ReadP hiding (get)
 
 import Distribution.ParseUtils
 import Distribution.PackageDescription
@@ -111,34 +110,34 @@ pkgDescrFieldDescrs =
            showFilePath           parseFilePathQ
            licenseFile            (\l pkg -> pkg{licenseFile=l})
  , simpleField "copyright"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            copyright              (\val pkg -> pkg{copyright=val})
  , simpleField "maintainer"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            maintainer             (\val pkg -> pkg{maintainer=val})
  , commaListField  "build-depends"
            disp                   parse
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            stability              (\val pkg -> pkg{stability=val})
  , simpleField "homepage"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            homepage               (\val pkg -> pkg{homepage=val})
  , simpleField "package-url"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
  , simpleField "synopsis"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            synopsis               (\val pkg -> pkg{synopsis=val})
  , simpleField "description"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            description            (\val pkg -> pkg{description=val})
  , simpleField "category"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            category               (\val pkg -> pkg{category=val})
  , simpleField "author"
-           showFreeText           (munch (const True))
+           showFreeText           parseFreeText
            author                 (\val pkg -> pkg{author=val})
  , listField "tested-with"
            showTestedWith         parseTestedWithQ
@@ -282,7 +281,7 @@ storeXFieldsBI _ _ = Nothing
 flagFieldDescrs :: [FieldDescr Flag]
 flagFieldDescrs =
     [ simpleField "description"
-        showFreeText     (munch (const True))
+        showFreeText     parseFreeText
         flagDescription  (\val fl -> fl{ flagDescription = val })
     , boolField "default"
         flagDefault      (\val fl -> fl{ flagDefault = val })
