@@ -33,8 +33,8 @@ import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI, uriToString )
 import Text.PrettyPrint.HughesPJ as Disp (text, render)
 
-import Distribution.Compat.ReadP as ReadP
-         ( ReadP, char, munch1, pfail )
+import qualified Distribution.Compat.ReadP as Parse
+         ( ReadP, char, munch1, pfail, option )
 import Distribution.Compiler (CompilerFlavor(..), defaultCompilerFlavor)
 import Distribution.ParseUtils
          ( FieldDescr(..), ppFields, simpleField, listField, liftField, field
@@ -220,25 +220,24 @@ configCabalInstallFieldDescrs =
                 (text . showRepo)                  parseRepo
                 configRemoteRepos (\rs cfg -> cfg { configRemoteRepos = rs })
     , simpleField "cachedir"
-                (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing parseFilePathQ)
+                (text . fromFlagOrDefault "")
+                (optional parseFilePathQ)
                 configCacheDir    (\d cfg -> cfg { configCacheDir = d })
     , simpleField "hackage-username"
-                (text . show . fromFlagOrDefault "" . fmap unUsername)
-                (fmap (fmap Username . emptyToNothing) parseTokenQ)
+                (text . fromFlagOrDefault "" . fmap unUsername)
+                (optional (fmap Username parseTokenQ))
                 configUploadUsername    (\d cfg -> cfg { configUploadUsername = d })
     , simpleField "hackage-password"
-                (text . show . fromFlagOrDefault "" . fmap unPassword)
-                (fmap (fmap Password . emptyToNothing) parseTokenQ)
+                (text . fromFlagOrDefault "" . fmap unPassword)
+                (optional (fmap Password parseTokenQ))
                 configUploadPassword    (\d cfg -> cfg { configUploadPassword = d })
     , simpleField "symlink-bindir"
-                (text . show . fromFlagOrDefault "")
-                (fmap emptyToNothing parseFilePathQ)
+                (text . fromFlagOrDefault "")
+                (optional parseFilePathQ)
                 configSymlinkBinDir     (\d cfg -> cfg { configSymlinkBinDir = d })
     ]
-    where emptyToNothing "" = mempty
-          emptyToNothing f  = toFlag f
-                              
+    where
+      optional = Parse.option NoFlag . fmap Flag
 -- | The subset of the config file fields that we write out
 -- if the config file is missing.
 configWriteFieldDescrs :: [FieldDescr SavedConfig]
@@ -278,7 +277,7 @@ installDirField :: String
                 -> FieldDescr (InstallDirs (Flag PathTemplate))
 installDirField name get set = 
     liftField get set $
-      field name (text . fromPathTemplate . fromFlag)
+      field name (text . fromPathTemplate . fromFlagOrDefault (toPathTemplate ""))
                  (fmap (toFlag . toPathTemplate) parseFilePathQ)
 
 modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
@@ -288,11 +287,12 @@ showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"
              ++ uriToString id (remoteRepoURI repo) []
 
-parseRepo :: ReadP r RemoteRepo
-parseRepo = do name <- munch1 (\c -> isAlphaNum c || c `elem` "_-.")
-               char ':'
-               uriStr <- munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?")
-               uri <- maybe ReadP.pfail return (parseAbsoluteURI uriStr)
+parseRepo :: Parse.ReadP r RemoteRepo
+parseRepo = do name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
+               Parse.char ':'
+               uriStr <- Parse.munch1 (\c -> isAlphaNum c
+                                          || c `elem` "+-=._/*()@'$:;&!?")
+               uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
                return $ RemoteRepo {
                  remoteRepoName = name,
                  remoteRepoURI  = uri
