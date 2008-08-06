@@ -99,27 +99,34 @@ symlinkBinaries :: ConfigFlags
 symlinkBinaries configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
-    Just symlinkBinDir -> do
+    Just symlinkBinDir
+           | null exes -> return []
+           | otherwise -> do
       publicBinDir  <- canonicalizePath symlinkBinDir
+--    TODO: do we want to do this here? :
+--      createDirectoryIfMissing True publicBinDir
       fmap catMaybes $ sequence
-        [ let publicExeName  = PackageDescription.exeName exe
+        [ do privateBinDir <- pkgBinDir pkg
+             ok <- symlinkBinary
+                     publicBinDir  privateBinDir
+                     publicExeName privateExeName
+             if ok
+               then return Nothing
+               else return (Just (pkgid, publicExeName,
+                                  privateBinDir </> privateExeName))
+        | (pkg, exe) <- exes
+        , let publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
+              pkgid  = packageId pkg
               prefix = substTemplate pkgid prefixTemplate
-              suffix = substTemplate pkgid suffixTemplate
-          in do privateBinDir <- pkgBinDir pkg
-                ok <- symlinkBinary
-                        publicBinDir  privateBinDir
-                        publicExeName privateExeName
-                if ok
-                  then return Nothing
-                  else return (Just (pkgid, publicExeName,
-                                     privateBinDir </> privateExeName))
-        | InstallPlan.Installed cpkg _ <- InstallPlan.toList plan
-        , let pkg   = pkgDescription cpkg
-              pkgid = packageId pkg
-        , exe <- PackageDescription.executables pkg
-        , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
+              suffix = substTemplate pkgid suffixTemplate ]
   where
+    exes =
+      [ (pkg, exe)
+      | InstallPlan.Installed cpkg _ <- InstallPlan.toList plan
+      , let pkg   = pkgDescription cpkg
+      , exe <- PackageDescription.executables pkg
+      , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
     pkgDescription :: ConfiguredPackage -> PackageDescription
     pkgDescription (ConfiguredPackage (AvailablePackage _ pkg _) flags _) =
