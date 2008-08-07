@@ -123,7 +123,6 @@ import System.Directory         ( removeFile, renameFile,
                                   getTemporaryDirectory,
                                   Permissions(..),
                                   getPermissions, setPermissions )
-import System.Exit              ( ExitCode(..) )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
@@ -321,20 +320,11 @@ getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
   sequence
     [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
-                  ["describe", "*", packageDbGhcPkgFlag packagedb]
-           `catchExit` \e ->
-               case e of
-               ExitFailure 2 ->
-                   -- exit code 2 means no packages found
-                   return ""
-               _ -> die $
-                      "ghc-pkg describe * failed. If you are using ghc-6.9 "
-                   ++ "and have an empty user package database then this "
-                   ++ "is probably due to ghc bug #2201. The workaround is to "
-                   ++ "register at least one package in the user package db."
+                  ["dump", packageDbGhcPkgFlag packagedb]
+           `catchExit` \_ -> die $ "ghc-pkg dump failed"
          case parsePackages str of
            Left ok -> return (packagedb, ok)
-           _       -> die "failed to parse output of 'ghc-pkg describe *'"
+           _       -> die "failed to parse output of 'ghc-pkg dump'"
     | packagedb <- packagedbs ]
 
   where
@@ -348,13 +338,13 @@ getInstalledPackages' verbosity packagedbs conf
     Just ghcVersion = programVersion ghcProg
 
     splitPkgs :: String -> [String]
-    splitPkgs = map unlines . split [] . lines
-      where split  [] [] = []
-            split acc [] = [reverse acc]
-            split acc (l@('n':'a':'m':'e':':':_):ls)
-              | null acc     =               split (l:[])  ls
-              | otherwise    = reverse acc : split (l:[])  ls
-            split acc (l:ls) =               split (l:acc) ls
+    splitPkgs = map unlines . splitWith ("---" ==) . lines
+      where
+        splitWith :: (a -> Bool) -> [a] -> [[a]]
+        splitWith p xs = ys : case zs of
+                           []   -> []
+                           _:ws -> splitWith p ws
+          where (ys,zs) = break p xs
 
     packageDbGhcPkgFlag GlobalPackageDB          = "--global"
     packageDbGhcPkgFlag UserPackageDB            = "--user"
