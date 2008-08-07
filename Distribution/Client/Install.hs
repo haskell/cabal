@@ -48,10 +48,8 @@ import Distribution.Client.Types as Available
          , DocsResult(..), TestsResult(..) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
-import Distribution.Client.Reporting
-         ( writeInstallPlanBuildReports )
-import Distribution.Client.Logging
-         ( writeInstallPlanBuildLog )
+import qualified Distribution.Client.BuildReports.Storage as BuildReports
+         ( storeAnonymous, storeLocal, fromInstallPlan )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import Paths_cabal_install (getBinDir)
@@ -158,8 +156,10 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags' installFlags
                                        pkg mpath useLogFile
-        writeInstallPlanBuildReports installPlan'
-        writeInstallPlanBuildLog     installPlan'
+
+        let buildReports = BuildReports.fromInstallPlan installPlan'
+        BuildReports.storeAnonymous buildReports
+        BuildReports.storeLocal     buildReports
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
