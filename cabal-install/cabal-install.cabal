@@ -36,6 +36,9 @@ Executable cabal
     -- although it is expensive, we want to catch problems early:
     Ghc-Options:        -Wall -fno-ignore-asserts
     Other-Modules:
+        Distribution.Client.BuildReports.Anonymous
+        Distribution.Client.BuildReports.Storage
+        Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
         Distribution.Client.Config
         Distribution.Client.Dependency
@@ -52,9 +55,7 @@ Executable cabal
         Distribution.Client.Install
         Distribution.Client.InstallPlan
         Distribution.Client.List
-        Distribution.Client.Logging
         Distribution.Client.ParseUtils
-        Distribution.Client.Reporting
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
