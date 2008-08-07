@@ -31,8 +31,8 @@ import Distribution.Client.Types
 import qualified Distribution.Client.Types as BR
          ( BuildResult, BuildFailure(..), BuildSuccess(..)
          , DocsResult(..), TestsResult(..) )
-import Distribution.Client.ParseUtils
-         ( parseFields )
+import Distribution.Client.Utils
+         ( mergeBy, MergeResult(..) )
 import qualified Paths_cabal_install (version)
 
 import Distribution.Package
@@ -48,17 +48,21 @@ import Distribution.Compiler
 import qualified Distribution.Text as Text
          ( Text(disp, parse) )
 import Distribution.ParseUtils
-         ( FieldDescr(..), ParseResult(..)
-         , simpleField, listField, ppFields, locatedErrorMsg )
+         ( FieldDescr(..), ParseResult(..), Field(..)
+         , simpleField, listField, ppFields, readFields
+         , syntaxError, locatedErrorMsg )
+import Distribution.Simple.Utils
+         ( comparing )
+
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, pfail, munch1, char, option, skipSpaces )
+         ( ReadP, pfail, munch1, skipSpaces )
 import qualified Text.PrettyPrint.HughesPJ as Disp
          ( Doc, render, char, text )
 import Text.PrettyPrint.HughesPJ
          ( (<+>), (<>) )
 
 import Data.List
-         ( unfoldr )
+         ( unfoldr, sortBy )
 import Data.Char as Char
          ( isAlpha, isAlphaNum )
 
@@ -178,9 +182,34 @@ initialBuildReport = BuildReport {
 -- Parsing
 
 parse :: String -> Either String BuildReport
-parse s = case parseFields fieldDescrs initialBuildReport s of
+parse s = case parseFields s of
   ParseFailed perror -> Left  msg where (_, msg) = locatedErrorMsg perror
   ParseOk   _ report -> Right report
+
+--FIXME: this does not allow for optional or repeated fields
+parseFields :: String -> ParseResult BuildReport
+parseFields input = do
+  fields <- mapM extractField =<< readFields input
+  let merged = mergeBy (\desc (_,name,_) -> compare (fieldName desc) name)
+                       sortedFieldDescrs
+                       (sortBy (comparing (\(_,name,_) -> name)) fields)
+  checkMerged initialBuildReport merged
+
+  where
+    extractField :: Field -> ParseResult (Int, String, String)
+    extractField (F line name value)  = return (line, name, value)
+    extractField (Section line _ _ _) = syntaxError line "Unrecognized stanza"
+    extractField (IfBlock line _ _ _) = syntaxError line "Unrecognized stanza"
+
+    checkMerged report [] = return report
+    checkMerged report (merged:remaining) = case merged of
+      InBoth fieldDescr (line, _name, value) -> do
+        report' <- fieldSet fieldDescr line value report
+        checkMerged report' remaining
+      OnlyInRight (line, name, _) ->
+        syntaxError line ("Unrecognized field " ++ name)
+      OnlyInLeft  fieldDescr ->
+        fail ("Missing field " ++ fieldName fieldDescr)
 
 parseList :: String -> [BuildReport]
 parseList str =
@@ -226,15 +255,19 @@ fieldDescrs =
                                  testsOutcome   (\v r -> r { testsOutcome = v })
  ]
 
+sortedFieldDescrs :: [FieldDescr BuildReport]
+sortedFieldDescrs = sortBy (comparing fieldName) fieldDescrs
+
 dispFlag :: (FlagName, Bool) -> Disp.Doc
 dispFlag (FlagName name, True)  =                  Disp.text name
 dispFlag (FlagName name, False) = Disp.char '-' <> Disp.text name
 
 parseFlag :: Parse.ReadP r (FlagName, Bool)
 parseFlag = do
-  value <- Parse.option True (Parse.char '-' >> return False)
-  name  <- Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
-  return (FlagName name, value)
+  name <- Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+  case name of
+    ('-':flag) -> return (FlagName flag, False)
+    flag       -> return (FlagName flag, True)
 
 instance Text.Text InstallOutcome where
   disp (DependencyFailed pkgid) = Disp.text "DependencyFailed" <+> Text.disp pkgid
