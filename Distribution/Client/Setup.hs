@@ -21,6 +21,7 @@ module Distribution.Client.Setup
     , fetchCommand
     , checkCommand
     , uploadCommand, UploadFlags(..)
+    , reportCommand
 
     , parsePackageArgs
     ) where
@@ -138,7 +139,17 @@ checkCommand = CommandUI {
     commandSynopsis     = "Check the package for common mistakes",
     commandDescription  = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
-    commandDefaultFlags = mempty,
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = mempty
+  }
+
+reportCommand :: CommandUI (Flag Verbosity)
+reportCommand = CommandUI {
+    commandName         = "report",
+    commandSynopsis     = "Upload build reports to a remote server.",
+    commandDescription  = Nothing,
+    commandUsage        = \pname -> "Usage: " ++ pname ++ " report\n",
+    commandDefaultFlags = toFlag normal,
     commandOptions      = mempty
   }
 
