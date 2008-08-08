@@ -204,6 +204,7 @@ data InstallFlags = InstallFlags {
     installRootCmd      :: Flag String,
     installCabalVersion :: Flag Version,
     installLogFile      :: Flag FilePath,
+    installBuildReports :: Flag Bool,
     installSymlinkBinDir:: Flag FilePath
   }
 
@@ -215,6 +216,7 @@ defaultInstallFlags = InstallFlags {
     installRootCmd      = mempty,
     installCabalVersion = mempty,
     installLogFile      = mempty,
+    installBuildReports = Flag False,
     installSymlinkBinDir= mempty
   }
 
@@ -255,6 +257,11 @@ installCommand = configureCommand {
           installLogFile (\v flags -> flags { installLogFile = v })
           (reqArg' "FILE" toFlag flagToList)
 
+      , option [] ["build-reports"]
+          "Generate detailed build reports. (overrides --log-builds)"
+          installBuildReports (\v flags -> flags { installBuildReports = v })
+          trueArg
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -274,6 +281,7 @@ instance Monoid InstallFlags where
     installRootCmd      = combine installRootCmd,
     installCabalVersion = combine installCabalVersion,
     installLogFile      = combine installLogFile,
+    installBuildReports = combine installBuildReports,
     installSymlinkBinDir= combine installSymlinkBinDir
   }
     where combine field = field a `mappend` field b
