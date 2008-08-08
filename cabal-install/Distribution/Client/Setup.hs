@@ -150,7 +150,7 @@ reportCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " report\n",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = mempty
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 -- ------------------------------------------------------------
