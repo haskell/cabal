@@ -51,7 +51,7 @@ postBuildReport :: URI -> BuildReport -> BrowserAction BuildReportId
 postBuildReport uri buildReport = do
   setAllowRedirects False
   (_, response) <- request Request {
-    rqURI     = uri,
+    rqURI     = uri { uriPath = "/buildreports" },
     rqMethod  = POST,
     rqHeaders = [Header HdrContentType   ("text/plain"),
                  Header HdrContentLength (show (length body)),
