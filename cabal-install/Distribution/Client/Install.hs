@@ -22,7 +22,7 @@ import Data.Maybe
 import Control.Exception as Exception
          ( handle, Exception )
 import Control.Monad
-         ( when, unless )
+         ( when, unless, forM_ )
 import System.Directory
          ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing )
 import System.FilePath
@@ -43,15 +43,16 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
          ( InstallFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Config
-         ( defaultLogsDir )
+         ( defaultLogsDir, defaultCabalDir )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo, ConfiguredPackage(..)
+         , AvailablePackageSource(..), Repo(..), ConfiguredPackage(..)
          , BuildResult, BuildFailure(..), BuildSuccess(..)
-         , DocsResult(..), TestsResult(..) )
+         , DocsResult(..), TestsResult(..), RemoteRepo(..) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
@@ -166,6 +167,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         let buildReports = BuildReports.fromInstallPlan installPlan'
         BuildReports.storeAnonymous buildReports
         BuildReports.storeLocal     buildReports
+        storeDetailedBuildReports logsDir buildReports
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
@@ -200,6 +202,20 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
                      else Cabal.flagToMaybe (installRootCmd installFlags),
       libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
     }
+
+storeDetailedBuildReports :: FilePath -> [(BuildReports.BuildReport, Repo)] -> IO ()
+storeDetailedBuildReports logsDir reports
+    = forM_ reports $ \(report,repo) ->
+      do buildLog <- readFile (logsDir </> display (BuildReports.package report) <.> "log")
+         case repoKind repo of
+           Left remoteRepo
+                -> do dotCabal <- defaultCabalDir
+                      let destDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
+                          dest = destDir </> display (BuildReports.package report) <.> "log"
+                      createDirectoryIfMissing True destDir -- FIXME
+                      writeFile dest (show (BuildReports.show report, buildLog))
+           Right{} -> return ()
+         
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
