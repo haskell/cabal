@@ -17,14 +17,16 @@ module Distribution.Client.Install (
 
 import Data.List
          ( unfoldr )
+import Data.Maybe
+         ( isJust )
 import Control.Exception as Exception
          ( handle, Exception )
 import Control.Monad
          ( when, unless )
 import System.Directory
-         ( getTemporaryDirectory, doesFileExist )
+         ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing )
 import System.FilePath
-         ( (</>), (<.>) )
+         ( (</>), (<.>), takeDirectory )
 import System.IO
          ( openFile, IOMode(AppendMode) )
 
@@ -40,6 +42,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
          ( InstallFlags(..), configureCommand, filterConfigureFlags )
+import Distribution.Client.Config
+         ( defaultLogsDir )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
@@ -83,7 +87,8 @@ import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
-import Distribution.Verbosity (Verbosity, showForCabal, verbose)
+import Distribution.Verbosity as Verbosity
+         ( Verbosity, showForCabal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 data InstallMisc = InstallMisc {
@@ -149,13 +154,14 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         printDryRun verbosity installPlan
 
       unless dryRun $ do
+        logsDir <- defaultLogsDir
         installPlan' <-
           executeInstallPlan installPlan $ \cpkg ->
             installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
               installAvailablePackage verbosity apkg $ \pkg mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags' installFlags
-                                       pkg mpath useLogFile
+                                       pkg mpath (useLogFile logsDir)
 
         let buildReports = BuildReports.fromInstallPlan installPlan'
         BuildReports.storeAnonymous buildReports
@@ -175,9 +181,13 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    useLogFile :: Maybe (PackageIdentifier -> FilePath)
-    useLogFile = fmap substLogFileName
-                   (Cabal.flagToMaybe (installLogFile installFlags))
+    useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
+    useLogFile logsDir = fmap substLogFileName logFileTemplate
+      where
+        logFileTemplate
+          | Cabal.fromFlagOrDefault False (installBuildReports installFlags)
+	  = Just $ logsDir </> "$pkgid" <.> "log"
+          | otherwise = Cabal.flagToMaybe (installLogFile installFlags)
     substLogFileName path pkg = fromPathTemplate
                               . substPathTemplate env
                               . toPathTemplate
@@ -375,7 +385,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   -- Configure phase
   onFailure ConfigureFailed $ do
-    setup configureCommand (filterConfigureFlags configFlags)
+    setup configureCommand configureFlags
 
   -- Build phase
     onFailure BuildFailed $ do
@@ -399,26 +409,36 @@ installUnpackedPackage verbosity scriptOptions miscOptions
         return (Right (BuildOk docsResult testsResult))
 
   where
+    configureFlags   = filterConfigureFlags configFlags {
+      Cabal.configVerbosity = Cabal.toFlag verbosity'
+    } 
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = Cabal.emptyBuildFlags {
       Cabal.buildDistPref  = Cabal.configDistPref configFlags,
-      Cabal.buildVerbosity = Cabal.toFlag verbosity
+      Cabal.buildVerbosity = Cabal.toFlag verbosity'
     }
     shouldHaddock    = Cabal.fromFlagOrDefault False
                          (installDocumentation installConfigFlags)
     haddockFlags _   = Cabal.emptyHaddockFlags {
       Cabal.haddockDistPref  = Cabal.configDistPref configFlags,
-      Cabal.haddockVerbosity = Cabal.toFlag verbosity
+      Cabal.haddockVerbosity = Cabal.toFlag verbosity'
     }
     installFlags _   = Cabal.emptyInstallFlags {
       Cabal.installDistPref  = Cabal.configDistPref configFlags,
-      Cabal.installVerbosity = Cabal.toFlag verbosity
+      Cabal.installVerbosity = Cabal.toFlag verbosity'
     }
+    verbosity' | isJust useLogFile = max Verbosity.verbose verbosity
+               | otherwise         = verbosity
     setup cmd flags  = do
       logFileHandle <- case useLogFile of
         Nothing          -> return Nothing
-        Just logFileName -> fmap Just $
-                              openFile (logFileName (packageId pkg)) AppendMode
+        Just mkLogFileName -> do
+	  let logFileName = mkLogFileName (packageId pkg)
+	      logDir      = takeDirectory logFileName
+	  unless (null logDir) $ createDirectoryIfMissing True logDir
+	  logFile <- openFile logFileName AppendMode
+	  return (Just logFile)
+
       setupWrapper verbosity
         scriptOptions { useLoggingHandle = logFileHandle
                       , useWorkingDir    = workingDir }
