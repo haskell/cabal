@@ -1,13 +1,19 @@
 -- This is a quick hack for uploading packages to Hackage.
 -- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
 
-module Distribution.Client.Upload (check, upload) where
+module Distribution.Client.Upload (check, upload, report) where
 
-import Distribution.Client.Types (Username(..), Password(..))
+import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
 import Distribution.Client.HttpUtils (proxy)
 
-import Distribution.Simple.Utils (debug, notice, warn)
+import Distribution.Simple.Utils (debug, notice, warn, info)
 import Distribution.Verbosity (Verbosity)
+import Distribution.Text (display)
+import Distribution.Client.Config
+
+import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
+import qualified Distribution.Client.BuildReports.Upload as BuildReport
+import qualified Distribution.Client.BuildReports.Storage as BuildReport
 
 import Network.Browser
          ( BrowserAction, browse, request
@@ -24,7 +30,9 @@ import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
                         ,openBinaryFile, IOMode(ReadMode), hGetContents)
 import Control.Exception (bracket)
 import System.Random    (randomRIO)
-
+import System.FilePath
+import System.Directory
+import Control.Monad (forM_)
 
 
 --FIXME: how do we find this path for an arbitrary hackage server?
@@ -67,6 +75,25 @@ upload verbosity mUsername mPassword paths = do
       bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
         hSetEcho stdin False  -- no echoing for entering the password
         fmap Password getLine
+
+report :: Verbosity -> [Repo] -> IO ()
+report verbosity repos
+    = forM_ repos $ \repo ->
+      case repoKind repo of
+        Left remoteRepo
+            -> do dotCabal <- defaultCabalDir
+                  let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
+                  contents <- getDirectoryContents srcDir
+                  forM_ contents $ \logFile ->
+                      do inp <- readFile (srcDir </> logFile)
+                         let (reportStr, buildLog) = read inp
+                         case BuildReport.parse reportStr of
+                           Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
+                           Right report ->
+                               do info verbosity $ "Uploading report for " ++ display (BuildReport.package report)
+                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report, buildLog)]
+                                  return ()
+        Right{} -> return ()
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
