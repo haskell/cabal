@@ -39,7 +39,7 @@ import Distribution.Client.Update           (update)
 import Distribution.Client.Fetch            (fetch)
 import Distribution.Client.Check as Check   (check)
 --import Distribution.Client.Clean            (clean)
-import Distribution.Client.Upload as Upload (upload, check)
+import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
 
 import Distribution.Verbosity   (Verbosity, normal)
@@ -96,6 +96,7 @@ mainWorker args =
       ,uploadCommand          `commandAddAction` uploadAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
+      ,reportCommand          `commandAddAction` reportAction
       ,wrapperAction (Cabal.buildCommand defaultProgramConfiguration)
                      Cabal.buildVerbosity    Cabal.buildDistPref
       ,wrapperAction Cabal.copyCommand
@@ -270,3 +271,14 @@ sdistAction sflags extraArgs = do
   unless (null extraArgs) $ do
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   sdist sflags
+
+reportAction :: Flag Verbosity -> [String] -> IO ()
+reportAction verbosityFlag extraArgs = do
+  unless (null extraArgs) $ do
+    die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
+
+  configFile <- defaultConfigFile --FIXME
+  let verbosity = fromFlag verbosityFlag
+  config <- loadConfig verbosity configFile
+
+  Upload.report verbosity (configRepos config)
