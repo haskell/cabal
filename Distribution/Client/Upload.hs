@@ -84,7 +84,7 @@ report verbosity repos
             -> do dotCabal <- defaultCabalDir
                   let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
                   contents <- getDirectoryContents srcDir
-                  forM_ contents $ \logFile ->
+                  forM_ (filter (\c -> takeExtension c == ".log") contents) $ \logFile ->
                       do inp <- readFile (srcDir </> logFile)
                          let (reportStr, buildLog) = read inp
                          case BuildReport.parse reportStr of
