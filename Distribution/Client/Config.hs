@@ -18,6 +18,7 @@ module Distribution.Client.Config
     , defaultConfigFile
     , defaultCabalDir
     , defaultCacheDir
+    , defaultLogsDir
     , loadConfig
     , showConfig
     ) where
@@ -118,6 +119,10 @@ defaultConfigFile = do dir <- defaultCabalDir
 defaultCacheDir :: IO FilePath
 defaultCacheDir = do dir <- defaultCabalDir
                      return $ dir </> "packages"
+
+defaultLogsDir :: IO FilePath
+defaultLogsDir = do dir <- defaultCabalDir
+                    return $ dir </> "logs"
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
