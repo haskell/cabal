@@ -86,12 +86,12 @@ report verbosity repos
                   contents <- getDirectoryContents srcDir
                   forM_ (filter (\c -> takeExtension c == ".log") contents) $ \logFile ->
                       do inp <- readFile (srcDir </> logFile)
-                         let (reportStr, buildLog) = read inp
+                         let (reportStr, buildLog) = read inp :: (String,String)
                          case BuildReport.parse reportStr of
                            Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
                            Right report ->
                                do info verbosity $ "Uploading report for " ++ display (BuildReport.package report)
-                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report, buildLog)]
+                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report, Just buildLog)]
                                   return ()
         Right{} -> return ()
 
