@@ -47,6 +47,8 @@ import Data.Maybe
          ( catMaybes )
 import System.FilePath
          ( (</>) )
+import System.Directory
+         ( createDirectoryIfMissing )
 
 storeAnonymous :: [(BuildReport, Repo)] -> IO ()
 storeAnonymous reports = sequence_
@@ -77,6 +79,7 @@ storeLocal :: [(BuildReport, Repo)] -> IO ()
 storeLocal reports = do
   logsDir <- defaultLogsDir
   let file = logsDir </> "build.log"
+  createDirectoryIfMissing True logsDir
   appendFile file (concatMap (format . fst) reports)
   --TODO: make this concurrency safe, either lock the report file or make sure
   -- the writes for each report are atomic (under 4k and flush at boundaries)
