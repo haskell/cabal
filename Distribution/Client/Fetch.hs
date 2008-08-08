@@ -41,7 +41,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Configure
          ( getInstalledPackages )
 import Distribution.Simple.Utils
-         ( die, notice, debug, setupMessage, intercalate
+         ( die, notice, debug, setupMessage
          , copyFileVerbose, writeFileAtomic )
 import Distribution.System
          ( buildOS, buildArch )
@@ -56,6 +56,8 @@ import System.Directory
          ( doesFileExist, createDirectoryIfMissing )
 import System.FilePath
          ( (</>), (<.>) )
+import qualified System.FilePath.Posix as FilePath.Posix
+         ( combine, joinPath )
 import Network.URI
          ( URI(uriScheme, uriPath) )
 import Network.HTTP
@@ -103,7 +105,7 @@ downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
 downloadIndex verbosity repo cacheDir = do
   let uri = (remoteRepoURI repo) {
               uriPath = uriPath (remoteRepoURI repo)
-                     ++ "/" ++ "00-index.tar.gz"
+	                  `FilePath.Posix.combine` "00-index.tar.gz"
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
@@ -170,8 +172,9 @@ packageDir repo pkgid = repoLocalDir repo
 packageURI :: RemoteRepo -> PackageIdentifier -> URI
 packageURI repo pkgid =
   (remoteRepoURI repo) {
-    uriPath = intercalate "/"
-      [uriPath (remoteRepoURI repo) ,
-       pkgName pkgid, display (pkgVersion pkgid),
-       display pkgid ++ ".tar.gz"]
+    uriPath = FilePath.Posix.joinPath
+      [uriPath (remoteRepoURI repo)
+      ,"packages"
+      ,display pkgid
+      ,"tarball"]
   }
