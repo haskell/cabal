@@ -1,6 +1,8 @@
 # -----------------------------------------------------------------------------
 # Makefile template starts here.
 
+default: all
+
 GHC_OPTS += -i$(odir)
 
 # For adding options on the command-line
