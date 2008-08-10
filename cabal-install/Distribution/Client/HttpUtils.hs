@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists 
 -----------------------------------------------------------------------------
-module Distribution.Client.HttpUtils (getHTTP, proxy) where
+module Distribution.Client.HttpUtils (getHTTP, proxy, isOldHackageURI) where
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
@@ -34,6 +34,8 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (warn, debug)
 import Distribution.Text
          ( display )
+import qualified System.FilePath.Posix as FilePath.Posix
+         ( splitDirectories )
 
 -- FIXME: all this proxy stuff is far too complicated, especially parsing
 -- the proxy strings. Network.Browser should have a way to pick up the
@@ -133,3 +135,11 @@ getHTTP verbosity uri = do
                                 setProxy p
                                 request req
                  return (Right resp)
+
+-- Utility function for legacy support.
+isOldHackageURI :: URI -> Bool
+isOldHackageURI uri
+    = case uriAuthority uri of
+        Just (URIAuth {uriRegName = "hackage.haskell.org"}) ->
+            FilePath.Posix.splitDirectories (uriPath uri) == ["/","packages","archive"]
+        _ -> False

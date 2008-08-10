@@ -30,7 +30,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.HttpUtils (getHTTP)
+import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
 
 import Distribution.Package
          ( PackageIdentifier(..) )
@@ -59,7 +59,7 @@ import System.FilePath
 import qualified System.FilePath.Posix as FilePath.Posix
          ( combine, joinPath )
 import Network.URI
-         ( URI(uriScheme, uriPath) )
+         ( URI(uriPath, uriScheme) )
 import Network.HTTP
          ( ConnError(..), Response(..) )
 
@@ -170,6 +170,14 @@ packageDir repo pkgid = repoLocalDir repo
 
 -- | Generate the URI of the tarball for a given package.
 packageURI :: RemoteRepo -> PackageIdentifier -> URI
+packageURI repo pkgid | isOldHackageURI (remoteRepoURI repo) =
+  (remoteRepoURI repo) {
+    uriPath = FilePath.Posix.joinPath
+      [uriPath (remoteRepoURI repo)
+      ,pkgName pkgid
+      ,display (pkgVersion pkgid)
+      ,display pkgid <.> "tar.gz"]
+  }
 packageURI repo pkgid =
   (remoteRepoURI repo) {
     uriPath = FilePath.Posix.joinPath
