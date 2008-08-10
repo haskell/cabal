@@ -235,7 +235,8 @@ uploadAction flags extraArgs = do
   checkTarFiles tarfiles
   if fromFlag (uploadCheck flags)
     then Upload.check  verbosity tarfiles
-    else upload verbosity 
+    else upload verbosity
+                (configRepos config)
                 (flagToMaybe $ configUploadUsername config
                      `mappend` uploadUsername flags)
                 (flagToMaybe $ configUploadPassword config
