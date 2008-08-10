@@ -9,30 +9,17 @@ module Distribution.Client.BuildReports.Upload
     , putBuildLog
     ) where
 
-import Distribution.Client.Types (Username(..), Password(..))
-import Distribution.Client.HttpUtils (proxy)
-
-import Distribution.Simple.Utils (debug, notice, warn)
-import Distribution.Verbosity (Verbosity)
-
 import Network.Browser
-         ( BrowserAction, browse, request
-         , Authority(..), addAuthority, setAuthorityGen
-         , setOutHandler, setErrHandler, setProxy
-         , setAllowRedirects )
+         ( BrowserAction, request, setAllowRedirects )
 import Network.HTTP
          ( Header(..), HeaderName(..)
          , Request(..), RequestMethod(..), Response(..) )
-import Network.URI (URI, uriPath, parseURI,parseRelativeReference, relativeTo)
+import Network.URI (URI, uriPath, parseRelativeReference, relativeTo)
 
-import Data.Char        (intToDigit)
-import Numeric          (showHex)
-import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
-                        ,openBinaryFile, IOMode(ReadMode), hGetContents)
-import Control.Exception (bracket)
 import Control.Monad
-import System.Random    (randomRIO)
+         ( forM_ )
 import System.FilePath.Posix
+         ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
 
