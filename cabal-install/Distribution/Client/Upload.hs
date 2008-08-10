@@ -20,7 +20,7 @@ import Network.Browser
          , Authority(..), addAuthority, setAuthorityGen
          , setOutHandler, setErrHandler, setProxy )
 import Network.HTTP
-         ( Header(..), HeaderName(..)
+         ( Header(..), HeaderName(..), findHeader
          , Request(..), RequestMethod(..), Response(..) )
 import Network.URI (URI(uriPath), parseURI)
 
@@ -123,7 +123,9 @@ handlePackage verbosity uri auth path =
        (x,y,z) -> do notice verbosity $ "ERROR: " ++ path ++ ": " 
                                      ++ map intToDigit [x,y,z] ++ " "
                                      ++ rspReason resp
-                     debug verbosity $ rspBody resp
+                     case findHeader HdrContentType resp of
+                       Just "text/plain" -> notice verbosity $ rspBody resp
+                       _                 -> debug verbosity $ rspBody resp
 
 mkRequest :: URI -> FilePath -> IO Request
 mkRequest uri path = 
