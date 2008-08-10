@@ -4,7 +4,7 @@
 module Distribution.Client.Upload (check, upload, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (proxy)
+import Distribution.Client.HttpUtils (proxy, isOldHackageURI)
 
 import Distribution.Simple.Utils (debug, notice, warn, info)
 import Distribution.Verbosity (Verbosity)
@@ -22,7 +22,7 @@ import Network.Browser
 import Network.HTTP
          ( Header(..), HeaderName(..)
          , Request(..), RequestMethod(..), Response(..) )
-import Network.URI (URI, parseURI)
+import Network.URI (URI(uriPath), parseURI)
 
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
@@ -31,22 +31,25 @@ import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
 import Control.Exception (bracket)
 import System.Random    (randomRIO)
 import System.FilePath
+import qualified System.FilePath.Posix as FilePath.Posix
 import System.Directory
 import Control.Monad (forM_)
 
 
 --FIXME: how do we find this path for an arbitrary hackage server?
 -- is it always at some fixed location relative to the server root?
-uploadURI :: URI
-Just uploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
+legacyUploadURI :: URI
+Just legacyUploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
 
 checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
 
 
-upload :: Verbosity -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
-upload verbosity mUsername mPassword paths = do
-
+upload :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
+upload verbosity repos mUsername mPassword paths = do
+          let uploadURI = if isOldHackageURI targetRepoURI
+                          then legacyUploadURI
+                          else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
           Username username <- maybe promptUsername return mUsername
           Password password <- maybe promptPassword return mPassword
           let auth = addAuthority AuthBasic {
@@ -55,12 +58,11 @@ upload verbosity mUsername mPassword paths = do
                        auPassword = password,
                        auSite     = uploadURI
                      }
-
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
-
   where
+    targetRepoURI = remoteRepoURI $ selectUploadRepo [ remoteRepo | Left remoteRepo <- map repoKind repos ]
     promptUsername :: IO Username
     promptUsername = do
       putStr "Hackage username: "
@@ -75,6 +77,8 @@ upload verbosity mUsername mPassword paths = do
       bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
         hSetEcho stdin False  -- no echoing for entering the password
         fmap Password getLine
+
+selectUploadRepo = last -- Use head?
 
 report :: Verbosity -> [Repo] -> IO ()
 report verbosity repos
