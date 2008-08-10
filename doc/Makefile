@@ -20,6 +20,9 @@ DOC_SUBDIR=libraries/Cabal/doc
 XML_DOC = Cabal
 INSTALL_XML_DOC = $(XML_DOC)
 
+binary-dist:
+	@:
+
 include $(TOP)/mk/target.mk
 
 endif
