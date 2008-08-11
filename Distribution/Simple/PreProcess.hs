@@ -71,7 +71,7 @@ import qualified Distribution.Simple.PackageSet as PackageSet
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.BuildPaths (autogenModulesDir)
+import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , die, setupMessage, intercalate, copyFileVerbose
@@ -319,6 +319,7 @@ ppGhcCpp extraArgs _bi lbi =
           -- using cpphs --unlit instead.
        ++ (if ghcVersion >= Version [6,6] [] then ["-x", "hs"] else [])
        ++ (if use_optP_P lbi then ["-optP-P"] else [])
+       ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
@@ -330,11 +331,16 @@ ppCpphs extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity cpphsProgram (withPrograms lbi) $
+      rawSystemProgram verbosity cpphsProg $
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
-        : extraArgs
+        : (if cpphsVersion >= Version [1,6] []
+             then ["--include="++ (autogenModulesDir lbi </> cppHeaderName)]
+             else [])
+        ++ extraArgs
   }
+  where Just cpphsProg = lookupProgram cpphsProgram (withPrograms lbi)
+        Just cpphsVersion = programVersion cpphsProg
 
 -- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
 -- pragmas are necessary for correct links when we preprocess.  So use
