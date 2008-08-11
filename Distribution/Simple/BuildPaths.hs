@@ -46,6 +46,7 @@ module Distribution.Simple.BuildPaths (
     autogenModulesDir,
 
     autogenModuleName,
+    cppHeaderName,
     haddockName,
 
     mkLibName,
@@ -91,6 +92,8 @@ haddockPref distPref pkg_descr
 autogenModulesDir :: LocalBuildInfo -> String
 autogenModulesDir lbi = buildDir lbi </> "autogen"
 
+cppHeaderName :: String
+cppHeaderName = "cabal_macros.h"
 
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> ModuleName
