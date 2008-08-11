@@ -1681,6 +1681,47 @@ ld-options:  -L/usr/X11R6/lib</programlisting>
       </note>
     </sect2>
 
+    <sect2 id="cpp">
+      <title>Conditional compilation</title>
+
+      <para>Sometimes you want to write code that works with more than
+      one version of a dependency.  You can specify a range of
+        versions for the depenency in
+      the <literal>build-depends</literal>, but how do you then write
+        the code that can use different versions of the API?</para>
+      
+      <para>Haskell lets you preprocess your code using the C
+        preprocessor (either the real C preprocessor, or
+        <literal>cpphs</literal>).  To enable this,
+        add <literal>extensions: CPP</literal> to your package
+        description.  When using CPP, Cabal provides some pre-defined
+        macros to let you test the version of dependent packages; for
+        example, suppose your package works with either version 3 or
+        version 4 of the <literal>base</literal> package, you could
+        select the available version in your Haskell modules like
+        this:</para> 
+<programlisting>
+#if MIN_VERSION_base(4,0,0)
+... code that works with base-4 ...
+#else
+... code that works with base-3 ...
+#endif
+</programlisting>
+<para>In general, Cabal supplies a
+  macro <literal>MIN_VERSION_<replaceable>package</replaceable>(A,B,C)</literal>
+  for each package depended on via <literal>build-depends</literal>.
+  This macro is true if the actual version of the package in use is
+  greater than or equal to <literal>A.B.C</literal> (using the
+  conventional ordering on version numbers, which is lexicographic on
+  the sequence, but numeric on each component, so for example 1.2.0 is
+  greater than 1.0.3).</para>
+
+      <para>Cabal places the definitions of these macros into an
+        automatically-generated header file, which is included when
+        preprocessing Haskell source code by passing options to the C
+        preprocessor.</para>
+    </sect2>
+
     <sect2 id="complex-packages">
       <title>More complex packages</title>
 
