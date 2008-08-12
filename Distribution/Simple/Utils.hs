@@ -242,8 +242,9 @@ info verbosity msg =
 --
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
-  when (verbosity >= deafening) $
+  when (verbosity >= deafening) $ do
     putStr (wrapText msg)
+    hFlush stdout
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
