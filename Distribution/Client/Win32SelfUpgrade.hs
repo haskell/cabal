@@ -124,7 +124,7 @@ scheduleOurDemise verbosity dstPath tmpPath mkArgs = do
   event  <- createEvent syncEventName
 
   let args = mkArgs (show ourPID) tmpPath
-  log $ "launching child " ++ unwords (tmpPath : map show args)
+  log $ "launching child " ++ unwords (dstPath : map show args)
   runProcess dstPath args Nothing Nothing Nothing Nothing Nothing
 
   log $ "waiting for the child to start up"
@@ -173,9 +173,12 @@ foreign import stdcall unsafe "windows.h WaitForSingleObject"
   waitForSingleObject_ :: HANDLE -> DWORD -> IO DWORD
 
 waitForSingleObject :: HANDLE -> DWORD -> IO ()
-waitForSingleObject handle timeout = 
-  Win32.failIf_ (/=0) "WaitForSingleObject" $
+waitForSingleObject handle timeout =
+  Win32.failIf_ bad "WaitForSingleObject" $
     waitForSingleObject_ handle timeout
+  where
+    bad result   = not (result == 0 || result == wAIT_TIMEOUT)
+    wAIT_TIMEOUT = 0x00000102
 
 foreign import stdcall unsafe "windows.h CreateEventW"
   createEvent_ :: Ptr () -> BOOL -> BOOL -> LPCTSTR -> IO HANDLE
