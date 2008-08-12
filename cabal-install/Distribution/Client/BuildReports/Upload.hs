@@ -55,6 +55,7 @@ postBuildReport uri buildReport = do
 
 putBuildLog :: BuildReportId -> BuildLog -> BrowserAction ()
 putBuildLog reportId buildLog = do
+  --FIXME: do something if the request fails
   (_, response) <- request Request {
       rqURI     = reportId{uriPath = uriPath reportId </> "buildlog"},
       rqMethod  = PUT,
