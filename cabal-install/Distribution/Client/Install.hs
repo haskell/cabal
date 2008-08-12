@@ -60,7 +60,7 @@ import qualified Distribution.Client.InstallSymlink as InstallSymlink
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
-         ( Compiler(compilerId), PackageDB(..) )
+         ( CompilerId, Compiler(compilerId), PackageDB(..) )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.Setup as Cabal
@@ -76,8 +76,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), thisPackageVersion )
 import Distribution.PackageDescription as PackageDescription
-         ( GenericPackageDescription(packageDescription)
-         , readPackageDescription )
+         ( PackageDescription, readPackageDescription )
+import Distribution.PackageDescription.Configuration
+         ( finalizePackageDescription )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Version
@@ -85,7 +86,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
 import Distribution.System
-         ( buildOS, buildArch )
+         ( OS, buildOS, Arch, buildArch )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -156,10 +157,14 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
 
       unless dryRun $ do
         logsDir <- defaultLogsDir
+        let os     = InstallPlan.planOS installPlan
+            arch   = InstallPlan.planArch installPlan
+            compid = InstallPlan.planCompiler installPlan
         installPlan' <-
           executeInstallPlan installPlan $ \cpkg ->
-            installConfiguredPackage configFlags cpkg $ \configFlags' apkg ->
-              installAvailablePackage verbosity apkg $ \pkg mpath ->
+            installConfiguredPackage os arch compid configFlags
+                                     cpkg $ \configFlags' src pkg ->
+              installAvailablePackage verbosity (packageId pkg) src $ \mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags' installFlags
                                        pkg mpath (useLogFile logsDir)
@@ -353,25 +358,32 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
 -- versioned package dependencies. So we ignore any previous partial flag
 -- assignment or dependency constraints and use the new ones.
 --
-installConfiguredPackage ::  Cabal.ConfigFlags -> ConfiguredPackage
-                         -> (Cabal.ConfigFlags -> AvailablePackage  -> a)
+installConfiguredPackage :: OS -> Arch -> CompilerId
+                         ->  Cabal.ConfigFlags -> ConfiguredPackage
+                         -> (Cabal.ConfigFlags -> AvailablePackageSource
+                                               -> PackageDescription -> a)
                          -> a
-installConfiguredPackage configFlags (ConfiguredPackage pkg flags deps)
+installConfiguredPackage os arch comp configFlags
+  (ConfiguredPackage (AvailablePackage _ gpkg source) flags deps)
   installPkg = installPkg configFlags {
     Cabal.configConfigurationsFlags = flags,
     Cabal.configConstraints = map thisPackageVersion deps
-  } pkg
+  } source pkg
+  where
+    pkg = case finalizePackageDescription flags
+           (Nothing :: Maybe (PackageIndex PackageDescription))
+           os arch comp [] gpkg of
+      Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
+      Right (desc, _) -> desc
 
 installAvailablePackage
-  :: Verbosity -> AvailablePackage
-  -> (GenericPackageDescription -> Maybe FilePath -> IO BuildResult)
+  :: Verbosity -> PackageIdentifier -> AvailablePackageSource
+  -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installAvailablePackage _ (AvailablePackage _ pkg LocalUnpackedPackage)
-  installPkg = installPkg pkg Nothing
+installAvailablePackage _ _ LocalUnpackedPackage installPkg =
+  installPkg Nothing
 
-installAvailablePackage verbosity
-  (AvailablePackage _ pkg (RepoTarballPackage repo)) installPkg = do
-  let pkgid = packageId pkg
+installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg = do
   pkgPath <- fetchPackage verbosity repo pkgid
   tmp <- getTemporaryDirectory
   let tmpDirPath = tmp </> ("TMP" ++ display pkgid)
@@ -384,14 +396,14 @@ installAvailablePackage verbosity
     exists <- doesFileExist descFilePath
     when (not exists) $
       die $ "Package .cabal file not found: " ++ show descFilePath
-    installPkg pkg (Just path)
+    installPkg (Just path)
 
 installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
                    -> InstallMisc
                    -> Cabal.ConfigFlags
                    -> InstallFlags
-                   -> GenericPackageDescription
+                   -> PackageDescription
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
@@ -458,7 +470,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
       setupWrapper verbosity
         scriptOptions { useLoggingHandle = logFileHandle
                       , useWorkingDir    = workingDir }
-        (Just $ PackageDescription.packageDescription pkg)
+        (Just pkg)
         cmd flags []
     reexec cmd = do
       -- look for our on executable file and re-exec ourselves using
