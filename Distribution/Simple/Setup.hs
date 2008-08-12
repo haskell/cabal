@@ -704,7 +704,7 @@ installCommand = makeCommand name shortDesc longDesc defaultInstallFlags options
          installUseWrapper (\v flags -> flags { installUseWrapper = v })
          (boolOpt [] [])
 
-      ,option "" ["packageDB"] ""
+      ,option "" ["package-db"] ""
          installPackageDB (\v flags -> flags { installPackageDB = v })
          (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
                       "upon configuration register this package in the user's local package database")
