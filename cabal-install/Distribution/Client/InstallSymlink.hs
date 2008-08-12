@@ -23,14 +23,16 @@ module Distribution.Client.InstallSymlink (
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 
+import Distribution.Package (PackageIdentifier)
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 
 symlinkBinaries :: ConfigFlags
                 -> InstallFlags
-                -> InstallPlan -> IO ()
-symlinkBinaries _ _ = symlinkBinary undefined undefined undefined undefined
+                -> InstallPlan
+                -> IO [(PackageIdentifier, String, FilePath)]
+symlinkBinaries _ _ _ = return []
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
