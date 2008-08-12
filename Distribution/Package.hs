@@ -45,6 +45,7 @@ module Distribution.Package (
         -- * Package ids
         PackageName(..),
         PackageIdentifier(..),
+        PackageId,
 
         -- * Package dependencies
         Dependency(..),
@@ -81,6 +82,9 @@ instance Text PackageName where
         if all Char.isDigit cs then Parse.pfail else return cs
         -- each component must contain an alphabetic character, to avoid
         -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
+-- | Type alias so we can use the shorter name PackageId.
+type PackageId = PackageIdentifier
 
 -- | The name and version of a package.
 data PackageIdentifier
