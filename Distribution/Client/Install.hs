@@ -57,12 +57,14 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
+import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
-         ( CompilerId, Compiler(compilerId), PackageDB(..) )
+         ( CompilerId(..), Compiler(compilerId), PackageDB(..) )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -75,7 +77,8 @@ import Distribution.Simple.InstallDirs
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), thisPackageVersion )
-import Distribution.PackageDescription as PackageDescription
+import qualified Distribution.PackageDescription as PackageDescription
+import Distribution.PackageDescription
          ( PackageDescription, readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
@@ -86,7 +89,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
 import Distribution.System
-         ( OS, buildOS, Arch, buildArch )
+         ( OS(Windows), buildOS, Arch, buildArch )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -167,7 +170,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
               installAvailablePackage verbosity (packageId pkg) src $ \mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
                                        miscOptions configFlags' installFlags
-                                       pkg mpath (useLogFile logsDir)
+                                       compid pkg mpath (useLogFile logsDir)
 
         let buildReports = BuildReports.fromInstallPlan installPlan'
         BuildReports.storeAnonymous buildReports
@@ -403,13 +406,14 @@ installUnpackedPackage :: Verbosity
                    -> InstallMisc
                    -> Cabal.ConfigFlags
                    -> InstallFlags
+                   -> CompilerId
                    -> PackageDescription
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
 installUnpackedPackage verbosity scriptOptions miscOptions
                        configFlags installConfigFlags
-                       pkg workingDir useLogFile =
+                       compid pkg workingDir useLogFile =
 
   -- Configure phase
   onFailure ConfigureFailed $ do
@@ -430,11 +434,12 @@ installUnpackedPackage verbosity scriptOptions miscOptions
       testsResult <- return TestsNotTried  --TODO: add optional tests
 
   -- Install phase
-      onFailure InstallFailed $ do
-        case rootCmd miscOptions of
-          (Just cmd) -> reexec cmd
-          Nothing    -> setup Cabal.installCommand installFlags
-        return (Right (BuildOk docsResult testsResult))
+      onFailure InstallFailed $
+        withWin32SelfUpgrade verbosity configFlags compid pkg $ do
+          case rootCmd miscOptions of
+            (Just cmd) -> reexec cmd
+            Nothing    -> setup Cabal.installCommand installFlags
+          return (Right (BuildOk docsResult testsResult))
 
   where
     configureFlags   = filterConfigureFlags configFlags {
@@ -488,3 +493,43 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 -- helper
 onFailure :: (Exception -> BuildFailure) -> IO BuildResult -> IO BuildResult
 onFailure result = Exception.handle (return . Left . result)
+
+
+withWin32SelfUpgrade :: Verbosity
+                     -> Cabal.ConfigFlags
+                     -> CompilerId
+                     -> PackageDescription
+                     -> IO a -> IO a
+withWin32SelfUpgrade _ _ _ _ action | buildOS /= Windows = action
+withWin32SelfUpgrade verbosity configFlags compid pkg action = do
+
+  defaultDirs <- InstallDirs.defaultInstallDirs
+                   compilerFlavor
+                   (Cabal.fromFlag (Cabal.configUserInstall configFlags))
+                   (PackageDescription.hasLibs pkg)
+
+  Win32SelfUpgrade.possibleSelfUpgrade verbosity
+    (exeInstallPaths defaultDirs) action
+
+  where
+    pkgid = packageId pkg
+    (CompilerId compilerFlavor _) = compid
+
+    exeInstallPaths defaultDirs =
+      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
+      | exe <- PackageDescription.executables pkg
+      , PackageDescription.buildable (PackageDescription.buildInfo exe)
+      , let exeName = prefix ++ PackageDescription.exeName exe ++ suffix
+            prefix  = substTemplate prefixTemplate
+            suffix  = substTemplate suffixTemplate ]
+      where
+        fromFlagTemplate = Cabal.fromFlagOrDefault (InstallDirs.toPathTemplate "")
+        prefixTemplate = fromFlagTemplate (Cabal.configProgPrefix configFlags)
+        suffixTemplate = fromFlagTemplate (Cabal.configProgSuffix configFlags)
+        templateDirs   = InstallDirs.combineInstallDirs Cabal.fromFlagOrDefault
+                           defaultDirs (Cabal.configInstallDirs configFlags)
+        absoluteDirs   = InstallDirs.absoluteInstallDirs
+                           pkgid compid InstallDirs.NoCopyDest templateDirs
+        substTemplate  = InstallDirs.fromPathTemplate
+                       . InstallDirs.substPathTemplate env
+          where env = InstallDirs.initialPathTemplateEnv pkgid compid
