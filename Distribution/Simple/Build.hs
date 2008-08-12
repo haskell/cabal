@@ -219,10 +219,10 @@ buildPathsModule distPref pkg_descr lbi =
        header =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
-        "\tversion,\n"++
-        "\tgetBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
-        "\tgetDataFileName\n"++
-        "\t) where\n"++
+        "    version,\n"++
+        "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
+        "    getDataFileName\n"++
+        "  ) where\n"++
         "\n"++
         foreign_imports++
         "import Data.Version (Version(..))\n"++
