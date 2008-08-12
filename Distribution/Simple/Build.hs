@@ -213,8 +213,7 @@ buildPathsModule distPref pkg_descr lbi =
         | isHugs = "import System.Environment\n"
         | otherwise =
           "import Foreign\n"++
-          "import Foreign.C\n"++
-          "import Data.Maybe\n"
+          "import Foreign.C\n"
 
        header =
         pragmas++
@@ -251,6 +250,7 @@ buildPathsModule distPref pkg_descr lbi =
           "  dir <- getDataDir\n"++
           "  return (dir ++ "++path_sep++" ++ name)\n"
         | otherwise =
+          "\nprefix, bindirrel :: FilePath" ++
           "\nprefix        = " ++ show flat_prefix ++
           "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
           "\n\n"++
@@ -374,15 +374,15 @@ filename_stuff =
   "splitFileName p = (reverse (path2++drive), reverse fname)\n"++
   "  where\n"++
   "    (path,drive) = case p of\n"++
-  "       (c:':':p) -> (reverse p,[':',c])\n"++
-  "       _         -> (reverse p,\"\")\n"++
+  "       (c:':':p') -> (reverse p',[':',c])\n"++
+  "       _          -> (reverse p ,\"\")\n"++
   "    (fname,path1) = break isPathSeparator path\n"++
   "    path2 = case path1 of\n"++
   "      []                           -> \".\"\n"++
   "      [_]                          -> path1   -- don't remove the trailing slash if \n"++
   "                                              -- there is only one character\n"++
-  "      (c:path) | isPathSeparator c -> path\n"++
-  "      _                            -> path1\n"++
+  "      (c:path') | isPathSeparator c -> path'\n"++
+  "      _                             -> path1\n"++
   "\n"++
   "pathSeparator :: Char\n"++
   (case buildOS of
