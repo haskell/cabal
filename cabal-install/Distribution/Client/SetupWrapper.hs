@@ -25,7 +25,8 @@ import qualified Distribution.Simple as Simple
 import Distribution.Version
          ( Version(..), VersionRange(..), withinRange )
 import Distribution.Package
-         ( PackageIdentifier(..), packageName, packageVersion, Dependency(..) )
+         ( PackageIdentifier(..), Package(..), packageName, packageVersion
+         , Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), BuildType(..), readPackageDescription )
@@ -107,7 +108,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
       mkArgs cabalLibVersion = commandName cmd
                              : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
-  setupMethod verbosity options pkg buildType' mkArgs
+  setupMethod verbosity options (packageId pkg) buildType' mkArgs
   where
     getPkg = findPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
@@ -127,7 +128,7 @@ determineSetupMethod options buildType'
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions
-                -> PackageDescription
+                -> PackageIdentifier
                 -> BuildType
                 -> (Version -> [String]) -> IO ()
 
