@@ -41,8 +41,10 @@ import Distribution.Client.Check as Check   (check)
 --import Distribution.Client.Clean            (clean)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
+import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
-import Distribution.Verbosity   (Verbosity, normal)
+import Distribution.Verbosity as Verbosity
+       ( Verbosity, normal, intToVerbosity )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -50,6 +52,7 @@ import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.Directory         (doesFileExist)
 import Data.List                (intersperse)
+import Data.Maybe               (fromMaybe)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (unless)
 
@@ -59,7 +62,8 @@ main :: IO ()
 main = getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = 
+mainWorker ("win32selfupgrade":args) = win32SelfUpgradeAction args
+mainWorker args =
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
@@ -283,3 +287,13 @@ reportAction verbosityFlag extraArgs = do
   config <- loadConfig verbosity configFile
 
   Upload.report verbosity (configRepos config)
+
+win32SelfUpgradeAction :: [String] -> IO ()
+win32SelfUpgradeAction (pid:path:rest) =
+  Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
+  where
+    verbosity = case rest of
+      (['-','-','v','e','r','b','o','s','e','=',n]:_) | n `elem` ['0'..'9']
+         -> fromMaybe Verbosity.normal (Verbosity.intToVerbosity (read [n]))
+      _  ->           Verbosity.normal
+win32SelfUpgradeAction _ = return ()
