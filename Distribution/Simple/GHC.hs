@@ -898,7 +898,10 @@ stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
   case lookupProgram stripProgram (withPrograms lbi) of
     Just strip -> rawSystemProgram verbosity strip args
-    Nothing    -> warn verbosity $ "Unable to strip executable '" ++ name
+    Nothing    -> unless (buildOS == Windows) $
+                  -- Don't bother warning on windows, we don't expect them to
+                  -- have the strip program anyway.
+                  warn verbosity $ "Unable to strip executable '" ++ name
                                 ++ "' (missing the 'strip' program)"
   where
     args = path : case buildOS of
