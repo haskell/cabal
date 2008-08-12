@@ -13,7 +13,6 @@ import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
-import qualified Distribution.Client.BuildReports.Storage as BuildReport
 
 import Network.Browser
          ( BrowserAction, browse, request
@@ -30,8 +29,8 @@ import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
                         ,openBinaryFile, IOMode(ReadMode), hGetContents)
 import Control.Exception (bracket)
 import System.Random    (randomRIO)
-import System.FilePath
-import qualified System.FilePath.Posix as FilePath.Posix
+import System.FilePath  ((</>), takeExtension)
+import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_)
 
@@ -62,7 +61,7 @@ upload verbosity repos mUsername mPassword paths = do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
   where
-    targetRepoURI = remoteRepoURI $ selectUploadRepo [ remoteRepo | Left remoteRepo <- map repoKind repos ]
+    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
     promptUsername :: IO Username
     promptUsername = do
       putStr "Hackage username: "
@@ -78,8 +77,6 @@ upload verbosity repos mUsername mPassword paths = do
         hSetEcho stdin False  -- no echoing for entering the password
         fmap Password getLine
 
-selectUploadRepo = last -- Use head?
-
 report :: Verbosity -> [Repo] -> IO ()
 report verbosity repos
     = forM_ repos $ \repo ->
@@ -93,9 +90,9 @@ report verbosity repos
                          let (reportStr, buildLog) = read inp :: (String,String)
                          case BuildReport.parse reportStr of
                            Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
-                           Right report ->
-                               do info verbosity $ "Uploading report for " ++ display (BuildReport.package report)
-                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report, Just buildLog)]
+                           Right report' ->
+                               do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
+                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                                   return ()
         Right{} -> return ()
 
