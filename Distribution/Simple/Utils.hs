@@ -99,6 +99,7 @@ module Distribution.Simple.Utils (
         -- * reading and writing files safely
         withFileContents,
         writeFileAtomic,
+        rewriteFile,
 
         -- * Unicode
         fromUTF8,
@@ -143,7 +144,7 @@ import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( try )
+    ( try, isDoesNotExistError )
 import qualified Control.Exception as Exception
 
 import Distribution.Text
@@ -644,6 +645,20 @@ writeFileAtomic targetFile content = do
     --      to always return a valid dir
     (targetDir_,targetName) = splitFileName targetFile
 
+-- | Write a file but only if it would have new content. If we would be writing
+-- the same as the existing content then leave the file as is so that we do not
+-- update the file's modification time.
+--
+rewriteFile :: FilePath -> String -> IO ()
+rewriteFile path newContent =
+  flip catch mightNotExist $ do
+    existingContent <- readFile path
+    evaluate (length existingContent)
+    unless (existingContent == newContent) $
+      writeFileAtomic path newContent
+  where
+    mightNotExist e | isDoesNotExistError e = writeFileAtomic path newContent
+                    | otherwise             = ioError e
 
 -- | The path name that represents the current directory.
 -- In Unix, it's @\".\"@, but this is system-specific.
