@@ -147,9 +147,9 @@ install pkg_descr lbi flags = do
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
-    notice verbosity ("Installing: " ++ libPref)
+    notice verbosity ("Installing library in " ++ libPref)
   when (hasExes pkg_descr) $
-    notice verbosity ("Installing: " ++ binPref)
+    notice verbosity ("Installing executable(s) in " ++ binPref)
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
