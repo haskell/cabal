@@ -62,6 +62,8 @@ Library
         Distribution.ReadE,
         Distribution.Simple,
         Distribution.Simple.Build,
+        Distribution.Simple.Build.Macros,
+        Distribution.Simple.Build.PathsModule,
         Distribution.Simple.BuildPaths,
         Distribution.Simple.Command,
         Distribution.Simple.Compiler,
