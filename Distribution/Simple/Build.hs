@@ -79,14 +79,15 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, die, setupMessage, writeUTF8File )
 import Distribution.System
-import Distribution.Version     ( versionBranch )
+import Distribution.Version     ( Version(versionBranch) )
 
 import System.FilePath          ( (</>), (<.>), pathSeparator )
 
 import Data.Maybe               ( maybeToList, fromJust, isNothing )
 import Control.Monad            ( unless, when )
 import System.Directory         ( getModificationTime, doesFileExist )
-import Text.Printf              ( printf )
+import Text.Printf              ( printf, PrintfType, HPrintfType,
+                                  PrintfArg, IsChar )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
