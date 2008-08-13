@@ -981,7 +981,9 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
   where
     name       = "haddock"
     shortDesc  = "Generate Haddock HTML documentation."
-    longDesc   = Just (\_ -> "Requires cpphs and haddock.\n")
+    longDesc   = Just $ \_ -> "Requires cpphs and haddock.\n"
+                           ++ "Extra options can be set at the "
+                           ++ "configure stage using --haddock-option(s)=\n"
     options _  =
       [optionVerbosity haddockVerbosity (\v flags -> flags { haddockVerbosity = v })
       ,optionDistPref haddockDistPref (\d flags -> flags { haddockDistPref = d })
