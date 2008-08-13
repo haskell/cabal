@@ -186,7 +186,8 @@ configure verbosity hcPath hcPkgPath conf = do
                rawSystemProgramStdout verbosity ldProg
                  ["-x", "-r", testofile, "-o", testofile']
                return True
-             `catchIO` (\_ -> return False)
+             `catchIO`   (\_ -> return False)
+             `catchExit` (\_ -> return False)
   let conf''''' = updateProgram ldProg {
                   programArgs = if ldx then ["-x"] else []
                 } conf''''
