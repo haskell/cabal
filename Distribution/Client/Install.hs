@@ -178,7 +178,8 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         let buildReports = BuildReports.fromInstallPlan installPlan'
         BuildReports.storeAnonymous buildReports
         BuildReports.storeLocal     buildReports
-        storeDetailedBuildReports logsDir buildReports
+        when useDetailedBuildReports $
+          storeDetailedBuildReports logsDir buildReports
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
@@ -194,12 +195,12 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
+    useDetailedBuildReports = Cabal.fromFlag (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
       where
         logFileTemplate
-          | Cabal.fromFlagOrDefault False (installBuildReports installFlags)
-	  = Just $ logsDir </> "$pkgid" <.> "log"
+          | useDetailedBuildReports = Just $ logsDir </> "$pkgid" <.> "log"
           | otherwise = Cabal.flagToMaybe (installLogFile installFlags)
     substLogFileName path pkg = fromPathTemplate
                               . substPathTemplate env
