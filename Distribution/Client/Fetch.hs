@@ -26,14 +26,17 @@ import Distribution.Client.Types
          , AvailablePackageSource(..)
          , Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Dependency
-         ( resolveDependencies, PackagesVersionPreference(..) )
+         ( resolveDependenciesWithProgress, PackagesVersionPreference(..) )
+import Distribution.Client.Dependency.Types
+         ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
 
 import Distribution.Package
-         ( PackageIdentifier(..) )
+         ( PackageIdentifier(..), Dependency(..) )
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDB )
 import Distribution.Simple.Program
@@ -41,7 +44,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Configure
          ( getInstalledPackages )
 import Distribution.Simple.Utils
-         ( die, notice, debug, setupMessage
+         ( die, notice, info, debug, setupMessage
          , copyFileVerbose, writeFileAtomic )
 import Distribution.System
          ( buildOS, buildArch )
@@ -51,7 +54,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Control.Monad
-         ( filterM )
+         ( when, filterM )
 import System.Directory
          ( doesFileExist, createDirectoryIfMissing )
 import System.FilePath
@@ -142,14 +145,33 @@ fetch verbosity packageDB repos comp conf deps = do
   installed <- getInstalledPackages verbosity comp packageDB conf
   available <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
-  case resolveDependencies buildOS buildArch (compilerId comp)
-         installed available PreferLatestForSelected deps' of
+
+  let -- Hide the packages given on the command line so that the dep resolver
+      -- will decide that they need fetching, even if they're already
+      -- installed. Sicne we want to get the source packages of things we might
+      -- have installed (but not have the sources for).
+      installed' = fmap (hideGivenDeps deps') installed
+      hideGivenDeps pkgs index =
+        foldr PackageIndex.deletePackageName index
+          [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+
+  let  progress = resolveDependenciesWithProgress
+                   buildOS buildArch (compilerId comp)
+                   installed' available PreferLatestForSelected deps'
+  notice verbosity "Resolving dependencies..."
+  maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
+                            (return . Left) (return . Right) progress
+  case maybePlan of
     Left message -> die message
     Right pkgs   -> do
       ps <- filterM (fmap not . isFetched)
               [ pkg | (InstallPlan.Configured
                         (InstallPlan.ConfiguredPackage pkg _ _))
                           <- InstallPlan.toList pkgs ]
+      when (null ps) $
+        notice verbosity $ "No packages need to be fetched. "
+                        ++ "All the requested packages are already cached."
+
       sequence_ 
         [ fetchPackage verbosity repo pkgid
         | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- ps ]
