@@ -76,7 +76,8 @@ import Distribution.Simple.InstallDirs
          ( fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), thisPackageVersion )
+         ( PackageIdentifier(..), Package(..), thisPackageVersion
+         , Dependency(..) )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, readPackageDescription )
@@ -118,7 +119,8 @@ install verbosity packageDB repos comp conf configFlags installFlags deps =
   where
     planner :: Planner
     planner | null deps = planLocalPackage verbosity comp configFlags
-            | otherwise = planRepoPackages PreferLatestForSelected comp deps
+            | otherwise = planRepoPackages PreferLatestForSelected
+                            comp installFlags deps
 
 upgrade verbosity packageDB repos comp conf configFlags installFlags deps =
   installWithPlanner planner
@@ -126,7 +128,8 @@ upgrade verbosity packageDB repos comp conf configFlags installFlags deps =
   where
     planner :: Planner
     planner | null deps = planUpgradePackages comp
-            | otherwise = planRepoPackages PreferAllLatest comp deps
+            | otherwise = planRepoPackages PreferAllLatest
+                            comp installFlags deps
 
 type Planner = Maybe (PackageIndex InstalledPackageInfo)
             -> PackageIndex AvailablePackage
@@ -252,12 +255,20 @@ planLocalPackage verbosity comp configFlags installed available = do
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
-planRepoPackages :: PackagesVersionPreference -> Compiler
+planRepoPackages :: PackagesVersionPreference -> Compiler -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
-planRepoPackages pref comp deps installed available = do
+planRepoPackages pref comp installFlags deps installed available = do
   deps' <- IndexUtils.disambiguateDependencies available deps
+  let installed'
+        | Cabal.fromFlag (installReinstall installFlags)
+                    = fmap (hideGivenDeps deps') installed
+        | otherwise = installed
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-             installed available pref deps'
+             installed' available pref deps'
+  where
+    hideGivenDeps pkgs index =
+      foldr PackageIndex.deletePackageName index
+        [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
 planUpgradePackages :: Compiler -> Planner
 planUpgradePackages comp (Just installed) available = return $
