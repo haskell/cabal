@@ -156,9 +156,10 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
     (Version(..))
 
+import Control.Exception (evaluate)
+
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
-import Control.Exception (evaluate)
 import System.Process (runInteractiveProcess, waitForProcess)
 #else
 import System.Cmd (system)
