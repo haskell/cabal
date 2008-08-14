@@ -211,6 +211,7 @@ instance Monoid ListFlags where
 data InstallFlags = InstallFlags {
     installDocumentation:: Flag Bool,
     installDryRun       :: Flag Bool,
+    installReinstall    :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
     installCabalVersion :: Flag Version,
@@ -223,6 +224,7 @@ defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDocumentation= Flag False,
     installDryRun       = Flag False,
+    installReinstall    = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
     installCabalVersion = mempty,
@@ -248,6 +250,11 @@ installCommand = configureCommand {
       , option [] ["dry-run"]
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
+          trueArg
+
+      , option [] ["reinstall"]
+          "Install even if it means installing the same version again."
+          installReinstall (\v flags -> flags { installReinstall = v })
           trueArg
 
       , option [] ["root-cmd"]
@@ -288,6 +295,7 @@ instance Monoid InstallFlags where
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
     installDryRun       = combine installDryRun,
+    installReinstall    = combine installReinstall,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
     installCabalVersion = combine installCabalVersion,
