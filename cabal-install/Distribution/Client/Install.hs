@@ -158,6 +158,13 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
   case maybePlan of
     Left message -> die message
     Right installPlan -> do
+      let nothingToInstall = null (InstallPlan.ready installPlan)
+      when nothingToInstall $
+        notice verbosity $
+             "No packages to be installed. All the requested packages are "
+          ++ "already installed.\n If you want to reinstall anyway then use "
+          ++ "the --reinstall flag."
+
       when (dryRun || verbosity >= verbose) $
         printDryRun verbosity installPlan
 
@@ -284,7 +291,7 @@ planUpgradePackages comp _ _ =
 
 printDryRun :: Verbosity -> InstallPlan -> IO ()
 printDryRun verbosity plan = case unfoldr next plan of
-  []   -> notice verbosity "No packages to be installed."
+  []   -> return ()
   pkgs -> notice verbosity $ unlines $
             "In order, the following would be installed:"
           : map display pkgs
