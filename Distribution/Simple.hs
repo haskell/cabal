@@ -446,7 +446,7 @@ simpleUserHooks =
 -- FIXME: do something sensible for windows, or do nothing in postConf.
 
 {-# DEPRECATED defaultUserHooks
-     "Use simpleUserHooks or autoconfUserHooks, unless you need Cabal-1.2\n             compatability in which case you must stick with defaultUserHooks" #-}
+     "Use simpleUserHooks or autoconfUserHooks, unless you need Cabal-1.2\n             compatibility in which case you must stick with defaultUserHooks" #-}
 defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
@@ -457,7 +457,7 @@ defaultUserHooks = autoconfUserHooks {
           postConf = oldCompatPostConf
     }
     -- This is the annoying old version that only runs configure if it exists.
-    -- It's here for compatability with existing Setup.hs scripts. See:
+    -- It's here for compatibility with existing Setup.hs scripts. See:
     -- http://hackage.haskell.org/trac/hackage/ticket/165
     where oldCompatPostConf args flags _ _
               = do let verbosity = fromFlag (configVerbosity flags)

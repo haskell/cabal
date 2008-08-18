@@ -116,7 +116,7 @@ instance Text License where
     name    <- Parse.munch1 Char.isAlphaNum
     version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
     -- We parse an optional version but do not yet allow it on any known
-    -- license. However parsing the version will allow forwards compatability
+    -- license. However parsing the version will allow forwards compatibility
     -- for when we do introduce optional (L)GPL license versions.
     return $ case (name, version :: Maybe Version) of
       ("GPL",               Nothing) -> GPL
