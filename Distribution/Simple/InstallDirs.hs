@@ -199,7 +199,7 @@ appendSubdirs append dirs = dirs {
 --
 -- A few of these installation directories are split into two components, the
 -- dir and subdir. The full installation path is formed by combining the two
--- together with @\/@. The reason for this is compatability with other unix
+-- together with @\/@. The reason for this is compatibility with other unix
 -- build systems which also support @--libdir@ and @--datadir@. We would like
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
 -- because by default we want to support installing multiple versions of
