@@ -678,7 +678,6 @@ ghcOptions lbi bi odir
      ++ ["-I" ++ odir]
      ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ["-optP" ++ opt | opt <- cppOptions bi]
-     ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- PD.includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
