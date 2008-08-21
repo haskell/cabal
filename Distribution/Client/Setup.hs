@@ -11,9 +11,9 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, Cabal.GlobalFlags(..)
-    , configureCommand, filterConfigureFlags
-    , installCommand, InstallFlags(..)
+    ( globalCommand, GlobalFlags(..), globalRepos
+    , configureCommand, Cabal.ConfigFlags(..), filterConfigureFlags, configPackageDB'
+    , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
@@ -24,20 +24,25 @@ module Distribution.Client.Setup
     , reportCommand
 
     , parsePackageArgs
+    --TODO: stop exporting these:
+    , showRepo
+    , parseRepo
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..) )
+         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
 
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
-         ( GlobalFlags(..), globalCommand
-         , ConfigFlags(..), configureCommand )
+         ( ConfigFlags(..), configureCommand )
 import Distribution.Simple.Setup
-         ( Flag(..), toFlag, flagToList, flagToMaybe, trueArg, optionVerbosity )
+         ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe, fromFlagOrDefault
+         , optionVerbosity, trueArg )
+import Distribution.Simple.Compiler
+         ( PackageDB(..) )
 import Distribution.Version
          ( Version(Version), VersionRange(..) )
 import Distribution.Package
@@ -45,21 +50,54 @@ import Distribution.Package
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.ReadE
-         ( readP_to_E )
-import Distribution.Compat.ReadP
-         ( ReadP, readP_to_S, (+++) )
+         ( readP_to_E, succeedReadE )
+import qualified Distribution.Compat.ReadP as Parse
+         ( ReadP, readP_to_S, char, munch1, pfail, (+++) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 
-import Data.Char     (isSpace)
-import Data.Maybe    (listToMaybe)
-import Data.Monoid   (Monoid(..))
-import Control.Monad (liftM)
+import Data.Char
+         ( isSpace, isAlphaNum )
+import Data.Maybe
+         ( listToMaybe, maybeToList )
+import Data.Monoid
+         ( Monoid(..) )
+import Control.Monad
+         ( liftM )
+import System.FilePath
+         ( (</>) )
+import Network.URI
+         ( parseAbsoluteURI, uriToString )
 
+-- ------------------------------------------------------------
+-- * Global flags
+-- ------------------------------------------------------------
 
-globalCommand :: CommandUI Cabal.GlobalFlags
-globalCommand = Cabal.globalCommand {
-    commandDescription = Just $ \pname ->
+-- | Flags that apply at the top level, not to any sub-command.
+data GlobalFlags = GlobalFlags {
+    globalVersion        :: Flag Bool,
+    globalNumericVersion :: Flag Bool,
+    globalConfigFile     :: Flag FilePath,
+    globalRemoteRepos    :: [RemoteRepo],     -- ^Available Hackage servers.
+    globalCacheDir       :: Flag FilePath,
+    globalLocalRepos     :: [FilePath]
+  }
+
+defaultGlobalFlags :: GlobalFlags
+defaultGlobalFlags  = GlobalFlags {
+    globalVersion        = Flag False,
+    globalNumericVersion = Flag False,
+    globalConfigFile     = mempty,
+    globalRemoteRepos    = [],
+    globalCacheDir       = mempty,
+    globalLocalRepos     = mempty
+  }
+
+globalCommand :: CommandUI GlobalFlags
+globalCommand = CommandUI {
+    commandName         = "",
+    commandSynopsis     = "",
+    commandDescription  = Just $ \pname ->
          "Typical step for installing Cabal packages:\n"
       ++ "  " ++ pname ++ " install [PACKAGES]\n"
       ++ "\nOccasionally you need to update the list of available packages:\n"
@@ -67,13 +105,91 @@ globalCommand = Cabal.globalCommand {
       ++ "\nFor more information about a command, try '"
           ++ pname ++ " COMMAND --help'."
       ++ "\nThis program is the command line interface to the Haskell Cabal Infrastructure."
-      ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
+      ++ "\nSee http://www.haskell.org/cabal/ for more information.\n",
+    commandUsage        = \_ -> [],
+    commandDefaultFlags = defaultGlobalFlags,
+    commandOptions      = \showOrParseArgs ->
+      (case showOrParseArgs of ShowArgs -> take 2; ParseArgs -> id)
+      [option ['V'] ["version"]
+         "Print version information"
+         globalVersion (\v flags -> flags { globalVersion = v })
+         trueArg
+
+      ,option [] ["numeric-version"]
+         "Print just the version number"
+         globalNumericVersion (\v flags -> flags { globalNumericVersion = v })
+         trueArg
+
+      ,option [] ["config-file"]
+         "Set an alternate location for the config file"
+         globalConfigFile (\v flags -> flags { globalConfigFile = v })
+         (reqArgFlag "FILE")
+
+      ,option [] ["remote-repo"]
+         "The name and url for a remote repository"
+         globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
+         (reqArg' "NAME:URL" (maybeToList . readRepo) (map showRepo))
+
+      ,option [] ["remote-repo-cache"]
+         "The location where downloads from all remote repos are cached"
+         globalCacheDir (\v flags -> flags { globalCacheDir = v })
+         (reqArgFlag "DIR")
+
+      ,option [] ["local-repo"]
+         "The location of a local repository"
+         globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
+         (reqArg' "DIR" (\x -> [x]) id)
+      ]
   }
+
+instance Monoid GlobalFlags where
+  mempty = GlobalFlags {
+    globalVersion        = mempty,
+    globalNumericVersion = mempty,
+    globalConfigFile     = mempty,
+    globalRemoteRepos    = mempty,
+    globalCacheDir       = mempty,
+    globalLocalRepos     = mempty
+  }
+  mappend a b = GlobalFlags {
+    globalVersion        = combine globalVersion,
+    globalNumericVersion = combine globalNumericVersion,
+    globalConfigFile     = combine globalConfigFile,
+    globalRemoteRepos    = combine globalRemoteRepos,
+    globalCacheDir       = combine globalCacheDir,
+    globalLocalRepos     = combine globalLocalRepos
+  }
+    where combine field = field a `mappend` field b
+
+globalRepos :: GlobalFlags -> [Repo]
+globalRepos globalFlags = remoteRepos ++ localRepos
+  where
+    remoteRepos =
+      [ Repo (Left remote) cacheDir
+      | remote <- globalRemoteRepos globalFlags
+      , let cacheDir = fromFlag (globalCacheDir globalFlags)
+                   </> remoteRepoName remote ]
+    localRepos =
+      [ Repo (Right LocalRepo) local
+      | local <- globalLocalRepos globalFlags ]
+
+-- ------------------------------------------------------------
+-- * Config flags
+-- ------------------------------------------------------------
 
 configureCommand :: CommandUI Cabal.ConfigFlags
 configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandDefaultFlags = mempty
   }
+
+configPackageDB' :: Cabal.ConfigFlags -> PackageDB
+configPackageDB' config =
+  fromFlagOrDefault defaultDB (Cabal.configPackageDB config)
+  where
+    defaultDB = case Cabal.configUserInstall config of
+      NoFlag     -> UserPackageDB
+      Flag True  -> UserPackageDB
+      Flag False -> GlobalPackageDB
 
 filterConfigureFlags :: Cabal.ConfigFlags -> Version -> Cabal.ConfigFlags
 filterConfigureFlags flags cabalLibVersion
@@ -81,6 +197,9 @@ filterConfigureFlags flags cabalLibVersion
     -- older Cabal does not grok the constraints flag:
   | otherwise = flags { Cabal.configConstraints = [] }
 
+-- ------------------------------------------------------------
+-- * Other commands
+-- ------------------------------------------------------------
 
 fetchCommand :: CommandUI (Flag Verbosity)
 fetchCommand = CommandUI {
@@ -241,8 +360,12 @@ installCommand = configureCommand {
   commandDefaultFlags = (mempty, defaultInstallFlags),
   commandOptions      = \showOrParseArgs ->
     liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
-    liftOptionsSnd
-     ([ option "" ["documentation"]
+    liftOptionsSnd (installOptions showOrParseArgs)
+  }
+
+installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]
+installOptions showOrParseArgs =
+      [ option "" ["documentation"]
           "building of documentation"
           installDocumentation (\v flags -> flags { installDocumentation = v })
           (boolOpt [] [])
@@ -287,11 +410,20 @@ installCommand = configureCommand {
               installOnly (\v flags -> flags { installOnly = v })
               trueArg
              : []
-          _ -> [])
-  }
+          _ -> []
 
 instance Monoid InstallFlags where
-  mempty = defaultInstallFlags
+  mempty = InstallFlags {
+    installDocumentation= mempty,
+    installDryRun       = mempty,
+    installReinstall    = mempty,
+    installOnly         = mempty,
+    installRootCmd      = mempty,
+    installCabalVersion = mempty,
+    installLogFile      = mempty,
+    installBuildReports = mempty,
+    installSymlinkBinDir= mempty
+  }
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
     installDryRun       = combine installDryRun,
@@ -378,6 +510,10 @@ instance Monoid UploadFlags where
 boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
 boolOpt  = Command.boolOpt  flagToMaybe Flag
 
+reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
+              (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
+reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
+
 liftOptionsFst :: [OptionField a] -> [OptionField (a,b)]
 liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
 
@@ -400,13 +536,32 @@ parsePackageArgs = parsePkgArgs []
         Just dep -> parsePkgArgs (dep:ds) args
         Nothing  -> Left ("Failed to parse package dependency: " ++ show arg)
 
-readPToMaybe :: ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str, all isSpace s ]
+readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
+readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
+                                     , all isSpace s ]
 
-parseDependencyOrPackageId :: ReadP r Dependency
-parseDependencyOrPackageId = parse +++ liftM pkgidToDependency parse
+parseDependencyOrPackageId :: Parse.ReadP r Dependency
+parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
       Version [] _ -> Dependency (packageName p) AnyVersion
       version      -> Dependency (packageName p) (ThisVersion version)
+
+showRepo :: RemoteRepo -> String
+showRepo repo = remoteRepoName repo ++ ":"
+             ++ uriToString id (remoteRepoURI repo) []
+
+readRepo :: String -> Maybe RemoteRepo
+readRepo = readPToMaybe parseRepo
+
+parseRepo :: Parse.ReadP r RemoteRepo
+parseRepo = do
+  name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
+  Parse.char ':'
+  uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
+  uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
+  return $ RemoteRepo {
+    remoteRepoName = name,
+    remoteRepoURI  = uri
+  }
