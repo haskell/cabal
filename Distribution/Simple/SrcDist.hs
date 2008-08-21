@@ -61,6 +61,7 @@ module Distribution.Simple.SrcDist (
 
   -- ** Snaphots
   prepareSnapshotTree,
+  snapshotPackage,
   snapshotVersion,
   dateToSnapshotNumber,
   )  where
@@ -70,7 +71,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check
          ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
 import Distribution.Package
-         ( PackageIdentifier(pkgVersion), Package(..) )
+         ( PackageIdentifier(pkgVersion), Package(..), packageVersion )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
@@ -126,11 +127,13 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
   withTempDirectory verbosity tmpDir $ do
 
     setupMessage verbosity "Building source dist for" (packageId pkg)
+    date <- toCalendarTime =<< getClockTime
+    let pkg' | snapshot  = snapshotPackage date pkg
+             | otherwise = pkg
     if snapshot
-      then getClockTime >>= toCalendarTime
-       >>= prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps
-      else prepareTree         verbosity pkg mb_lbi distPref tmpDir pps
-    targzFile <- createArchive verbosity pkg mb_lbi tmpDir targetPref
+      then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
+      else prepareTree         verbosity pkg' mb_lbi distPref tmpDir pps
+    targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
     notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
@@ -215,8 +218,9 @@ prepareTree verbosity pkg_descr mb_lbi distPref tmpDir pps = do
     withLib action = maybe (return ()) action (library pkg_descr)
     withExe action = mapM_ action (executables pkg_descr)
 
--- | Prepare a directory tree of source files for a snapshot version with the
--- given date.
+-- | Prepare a directory tree of source files for a snapshot version.
+-- It is expected that the appropriate snapshot version has already been set
+-- in the package description, eg using 'snapshotPackage' or 'snapshotVersion'.
 --
 prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> PackageDescription -- ^info from the cabal file
@@ -224,14 +228,10 @@ prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> FilePath           -- ^dist dir
                     -> FilePath           -- ^source tree to populate
                     -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
-                    -> CalendarTime       -- ^snapshot date
                     -> IO FilePath        -- ^the resulting temp dir
-prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps date = do
-  let pkgid   = packageId pkg
-      pkgver' = snapshotVersion date (pkgVersion pkgid)
-      pkg'    = pkg { package = pkgid { pkgVersion = pkgver' } }
-  targetDir <- prepareTree verbosity pkg' mb_lbi distPref tmpDir pps
-  overwriteSnapshotPackageDesc pkgver' targetDir
+prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps = do
+  targetDir <- prepareTree verbosity pkg mb_lbi distPref tmpDir pps
+  overwriteSnapshotPackageDesc (packageVersion pkg) targetDir
   return targetDir
 
   where
@@ -248,6 +248,16 @@ prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps date = do
       | "version:" `isPrefixOf` map toLower line
                   = "version: " ++ display version
       | otherwise = line
+
+-- | Modifies a 'PackageDescription' by appending a snapshot number
+-- corresponding to the given date.
+--
+snapshotPackage :: CalendarTime -> PackageDescription -> PackageDescription
+snapshotPackage date pkg =
+  pkg {
+    package = pkgid { pkgVersion = snapshotVersion date (pkgVersion pkgid) }
+  }
+  where pkgid = packageId pkg
 
 -- | Modifies a 'Version' by appending a snapshot number corresponding
 -- to the given date.
