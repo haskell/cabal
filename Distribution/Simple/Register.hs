@@ -222,7 +222,7 @@ inplacePkgConfigFile distPref = distPref </> "inplace-pkg-config"
 
 mkInstalledPackageInfo
         :: FilePath
-    -> PackageDescription
+        -> PackageDescription
         -> LocalBuildInfo
         -> Bool
         -> IO InstalledPackageInfo
@@ -287,7 +287,10 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
         IPI.includes          = includes bi,
         IPI.depends           = packageDeps lbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
-        IPI.ccOptions         = ccOptions bi,
+        IPI.ccOptions         = [], -- NB. NOT ccOptions bi!
+                                    -- We don't want cc-options to be
+                                    -- propagated to C ompilations in other
+                                    -- packages.
         IPI.ldOptions         = ldOptions bi,
         IPI.frameworkDirs     = [],
         IPI.frameworks        = frameworks bi,
