@@ -166,7 +166,7 @@ configureAction flags extraArgs globalFlags = do
 
 installAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
 installAction (cflags,iflags) _ _globalFlags
-  | fromFlag (installOnly iflags)
+  | fromFlagOrDefault False (installOnly iflags)
   = let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
          installCommand mempty []

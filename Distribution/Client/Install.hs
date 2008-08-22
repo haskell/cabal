@@ -202,7 +202,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    useDetailedBuildReports = Cabal.fromFlag (installBuildReports installFlags)
+    useDetailedBuildReports = Cabal.fromFlagOrDefault False (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
       where
@@ -214,7 +214,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
                               . toPathTemplate
                               $ path
       where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
-    dryRun       = Cabal.fromFlag (installDryRun installFlags)
+    dryRun       = Cabal.fromFlagOrDefault False (installDryRun installFlags)
     miscOptions  = InstallMisc {
       rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
                      then Nothing      -- ignore --root-cmd if --user.
@@ -268,7 +268,7 @@ planRepoPackages :: PackagesVersionPreference -> Compiler -> InstallFlags
 planRepoPackages pref comp installFlags deps installed available = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
-        | Cabal.fromFlag (installReinstall installFlags)
+        | Cabal.fromFlagOrDefault False (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)

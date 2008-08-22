@@ -357,7 +357,7 @@ installCommand = configureCommand {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
   commandUsage        = usagePackages "install",
-  commandDefaultFlags = (mempty, defaultInstallFlags),
+  commandDefaultFlags = (mempty, mempty),
   commandOptions      = \showOrParseArgs ->
     liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
     liftOptionsSnd (installOptions showOrParseArgs)
