@@ -19,7 +19,6 @@ module Distribution.Client.Dependency (
     upgradableDependencies,
   ) where
 
---import Distribution.Client.Dependency.Naive (naiveResolver)
 import Distribution.Client.Dependency.Bogus (bogusResolver)
 import Distribution.Client.Dependency.TopDown (topDownResolver)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
