@@ -15,7 +15,11 @@ module Distribution.Client.Update
     ) where
 
 import Distribution.Client.Types
+         ( Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Fetch
+         ( downloadIndex )
+import qualified Distribution.Client.Utils as BS
+         ( writeFileAtomic )
 
 import Distribution.Simple.Utils (notice)
 import Distribution.Verbosity (Verbosity)
@@ -35,5 +39,5 @@ updateRepo verbosity repo = case repoKind repo of
     notice verbosity $ "Downloading package list from server '"
                     ++ show (remoteRepoURI remoteRepo) ++ "'"
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    BS.writeFile (dropExtension indexPath) . GZip.decompress
-                                         =<< BS.readFile indexPath
+    BS.writeFileAtomic (dropExtension indexPath) . GZip.decompress
+                                               =<< BS.readFile indexPath
