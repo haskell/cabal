@@ -385,6 +385,11 @@ installOptions showOrParseArgs =
           installRootCmd (\v flags -> flags { installRootCmd = v })
           (reqArg' "COMMAND" toFlag flagToList)
 
+      , option [] ["symlink-bindir"]
+          "Add symlinks to installed executables into this directory."
+           installSymlinkBinDir (\v flags -> flags { installSymlinkBinDir = v })
+           (reqArgFlag "DIR")
+
       , option [] ["cabal-lib-version"]
           ("Select which version of the Cabal lib to use to build packages "
           ++ "(useful for testing).")
