@@ -151,6 +151,7 @@ configureAction :: ConfigFlags -> [String] -> GlobalFlags -> IO ()
 configureAction flags extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity flags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
+                                 (configUserInstall flags)
   let flags' = savedConfigureFlags config `mappend` flags
   (comp, conf) <- configCompilerAux flags'
   let setupScriptOptions = defaultSetupScriptOptions {
@@ -174,6 +175,7 @@ installAction (cflags,iflags) extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
+                                 (configUserInstall cflags)
   let cflags' = savedConfigureFlags config `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
@@ -185,7 +187,7 @@ installAction (cflags,iflags) extraArgs globalFlags = do
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let flags = savedConfigureFlags config
   (comp, conf) <- configCompilerAux flags
   list verbosity
@@ -201,7 +203,7 @@ updateAction verbosityFlag extraArgs globalFlags = do
   unless (null extraArgs) $ do
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   update verbosity (globalRepos (savedGlobalFlags config))
 
 upgradeAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
@@ -209,6 +211,7 @@ upgradeAction (cflags,iflags) extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
+                                 (configUserInstall cflags)
   let cflags' = savedConfigureFlags config `mappend` cflags
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
@@ -221,7 +224,7 @@ fetchAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 fetchAction verbosityFlag extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlag verbosityFlag
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let flags = savedConfigureFlags config
   (comp, conf) <- configCompilerAux flags
   fetch verbosity
@@ -233,7 +236,7 @@ fetchAction verbosityFlag extraArgs globalFlags = do
 uploadAction :: UploadFlags -> [String] -> GlobalFlags -> IO ()
 uploadAction uploadFlags extraArgs globalFlags = do
   let verbosity = fromFlag (uploadVerbosity uploadFlags)
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
   -- FIXME: check that the .tar.gz files exist and report friendly error message if not
   let tarfiles = extraArgs
@@ -282,7 +285,7 @@ reportAction verbosityFlag extraArgs globalFlags = do
     die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
 
   let verbosity = fromFlag verbosityFlag
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
 
   Upload.report verbosity (globalRepos (savedGlobalFlags config))
 

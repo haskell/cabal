@@ -34,9 +34,10 @@ import Distribution.Client.Setup
 
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
-         , Flag, toFlag, flagToMaybe, fromFlagOrDefault )
+         , Flag, toFlag, flagToMaybe, fromFlagOrDefault, flagToList )
 import Distribution.Simple.InstallDirs
-         ( InstallDirs(..), toPathTemplate, defaultInstallDirs )
+         ( InstallDirs(..), defaultInstallDirs
+         , PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.ParseUtils
          ( FieldDescr(..), liftField
          , ParseResult(..), locatedErrorMsg, showPWarning
@@ -44,9 +45,11 @@ import Distribution.ParseUtils
          , simpleField, listField, parseFilePathQ, parseTokenQ )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
+import Distribution.ReadE
+         ( succeedReadE )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
-         , viewAsFieldDescr )
+         , viewAsFieldDescr, OptionField, option, reqArg )
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Utils
@@ -85,26 +88,50 @@ import System.IO.Error
 --
 
 data SavedConfig = SavedConfig {
-    savedGlobalFlags    :: GlobalFlags,
-    savedInstallFlags   :: InstallFlags,
-    savedConfigureFlags :: ConfigFlags,
-    savedUploadFlags    :: UploadFlags
+    savedGlobalFlags       :: GlobalFlags,
+    savedInstallFlags      :: InstallFlags,
+    savedConfigureFlags    :: ConfigFlags,
+    savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
+    savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
+    savedUploadFlags       :: UploadFlags
   }
 
 instance Monoid SavedConfig where
   mempty = SavedConfig {
-    savedGlobalFlags    = mempty,
-    savedInstallFlags   = mempty,
-    savedConfigureFlags = mempty,
-    savedUploadFlags    = mempty
+    savedGlobalFlags       = mempty,
+    savedInstallFlags      = mempty,
+    savedConfigureFlags    = mempty,
+    savedUserInstallDirs   = mempty,
+    savedGlobalInstallDirs = mempty,
+    savedUploadFlags       = mempty
   }
   mappend a b = SavedConfig {
-    savedGlobalFlags    = combine savedGlobalFlags,
-    savedInstallFlags   = combine savedInstallFlags,
-    savedConfigureFlags = combine savedConfigureFlags,
-    savedUploadFlags    = combine savedUploadFlags
+    savedGlobalFlags       = combine savedGlobalFlags,
+    savedInstallFlags      = combine savedInstallFlags,
+    savedConfigureFlags    = combine savedConfigureFlags,
+    savedUserInstallDirs   = combine savedUserInstallDirs,
+    savedGlobalInstallDirs = combine savedGlobalInstallDirs,
+    savedUploadFlags       = combine savedUploadFlags
   }
     where combine field = field a `mappend` field b
+
+updateInstallDirs :: Flag Bool -> SavedConfig -> SavedConfig
+updateInstallDirs userInstallFlag
+  savedConfig@SavedConfig {
+    savedConfigureFlags    = configureFlags,
+    savedUserInstallDirs   = userInstallDirs,
+    savedGlobalInstallDirs = globalInstallDirs
+  } =
+  savedConfig {
+    savedConfigureFlags = configureFlags {
+      configInstallDirs = installDirs
+    }
+  }
+  where
+    installDirs | userInstall = userInstallDirs
+                | otherwise   = globalInstallDirs
+    userInstall = fromFlagOrDefault defaultUserInstall $
+                    configUserInstall configureFlags `mappend` userInstallFlag
 
 --
 -- * Default config
@@ -113,15 +140,12 @@ instance Monoid SavedConfig where
 -- | These are the absolute basic defaults. The fields that must be initialised.
 --
 defaultSavedConfig :: SavedConfig
-defaultSavedConfig = SavedConfig {
-    savedGlobalFlags    = mempty,
-    savedInstallFlags   = mempty,
+defaultSavedConfig = mempty {
     savedConfigureFlags = mempty {
       configHcFlavor    = toFlag defaultCompiler,
       configUserInstall = toFlag defaultUserInstall,
       configVerbosity   = toFlag normal
-    },
-    savedUploadFlags    = mempty
+    }
   }
 
 -- | This is the initial configuration that we write out to to the config file
@@ -133,19 +157,17 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir   <- defaultCacheDir
   userPrefix <- defaultCabalDir
-  return SavedConfig {
-    savedGlobalFlags    = mempty {
-      globalCacheDir    = toFlag cacheDir,
-      globalRemoteRepos = [defaultRemoteRepo]
+  return mempty {
+    savedGlobalFlags     = mempty {
+      globalCacheDir     = toFlag cacheDir,
+      globalRemoteRepos  = [defaultRemoteRepo]
     },
-    savedInstallFlags   = mempty,
-    savedConfigureFlags = mempty {
-      configUserInstall = toFlag defaultUserInstall,
-      configInstallDirs = mempty {
-        prefix          = toFlag (toPathTemplate userPrefix)
-      }
+    savedConfigureFlags  = mempty {
+      configUserInstall  = toFlag defaultUserInstall
     },
-    savedUploadFlags    = mempty
+    savedUserInstallDirs = mempty {
+      prefix             = toFlag (toPathTemplate userPrefix)
+    }
   }
 
 defaultCabalDir :: IO FilePath
@@ -186,9 +208,9 @@ defaultRemoteRepo = RemoteRepo name uri
 -- * Config file reading
 --
 
-loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
-loadConfig verbosity maybeConfigFile = do
-  configFile <- maybe defaultConfigFile return (flagToMaybe maybeConfigFile)
+loadConfig :: Verbosity -> Flag FilePath -> Flag Bool -> IO SavedConfig
+loadConfig verbosity configFileFlag userInstallFlag = do
+  configFile <- maybe defaultConfigFile return (flagToMaybe configFileFlag)
 
   minp <- readConfigFile defaultSavedConfig configFile
   case minp of
@@ -198,11 +220,11 @@ loadConfig verbosity maybeConfigFile = do
       commentConf <- commentSavedConfig
       initialConf <- initialSavedConfig
       writeConfigFile configFile commentConf initialConf
-      return (defaultSavedConfig `mappend` initialConf)
+      return (fallbackConf initialConf)
     Just (ParseOk ws conf) -> do
       when (not $ null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
-      return conf
+      return (updateInstallDirs userInstallFlag conf)
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
       warn verbosity $
@@ -210,7 +232,10 @@ loadConfig verbosity maybeConfigFile = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ": " ++ show msg
       warn verbosity $ "Using default configuration."
       initialConf <- initialSavedConfig
-      return (defaultSavedConfig `mappend` initialConf)
+      return (fallbackConf initialConf)
+
+  where
+    fallbackConf = updateInstallDirs mempty . mappend defaultSavedConfig
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
@@ -235,13 +260,14 @@ writeConfigFile file comments vals = do
 commentSavedConfig :: IO SavedConfig
 commentSavedConfig = do
   userInstallDirs   <- defaultInstallDirs defaultCompiler True True
+  globalInstallDirs <- defaultInstallDirs defaultCompiler False True
   return SavedConfig {
-    savedGlobalFlags    = commandDefaultFlags globalCommand,
-    savedInstallFlags   = defaultInstallFlags,
-    savedConfigureFlags = (defaultConfigFlags defaultProgramConfiguration) {
-                            configInstallDirs = fmap toFlag userInstallDirs
-                          },
-    savedUploadFlags    = commandDefaultFlags uploadCommand
+    savedGlobalFlags       = commandDefaultFlags globalCommand,
+    savedInstallFlags      = defaultInstallFlags,
+    savedConfigureFlags    = defaultConfigFlags defaultProgramConfiguration,
+    savedUserInstallDirs   = fmap toFlag userInstallDirs,
+    savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
+    savedUploadFlags       = commandDefaultFlags uploadCommand
   }
 
 -- | All config file fields.
@@ -250,11 +276,14 @@ configFieldDescriptions :: [FieldDescr SavedConfig]
 configFieldDescriptions =
      toSavedConfig liftGlobalFlag  (commandOptions globalCommand ParseArgs)
   ++ toSavedConfig liftInstallFlag (installOptions ParseArgs)
-  ++ toSavedConfig liftConfigFlag  (configureOptions ParseArgs)
+  ++ noInstallDirs
+    (toSavedConfig liftConfigFlag  (configureOptions ParseArgs))
   ++ toSavedConfig liftUploadFlag  (commandOptions uploadCommand ParseArgs)
 
   where
     toSavedConfig lift = map (lift . viewAsFieldDescr)
+    noInstallDirs = filter ((`notElem` installDirFieldNames) . fieldName)
+    installDirFieldNames = map fieldName installDirsFields
 
 -- TODO: next step, make the deprecated fields elicit a warning.
 --
@@ -279,8 +308,22 @@ deprecatedFieldDescriptions =
       (optional (fmap Password parseTokenQ))
       uploadPassword    (\d cfg -> cfg { uploadPassword = d })
   ]
-    where
-      optional = Parse.option mempty . fmap toFlag
+ ++ map (modifyFieldName ("user-"++)   . liftUserInstallDirs)   installDirsFields
+ ++ map (modifyFieldName ("global-"++) . liftGlobalInstallDirs) installDirsFields
+  where
+    optional = Parse.option mempty . fmap toFlag
+    modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
+    modifyFieldName f d = d { fieldName = f (fieldName d) }
+
+liftUserInstallDirs :: FieldDescr (InstallDirs (Flag PathTemplate))
+                    -> FieldDescr SavedConfig
+liftUserInstallDirs = liftField
+  savedUserInstallDirs (\flags conf -> conf { savedUserInstallDirs = flags })
+
+liftGlobalInstallDirs :: FieldDescr (InstallDirs (Flag PathTemplate))
+                      -> FieldDescr SavedConfig
+liftGlobalInstallDirs = liftField
+  savedGlobalInstallDirs (\flags conf -> conf { savedGlobalInstallDirs = flags })
 
 liftGlobalFlag :: FieldDescr GlobalFlags -> FieldDescr SavedConfig
 liftGlobalFlag = liftField
@@ -342,3 +385,66 @@ ppField name def cur
 
 showFields :: [FieldDescr a] -> a -> a -> String
 showFields fields def = Disp.render . ppFields fields def
+
+installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
+installDirsFields = map viewAsFieldDescr installDirsOptions
+
+--TODO: this is now exported in Cabal-1.5
+installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
+installDirsOptions =
+  [ option "" ["prefix"]
+      "bake this prefix in preparation of installation"
+      prefix (\v flags -> flags { prefix = v })
+      installDirArg
+
+  , option "" ["bindir"]
+      "installation directory for executables"
+      bindir (\v flags -> flags { bindir = v })
+      installDirArg
+
+  , option "" ["libdir"]
+      "installation directory for libraries"
+      libdir (\v flags -> flags { libdir = v })
+      installDirArg
+
+  , option "" ["libsubdir"]
+      "subdirectory of libdir in which libs are installed"
+      libsubdir (\v flags -> flags { libsubdir = v })
+      installDirArg
+
+  , option "" ["libexecdir"]
+      "installation directory for program executables"
+      libexecdir (\v flags -> flags { libexecdir = v })
+      installDirArg
+
+  , option "" ["datadir"]
+      "installation directory for read-only data"
+      datadir (\v flags -> flags { datadir = v })
+      installDirArg
+
+  , option "" ["datasubdir"]
+      "subdirectory of datadir in which data files are installed"
+      datasubdir (\v flags -> flags { datasubdir = v })
+      installDirArg
+
+  , option "" ["docdir"]
+      "installation directory for documentation"
+      docdir (\v flags -> flags { docdir = v })
+      installDirArg
+
+  , option "" ["htmldir"]
+      "installation directory for HTML documentation"
+      htmldir (\v flags -> flags { htmldir = v })
+      installDirArg
+
+  , option "" ["haddockdir"]
+      "installation directory for haddock interfaces"
+      haddockdir (\v flags -> flags { haddockdir = v })
+      installDirArg
+  ]
+  where
+    installDirArg _sf _lf d get set =
+      reqArgFlag "DIR" _sf _lf d
+        (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
+
+    reqArgFlag ad = reqArg ad (succeedReadE toFlag) flagToList
