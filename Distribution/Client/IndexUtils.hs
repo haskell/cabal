@@ -20,7 +20,7 @@ module Distribution.Client.IndexUtils (
 import Distribution.Client.Tar
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..) )
+         , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), Dependency(Dependency) )
@@ -35,9 +35,8 @@ import Distribution.Text
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
-import Prelude hiding (catch)
-import Data.Monoid (Monoid(mconcat))
-import Control.Exception (evaluate, catch, Exception(IOException))
+import Data.Monoid (Monoid(..))
+import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
@@ -57,13 +56,9 @@ getAvailablePackages verbosity repos = do
 --
 readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex AvailablePackage)
 readRepoIndex verbosity repo =
-  let indexFile = repoLocalDir repo </> "00-index.tar"
-   in fmap parseRepoIndex (BS.readFile indexFile)
-          `catch` (\e -> do case e of
-                              IOException ioe | isDoesNotExistError ioe ->
-                                warn verbosity "The package list does not exist. Run 'cabal update' to download it."
-                              _ -> warn verbosity (show e)
-                            return (PackageIndex.fromList []))
+  handleNotFound $ do
+    let indexFile = repoLocalDir repo </> "00-index.tar"
+     in evaluate . parseRepoIndex =<< BS.readFile indexFile
 
   where
     -- | Parse a repository index file from a 'ByteString'.
@@ -91,6 +86,18 @@ readRepoIndex verbosity repo =
                        _ -> []
                _ -> []
         else []
+
+    handleNotFound action = catch action $ \e -> if isDoesNotExistError e
+      then do
+        case repoKind repo of
+          Left  remoteRepo -> warn verbosity $
+               "The package list for '" ++ remoteRepoName remoteRepo
+            ++ "' does not exist. Run 'cabal update' to download it."
+          Right _localRepo -> warn verbosity $
+               "The package list for the local repo '" ++ repoLocalDir repo
+            ++ "' is missing. The repo is invalid."
+        return mempty
+      else ioError e
 
 -- | Disambiguate a set of packages using 'disambiguatePackage' and report any
 -- ambiguities to the user.
