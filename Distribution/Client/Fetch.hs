@@ -81,10 +81,14 @@ downloadURI verbosity path uri = do
     Right rsp
       | rspCode rsp == (2,0,0)
      -> writeFileAtomic path (rspBody rsp)
+     --FIXME: check the content-length header matches the body length.
+     --TODO: stream the download into the file rather than buffering the whole
+     --      thing in memory.
+     --      remember the ETag so we can not re-download if nothing changed.
      >> return Nothing
 
       | otherwise
-     -> return (Just (ErrorMisc ("Invalid HTTP code: " ++ show (rspCode rsp))))
+     -> return (Just (ErrorMisc ("Unsucessful HTTP code: " ++ show (rspCode rsp))))
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
