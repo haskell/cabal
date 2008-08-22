@@ -1,6 +1,21 @@
 -*-change-log-*-
 
 1.5.x (current development version)
+	* Support for ghc-6.9 and 6.10
+	* Wildcards now allowed in data-files and extra-source-files fields
+	* New syntactic sugar for dependencies "build-depends: foo ==1.2.*"
+	* New cabal_macros.h provides macros to test versions of dependencies
+	* Relocatable bindists now possible on unix via env vars
+	* New 'exposed' field allows packages to be not exposed by default
+	* Install dir flags can now use $os and $arch variables
+	* New --distdir flag allows multiple builds from a single sources dir
+	* cc-options now only apply to .c files, not for -fvia-C
+	* cc-options are not longer propagated to dependent packages
+	* The cpp/cc/ld-options fields no longer use ',' as a separator
+	* hsc2hs is now called using gcc instead of using ghc as gcc
+	* New api for manipulating sets and graphs of packages
+	* Internal api improvements and code cleanups
+	* Minor improvements to the user guide
 
 1.4.0.2 (current stable version)
 	* Fix executable stripping default
