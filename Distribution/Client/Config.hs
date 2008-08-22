@@ -276,16 +276,29 @@ commentSavedConfig = do
 --
 configFieldDescriptions :: [FieldDescr SavedConfig]
 configFieldDescriptions =
-     toSavedConfig liftGlobalFlag  (commandOptions globalCommand ParseArgs)
-  ++ toSavedConfig liftInstallFlag (installOptions ParseArgs)
-  ++ noInstallDirs
-    (toSavedConfig liftConfigFlag  (configureOptions ParseArgs))
-  ++ toSavedConfig liftUploadFlag  (commandOptions uploadCommand ParseArgs)
+
+     toSavedConfig liftGlobalFlag
+       (commandOptions globalCommand ParseArgs)
+       ["version", "numeric-version", "config-file"]
+
+  ++ toSavedConfig liftInstallFlag
+       (installOptions ParseArgs)
+       ["dry-run", "reinstall", "only"]
+
+  ++ toSavedConfig liftConfigFlag
+       (configureOptions ParseArgs)
+       (["scratchdir", "configure-option"] ++ map fieldName installDirsFields)
+
+  ++ toSavedConfig liftUploadFlag
+       (commandOptions uploadCommand ParseArgs)
+       ["verbose", "check"]
 
   where
-    toSavedConfig lift = map (lift . viewAsFieldDescr)
-    noInstallDirs = filter ((`notElem` installDirFieldNames) . fieldName)
-    installDirFieldNames = map fieldName installDirsFields
+    toSavedConfig lift options excluded =
+      [ lift field
+      | opt <- options
+      , let field = viewAsFieldDescr opt
+      , fieldName field `notElem` excluded ]
 
 -- TODO: next step, make the deprecated fields elicit a warning.
 --
