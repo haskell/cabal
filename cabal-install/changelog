@@ -1,0 +1,59 @@
+-*-change-log-*-
+
+0.5.2 (next release version)
+	* Suport building haddock documentaion
+	* Self-reinstall now works on Windows
+	* Allow adding symlinks to excutables into a separate bindir
+	* New self-documenting config file
+	* New install --reinstall flag
+	* More helpful status messages in a couple places
+	* Upload failures now report full text error message from the server
+	* Support for local package repositories
+	* New build logging and reporting
+	* New command to upload build reports to (a compatible) server
+	* Allow tilde in hackage server URIs
+	* Internal code improvements
+	* Many other minor improvements and bug fixes
+
+0.5.1 Duncan Coutts <duncan@haskell.org> June 2008
+	* Restore minimal hugs support in dependency resolver
+	* Fix for disabled http proxies on Windows
+	* Revert to global installs on Windows by default
+
+0.5.0 Duncan Coutts <duncan@haskell.org> June 2008
+	* New package dependency resolver, solving diamond dep problem
+	* Integrate cabal-setup functionality
+	* Integrate cabal-upload functionality
+	* New cabal update and check commands
+	* Improved behavior for install and upgrade commands
+	* Full Windows support
+	* New command line handling
+	* Bash command line completion
+	* Allow case insensitive package names on command line
+	* New --dry-run flag for install, upgrade and fetch commands
+	* New --root-cmd flag to allow installing as root
+	* New --cabal-lib-version flag to select different Cabal lib versions
+	* Support for HTTP proxies
+	* Improved cabal list output
+	* Build other non-dependent packages even when some fail
+	* Report a summary of all build failures at the end
+	* Partial support for hugs
+	* Partial implementation of build reporting and logging
+	* More consistent logging and verbosity
+	* Significant internal code restructuring
+
+0.4 Duncan Coutts <duncan@haskell.org> Oct 2007
+	* Renamed executable from 'cabal-install' to 'cabal'
+	* Partial Windows compatability
+	* Do per-user installs by default
+	* cabal install now installs the package in the current directory
+	* Allow multiple remote servers
+	* Use zlib lib and internal tar code and rather than external tar
+	* Reorganised configuration files
+	* Significant code restructuring
+	* Cope with packages with conditional dependencies
+
+0.3 and older versions by Lemmih, Paolo Martini and others 2006-2007
+	* Switch from smart-server, dumb-client model to the reverse
+	* New .tar.gz based index format
+	* New remote and local package archive format
