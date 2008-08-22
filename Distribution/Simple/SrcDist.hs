@@ -117,11 +117,14 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
   withTempDirectory verbosity tmpDir $ do
 
     setupMessage verbosity "Building source dist for" (packageId pkg)
+    date <- toCalendarTime =<< getClockTime
+    let pkg' | snapshot  = snapshotPackage date pkg
+             | otherwise = pkg
     if snapshot
       then getClockTime >>= toCalendarTime
        >>= prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps
       else prepareTree         verbosity pkg mb_lbi distPref tmpDir pps
-    targzFile <- createArchive verbosity pkg mb_lbi tmpDir targetPref
+    targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
     notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
@@ -237,6 +240,16 @@ prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps date = do
       | "version:" `isPrefixOf` map toLower line
                   = "version: " ++ display version
       | otherwise = line
+
+-- | Modifies a 'PackageDescription' by appending a snapshot number
+-- corresponding to the given date.
+--
+snapshotPackage :: CalendarTime -> PackageDescription -> PackageDescription
+snapshotPackage date pkg =
+  pkg {
+    package = pkgid { pkgVersion = snapshotVersion date (pkgVersion pkgid) }
+  }
+  where pkgid = packageId pkg
 
 -- | Modifies a 'Version' by appending a snapshot number corresponding
 -- to the given date.
