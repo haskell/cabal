@@ -43,7 +43,6 @@ Executable cabal
         Distribution.Client.Config
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Bogus
-        Distribution.Client.Dependency.Naive
         Distribution.Client.Dependency.TopDown
         Distribution.Client.Dependency.TopDown.Constraints
         Distribution.Client.Dependency.TopDown.Types
@@ -51,7 +50,6 @@ Executable cabal
         Distribution.Client.Fetch
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
---        Distribution.Client.Info
         Distribution.Client.Install
         Distribution.Client.InstallPlan
         Distribution.Client.InstallSymlink
