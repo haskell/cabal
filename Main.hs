@@ -177,10 +177,11 @@ installAction (cflags,iflags) extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall cflags)
   let cflags' = savedConfigureFlags config `mappend` cflags
+      iflags' = savedInstallFlags   config `mappend` iflags
   (comp, conf) <- configCompilerAux cflags'
   install verbosity
           (configPackageDB' cflags') (globalRepos (savedGlobalFlags config))
-          comp conf cflags' iflags
+          comp conf cflags' iflags'
           [ UnresolvedDependency pkg (configConfigurationsFlags cflags')
           | pkg <- pkgs ]
 
@@ -213,10 +214,11 @@ upgradeAction (cflags,iflags) extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall cflags)
   let cflags' = savedConfigureFlags config `mappend` cflags
+      iflags' = savedInstallFlags   config `mappend` iflags
   (comp, conf) <- configCompilerAux cflags'
   upgrade verbosity
           (configPackageDB' cflags') (globalRepos (savedGlobalFlags config))
-          comp conf cflags' iflags
+          comp conf cflags' iflags'
           [ UnresolvedDependency pkg (configConfigurationsFlags cflags')
           | pkg <- pkgs ]
 
