@@ -53,7 +53,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Utils
-         ( notice, warn )
+         ( notice, warn, lowercase )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.System
@@ -61,6 +61,8 @@ import Distribution.System
 import Distribution.Verbosity
          ( Verbosity, normal )
 
+import Data.List
+         ( partition )
 import Data.Maybe
          ( fromMaybe )
 import Data.Monoid
@@ -71,9 +73,9 @@ import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
 import qualified Text.PrettyPrint.HughesPJ as Disp
-         ( Doc, render, text, colon, vcat, isEmpty )
+         ( Doc, render, text, colon, vcat, isEmpty, nest )
 import Text.PrettyPrint.HughesPJ
-         ( (<>), (<+>) )
+         ( (<>), (<+>), ($$), ($+$) )
 import System.Directory
          ( createDirectoryIfMissing, getAppUserDataDirectory )
 import Network.URI
@@ -342,23 +344,58 @@ liftUploadFlag = liftField
   savedUploadFlags (\flags conf -> conf { savedUploadFlags = flags })
 
 parseConfig :: SavedConfig -> String -> ParseResult SavedConfig
-parseConfig = parseFields (configFieldDescriptions
-                        ++ deprecatedFieldDescriptions)
+parseConfig initial = \str -> do
+  fields <- readFields str
+  let (knownSections, others) = partition isKnownSection fields
+  config <- parse others
+  (user, global) <- foldM parseSections (mempty, mempty) knownSections
+  return config {
+    savedUserInstallDirs   = user,
+    savedGlobalInstallDirs = global
+  }
+
+  where
+    isKnownSection (ParseUtils.Section _ "install-dirs" _ _) = True
+    isKnownSection _                                          = False
+
+    parse = parseFields (configFieldDescriptions
+                      ++ deprecatedFieldDescriptions) initial
+
+    parseSections accum@(u,g) (ParseUtils.Section _ "install-dirs" name fs)
+      | name' == "user"   = do u' <- parseFields installDirsFields u fs
+                               return (u', g)
+      | name' == "global" = do g' <- parseFields installDirsFields g fs
+                               return (u, g')
+      | otherwise         = do
+          warning "The install-paths section should be for 'user' or 'global'"
+          return accum
+      where name' = lowercase name
+    parseSections accum f = do
+      warning $ "Unrecognized stanza on line " ++ show (lineNo f)
+      return accum
 
 showConfig :: SavedConfig -> String
-showConfig = showFields configFieldDescriptions mempty
+showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
-showConfigWithComments = showFields configFieldDescriptions
-
+showConfigWithComments comment vals = Disp.render $
+      ppFields configFieldDescriptions comment vals
+  $+$ Disp.text ""
+  $+$ installDirsSection "user"   savedUserInstallDirs
+  $+$ Disp.text ""
+  $+$ installDirsSection "global" savedGlobalInstallDirs
+  where
+    installDirsSection name field =
+      ppSection "install-dirs" name installDirsFields
+                (field comment) (field vals)
 
 ------------------------
 -- * Parsing utils
 --
 
 --FIXME: replace this with something better in Cabal-1.5
-parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
-parseFields fields initial = \str -> readFields str >>= foldM setField initial
+parseFields :: [FieldDescr a] -> a -> [ParseUtils.Field] -> ParseResult a
+parseFields fields initial = foldM setField initial
   where
     fieldMap = Map.fromList
       [ (name, f) | f@(FieldDescr name _ _) <- fields ]
@@ -383,8 +420,10 @@ ppField name def cur
   | Disp.isEmpty cur = Disp.text "--" <+> Disp.text name <> Disp.colon <+> def
   | otherwise        =                    Disp.text name <> Disp.colon <+> cur
 
-showFields :: [FieldDescr a] -> a -> a -> String
-showFields fields def = Disp.render . ppFields fields def
+ppSection :: String -> String -> [FieldDescr a] -> a -> a -> Disp.Doc
+ppSection name arg fields def cur =
+     Disp.text name <+> Disp.text arg
+  $$ Disp.nest 2 (ppFields fields def cur)
 
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
