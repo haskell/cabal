@@ -108,7 +108,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
       mkArgs cabalLibVersion = commandName cmd
                              : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
-  setupMethod verbosity options (packageId pkg) buildType' mkArgs
+  setupMethod verbosity options' (packageId pkg) buildType' mkArgs
   where
     getPkg = findPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
