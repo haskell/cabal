@@ -35,7 +35,7 @@ import Distribution.Package
          ( PackageIdentifier(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
-         ( VersionRange(LaterVersion) )
+         ( orLaterVersion )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -166,7 +166,7 @@ upgradableDependencies :: PackageIndex InstalledPackageInfo
                        -> PackageIndex AvailablePackage
                        -> [Dependency]
 upgradableDependencies installed available =
-  [ Dependency name (LaterVersion latestVersion)
+  [ Dependency name (orLaterVersion latestVersion)
     -- This is really quick (linear time). The trick is that we're doing a
     -- merge join of two tables. We can do it as a merge because they're in
     -- a comparable order because we're getting them from the package indexs.
