@@ -17,7 +17,8 @@ Installing as a user (no root or administer access)
 
 Note the use of the `--user` flag at the configure step.
 
-This will install into `$HOME/.cabal/` or the equivalent on Windows.
+This will install into `$HOME/.cabal/` on unix and into
+`$Documents and Settings\$User\Application Data\cabal\` on Windows
 If you want to install elsewhere use the `--prefix=` flag at the
 configure step.
 
