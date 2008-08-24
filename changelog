@@ -25,6 +25,9 @@
 	* Fix for modules that use pre-processing and .hs-boot files
 	* Clarify some points in the user guide and readme text
 	* Fix verbosity flags passed to sub-command like haddock
+	* Fix sdist --snapshot
+	* Allow meta-packages that contain no modules or C code
+	* Make the generated Paths module -Wall clean on Windows
 
 1.4.0.1 Duncan Coutts <duncan@haskell.org> June 2008
 	* Fix a bug which caused '.' to always be in the sources search path
