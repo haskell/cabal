@@ -17,7 +17,7 @@ module Distribution.Client.IndexUtils (
   disambiguateDependencies
   ) where
 
-import Distribution.Client.Tar
+import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
@@ -35,6 +35,7 @@ import Distribution.Text
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
+import Data.Maybe  (catMaybes)
 import Data.Monoid (Monoid(..))
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
@@ -58,34 +59,44 @@ readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex AvailablePackage)
 readRepoIndex verbosity repo =
   handleNotFound $ do
     let indexFile = repoLocalDir repo </> "00-index.tar"
-     in evaluate . parseRepoIndex =<< BS.readFile indexFile
+    pkgs <- either fail return . parseRepoIndex =<< BS.readFile indexFile
+    evaluate (PackageIndex.fromList pkgs)
 
   where
     -- | Parse a repository index file from a 'ByteString'.
     --
     -- All the 'AvailablePackage's are marked as having come from the given 'Repo'.
     --
-    parseRepoIndex :: ByteString -> PackageIndex AvailablePackage
-    parseRepoIndex s = PackageIndex.fromList $ do
-      (hdr, content) <- readTarArchive s
-      if takeExtension (tarFileName hdr) == ".cabal"
-        then case splitDirectories (normalise (tarFileName hdr)) of
-               [pkgname,vers,_] ->
-                 let parsed = parsePackageDescription
-                                (fromUTF8 . BS.Char8.unpack $ content)
-                     descr  = case parsed of
-                       ParseOk _ d -> d
-                       _           -> error $ "Couldn't read cabal file "
-                                           ++ show (tarFileName hdr)
-                  in case simpleParse vers of
-                       Just ver -> return AvailablePackage {
-                           packageInfoId = PackageIdentifier pkgname ver,
-                           packageDescription = descr,
-                           packageSource = RepoTarballPackage repo
-                         }
-                       _ -> []
-               _ -> []
-        else []
+    parseRepoIndex :: ByteString -> Either String [AvailablePackage]
+    parseRepoIndex = either Left (Right . catMaybes . map extractPkg)
+                   . check [] . Tar.read
+
+    check _  (Tar.Fail err)  = Left  err
+    check ok Tar.Done        = Right ok
+    check ok (Tar.Next e es) = check (e:ok) es
+
+    extractPkg :: Tar.Entry -> Maybe AvailablePackage
+    extractPkg entry
+      | takeExtension fileName == ".cabal"
+      = case splitDirectories (normalise fileName) of
+          [pkgname,vers,_] -> case simpleParse vers of
+            Just ver -> Just AvailablePackage {
+                packageInfoId      = PackageIdentifier pkgname ver,
+                packageDescription = descr,
+                packageSource      = RepoTarballPackage repo
+              }
+            _ -> Nothing
+            where
+              parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
+                                               . Tar.fileContent $ entry
+              descr  = case parsed of
+                ParseOk _ d -> d
+                _           -> error $ "Couldn't read cabal file "
+                                    ++ show fileName
+          _ -> Nothing
+      | otherwise = Nothing
+      where
+        fileName = Tar.fileName entry
 
     handleNotFound action = catch action $ \e -> if isDoesNotExistError e
       then do
