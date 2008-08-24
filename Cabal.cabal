@@ -27,20 +27,29 @@ Extra-Source-Files:
         Distribution/Simple/GHC/mkGHCMakefile.sh
         Distribution/Simple/GHC/Makefile.in
 
-Flag small_base
-  Description: Choose the new smaller, split-up base package.
+Flag base4
+    Description: Choose the even newer, even smaller, split-up base package.
+
+Flag base3
+    Description: Choose the new smaller, split-up base package.
 
 Library
-  if flag(small_base)
-    Build-Depends: base       >= 3   && < 5,
-                   directory  >= 1   && < 1.1,
+  if flag(base4)
+    Build-Depends: base       >= 4   && < 5
+  if flag(base3)
+    Build-Depends: base       >= 3   && < 4
+  if !flag(base3) && !flag(base4)
+    Build-Depends: base       < 3
+
+  if flag(base4)
+    Build-Depends: concurrent >= 0.1 && < 0.2
+  if flag(base3) || flag(base4)
+    Build-Depends: directory  >= 1   && < 1.1,
                    process    >= 1   && < 1.1,
                    old-time   >= 1   && < 1.1,
                    containers >= 0.1 && < 0.2,
                    array      >= 0.1 && < 0.2,
                    pretty     >= 1   && < 1.1
-  else
-    Build-Depends: base < 3
   Build-Depends: filepath >= 1 && < 1.2
 
   GHC-Options: -Wall
