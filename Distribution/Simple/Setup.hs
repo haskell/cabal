@@ -318,7 +318,9 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
       [optionVerbosity configVerbosity (\v flags -> flags { configVerbosity = v })
-      ,optionDistPref configDistPref (\d flags -> flags { configDistPref = d })
+      ,optionDistPref
+         configDistPref (\d flags -> flags { configDistPref = d })
+         showOrParseArgs
 
       ,option [] ["compiler"] "compiler"
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
@@ -609,7 +611,7 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
     longDesc   = Just $ \_ ->
           "Does not call register, and allows a prefix at install time\n"
        ++ "Without the --destdir flag, configure determines location.\n"
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
 
       ,option "" ["shell-wrappers"]
@@ -617,7 +619,9 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
          copyUseWrapper (\v flags -> flags { copyUseWrapper = v })
          (boolOpt [] [])
 
-      ,optionDistPref copyDistPref (\d flags -> flags { copyDistPref = d })
+      ,optionDistPref
+         copyDistPref (\d flags -> flags { copyDistPref = d })
+         showOrParseArgs
 
       ,option "" ["inplace"]
          "copy the package in the install subdirectory of the dist prefix, so it can be used without being installed"
@@ -690,9 +694,11 @@ installCommand = makeCommand name shortDesc longDesc defaultInstallFlags options
          "Unlike the copy command, install calls the register command.\n"
       ++ "If you want to install into a location that is not what was\n"
       ++ "specified in the configure step, use the copy command.\n"
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
-      ,optionDistPref installDistPref (\d flags -> flags { installDistPref = d })
+      ,optionDistPref
+         installDistPref (\d flags -> flags { installDistPref = d })
+         showOrParseArgs
 
       ,option "" ["inplace"]
          "install the package in the install subdirectory of the dist prefix, so it can be used without being installed"
@@ -757,9 +763,11 @@ sdistCommand = makeCommand name shortDesc longDesc defaultSDistFlags options
     name       = "sdist"
     shortDesc  = "Generate a source distribution file (.tar.gz)."
     longDesc   = Nothing
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity sDistVerbosity (\v flags -> flags { sDistVerbosity = v })
-      ,optionDistPref sDistDistPref (\d flags -> flags { sDistDistPref = d })
+      ,optionDistPref
+         sDistDistPref (\d flags -> flags { sDistDistPref = d })
+         showOrParseArgs
 
       ,option "" ["snapshot"]
          "Produce a snapshot source distribution"
@@ -815,9 +823,11 @@ registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags optio
     name       = "register"
     shortDesc  = "Register this package with the compiler."
     longDesc   = Nothing
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
-      ,optionDistPref regDistPref (\d flags -> flags { regDistPref = d })
+      ,optionDistPref
+         regDistPref (\d flags -> flags { regDistPref = d })
+         showOrParseArgs
 
       ,option "" ["packageDB"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
@@ -848,9 +858,11 @@ unregisterCommand = makeCommand name shortDesc longDesc defaultRegisterFlags opt
     name       = "unregister"
     shortDesc  = "Unregister this package with the compiler."
     longDesc   = Nothing
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
-      ,optionDistPref regDistPref (\d flags -> flags { regDistPref = d })
+      ,optionDistPref
+         regDistPref (\d flags -> flags { regDistPref = d })
+          showOrParseArgs
 
       ,option "" ["user"] ""
          regPackageDB (\v flags -> flags { regPackageDB = v })
@@ -931,9 +943,11 @@ hscolourCommand = makeCommand name shortDesc longDesc defaultHscolourFlags optio
     name       = "hscolour"
     shortDesc  = "Generate HsColour colourised code, in HTML format."
     longDesc   = Just (\_ -> "Requires hscolour.\n")
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity hscolourVerbosity (\v flags -> flags { hscolourVerbosity = v })
-      ,optionDistPref hscolourDistPref (\d flags -> flags { hscolourDistPref = d })
+      ,optionDistPref
+         hscolourDistPref (\d flags -> flags { hscolourDistPref = d })
+         showOrParseArgs
 
       ,option "" ["executables"]
          "Run hscolour for Executables targets"
@@ -984,9 +998,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
     longDesc   = Just $ \_ -> "Requires cpphs and haddock.\n"
                            ++ "Extra options can be set at the "
                            ++ "configure stage using --haddock-option(s)=\n"
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity haddockVerbosity (\v flags -> flags { haddockVerbosity = v })
-      ,optionDistPref haddockDistPref (\d flags -> flags { haddockDistPref = d })
+      ,optionDistPref
+         haddockDistPref (\d flags -> flags { haddockDistPref = d })
+         showOrParseArgs
 
       ,option "" ["hoogle"]
          "Generate a hoogle database"
@@ -1076,9 +1092,11 @@ cleanCommand = makeCommand name shortDesc longDesc defaultCleanFlags options
     name       = "clean"
     shortDesc  = "Clean up after a build."
     longDesc   = Just (\_ -> "Removes .hi, .o, preprocessed sources, etc.\n")
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity cleanVerbosity (\v flags -> flags { cleanVerbosity = v })
-      ,optionDistPref cleanDistPref (\d flags -> flags { cleanDistPref = d })
+      ,optionDistPref
+         cleanDistPref (\d flags -> flags { cleanDistPref = d })
+         showOrParseArgs
 
       ,option "s" ["save-configure"]
          "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."
@@ -1128,7 +1146,9 @@ buildCommand progConf = makeCommand name shortDesc longDesc defaultBuildFlags op
     longDesc   = Nothing
     options showOrParseArgs =
       optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
-      : optionDistPref buildDistPref (\d flags -> flags { buildDistPref = d })
+      : optionDistPref
+          buildDistPref (\d flags -> flags { buildDistPref = d })
+          showOrParseArgs
 
       : programConfigurationOptions progConf showOrParseArgs
           buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
@@ -1173,9 +1193,11 @@ makefileCommand = makeCommand name shortDesc longDesc defaultMakefileFlags optio
     name       = "makefile"
     shortDesc  = "Generate a makefile (only for GHC libraries)."
     longDesc   = Nothing
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity makefileVerbosity (\v flags -> flags { makefileVerbosity = v })
-      ,optionDistPref makefileDistPref (\d flags -> flags { makefileDistPref = d })
+      ,optionDistPref
+         makefileDistPref (\d flags -> flags { makefileDistPref = d })
+         showOrParseArgs
 
       ,option "f" ["file"]
          "Filename to use (default: Makefile)."
@@ -1221,9 +1243,11 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
     name       = "test"
     shortDesc  = "Run the test suite, if any (configure with UserHooks)."
     longDesc   = Nothing
-    options _  =
+    options showOrParseArgs =
       [optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
-      ,optionDistPref testDistPref (\d flags -> flags { testDistPref = d })
+      ,optionDistPref
+         testDistPref (\d flags -> flags { testDistPref = d })
+         showOrParseArgs
       ]
 
 emptyTestFlags :: TestFlags
@@ -1320,13 +1344,17 @@ reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
 optionDistPref :: (flags -> Flag FilePath)
                -> (Flag FilePath -> flags -> flags)
+               -> ShowOrParseArgs
                -> OptionField flags
-optionDistPref get set =
-  option "" ["distpref"]
-    (   "Control which directory Cabal puts its generated files in "
+optionDistPref get set = \showOrParseArgs ->
+  option "" (distPrefFlagName showOrParseArgs)
+    (   "The directory where Cabal puts generated build files "
      ++ "(default " ++ defaultDistPref ++ ")")
     get set
     (reqArgFlag "DIR")
+  where
+    distPrefFlagName ShowArgs  = ["distdir"]
+    distPrefFlagName ParseArgs = ["distdir", "distpref"]
 
 optionVerbosity :: (flags -> Flag Verbosity)
                 -> (Flag Verbosity -> flags -> flags)
