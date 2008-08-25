@@ -124,6 +124,12 @@ data Extension
   | DeriveDataTypeable
   | ConstrainedClassMethods
 
+  -- | Allow imports to be qualified by the package name that the module
+  -- is intended to be imported from, e.g.
+  --
+  -- > import "network" Network.Socket
+  | PackageImports
+
   | UnknownExtension String
   deriving (Show, Read, Eq)
 
@@ -184,6 +190,7 @@ knownExtensions =
   , UnboxedTuples
   , DeriveDataTypeable
   , ConstrainedClassMethods
+  , PackageImports
   ]
 
 instance Text Extension where
