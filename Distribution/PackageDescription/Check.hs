@@ -88,6 +88,8 @@ import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
+import System.FilePath.Windows as FilePath.Windows
+         ( isValid )
 
 -- | Results of some kind of failed package check.
 --
@@ -247,7 +249,14 @@ checkFields :: PackageDescription -> [PackageCheck]
 checkFields pkg =
   catMaybes [
 
-    check (isNothing (buildType pkg)) $
+    check (not . FilePath.Windows.isValid . display . packageName $ pkg) $
+      PackageDistInexcusable $
+           "Unfortunately, the package name '" ++ display (packageName pkg)
+        ++ "' is one of the reserved system file names on Windows. Many tools "
+        ++ "need to convert package names to file names so using this name "
+        ++ "would cause problems."
+
+  , check (isNothing (buildType pkg)) $
       PackageBuildWarning $
            "No 'build-type' specified. If you do not need a custom Setup.hs or "
         ++ "./configure script then use 'build-type: Simple'."
