@@ -139,36 +139,38 @@ updateInstallDirs userInstallFlag
 -- * Default config
 --
 
--- | These are the absolute basic defaults. The fields that must be initialised.
+-- | These are the absolute basic defaults. The fields that must be
+-- initialised. When we load the config from the file we layer the loaded
+-- values over these ones, so any missing fields in the file take their values
+-- from here.
 --
-defaultSavedConfig :: SavedConfig
-defaultSavedConfig = mempty {
-    savedConfigureFlags = mempty {
-      configHcFlavor    = toFlag defaultCompiler,
-      configUserInstall = toFlag defaultUserInstall,
-      configVerbosity   = toFlag normal
+baseSavedConfig :: IO SavedConfig
+baseSavedConfig = do
+  userPrefix <- defaultCabalDir
+  return mempty {
+    savedConfigureFlags  = mempty {
+      configHcFlavor     = toFlag defaultCompiler,
+      configUserInstall  = toFlag defaultUserInstall,
+      configVerbosity    = toFlag normal
+    },
+    savedUserInstallDirs = mempty {
+      prefix             = toFlag (toPathTemplate userPrefix)
     }
   }
 
 -- | This is the initial configuration that we write out to to the config file
 -- if the file does not exist (or the config we use if the file cannot be read
--- for some other reason). It gets layered on top of 'defaultSavedConfig' so it
--- does not need to include it.
+-- for some other reason). When the config gets loaded it gets layered on top
+-- of 'baseSavedConfig' so we do not need to include it into the initial
+-- values we save into the config file.
 --
 initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir   <- defaultCacheDir
-  userPrefix <- defaultCabalDir
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
       globalRemoteRepos  = [defaultRemoteRepo]
-    },
-    savedConfigureFlags  = mempty {
-      configUserInstall  = toFlag defaultUserInstall
-    },
-    savedUserInstallDirs = mempty {
-      prefix             = toFlag (toPathTemplate userPrefix)
     }
   }
 
@@ -211,10 +213,10 @@ defaultRemoteRepo = RemoteRepo name uri
 --
 
 loadConfig :: Verbosity -> Flag FilePath -> Flag Bool -> IO SavedConfig
-loadConfig verbosity configFileFlag userInstallFlag = do
+loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
   configFile <- maybe defaultConfigFile return (flagToMaybe configFileFlag)
 
-  minp <- readConfigFile defaultSavedConfig configFile
+  minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
       notice verbosity $ "Config file " ++ configFile ++ " not found."
@@ -222,22 +224,24 @@ loadConfig verbosity configFileFlag userInstallFlag = do
       commentConf <- commentSavedConfig
       initialConf <- initialSavedConfig
       writeConfigFile configFile commentConf initialConf
-      return (fallbackConf initialConf)
+      return initialConf
     Just (ParseOk ws conf) -> do
       when (not $ null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
-      return (updateInstallDirs userInstallFlag conf)
+      return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
       warn verbosity $
           "Error parsing config file " ++ configFile
         ++ maybe "" (\n -> ":" ++ show n) line ++ ": " ++ show msg
       warn verbosity $ "Using default configuration."
-      initialConf <- initialSavedConfig
-      return (fallbackConf initialConf)
+      initialSavedConfig
 
   where
-    fallbackConf = updateInstallDirs mempty . mappend defaultSavedConfig
+    addBaseConf body = do
+      base  <- baseSavedConfig
+      extra <- body
+      return (updateInstallDirs userInstallFlag (base `mappend` extra))
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
@@ -266,7 +270,9 @@ commentSavedConfig = do
   return SavedConfig {
     savedGlobalFlags       = commandDefaultFlags globalCommand,
     savedInstallFlags      = defaultInstallFlags,
-    savedConfigureFlags    = defaultConfigFlags defaultProgramConfiguration,
+    savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
+      configUserInstall    = toFlag defaultUserInstall
+    },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
     savedUploadFlags       = commandDefaultFlags uploadCommand
