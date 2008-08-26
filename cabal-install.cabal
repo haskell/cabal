@@ -21,7 +21,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
 Stability:          Experimental
 Category:           Distribution
 Build-type:         Simple
-Extra-Source-Files: README bash-completion/cabal
+Extra-Source-Files: README bash-completion/cabal bootstrap.sh
 Cabal-Version:      >= 1.2
 
 flag old-base
