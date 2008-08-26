@@ -57,11 +57,11 @@ module Distribution.Client.Tar (
   checkEntryNames
   ) where
 
-import Data.Char   (ord)
-import Data.Int    (Int64)
-import Data.List   (foldl')
-import Data.Monoid (Monoid(..))
-import Numeric     (readOct, showOct)
+import Data.Char     (ord)
+import Data.Int      (Int64)
+import Data.List     (foldl')
+import Control.Monad (MonadPlus(mplus))
+import Numeric       (readOct, showOct)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -409,8 +409,8 @@ checkEntryNames =
 
 checkEntryName :: Entry -> Maybe String
 checkEntryName entry = case fileType entry of
-    HardLink     -> check (fileName entry) `mappend` check (linkTarget entry)
-    SymbolicLink -> check (fileName entry) `mappend` check (linkTarget entry)
+    HardLink     -> check (fileName entry) `mplus` check (linkTarget entry)
+    SymbolicLink -> check (fileName entry) `mplus` check (linkTarget entry)
     _            -> check (fileName entry)
 
   where
