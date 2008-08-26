@@ -15,23 +15,34 @@ CABAL_URL=${HACKAGE_URL}/Cabal/${CABAL_VER}/Cabal-${CABAL_VER}.tar.gz
 HTTP_URL=${HACKAGE_URL}/HTTP/${HTTP_VER}/HTTP-${HTTP_VER}.tar.gz
 ZLIB_URL=${HACKAGE_URL}/zlib/${ZLIB_VER}/zlib-${ZLIB_VER}.tar.gz
 
-wget ${CABAL_URL} ${HTTP_URL} ${ZLIB_URL}
+case `which wget curl` in
+  *curl)
+    curl -O ${CABAL_URL} -O ${HTTP_URL} -O ${ZLIB_URL}
+    ;;
+  *wget)
+    wget ${CABAL_URL} ${HTTP_URL} ${ZLIB_URL}
+    ;;
+  *)
+    echo "Failed to find a downloader, 'wget' or 'curl' is required" >&2
+    exit 2
+    ;;
+esac
 
 tar -zxf Cabal-${CABAL_VER}.tar.gz
-pushd Cabal-${CABAL_VER}
+cd Cabal-${CABAL_VER}
 ghc --make Setup
 ./Setup configure --user && ./Setup build && ./Setup install
-popd
+cd ..
 
 tar -zxf HTTP-${HTTP_VER}.tar.gz
-pushd HTTP-${HTTP_VER}
+cd HTTP-${HTTP_VER}
 runghc Setup configure --user && runghc Setup build && runghc Setup install
-popd
+cd ..
 
 tar -zxf zlib-${ZLIB_VER}.tar.gz
-pushd zlib-${ZLIB_VER}
+cd zlib-${ZLIB_VER}
 runghc Setup configure --user && runghc Setup build && runghc Setup install
-popd
+cd ..
 
 runghc Setup configure --user && runghc Setup build && runghc Setup install
 
