@@ -73,6 +73,7 @@ module Distribution.Simple.Setup (
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
   CopyDest(..),
   configureArgs, configureOptions,
+  installDirsOptions,
 
   defaultDistPref,
 
@@ -338,58 +339,9 @@ configureOptions showOrParseArgs =
          "give the path to the package tool"
          configHcPkg (\v flags -> flags { configHcPkg = v })
          (reqArgFlag "PATH")
-
-      ,option "" ["prefix"]
-         "bake this prefix in preparation of installation"
-         prefix (\v flags -> flags { prefix = v })
-         installDirArg
-
-      ,option "" ["bindir"]
-         "installation directory for executables"
-         bindir (\v flags -> flags { bindir = v })
-         installDirArg
-
-      ,option "" ["libdir"]
-         "installation directory for libraries"
-         libdir (\v flags -> flags { libdir = v })
-         installDirArg
-
-      ,option "" ["libsubdir"]
-         "subdirectory of libdir in which libs are installed"
-         libsubdir (\v flags -> flags { libsubdir = v })
-         installDirArg
-
-      ,option "" ["libexecdir"]
-         "installation directory for program executables"
-         libexecdir (\v flags -> flags { libexecdir = v })
-         installDirArg
-
-      ,option "" ["datadir"]
-         "installation directory for read-only data"
-         datadir (\v flags -> flags { datadir = v })
-         installDirArg
-
-      ,option "" ["datasubdir"]
-         "subdirectory of datadir in which data files are installed"
-         datasubdir (\v flags -> flags { datasubdir = v })
-         installDirArg
-
-      ,option "" ["docdir"]
-         "installation directory for documentation"
-         docdir (\v flags -> flags { docdir = v })
-         installDirArg
-
-      ,option "" ["htmldir"]
-         "installation directory for HTML documentation"
-         htmldir (\v flags -> flags { htmldir = v })
-         installDirArg
-
-      ,option "" ["haddockdir"]
-         "installation directory for haddock interfaces"
-         haddockdir (\v flags -> flags { haddockdir = v })
-         installDirArg
-
-      ,option "b" ["scratchdir"]
+      ]
+   ++ map liftInstallDirs installDirsOptions
+   ++ [option "b" ["scratchdir"]
          "directory to receive the built package [dist/scratch]"
          configScratchDir (\v flags -> flags { configScratchDir = v })
          (reqArgFlag "DIR")
@@ -507,14 +459,69 @@ configureOptions showOrParseArgs =
     showFlagList fs = [ if not set then '-':fname else fname
                       | (FlagName fname, set) <- fs]
 
-    installDirArg _sf _lf d get set = reqArgFlag "DIR" _sf _lf d
-      (fmap fromPathTemplate.get.configInstallDirs)
-      (\v flags -> flags { configInstallDirs =
-                             set (fmap toPathTemplate v) (configInstallDirs flags)})
+    liftInstallDirs =
+      liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
 
-    reqPathTemplateArgFlag title _sf _lf d get set = reqArgFlag title _sf _lf d
-      (fmap fromPathTemplate.get)
-      (\v flags -> set (fmap toPathTemplate v) flags)
+    reqPathTemplateArgFlag title _sf _lf d get set =
+      reqArgFlag title _sf _lf d
+        (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
+
+installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
+installDirsOptions =
+  [ option "" ["prefix"]
+      "bake this prefix in preparation of installation"
+      prefix (\v flags -> flags { prefix = v })
+      installDirArg
+
+  , option "" ["bindir"]
+      "installation directory for executables"
+      bindir (\v flags -> flags { bindir = v })
+      installDirArg
+
+  , option "" ["libdir"]
+      "installation directory for libraries"
+      libdir (\v flags -> flags { libdir = v })
+      installDirArg
+
+  , option "" ["libsubdir"]
+      "subdirectory of libdir in which libs are installed"
+      libsubdir (\v flags -> flags { libsubdir = v })
+      installDirArg
+
+  , option "" ["libexecdir"]
+      "installation directory for program executables"
+      libexecdir (\v flags -> flags { libexecdir = v })
+      installDirArg
+
+  , option "" ["datadir"]
+      "installation directory for read-only data"
+      datadir (\v flags -> flags { datadir = v })
+      installDirArg
+
+  , option "" ["datasubdir"]
+      "subdirectory of datadir in which data files are installed"
+      datasubdir (\v flags -> flags { datasubdir = v })
+      installDirArg
+
+  , option "" ["docdir"]
+      "installation directory for documentation"
+      docdir (\v flags -> flags { docdir = v })
+      installDirArg
+
+  , option "" ["htmldir"]
+      "installation directory for HTML documentation"
+      htmldir (\v flags -> flags { htmldir = v })
+      installDirArg
+
+  , option "" ["haddockdir"]
+      "installation directory for haddock interfaces"
+      haddockdir (\v flags -> flags { haddockdir = v })
+      installDirArg
+  ]
+  where
+    installDirArg _sf _lf d get set =
+      reqArgFlag "DIR" _sf _lf d
+        (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
 
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty
