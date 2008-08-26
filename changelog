@@ -17,7 +17,7 @@
 	* Internal api improvements and code cleanups
 	* Minor improvements to the user guide
 
-1.4.0.2 (current stable version)
+1.4.0.2 Duncan Coutts <duncan@haskell.org> August 2008
 	* Fix executable stripping default
 	* Fix striping exes on OSX that export dynamic symbols (like ghc)
 	* Correct the order of arguments given by --prog-options=
