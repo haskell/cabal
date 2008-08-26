@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-0.5.2 (next release version)
+0.5.2 Duncan Coutts <duncan@haskell.org> Aug 2008
 	* Suport building haddock documentaion
 	* Self-reinstall now works on Windows
 	* Allow adding symlinks to excutables into a separate bindir
