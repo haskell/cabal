@@ -301,8 +301,8 @@ simpleDirectoryEntry name = emptyEntry Directory name
 --
 -- * The directory separator between the prefix and name is /not/ stored.
 --
-data TarPath = TarPath FilePath -- ^ path name, 100 characters max.
-                       FilePath -- ^ path prefix, 155 characters max.
+data TarPath = TarPath FilePath -- path name, 100 characters max.
+                       FilePath -- path prefix, 155 characters max.
 
 -- | Convert a 'TarPath' to a native 'FilePath'.
 --
@@ -311,7 +311,7 @@ data TarPath = TarPath FilePath -- ^ path name, 100 characters max.
 --
 -- * The tar path may be invalid as a native path, eg the filename @\"nul\"@ is
 --   not valid on Windows.
--- * The tar path may be an absolute path or may contain @\".."\@ components.
+-- * The tar path may be an absolute path or may contain @\"..\"@ components.
 --   For security reasons this should not usually be allowed, but it is your
 --   responsibility to check for these conditions.
 --
