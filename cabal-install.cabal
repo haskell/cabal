@@ -91,5 +91,5 @@ Executable cabal
       build-depends: Win32 >= 2 && < 3
       cpp-options: -DWIN32
     else
-      build-depends: unix >= 2.2 && < 2.4
+      build-depends: unix >= 2.1 && < 2.4
     extensions: CPP
