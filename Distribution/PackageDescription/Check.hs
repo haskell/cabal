@@ -59,6 +59,7 @@ module Distribution.PackageDescription.Check (
         checkPackageFiles,
         checkPackageContent,
         CheckPackageContentOps(..),
+        checkPackageFileNames,
   ) where
 
 import Data.Maybe (isNothing, catMaybes, fromMaybe)
@@ -87,7 +88,8 @@ import Distribution.Package
 import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
-import System.FilePath (takeExtension, isRelative, splitDirectories, (</>))
+import System.FilePath
+         ( takeExtension, isRelative, splitDirectories, (</>), splitPath )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -530,6 +532,9 @@ checkPaths pkg =
                               "..":_ -> True
                               _      -> False
 
+--TODO: check for absolute and outside-of-tree paths in extra-src-files,
+-- data-files, hs-src-dirs, etc.
+
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
 -- ------------------------------------------------------------
@@ -663,6 +668,97 @@ checkLocalPathsExist ops pkg = do
                         ++ " directory does not exist."
            }
          | (dir, kind) <- missing ]
+
+-- ------------------------------------------------------------
+-- * Checks involving files in the package
+-- ------------------------------------------------------------
+
+-- | Check the names of all files in a package for portability problems. This
+-- should be done for example when creating or validating a package tarball.
+--
+checkPackageFileNames :: [FilePath] -> [PackageCheck]
+checkPackageFileNames files =
+     (take 1 . catMaybes . map checkWindowsPath $ files)
+  ++ (take 1 . catMaybes . map checkTarPath     $ files)
+      -- If we get any of these checks triggering then we're likely to get
+      -- many, and that's probably not helpful, so return at most one.
+
+checkWindowsPath :: FilePath -> Maybe PackageCheck
+checkWindowsPath path =
+  check (not $ FilePath.Windows.isValid path') $
+    PackageDistInexcusable $
+         "Unfortunately, the file " ++ quote path ++ " is not a valid file "
+      ++ "name on Windows which would cause portability problems for this "
+      ++ "package. Windows file names cannot contain any of the characters "
+      ++ "\":*?<>|\" and there are a few reserved names including \"aux\", "
+      ++ "\"nul\", \"con\", \"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+  where
+    path' = ".\\" ++ path
+    -- force a relative name to catch invalid file names like "f:oo" which
+    -- otherwise parse as file "oo" in the current directory on the 'f' drive.
+
+-- | Check a file name is valid for the portable POSIX tar format.
+--
+-- The POSIX tar format has a restriction on the length of file names. It is
+-- unfortunately not a simple restriction like a maximum length. The exact
+-- restriction is that either the whole path be 100 characters or less, or it
+-- be possible to split the path on a directory separator such that the first
+-- part is 155 characters or less and the second part 100 characters or less.
+--
+checkTarPath :: FilePath -> Maybe PackageCheck
+checkTarPath path
+  | length path > 255   = Just longPath
+  | otherwise = case pack nameMax (reverse (splitPath path)) of
+    Left err           -> Just err
+    Right []           -> Nothing
+    Right (first:rest) -> case pack prefixMax remainder of
+      Left err         -> Just err
+      Right []         -> Nothing
+      Right (_:_)      -> Just noSplit
+      where
+        -- drop the '/' between the name and prefix:
+        remainder = init first : rest
+
+  where
+    nameMax, prefixMax :: Int
+    nameMax   = 100
+    prefixMax = 155
+
+    pack _   []     = Left emptyName
+    pack maxLen (c:cs)
+      | n > maxLen  = Left longName
+      | otherwise   = Right (pack' maxLen n cs)
+      where n = length c
+
+    pack' maxLen n (c:cs)
+      | n' <= maxLen = pack' maxLen n' cs
+      where n' = n + length c
+    pack' _     _ cs = cs
+
+    longPath = PackageDistInexcusable $
+         "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. The maximum length is 255 ASCII characters.\n"
+      ++ "The file in question is:\n  " ++ path
+    longName = PackageDistInexcusable $
+         "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. The maximum length for the name part (including "
+      ++ "extension) is 100 ASCII characters. The maximum length for any "
+      ++ "individual directory component is 155.\n"
+      ++ "The file in question is:\n  " ++ path
+    noSplit = PackageDistInexcusable $
+         "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. While the total length is less than 255 ASCII "
+      ++ "characters, there are unfortunately further restrictions. It has to "
+      ++ "be possible to split the file path on a directory separator into "
+      ++ "two parts such that the first part fits in 155 characters or less "
+      ++ "and the second part fits in 100 characters or less. Basically you "
+      ++ "have to make the file name or directory names shorter, or you could "
+      ++ "split a long directory name into nested subdirectories with shorter "
+      ++ "names.\nThe file in question is:\n  " ++ path
+    emptyName = PackageDistInexcusable $
+         "Encountered a file with an empty name, something is very wrong! "
+      ++ "Files with an empty name cannot be stored in a tar archive or in "
+      ++ "standard file systems."
 
 -- ------------------------------------------------------------
 -- * Utils
