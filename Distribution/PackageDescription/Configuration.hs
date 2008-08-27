@@ -478,8 +478,12 @@ finalizePackageDescription userflags mpkgs os arch impl constraints
                      ds, fs)
           Left missing      -> Left missing
 
-    flagChoices  = map (\(MkFlag n _ d) -> (n, d2c n d)) flags
-    d2c n b      = maybe [b, not b] (\x -> [x]) $ lookup n userflags
+    flagChoices    = map (\(MkFlag n _ d manual) -> (n, d2c manual n d)) flags
+    d2c manual n b = case lookup n userflags of
+                     Just val -> [val]
+                     Nothing
+                      | manual -> [b]
+                      | otherwise -> [b, not b]
     --flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
     check ds     = if all satisfyDep ds
                    then DepOk
