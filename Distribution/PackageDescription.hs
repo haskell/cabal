@@ -466,11 +466,12 @@ instance Show GenericPackageDescription where
         (render $ vcat $
             map (\(n,ct) -> showStanza ("Executable " ++ n) (ppCondTree ct showDeps)) exes)
       where
-        ppFlag (MkFlag name desc dflt) =
+        ppFlag (MkFlag name desc dflt manual) =
             showStanza ("Flag " ++ name)
               ((if (null desc) then empty else
                    text ("Description: " ++ desc)) $+$
-              text ("Default: " ++ show dflt))
+              text ("Default: " ++ show dflt) $+$
+              text ("Manual: " ++ show manual))
         showDeps = fsep . punctuate comma . map showDependency
         showStanza h b = text h <+> lbrace $+$ nest 2 b $+$ rbrace
 -}
@@ -481,6 +482,7 @@ data Flag = MkFlag
     { flagName        :: FlagName
     , flagDescription :: String
     , flagDefault     :: Bool
+    , flagManual      :: Bool
     }
     deriving Show
 
