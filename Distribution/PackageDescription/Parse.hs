@@ -285,6 +285,8 @@ flagFieldDescrs =
         flagDescription  (\val fl -> fl{ flagDescription = val })
     , boolField "default"
         flagDefault      (\val fl -> fl{ flagDefault = val })
+    , boolField "manual"
+        flagManual       (\val fl -> fl{ flagManual = val })
     ]
 
 -- ---------------------------------------------------------------
@@ -605,7 +607,7 @@ parsePackageDescription file = do
               fl <- lift $ parseFields
                       flagFieldDescrs
                       warnUnrec
-                      (MkFlag (FlagName (lowercase sec_label)) "" True)
+                      (MkFlag (FlagName (lowercase sec_label)) "" True False)
                       sec_fields
               skipField >> getFlags (fl : acc)
         _ -> return (reverse acc)
