@@ -99,7 +99,9 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Utils
          ( wrapLine, lowercase )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
-                             knownPrograms)
+                             knownPrograms,
+                             addKnownProgram, emptyProgramConfiguration,
+                             haddockProgram)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
@@ -972,6 +974,8 @@ hscolourCommand = makeCommand name shortDesc longDesc defaultHscolourFlags optio
 -- ------------------------------------------------------------
 
 data HaddockFlags = HaddockFlags {
+    haddockProgramPaths :: [(String, FilePath)],
+    haddockProgramArgs  :: [(String, [String])],
     haddockHoogle       :: Flag Bool,
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
@@ -986,6 +990,8 @@ data HaddockFlags = HaddockFlags {
 
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags  = HaddockFlags {
+    haddockProgramPaths = mempty,
+    haddockProgramArgs  = [],
     haddockHoogle       = Flag False,
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
@@ -1046,12 +1052,20 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          haddockHscolourCss (\v flags -> flags { haddockHscolourCss = v })
          (reqArgFlag "PATH")
       ]
+      ++ programConfigurationPaths   progConf showOrParseArgs
+             haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
+      ++ programConfigurationOptions progConf showOrParseArgs
+             haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
+    progConf = addKnownProgram haddockProgram
+               emptyProgramConfiguration
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
 
 instance Monoid HaddockFlags where
   mempty = HaddockFlags {
+    haddockProgramPaths = mempty,
+    haddockProgramArgs  = mempty,
     haddockHoogle       = mempty,
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
@@ -1063,6 +1077,8 @@ instance Monoid HaddockFlags where
     haddockVerbosity    = mempty
   }
   mappend a b = HaddockFlags {
+    haddockProgramPaths = combine haddockProgramPaths,
+    haddockProgramArgs  = combine haddockProgramArgs,
     haddockHoogle       = combine haddockHoogle,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,

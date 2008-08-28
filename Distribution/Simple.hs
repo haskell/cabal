@@ -87,7 +87,7 @@ import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
          ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
-         , userSpecifyArgs )
+         , userSpecifyPath, userSpecifyArgs, findProgram, configureProgram )
 import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
@@ -125,7 +125,7 @@ import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
 
-import Control.Monad   (when)
+import Control.Monad   (when, foldM)
 import Data.List       (intersperse, unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -279,8 +279,23 @@ hscolourAction hooks flags args
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args
     = do let distPref = fromFlag $ haddockDistPref flags
+             verbosity = fromFlag $ haddockVerbosity flags
+         lbi <- getBuildConfigIfUpToDate distPref
+         let userSpecifyPath' conf0 (progname, path') =
+                 do let prog = case findProgram progname of
+                               Nothing -> error "haddockAction: No program found"
+                               Just p -> p
+                        conf1 = addKnownProgram prog conf0
+                        conf2 = userSpecifyPath progname path' conf1
+                    configureProgram verbosity prog conf2
+             userSpecifyArgs' conf (prog, args') =
+                 userSpecifyArgs prog args' conf
+             progs0 = withPrograms lbi
+         progs1 <- foldM userSpecifyPath' progs0 (haddockProgramPaths flags)
+         let progs2 = foldl userSpecifyArgs' progs1 (haddockProgramArgs flags)
+         -- print $ userSpecifyPath "haddock" "/foo" progs0
          hookedAction preHaddock haddockHook postHaddock
-                      (getBuildConfigIfUpToDate distPref)
+                      (return lbi { withPrograms = progs2 })
                       hooks flags args
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
