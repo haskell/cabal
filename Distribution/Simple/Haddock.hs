@@ -352,6 +352,7 @@ ghcSimpleOptions lbi bi mockDir
   ++ ["-i" ++ autogenModulesDir lbi]
   ++ ["-i" ++ mockDir]
   ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
+  ++ ["-optP" ++ opt | opt <- cppOptions bi]
   ++ ["-odir", mockDir]
   ++ ["-hidir", mockDir]
   ++ extensionsToFlags c (extensions bi)
