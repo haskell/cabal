@@ -868,13 +868,16 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
              if useWrapper
                  then do
                      let libExecDir = libexecdir installDirs
+                         pretendLibExecDir = libexecdir pretendInstallDirs
                          absExeFileName =
                              libExecDir </> fixedExeBaseName <.> exeExtension
+                         pretendAbsExeFileName =
+                             pretendLibExecDir </> fixedExeBaseName <.> exeExtension
                          wrapperFileName = binDir </> fixedExeBaseName
                          myPkgId = packageId (PD.package (localPkgDescr lbi))
                          myCompilerId = compilerId (compiler lbi)
                          env = (ExecutableNameVar,
-                                toPathTemplate absExeFileName)
+                                toPathTemplate pretendAbsExeFileName)
                              : fullPathTemplateEnv myPkgId myCompilerId
                                                    pretendInstallDirs
                      createDirectoryIfMissingVerbose verbosity True libExecDir
