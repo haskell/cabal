@@ -53,8 +53,8 @@ import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(package) )
-import Distribution.Simple.PackageSet (PackageSet)
-import qualified Distribution.Simple.PackageSet as PackageSet
+import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
                                 ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
@@ -112,11 +112,11 @@ jhcLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
-                    -> IO (PackageSet InstalledPackageInfo)
+                    -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity _packagedb conf = do
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parse)) str) of
-     [ps] -> return $ PackageSet.fromList
+     [ps] -> return $ PackageIndex.fromList
                     [ emptyInstalledPackageInfo {
                         InstalledPackageInfo.package = p
                       }
