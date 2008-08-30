@@ -45,52 +45,55 @@ module Distribution.Simple.PackageIndex (
   -- ** Bulk queries
   allPackages,
   allPackagesByName,
+
+  -- ** Special queries
+  brokenPackages,
+  dependencyClosure,
+  reverseDependencyClosure,
+  topologicalOrder,
+  reverseTopologicalOrder,
+  dependencyInconsistencies,
+  dependencyCycles,
+  dependencyGraph,
   ) where
 
 import Prelude hiding (lookup)
 import Control.Exception (assert)
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Data.List (groupBy, sortBy, find)
+import qualified Data.Tree  as Tree
+import qualified Data.Graph as Graph
+import qualified Data.Array as Array
+import Data.Array ((!))
+import Data.List (groupBy, sortBy, find, isInfixOf)
 import Data.Monoid (Monoid(..))
+import Data.Maybe (isNothing, fromMaybe)
 
 import Distribution.Package
-         ( PackageName(PackageName), PackageIdentifier, Package(..)
-         , packageName, packageVersion, Dependency(Dependency) )
+         ( PackageName(..), PackageIdentifier
+         , Package(..), packageName, packageVersion
+         , Dependency(Dependency), PackageFixedDeps(..) )
 import Distribution.Version
-         ( withinRange )
-import Distribution.Simple.Utils (lowercase, equating, comparing, isInfixOf)
+         ( Version, withinRange )
+import Distribution.Simple.Utils (lowercase, equating, comparing)
 
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
 import Text.Read
 import qualified Text.Read.Lex as L
 #endif
 
-newtype Key = Key String deriving (Eq, Ord, Read, Show)
-
-searchKey :: String -> Key
-searchKey = Key . lowercase
-
-packageNameKey :: PackageName -> Key
-packageNameKey (PackageName n) = searchKey n
-
-packageKey :: Package pkg => pkg -> Key
-packageKey = packageNameKey . packageName
-
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
 -- It can be searched effeciently by package name and version.
 --
-data Package pkg => PackageIndex pkg = PackageIndex
-  -- This index maps lower case package names to all the
-  -- 'InstalledPackageInfo' records matching that package name
-  -- case-insensitively. It includes all versions.
+newtype Package pkg => PackageIndex pkg = PackageIndex
+  -- This index package names to all the package records matching that package
+  -- name case-sensitively. It includes all versions.
   --
-  -- This allows us to do case sensitive or insensitive lookups, and to find
-  -- all versions satisfying a dependency, all by varying how we filter. So
-  -- most queries will do a map lookup followed by a linear scan of the bucket.
+  -- This allows us to find all versions satisfying a dependency.
+  -- Most queries are a map lookup followed by a linear scan of the bucket.
   --
-  (Map Key [pkg])
+  (Map PackageName [pkg])
 
 #if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
@@ -131,16 +134,20 @@ instance Package pkg => Monoid (PackageIndex pkg) where
 invariant :: Package pkg => PackageIndex pkg -> Bool
 invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
   where
-    goodBucket _   [] = False
-    goodBucket key (pkg0:pkgs0) = check (packageId pkg0) pkgs0
+    goodBucket _    [] = False
+    goodBucket name (pkg0:pkgs0) = check (packageId pkg0) pkgs0
       where
-        check pkgid []          = packageKey pkgid == key
-        check pkgid (pkg':pkgs) = packageKey pkgid == key
+        check pkgid []          = packageName pkgid == name
+        check pkgid (pkg':pkgs) = packageName pkgid == name
                                && pkgid < pkgid'
                                && check pkgid' pkgs
           where pkgid' = packageId pkg'
 
-mkPackageIndex :: Package pkg => Map Key [pkg] -> PackageIndex pkg
+--
+-- * Internal helpers
+--
+
+mkPackageIndex :: Package pkg => Map PackageName [pkg] -> PackageIndex pkg
 mkPackageIndex index = assert (invariant (PackageIndex index))
                                          (PackageIndex index)
 
@@ -148,15 +155,16 @@ internalError :: String -> a
 internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 
 -- | Lookup a name in the index to get all packages that match that name
--- case-insensitively.
+-- case-sensitively.
 --
-lookup :: Package pkg => PackageIndex pkg -> Key -> [pkg]
-lookup (PackageIndex m) key =
-  case Map.lookup key m of
-    Nothing   -> []
-    Just pkgs -> pkgs
+lookup :: Package pkg => PackageIndex pkg -> PackageName -> [pkg]
+lookup (PackageIndex m) name = fromMaybe [] $ Map.lookup name m
 
--- | Build an index out of a bunch of 'Package's.
+--
+-- * Construction
+--
+
+-- | Build an index out of a bunch of packages.
 --
 -- If there are duplicates, later ones mask earlier ones.
 --
@@ -164,8 +172,7 @@ fromList :: Package pkg => [pkg] -> PackageIndex pkg
 fromList pkgs = mkPackageIndex
               . Map.map fixBucket
               . Map.fromListWith (++)
-              $ [ let key = packageKey pkg
-                   in (key, [pkg])
+              $ [ (packageName pkg, [pkg])
                 | pkg <- pkgs ]
   where
     fixBucket = -- out of groups of duplicates, later ones mask earlier ones
@@ -176,6 +183,10 @@ fromList pkgs = mkPackageIndex
                 -- relies on sortBy being a stable sort so we
                 -- can pick consistently among duplicates
               . sortBy (comparing packageId)
+
+--
+-- * Updates
+--
 
 -- | Merge two indexes.
 --
@@ -204,8 +215,7 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
 --
 insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg
 insert pkg (PackageIndex index) = mkPackageIndex $
-  let key = packageKey pkg
-   in Map.insertWith (\_ -> insertNoDup) key [pkg] index
+  Map.insertWith (\_ -> insertNoDup) (packageName pkg) [pkg] index
   where
     pkgid = packageId pkg
     insertNoDup []                = [pkg]
@@ -216,12 +226,9 @@ insert pkg (PackageIndex index) = mkPackageIndex $
 
 -- | Internal delete helper.
 --
-delete :: Package pkg
-       => PackageName -> (pkg -> Bool)
-       -> PackageIndex pkg -> PackageIndex pkg
+delete :: Package pkg => PackageName -> (pkg -> Bool) -> PackageIndex pkg -> PackageIndex pkg
 delete name p (PackageIndex index) = mkPackageIndex $
-  let key = packageNameKey name
-   in Map.update filterBucket key index
+  Map.update filterBucket name index
   where
     filterBucket = deleteEmptyBucket
                  . filter (not . p)
@@ -246,6 +253,10 @@ deleteDependency :: Package pkg => Dependency -> PackageIndex pkg -> PackageInde
 deleteDependency (Dependency name verstionRange) =
   delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 
+--
+-- * Bulk queries
+--
+
 -- | Get all the packages from the index.
 --
 allPackages :: Package pkg => PackageIndex pkg -> [pkg]
@@ -256,8 +267,46 @@ allPackages (PackageIndex m) = concat (Map.elems m)
 -- They are grouped by package name, case-sensitively.
 --
 allPackagesByName :: Package pkg => PackageIndex pkg -> [[pkg]]
-allPackagesByName (PackageIndex m) =
-  concatMap (groupBy (equating packageName)) (Map.elems m)
+allPackagesByName (PackageIndex m) = Map.elems m
+
+--
+-- * Lookups
+--
+
+-- | Does a lookup by package id (name & version).
+--
+-- Since multiple package DBs mask each other case-sensitively by package name,
+-- then we get back at most one package.
+--
+lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier -> Maybe pkg
+lookupPackageId index pkgid =
+  case [ pkg | pkg <- lookup index (packageName pkgid)
+             , packageId pkg == pkgid ] of
+    []    -> Nothing
+    [pkg] -> Just pkg
+    _     -> internalError "lookupPackageIdentifier"
+
+-- | Does a case-sensitive search by package name.
+--
+lookupPackageName :: Package pkg => PackageIndex pkg -> PackageName -> [pkg]
+lookupPackageName index name =
+  [ pkg | pkg <- lookup index name
+        , packageName pkg == name ]
+
+-- | Does a case-sensitive search by package name and a range of versions.
+--
+-- We get back any number of versions of the specified package name, all
+-- satisfying the version range constraint.
+--
+lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
+lookupDependency index (Dependency name versionRange) =
+  [ pkg | pkg <- lookup index name
+        , packageName pkg == name
+        , packageVersion pkg `withinRange` versionRange ]
+
+--
+-- * Case insensitive name lookups
+--
 
 -- | Does a case-insensitive search by package name.
 --
@@ -272,13 +321,15 @@ allPackagesByName (PackageIndex m) =
 -- it is a non-empty list of non-empty lists.
 --
 searchByName :: Package pkg => PackageIndex pkg -> String -> SearchResult [pkg]
-searchByName index name =
-  case groupBy (equating packageName) (lookup index (searchKey name)) of
-    []     -> None
-    [pkgs] -> Unambiguous pkgs
-    pkgss  -> case find ((PackageName name==) . packageName . head) pkgss of
-                Just pkgs -> Unambiguous pkgs
-                Nothing   -> Ambiguous   pkgss
+searchByName (PackageIndex m) name =
+  case [ pkgs | pkgs@(PackageName name',_) <- Map.toList m
+              , lowercase name' == lname ] of
+    []              -> None
+    [(_,pkgs)]      -> Unambiguous pkgs
+    pkgss           -> case find ((PackageName name==) . fst) pkgss of
+      Just (_,pkgs) -> Unambiguous pkgs
+      Nothing       -> Ambiguous (map snd pkgss)
+  where lname = lowercase name
 
 data SearchResult a = None | Unambiguous a | Ambiguous [a]
 
@@ -289,38 +340,161 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 searchByNameSubstring :: Package pkg => PackageIndex pkg -> String -> [pkg]
 searchByNameSubstring (PackageIndex m) searchterm =
   [ pkg
-  | (Key name, pkgs) <- Map.toList m
-  , searchterm' `isInfixOf` name
+  | (PackageName name, pkgs) <- Map.toList m
+  , lsearchterm `isInfixOf` lowercase name
   , pkg <- pkgs ]
-  where searchterm' = lowercase searchterm
+  where lsearchterm = lowercase searchterm
 
--- | Does a lookup by package id (name & version).
 --
--- Since multiple package DBs mask each other case-sensitively by package name,
--- then we get back at most one package.
+-- * Special queries
 --
-lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier -> Maybe pkg
-lookupPackageId index pkgid =
-  case [ pkg | pkg <- lookup index (packageKey pkgid)
-             , packageId pkg == pkgid ] of
-    []    -> Nothing
-    [pkg] -> Just pkg
-    _     -> internalError "lookupPackageIdentifier"
 
--- | Does a case-sensitive search by package name.
+-- | All packages that have dependencies that are not in the index.
 --
-lookupPackageName :: Package pkg => PackageIndex pkg -> PackageName -> [pkg]
-lookupPackageName index name =
-  [ pkg | pkg <- lookup index (packageNameKey name)
-        , packageName pkg == name ]
+-- Returns such packages along with the dependencies that they're missing.
+--
+brokenPackages :: PackageFixedDeps pkg
+               => PackageIndex pkg
+               -> [(pkg, [PackageIdentifier])]
+brokenPackages index =
+  [ (pkg, missing)
+  | pkg  <- allPackages index
+  , let missing = [ pkg' | pkg' <- depends pkg
+                         , isNothing (lookupPackageId index pkg') ]
+  , not (null missing) ]
 
--- | Does a case-sensitive search by package name and a range of versions.
+-- | Tries to take the transative closure of the package dependencies.
 --
--- We get back any number of versions of the specified package name, all
--- satisfying the version range constraint.
+-- If the transative closure is complete then it returns that subset of the
+-- index. Otherwise it returns the broken packages as in 'brokenPackages'.
 --
-lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
-lookupDependency index (Dependency name versionRange) =
-  [ pkg | pkg <- lookup index (packageNameKey name)
-        , packageName pkg == name
-        , packageVersion pkg `withinRange` versionRange ]
+-- * Note that if the result is @Right []@ it is because at least one of
+-- the original given 'PackageIdentifier's do not occur in the index.
+--
+dependencyClosure :: PackageFixedDeps pkg
+                  => PackageIndex pkg
+                  -> [PackageIdentifier]
+                  -> Either (PackageIndex pkg)
+                            [(pkg, [PackageIdentifier])]
+dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
+  (completed, []) -> Left completed
+  (completed, _)  -> Right (brokenPackages completed)
+  where
+    closure completed failed []             = (completed, failed)
+    closure completed failed (pkgid:pkgids) = case lookupPackageId index pkgid of
+      Nothing   -> closure completed (pkgid:failed) pkgids
+      Just pkg  -> case lookupPackageId completed (packageId pkg) of
+        Just _  -> closure completed  failed pkgids
+        Nothing -> closure completed' failed pkgids'
+          where completed' = insert pkg completed
+                pkgids'    = depends pkg ++ pkgids
+
+-- | Takes the transative closure of the packages reverse dependencies.
+--
+-- * The given 'PackageIdentifier's must be in the index.
+--
+reverseDependencyClosure :: PackageFixedDeps pkg
+                         => PackageIndex pkg
+                         -> [PackageIdentifier]
+                         -> [pkg]
+reverseDependencyClosure index =
+    map vertexToPkg
+  . concatMap Tree.flatten
+  . Graph.dfs reverseDepGraph
+  . map (fromMaybe noSuchPkgId . pkgIdToVertex)
+
+  where
+    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
+    reverseDepGraph = Graph.transposeG depGraph
+    noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
+
+topologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg -> [pkg]
+topologicalOrder index = map toPkgId
+                       . Graph.topSort
+                       $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
+
+reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg -> [pkg]
+reverseTopologicalOrder index = map toPkgId
+                              . Graph.topSort
+                              . Graph.transposeG
+                              $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
+
+-- | Given a package index where we assume we want to use all the packages
+-- (use 'dependencyClosure' if you need to get such a index subset) find out
+-- if the dependencies within it use consistent versions of each package.
+-- Return all cases where multiple packages depend on different versions of
+-- some other package.
+--
+-- Each element in the result is a package name along with the packages that
+-- depend on it and the versions they require. These are guaranteed to be
+-- distinct.
+--
+dependencyInconsistencies :: PackageFixedDeps pkg
+                          => PackageIndex pkg
+                          -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies index =
+  [ (name, inconsistencies)
+  | (name, uses) <- Map.toList inverseIndex
+  , let inconsistencies = duplicatesBy uses
+  , not (null inconsistencies) ]
+
+  where inverseIndex = Map.fromListWith (++)
+          [ (packageName dep, [(packageId pkg, packageVersion dep)])
+          | pkg <- allPackages index
+          , dep <- depends pkg ]
+
+        duplicatesBy = (\groups -> if length groups == 1
+                                     then []
+                                     else concat groups)
+                     . groupBy (equating snd)
+                     . sortBy (comparing snd)
+
+-- | Find if there are any cycles in the dependency graph. If there are no
+-- cycles the result is @[]@.
+--
+-- This actually computes the strongly connected components. So it gives us a
+-- list of groups of packages where within each group they all depend on each
+-- other, directly or indirectly.
+--
+dependencyCycles :: PackageFixedDeps pkg
+                 => PackageIndex pkg
+                 -> [[pkg]]
+dependencyCycles index =
+  [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
+  where
+    adjacencyList = [ (pkg, packageId pkg, depends pkg)
+                    | pkg <- allPackages index ]
+
+-- | Builds a graph of the package dependencies.
+--
+-- Dependencies on other packages that are not in the index are discarded.
+-- You can check if there are any such dependencies with 'brokenPackages'.
+--
+dependencyGraph :: PackageFixedDeps pkg
+                => PackageIndex pkg
+                -> (Graph.Graph,
+                    Graph.Vertex -> pkg,
+                    PackageIdentifier -> Maybe Graph.Vertex)
+dependencyGraph index = (graph, vertexToPkg, pkgIdToVertex)
+  where
+    graph = Array.listArray bounds
+              [ [ v | Just v <- map pkgIdToVertex (depends pkg) ]
+              | pkg <- pkgs ]
+    vertexToPkg vertex = pkgTable ! vertex
+    pkgIdToVertex = binarySearch 0 topBound
+
+    pkgTable   = Array.listArray bounds pkgs
+    pkgIdTable = Array.listArray bounds (map packageId pkgs)
+    pkgs = sortBy (comparing packageId) (allPackages index)
+    topBound = length pkgs - 1
+    bounds = (0, topBound)
+
+    binarySearch a b key
+      | a > b     = Nothing
+      | otherwise = case compare key (pkgIdTable ! mid) of
+          LT -> binarySearch a (mid-1) key
+          EQ -> Just mid
+          GT -> binarySearch (mid+1) b key
+      where mid = (a + b) `div` 2

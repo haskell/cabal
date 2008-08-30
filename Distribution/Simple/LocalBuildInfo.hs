@@ -63,7 +63,7 @@ import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (PackageIdentifier, Package(..))
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDB, OptimisationLevel )
-import Distribution.Simple.PackageSet (PackageSet)
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 
 -- |Data cached after configuration step.  See also
@@ -85,7 +85,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- that must be satisfied in terms of version ranges.  This
                 -- field fixes those dependencies to the specific versions
                 -- available on this machine for this compiler.
-        installedPkgs :: PackageSet InstalledPackageInfo,
+        installedPkgs :: PackageIndex InstalledPackageInfo,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
