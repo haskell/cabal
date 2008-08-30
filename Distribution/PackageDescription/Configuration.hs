@@ -64,8 +64,8 @@ import Distribution.PackageDescription
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
          , CondTree(..), ConfVar(..), Condition(..) )
-import Distribution.Simple.PackageSet (PackageSet)
-import qualified Distribution.Simple.PackageSet as PackageSet
+import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
          ( VersionRange(..), withinRange )
 import Distribution.Compiler
@@ -434,7 +434,7 @@ instance Monoid PDTagged where
 finalizePackageDescription ::
      Package pkg
   => FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> Maybe (PackageSet pkg) -- ^ Available dependencies. Pass 'Nothing' if
+  -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
                               -- this is unknown.
   -> OS     -- ^ OS-name
   -> Arch   -- ^ Arch-name
@@ -491,15 +491,15 @@ finalizePackageDescription userflags mpkgs os arch impl constraints
     -- if we don't know which packages are present, we just accept any
     -- dependency
     satisfyDep   = maybe (const True)
-                         (\pkgs -> not . null . PackageSet.lookupDependency pkgs)
+                         (\pkgs -> not . null . PackageIndex.lookupDependency pkgs)
                          mpkgs
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])
 let tst_p2 = (CondNode [1::Int] [Distribution.Package.Dependency "a" (EarlierVersion (Version [1,0] [])), Distribution.Package.Dependency "a" (LaterVersion (Version [2,0] []))] [])
 
-let p_index = Distribution.Simple.PackageSet.fromList [Distribution.Package.PackageIdentifier "a" (Version [0,5] []), Distribution.Package.PackageIdentifier "a" (Version [2,5] [])]
-let look = not . null . Distribution.Simple.PackageSet.lookupDependency p_index
+let p_index = Distribution.Simple.PackageIndex.fromList [Distribution.Package.PackageIdentifier "a" (Version [0,5] []), Distribution.Package.PackageIdentifier "a" (Version [2,5] [])]
+let look = not . null . Distribution.Simple.PackageIndex.lookupDependency p_index
 let looks ds = mconcat $ map (\d -> if look d then DepOk else MissingDeps [d]) ds
 resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribution.Compiler.GHC,Version [6,8,2] []) [tst_p] looks   ===>  Right ...
 resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribution.Compiler.GHC,Version [6,8,2] []) [tst_p2] looks  ===>  Left ...
