@@ -84,8 +84,8 @@ import Distribution.InstalledPackageInfo
                                 , parseInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
-import Distribution.Simple.PackageSet (PackageSet)
-import qualified Distribution.Simple.PackageSet as PackageSet
+import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
                                 ( LocalBuildInfo(..), InstallDirs(..) )
@@ -297,7 +297,7 @@ oldLanguageExtensions =
       fglasgowExts = "-fglasgow-exts"
 
 getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
-                     -> IO (PackageSet InstalledPackageInfo)
+                     -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity packagedb conf = do
   let packagedbs = case packagedb of
         GlobalPackageDB -> [GlobalPackageDB]
@@ -311,7 +311,7 @@ getInstalledPackages verbosity packagedb conf = do
       compilerDir  = takeDirectory (programPath ghcProg)
       topDir       = takeDirectory compilerDir
       pkgs'        = map (substTopDir topDir) pkgs
-  return $ PackageSet.fromList pkgs'
+  return $ PackageIndex.fromList pkgs'
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --

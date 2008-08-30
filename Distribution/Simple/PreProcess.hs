@@ -66,7 +66,7 @@ import Distribution.PackageDescription as PD
          , Library(..), withLib, libModules )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
-import qualified Distribution.Simple.PackageSet as PackageSet
+import qualified Distribution.Simple.PackageIndex as PackageIndex
          ( topologicalOrder, lookupPackageName, insert )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
@@ -385,7 +385,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
           ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
           ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
   where
-    pkgs = PackageSet.topologicalOrder (packageHacks (installedPkgs lbi))
+    pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
     Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
     isOSX = case buildOS of OSX -> True; _ -> False
     packageHacks = case compilerFlavor (compiler lbi) of
@@ -396,8 +396,8 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
     -- ldOptions for GHC's rts package:
     hackRtsPackage index =
-      case PackageSet.lookupPackageName index (PackageName "rts") of
-        [rts] -> PackageSet.insert rts { Installed.ldOptions = [] } index
+      case PackageIndex.lookupPackageName index (PackageName "rts") of
+        [rts] -> PackageIndex.insert rts { Installed.ldOptions = [] } index
         _ -> error "No (or multiple) ghc rts package is registered!!"
 
 getLdOptions :: BuildInfo -> [String]
