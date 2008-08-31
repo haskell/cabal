@@ -48,7 +48,6 @@ module Distribution.Simple.Program (
     , rawSystemProgramStdout
 
     -- * The collection of unconfigured and configured progams
-    , findProgram
     , builtinPrograms
 
     -- * The collection of configured programs we can run
@@ -528,13 +527,6 @@ rawSystemProgramStdoutConf verbosity prog programConf extraArgs =
 -- ------------------------------------------------------------
 -- * Known programs
 -- ------------------------------------------------------------
-
-findProgram :: String -> Maybe Program
-findProgram progname
-    = case filter ((progname ==) . programName) builtinPrograms of
-      [] -> Nothing
-      [p] -> Just p
-      _ -> error "findProgram: Found more than one program"
 
 -- | The default list of programs.
 -- These programs are typically used internally to Cabal.
