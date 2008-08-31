@@ -688,9 +688,6 @@ ghcOptions lbi bi odir
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
-     ++ (case lookupProgram ghcProgram (withPrograms lbi) of
-         Just p  -> programArgs p
-         Nothing -> [])
      ++ hcOptions GHC bi
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
@@ -755,9 +752,9 @@ makefile pkg_descr lbi flags = do
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
         ("odir", builddir),
         ("package", packageIdStr),
-        ("GHC_OPTS", unwords (
-                           ["-package-name", packageIdStr ]
-                        ++ ghcOptions lbi bi (buildDir lbi))),
+        ("GHC_OPTS", unwords $ programArgs ghcProg
+                            ++ ["-package-name", packageIdStr ]
+                            ++ ghcOptions lbi bi (buildDir lbi)),
         ("MAKEFILE", file),
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
