@@ -233,7 +233,6 @@ haddock pkg_descr lbi suffixes flags = do
                    ++ cssFileFlag
                    ++ linkToHscolour
                    ++ packageFlags
-                   ++ programArgs confHaddock
                    ++ verboseFlags
                    ++ hideArgs
                    ++ exportsFlags
@@ -270,7 +269,6 @@ haddock pkg_descr lbi suffixes flags = do
                    , "--prologue=" ++ prologFileName ]
                    ++ linkToHscolour
                    ++ packageFlags
-                   ++ programArgs confHaddock
                    ++ verboseFlags
                    ++ exportsFlags
                    ++ haddock2options bi preprocessDir
