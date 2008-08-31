@@ -265,9 +265,9 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
   | pkg <- PackageIndex.allPackages installed ]
   where
     transitiveDepends :: InstalledPackageInfo -> [PackageIdentifier]
-    transitiveDepends = map toPkgid . tail . Graph.reachable graph
+    transitiveDepends = map (packageId . toPkg) . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
-    (graph, toPkgid, toVertex) = PackageIndex.dependencyGraph installed
+    (graph, toPkg, toVertex) = PackageIndex.dependencyGraph installed
 
 
 -- | Annotate each available packages with its topological sort number and any
@@ -424,11 +424,11 @@ improvePlan installed selected = foldl' improve selected
 
     reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg
                             -> [PackageIdentifier]
-    reverseTopologicalOrder index = map toPkgId
+    reverseTopologicalOrder index = map (packageId . toPkg)
                                   . Graph.topSort
                                   . Graph.transposeG
                                   $ graph
-      where (graph, toPkgId, _) = PackageIndex.dependencyGraph index
+      where (graph, toPkg, _) = PackageIndex.dependencyGraph index
 
 -- ------------------------------------------------------------
 -- * Adding and recording constraints
@@ -549,7 +549,7 @@ showFailure (ConfigureFailed pkg missingDeps) =
 
   where
     whyNot (Dependency name ver) [] =
-         "There is no available version of " ++ name
+         "There is no available version of " ++ display name
       ++ " that satisfies " ++ display ver
 
     whyNot dep conflicts =
@@ -574,7 +574,7 @@ showFailure (TopLevelDependencyConflict dep conflicts) =
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
 showFailure (TopLevelDependencyUnsatisfiable (Dependency name ver)) =
-     "There is no available version of " ++ name
+     "There is no available version of " ++ display name
       ++ " that satisfies " ++ display ver
 
 -- ------------------------------------------------------------

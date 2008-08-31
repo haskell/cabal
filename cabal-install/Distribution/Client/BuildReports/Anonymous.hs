@@ -36,7 +36,7 @@ import Distribution.Client.Utils
 import qualified Paths_cabal_install (version)
 
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier), Package(packageId) )
+         ( PackageIdentifier(..), PackageName(..), Package(packageId) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 --import Distribution.Version
@@ -135,9 +135,6 @@ new os' arch' comp (ConfiguredPackage pkg flags deps) result =
     testsOutcome          = convertTestsOutcome
   }
   where
-    cabalInstallID =
-      PackageIdentifier "cabal-install" Paths_cabal_install.version
-
     convertInstallOutcome = case result of
       Left  (BR.DependentFailed p) -> DependencyFailed p
       Left  (BR.UnpackFailed    _) -> UnpackFailed
@@ -155,6 +152,10 @@ new os' arch' comp (ConfiguredPackage pkg flags deps) result =
       Right (BR.BuildOk _ BR.TestsNotTried) -> NotTried
       Right (BR.BuildOk _ BR.TestsFailed)   -> Failed
       Right (BR.BuildOk _ BR.TestsOk)       -> Ok
+
+cabalInstallID :: PackageIdentifier
+cabalInstallID =
+  PackageIdentifier (PackageName "cabal-install") Paths_cabal_install.version
 
 -- ------------------------------------------------------------
 -- * External format
@@ -226,7 +227,7 @@ parseList str =
 -- Pretty-printing
 
 show :: BuildReport -> String
-show br = Disp.render (ppFields br fieldDescrs)
+show = Disp.render . ppFields fieldDescrs
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing

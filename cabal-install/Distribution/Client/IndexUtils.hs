@@ -23,15 +23,16 @@ import Distribution.Client.Types
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), Dependency(Dependency) )
+         ( PackageIdentifier(..), PackageName(..), Package(..)
+         , Dependency(Dependency) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.PackageDescription
+import Distribution.PackageDescription.Parse
          ( parsePackageDescription )
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Text
-         ( simpleParse )
+         ( display, simpleParse )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
@@ -81,7 +82,7 @@ readRepoIndex verbosity repo =
       = case splitDirectories (normalise fileName) of
           [pkgname,vers,_] -> case simpleParse vers of
             Just ver -> Just AvailablePackage {
-                packageInfoId      = PackageIdentifier pkgname ver,
+                packageInfoId      = PackageIdentifier (PackageName pkgname) ver,
                 packageDescription = descr,
                 packageSource      = RepoTarballPackage repo
               }
@@ -126,9 +127,9 @@ disambiguateDependencies index deps = do
              (_, Left name)) <- zip deps names ]
         ambigious -> die $ unlines
           [ if null matches
-              then "There is no package named " ++ name
-              else "The package name " ++ name ++ "is ambigious. "
-                ++ "It could be: " ++ intercalate ", " matches
+              then "There is no package named " ++ display name
+              else "The package name " ++ display name ++ "is ambigious. "
+                ++ "It could be: " ++ intercalate ", " (map display matches)
           | (name, matches) <- ambigious ]
 
 -- | Given an index of known packages and a package name, figure out which one it
@@ -138,9 +139,9 @@ disambiguateDependencies index deps = do
 -- that case it is ambigious.
 --
 disambiguatePackageName :: PackageIndex AvailablePackage
-                        -> String
-                        -> Either String [String]
-disambiguatePackageName index name =
+                        -> PackageName
+                        -> Either PackageName [PackageName]
+disambiguatePackageName index (PackageName name) =
     case PackageIndex.searchByName index name of
       PackageIndex.None              -> Right []
       PackageIndex.Unambiguous pkgs  -> Left (pkgName (packageId (head pkgs)))

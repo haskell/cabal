@@ -71,16 +71,18 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( flagToMaybe )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, inDir, rawSystemExit, withTempDirectory )
+         ( defaultPackageDesc, rawSystemExit, withTempDirectory )
 import Distribution.Simple.InstallDirs
          ( fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), thisPackageVersion
+         ( PackageIdentifier, packageName, Package(..), thisPackageVersion
          , Dependency(..) )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( PackageDescription, readPackageDescription )
+         ( PackageDescription )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.InstalledPackageInfo
@@ -89,6 +91,8 @@ import Distribution.Version
          ( Version, VersionRange(AnyVersion, ThisVersion) )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
+import Distribution.Client.Utils
+         ( inDir )
 import Distribution.System
          ( OS(Windows), buildOS, Arch, buildArch )
 import Distribution.Text
@@ -414,7 +418,7 @@ installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg = d
     info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
     extractTarGzFile tmpDirPath pkgPath
     let descFilePath = tmpDirPath </> display pkgid
-                                  </> pkgName pkgid <.> "cabal"
+                                  </> display (packageName pkgid) <.> "cabal"
     exists <- doesFileExist descFilePath
     when (not exists) $
       die $ "Package .cabal file not found: " ++ show descFilePath
