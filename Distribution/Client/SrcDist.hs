@@ -5,13 +5,16 @@ module Distribution.Client.SrcDist (
          sdist
   )  where
 import Distribution.Simple.SrcDist
-         ( printPackageProblems, prepareTree, prepareSnapshotTree )
+         ( printPackageProblems, prepareTree
+         , prepareSnapshotTree, snapshotPackage )
 import Distribution.Client.Tar (createTarGzFile)
 
 import Distribution.Package
          ( Package(..) )
 import Distribution.PackageDescription
-         ( PackageDescription, readPackageDescription )
+         ( PackageDescription )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription )
 import Distribution.Simple.Utils
          ( withTempDirectory , defaultPackageDesc
          , die, warn, notice, setupMessage )
@@ -52,13 +55,14 @@ sdist flags = do
 
   withTempDirectory verbosity tmpDir $ do
 
-    setupMessage verbosity "Building source dist for" (packageId pkg)
+    date <- toCalendarTime =<< getClockTime
+    let pkg' | snapshot  = snapshotPackage date pkg
+             | otherwise = pkg
+    setupMessage verbosity "Building source dist for" (packageId pkg')
+
     if snapshot
-      then getClockTime >>= toCalendarTime
-       >>= prepareSnapshotTree verbosity pkg mb_lbi
-                               distPref tmpDir knownSuffixHandlers
-      else prepareTree         verbosity pkg mb_lbi
-                               distPref tmpDir knownSuffixHandlers
+      then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
+      else prepareTree         verbosity pkg' mb_lbi distPref tmpDir pps
     targzFile <- createArchive verbosity pkg tmpDir distPref
     notice verbosity $ "Source tarball created: " ++ targzFile
 
@@ -66,6 +70,7 @@ sdist flags = do
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
     distPref  = fromFlag (sDistDistPref flags)
+    pps       = knownSuffixHandlers
 
 -- |Create an archive from a tree of source files, and clean up the tree.
 createArchive :: Verbosity

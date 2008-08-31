@@ -26,14 +26,14 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
+import Distribution.Package
+         ( PackageName )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( OS, Arch )
 
 import Prelude hiding (fail)
-
-type PackageName  = String
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to

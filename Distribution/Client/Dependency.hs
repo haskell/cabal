@@ -32,7 +32,7 @@ import Distribution.Client.Dependency.Types
          ( PackageName, DependencyResolver, PackageVersionPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package
-         ( PackageIdentifier(..), packageVersion, packageName
+         ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
          ( orLaterVersion )
@@ -113,8 +113,8 @@ hideBrokenPackages index =
     check p x = assert (p x) x
 
 hideBasePackage :: Package p => PackageIndex p -> PackageIndex p
-hideBasePackage = PackageIndex.deletePackageName "base"
-                . PackageIndex.deletePackageName "ghc-prim"
+hideBasePackage = PackageIndex.deletePackageName (PackageName "base")
+                . PackageIndex.deletePackageName (PackageName "ghc-prim")
 
 dependencyResolver
   :: DependencyResolver

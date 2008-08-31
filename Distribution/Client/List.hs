@@ -23,7 +23,8 @@ import Text.PrettyPrint.HughesPJ
 import Distribution.Text
          ( Text(disp), display )
 
-import Distribution.Package (PackageIdentifier(..), Package(..))
+import Distribution.Package
+         ( PackageIdentifier(..), PackageName(..), Package(..) )
 import Distribution.License (License)
 import qualified Distribution.PackageDescription as Available
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -66,7 +67,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
 
     if simpleOutput
       then putStr $ unlines
-             [ name pkg ++ " " ++ display version
+             [ display(name pkg) ++ " " ++ display version
              | pkg <- matches
              , version <- if onlyInstalled
                             then              installedVersions pkg
@@ -87,7 +88,7 @@ list verbosity packageDB repos comp conf listFlags pats = do
 -- package name and covers all installed and avilable versions.
 --
 data PackageDisplayInfo = PackageDisplayInfo {
-    name              :: String,
+    name              :: PackageName,
     installedVersions :: [Version],
     availableVersions :: [Version],
     homepage          :: String,
@@ -99,7 +100,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
 showPackageInfo :: PackageDisplayInfo -> String
 showPackageInfo pkg =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-     text " *" <+> text (name pkg)
+     text " *" <+> disp (name pkg)
      $+$
      (nest 6 $ vcat [
        maybeShow (availableVersions pkg)
