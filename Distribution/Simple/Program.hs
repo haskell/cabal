@@ -636,12 +636,7 @@ alexProgram = (simpleProgram "alex") {
 
 gccProgram :: Program
 gccProgram = (simpleProgram "gcc") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
-      -- Invoking "gcc --version" gives a string like
-      -- "gcc (GCC) 4.1.2 (Gentoo 4.1.2)"
-      case words str of
-          (_:_:ver:_) -> ver
-          _           -> ""
+    programFindVersion = findProgramVersion "-dumpversion" id
   }
 
 ranlibProgram :: Program
