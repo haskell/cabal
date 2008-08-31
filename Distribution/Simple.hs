@@ -86,8 +86,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, defaultProgramConfiguration, addKnownProgram
-         , userSpecifyPath, userSpecifyArgs, findProgram, configureProgram )
+         ( defaultProgramConfiguration, addKnownPrograms, builtinPrograms
+         , restoreProgramConfiguration, reconfigurePrograms )
 import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
@@ -125,7 +125,7 @@ import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
 
-import Control.Monad   (when, foldM)
+import Control.Monad   (when)
 import Data.List       (intersperse, unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -180,7 +180,7 @@ defaultMainHelper hooks args =
     printVersion        = putStrLn $ "Cabal library version "
                                   ++ display cabalVersion
 
-    progs = allPrograms hooks
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
       [configureCommand progs `commandAddAction` configureAction    hooks
       ,buildCommand     progs `commandAddAction` buildAction        hooks
@@ -195,14 +195,6 @@ defaultMainHelper hooks args =
       ,testCommand            `commandAddAction` testAction         hooks
       ,makefileCommand        `commandAddAction` makefileAction     hooks
       ]
-
--- | Combine the programs in the given hooks with the programs built
--- into cabal.
-allPrograms :: UserHooks
-            -> ProgramConfiguration -- combine defaults w/ user programs
-allPrograms h = foldl (flip addKnownProgram)
-                      defaultProgramConfiguration
-                      (hookedPrograms h)
 
 -- | Combine the preprocessors in the given hooks with the
 -- preprocessors built into cabal.
@@ -252,51 +244,47 @@ configureAction hooks flags args = do
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
-                let distPref = fromFlag $ buildDistPref flags
-                lbi <- getBuildConfigIfUpToDate distPref
-                let progs = foldl userSpecifyArgs'
-                                  (withPrograms lbi) (buildProgramArgs flags)
-                      where userSpecifyArgs' conf (prog, args') =
-                              userSpecifyArgs prog args' conf
-                hookedAction preBuild buildHook postBuild
-                             (return lbi { withPrograms = progs })
-                             hooks flags args
+  let distPref  = fromFlag $ buildDistPref flags
+      verbosity = fromFlag $ buildVerbosity flags
+
+  lbi <- getBuildConfig hooks distPref
+  progs <- reconfigurePrograms verbosity
+             (buildProgramPaths flags)
+             (buildProgramArgs flags)
+             (withPrograms lbi)
+
+  hookedAction preBuild buildHook postBuild
+               (return lbi { withPrograms = progs })
+               hooks flags args
 
 makefileAction :: UserHooks -> MakefileFlags -> Args -> IO ()
 makefileAction hooks flags args
     = do let distPref = fromFlag $ makefileDistPref flags
          hookedAction preMakefile makefileHook postMakefile
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
 hscolourAction hooks flags args
     = do let distPref = fromFlag $ hscolourDistPref flags
          hookedAction preHscolour hscolourHook postHscolour
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
-haddockAction hooks flags args
-    = do let distPref = fromFlag $ haddockDistPref flags
-             verbosity = fromFlag $ haddockVerbosity flags
-         lbi <- getBuildConfigIfUpToDate distPref
-         let userSpecifyPath' conf0 (progname, path') =
-                 do let prog = case findProgram progname of
-                               Nothing -> error "haddockAction: No program found"
-                               Just p -> p
-                        conf1 = addKnownProgram prog conf0
-                        conf2 = userSpecifyPath progname path' conf1
-                    configureProgram verbosity prog conf2
-             userSpecifyArgs' conf (prog, args') =
-                 userSpecifyArgs prog args' conf
-             progs0 = withPrograms lbi
-         progs1 <- foldM userSpecifyPath' progs0 (haddockProgramPaths flags)
-         let progs2 = foldl userSpecifyArgs' progs1 (haddockProgramArgs flags)
-         -- print $ userSpecifyPath "haddock" "/foo" progs0
-         hookedAction preHaddock haddockHook postHaddock
-                      (return lbi { withPrograms = progs2 })
-                      hooks flags args
+haddockAction hooks flags args = do
+  let distPref  = fromFlag $ haddockDistPref flags
+      verbosity = fromFlag $ haddockVerbosity flags
+
+  lbi <- getBuildConfig hooks distPref
+  progs <- reconfigurePrograms verbosity
+             (haddockProgramPaths flags)
+             (haddockProgramArgs flags)
+             (withPrograms lbi)
+
+  hookedAction preHaddock haddockHook postHaddock
+               (return lbi { withPrograms = progs })
+               hooks flags args
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
@@ -317,14 +305,14 @@ copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
 copyAction hooks flags args
     = do let distPref = fromFlag $ copyDistPref flags
          hookedAction preCopy copyHook postCopy
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
 installAction hooks flags args
     = do let distPref = fromFlag $ installDistPref flags
          hookedAction preInst instHook postInst
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
@@ -345,7 +333,7 @@ sdistAction hooks flags args = do
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
 testAction hooks flags args = do
                 let distPref = fromFlag $ testDistPref flags
-                localbuildinfo <- getBuildConfigIfUpToDate distPref
+                localbuildinfo <- getBuildConfig hooks distPref
                 let pkg_descr = localPkgDescr localbuildinfo
                 runTests hooks args False pkg_descr localbuildinfo
 
@@ -353,14 +341,14 @@ registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args
     = do let distPref = fromFlag $ regDistPref flags
          hookedAction preReg regHook postReg
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 unregisterAction hooks flags args
     = do let distPref = fromFlag $ regDistPref flags
          hookedAction preUnreg unregHook postUnreg
-                      (getBuildConfigIfUpToDate distPref)
+                      (getBuildConfig hooks distPref)
                       hooks flags args
 
 hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
@@ -381,13 +369,17 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
 
-getBuildConfigIfUpToDate :: FilePath -> IO LocalBuildInfo
-getBuildConfigIfUpToDate distPref = do
-   lbi <- getPersistBuildConfig distPref
-   case pkgDescrFile lbi of
-     Nothing -> return ()
-     Just pkg_descr_file -> checkPersistBuildConfig distPref pkg_descr_file
-   return lbi
+getBuildConfig :: UserHooks -> FilePath -> IO LocalBuildInfo
+getBuildConfig hooks distPref = do
+  lbi <- getPersistBuildConfig distPref
+  case pkgDescrFile lbi of
+    Nothing -> return ()
+    Just pkg_descr_file -> checkPersistBuildConfig distPref pkg_descr_file
+  return lbi {
+    withPrograms = restoreProgramConfiguration
+                     (builtinPrograms ++ hookedPrograms hooks)
+                     (withPrograms lbi)
+  }
 
 -- --------------------------------------------------------------------------
 -- Cleaning
