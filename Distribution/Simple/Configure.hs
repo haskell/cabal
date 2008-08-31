@@ -91,7 +91,7 @@ import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
     , configureAllKnownPrograms, knownPrograms
-    , userSpecifyArgs, userSpecifyPath
+    , userSpecifyArgss, userSpecifyPaths
     , lookupKnownProgram, requireProgram, pkgConfigProgram
     , rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
@@ -272,12 +272,9 @@ configure (pkg_descr0, pbi) cfg
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
-        let programsConfig =
-                flip (foldl userSpecifyArgs') (configProgramArgs cfg)
-              . flip (foldl userSpecifyPath') (configProgramPaths cfg)
-              $ configPrograms cfg
-            userSpecifyArgs' conf (prog, args) = userSpecifyArgs prog args conf
-            userSpecifyPath' conf (prog, path) = userSpecifyPath prog path conf
+        let programsConfig = userSpecifyArgss (configProgramArgs cfg)
+                           . userSpecifyPaths (configProgramPaths cfg)
+                           $ configPrograms cfg
             userInstall = fromFlag (configUserInstall cfg)
             defaultPackageDB | userInstall = UserPackageDB
                              | otherwise   = GlobalPackageDB
