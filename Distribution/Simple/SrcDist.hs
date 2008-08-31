@@ -126,10 +126,11 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
 
   withTempDirectory verbosity tmpDir $ do
 
-    setupMessage verbosity "Building source dist for" (packageId pkg)
     date <- toCalendarTime =<< getClockTime
     let pkg' | snapshot  = snapshotPackage date pkg
              | otherwise = pkg
+    setupMessage verbosity "Building source dist for" (packageId pkg')
+
     if snapshot
       then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
       else prepareTree         verbosity pkg' mb_lbi distPref tmpDir pps
