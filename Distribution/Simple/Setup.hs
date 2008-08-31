@@ -1148,6 +1148,7 @@ instance Monoid CleanFlags where
 -- ------------------------------------------------------------
 
 data BuildFlags = BuildFlags {
+    buildProgramPaths :: [(String, FilePath)],
     buildProgramArgs :: [(String, [String])],
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity
@@ -1156,6 +1157,7 @@ data BuildFlags = BuildFlags {
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
+    buildProgramPaths = mempty,
     buildProgramArgs = [],
     buildDistPref    = Flag defaultDistPref,
     buildVerbosity   = Flag normal
@@ -1173,7 +1175,10 @@ buildCommand progConf = makeCommand name shortDesc longDesc defaultBuildFlags op
           buildDistPref (\d flags -> flags { buildDistPref = d })
           showOrParseArgs
 
-      : programConfigurationOptions progConf showOrParseArgs
+      : programConfigurationPaths   progConf showOrParseArgs
+          buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+
+     ++ programConfigurationOptions progConf showOrParseArgs
           buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
@@ -1181,11 +1186,13 @@ emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
   mempty = BuildFlags {
+    buildProgramPaths = mempty,
     buildProgramArgs = mempty,
     buildVerbosity   = mempty,
     buildDistPref    = mempty
   }
   mappend a b = BuildFlags {
+    buildProgramPaths = combine buildProgramPaths,
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref
