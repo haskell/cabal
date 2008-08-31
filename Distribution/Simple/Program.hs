@@ -55,17 +55,22 @@ module Distribution.Simple.Program (
     , ProgramConfiguration
     , emptyProgramConfiguration
     , defaultProgramConfiguration
+    , restoreProgramConfiguration
     , addKnownProgram
+    , addKnownPrograms
     , lookupKnownProgram
     , knownPrograms
     , userSpecifyPath
+    , userSpecifyPaths
     , userMaybeSpecifyPath
     , userSpecifyArgs
+    , userSpecifyArgss
     , userSpecifiedArgs
     , lookupProgram
     , updateProgram
     , configureProgram
     , configureAllKnownPrograms
+    , reconfigurePrograms
     , requireProgram
     , rawSystemProgramConf
     , rawSystemProgramStdoutConf
@@ -96,7 +101,10 @@ module Distribution.Simple.Program (
     , pkgConfigProgram
     ) where
 
+import Data.List  (foldl')
+import Data.Maybe (catMaybes)
 import qualified Data.Map as Map
+
 import Distribution.Simple.Utils
          (die, debug, warn, rawSystemExit, rawSystemStdout)
 import Distribution.Version
@@ -227,7 +235,7 @@ emptyProgramConfiguration = ProgramConfiguration Map.empty Map.empty
 
 defaultProgramConfiguration :: ProgramConfiguration
 defaultProgramConfiguration =
-  foldl (flip addKnownProgram) emptyProgramConfiguration builtinPrograms
+  restoreProgramConfiguration builtinPrograms emptyProgramConfiguration
 
 -- internal helpers:
 updateUnconfiguredProgs :: (UnconfiguredProgs -> UnconfiguredProgs)
@@ -251,6 +259,18 @@ instance Read ProgramConfiguration where
     [ (emptyProgramConfiguration { configuredProgs = Map.fromList s' }, r)
     | (s', r) <- readsPrec p s ]
 
+-- | The Read/Show instance does not preserve all the unconfigured 'Programs'
+-- because 'Program' is not in Read/Show because it contains functions. So to
+-- fully restore a deserialised 'ProgramConfiguration' use this function to add
+-- back all the known 'Program's.
+--
+-- * It does not add the default programs, but you probably want them, use
+--   'builtinPrograms' in addition to any extra you might need.
+--
+restoreProgramConfiguration :: [Program] -> ProgramConfiguration
+                                         -> ProgramConfiguration
+restoreProgramConfiguration = addKnownPrograms
+
 -- -------------------------------
 -- Managing unconfigured programs
 
@@ -258,6 +278,9 @@ instance Read ProgramConfiguration where
 addKnownProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
 addKnownProgram prog = updateUnconfiguredProgs $
   Map.insert (programName prog) (prog, Nothing, [])
+
+addKnownPrograms :: [Program] -> ProgramConfiguration -> ProgramConfiguration
+addKnownPrograms progs conf = foldl' (flip addKnownProgram) conf progs
 
 lookupKnownProgram :: String -> ProgramConfiguration -> Maybe Program
 lookupKnownProgram name =
@@ -297,10 +320,30 @@ userSpecifyArgs name args' =
       (flip Map.update name $
          \prog -> Just prog { programArgs = programArgs prog ++ args' })
 
+-- | Like 'userSpecifyPath' but for a list of progs and their paths.
+--
+userSpecifyPaths :: [(String, FilePath)]
+                 -> ProgramConfiguration
+                 -> ProgramConfiguration
+userSpecifyPaths paths conf =
+  foldl' (\conf' (prog, path) -> userSpecifyPath prog path conf') conf paths
+
+-- | Like 'userSpecifyPath' but for a list of progs and their args.
+--
+userSpecifyArgss :: [(String, [ProgArg])]
+                 -> ProgramConfiguration
+                 -> ProgramConfiguration
+userSpecifyArgss argss conf =
+  foldl' (\conf' (prog, args) -> userSpecifyArgs prog args conf') conf argss
+
+-- | Get the path that has been previously specified for a program, if any.
+--
 userSpecifiedPath :: Program -> ProgramConfiguration -> Maybe FilePath
 userSpecifiedPath prog =
   join . fmap (\(_,p,_)->p) . Map.lookup (programName prog) . unconfiguredProgs
 
+-- | Get any extra args that have been previously specified for a program.
+--
 userSpecifiedArgs :: Program -> ProgramConfiguration -> [ProgArg]
 userSpecifiedArgs prog =
   maybe [] (\(_,_,as)->as) . Map.lookup (programName prog) . unconfiguredProgs
@@ -350,8 +393,8 @@ configureProgram verbosity prog conf = do
         then return (Just (UserSpecified path))
         else findProgramOnPath path verbosity
          >>= maybe (die notFound) (return . Just . UserSpecified)
-      where notFound = "Cannot find " ++ name ++ " at "
-                     ++ path ++ " or on the path"
+      where notFound = "Cannot find the program '" ++ name ++ "' at '"
+                     ++ path ++ "' or on the path"
   case maybeLocation of
     Nothing -> return conf
     Just location -> do
@@ -364,14 +407,42 @@ configureProgram verbosity prog conf = do
           }
       return (updateConfiguredProgs (Map.insert name configuredProg) conf)
 
--- | Try to configure all the known programs that have not yet been configured.
-configureAllKnownPrograms :: Verbosity
+-- | Configure a bunch of programs using 'configureProgram'. Just a 'foldM'.
+configurePrograms :: Verbosity
+                  -> [Program]
                   -> ProgramConfiguration
                   -> IO ProgramConfiguration
+configurePrograms verbosity progs conf =
+  foldM (flip (configureProgram verbosity)) conf progs
+
+-- | Try to configure all the known programs that have not yet been configured.
+configureAllKnownPrograms :: Verbosity
+                          -> ProgramConfiguration
+                          -> IO ProgramConfiguration
 configureAllKnownPrograms verbosity conf =
-  foldM (flip (configureProgram verbosity)) conf
-    [ prog | (prog,_,_) <- Map.elems (unconfiguredProgs conf
-                     `Map.difference` configuredProgs conf) ]
+  configurePrograms verbosity
+    [ prog | (prog,_,_) <- Map.elems notYetConfigured ] conf
+  where
+    notYetConfigured = unconfiguredProgs conf
+      `Map.difference` configuredProgs conf
+
+-- | reconfigure a bunch of programs given new user-specified args. It takes
+-- the same inputs as 'userSpecifyPath' and 'userSpecifyArgs' and for all progs
+-- with a new path it calls 'configureProgram'.
+--
+reconfigurePrograms :: Verbosity
+                    -> [(String, FilePath)]
+                    -> [(String, [ProgArg])]
+                    -> ProgramConfiguration
+                    -> IO ProgramConfiguration
+reconfigurePrograms verbosity paths argss conf = do
+  configurePrograms verbosity progs
+   . userSpecifyPaths paths
+   . userSpecifyArgss argss
+   $ conf
+
+  where
+    progs = catMaybes [ lookupKnownProgram name conf | (name,_) <- paths ]
 
 -- | Check that a program is configured and available to be run.
 --
