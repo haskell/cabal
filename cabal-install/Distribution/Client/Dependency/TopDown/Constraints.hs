@@ -24,17 +24,15 @@ import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), packageVersion, packageName
+         ( PackageIdentifier, Package(packageId), packageVersion
          , Dependency(Dependency) )
 import Distribution.Version
          ( withinRange )
-import Distribution.Simple.Utils
-         ( comparing )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 
 import Data.List
-         ( foldl', sortBy )
+         ( foldl' )
 import Data.Monoid
          ( Monoid(mempty) )
 import Control.Exception
@@ -95,20 +93,11 @@ transitionsTo constraints @(Constraints available  excluded )
     excludedLost    = [ pkg | OnlyInLeft  pkg <- excludedChange  ]
     excludedGained  = [ pkg | OnlyInRight pkg <- excludedChange  ]
     availableChange = mergeBy (\a b -> packageId a `compare` packageId b)
-                              (allPackagesInOrder available)
-                              (allPackagesInOrder available')
+                              (PackageIndex.allPackages available)
+                              (PackageIndex.allPackages available')
     excludedChange  = mergeBy (\a b -> packageId a `compare` packageId b)
-                              (allPackagesInOrder excluded)
-                              (allPackagesInOrder excluded')
-
---FIXME: PackageIndex.allPackages returns in sorted order case-insensitively
--- but that's no good for our merge which uses Ord
-allPackagesInOrder :: Package pkg => PackageIndex pkg -> [pkg]
-allPackagesInOrder index = 
-    concatMap snd
-  . sortBy (comparing fst)
-  $ [ (packageName pkg, grp)
-    | grp@(pkg:_) <- PackageIndex.allPackagesByName index ]
+                              (PackageIndex.allPackages excluded)
+                              (PackageIndex.allPackages excluded')
 
 -- | We construct 'Constraints' with an initial 'PackageIndex' of all the
 -- packages available.
@@ -122,11 +111,11 @@ empty installed available = Constraints pkgs mempty
     pkgs = PackageIndex.fromList
          . map toInstalledOrAvailable
          $ mergeBy (\a b -> packageId a `compare` packageId b)
-                   (allPackagesInOrder installed)
-                   (allPackagesInOrder available) 
+                   (PackageIndex.allPackages installed)
+                   (PackageIndex.allPackages available)
     toInstalledOrAvailable (OnlyInLeft  i  ) = InstalledOnly         i
     toInstalledOrAvailable (OnlyInRight   a) = AvailableOnly           a
-    toInstalledOrAvailable (InBoth      i a) = InstalledAndAvailable i a 
+    toInstalledOrAvailable (InBoth      i a) = InstalledAndAvailable i a
 
 -- | The package choices that are still available.
 --

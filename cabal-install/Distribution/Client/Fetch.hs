@@ -35,7 +35,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
 
 import Distribution.Package
-         ( PackageIdentifier(..), Dependency(..) )
+         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDB )
@@ -191,8 +191,8 @@ packageFile repo pkgid = packageDir repo pkgid
 -- the tarball for a given @PackageIdentifer@ is stored.
 packageDir :: Repo -> PackageIdentifier -> FilePath
 packageDir repo pkgid = repoLocalDir repo
-                    </> pkgName pkgid
-                    </> display (pkgVersion pkgid)
+                    </> display (packageName    pkgid)
+                    </> display (packageVersion pkgid)
 
 -- | Generate the URI of the tarball for a given package.
 packageURI :: RemoteRepo -> PackageIdentifier -> URI
@@ -200,8 +200,8 @@ packageURI repo pkgid | isOldHackageURI (remoteRepoURI repo) =
   (remoteRepoURI repo) {
     uriPath = FilePath.Posix.joinPath
       [uriPath (remoteRepoURI repo)
-      ,pkgName pkgid
-      ,display (pkgVersion pkgid)
+      ,display (packageName    pkgid)
+      ,display (packageVersion pkgid)
       ,display pkgid <.> "tar.gz"]
   }
 packageURI repo pkgid =

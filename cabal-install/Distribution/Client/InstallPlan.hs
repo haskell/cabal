@@ -48,8 +48,8 @@ import Distribution.Client.Types
          ( AvailablePackage(packageDescription), ConfiguredPackage(..)
          , BuildFailure, BuildSuccess )
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
-         , packageName, Dependency(..) )
+         ( PackageIdentifier(..), PackageName(..), Package(..), packageName
+         , PackageFixedDeps(..), Dependency(..) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.InstalledPackageInfo
@@ -146,7 +146,7 @@ data InstallPlan = InstallPlan {
     planIndex    :: PackageIndex PlanPackage,
     planGraph    :: Graph,
     planGraphRev :: Graph,
-    planPkgIdOf  :: Graph.Vertex -> PackageIdentifier,
+    planPkgOf    :: Graph.Vertex -> PlanPackage,
     planVertexOf :: PackageIdentifier -> Graph.Vertex,
     planOS       :: OS,
     planArch     :: Arch,
@@ -170,7 +170,7 @@ new os arch compiler index =
             planIndex    = index,
             planGraph    = graph,
             planGraphRev = Graph.transposeG graph,
-            planPkgIdOf  = vertexToPkgId,
+            planPkgOf    = vertexToPkgId,
             planVertexOf = fromMaybe noSuchPkgId . pkgIdToVertex,
             planOS       = os,
             planArch     = arch,
@@ -240,14 +240,14 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
     failures = PackageIndex.fromList
              $ Failed pkg buildResult
              : [ Failed pkg' buildResult'
-               | Just pkg' <- map (lookupConfiguredPackage' plan)
+               | Just pkg' <- map checkConfiguredPackage
                             $ packagesThatDependOn plan pkgid ]
 
 -- | lookup the reachable packages in the reverse dependency graph
 --
 packagesThatDependOn :: InstallPlan
-                     -> PackageIdentifier -> [PackageIdentifier]
-packagesThatDependOn plan = map (planPkgIdOf plan)
+                     -> PackageIdentifier -> [PlanPackage]
+packagesThatDependOn plan = map (planPkgOf plan)
                           . tail
                           . Graph.reachable (planGraphRev plan)
                           . planVertexOf plan
@@ -261,15 +261,13 @@ lookupConfiguredPackage plan pkgid =
     Just (Configured pkg) -> pkg
     _  -> internalError $ "not configured or no such pkg " ++ display pkgid
 
--- | lookup a package that we expect to be in the configured or failed state
+-- | check a package that we expect to be in the configured or failed state
 --
-lookupConfiguredPackage' :: InstallPlan
-                         -> PackageIdentifier -> Maybe ConfiguredPackage
-lookupConfiguredPackage' plan pkgid =
-  case PackageIndex.lookupPackageId (planIndex plan) pkgid of
-    Just (Configured pkg) -> Just pkg
-    Just (Failed _ _)     -> Nothing
-    _  -> internalError $ "not configured or no such pkg " ++ display pkgid
+checkConfiguredPackage :: PlanPackage -> Maybe ConfiguredPackage
+checkConfiguredPackage (Configured pkg) = Just pkg
+checkConfiguredPackage (Failed     _ _) = Nothing
+checkConfiguredPackage pkg                =
+  internalError $ "not configured or no such pkg " ++ display (packageId pkg)
 
 -- ------------------------------------------------------------
 -- * Checking valididy of plans
@@ -288,7 +286,7 @@ data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
    | PackageMissingDeps   PlanPackage [PackageIdentifier]
    | PackageCycle         [PlanPackage]
-   | PackageInconsistency String [(PackageIdentifier, Version)]
+   | PackageInconsistency PackageName [(PackageIdentifier, Version)]
    | PackageStateInvalid  PlanPackage PlanPackage
 
 showPlanProblem :: PlanProblem -> String
@@ -308,7 +306,7 @@ showPlanProblem (PackageCycle cycleGroup) =
   ++ intercalate ", " (map (display.packageId) cycleGroup)
 
 showPlanProblem (PackageInconsistency name inconsistencies) =
-     "Package " ++ name
+     "Package " ++ display name
   ++ " is required by several packages,"
   ++ " but they require inconsistent versions:\n"
   ++ unlines [ "  package " ++ display pkg ++ " requires "
