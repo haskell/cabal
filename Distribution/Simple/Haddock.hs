@@ -76,7 +76,8 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( haddockPref, haddockName,
-                                        hscolourPref, autogenModulesDir )
+                                        hscolourPref, autogenModulesDir,
+                                        cppHeaderName )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
          ( lookupPackageId )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -351,6 +352,7 @@ ghcSimpleOptions lbi bi mockDir
   ++ ["-i" ++ mockDir]
   ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
   ++ ["-optP" ++ opt | opt <- cppOptions bi]
+  ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
   ++ ["-odir", mockDir]
   ++ ["-hidir", mockDir]
   ++ extensionsToFlags c (extensions bi)
