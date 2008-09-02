@@ -334,13 +334,15 @@ checkGhcOptions pkg =
 
     check has_WerrorWall $
       PackageDistInexcusable $
-           "'ghc-options: -Wall -Werror' makes the package "
-        ++ "very easy to break with future GHC versions."
+           "'ghc-options: -Wall -Werror' makes the package very easy to "
+        ++ "break with future GHC versions because new GHC versions often "
+        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
 
   , check (not has_WerrorWall && has_Werror) $
       PackageDistSuspicious $
            "'ghc-options: -Werror' makes the package easy to "
-        ++ "break with future GHC versions."
+        ++ "break with future GHC versions because new GHC versions often "
+        ++ "add new warnings."
 
   , checkFlags ["-fasm"] $
       PackageDistInexcusable $
@@ -349,7 +351,10 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fvia-C"] $
       PackageDistSuspicious $
-        "'ghc-options: -fvia-C' is usually unnecessary."
+           "'ghc-options: -fvia-C' is usually unnecessary. If your package "
+        ++ "needs -via-C for correctness rather than performance then it "
+        ++ "is using the FFI incorrectly and will probably not work with GHC "
+        ++ "6.10 or later."
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
@@ -394,7 +399,7 @@ checkGhcOptions pkg =
         "'ghc-options: -split-objs' is not needed. Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s"] $
-      PackageDistSuspicious $
+      PackageDistInexcusable $
            "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
         ++ " operating systems. Cabal 1.4 and later automatically strip"
         ++ " executables. Cabal also has a flag --disable-executable-stripping"
