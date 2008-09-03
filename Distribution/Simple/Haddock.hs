@@ -78,6 +78,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( haddockPref, haddockName,
                                         hscolourPref, autogenModulesDir,
                                         cppHeaderName )
+import Distribution.Simple.PackageIndex (dependencyClosure, allPackages)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
          ( lookupPackageId )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -306,6 +307,11 @@ haddockPackageFlags :: LocalBuildInfo
                     -> Maybe PathTemplate
                     -> IO ([String], Maybe String)
 haddockPackageFlags lbi htmlTemplate = do
+  let allPkgs = installedPkgs lbi
+      directDeps = packageDeps lbi
+  transitiveDeps <- case dependencyClosure allPkgs directDeps of
+                    Left x -> return x
+                    Right _ -> die "Can't find transitive deps for haddock"
   interfaces <- sequence
     [ case interfaceAndHtmlPath pkgid of
         Nothing -> return (pkgid, Nothing)
@@ -314,7 +320,7 @@ haddockPackageFlags lbi htmlTemplate = do
           if exists
             then return (pkgid, Just (interface, html))
             else return (pkgid, Nothing)
-    | pkgid <- packageDeps lbi ]
+    | pkgid <- map InstalledPackageInfo.package $ allPackages transitiveDeps ]
 
   let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
       warning = "The documentation for the following packages are not "
