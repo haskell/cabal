@@ -29,7 +29,7 @@ import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
                         ,openBinaryFile, IOMode(ReadMode), hGetContents)
 import Control.Exception (bracket)
 import System.Random    (randomRIO)
-import System.FilePath  ((</>), takeExtension)
+import System.FilePath  ((</>), takeExtension, takeFileName)
 import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_)
@@ -146,11 +146,12 @@ genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Intege
                  return $ showHex i ""
 
 mkFormData :: FilePath -> String -> [BodyPart]
-mkFormData path pkg = 
-    -- yes, web browsers are that stupid (re quoting)
-    [BodyPart [Header hdrContentDisposition ("form-data; name=package; filename=\""++path++"\""),
-               Header HdrContentType "application/x-gzip"] 
-     pkg]
+mkFormData path pkg =
+  -- yes, web browsers are that stupid (re quoting)
+  [BodyPart [Header hdrContentDisposition $
+             "form-data; name=package; filename=\""++takeFileName path++"\"",
+             Header HdrContentType "application/x-gzip"]
+   pkg]
 
 hdrContentDisposition :: HeaderName
 hdrContentDisposition = HdrCustom "Content-disposition"
