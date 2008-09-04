@@ -65,7 +65,11 @@ import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
+import Data.List (groupBy, sortBy, find, isPrefixOf, tails)
+#else
 import Data.List (groupBy, sortBy, find, isInfixOf)
+#endif
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
 
@@ -80,6 +84,11 @@ import Distribution.Simple.Utils (lowercase, equating, comparing)
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
 import Text.Read
 import qualified Text.Read.Lex as L
+#endif
+
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
+isInfixOf :: (Eq a) => [a] -> [a] -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
 #endif
 
 -- | The collection of information about packages from one or more 'PackageDB's.
