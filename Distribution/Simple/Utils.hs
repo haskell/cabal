@@ -58,7 +58,6 @@ module Distribution.Simple.Utils (
         dieWithLocation,
         warn, notice, setupMessage, info, debug,
         chattyTry,
-        breaks,
 
         -- * running programs
         rawSystemExit,
@@ -259,14 +258,6 @@ chattyTry desc action =
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
-
-breaks :: (a -> Bool) -> [a] -> [[a]]
-breaks _ [] = []
-breaks f xs = case span f xs of
-                  (_, xs') ->
-                      case break f xs' of
-                          (v, xs'') ->
-                              v : breaks f xs''
 
 -- | Wraps text to the default line width. Existing newlines are preserved.
 wrapText :: String -> String
