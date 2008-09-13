@@ -758,7 +758,9 @@ makefile pkg_descr lbi flags = do
         ("MAKEFILE", file),
         ("C_SRCS", unwords (cSources bi)),
         ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
-        ("GHCI_LIB", builddir </> mkGHCiLibName (packageId pkg_descr)),
+        ("GHCI_LIB", if withGHCiLib lbi
+                     then builddir </> mkGHCiLibName (packageId pkg_descr)
+                     else ""),
         ("soext", dllExtension),
         ("LIB_LD_OPTS", unwords (["-package-name", packageIdStr]
                                  ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
