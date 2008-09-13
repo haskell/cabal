@@ -102,6 +102,7 @@ Library
   Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.Exception,
+        Distribution.Compat.Permissions,
         Distribution.Compat.TempFile,
         Distribution.Simple.GHC.Makefile,
         Distribution.Simple.GHC.IPI641,

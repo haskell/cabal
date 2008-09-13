@@ -120,13 +120,12 @@ import Data.List                ( nub )
 import Data.Maybe               ( catMaybes )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
-                                  getTemporaryDirectory,
-                                  Permissions(..),
-                                  getPermissions, setPermissions )
+                                  getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.Compat.Permissions (copyPermissions)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -878,6 +877,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                              : fullPathTemplateEnv myPkgId myCompilerId
                                                    pretendInstallDirs
                      createDirectoryIfMissingVerbose verbosity True libExecDir
+                     installBinary absExeFileName
                      -- XXX Should probably look somewhere more sensible
                      -- than just . for wrappers
                      wrapperTemplate <- readFile (e <.> "wrapper")
@@ -885,10 +885,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                                  $ substPathTemplate env
                                  $ toPathTemplate wrapperTemplate
                      writeFileAtomic wrapperFileName wrapper
-                     perms <- getPermissions wrapperFileName
-                     let perms' = perms {executable = True}
-                     setPermissions wrapperFileName perms'
-                     installBinary absExeFileName
+                     copyPermissions absExeFileName wrapperFileName
                  else do
                      let absExeFileName =
                              binDir </> fixedExeBaseName <.> exeExtension
