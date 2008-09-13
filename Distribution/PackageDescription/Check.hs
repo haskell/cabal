@@ -398,7 +398,7 @@ checkGhcOptions pkg =
       PackageDistInexcusable $
         "'ghc-options: -split-objs' is not needed. Use the --enable-split-objs configure flag."
 
-  , checkFlags ["-optl-Wl,-s"] $
+  , checkFlags ["-optl-Wl,-s", "-optl-s"] $
       PackageDistInexcusable $
            "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
         ++ " operating systems. Cabal 1.4 and later automatically strip"
