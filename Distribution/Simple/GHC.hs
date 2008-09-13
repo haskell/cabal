@@ -748,6 +748,7 @@ makefile pkg_descr lbi flags = do
         ("modules", unwords (map display (PD.exposedModules lib ++ otherModules bi))),
         ("GHC", programPath ghcProg),
         ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
+        ("VANILLA_WAY", if withVanillaLib lbi then "YES" else "NO"),
         ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
         ("odir", builddir),
         ("package", packageIdStr),
