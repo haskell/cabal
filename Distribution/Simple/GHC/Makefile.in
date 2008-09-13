@@ -29,7 +29,11 @@ MKSTUBOBJS = find $(odir) -name "*_stub.$(osuf)" -print
 # HACK ^^^ we tried to use $(wildcard), but apparently it fails due to
 # make using cached directory contents, or something.
 
+# We have to jump through some hoops if we don't want the vanilla way,
+# as it's handled specially
+ifneq "$(way) $(VANILLA_WAY)" " NO"
 all :: $(odir)/.depend $(LIB)
+endif
 
 $(odir)/.depend : $(MAKEFILE)
 	$(GHC) -M $(GENERATE_DOT_DEPEND) $(foreach way,$(WAYS),-optdep-s -optdep$(way)) $(foreach obj,$(MKDEPENDHS_OBJ_SUFFICES),-osuf $(obj)) $(filter-out -split-objs, $(GHC_OPTS)) $(modules)
