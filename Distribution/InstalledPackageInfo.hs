@@ -19,8 +19,8 @@
 -- constraints to exact versions of dependent packages. So this module defines
 -- the 'InstalledPackageInfo' data structure that contains all the info we keep
 -- about an installed package. There is a parser and pretty printer. The
--- textual format is rather simpler than the @.cabal@ format, there are no
--- sections for example.
+-- textual format is rather simpler than the @.cabal@ format: there are no
+-- sections, for example.
 
 {- All rights reserved.
 
