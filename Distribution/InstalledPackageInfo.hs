@@ -8,15 +8,15 @@
 --
 -- This is the information about an /installed/ package that
 -- is communicated to the @ghc-pkg@ program in order to register
--- a package.  @ghc-pkg@ now consumes this package format (as of verison
+-- a package.  @ghc-pkg@ now consumes this package format (as of version
 -- 6.4). This is specific to GHC at the moment.
 --
 -- The @.cabal@ file format is for describing a package that is not yet
--- installed. It has a lot of flexibility like conditionals and dependency
--- ranges. As such that format is not at all suitable for describing a package
--- that has already been built and installed. By the time we get to that stage
+-- installed. It has a lot of flexibility, like conditionals and dependency
+-- ranges. As such, that format is not at all suitable for describing a package
+-- that has already been built and installed. By the time we get to that stage,
 -- we have resolved all conditionals and resolved dependency version
--- constraints to exact versions of dependent packages. So this module defines
+-- constraints to exact versions of dependent packages. So, this module defines
 -- the 'InstalledPackageInfo' data structure that contains all the info we keep
 -- about an installed package. There is a parser and pretty printer. The
 -- textual format is rather simpler than the @.cabal@ format: there are no
