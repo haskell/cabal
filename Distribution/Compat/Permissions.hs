@@ -1,6 +1,7 @@
 -- #hide
 module Distribution.Compat.Permissions (copyPermissions) where
 
+#ifndef __NHC__
 import Foreign
 import Foreign.C
 import System.Posix.Internals
@@ -14,3 +15,14 @@ copyPermissions source dest = do
     mode <- st_mode p_stat
     throwErrnoIfMinus1_ "copyPermissions" $ c_chmod p_dest mode
 
+#else
+import Directory (Permissions(..),getPermissions,setPermissions)
+
+-- The nhc98 version of this function is broken.  (But it is the way ghc
+-- and Hugs implemented it too, until 2008-09-13.)  Unfortunately, nhc98
+-- does not have System.Posix.Internals, so cannot (yet) do it correctly.
+copyPermissions :: FilePath -> FilePath -> IO ()
+copyPermissions source dest = do
+  perms <- getPermissions source
+  setPermissions dest perms
+#endif
