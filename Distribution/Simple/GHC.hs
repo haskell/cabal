@@ -97,11 +97,11 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , rawSystemProgram, rawSystemProgramConf
+         , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
-         , userMaybeSpecifyPath, programPath, lookupProgram, updateProgram
+         , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
-         , gccProgram, stripProgram, userSpecifyArgs )
+         , gccProgram, stripProgram )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
@@ -154,50 +154,6 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
-  -- finding ghc's local gcc and ld is a bit tricky as it's not on the path:
-  let compilerDir = takeDirectory (programPath ghcProg)
-      baseDir     = takeDirectory compilerDir
-      libDir      = baseDir </> "gcc-lib"
-      (gccProgram', ldProgram') = case buildOS of
-        Windows ->
-          let binInstallCc = baseDir </> "gcc.exe"
-              binInstallLd = libDir </> "ld.exe"
-           in (gccProgram {
-                  programFindLocation = \_ -> return (Just binInstallCc)
-                }
-              ,ldProgram {
-                  programFindLocation = \_ -> return (Just binInstallLd)
-                })
-        _ -> (gccProgram, ldProgram)
-
-  (_, conf''') <- requireProgram verbosity gccProgram' AnyVersion conf''
-  let conf'''' =  userSpecifyArgs "hsc2hs" ["--cflag=-B" ++ libDir, "--lflag=-B" ++ libDir]
-                                  conf'''
-
-  -- we need to find out if ld supports the -x flag
-  (ldProg, conf''''') <- requireProgram verbosity ldProgram' AnyVersion conf''''
-  tempDir <- getTemporaryDirectory
-  ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
-         withTempFile tempDir ".o" $ \testofile testohnd -> do
-           hPutStrLn testchnd "int foo() {}"
-           hClose testchnd; hClose testohnd
-           rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                               "-o", testofile]
-           withTempFile tempDir ".o" $ \testofile' testohnd' ->
-             do
-               hClose testohnd'
-               rawSystemProgramStdout verbosity ldProg
-                 ["-x", "-r", testofile, "-o", testofile']
-               return True
-             `catchIO`   (\_ -> return False)
-             `catchExit` (\_ -> return False)
-  let conf'''''' = updateProgram ldProg {
-                  programArgs = if ldx then ["-x"] else []
-                } conf'''''
-  -- Yeah yeah, so obviously conf'''''' is totally rediculious and the program
-  -- configuration needs to be in a state monad. That is exactly the plan
-  -- (along with some other stuff to give Cabal a better DSL).
-
   languageExtensions <-
     if ghcVersion >= Version [6,7] []
       then do exts <- rawSystemStdout verbosity (programPath ghcProg)
@@ -217,7 +173,8 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerId             = CompilerId GHC ghcVersion,
         compilerExtensions     = languageExtensions
       }
-  return (comp, conf'''''')
+      conf''' = configureToolchain ghcProg conf'' -- configure gcc and ld
+  return (comp, conf''')
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding ghc-pkg, we try looking for both a versioned and unversioned
@@ -250,6 +207,62 @@ guessGhcPkgFromGhcPath ghcProg verbosity
           case splitExtension filepath of
             (filepath', extension) | extension == exeExtension -> filepath'
                                    | otherwise                 -> filepath
+
+-- | Adjust the way we find and configure gcc and ld
+--
+configureToolchain :: ConfiguredProgram -> ProgramConfiguration
+                                        -> ProgramConfiguration
+configureToolchain ghcProg = 
+    addKnownProgram gccProgram {
+      programFindLocation = findGcc,
+      programPostConf     = configureGcc 
+    }
+  . addKnownProgram ldProgram {
+      programFindLocation = findLd,
+      programPostConf     = configureLd
+    }
+  where
+    compilerDir = takeDirectory (programPath ghcProg)
+    baseDir     = takeDirectory compilerDir
+    libDir      = baseDir </> "gcc-lib"
+    isWindows   = case buildOS of Windows -> True; _ -> False
+
+    -- on Windows finding and configuring ghc's gcc and ld is a bit special
+    findGcc | isWindows = \_ -> return (Just (baseDir </> "gcc.exe"))
+            | otherwise = programFindLocation gccProgram
+    findLd  | isWindows = \_ -> return (Just (libDir </> "ld.exe"))
+            | otherwise = programFindLocation ldProgram
+
+    configureGcc
+      | isWindows = \_ gccProg -> case programLocation gccProg of
+          -- if it's found on system then it means we're using the result
+          -- of programFindLocation above rather than a user-supplied path
+          -- that means we should add this extra flag to tell ghc's gcc
+          -- where it lives and thus where gcc can find its various files:
+          FoundOnSystem {} -> return ["-B" ++ libDir]
+          UserSpecified {} -> return []
+      | otherwise = \_ _   -> return []
+
+    -- we need to find out if ld supports the -x flag
+    configureLd verbosity ldProg = do
+      tempDir <- getTemporaryDirectory
+      ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
+             withTempFile tempDir ".o" $ \testofile testohnd -> do
+               hPutStrLn testchnd "int foo() {}"
+               hClose testchnd; hClose testohnd
+               rawSystemProgram verbosity ghcProg ["-c", testcfile,
+                                                   "-o", testofile]
+               withTempFile tempDir ".o" $ \testofile' testohnd' ->
+                 do
+                   hClose testohnd'
+                   rawSystemProgramStdout verbosity ldProg
+                     ["-x", "-r", testofile, "-o", testofile']
+                   return True
+                 `catchIO`   (\_ -> return False)
+                 `catchExit` (\_ -> return False)
+      if ldx
+        then return ["-x"]
+        else return []
 
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
 oldLanguageExtensions :: [(Extension, Flag)]
