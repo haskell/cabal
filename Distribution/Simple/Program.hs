@@ -127,7 +127,13 @@ data Program = Program {
 
         -- | Try to find the version of the program. For many programs this is
         -- not possible or is not necessary so it's ok to return Nothing.
-        programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+        programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version),
+
+        -- | A function to do any additional configuration after we have
+        -- located the program (and perhaps identified its version). It is
+        -- allowed to return additional flags that will be passed to the
+        -- program on every invocation.
+        programPostConf :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     }
 
 type ProgArg = String
@@ -174,8 +180,12 @@ programPath = locationPath . programLocation
 -- > simpleProgram "foo" { programFindLocation = ... , programFindVersion ... }
 --
 simpleProgram :: String -> Program
-simpleProgram name =
-  Program name (findProgramOnPath name) (\_ _ -> return Nothing)
+simpleProgram name = Program {
+    programName         = name,
+    programFindLocation = findProgramOnPath name,
+    programFindVersion  = \_ _ -> return Nothing,
+    programPostConf     = \_ _ -> return []
+  }
 
 -- | Look for a program on the path.
 findProgramOnPath :: FilePath -> Verbosity -> IO (Maybe FilePath)
@@ -398,13 +408,17 @@ configureProgram verbosity prog conf = do
     Nothing -> return conf
     Just location -> do
       version <- programFindVersion prog verbosity (locationPath location)
-      let configuredProg = ConfiguredProgram {
+      let configuredProg    = ConfiguredProgram {
             programId       = name,
             programVersion  = version,
             programArgs     = userSpecifiedArgs prog conf,
             programLocation = location
           }
-      return (updateConfiguredProgs (Map.insert name configuredProg) conf)
+      extraArgs <- programPostConf prog verbosity configuredProg
+      let configuredProg'   = configuredProg {
+            programArgs     = extraArgs ++ programArgs configuredProg
+          }
+      return (updateConfiguredProgs (Map.insert name configuredProg') conf)
 
 -- | Configure a bunch of programs using 'configureProgram'. Just a 'foldM'.
 configurePrograms :: Verbosity
