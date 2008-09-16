@@ -1,4 +1,10 @@
--- #hide
+{-# OPTIONS -cpp #-}
+-- OPTIONS required for ghc-6.4.x compat, and must appear first
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp #-}
+
 module Distribution.Compat.Permissions (copyPermissions) where
 
 #ifndef __NHC__
