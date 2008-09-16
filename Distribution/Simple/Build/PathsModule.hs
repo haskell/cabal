@@ -139,7 +139,10 @@ generate pkg_descr lbi =
 
         mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
-          where var' = display (packageName pkg_descr) ++ "_" ++ var
+          where var' = showPkgName (packageName pkg_descr) ++ "_" ++ var
+                showPkgName = map fixchar . display
+                fixchar '-' = '_'
+                fixchar c   = c
 
         -- In several cases we cannot make relocatable installations
         absolute =
