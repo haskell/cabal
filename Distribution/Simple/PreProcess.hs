@@ -357,6 +357,10 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     [ "--cc=" ++ programPath gccProg
     , "--ld=" ++ programPath gccProg ]
 
+    -- Additional gcc options
+ ++ [ "--cflag=" ++ opt | opt <- programArgs gccProg ]
+ ++ [ "--lflag=" ++ opt | opt <- programArgs gccProg ]
+
     -- OSX frameworks:
  ++ [ what ++ "=-F" ++ opt
     | isOSX
