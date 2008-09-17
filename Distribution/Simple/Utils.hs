@@ -165,7 +165,8 @@ import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
 #endif
 
-import Distribution.Compat.TempFile (openTempFile, openBinaryTempFile)
+import Distribution.Compat.TempFile (openTempFile,
+                                     openNewBinaryFile)
 import Distribution.Compat.Exception (catchIO, onException)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Compat.Exception (throwIOIO)
@@ -609,7 +610,7 @@ withFileContents name action =
 --
 writeFileAtomic :: FilePath -> String -> IO ()
 writeFileAtomic targetFile content = do
-  (tmpFile, tmpHandle) <- openBinaryTempFile targetDir template
+  (tmpFile, tmpHandle) <- openNewBinaryFile targetDir template
   do  hPutStr tmpHandle content
       hClose tmpHandle
 #if mingw32_HOST_OS || mingw32_TARGET_OS
