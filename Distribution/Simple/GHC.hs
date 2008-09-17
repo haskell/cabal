@@ -225,12 +225,21 @@ configureToolchain ghcProg =
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
     libDir      = baseDir </> "gcc-lib"
+    programFindLocationOnWindows prog windowsProgPath verbosity =
+        do -- On Windows windowsProgPath should exist. However, in case
+           -- it doesn't (and currently it doesn't for the inplace GHC)
+           -- we check that it does.
+           exists <- doesFileExist windowsProgPath
+           if exists then return (Just windowsProgPath)
+                     else programFindLocation prog verbosity
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findGcc | isWindows = \_ -> return (Just (baseDir </> "gcc.exe"))
+    findGcc | isWindows = programFindLocationOnWindows
+                              gccProgram (baseDir </> "gcc.exe")
             | otherwise = programFindLocation gccProgram
-    findLd  | isWindows = \_ -> return (Just (libDir </> "ld.exe"))
+    findLd  | isWindows = programFindLocationOnWindows
+                              ldProgram (libDir </> "ld.exe")
             | otherwise = programFindLocation ldProgram
 
     configureGcc
