@@ -16,7 +16,7 @@ module Distribution.Compat.Exception
 import System.Exit
 import qualified Control.Exception as Exception
 
-onException :: IO a -> IO () -> IO a
+onException :: IO a -> IO b -> IO a
 #ifdef NEW_EXCEPTION
 onException = Exception.onException
 #else
