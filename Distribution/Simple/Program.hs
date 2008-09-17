@@ -286,7 +286,8 @@ restoreProgramConfiguration = addKnownPrograms
 -- | Add a known program that we may configure later
 addKnownProgram :: Program -> ProgramConfiguration -> ProgramConfiguration
 addKnownProgram prog = updateUnconfiguredProgs $
-  Map.insert (programName prog) (prog, Nothing, [])
+  Map.insertWith combine (programName prog) (prog, Nothing, [])
+  where combine _ (_, path, args) = (prog, path, args)
 
 addKnownPrograms :: [Program] -> ProgramConfiguration -> ProgramConfiguration
 addKnownPrograms progs conf = foldl' (flip addKnownProgram) conf progs
