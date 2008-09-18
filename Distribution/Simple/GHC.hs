@@ -84,7 +84,7 @@ import Distribution.InstalledPackageInfo
                                 , parseInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
@@ -93,7 +93,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier, Package(..) )
+         ( PackageIdentifier, Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -116,7 +116,7 @@ import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad            ( unless, when )
 import Data.Char
-import Data.List                ( nub )
+import Data.List
 import Data.Maybe               ( catMaybes )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
@@ -328,7 +328,20 @@ getInstalledPackages verbosity packagedb conf = do
       compilerDir  = takeDirectory (programPath ghcProg)
       topDir       = takeDirectory compilerDir
       pkgs'        = map (substTopDir topDir) pkgs
-  return $ PackageIndex.fromList pkgs'
+      pi1          = PackageIndex.fromList pkgs'
+      rtsPackages  = lookupPackageName pi1 (PackageName "rts")
+      rtsPackages' = map removeMingwIncludeDir rtsPackages
+      pi2          = pi1 `merge` fromList rtsPackages'
+  return pi2
+
+-- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
+-- breaks when you want to use a different gcc, so we need to filter
+-- it out.
+removeMingwIncludeDir :: InstalledPackageInfo -> InstalledPackageInfo
+removeMingwIncludeDir pkg =
+    let ids = InstalledPackageInfo.includeDirs pkg
+        ids' = filter (not . ("mingw" `isSuffixOf`)) ids
+    in pkg { InstalledPackageInfo.includeDirs = ids' }
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
