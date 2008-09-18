@@ -225,6 +225,7 @@ configureToolchain ghcProg =
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
     libDir      = baseDir </> "gcc-lib"
+    includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
@@ -239,7 +240,7 @@ configureToolchain ghcProg =
           -- of programFindLocation above rather than a user-supplied path
           -- that means we should add this extra flag to tell ghc's gcc
           -- where it lives and thus where gcc can find its various files:
-          FoundOnSystem {} -> return ["-B" ++ libDir]
+          FoundOnSystem {} -> return ["-B" ++ libDir, "-I" ++ includeDir]
           UserSpecified {} -> return []
       | otherwise = \_ _   -> return []
 
