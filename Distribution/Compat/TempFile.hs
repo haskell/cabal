@@ -113,7 +113,13 @@ openNewBinaryFile dir template = do
          -- XXX We want to tell fdToHandle what the filepath is,
          -- as any exceptions etc will only be able to report the
          -- fd currently
-         h <- fdToHandle fd `onException` c_close fd
+         h <-
+#if __GLASGOW_HASKELL__ >= 609
+              fdToHandle fd
+#else
+              fdToHandle (fromIntegral fd)
+#endif
+              `onException` c_close fd
          return (filepath, h)
       where
         filename        = prefix ++ show x ++ suffix
