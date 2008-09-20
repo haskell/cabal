@@ -1381,8 +1381,8 @@ optionDistPref get set = \showOrParseArgs ->
     get set
     (reqArgFlag "DIR")
   where
-    distPrefFlagName ShowArgs  = ["distdir"]
-    distPrefFlagName ParseArgs = ["distdir", "distpref"]
+    distPrefFlagName ShowArgs  = ["builddir"]
+    distPrefFlagName ParseArgs = ["builddir", "distdir", "distpref"]
 
 optionVerbosity :: (flags -> Flag Verbosity)
                 -> (Flag Verbosity -> flags -> flags)
