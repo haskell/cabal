@@ -446,7 +446,14 @@ versionInt :: Version -> String
 versionInt (Version { versionBranch = [] }) = "1"
 versionInt (Version { versionBranch = [n] }) = show n
 versionInt (Version { versionBranch = n1:n2:_ })
-  = show n1 ++ take 2 ('0' : show n2)
+  = -- 6.8.x -> 608
+    -- 6.10.x -> 610
+    let s1 = show n1
+        s2 = show n2
+        middle = case s2 of
+                 _ : _ : _ -> ""
+                 _         -> "0"
+    in s1 ++ middle ++ s2
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ lbi = pp { platformIndependent = True }
