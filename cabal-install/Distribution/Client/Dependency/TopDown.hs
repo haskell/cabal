@@ -352,7 +352,10 @@ selectNeededSubset installed available = select mempty mempty
         (next, remaining') = Set.deleteFindMin remaining
         moreInstalled = PackageIndex.lookupPackageName installed next
         moreAvailable = PackageIndex.lookupPackageName available next
-        moreRemaining = nub
+        moreRemaining = -- we filter out packages already included in the indexes
+                        -- this avoids an infinite loop if a package depends on itself
+                        -- like base-3.0.3.0 with base-4.0.0.0
+                        filter notAlreadyIncluded
                       $ [ packageName dep
                         | pkg <- moreInstalled
                         , dep <- depends pkg ]
@@ -360,9 +363,11 @@ selectNeededSubset installed available = select mempty mempty
                         | AvailablePackage _ pkg _ <- moreAvailable
                         , Dependency name _ <-
                             buildDepends (flattenPackageDescription pkg) ]
-        installed''   = foldr PackageIndex.insert installed' moreInstalled
-        available''   = foldr PackageIndex.insert available' moreAvailable
-        remaining''   = foldr          Set.insert remaining' moreRemaining
+        installed''   = foldl' (flip PackageIndex.insert) installed' moreInstalled
+        available''   = foldl' (flip PackageIndex.insert) available' moreAvailable
+        remaining''   = foldl' (flip         Set.insert) remaining' moreRemaining
+        notAlreadyIncluded name = null (PackageIndex.lookupPackageName installed' name)
+                                  && null (PackageIndex.lookupPackageName available' name)
 
 -- ------------------------------------------------------------
 -- * Post processing the solution
