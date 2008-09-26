@@ -20,10 +20,10 @@ case `which wget curl` in
     curl -O ${CABAL_URL} -O ${HTTP_URL} -O ${ZLIB_URL}
     ;;
   *wget)
-    wget ${CABAL_URL} ${HTTP_URL} ${ZLIB_URL}
+    wget -c ${CABAL_URL} ${HTTP_URL} ${ZLIB_URL}
     ;;
   *)
-    echo "Failed to find a downloader, 'wget' or 'curl' is required" >&2
+    echo "Failed to find a downloader. 'wget' or 'curl' is required." >&2
     exit 2
     ;;
 esac
@@ -46,6 +46,15 @@ cd ..
 
 runghc Setup configure --user && runghc Setup build && runghc Setup install
 
+CABAL_BIN="$HOME/.cabal/bin"
 echo
-echo "If all went well then 'cabal' is in $HOME/.cabal/bin/"
-echo "You may want to add this dir to your PATH"
+
+if [ -x "$CABAL_BIN/cabal" ]
+then
+    echo "cabal successfully installed in $CABAL_BIN."
+    echo "You may want to add $CABAL_BIN to your PATH."
+else
+    echo "Sorry, something went wrong."
+fi
+
+echo
