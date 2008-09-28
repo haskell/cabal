@@ -233,7 +233,7 @@ shortOpt y ys rs optDescr = short ads ys rs
         short (OptArg f _:_) [] rest     = (Opt (f Nothing),rest)
         short (OptArg f _:_) xs rest     = (Opt (f (Just xs)),rest)
         short []             [] rest     = (UnreqOpt optStr,rest)
-        short []             xs rest     = (UnreqOpt optStr,('-':xs):rest)
+        short []             xs rest     = (UnreqOpt (optStr++xs),rest)
 
 -- miscellaneous error formatting
 
