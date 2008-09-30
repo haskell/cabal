@@ -61,7 +61,7 @@ module Distribution.PackageDescription.Parse (
   ) where
 
 import Data.Char  (isSpace)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, isJust)
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless)
 import System.Directory (doesFileExist)
@@ -479,8 +479,7 @@ parsePackageDescription file = do
                                   header_fields
 
           -- 'getBody' assumes that the remaining fields only consist of
-          -- sections and requires all flag descriptions to come before any
-          -- library or executable section.
+          -- flags, lib and exe sections.
         (flags, mlib, exes) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
         when (not (oldSyntax fields0)) $  -- warn if we use new syntax
@@ -570,76 +569,56 @@ parsePackageDescription file = do
         _ -> return (reverse acc)
 
     --
-    -- body ::= flag* { library | executable }+   -- at most one lib
+    -- body ::= { flag | library | executable }+   -- at most one lib
     --
-    -- The body consists of an optional sequence of flag declarations and after
-    -- that an arbitrary number of executables and an optional library.  The
-    -- order of the latter doesn't play a role.
+    -- The body consists of an optional sequence of declarations of flags and
+    -- an arbitrary number of executables and at most one library.
     getBody :: PM ([Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
                   ,[(String, CondTree ConfVar [Dependency] Executable)])
-    getBody = do
-      mf <- peekField
-      case mf of
-        Just (Section _ sn _label _fields)
-          | sn == "flag"    -> do
-              -- don't skipField here.  it's simpler to let getFlags do it
-              -- itself
-              flags <- getFlags []
-              (lib, exes) <- getLibOrExes
-              return (flags, lib, exes)
-          | otherwise -> do
-              (lib,exes) <- getLibOrExes
-              return ([], lib, exes)
-        Nothing -> do lift $ warning "No library or executable specified"
-                      return ([], Nothing, [])
-        Just f -> lift $ syntaxError (lineNo f) $
-               "Construct not supported at this position: " ++ show f
+    getBody = peekField >>= \mf -> case mf of
+      Just (Section line_no sec_type sec_label sec_fields)
+        | sec_type == "executable" -> do
+            when (null sec_label) $ lift $ syntaxError line_no
+              "'executable' needs one argument (the executable's name)"
+            exename <- lift $ runP line_no "executable" parseTokenQ sec_label
+            flds <- collectFields parseExeFields sec_fields
+            skipField
+            (flags, lib, exes) <- getBody
+            return (flags, lib, exes ++ [(exename, flds)])
 
-    -- Parses a series of flag sections.
-    --
-    -- flags ::= "flag:" name { flag_prop }
-    --
-    getFlags :: [Flag] -> StT [Field] ParseResult [Flag]
-    getFlags acc = peekField >>= \mf -> case mf of
-        Just (Section _ sec_type sec_label sec_fields)
-          | sec_type == "flag" -> do
-              fl <- lift $ parseFields
-                      flagFieldDescrs
-                      warnUnrec
-                      (MkFlag (FlagName (lowercase sec_label)) "" True False)
-                      sec_fields
-              skipField >> getFlags (fl : acc)
-        _ -> return (reverse acc)
+        | sec_type == "library" -> do
+            when (not (null sec_label)) $ lift $
+              syntaxError line_no "'library' expects no argument"
+            flds <- collectFields parseLibFields sec_fields
+            skipField
+            (flags, lib, exes) <- getBody
+            when (isJust lib) $ lift $ syntaxError line_no
+              "There can only be one library section in a package description."
+            return (flags, Just flds, exes)
 
-    -- parses any number of executable sections and up to one library section
-    getLibOrExes :: PM (Maybe (CondTree ConfVar [Dependency] Library)
-                      ,[(String, CondTree ConfVar [Dependency] Executable)])
-    getLibOrExes = peekField >>= \mf -> case mf of
-        Just (Section line_no sec_type sec_label sec_fields)
-          | sec_type == "executable" -> do
-              when (null sec_label) $ lift $
-                syntaxError line_no "'executable' needs one argument (the executable's name)"
-              exename <- lift $ runP line_no "executable" parseTokenQ sec_label
-              flds <- collectFields parseExeFields sec_fields
-              skipField
-              (lib, exes) <- getLibOrExes
-              return (lib, exes ++ [(exename, flds)])
-          | sec_type == "library" -> do
-              when (not (null sec_label)) $ lift $
-                syntaxError line_no "'library' expects no argument"
-              flds <- collectFields parseLibFields sec_fields
-              skipField
-              (lib, exes) <- getLibOrExes
-              return (maybe (Just flds)
-                            (const (error "There can only be one library section in a package description."))
-                            lib
-                     , exes)
-          | otherwise -> do
-              lift $ warning $ "Unknown section type: " ++ sec_type ++ " ignoring..."
-              return (Nothing, []) -- yep
-        Just x -> lift $ syntaxError (lineNo x) $ "Section expected."
-        Nothing -> return (Nothing, [])
+        | sec_type == "flag" -> do
+            when (null sec_label) $ lift $
+              syntaxError line_no "'flag' needs one argument (the flag's name)"
+            flag <- lift $ parseFields
+                    flagFieldDescrs
+                    warnUnrec
+                    (MkFlag (FlagName (lowercase sec_label)) "" True False)
+                    sec_fields
+            skipField
+            (flags, lib, exes) <- getBody
+            return (flag:flags, lib, exes)
+
+        | otherwise -> do
+            lift $ warning $ "Ignoring unknown section type: " ++ sec_type
+            skipField
+            getBody
+      Just f -> do
+            lift $ syntaxError (lineNo f) $
+              "Construct not supported at this position: " ++ show f
+            skipField
+            getBody
+      Nothing -> return ([], Nothing, [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
