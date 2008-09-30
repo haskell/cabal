@@ -289,6 +289,30 @@ flagFieldDescrs =
         flagManual       (\val fl -> fl{ flagManual = val })
     ]
 
+------------------------------------------------------------------------------
+
+sourceRepoFieldDescrs :: [FieldDescr SourceRepo]
+sourceRepoFieldDescrs =
+    [ simpleField "type"
+        (maybe empty disp)         (fmap Just parse)
+        repoType                   (\val repo -> repo { repoType = val })
+    , simpleField "location"
+        (maybe empty showFreeText) (fmap Just parseFreeText)
+        repoLocation               (\val repo -> repo { repoLocation = val })
+    , simpleField "module"
+        (maybe empty showToken)    (fmap Just parseTokenQ)
+        repoModule                 (\val repo -> repo { repoModule = val })
+    , simpleField "branch"
+        (maybe empty showToken)    (fmap Just parseTokenQ)
+        repoBranch                 (\val repo -> repo { repoBranch = val })
+    , simpleField "tag"
+        (maybe empty showToken)    (fmap Just parseTokenQ)
+        repoTag                    (\val repo -> repo { repoTag = val })
+    , simpleField "subdir"
+        (maybe empty showFilePath) (fmap Just parseFilePathQ)
+        repoSubdir                 (\val repo -> repo { repoSubdir = val })
+    ]
+
 -- ---------------------------------------------------------------
 -- Parsing
 
@@ -480,12 +504,14 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (flags, mlib, exes) <- getBody
+        (repos, flags, mlib, exes) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
         when (not (oldSyntax fields0)) $  -- warn if we use new syntax
           maybeWarnCabalVersion pkg       -- without Cabal >= 1.2
         checkForUndefinedFlags flags mlib exes
-        return (GenericPackageDescription pkg flags mlib exes)
+        return $ GenericPackageDescription
+                   pkg { sourceRepos = repos }
+                   flags mlib exes
 
   where
     oldSyntax flds = all isSimpleField flds
@@ -569,11 +595,11 @@ parsePackageDescription file = do
         _ -> return (reverse acc)
 
     --
-    -- body ::= { flag | library | executable }+   -- at most one lib
+    -- body ::= { repo | flag | library | executable }+   -- at most one lib
     --
     -- The body consists of an optional sequence of declarations of flags and
     -- an arbitrary number of executables and at most one library.
-    getBody :: PM ([Flag]
+    getBody :: PM ([SourceRepo], [Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
                   ,[(String, CondTree ConfVar [Dependency] Executable)])
     getBody = peekField >>= \mf -> case mf of
@@ -584,18 +610,18 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (flags, lib, exes) <- getBody
-            return (flags, lib, exes ++ [(exename, flds)])
+            (repos, flags, lib, exes) <- getBody
+            return (repos, flags, lib, exes ++ [(exename, flds)])
 
         | sec_type == "library" -> do
             when (not (null sec_label)) $ lift $
               syntaxError line_no "'library' expects no argument"
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (flags, lib, exes) <- getBody
+            (repos, flags, lib, exes) <- getBody
             when (isJust lib) $ lift $ syntaxError line_no
               "There can only be one library section in a package description."
-            return (flags, Just flds, exes)
+            return (repos, flags, Just flds, exes)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -606,8 +632,33 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (flags, lib, exes) <- getBody
-            return (flag:flags, lib, exes)
+            (repos, flags, lib, exes) <- getBody
+            return (repos, flag:flags, lib, exes)
+
+        | sec_type == "source-repository" -> do
+            when (null sec_label) $ lift $ syntaxError line_no $
+                 "'source-repository' needs one argument, "
+              ++ "the repo kind which is usually 'head' or 'this'"
+            kind <- case simpleParse sec_label of
+              Just kind -> return kind
+              Nothing   -> lift $ syntaxError line_no $
+                             "could not parse repo kind: " ++ sec_label
+            repo <- lift $ parseFields
+                    sourceRepoFieldDescrs
+                    warnUnrec
+                    (SourceRepo {
+                      repoKind     = kind,
+                      repoType     = Nothing,
+                      repoLocation = Nothing,
+                      repoModule   = Nothing,
+                      repoBranch   = Nothing,
+                      repoTag      = Nothing,
+                      repoSubdir   = Nothing
+                    })
+                    sec_fields
+            skipField
+            (repos, flags, lib, exes) <- getBody
+            return (repo:repos, flags, lib, exes)
 
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
@@ -618,7 +669,7 @@ parsePackageDescription file = do
               "Construct not supported at this position: " ++ show f
             skipField
             getBody
-      Nothing -> return ([], Nothing, [])
+      Nothing -> return ([], [], Nothing, [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --

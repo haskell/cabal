@@ -85,13 +85,16 @@ module Distribution.PackageDescription (
         GenericPackageDescription(..),
         Flag(..), FlagName(..), FlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
+
+        -- * Source repositories
+        SourceRepo(..), RepoKind(..), RepoType(..),
   ) where
 
 import Data.List   (nub)
 import Data.Monoid (Monoid(mempty, mappend))
 import Text.PrettyPrint.HughesPJ as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Data.Char as Char (isAlphaNum)
+import qualified Data.Char as Char (isAlphaNum, toLower)
 
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
@@ -102,7 +105,7 @@ import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
-         ( Text(..) )
+         ( Text(..), display )
 import Language.Haskell.Extension (Extension)
 
 -- -----------------------------------------------------------------------------
@@ -127,6 +130,7 @@ data PackageDescription
         testedWith     :: [(CompilerFlavor,VersionRange)],
         homepage       :: String,
         pkgUrl         :: String,
+        sourceRepos    :: [SourceRepo],
         synopsis       :: String, -- ^A one-line summary of this package
         description    :: String, -- ^A more verbose description of this package
         category       :: String,
@@ -166,6 +170,7 @@ emptyPackageDescription
                       buildDepends = [],
                       homepage     = "",
                       pkgUrl       = "",
+                      sourceRepos  = [],
                       synopsis     = "",
                       description  = "",
                       category     = "",
@@ -409,6 +414,138 @@ hcOptions hc bi = [ opt | (hc',opts) <- options bi
                         , opt <- opts ]
 
 -- ------------------------------------------------------------
+-- * Source repos
+-- ------------------------------------------------------------
+
+-- | Information about the source revision control system for a package.
+--
+-- When specifying a repo it is useful to know the meaning or intention of the
+-- information as doing so enables automation. There are two obvious common
+-- purposes: one is to find the repo for the latest development version, the
+-- other is to find the repo for this specific release. The 'ReopKind'
+-- specifies which one we mean (or another custom one).
+--
+-- A package can specify one or the other kind or both. Most will specify just
+-- a head repo but some may want to specify a repo to reconstruct the sources
+-- for this package release.
+--
+-- The required information is the 'RepoType' which tells us if it's using
+-- 'Darcs', 'Git' for example. The 'repoLocation' and other details are
+-- interpreted according to the repo type.
+--
+data SourceRepo = SourceRepo {
+  -- | The kind of repo. This field is required.
+  repoKind     :: RepoKind,
+
+  -- | The type of the source repository system for this repo, eg 'Darcs' or
+  -- 'Git'. This field is required.
+  repoType     :: Maybe RepoType,
+
+  -- | The location of the repository. For most 'RepoType's this is a URL.
+  -- This field is required.
+  repoLocation :: Maybe String,
+
+  -- | 'CVS' can put multiple \"modules\" on one server and requires a
+  -- module name in addition to the location to identify a particular repo.
+  -- Logically this is part of the location but unfortunately has to be
+  -- specified separately. This field is required for the 'CVS' 'RepoType' and
+  -- should not be given otherwise.
+  repoModule   :: Maybe String,
+
+  -- | The name or identifier of the branch, if any. Many source control
+  -- systems have the notion of multiple branches in a repo that exist in the
+  -- same location. For example 'Git' and 'CVS' use this while systems like
+  -- 'Darcs' use different locations for different branches. This field is
+  -- optional but should be used if necessary to identify the sources,
+  -- especially for the 'RepoThis' repo kind.
+  repoBranch   :: Maybe String,
+
+  -- | The tag identify a particular state of the repository. This should be
+  -- given for the 'RepoThis' repo kind and not for 'RepoHead' kind.
+  --
+  repoTag      :: Maybe String,
+
+  -- | Some repositories contain multiple projects in different subdirectories
+  -- This field specifies the subdirectory where this packages sources can be
+  -- found, eg the subdirectory containing the @.cabal@ file. It is interpreted
+  -- relative to the root of the repository. This field is optional. If not
+  -- given the default is \".\" ie no subdirectory.
+  repoSubdir   :: Maybe FilePath
+}
+  deriving (Eq, Read, Show)
+
+-- | What this repo info is for, what it represents.
+--
+data RepoKind =
+    -- | The repository for the \"head\" or development version of the project.
+    -- This repo is where we should track the latest development activity or
+    -- the usual repo people should get to contribute patches.
+    RepoHead
+
+    -- | The repository containing the sources for this exact package version
+    -- or release. For this kind of repo a tag should be given to give enough
+    -- information to re-create the exact sources.
+  | RepoThis
+
+    -- | Some other specific named kind of repo. We do not give this a
+    -- particular interpretation or convention but could be used in-house for
+    -- special purposes for example if there are multiple related branches.
+  | RepoSpecific String
+  deriving (Eq, Ord, Read, Show)
+
+-- | An enumeration of common source control systems. The fields used in the
+-- 'SourceRepo' depend on the type of repo. The tools and methods used to
+-- obtain and track the repo depend on the repo type.
+--
+data RepoType = Darcs | Git | SVN | CVS
+              | Mercurial | GnuArch | Bazaar | Monotone
+              | OtherRepoType String
+  deriving (Eq, Ord, Read, Show)
+
+knownRepoTypes :: [RepoType]
+knownRepoTypes = [Darcs, Git, SVN, CVS
+                 ,Mercurial, GnuArch, Bazaar, Monotone]
+
+repoTypeAliases :: RepoType -> [String]
+repoTypeAliases Bazaar    = ["bzr"]
+repoTypeAliases Mercurial = ["hg"]
+repoTypeAliases GnuArch   = ["arch"]
+repoTypeAliases _         = []
+
+instance Text RepoKind where
+  disp RepoHead             = Disp.text "head"
+  disp RepoThis             = Disp.text "this"
+  disp (RepoSpecific other) = Disp.text other
+
+  parse = do
+    name <- ident
+    return $ case lowercase name of
+      "head" -> RepoHead
+      "this" -> RepoThis
+      _      -> RepoSpecific name
+
+instance Text RepoType where
+  disp (OtherRepoType other) = Disp.text other
+  disp other                 = Disp.text (lowercase (show other))
+  parse = fmap classifyRepoType ident
+
+classifyRepoType :: String -> RepoType
+classifyRepoType s =
+  case lookup (lowercase s) repoTypeMap of
+    Just repoType' -> repoType'
+    Nothing        -> OtherRepoType s
+  where
+    repoTypeMap = [ (name, repoType')
+                  | repoType' <- knownRepoTypes
+                  , name <- display repoType' : repoTypeAliases repoType' ]
+
+ident :: Parse.ReadP r String
+ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+
+lowercase :: String -> String
+lowercase = map Char.toLower
+
+-- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
 
@@ -450,7 +587,7 @@ data GenericPackageDescription =
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
       }
-    deriving (Show)
+    deriving (Show, Eq)
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
@@ -484,7 +621,7 @@ data Flag = MkFlag
     , flagDefault     :: Bool
     , flagManual      :: Bool
     }
-    deriving Show
+    deriving (Show, Eq)
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 newtype FlagName = FlagName String
@@ -517,7 +654,7 @@ data Condition c = Var c
                  | CNot (Condition c)
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
-    deriving Show
+    deriving (Show, Eq)
 
 --instance Text c => Text (Condition c) where
 --  disp (Var x) = text (show x)
@@ -533,7 +670,7 @@ data CondTree v c a = CondNode
                               , CondTree v c a
                               , Maybe (CondTree v c a))]
     }
-    deriving Show
+    deriving (Show, Eq)
 
 --instance (Text v, Text c) => Text (CondTree v c a) where
 --  disp (CondNode _dat cs ifs) =
