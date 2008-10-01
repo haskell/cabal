@@ -27,6 +27,10 @@ Extra-Source-Files:
         Distribution/Simple/GHC/mkGHCMakefile.sh
         Distribution/Simple/GHC/Makefile.in
 
+source-repository head
+  type:     darcs
+  location: http://darcs.haskell.org/cabal/
+
 Flag base4
     Description: Choose the even newer, even smaller, split-up base package.
 
