@@ -8,6 +8,7 @@ Author: Isaac Jones <ijones@syntaxpolice.org>
         Duncan Coutts <duncan@haskell.org>
 Maintainer: cabal-devel@haskell.org
 Homepage: http://www.haskell.org/cabal/
+bug-reports: http://hackage.haskell.org/trac/hackage/
 Synopsis: A framework for packaging Haskell software
 Description:
         The Haskell Common Architecture for Building Applications and
