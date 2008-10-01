@@ -487,10 +487,7 @@ data RepoKind =
     -- information to re-create the exact sources.
   | RepoThis
 
-    -- | Some other specific named kind of repo. We do not give this a
-    -- particular interpretation or convention but could be used in-house for
-    -- special purposes for example if there are multiple related branches.
-  | RepoSpecific String
+  | RepoKindUnknown String
   deriving (Eq, Ord, Read, Show)
 
 -- | An enumeration of common source control systems. The fields used in the
@@ -513,16 +510,16 @@ repoTypeAliases GnuArch   = ["arch"]
 repoTypeAliases _         = []
 
 instance Text RepoKind where
-  disp RepoHead             = Disp.text "head"
-  disp RepoThis             = Disp.text "this"
-  disp (RepoSpecific other) = Disp.text other
+  disp RepoHead                = Disp.text "head"
+  disp RepoThis                = Disp.text "this"
+  disp (RepoKindUnknown other) = Disp.text other
 
   parse = do
     name <- ident
     return $ case lowercase name of
       "head" -> RepoHead
       "this" -> RepoThis
-      _      -> RepoSpecific name
+      _      -> RepoKindUnknown name
 
 instance Text RepoType where
   disp (OtherRepoType other) = Disp.text other
