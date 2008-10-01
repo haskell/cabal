@@ -89,7 +89,8 @@ import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath
-         ( takeExtension, isRelative, splitDirectories, (</>), splitPath )
+         ( (</>), takeExtension, isRelative, isAbsolute
+         , splitDirectories,  splitPath )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -166,6 +167,7 @@ checkConfiguredPackage pkg =
     checkSanity pkg
  ++ checkFields pkg
  ++ checkLicense pkg
+ ++ checkSourceRepos pkg
  ++ checkGhcOptions pkg
  ++ checkCCOptions pkg
  ++ checkPaths pkg
@@ -327,6 +329,42 @@ checkLicense pkg =
         && null (licenseFile pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
+
+checkSourceRepos :: PackageDescription -> [PackageCheck]
+checkSourceRepos pkg =
+  catMaybes $ concat [[
+
+    case repoKind repo of
+      RepoKindUnknown kind -> Just $ PackageDistInexcusable $
+        quote kind ++ " is not a recognised kind of source-repository. "
+                   ++ "The repo kind is usually 'head' or 'this'"
+      _ -> Nothing
+
+  , check (repoType repo == Nothing) $
+      PackageDistInexcusable
+        "The source-repository 'type' is a required field."
+
+  , check (repoLocation repo == Nothing) $
+      PackageDistInexcusable
+        "The source-repository 'location' is a required field."
+
+  , check (repoType repo == Just CVS && repoModule repo == Nothing) $
+      PackageDistInexcusable
+        "For a CVS source-repository, the 'module' is a required field."
+
+  , check (repoKind repo == RepoThis && repoTag repo == Nothing) $
+      PackageDistInexcusable $
+           "For the 'this' kind of source-repository, the 'tag' is a required "
+        ++ "field. It should specify the tag corresponding to this version "
+        ++ "or release of the package."
+
+  , check (maybe False System.FilePath.isAbsolute (repoSubdir repo)) $
+      PackageDistInexcusable
+        "The 'subdir' field of a source-repository must be a relative path."
+  ]
+  | repo <- sourceRepos pkg ]
+
+--TODO: check location looks like a URL for some repo types.
 
 checkGhcOptions :: PackageDescription -> [PackageCheck]
 checkGhcOptions pkg =
