@@ -14,9 +14,8 @@ Description:
         Libraries: a framework defining a common interface for authors to more
         easily build their Haskell applications in a portable way.
         .
-        The Haskell Cabal is meant to be a part of a larger infrastructure
-        for distributing, organizing, and cataloging Haskell libraries
-        and tools.
+        The Haskell Cabal is part of a larger infrastructure for distributing,
+        organizing, and cataloging Haskell libraries and tools.
 Category: Distribution
 Build-Type: Custom
 -- Even though we do use the default Setup.lhs it's vital to bootstrapping
