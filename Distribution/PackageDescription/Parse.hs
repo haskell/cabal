@@ -127,6 +127,9 @@ pkgDescrFieldDescrs =
  , simpleField "package-url"
            showFreeText           parseFreeText
            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
+ , simpleField "bug-reports"
+           showFreeText           parseFreeText
+           bugReports             (\val pkg -> pkg{bugReports=val})
  , simpleField "synopsis"
            showFreeText           parseFreeText
            synopsis               (\val pkg -> pkg{synopsis=val})
