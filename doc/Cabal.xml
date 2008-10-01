@@ -1398,8 +1398,7 @@ Library {
               otherwise false. The match is case-insensitive.</para>
             </listitem>
           </varlistentry>
-	  <varlistentry>
-	      <term>
+	  <varlistentry>	      <term>
 		<literal>flag(</literal>
 		<replaceable>name</replaceable>
 		<literal>)</literal>
@@ -1514,6 +1513,194 @@ else
 	    </listitem>
 	  </itemizedlist>
 	</sect4>
+      </sect3>
+
+      <sect3 id="source-repos">
+	      <title>Source Repositories</title>
+	      <para>
+	        It is often useful to be able to specify a source revision control
+	        repository for a package. Cabal lets you specifying this information
+	        in a relatively structured form which enables other tools to
+	        interpret and make effective use of the information. For example the
+	        information should be sufficient for an automatic tool to checkout
+	        the sources.
+	      </para>
+	      <para>
+	        Cabal supports specifying different information for various common
+	        source control systems. Obviously not all automated tools will
+	        support all source control systems.
+	      </para>
+	      <para>
+	        Cabal supports specifying repositories for different use cases. By
+	        declaring which case we mean automated tools can be more useful.
+	        There are currently two kinds defined:
+        <itemizedlist>
+          <listitem>
+          <para>
+            The <literal>head</literal> kind refers to the
+            latest development branch of the package. This may be used for
+            example to track activity of a project or as an indication to
+            outside developers what sources to get for making new
+            contributions.
+          </para>
+          </listitem>
+          <listitem>
+          <para>
+            The <literal>this</literal> kind refers to the
+            branch and tag of a repository that contains the sources for this
+            version or release of a package. For most source control systems
+            this involves specifying a tag, id or hash of some form and
+            perhaps a branch. The purpose is to be able to reconstruct the
+            sources corresponding to a particular package version. This might
+            be used to indicate what sources to get if someone needs to fix a
+            bug in an older branch that is no longer an active head branch.
+          </para>
+          </listitem>
+        </itemizedlist>
+	      </para>
+	      <para>
+	        You can specify on kind or the other or both. As an example here are
+	        the repositories for the Cabal library. Note that the
+	        <literal>this</literal> kind of repo specifies a tag.
+  	      <programlisting>
+source-repository head
+  type:     darcs
+  location: http://darcs.haskell.org/cabal/
+
+source-repository this
+  type:     darcs
+  location: http://darcs.haskell.org/cabal-branches/cabal-1.6/
+  tag:      1.6.1
+</programlisting>
+        </para>
+        <para>
+          The exact fields are as follows:
+        </para>
+        <variablelist>
+          <varlistentry>
+          <term>
+            <literal>type:</literal>
+            <replaceable>token</replaceable>
+          </term>
+          <listitem>
+            <para>
+              The name of the source control system used for this repository.
+              The currently recognised types are:
+              <itemizedlist>
+	              <listitem>darcs</listitem>
+	              <listitem>git</listitem>
+	              <listitem>svn</listitem>
+	              <listitem>cvs</listitem>
+	              <listitem>mercurial (or alias hg)</listitem>
+	              <listitem>bazaar (or alias bzr)</listitem>
+	              <listitem>arch</listitem>
+	              <listitem>monotone</listitem>
+	            </itemizedlist>
+            </para>
+            <para>
+              This field is required.
+            </para>
+          </listitem>
+          </varlistentry>
+          <varlistentry>
+          <term>
+            <literal>location:</literal>
+            <replaceable>URL</replaceable>
+          </term>
+          <listitem>
+            <para>
+              The location of the repository. The exact form of this field
+              depends on the repository type. For example:
+              <itemizedlist>
+	              <listitem>
+	                for darcs: <literal>http://code.haskell.org/foo/</literal>
+	              </listitem>
+	              <listitem>
+	                for git: <literal>git://github.com/foo/bar.git</literal>
+	              </listitem>
+	              <listitem>
+	                for CVS: <literal>anoncvs@cvs.foo.org:/cvs</literal>
+	              </listitem>
+	            </itemizedlist>
+            </para>
+            <para>
+              This field is required.
+            </para>
+          </listitem>
+          </varlistentry>
+          <varlistentry>
+          <term>
+            <literal>module:</literal>
+            <replaceable>token</replaceable>
+          </term>
+          <listitem>
+            <para>
+              CVS requires a named module, as each CVS server can host multiple
+              named repositories.
+            </para>
+            <para>
+              This field is required for the CVS repo type and should not be
+              used otherwise.
+            </para>
+          </listitem>
+          </varlistentry>
+          <varlistentry>
+          <term>
+            <literal>branch:</literal>
+            <replaceable>token</replaceable>
+          </term>
+          <listitem>
+            <para>
+              Many source control systems support the notion of a branch,
+              as a distinct concept from having repositories in separate
+              locations. For example CVS, SVN and git use branches while for
+              darcs uses different locations for different branches. If you
+              need to specify a branch to identify a your repository
+              then specify it in this field.
+            </para>
+            <para>
+              This field is optional.
+            </para>
+          </listitem>
+          </varlistentry>
+          <varlistentry>
+          <term>
+            <literal>tag:</literal>
+            <replaceable>token</replaceable>
+          </term>
+          <listitem>
+            <para>
+              A tag identifies a particular state of a source repository. The
+              tag can be used with a <literal>this</literal> repo kind to
+              identify the state of a repo corresponding to a particular
+              package version or release. The exact form of the tag depends on
+              the repository type.
+            </para>
+            <para>
+              This field is required for the <literal>this</literal> repo kind.
+            </para>
+          </listitem>
+          </varlistentry>
+          <varlistentry>
+          <term>
+            <literal>subdir:</literal>
+            <replaceable>directory</replaceable>
+          </term>
+          <listitem>
+            <para>
+              Some projects put the sources for multiple packages under a
+              single source repository. This field lets you specify the
+              relative path from the root of the repository to the top
+              directory for the package, ie the directory containing the
+              package's <literal>.cabal</literal> file.
+            </para>
+            <para>
+              This field is optional. It default to empty which corresponds to
+              the root directory of the repository.
+            </para>
+          </listitem>
+          </varlistentry>
+        </variablelist>
       </sect3>
     </sect2>
 
