@@ -588,6 +588,30 @@ Executable program2
 
           <varlistentry>
             <term>
+              <literal>bug-reports:</literal> <replaceable>URL</replaceable>
+            </term>
+            <listitem>
+              <para>
+                The URL where users should direct bug reports. This would
+                normally be either:
+                <itemizedlist>
+	              <listitem>
+	                A <literal>mailto:</literal> URL, eg for a person or a
+	                mailing list.
+	              </listitem>
+	              <listitem>
+	                An <literal>http:</literal> (or <literal>https:</literal>)
+	                URL for an online bug tracking system.
+	              </listitem>
+	            </itemizedlist>
+              For example Cabal itself uses a web-based bug tracking system
+              <programlisting>bug-reports: http://hackage.haskell.org/trac/hackage/</programlisting>
+              </para>
+            </listitem>
+          </varlistentry>
+
+          <varlistentry>
+            <term>
               <literal>package-url:</literal> <replaceable>URL</replaceable>
             </term>
             <listitem>
