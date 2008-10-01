@@ -130,6 +130,7 @@ data PackageDescription
         testedWith     :: [(CompilerFlavor,VersionRange)],
         homepage       :: String,
         pkgUrl         :: String,
+        bugReports     :: String,
         sourceRepos    :: [SourceRepo],
         synopsis       :: String, -- ^A one-line summary of this package
         description    :: String, -- ^A more verbose description of this package
@@ -170,6 +171,7 @@ emptyPackageDescription
                       buildDepends = [],
                       homepage     = "",
                       pkgUrl       = "",
+                      bugReports   = "",
                       sourceRepos  = [],
                       synopsis     = "",
                       description  = "",
