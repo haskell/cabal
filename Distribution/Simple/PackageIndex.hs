@@ -66,15 +66,15 @@ import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
-import Data.List (groupBy, sortBy, find, isPrefixOf, tails)
+import Data.List (groupBy, sortBy, nub, find, isPrefixOf, tails)
 #else
-import Data.List (groupBy, sortBy, find, isInfixOf)
+import Data.List (groupBy, sortBy, nub, find, isInfixOf)
 #endif
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
 
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier
+         ( PackageName(..), PackageIdentifier(..)
          , Package(..), packageName, packageVersion
          , Dependency(Dependency), PackageFixedDeps(..) )
 import Distribution.Version
@@ -447,7 +447,8 @@ dependencyInconsistencies index =
   [ (name, inconsistencies)
   | (name, uses) <- Map.toList inverseIndex
   , let inconsistencies = duplicatesBy uses
-  , not (null inconsistencies) ]
+        versions = map snd inconsistencies
+  , reallyIsInconsistent name (nub versions) ]
 
   where inverseIndex = Map.fromListWith (++)
           [ (packageName dep, [(packageId pkg, packageVersion dep)])
@@ -459,6 +460,21 @@ dependencyInconsistencies index =
                                      else concat groups)
                      . groupBy (equating snd)
                      . sortBy (comparing snd)
+
+        reallyIsInconsistent :: PackageName -> [Version] -> Bool
+        reallyIsInconsistent _    []       = False
+        reallyIsInconsistent name [v1, v2] =
+          case (mpkg1, mpkg2) of
+            (Just pkg1, Just pkg2) -> pkgid1 `notElem` depends pkg2
+                                   && pkgid2 `notElem` depends pkg1
+            _ -> True
+          where
+            pkgid1 = PackageIdentifier name v1
+            pkgid2 = PackageIdentifier name v2
+            mpkg1 = lookupPackageId index pkgid1
+            mpkg2 = lookupPackageId index pkgid2
+
+        reallyIsInconsistent _ _ = True
 
 -- | Find if there are any cycles in the dependency graph. If there are no
 -- cycles the result is @[]@.
