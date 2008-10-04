@@ -126,8 +126,8 @@ choices :: (Package installed, Package available)
         -> PackageIndex (InstalledOrAvailable installed available)
 choices (Constraints available _) = available
 
-data Satisfiable a reason
-       = Satisfiable a
+data Satisfiable constraints discarded reason
+       = Satisfiable constraints discarded
        | Unsatisfiable
        | ConflictsWith [(PackageIdentifier, [reason])]
 
@@ -135,7 +135,8 @@ constrain :: (Package installed, Package available)
           => TaggedDependency
           -> reason
           -> Constraints installed available reason
-          -> Satisfiable (Constraints installed available reason) reason
+          -> Satisfiable (Constraints installed available reason)
+                         [PackageIdentifier] reason
 constrain (TaggedDependency installedConstraint (Dependency name versionRange))
           reason constraints@(Constraints available excluded)
 
@@ -146,7 +147,7 @@ constrain (TaggedDependency installedConstraint (Dependency name versionRange))
   | otherwise 
   = let constraints' = Constraints available' excluded'
      in assert (constraints `transitionsTo` constraints') $
-        Satisfiable constraints'
+        Satisfiable constraints' (map packageId newExcluded)
 
   where
   -- This tells us if any packages would remain at all for this package name if
