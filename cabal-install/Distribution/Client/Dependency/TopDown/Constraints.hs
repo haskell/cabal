@@ -35,6 +35,8 @@ import Data.List
          ( foldl' )
 import Data.Monoid
          ( Monoid(mempty) )
+import Data.Maybe
+         ( catMaybes )
 import Control.Exception
          ( assert )
 
@@ -173,39 +175,39 @@ constrain (TaggedDependency installedConstraint (Dependency name versionRange))
 
   -- Applying the constraint means adding exclusions for the packages that
   -- we're just freshly excluding, ie the ones we're removing from available.
-  excluded' = addNewExcluded . addOldExcluded $ excluded
-  addNewExcluded index = foldl' (flip exclude) index availableChoices where
+  excluded' = foldl' (flip PackageIndex.insert) excluded
+                (newExcluded ++ oldExcluded)
+
+  newExcluded = catMaybes (map exclude availableChoices) where
     exclude pkg
       | not (satisfiesVersionConstraint pkg)
-      = PackageIndex.insert $ ExcludedPackage pkgid [] [reason]
+      = Just (ExcludedPackage pkgid [] [reason])
       | installedConstraint == NoInstalledConstraint
-      = id
+      = Nothing
       | otherwise = case pkg of
-      InstalledOnly         _   -> id
-      AvailableOnly           _ -> PackageIndex.insert
-                                     (ExcludedPackage pkgid [reason] [])
+      InstalledOnly         _   -> Nothing
+      AvailableOnly           _ -> Just (ExcludedPackage pkgid [reason] [])
       InstalledAndAvailable _ _ ->
         case PackageIndex.lookupPackageId excluded pkgid of
-          Just (ExcludedPackage _ avail both) ->
-            PackageIndex.insert (ExcludedPackage pkgid (reason:avail) both)
-          Nothing ->
-            PackageIndex.insert (ExcludedPackage pkgid [reason] [])
+          Just (ExcludedPackage _ avail both)
+                  -> Just (ExcludedPackage pkgid (reason:avail) both)
+          Nothing -> Just (ExcludedPackage pkgid [reason] [])
       where pkgid = packageId pkg
 
   -- Additionally we have to add extra exclusions for any already-excluded
   -- packages that happen to be covered by the (inverse of the) constraint.
-  addOldExcluded = flip (foldl' (flip exclude)) excludedChoices where
+  oldExcluded = catMaybes (map exclude excludedChoices) where
     exclude (ExcludedPackage pkgid avail both)
       -- if it doesn't satisfy the version constraint then we exclude the
       -- package as a whole, the available or the installed instances or both.
       | not (satisfiesVersionConstraint pkgid)
-      = PackageIndex.insert (ExcludedPackage pkgid avail (reason:both))
+      = Just (ExcludedPackage pkgid avail (reason:both))
       -- if on the other hand it does satisfy the constraint and we were also
       -- constraining to just the installed version then we exclude just the
       -- available instance.
       | installedConstraint == InstalledConstraint
-      = PackageIndex.insert (ExcludedPackage pkgid (reason:avail) both)
-      | otherwise = id
+      = Just (ExcludedPackage pkgid (reason:avail) both)
+      | otherwise = Nothing
 
   -- util definitions
   availableChoices = PackageIndex.lookupPackageName available name
