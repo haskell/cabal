@@ -146,10 +146,10 @@ searchSpace configure constraints selected next =
             newDeps   = packageConstraints pkg'
             next'     = Set.delete name
                       $ foldl' (flip Set.insert) next newPkgs
-         in case constrainDeps pkg' newDeps constraints of
-              Left failure       -> Failure failure
-              Right constraints' -> searchSpace configure
-                                      constraints' selected' next'
+         in case constrainDeps pkg' newDeps constraints [] of
+              Left failure            -> Failure failure
+              Right (constraints', _) -> searchSpace configure
+                                           constraints' selected' next'
 
 packageConstraints :: SelectedPackage -> [TaggedDependency]
 packageConstraints = either installedConstraints availableConstraints
@@ -165,16 +165,17 @@ packageConstraints = either installedConstraints availableConstraints
       [ TaggedDependency NoInstalledConstraint dep | dep <- deps ]
 
 constrainDeps :: SelectedPackage -> [TaggedDependency] -> Constraints
-              -> Either Failure Constraints
-constrainDeps pkg []         cs =
+              -> [PackageIdentifier]
+              -> Either Failure (Constraints, [PackageIdentifier])
+constrainDeps pkg []         cs discard =
   case addPackageSelectConstraint (packageId pkg) cs of
-    Satisfiable cs' -> Right cs'
-    _               -> impossible
-constrainDeps pkg (dep:deps) cs =
+    Satisfiable cs' discard' -> Right (cs', discard' ++ discard)
+    _                        -> impossible
+constrainDeps pkg (dep:deps) cs discard =
   case addPackageDependencyConstraint (packageId pkg) dep cs of
-    Satisfiable cs' -> constrainDeps pkg deps cs'
-    Unsatisfiable   -> impossible
-    ConflictsWith conflicts ->
+    Satisfiable cs' discard' -> constrainDeps pkg deps cs' (discard' ++ discard)
+    Unsatisfiable            -> impossible
+    ConflictsWith conflicts  ->
       Left (DependencyConflict pkg dep conflicts)
 
 -- ------------------------------------------------------------
@@ -237,7 +238,7 @@ constrainTopLevelDeps :: [UnresolvedDependency] -> Constraints
 constrainTopLevelDeps []                                cs = Done cs
 constrainTopLevelDeps (UnresolvedDependency dep _:deps) cs =
   case addTopLevelDependencyConstraint dep cs of
-    Satisfiable cs'         -> constrainTopLevelDeps deps cs'
+    Satisfiable cs' _       -> constrainTopLevelDeps deps cs'
     Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
     ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
 
@@ -440,7 +441,8 @@ improvePlan installed selected = foldl' improve selected
 -- ------------------------------------------------------------
 
 addPackageSelectConstraint :: PackageIdentifier -> Constraints
-                           -> Satisfiable Constraints ExclusionReason
+                           -> Satisfiable Constraints
+                                [PackageIdentifier] ExclusionReason
 addPackageSelectConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
@@ -448,7 +450,8 @@ addPackageSelectConstraint pkgid constraints =
     reason = SelectedOther pkgid
 
 addPackageExcludeConstraint :: PackageIdentifier -> Constraints
-                     -> Satisfiable Constraints ExclusionReason
+                     -> Satisfiable Constraints
+                          [PackageIdentifier] ExclusionReason
 addPackageExcludeConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
@@ -457,14 +460,16 @@ addPackageExcludeConstraint pkgid constraints =
     reason = ExcludedByConfigureFail
 
 addPackageDependencyConstraint :: PackageIdentifier -> TaggedDependency -> Constraints
-                               -> Satisfiable Constraints ExclusionReason
+                               -> Satisfiable Constraints
+                                    [PackageIdentifier] ExclusionReason
 addPackageDependencyConstraint pkgid dep constraints =
   Constraints.constrain dep reason constraints
   where
     reason = ExcludedByPackageDependency pkgid dep
 
 addTopLevelDependencyConstraint :: Dependency -> Constraints
-                                -> Satisfiable Constraints ExclusionReason
+                                -> Satisfiable Constraints
+                                     [PackageIdentifier] ExclusionReason
 addTopLevelDependencyConstraint dep constraints =
   Constraints.constrain taggedDep reason constraints
   where
