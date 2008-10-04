@@ -559,7 +559,8 @@ build pkg_descr lbi verbosity = do
             -- with the dependencies spelled out as -package arguments
             -- and ghc invokes the linker with the proper library paths
             ghcSharedLinkArgs =
-                [ "-shared",
+                [ "-no-auto-link-packages",
+                  "-shared",
                   "-dynamic",
                   "-o", sharedLibFilePath ]
                 ++ ghcSharedObjArgs
