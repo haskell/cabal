@@ -50,7 +50,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( foldl', maximumBy, minimumBy, deleteBy, nub, sort )
+         ( foldl', maximumBy, minimumBy, delete, nub, sort, groupBy )
 import Data.Maybe
          ( fromJust, fromMaybe )
 import Data.Monoid
@@ -91,14 +91,14 @@ explore _    (Failure failure)      = Fail failure
 explore _explore    (ChoiceNode result []) = Done result
 explore pref (ChoiceNode _ choices) =
   case [ choice | [choice] <- choices ] of
-    ((pkg, node'):_) -> Step (Select pkg [])    (explore pref node')
+    ((pkg, node'):_) -> Step (Select [pkg] [])    (explore pref node')
     []               -> seq pkgs' -- avoid retaining defaultChoice
-                      $ Step (Select pkg pkgs') (explore pref node')
+                      $ Step (Select [pkg] pkgs') (explore pref node')
       where
         choice       = minimumBy (comparing topSortNumber) choices
         pkgname      = packageName . fst . head $ choice
         (pkg, node') = maximumBy (bestByPref pkgname) choice
-        pkgs' = deleteBy (equating packageId) pkg (map fst choice)
+        pkgs'        = delete (packageId pkg) (map (packageId.fst) choice)
 
   where
     topSortNumber choice = case fst (head choice) of
@@ -519,7 +519,7 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
 -- * Logging progress and failures
 -- ------------------------------------------------------------
 
-data Log = Select SelectablePackage [SelectablePackage]
+data Log = Select [SelectablePackage] [PackageIdentifier]
 data Failure
    = ConfigureFailed
        SelectablePackage
@@ -534,17 +534,30 @@ data Failure
        Dependency
 
 showLog :: Log -> String
-showLog (Select selected discarded) =
-     "selecting " ++ displayPkg selected ++ " " ++ kind selected
-  ++ case discarded of
-       []  -> ""
-       [d] -> " and discarding version " ++ display (packageVersion d)
-       _   -> " and discarding versions "
-           ++ listOf (display . packageVersion) discarded
+showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
+  ("", y) -> y
+  (x, "") -> x
+  (x,  y) -> x ++ " and " ++ y
+
   where
+    selectedMsg  = "selecting " ++ case selected of
+      []     -> ""
+      [s]    -> display (packageId s) ++ " " ++ kind s
+      (s:ss) -> listOf id
+              $ (display (packageId s) ++ " " ++ kind s)
+              : [ display (packageVersion s') ++ " " ++ kind s'
+                | s' <- ss ]
+
     kind (InstalledOnly _)           = "(installed)"
     kind (AvailableOnly _)           = "(hackage)"
     kind (InstalledAndAvailable _ _) = "(installed or hackage)"
+
+    discardedMsg = case discarded of
+      []  -> ""
+      _   -> "discarding " ++ listOf id
+        [ element
+        | (pkgid:pkgids) <- groupBy (equating packageName) (sort discarded)
+        , element <- display pkgid : map (display . packageVersion) pkgids ]
 
 showFailure :: Failure -> String
 showFailure (ConfigureFailed pkg missingDeps) =
