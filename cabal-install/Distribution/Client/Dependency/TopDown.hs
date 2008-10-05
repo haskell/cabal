@@ -410,11 +410,15 @@ finaliseSelectedPackages selected constraints =
     finaliseInstalled (InstalledPackage pkg _ _) = InstallPlan.PreExisting pkg
     finaliseAvailable (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
-      where deps' = [ packageId pkg'
-                    | dep <- deps
-                    , let pkg' = case PackageIndex.lookupDependency selected dep of
-                                   [pkg''] -> pkg''
-                                   _ -> impossible ]
+      where
+        deps' = map (packageId . pickRemaining) deps
+        pickRemaining dep =
+          case PackageIndex.lookupDependency remainingChoices dep of
+            []        -> impossible
+            [pkg']    -> pkg'
+            remaining -> maximumBy bestByPref remaining
+        bestByPref = comparing (\p -> (isPreferred p, packageVersion p))
+        isPreferred _ = True
 
 -- | Improve an existing installation plan by, where possible, swapping
 -- packages we plan to install with ones that are already installed.
