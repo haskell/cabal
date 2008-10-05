@@ -17,7 +17,8 @@ import Distribution.Client.Types
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
-         ( PackageIdentifier, Dependency, Package(packageId) )
+         ( PackageIdentifier, Dependency
+         , Package(packageId), PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( FlagAssignment )
 
@@ -59,6 +60,9 @@ data SemiConfiguredPackage
 
 instance Package InstalledPackage where
   packageId (InstalledPackage p _ _) = packageId p
+
+instance PackageFixedDeps InstalledPackage where
+  depends (InstalledPackage _ _ deps) = deps
 
 instance Package UnconfiguredPackage where
   packageId (UnconfiguredPackage p _ _) = packageId p
