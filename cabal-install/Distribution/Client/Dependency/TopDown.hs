@@ -152,7 +152,13 @@ searchSpace configure constraints selected changes next =
             constraints' selected' (newSelected, newDiscarded) next'
         where
           selected' = foldl' (flip PackageIndex.insert) selected newSelected
-          newSelected = [pkg']
+          newSelected =
+            case Constraints.isPaired constraints (packageId pkg) of
+              Nothing     -> [pkg']
+              Just pkgid' -> [pkg', pkg'']
+                where
+                  Just pkg'' = fmap (\(InstalledOnly p) -> InstalledOnly p)
+                    (PackageIndex.lookupPackageId available pkgid')
 
           newPkgs   = [ name'
                       | dep <- packageConstraints pkg'
