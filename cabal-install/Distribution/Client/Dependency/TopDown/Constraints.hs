@@ -14,6 +14,7 @@ module Distribution.Client.Dependency.TopDown.Constraints (
   Constraints,
   empty,
   choices,
+  isPaired,
   
   constrain,
   Satisfiable(..),
@@ -24,10 +25,12 @@ import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), packageVersion
+         ( PackageName, PackageIdentifier(..)
+         , Package(packageId), packageName, packageVersion
+         , PackageFixedDeps(depends)
          , Dependency(Dependency) )
 import Distribution.Version
-         ( withinRange )
+         ( Version, withinRange )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 
@@ -37,6 +40,8 @@ import Data.Monoid
          ( Monoid(mempty) )
 import Data.Maybe
          ( catMaybes )
+import qualified Data.Map as Map
+import Data.Map (Map)
 import Control.Exception
          ( assert )
 
@@ -51,6 +56,9 @@ data (Package installed, Package available)
        -- Remaining available choices
        (PackageIndex (InstalledOrAvailable installed available))
        
+       -- Paired choices
+       (Map PackageName (Version, Version))
+
        -- Choices that we have excluded for some reason
        -- usually by applying constraints
        (PackageIndex (ExcludedPackage PackageIdentifier reason))
@@ -65,7 +73,7 @@ instance Package pkg => Package (ExcludedPackage pkg reason) where
 -- | The intersection between the two indexes is empty
 invariant :: (Package installed, Package available)
           => Constraints installed available a -> Bool
-invariant (Constraints available excluded) =
+invariant (Constraints available _ excluded) =
   all (uncurry ok) [ (a, e) | InBoth a e <- merged ]
   where
     merged = mergeBy (\a b -> packageId a `compare` packageId b)
@@ -79,8 +87,8 @@ invariant (Constraints available excluded) =
 transitionsTo :: (Package installed, Package available)
               => Constraints installed available a
               -> Constraints installed available a -> Bool
-transitionsTo constraints @(Constraints available  excluded )
-              constraints'@(Constraints available' excluded') =
+transitionsTo constraints @(Constraints available  _ excluded )
+              constraints'@(Constraints available' _ excluded') =
      invariant constraints && invariant constraints'
   && null availableGained  && null excludedLost
   && map packageId availableLost == map packageId excludedGained
@@ -104,11 +112,11 @@ transitionsTo constraints @(Constraints available  excluded )
 -- | We construct 'Constraints' with an initial 'PackageIndex' of all the
 -- packages available.
 --
-empty :: (Package installed, Package available)
+empty :: (PackageFixedDeps installed, Package available)
       => PackageIndex installed
       -> PackageIndex available
       -> Constraints installed available reason
-empty installed available = Constraints pkgs mempty
+empty installed available = Constraints pkgs pairs mempty
   where
     pkgs = PackageIndex.fromList
          . map toInstalledOrAvailable
@@ -119,12 +127,32 @@ empty installed available = Constraints pkgs mempty
     toInstalledOrAvailable (OnlyInRight   a) = AvailableOnly           a
     toInstalledOrAvailable (InBoth      i a) = InstalledAndAvailable i a
 
+    -- pick up cases like base-3 and 4 where one version depends on the other:
+    pairs = Map.fromList
+      [ (name, (v1, v2))
+      | [pkg1, pkg2] <- PackageIndex.allPackagesByName installed
+      , let name = packageName pkg1
+            v1   = packageVersion pkg1
+            v2   = packageVersion pkg2
+      ,    any ((v1==) . packageVersion) (depends pkg2)
+        || any ((v2==) . packageVersion) (depends pkg1) ]
+
 -- | The package choices that are still available.
 --
 choices :: (Package installed, Package available)
         => Constraints installed available reason
         -> PackageIndex (InstalledOrAvailable installed available)
-choices (Constraints available _) = available
+choices (Constraints available _ _) = available
+
+isPaired :: (Package installed, Package available)
+         => Constraints installed available reason
+         -> PackageIdentifier -> Maybe PackageIdentifier
+isPaired (Constraints _ pairs _) (PackageIdentifier name version) =
+  case Map.lookup name pairs of
+    Just (v1, v2)
+      | version == v1 -> Just (PackageIdentifier name v2)
+      | version == v2 -> Just (PackageIdentifier name v1)
+    _                 -> Nothing
 
 data Satisfiable constraints discarded reason
        = Satisfiable constraints discarded
@@ -138,14 +166,14 @@ constrain :: (Package installed, Package available)
           -> Satisfiable (Constraints installed available reason)
                          [PackageIdentifier] reason
 constrain (TaggedDependency installedConstraint (Dependency name versionRange))
-          reason constraints@(Constraints available excluded)
+          reason constraints@(Constraints available paired excluded)
 
   | not anyRemaining
   = if null conflicts then Unsatisfiable
                       else ConflictsWith conflicts
 
   | otherwise 
-  = let constraints' = Constraints available' excluded'
+  = let constraints' = Constraints available' paired excluded'
      in assert (constraints `transitionsTo` constraints') $
         Satisfiable constraints' (map packageId newExcluded)
 
@@ -230,7 +258,7 @@ conflicting :: (Package installed, Package available)
             => Constraints installed available reason
             -> Dependency
             -> [(PackageIdentifier, [reason])]
-conflicting (Constraints _ excluded) dep =
+conflicting (Constraints _ _ excluded) dep =
   [ (pkgid, reasonsAvail ++ reasonsAll) --TODO
   | ExcludedPackage pkgid reasonsAvail reasonsAll <-
       PackageIndex.lookupDependency excluded dep ]
