@@ -50,7 +50,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( foldl', maximumBy, minimumBy, delete, nub, sort, groupBy )
+         ( foldl', maximumBy, minimumBy, nub, sort, groupBy )
 import Data.Maybe
          ( fromJust, fromMaybe )
 import Data.Monoid
@@ -84,22 +84,20 @@ data SearchSpace inherited pkg
 -- ------------------------------------------------------------
 
 explore :: (PackageName -> PackageVersionPreference)
-        -> SearchSpace a SelectablePackage
-        -> Progress Log Failure a
+        -> SearchSpace (SelectedPackages, Constraints, SelectionChanges)
+                       SelectablePackage
+        -> Progress Log Failure (SelectedPackages, Constraints)
 
-explore _    (Failure failure)      = Fail failure
-explore _explore    (ChoiceNode result []) = Done result
-explore pref (ChoiceNode _ choices) =
+explore _    (Failure failure)       = Fail failure
+explore _    (ChoiceNode (s,c,_) []) = Done (s,c)
+explore pref (ChoiceNode _ choices)  =
   case [ choice | [choice] <- choices ] of
-    ((pkg, node'):_) -> Step (Select [pkg] [])    (explore pref node')
-    []               -> seq pkgs' -- avoid retaining defaultChoice
-                      $ Step (Select [pkg] pkgs') (explore pref node')
+    ((_, node'):_) -> Step (logInfo node') (explore pref node')
+    []             -> Step (logInfo node') (explore pref node')
       where
-        choice       = minimumBy (comparing topSortNumber) choices
-        pkgname      = packageName . fst . head $ choice
-        (pkg, node') = maximumBy (bestByPref pkgname) choice
-        pkgs'        = delete (packageId pkg) (map (packageId.fst) choice)
-
+        choice     = minimumBy (comparing topSortNumber) choices
+        pkgname    = packageName . fst . head $ choice
+        (_, node') = maximumBy (bestByPref pkgname) choice
   where
     topSortNumber choice = case fst (head choice) of
       InstalledOnly           (InstalledPackage    _ i _) -> i
@@ -112,6 +110,11 @@ explore pref (ChoiceNode _ choices) =
       where isInstalled (AvailableOnly _) = False
             isInstalled _                 = True
 
+    logInfo node = Select selected discarded
+      where (selected, discarded) = case node of
+              Failure    _               -> ([], [])
+              ChoiceNode (_,_,changes) _ -> changes
+
 -- ------------------------------------------------------------
 -- * Generate a search tree
 -- ------------------------------------------------------------
@@ -120,13 +123,18 @@ type ConfigurePackage = PackageIndex SelectablePackage
                      -> SelectablePackage
                      -> Either [Dependency] SelectedPackage
 
+-- | (packages selected, packages discarded)
+type SelectionChanges = ([SelectedPackage], [PackageIdentifier])
+
 searchSpace :: ConfigurePackage
             -> Constraints
             -> SelectedPackages
+            -> SelectionChanges
             -> Set PackageName
-            -> SearchSpace (SelectedPackages, Constraints) SelectablePackage
-searchSpace configure constraints selected next =
-  ChoiceNode (selected, constraints)
+            -> SearchSpace (SelectedPackages, Constraints, SelectionChanges)
+                           SelectablePackage
+searchSpace configure constraints selected changes next =
+  ChoiceNode (selected, constraints, changes)
     [ [ (pkg, select name pkg)
       | pkg <- PackageIndex.lookupPackageName available name ]
     | name <- Set.elems next ]
@@ -137,19 +145,22 @@ searchSpace configure constraints selected next =
       Left missing -> Failure $ ConfigureFailed pkg
                         [ (dep, Constraints.conflicting constraints dep)
                         | dep <- missing ]
-      Right pkg' ->
-        let selected' = PackageIndex.insert pkg' selected
-            newPkgs   = [ name'
-                        | dep <- packageConstraints pkg'
-                        , let (Dependency name' _) = untagDependency dep
-                        , null (PackageIndex.lookupPackageName selected' name') ]
-            newDeps   = packageConstraints pkg'
-            next'     = Set.delete name
-                      $ foldl' (flip Set.insert) next newPkgs
-         in case constrainDeps pkg' newDeps constraints [] of
-              Left failure            -> Failure failure
-              Right (constraints', _) -> searchSpace configure
-                                           constraints' selected' next'
+      Right pkg' -> case constrainDeps pkg' newDeps constraints [] of
+        Left failure       -> Failure failure
+        Right (constraints', newDiscarded) ->
+          searchSpace configure
+            constraints' selected' (newSelected, newDiscarded) next'
+        where
+          selected' = foldl' (flip PackageIndex.insert) selected newSelected
+          newSelected = [pkg']
+
+          newPkgs   = [ name'
+                      | dep <- packageConstraints pkg'
+                      , let (Dependency name' _) = untagDependency dep
+                      , null (PackageIndex.lookupPackageName selected' name') ]
+          newDeps   = packageConstraints pkg'
+          next'     = Set.delete name
+                    $ foldl' (flip Set.insert) next newPkgs
 
 packageConstraints :: SelectedPackage -> [TaggedDependency]
 packageConstraints = either installedConstraints availableConstraints
@@ -188,7 +199,7 @@ search :: ConfigurePackage
        -> Set PackageName
        -> Progress Log Failure (SelectedPackages, Constraints)
 search configure pref constraints =
-  explore pref . searchSpace configure constraints mempty
+  explore pref . searchSpace configure constraints mempty ([], [])
 
 -- ------------------------------------------------------------
 -- * The top level resolver
@@ -524,7 +535,7 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
 -- * Logging progress and failures
 -- ------------------------------------------------------------
 
-data Log = Select [SelectablePackage] [PackageIdentifier]
+data Log = Select [SelectedPackage] [PackageIdentifier]
 data Failure
    = ConfigureFailed
        SelectablePackage
