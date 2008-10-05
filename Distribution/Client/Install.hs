@@ -16,7 +16,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr )
+         ( unfoldr, find, nub, sort )
 import Data.Maybe
          ( isJust )
 import Control.Exception as Exception
@@ -71,13 +71,14 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( flagToMaybe )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, rawSystemExit, withTempDirectory )
+         ( defaultPackageDesc, rawSystemExit, withTempDirectory, comparing )
 import Distribution.Simple.InstallDirs
          ( fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
-         ( PackageIdentifier, packageName, Package(..), thisPackageVersion
-         , Dependency(..) )
+         ( PackageIdentifier, packageName, packageVersion
+         , Package(..), PackageFixedDeps(..)
+         , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription )
@@ -92,7 +93,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
 import Distribution.Client.Utils
-         ( inDir )
+         ( inDir, mergeBy, MergeResult(..) )
 import Distribution.System
          ( OS(Windows), buildOS, Arch, buildArch )
 import Distribution.Text
@@ -170,7 +171,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
           ++ "the --reinstall flag."
 
       when (dryRun || verbosity >= verbose) $
-        printDryRun verbosity installPlan
+        printDryRun verbosity installed installPlan
 
       unless dryRun $ do
         logsDir <- defaultLogsDir
@@ -293,20 +294,47 @@ planUpgradePackages comp _ _ =
      ++ " does not track installed packages so cabal cannot figure out what"
      ++ " packages need to be upgraded."
 
-printDryRun :: Verbosity -> InstallPlan -> IO ()
-printDryRun verbosity plan = case unfoldr next plan of
+printDryRun :: Verbosity -> Maybe (PackageIndex InstalledPackageInfo)
+            -> InstallPlan -> IO ()
+printDryRun verbosity minstalled plan = case unfoldr next plan of
   []   -> return ()
-  pkgs -> notice verbosity $ unlines $
-            "In order, the following would be installed:"
-          : map display pkgs
+  pkgs
+    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
+        "In order, the following would be installed:"
+      : map showPkgAndReason pkgs
+    | otherwise -> notice verbosity $ unlines $
+        "In order, the following would be installed (use -v for more details):"
+      : map (display . packageId) pkgs
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      (pkg:_) -> Just (pkgid, InstallPlan.completed pkgid result plan')
+      (pkg:_) -> Just (pkg, InstallPlan.completed pkgid result plan')
         where pkgid = packageId pkg
               result = BuildOk DocsNotTried TestsNotTried
               --FIXME: This is a bit of a hack,
               -- pretending that each package is installed
+
+    showPkgAndReason pkg' = display (packageId pkg') ++ " " ++
+      case minstalled of
+        Nothing        -> ""
+        Just installed ->
+          case PackageIndex.lookupPackageName installed (packageName pkg') of
+            [] -> "(new package)"
+            ps ->  case find ((==packageId pkg') . packageId) ps of
+              Nothing  -> "(new version)"
+              Just pkg -> "(reinstall)" ++ case changes pkg pkg' of
+                []   -> ""
+                diff -> " changes: "  ++ intercalate ", " diff
+    changes pkg pkg' = map change . filter changed
+                     $ mergeBy (comparing packageName)
+                         (nub . sort . depends $ pkg)
+                         (nub . sort . depends $ pkg')
+    change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
+    change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
+                                    ++ display (packageVersion pkgid')
+    change (OnlyInRight      pkgid') = display pkgid' ++ " added"
+    changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
+    changed _                        = True
 
 symlinkBinaries :: Verbosity
                 -> Cabal.ConfigFlags
