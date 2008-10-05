@@ -245,8 +245,15 @@ constrain (TaggedDependency installedConstraint (Dependency name versionRange))
   satisfiesConstraint pkg = satisfiesVersionConstraint pkg
                          && satisfiesInstallStateConstraint pkg
 
-  satisfiesVersionConstraint pkg =
-    packageVersion pkg `withinRange` versionRange
+  satisfiesVersionConstraint :: Package pkg => pkg -> Bool
+  satisfiesVersionConstraint = case Map.lookup name paired of
+    Nothing       -> \pkg ->
+      packageVersion pkg `withinRange` versionRange
+    Just (v1, v2) -> \pkg -> case packageVersion pkg of
+      v | v == v1
+       || v == v2   -> v1 `withinRange` versionRange
+                    || v2 `withinRange` versionRange
+        | otherwise -> v `withinRange` versionRange
 
   satisfiesInstallStateConstraint = case installedConstraint of
     NoInstalledConstraint -> \_   -> True
