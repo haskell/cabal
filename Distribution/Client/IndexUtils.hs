@@ -12,7 +12,10 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
   getAvailablePackages,
-  readRepoIndex,
+
+  readPackageIndexFile,
+  parseRepoIndex,
+
   disambiguatePackageName,
   disambiguateDependencies
   ) where
@@ -23,10 +26,12 @@ import Distribution.Client.Types
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 
 import Distribution.Package
-         ( PackageIdentifier(..), PackageName(..), Package(..)
+         ( PackageId, PackageIdentifier(..), PackageName(..), Package(..)
          , Dependency(Dependency) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.PackageDescription
+         ( GenericPackageDescription )
 import Distribution.PackageDescription.Parse
          ( parsePackageDescription )
 import Distribution.ParseUtils
@@ -36,16 +41,24 @@ import Distribution.Text
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
-import Data.Maybe  (catMaybes)
+import Data.Maybe  (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
+import qualified Codec.Compression.GZip as GZip (decompress)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.IO.Error (isDoesNotExistError)
 
-
+-- | Read a repository index from disk, from the local files specified by
+-- a list of 'Repo's.
+--
+-- All the 'AvailablePackage's are marked as having come from the appropriate
+-- 'Repo'.
+--
+-- This is a higher level wrapper used internally in cabal-install.
+--
 getAvailablePackages :: Verbosity -> [Repo]
                      -> IO (PackageIndex AvailablePackage)
 getAvailablePackages verbosity repos = do
@@ -56,48 +69,29 @@ getAvailablePackages verbosity repos = do
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
 --
-readRepoIndex :: Verbosity -> Repo -> IO (PackageIndex AvailablePackage)
-readRepoIndex verbosity repo =
-  handleNotFound $ do
-    let indexFile = repoLocalDir repo </> "00-index.tar"
-    pkgs <- either fail return . parseRepoIndex =<< BS.readFile indexFile
-    evaluate (PackageIndex.fromList pkgs)
+-- All the 'AvailablePackage's are marked as having come from the given 'Repo'.
+--
+-- This is a higher level wrapper used internally in cabal-install.
+--
+readRepoIndex :: Verbosity -> Repo
+              -> IO (PackageIndex AvailablePackage)
+readRepoIndex verbosity repo = handleNotFound $ do
+  let indexFile = repoLocalDir repo </> "00-index.tar"
+  pkgs <- either fail return
+        . foldlTarball extract []
+      =<< BS.readFile indexFile
+
+  evaluate $ PackageIndex.fromList
+    [ AvailablePackage {
+        packageInfoId      = pkgid,
+        packageDescription = pkg,
+        packageSource      = RepoTarballPackage repo
+      }
+    | (pkgid, pkg) <- pkgs]
 
   where
-    -- | Parse a repository index file from a 'ByteString'.
-    --
-    -- All the 'AvailablePackage's are marked as having come from the given 'Repo'.
-    --
-    parseRepoIndex :: ByteString -> Either String [AvailablePackage]
-    parseRepoIndex = either Left (Right . catMaybes . map extractPkg)
-                   . check [] . Tar.read
-
-    check _  (Tar.Fail err)  = Left  err
-    check ok Tar.Done        = Right ok
-    check ok (Tar.Next e es) = check (e:ok) es
-
-    extractPkg :: Tar.Entry -> Maybe AvailablePackage
-    extractPkg entry
-      | takeExtension fileName == ".cabal"
-      = case splitDirectories (normalise fileName) of
-          [pkgname,vers,_] -> case simpleParse vers of
-            Just ver -> Just AvailablePackage {
-                packageInfoId      = PackageIdentifier (PackageName pkgname) ver,
-                packageDescription = descr,
-                packageSource      = RepoTarballPackage repo
-              }
-            _ -> Nothing
-            where
-              parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
-                                               . Tar.fileContent $ entry
-              descr  = case parsed of
-                ParseOk _ d -> d
-                _           -> error $ "Couldn't read cabal file "
-                                    ++ show fileName
-          _ -> Nothing
-      | otherwise = Nothing
-      where
-        fileName = Tar.fileName entry
+    extract pkgs entry = fromMaybe pkgs $
+              (do pkg <- extractPkg entry; return (pkg:pkgs))
 
     handleNotFound action = catch action $ \e -> if isDoesNotExistError e
       then do
@@ -110,6 +104,62 @@ readRepoIndex verbosity repo =
             ++ "' is missing. The repo is invalid."
         return mempty
       else ioError e
+
+-- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
+--
+-- This is supposed to be an \"all in one\" way to easily get at the info in
+-- the hackage package index.
+--
+-- It takes a function to map a 'GenericPackageDescription' into any more
+-- specific instance of 'Package' that you might want to use. In the simple
+-- case you can just use @\_ p -> p@ here.
+--
+readPackageIndexFile :: Package pkg
+                     => (PackageId -> GenericPackageDescription -> pkg)
+                     -> FilePath -> IO (PackageIndex pkg)
+readPackageIndexFile mkPkg indexFile = do
+  pkgs <- either fail return
+        . parseRepoIndex
+        . GZip.decompress
+      =<< BS.readFile indexFile
+  
+  evaluate $ PackageIndex.fromList
+   [ mkPkg pkgid pkg | (pkgid, pkg) <- pkgs]
+
+-- | Parse an uncompressed \"00-index.tar\" repository index file represented
+-- as a 'ByteString'.
+--
+parseRepoIndex :: ByteString
+               -> Either String [(PackageId, GenericPackageDescription)]
+parseRepoIndex = foldlTarball (\pkgs -> maybe pkgs (:pkgs) . extractPkg) []
+
+extractPkg :: Tar.Entry -> Maybe (PackageId, GenericPackageDescription)
+extractPkg entry
+  | takeExtension fileName == ".cabal"
+  = case splitDirectories (normalise fileName) of
+      [pkgname,vers,_] -> case simpleParse vers of
+        Just ver -> Just (pkgid, descr)
+          where
+            pkgid  = PackageIdentifier (PackageName pkgname) ver
+            parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
+                                             . Tar.fileContent $ entry
+            descr  = case parsed of
+              ParseOk _ d -> d
+              _           -> error $ "Couldn't read cabal file "
+                                  ++ show fileName
+        _ -> Nothing
+      _ -> Nothing
+  | otherwise = Nothing
+  where
+    fileName = Tar.fileName entry
+
+foldlTarball :: (a -> Tar.Entry -> a) -> a
+             -> ByteString -> Either String a
+foldlTarball f z = either Left (Right . foldl f z) . check [] . Tar.read
+  where
+    check _  (Tar.Fail err)  = Left  err
+    check ok Tar.Done        = Right ok
+    check ok (Tar.Next e es) = check (e:ok) es
 
 -- | Disambiguate a set of packages using 'disambiguatePackage' and report any
 -- ambiguities to the user.
