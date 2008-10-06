@@ -15,7 +15,12 @@
 module Distribution.Client.Dependency (
     resolveDependencies,
     resolveDependenciesWithProgress,
-    PackagesVersionPreference(..),
+
+    PackagesPreference(..),
+    packagesPreference,
+    PackagesVersionPreference,
+    PackagesInstalledPreference(..),
+
     upgradableDependencies,
   ) where
 
@@ -29,13 +34,14 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageName, DependencyResolver, PackageVersionPreference(..)
+         ( PackageName, DependencyResolver
+         , PackagePreference(..), PackageInstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
-         ( orLaterVersion )
+         ( VersionRange(AnyVersion), orLaterVersion )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -45,17 +51,40 @@ import Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import Data.List (maximumBy)
 import Data.Monoid (Monoid(mempty))
+import Data.Maybe (fromMaybe)
+import qualified Data.Map as Map
+import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Exception (assert)
 
 defaultResolver :: DependencyResolver
 defaultResolver = topDownResolver
---for the brave: try the new topDownResolver, but only with --dry-run !!!
 
 -- | Global policy for the versions of all packages.
 --
-data PackagesVersionPreference =
+data PackagesPreference = PackagesPreference
+       PackagesInstalledPreference
+       PackagesVersionPreference
+
+packagesPreference :: PackagesInstalledPreference
+                   -> Map PackageName VersionRange
+                   -> PackagesPreference
+packagesPreference installedPref versionPrefs =
+  PackagesPreference installedPref versionPrefs'
+  where
+    versionPrefs' :: PackageName -> VersionRange
+    versionPrefs' pkgname =
+      fromMaybe AnyVersion (Map.lookup pkgname versionPrefs)
+
+-- | An optional suggested version for each package.
+--
+type PackagesVersionPreference = PackageName -> VersionRange
+
+-- | Global policy for all packages to say if we prefer package versions that
+-- are already installed locally or if we just prefer the latest available.
+--
+data PackagesInstalledPreference =
 
      -- | Always prefer the latest version irrespective of any existing
      -- installed version.
@@ -81,7 +110,7 @@ resolveDependencies :: OS
                     -> CompilerId
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex AvailablePackage
-                    -> PackagesVersionPreference
+                    -> PackagesPreference
                     -> [UnresolvedDependency]
                     -> Either String InstallPlan
 resolveDependencies os arch comp installed available pref deps =
@@ -93,7 +122,7 @@ resolveDependenciesWithProgress :: OS
                                 -> CompilerId
                                 -> Maybe (PackageIndex InstalledPackageInfo)
                                 -> PackageIndex AvailablePackage
-                                -> PackagesVersionPreference
+                                -> PackagesPreference
                                 -> [UnresolvedDependency]
                                 -> Progress String String InstallPlan
 resolveDependenciesWithProgress os arch comp (Just installed) =
@@ -121,7 +150,7 @@ dependencyResolver
   -> OS -> Arch -> CompilerId
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
-  -> PackagesVersionPreference
+  -> PackagesPreference
   -> [UnresolvedDependency]
   -> Progress String String InstallPlan
 dependencyResolver resolver os arch comp installed available pref deps =
@@ -139,25 +168,26 @@ dependencyResolver resolver os arch comp installed available pref deps =
           : "The proposed (invalid) plan contained the following problems:"
           : map InstallPlan.showPlanProblem problems
 
-    preference = interpretPackagesVersionPreference initialPkgNames pref
+    preference = interpretPackagesPreference initialPkgNames pref
     initialPkgNames = Set.fromList
       [ name | UnresolvedDependency (Dependency name _) _ <- deps ]
 
--- | Give an interpretation to the global 'PackagesVersionPreference' as
+-- | Give an interpretation to the global 'PackagesPreference' as
 --  specific per-package 'PackageVersionPreference'.
 --
-interpretPackagesVersionPreference :: Set PackageName
-                                   -> PackagesVersionPreference
-                                   -> (PackageName -> PackageVersionPreference)
-interpretPackagesVersionPreference selected pref = case pref of
-  PreferAllLatest         -> const PreferLatest
-  PreferAllInstalled      -> const PreferInstalled
-  PreferLatestForSelected -> \pkgname ->
-    -- When you say cabal install foo, what you really mean is, prefer the
-    -- latest version of foo, but the installed version of everything else:
-    if pkgname `Set.member` selected
-      then PreferLatest
-      else PreferInstalled
+interpretPackagesPreference :: Set PackageName
+                            -> PackagesPreference
+                            -> (PackageName -> PackagePreference)
+interpretPackagesPreference selected
+  (PackagesPreference installPref versionPref) = case installPref of
+    PreferAllLatest    -> PackagePreference PreferLatest    . versionPref
+    PreferAllInstalled -> PackagePreference PreferInstalled . versionPref
+    PreferLatestForSelected -> \pkgname ->
+      -- When you say cabal install foo, what you really mean is, prefer the
+      -- latest version of foo, but the installed version of everything else:
+      if pkgname `Set.member` selected
+        then PackagePreference PreferLatest    (versionPref pkgname)
+        else PackagePreference PreferInstalled (versionPref pkgname)
 
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
