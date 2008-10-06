@@ -34,13 +34,15 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), packageVersion, packageName
+         ( PackageName(..), PackageIdentifier, Package(packageId), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
          , PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
+import Distribution.Version
+         ( withinRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -106,12 +108,15 @@ explore pref (ChoiceNode _ choices)  =
       InstalledAndAvailable _ (UnconfiguredPackage _ i _) -> i
 
     bestByPref pkgname = case packageInstalledPreference of
-      PreferLatest    -> comparing (\(p,_) ->                 packageId p)
-      PreferInstalled -> comparing (\(p,_) -> (isInstalled p, packageId p))
+        PreferLatest    ->
+          comparing (\(p,_) -> (               isPreferred p, packageId p))
+        PreferInstalled ->
+          comparing (\(p,_) -> (isInstalled p, isPreferred p, packageId p))
       where
         isInstalled (AvailableOnly _) = False
         isInstalled _                 = True
-        (PackagePreference packageInstalledPreference _)
+        isPreferred p = packageVersion p `withinRange` preferredVersions
+        (PackagePreference packageInstalledPreference preferredVersions)
           = pref pkgname
 
     logInfo node = Select selected discarded
@@ -252,7 +257,7 @@ topDownResolver' os arch comp installed available pref deps =
     finalise selected = PackageIndex.allPackages
                       . improvePlan installed'
                       . PackageIndex.fromList
-                      . finaliseSelectedPackages selected
+                      . finaliseSelectedPackages pref selected
 
 constrainTopLevelDeps :: [UnresolvedDependency] -> Constraints
                       -> Progress a Failure Constraints
@@ -395,24 +400,25 @@ selectNeededSubset installed available = select mempty mempty
 -- * Post processing the solution
 -- ------------------------------------------------------------
 
-finaliseSelectedPackages :: SelectedPackages
+finaliseSelectedPackages :: (PackageName -> PackagePreference)
+                         -> SelectedPackages
                          -> Constraints
                          -> [PlanPackage]
-finaliseSelectedPackages selected constraints =
+finaliseSelectedPackages pref selected constraints =
   map finaliseSelected (PackageIndex.allPackages selected)
   where
     remainingChoices = Constraints.choices constraints
     finaliseSelected (InstalledOnly         ipkg     ) = finaliseInstalled ipkg
-    finaliseSelected (AvailableOnly              apkg) = finaliseAvailable apkg
+    finaliseSelected (AvailableOnly              apkg) = finaliseAvailable Nothing apkg
     finaliseSelected (InstalledAndAvailable ipkg apkg) =
       case PackageIndex.lookupPackageId remainingChoices (packageId ipkg) of
         Nothing                          -> impossible --picked package not in constraints
         Just (AvailableOnly _)           -> impossible --to constrain to avail only
         Just (InstalledOnly _)           -> finaliseInstalled ipkg
-        Just (InstalledAndAvailable _ _) -> finaliseAvailable apkg
+        Just (InstalledAndAvailable _ _) -> finaliseAvailable (Just ipkg) apkg
 
     finaliseInstalled (InstalledPackage pkg _ _) = InstallPlan.PreExisting pkg
-    finaliseAvailable (SemiConfiguredPackage pkg flags deps) =
+    finaliseAvailable mipkg (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
       where
         deps' = map (packageId . pickRemaining) deps
@@ -421,8 +427,20 @@ finaliseSelectedPackages selected constraints =
             []        -> impossible
             [pkg']    -> pkg'
             remaining -> maximumBy bestByPref remaining
-        bestByPref = comparing (\p -> (isPreferred p, packageVersion p))
-        isPreferred _ = True
+        -- We order candidate packages to pick for a dependency by these
+        -- three factors. The last factor is just highest version wins.
+        bestByPref =
+          comparing (\p -> (isCurrent p, isPreferred p, packageVersion p))
+        -- Is the package already used by the installed version of this
+        -- package? If so we should pick that first. This stops us from doing
+        -- silly things like deciding to rebuild haskell98 against base 3.
+        isCurrent = case mipkg :: Maybe InstalledPackage of
+          Nothing   -> \_ -> False
+          Just ipkg -> \p -> packageId p `elem` depends ipkg
+        -- Is this package a preferred version acording to the hackage or
+        -- user's suggested version constraints
+        isPreferred p = packageVersion p `withinRange` preferredVersions
+          where (PackagePreference _ preferredVersions) = pref (packageName p)
 
 -- | Improve an existing installation plan by, where possible, swapping
 -- packages we plan to install with ones that are already installed.
