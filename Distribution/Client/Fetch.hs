@@ -23,7 +23,7 @@ module Distribution.Client.Fetch (
 
 import Distribution.Client.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
-         , AvailablePackageSource(..)
+         , AvailablePackageSource(..), AvailablePackageDb(..)
          , Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress, PackagesVersionPreference(..) )
@@ -147,7 +147,7 @@ fetch :: Verbosity
       -> IO ()
 fetch verbosity packageDB repos comp conf deps = do
   installed <- getInstalledPackages verbosity comp packageDB conf
-  available <- getAvailablePackages verbosity repos
+  AvailablePackageDb available _ <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
   let -- Hide the packages given on the command line so that the dep resolver

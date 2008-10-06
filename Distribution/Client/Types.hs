@@ -13,17 +13,29 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), PackageFixedDeps(..)
-         , Dependency )
+         ( PackageName, PackageIdentifier(..), Package(..)
+         , PackageFixedDeps(..), Dependency )
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
+import Distribution.Simple.PackageIndex
+         ( PackageIndex )
+import Distribution.Version
+         ( VersionRange )
 
+import Data.Map (Map)
 import Network.URI (URI)
 import Control.Exception
          ( Exception )
 
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
+
+-- | This is the information we get from a @00-index.tar.gz@ hackage index.
+--
+data AvailablePackageDb = AvailablePackageDb {
+  packageIndex       :: PackageIndex AvailablePackage,
+  packagePreferences :: Map PackageName VersionRange
+}
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
