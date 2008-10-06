@@ -891,10 +891,17 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
          createDirectoryIfMissingVerbose verbosity True binDir
          withExe pkg_descr $ \Executable { exeName = e } -> do
              let exeFileName = e <.> exeExtension
+		 exeDynFileName = e <.> "dyn" <.> exeExtension
                  fixedExeBaseName = progprefix ++ e ++ progsuffix
                  installBinary dest = do
                      copyFileVerbose verbosity
-                                     (buildPref </> e </> exeFileName) dest
+                                     (buildPref </> e </> exeFileName) (dest <.> exeExtension)
+		     exists <- doesFileExist (buildPref </> e </> exeDynFileName)
+		     if exists then
+			   copyFileVerbose verbosity
+			    (buildPref </> e </> exeDynFileName) (dest <.> "dyn" <.> exeExtension)
+		        else
+			    return ()
                      stripExe verbosity lbi exeFileName dest
              if useWrapper
                  then do
@@ -912,7 +919,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                              : fullPathTemplateEnv myPkgId myCompilerId
                                                    pretendInstallDirs
                      createDirectoryIfMissingVerbose verbosity True libExecDir
-                     installBinary absExeFileName
+                     installBinary (libExecDir </> fixedExeBaseName)
                      -- XXX Should probably look somewhere more sensible
                      -- than just . for wrappers
                      wrapperTemplate <- readFile (e <.> "wrapper")
@@ -922,9 +929,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                      writeFileAtomic wrapperFileName wrapper
                      copyPermissions absExeFileName wrapperFileName
                  else do
-                     let absExeFileName =
-                             binDir </> fixedExeBaseName <.> exeExtension
-                     installBinary absExeFileName
+                     installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
