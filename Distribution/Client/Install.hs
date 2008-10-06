@@ -31,7 +31,8 @@ import System.IO
          ( openFile, IOMode(AppendMode) )
 
 import Distribution.Client.Dependency
-         ( resolveDependenciesWithProgress, PackagesVersionPreference(..)
+         ( resolveDependenciesWithProgress
+         , packagesPreference, PackagesInstalledPreference(..)
          , upgradableDependencies )
 import Distribution.Client.Dependency.Types (Progress(..), foldProgress)
 import Distribution.Client.Fetch (fetchPackage)
@@ -247,7 +248,7 @@ storeDetailedBuildReports logsDir reports
 --
 planLocalPackage :: Verbosity -> Compiler -> Cabal.ConfigFlags -> Planner
 planLocalPackage verbosity comp configFlags installed
-  (AvailablePackageDb available _) = do
+  (AvailablePackageDb available versionPrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   let -- The trick is, we add the local package to the available index and
       -- remove it from the installed index. Then we ask to resolve a
@@ -266,21 +267,25 @@ planLocalPackage verbosity comp configFlags installed
       }
 
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-             installed' available' PreferLatestForSelected [localPkgDep]
+             installed' available'
+             (packagesPreference PreferLatestForSelected versionPrefs)
+             [localPkgDep]
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
-planRepoPackages :: PackagesVersionPreference -> Compiler -> InstallFlags
+planRepoPackages :: PackagesInstalledPreference -> Compiler -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
-planRepoPackages pref comp installFlags deps installed
-  (AvailablePackageDb available _) = do
+planRepoPackages installedPref comp installFlags deps installed
+  (AvailablePackageDb available versionPrefs) = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
         | Cabal.fromFlagOrDefault False (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
   return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-             installed' available pref deps'
+             installed' available
+             (packagesPreference installedPref versionPrefs)
+             deps'
   where
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
@@ -288,9 +293,10 @@ planRepoPackages pref comp installFlags deps installed
 
 planUpgradePackages :: Compiler -> Planner
 planUpgradePackages comp (Just installed)
-  (AvailablePackageDb available _) = return $
+  (AvailablePackageDb available versionPrefs) = return $
   resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
-    (Just installed) available PreferAllLatest
+    (Just installed) available
+    (packagesPreference PreferAllLatest versionPrefs)
     [ UnresolvedDependency dep []
     | dep <- upgradableDependencies installed available ]
 planUpgradePackages comp _ _ =

@@ -26,7 +26,8 @@ import Distribution.Client.Types
          , AvailablePackageSource(..), AvailablePackageDb(..)
          , Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Dependency
-         ( resolveDependenciesWithProgress, PackagesVersionPreference(..) )
+         ( resolveDependenciesWithProgress, packagesPreference
+         , PackagesInstalledPreference(..) )
 import Distribution.Client.Dependency.Types
          ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
@@ -147,7 +148,8 @@ fetch :: Verbosity
       -> IO ()
 fetch verbosity packageDB repos comp conf deps = do
   installed <- getInstalledPackages verbosity comp packageDB conf
-  AvailablePackageDb available _ <- getAvailablePackages verbosity repos
+  AvailablePackageDb available versionPref
+            <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
   let -- Hide the packages given on the command line so that the dep resolver
@@ -161,7 +163,9 @@ fetch verbosity packageDB repos comp conf deps = do
 
   let  progress = resolveDependenciesWithProgress
                    buildOS buildArch (compilerId comp)
-                   installed' available PreferLatestForSelected deps'
+                   installed' available
+                   (packagesPreference PreferLatestForSelected versionPref)
+                   deps'
   notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
                             (return . Left) (return . Right) progress
