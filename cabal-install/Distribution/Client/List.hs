@@ -35,7 +35,8 @@ import Distribution.Verbosity (Verbosity)
 
 import Distribution.Client.IndexUtils (getAvailablePackages)
 import Distribution.Client.Setup (ListFlags(..))
-import Distribution.Client.Types (AvailablePackage(..), Repo)
+import Distribution.Client.Types
+         ( AvailablePackage(..), Repo, AvailablePackageDb(..) )
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler (Compiler,PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
@@ -55,7 +56,7 @@ list :: Verbosity
      -> IO ()
 list verbosity packageDB repos comp conf listFlags pats = do
     Just installed <- getInstalledPackages verbosity comp packageDB conf
-    available <- getAvailablePackages verbosity repos
+    AvailablePackageDb available _ <- getAvailablePackages verbosity repos
     let pkgs | null pats = (PackageIndex.allPackages installed
                            ,PackageIndex.allPackages available)
              | otherwise =
