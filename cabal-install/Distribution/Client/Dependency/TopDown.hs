@@ -25,7 +25,8 @@ import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageName, DependencyResolver, PackageVersionPreference(..)
+         ( PackageName, DependencyResolver, PackagePreference(..)
+         , PackageInstalledPreference(..)
          , Progress(..), foldProgress )
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -83,7 +84,7 @@ data SearchSpace inherited pkg
 -- * Traverse a search tree
 -- ------------------------------------------------------------
 
-explore :: (PackageName -> PackageVersionPreference)
+explore :: (PackageName -> PackagePreference)
         -> SearchSpace (SelectedPackages, Constraints, SelectionChanges)
                        SelectablePackage
         -> Progress Log Failure (SelectedPackages, Constraints)
@@ -104,11 +105,14 @@ explore pref (ChoiceNode _ choices)  =
       AvailableOnly           (UnconfiguredPackage _ i _) -> i
       InstalledAndAvailable _ (UnconfiguredPackage _ i _) -> i
 
-    bestByPref pkgname = case pref pkgname of
+    bestByPref pkgname = case packageInstalledPreference of
       PreferLatest    -> comparing (\(p,_) ->                 packageId p)
       PreferInstalled -> comparing (\(p,_) -> (isInstalled p, packageId p))
-      where isInstalled (AvailableOnly _) = False
-            isInstalled _                 = True
+      where
+        isInstalled (AvailableOnly _) = False
+        isInstalled _                 = True
+        (PackagePreference packageInstalledPreference _)
+          = pref pkgname
 
     logInfo node = Select selected discarded
       where (selected, discarded) = case node of
@@ -200,7 +204,7 @@ constrainDeps pkg (dep:deps) cs discard =
 -- ------------------------------------------------------------
 
 search :: ConfigurePackage
-       -> (PackageName -> PackageVersionPreference)
+       -> (PackageName -> PackagePreference)
        -> Constraints
        -> Set PackageName
        -> Progress Log Failure (SelectedPackages, Constraints)
@@ -225,7 +229,7 @@ topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
 topDownResolver' :: OS -> Arch -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
-                 -> (PackageName -> PackageVersionPreference)
+                 -> (PackageName -> PackagePreference)
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage]
 topDownResolver' os arch comp installed available pref deps =

@@ -13,7 +13,11 @@
 module Distribution.Client.Dependency.Types (
     PackageName,
     DependencyResolver,
-    PackageVersionPreference(..),
+
+    PackagePreference(..),
+    PackageVersionPreference,
+    PackageInstalledPreference(..),
+
     Progress(..),
     foldProgress,
   ) where
@@ -28,6 +32,8 @@ import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName )
+import Distribution.Version
+         ( VersionRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -48,17 +54,33 @@ type DependencyResolver = OS
                        -> CompilerId
                        -> PackageIndex InstalledPackageInfo
                        -> PackageIndex AvailablePackage
-                       -> (PackageName -> PackageVersionPreference)
+                       -> (PackageName -> PackagePreference)
                        -> [UnresolvedDependency]
                        -> Progress String String [InstallPlan.PlanPackage]
 
 -- | A per-package preference on the version. It is a soft constraint that the
--- 'DependencyResolver' should try to respect where possible.
+-- 'DependencyResolver' should try to respect where possible. It consists of
+-- a 'PackageInstalledPreference' which says if we prefer versions of packages
+-- that are already installed. It also hase a 'PackageVersionPreference' which
+-- is a suggested constraint on the version number. The resolver should try to
+-- use package versions that satisfy the suggested version constraint.
 --
 -- It is not specified if preferences on some packages are more important than
 -- others.
 --
-data PackageVersionPreference = PreferInstalled | PreferLatest
+data PackagePreference = PackagePreference
+       PackageInstalledPreference
+       PackageVersionPreference
+
+-- | A suggested constraint on the version number. The resolver should try to
+-- use package versions that satisfy the suggested version constraint.
+--
+type PackageVersionPreference = VersionRange
+
+-- | Wether we prefer an installed version of a package or simply the latest
+-- version.
+--
+data PackageInstalledPreference = PreferInstalled | PreferLatest
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
