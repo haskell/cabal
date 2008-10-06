@@ -129,13 +129,13 @@ empty installed available = Constraints pkgs pairs mempty
 
     -- pick up cases like base-3 and 4 where one version depends on the other:
     pairs = Map.fromList
-      [ (name, (v1, v2))
+      [ (name, (packageVersion pkgid1, packageVersion pkgid2))
       | [pkg1, pkg2] <- PackageIndex.allPackagesByName installed
-      , let name = packageName pkg1
-            v1   = packageVersion pkg1
-            v2   = packageVersion pkg2
-      ,    any ((v1==) . packageVersion) (depends pkg2)
-        || any ((v2==) . packageVersion) (depends pkg1) ]
+      , let name   = packageName pkg1
+            pkgid1 = packageId pkg1
+            pkgid2 = packageId pkg2
+      ,    any ((pkgid1==) . packageId) (depends pkg2)
+        || any ((pkgid2==) . packageId) (depends pkg1) ]
 
 -- | The package choices that are still available.
 --
