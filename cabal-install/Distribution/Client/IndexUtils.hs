@@ -23,7 +23,8 @@ module Distribution.Client.IndexUtils (
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
+         , AvailablePackageSource(..), Repo(..), RemoteRepo(..)
+         , AvailablePackageDb(..) )
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..), Package(..)
@@ -36,19 +37,25 @@ import Distribution.PackageDescription.Parse
          ( parsePackageDescription )
 import Distribution.ParseUtils
          ( ParseResult(..) )
+import Distribution.Version
+         ( VersionRange(IntersectVersionRanges) )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
-import Data.Maybe  (fromMaybe)
+import Data.Maybe  (catMaybes, fromMaybe)
 import Data.Monoid (Monoid(..))
+import qualified Data.Map as Map
+import Control.Monad (MonadPlus(mplus))
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
 import qualified Codec.Compression.GZip as GZip (decompress)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
+import System.FilePath.Posix as FilePath.Posix
+         ( takeFileName )
 import System.IO.Error (isDoesNotExistError)
 
 -- | Read a repository index from disk, from the local files specified by
@@ -59,12 +66,19 @@ import System.IO.Error (isDoesNotExistError)
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-getAvailablePackages :: Verbosity -> [Repo]
-                     -> IO (PackageIndex AvailablePackage)
+getAvailablePackages :: Verbosity -> [Repo] -> IO AvailablePackageDb
 getAvailablePackages verbosity repos = do
   info verbosity "Reading available packages..."
   pkgss <- mapM (readRepoIndex verbosity) repos
-  evaluate (mconcat pkgss)
+  let (pkgs, prefs) = mconcat pkgss
+      prefs' = Map.fromListWith IntersectVersionRanges
+                 [ (name, range) | Dependency name range <- prefs ]
+  evaluate pkgs
+  evaluate prefs'
+  return AvailablePackageDb {
+    packageIndex       = pkgs,
+    packagePreferences = prefs'
+  }
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
@@ -74,14 +88,14 @@ getAvailablePackages verbosity repos = do
 -- This is a higher level wrapper used internally in cabal-install.
 --
 readRepoIndex :: Verbosity -> Repo
-              -> IO (PackageIndex AvailablePackage)
+              -> IO (PackageIndex AvailablePackage, [Dependency])
 readRepoIndex verbosity repo = handleNotFound $ do
   let indexFile = repoLocalDir repo </> "00-index.tar"
-  pkgs <- either fail return
-        . foldlTarball extract []
-      =<< BS.readFile indexFile
+  (pkgs, prefs) <- either fail return
+                 . foldlTarball extract ([], [])
+               =<< BS.readFile indexFile
 
-  evaluate $ PackageIndex.fromList
+  pkgIndex <- evaluate $ PackageIndex.fromList
     [ AvailablePackage {
         packageInfoId      = pkgid,
         packageDescription = pkg,
@@ -89,9 +103,19 @@ readRepoIndex verbosity repo = handleNotFound $ do
       }
     | (pkgid, pkg) <- pkgs]
 
+  return (pkgIndex, prefs)
+
   where
-    extract pkgs entry = fromMaybe pkgs $
-              (do pkg <- extractPkg entry; return (pkg:pkgs))
+    extract (pkgs, prefs) entry = fromMaybe (pkgs, prefs) $
+              (do pkg <- extractPkg entry; return (pkg:pkgs, prefs))
+      `mplus` (do prefs' <- extractPrefs entry; return (pkgs, prefs'++prefs))
+
+    extractPrefs :: Tar.Entry -> Maybe [Dependency]
+    extractPrefs entry
+      | takeFileName (Tar.fileName entry) == "preferred-versions"
+      = Just . catMaybes . map simpleParse . lines
+      . BS.Char8.unpack . Tar.fileContent $ entry
+      | otherwise = Nothing
 
     handleNotFound action = catch action $ \e -> if isDoesNotExistError e
       then do
