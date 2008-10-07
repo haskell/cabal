@@ -96,7 +96,7 @@ import Distribution.Package
          ( PackageIdentifier, Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
@@ -229,11 +229,13 @@ configureToolchain ghcProg =
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
+    findProg :: Program -> FilePath -> Verbosity -> IO (Maybe FilePath)
     findProg prog location | isWindows = \_ -> do
         exists <- doesFileExist location
         if exists then return (Just location) else return Nothing
       | otherwise = programFindLocation prog
 
+    configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     configureGcc
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
@@ -245,6 +247,7 @@ configureToolchain ghcProg =
       | otherwise = \_ _   -> return []
 
     -- we need to find out if ld supports the -x flag
+    configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     configureLd verbosity ldProg = do
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
