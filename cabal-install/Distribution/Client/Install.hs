@@ -18,17 +18,19 @@ module Distribution.Client.Install (
 import Data.List
          ( unfoldr, find, nub, sort )
 import Data.Maybe
-         ( isJust )
+         ( isJust, fromMaybe )
 import Control.Exception as Exception
-         ( handle, Exception )
+         ( handle, handleJust, Exception(IOException) )
 import Control.Monad
-         ( when, unless, forM_ )
+         ( when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing )
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
          ( openFile, IOMode(AppendMode) )
+import System.IO.Error
+         ( isDoesNotExistError, ioeGetFileName )
 
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
@@ -193,7 +195,7 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
         BuildReports.storeAnonymous buildReports
         BuildReports.storeLocal     buildReports
         when useDetailedBuildReports $
-          storeDetailedBuildReports logsDir buildReports
+          storeDetailedBuildReports verbosity logsDir buildReports
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
@@ -229,19 +231,37 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
     }
 
-storeDetailedBuildReports :: FilePath -> [(BuildReports.BuildReport, Repo)] -> IO ()
-storeDetailedBuildReports logsDir reports
-    = forM_ reports $ \(report,repo) ->
-      do buildLog <- readFile (logsDir </> display (BuildReports.package report) <.> "log")
-         case repoKind repo of
-           Left remoteRepo
-                -> do dotCabal <- defaultCabalDir
-                      let destDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
-                          dest = destDir </> display (BuildReports.package report) <.> "log"
-                      createDirectoryIfMissing True destDir -- FIXME
-                      writeFile dest (show (BuildReports.show report, buildLog))
-           Right{} -> return ()
-         
+storeDetailedBuildReports :: Verbosity -> FilePath
+                          -> [(BuildReports.BuildReport, Repo)] -> IO ()
+storeDetailedBuildReports verbosity logsDir reports = sequence_
+  [ do dotCabal <- defaultCabalDir
+       let logFileName = display (BuildReports.package report) <.> "log"
+           logFile     = logsDir </> logFileName
+           reportsDir  = dotCabal </> "reports" </> remoteRepoName remoteRepo
+           reportFile  = reportsDir </> logFileName
+
+       handleMissingLogFile $ do
+         buildLog <- readFile logFile
+         createDirectoryIfMissing True reportsDir -- FIXME
+         writeFile reportFile (show (BuildReports.show report, buildLog))
+
+  | (report, Repo { repoKind = Left remoteRepo }) <- reports
+  , isLikelyToHaveLogFile (BuildReports.installOutcome report) ]
+
+  where
+    isLikelyToHaveLogFile BuildReports.ConfigureFailed {} = True
+    isLikelyToHaveLogFile BuildReports.BuildFailed     {} = True
+    isLikelyToHaveLogFile BuildReports.InstallFailed   {} = True
+    isLikelyToHaveLogFile BuildReports.InstallOk       {} = True
+    isLikelyToHaveLogFile _                               = False
+
+    handleMissingLogFile = Exception.handleJust missingFile $ \ioe ->
+      warn verbosity $ "Missing log file for build report: "
+                    ++ fromMaybe ""  (ioeGetFileName ioe)
+
+    missingFile (IOException ioe)
+      | isDoesNotExistError ioe  = Just ioe
+    missingFile _                = Nothing
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
