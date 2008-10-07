@@ -170,10 +170,10 @@ searchSpace configure constraints selected changes next =
                     (PackageIndex.lookupPackageId available pkgid')
 
           newPkgs   = [ name'
-                      | dep <- packageConstraints pkg'
+                      | dep <- newDeps
                       , let (Dependency name' _) = untagDependency dep
                       , null (PackageIndex.lookupPackageName selected' name') ]
-          newDeps   = packageConstraints pkg'
+          newDeps   = concatMap packageConstraints newSelected
           next'     = Set.delete name
                     $ foldl' (flip Set.insert) next newPkgs
 
