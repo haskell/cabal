@@ -46,7 +46,7 @@ include $(odir)/.depend
 ifeq "$(way:%dyn=YES)" "YES"
 $(LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
-	$(GHC) -shared -dynamic -o $@ $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` $(LIB_LD_OPTS)
+	$(GHC) -shared -dynamic -no-auto-link-packages -o $@ $(C_OBJS) $(HS_OBJS) `$(MKSTUBOBJS)` $(LIB_LD_OPTS)
 else
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
 $(LIB) : $(HS_OBJS) $(C_OBJS)
