@@ -78,8 +78,8 @@ Executable cabal
                      directory  >= 1   && < 1.1,
                      pretty     >= 1   && < 1.1,
                      random     >= 1   && < 1.1,
-                     containers >= 0.1 && < 0.2,
-                     array      >= 0.1 && < 0.2,
+                     containers >= 0.1 && < 0.3,
+                     array      >= 0.1 && < 0.3,
                      old-time   >= 1   && < 1.1
 
     if flag(bytestring-in-base)
