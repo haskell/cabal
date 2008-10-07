@@ -905,7 +905,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
 			    (buildPref </> e </> exeDynFileName) (dest <.> "dyn" <.> exeExtension)
 		        else
 			    return ()
-                     stripExe verbosity lbi exeFileName dest
+                     stripExe verbosity lbi exeFileName (dest <.> exeExtension)
              if useWrapper
                  then do
                      let libExecDir = libexecdir installDirs
