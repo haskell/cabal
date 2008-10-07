@@ -112,6 +112,7 @@ data UnresolvedDependency
 
 type BuildResult  = Either BuildFailure BuildSuccess
 data BuildFailure = DependentFailed PackageIdentifier
+                  | DownloadFailed  Exception
                   | UnpackFailed    Exception
                   | ConfigureFailed Exception
                   | BuildFailed     Exception

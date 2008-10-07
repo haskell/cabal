@@ -137,6 +137,7 @@ new os' arch' comp (ConfiguredPackage pkg flags deps) result =
   where
     convertInstallOutcome = case result of
       Left  (BR.DependentFailed p) -> DependencyFailed p
+      Left  (BR.DownloadFailed  _) -> DownloadFailed
       Left  (BR.UnpackFailed    _) -> UnpackFailed
       Left  (BR.ConfigureFailed _) -> ConfigureFailed
       Left  (BR.BuildFailed     _) -> BuildFailed

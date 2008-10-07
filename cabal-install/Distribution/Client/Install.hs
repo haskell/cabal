@@ -385,6 +385,7 @@ printBuildFailures plan =
     printFailureReason reason = case reason of
       DependentFailed pkgid -> " depends on " ++ display pkgid
                             ++ " which failed to install."
+      DownloadFailed  _ -> " failed while downloading the package."
       UnpackFailed    e -> " failed while unpacking the package."
                         ++ " The exception was:\n  " ++ show e
       ConfigureFailed e -> " failed during the configure step."
@@ -447,20 +448,22 @@ installAvailablePackage
 installAvailablePackage _ _ LocalUnpackedPackage installPkg =
   installPkg Nothing
 
-installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg = do
-  pkgPath <- fetchPackage verbosity repo pkgid
-  tmp <- getTemporaryDirectory
-  let tmpDirPath = tmp </> ("TMP" ++ display pkgid)
-      path = tmpDirPath </> display pkgid
-  onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
-    info verbosity $ "Extracting " ++ pkgPath ++ " to " ++ tmpDirPath ++ "..."
-    extractTarGzFile tmpDirPath pkgPath
-    let descFilePath = tmpDirPath </> display pkgid
-                                  </> display (packageName pkgid) <.> "cabal"
-    exists <- doesFileExist descFilePath
-    when (not exists) $
-      die $ "Package .cabal file not found: " ++ show descFilePath
-    installPkg (Just path)
+installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
+  onFailure DownloadFailed $ do
+    pkgPath <- fetchPackage verbosity repo pkgid
+    tmp <- getTemporaryDirectory
+    let tmpDirPath = tmp </> ("TMP" ++ display pkgid)
+        path = tmpDirPath </> display pkgid
+    onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
+      info verbosity $ "Extracting " ++ pkgPath
+                    ++ " to " ++ tmpDirPath ++ "..."
+      extractTarGzFile tmpDirPath pkgPath
+      let descFilePath = tmpDirPath </> display pkgid
+                                    </> display (packageName pkgid) <.> "cabal"
+      exists <- doesFileExist descFilePath
+      when (not exists) $
+        die $ "Package .cabal file not found: " ++ show descFilePath
+      installPkg (Just path)
 
 installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
