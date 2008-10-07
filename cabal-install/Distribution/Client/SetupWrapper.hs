@@ -276,10 +276,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       rawSystemProgramConf verbosity ghcProgram conf $
           ghcVerbosityOptions verbosity
        ++ ["--make", setupHsFile, "-o", setupProgFile
-          ,"-odir", setupDir, "-hidir", setupDir]
+          ,"-odir", setupDir, "-hidir", setupDir
+	  ,"-i", "-i" ++ workingDir ]
        ++ if packageName pkg == PackageName "Cabal"
-            then ["-i", "-i."]
-            else ["-i", "-package", display cabalPkgid ]
+            then []
+            else ["-package", display cabalPkgid]
     where cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
 
   invokeSetupScript :: [String] -> IO ()
