@@ -51,7 +51,7 @@ else
 ifneq "$(filter -split-objs, $(GHC_OPTS))" ""
 $(LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@
-	(echo $(C_OBJS) `$(MKSTUBOBJS)`; find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs -s $(MAX_COMMAND_LINE_SIZE) $(AR) q $(EXTRA_AR_ARGS) $@
+	(echo $(C_OBJS) `$(MKSTUBOBJS)`; find $(patsubst %.$(osuf),%_split,$(HS_OBJS)) -name '*.$(way_)o' -print) | xargs $(AR) q $(EXTRA_AR_ARGS) $@
 else
 $(LIB) : $(HS_OBJS) $(C_OBJS)
 	@$(RM) $@

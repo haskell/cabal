@@ -584,7 +584,12 @@ build pkg_descr lbi verbosity = do
 
             runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
-        maxCommandLineSize <- discoverMaxCommandLineSize
+             --TODO: discover this at configure time or runtime on unix
+             -- The value is 32k on Windows and posix specifies a minimum of 4k
+             -- but all sensible unixes use more than 4k.
+             -- we could use getSysVar ArgumentLimit but that's in the unix lib
+            maxCommandLineSize = 30 * 1024
+
         ifVanillaLib False $ xargs maxCommandLineSize
           runAr arArgs arObjArgs
 
@@ -751,14 +756,6 @@ ghcCcOptions lbi bi odir
 mkGHCiLibName :: PackageIdentifier -> String
 mkGHCiLibName lib = "HS" ++ display lib <.> "o"
 
-
---TODO: discover this at configure time or runtime on unix
--- The value is 32k on Windows and posix specifies a minimum of 4k
--- but all sensible unixes use more than 4k.
--- we could use getSysVar ArgumentLimit but that's in the unix lib
-discoverMaxCommandLineSize :: IO Int
-discoverMaxCommandLineSize = return (30 * 1024)
-
 -- -----------------------------------------------------------------------------
 -- Building a Makefile
 
@@ -782,7 +779,6 @@ makefile pkg_descr lbi flags = do
   let builddir = buildDir lbi
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
       Just ghcVersion = programVersion ghcProg
-  maxCommandLineSize <- discoverMaxCommandLineSize
   let decls = [
         ("modules", unwords (map display (PD.exposedModules lib ++ otherModules bi))),
         ("GHC", programPath ghcProg),
@@ -809,9 +805,7 @@ makefile pkg_descr lbi flags = do
         ("LD", programPath ldProg ++ concat [" " ++ arg | arg <- programArgs ldProg ]),
         ("GENERATE_DOT_DEPEND", if ghcVersion >= Version [6,9] []
                                 then "-dep-makefile $(odir)/.depend"
-                                else "-optdep-f -optdep$(odir)/.depend"),
-        ("MAX_COMMAND_LINE_SIZE", show maxCommandLineSize)
-
+                                else "-optdep-f -optdep$(odir)/.depend")
         ]
       mkRules srcdir = [
         "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.hs",
