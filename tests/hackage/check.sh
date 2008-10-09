@@ -1,7 +1,7 @@
 #!/bin/sh
 
-base_version=1.2.3.0
-test_version=1.3.10
+base_version=1.4.0.2
+test_version=1.5.6
 
 for setup in archive/*/*/Setup.hs archive/*/*/Setup.lhs; do
 
