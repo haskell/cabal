@@ -150,7 +150,7 @@ prepareTree :: Verbosity          -- ^verbosity
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> IO FilePath        -- ^the name of the dir created and populated
 
-prepareTree verbosity pkg_descr mb_lbi distPref tmpDir pps = do
+prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
   let targetDir = tmpDir </> tarBallName pkg_descr
   createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
@@ -208,6 +208,12 @@ prepareTree verbosity pkg_descr mb_lbi distPref tmpDir pps = do
   return targetDir
 
   where
+    pkg_descr = mapAllBuildInfo filterAutogenModule pkg_descr0
+    filterAutogenModule bi = bi {
+      otherModules = filter (/=autogenModule) (otherModules bi)
+    }
+    autogenModule = autogenModuleName pkg_descr0
+
     findInc [] f = die ("can't find include file " ++ f)
     findInc (d:ds) f = do
       let path = (d </> f)
@@ -311,15 +317,9 @@ prepareDir :: Verbosity -- ^verbosity
            -> [ModuleName]  -- ^Exposed modules
            -> BuildInfo
            -> IO ()
-prepareDir verbosity pkg distPref inPref pps modules bi
-    = do let searchDirs = hsSourceDirs bi ++ [autogenModulesDir]
-             autogenModulesDir = distPref </> "build" </> "autogen"
-             autogenFile = autogenModulesDir
-                       </> ModuleName.toFilePath (autogenModuleName pkg) <.> "hs"
-         -- the Paths_$pkgname module might be in the modules list. If it
-         -- turns out that resolves to the actual autogen file then we filter
-         -- it out because we do not want to put it into the tarball.
-         sources <- filter (/=autogenFile) `fmap` sequence
+prepareDir verbosity _pkg _distPref inPref pps modules bi
+    = do let searchDirs = hsSourceDirs bi
+         sources <- sequence
            [ let file = ModuleName.toFilePath module_
               in findFileWithExtension suffixes searchDirs file
              >>= maybe (notFound module_) return
@@ -365,3 +365,13 @@ printPackageProblems verbosity pkg_descr = do
 --
 tarBallName :: PackageDescription -> String
 tarBallName = display . packageId
+
+mapAllBuildInfo :: (BuildInfo -> BuildInfo)
+                -> (PackageDescription -> PackageDescription)
+mapAllBuildInfo f pkg = pkg {
+    library     = fmap mapLibBi (library pkg),
+    executables = fmap mapExeBi (executables pkg)
+  }
+  where
+    mapLibBi lib = lib { libBuildInfo = f (libBuildInfo lib) }
+    mapExeBi exe = exe { buildInfo    = f (buildInfo exe) }
