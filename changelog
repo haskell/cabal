@@ -1,14 +1,16 @@
 -*-change-log-*-
 
 1.5.x (current development version)
-	* Support for ghc-6.9 and 6.10
+	* Support for ghc-6.10
+	* Source control repositories can now be specified in .cabal files
+	* Bug report URLs can be now specified in .cabal files
 	* Wildcards now allowed in data-files and extra-source-files fields
 	* New syntactic sugar for dependencies "build-depends: foo ==1.2.*"
 	* New cabal_macros.h provides macros to test versions of dependencies
 	* Relocatable bindists now possible on unix via env vars
 	* New 'exposed' field allows packages to be not exposed by default
 	* Install dir flags can now use $os and $arch variables
-	* New --distdir flag allows multiple builds from a single sources dir
+	* New --builddir flag allows multiple builds from a single sources dir
 	* cc-options now only apply to .c files, not for -fvia-C
 	* cc-options are not longer propagated to dependent packages
 	* The cpp/cc/ld-options fields no longer use ',' as a separator
@@ -16,6 +18,7 @@
 	* New api for manipulating sets and graphs of packages
 	* Internal api improvements and code cleanups
 	* Minor improvements to the user guide
+	* Miscellaneous minor bug fixes
 
 1.4.0.2 Duncan Coutts <duncan@haskell.org> August 2008
 	* Fix executable stripping default
