@@ -1,11 +1,14 @@
-[Cabal home page](http://www.haskell.org/cabal/)
+The Cabal library package
+=========================
 
-Installation instructions for the Cabal library
-===============================================
+[Cabal home page](http://www.haskell.org/cabal/)
 
 If you also want the `cabal` command line program then you need
 the `cabal-install` package in addition to this library.
 
+
+Installation instructions for the Cabal library
+===============================================
 
 Installing as a user (no root or administer access)
 ---------------------------------------------------
@@ -16,6 +19,9 @@ Installing as a user (no root or administer access)
     ./Setup install
 
 Note the use of the `--user` flag at the configure step.
+
+Compiling Setup rather than using `runghc Setup` is much faster and works on
+Windows. For all packages other than Cabal itself it is fine to use `runghc`.
 
 This will install into `$HOME/.cabal/` on unix and into
 `$Documents and Settings\$User\Application Data\cabal\` on Windows
@@ -30,6 +36,9 @@ Installing as root / Administrator
     ./Setup configure
     ./Setup build
     sudo ./Setup install
+
+Compiling Setup rather than using `runghc Setup` is much faster and works on
+Windows. For all packages other than Cabal itself it is fine to use `runghc`.
 
 This will install into `/usr/local` on unix and on Windows it will
 install into `$ProgramFiles/Haskell`. If you want to install
@@ -55,6 +64,25 @@ or if you had Cabal installed just for your user account then:
 
     ghc-pkg unregister Cabal --user
 
+
+The `filepath` dependency
+=========================
+
+Cabal now uses the `filepath` package so that must be installed first.
+GHC-6.6.1 and later come with `filepath` however earlier versions do not by
+default. If you do not already have `filepath` then you need to install it. You
+can use any existing version of Cabal to do that. If you have neither Cabal or
+filepath then it is slightly harder but still possible:
+
+    cd Cabal
+    ghc -i../filepath --make Setup.lhs -o ../filepath/setup
+    cd ../filepath/
+    ./setup configure
+    ./setup build
+    ./setup install
+
+This installs filepath so you are then in a position to install Cabal by the
+normal method.
 
 Your Help
 =========
@@ -83,9 +111,9 @@ You can get the main development branch:
 
 > darcs get --partial http://darcs.haskell.org/cabal
 
-and you can get the stable 1.4 branch:
+and you can get the stable 1.6 branch:
 
-> darcs get --partial http://darcs.haskell.org/cabal-branches/cabal-1.4
+> darcs get --partial http://darcs.haskell.org/cabal-branches/cabal-1.6
 
 
 Credits
