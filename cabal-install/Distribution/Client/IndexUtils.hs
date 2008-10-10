@@ -45,6 +45,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
 import Data.Maybe  (catMaybes, fromMaybe)
+import Data.List   (isPrefixOf)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus))
@@ -113,7 +114,7 @@ readRepoIndex verbosity repo = handleNotFound $ do
     extractPrefs :: Tar.Entry -> Maybe [Dependency]
     extractPrefs entry
       | takeFileName (Tar.fileName entry) == "preferred-versions"
-      = Just . catMaybes . map simpleParse . lines
+      = Just . parsePreferredVersions
       . BS.Char8.unpack . Tar.fileContent $ entry
       | otherwise = Nothing
 
@@ -128,6 +129,12 @@ readRepoIndex verbosity repo = handleNotFound $ do
             ++ "' is missing. The repo is invalid."
         return mempty
       else ioError e
+
+parsePreferredVersions :: String -> [Dependency]
+parsePreferredVersions = catMaybes
+                       . map simpleParse
+                       . filter (not . isPrefixOf "--")
+                       . lines
 
 -- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
 --
