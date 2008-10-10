@@ -170,7 +170,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   invokeSetupScript (mkargs cabalLibVersion)
 
   where
-  workingDir       = fromMaybe "" (useWorkingDir options)
+  workingDir       = case fromMaybe "" (useWorkingDir options) of
+                       []  -> "."
+                       dir -> dir
   setupDir         = workingDir </> useDistPref options </> "setup"
   setupVersionFile = setupDir </> "setup" <.> "version"
   setupProgFile    = setupDir </> "setup" <.> exeExtension
