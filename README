@@ -84,8 +84,27 @@ filepath then it is slightly harder but still possible:
 This installs filepath so you are then in a position to install Cabal by the
 normal method.
 
+
+More Information
+================
+
+Please see the web site for the [user guide] and API documentation.
+There is some more information available on the [development wiki].
+
+[user guide]:       http://www.haskell.org/cabal/
+[development wiki]: http://hackage.haskell.org/trac/hackage/
+
+
+Bugs
+=======
+
+Please report bugs and wish-list items in our [bug tracker].
+
+[bug tracker]: http://hackage.haskell.org/trac/hackage/
+
+
 Your Help
-=========
+---------
 
 To help us in the next round of development work it would be
 enormously helpful to know from our users what their most pressing
@@ -97,8 +116,6 @@ yourself to the ticket's cc list so we can discuss requirements and
 keep you informed on progress. For feature requests it is very
 helpful if there is a description of how you would expect to
 interact with the new feature.
-
-[bug tracker]: http://hackage.haskell.org/trac/hackage/
 
 
 Code
