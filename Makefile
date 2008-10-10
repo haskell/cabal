@@ -58,7 +58,7 @@ hugsinstall: hugsbootstrap
 # documentation...
 
 haddock: $(HADDOCK_STAMP)
-$(HADDOCK_STAMP) : $(CONFIG_STAMP)
+$(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 	./setup haddock
 
 XSLTPROC=xsltproc
