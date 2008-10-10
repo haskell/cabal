@@ -268,8 +268,8 @@ instance Read ProgramConfiguration where
     [ (emptyProgramConfiguration { configuredProgs = Map.fromList s' }, r)
     | (s', r) <- readsPrec p s ]
 
--- | The Read/Show instance does not preserve all the unconfigured 'Programs'
--- because 'Program' is not in Read/Show because it contains functions. So to
+-- | The Read\/Show instance does not preserve all the unconfigured 'Programs'
+-- because 'Program' is not in Read\/Show because it contains functions. So to
 -- fully restore a deserialised 'ProgramConfiguration' use this function to add
 -- back all the known 'Program's.
 --
