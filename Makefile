@@ -113,10 +113,9 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	mkdir $(DISTLOC)/Cabal-$(VERSION)/doc
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
 	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
-	cp releaseNotes changelog $(DISTLOC)/Cabal-$(VERSION)/
+	cp changelog $(DISTLOC)/Cabal-$(VERSION)/
 	tar -C $(DISTLOC) -c Cabal-$(VERSION) -zf $(DISTLOC)/Cabal-$(VERSION).tar.gz
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc $(DISTLOC)/
-	mv $(DISTLOC)/Cabal-$(VERSION)/releaseNotes $(DISTLOC)/
 	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
 	@echo "Cabal tarball built: $(DIST_STAMP)"
