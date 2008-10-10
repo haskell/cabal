@@ -1,5 +1,5 @@
 Name: Cabal
-Version: 1.5.6
+Version: 1.6.0.0
 Copyright: 2003-2006, Isaac Jones
            2005-2008, Duncan Coutts
 License: BSD3
@@ -55,7 +55,7 @@ Library
   Build-Depends: filepath >= 1 && < 1.2
 
   GHC-Options: -Wall
-  CPP-Options: "-DCABAL_VERSION=1,5,6"
+  CPP-Options: "-DCABAL_VERSION=1,6,0,0"
   nhc98-Options: -K4M
 
   Exposed-Modules:
