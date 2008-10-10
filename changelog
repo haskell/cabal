@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-1.5.x (current development version)
+1.6.0.0 Duncan Coutts <duncan@haskell.org> October 2008
 	* Support for ghc-6.10
 	* Source control repositories can now be specified in .cabal files
 	* Bug report URLs can be now specified in .cabal files
