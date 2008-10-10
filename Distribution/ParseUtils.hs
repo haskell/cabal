@@ -54,7 +54,7 @@ module Distribution.ParseUtils (
         Field(..), fName, lineNo,
         FieldDescr(..), ppField, ppFields, readFields,
         showFields, showSingleNamedField, parseFields,
-        parseFilePathQ, parseTokenQ,
+        parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
         parseTestedWithQ, parseLicenseQ, parseExtensionQ,
