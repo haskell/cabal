@@ -218,13 +218,13 @@ binfoFieldDescrs =
            disp               parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , spaceListField "cpp-options"
-           showToken          parseTokenQ
+           showToken          parseTokenQ'
            cppOptions          (\val binfo -> binfo{cppOptions=val})
  , spaceListField "cc-options"
-           showToken          parseTokenQ
+           showToken          parseTokenQ'
            ccOptions          (\val binfo -> binfo{ccOptions=val})
  , spaceListField "ld-options"
-           showToken          parseTokenQ
+           showToken          parseTokenQ'
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
            disp               parsePkgconfigDependency
