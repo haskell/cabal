@@ -8,7 +8,7 @@ Author: Isaac Jones <ijones@syntaxpolice.org>
         Duncan Coutts <duncan@haskell.org>
 Maintainer: cabal-devel@haskell.org
 Homepage: http://www.haskell.org/cabal/
-bug-reports: http://hackage.haskell.org/trac/hackage/
+--bug-reports: http://hackage.haskell.org/trac/hackage/
 Synopsis: A framework for packaging Haskell software
 Description:
         The Haskell Common Architecture for Building Applications and
@@ -27,9 +27,9 @@ Extra-Source-Files:
         Distribution/Simple/GHC/mkGHCMakefile.sh
         Distribution/Simple/GHC/Makefile.in
 
-source-repository head
-  type:     darcs
-  location: http://darcs.haskell.org/cabal/
+--source-repository head
+--  type:     darcs
+--  location: http://darcs.haskell.org/cabal/
 
 Flag base4
     Description: Choose the even newer, even smaller, split-up base package.
