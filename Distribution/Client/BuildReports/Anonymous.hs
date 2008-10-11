@@ -114,8 +114,10 @@ data InstallOutcome
    | BuildFailed
    | InstallFailed
    | InstallOk
+  deriving Eq
 
 data Outcome = NotTried | Failed | Ok
+  deriving Eq
 
 new :: OS -> Arch -> CompilerId -- -> Version
     -> ConfiguredPackage -> BR.BuildResult
