@@ -1,38 +1,129 @@
-== cabal install ==
+The cabal-install package
+=========================
 
-The automatic package manager for Haskell!
+[Cabal home page](http://www.haskell.org/cabal/)
 
-Intended usage:
+The `cabal-install` package provides a command line tool called `cabal`. The
+tool uses the `Cabal` library and provides a convenient user interface to the
+Cabal/Hackage package build and distribution system. It can build and install
+both local and remote packages, including dependencies.
 
-  cabal install xmonad
 
-Just works. Defaults make sense.
+Installation instructions for the cabal-install command line tool
+=================================================================
 
-It also has all the other commands that runhaskell Setup.hs supports. Eg
+The `cabal-install` package requires a number of other packages, most of which
+come with a standard ghc installation. It requires the `network` package, which
+is sometimes packaged separately by Linux distributions, for example on
+debian or ubuntu it is in "libghc6-network-dev".
 
-  cabal configure
-  cabal build
-  cabal install
-  cabal haddock
-  cabal sdist
-  cabal clean
+It requires three other Haskell packages that are not always installed:
 
-See cabal --help for the full list.
+ * Cabal  (1.4 or later)
+ * HTTP
+ * zlib
 
-There are also these extra commands:
+All of these are available from [Hackage](http://hackage.haskell.org).
 
-  cabal update         Updates the packages list from the hackage server
-  cabal list [pkgs]    List packages with the given search terms in their name
-  cabal upgrade [pkgs] Like install but also upgrade all dependencies
-  cabal upgrade        Upgrade all installed packages
-  cabal upload  [tar]  Upload a package tarball to the hackage server
-  cabal check          Check the package for common mistakes
+In future, cabal-install will be part of the Haskell Platform so will not need
+to be installed separately. In the mean time however you have to install it
+manually. Since it is just an ordinary Cabal package it can be built in the
+standard way, but to make it a bit easier we have partly automated the process:
 
-== Dependences ==
 
-Dependencies on standard libs:
-   base >= 2.1, process, directory, pretty, bytestring >= 0.9
-   network, filepath >= 1.0, Cabal >=1.3.11 && <1.5
+Quickstart on Unix systems
+--------------------------
 
-Dependencies on other libs:
-   zlib >= 0.4, HTTP >= 3000.0 && < 3001.2
+As a convenience for users on Unix systems there is a bootstrap.sh script which
+will download and install each of the dependencies in turn.
+
+    $ ./bootstrap.sh
+
+It will download and install the above three dependencies. The script will
+install the library packages into `$HOME/.cabal/` and the `cabal` program will
+be installed into `$HOME/.cabal/bin/`.
+
+You then have two choices:
+
+ * put `$HOME/.cabal/bin` on your `$PATH`
+ * move the `cabal` program elsewhere and edit the `$HOME/.cabal/config` file
+   and set the `symlink-bindir` entry to point to an alternative location where
+   that is on your `$PATH`, eg a `$HOME/bin` directory.
+
+
+Quickstart on Windows systems
+-----------------------------
+
+For Windows users we hope to provide a pre-compiled `cabal.exe` program shortly.
+In the mean time you have to build the three dependencies in [the standard way].
+
+[the standard way]:
+  http://haskell.org/haskellwiki/Cabal/How_to_install_a_Cabal_package
+
+
+Using cabal-install
+===================
+
+There are two sets of commands: commands for working with a local project build
+tree and ones for working with distributed released packages from hackage.
+
+For a list of the full set of commands and the flags for each command see
+
+    $ cabal --help
+
+
+Commands for developers for local build trees
+---------------------------------------------
+
+The commands for local project build trees are almost exactly the same as the
+`runghc Setup` command line interface that many people are already familiar
+with. In particular there are the commands
+
+    cabal configure
+    cabal build
+    cabal haddock
+    cabal clean
+    cabal sdist
+
+The `install` command is somewhat different. It is an all-in-one operation. If
+you run
+
+    $ cabal install
+
+in your build tree it will configure, build and install. It takes all the flags
+that `configure` takes such as `--global` and `--prefix`.
+
+In addition, if any dependencies are not installed it will download and install
+them. If can also rebuild packages to ensure a consistent set of dependencies.
+
+
+Commands for released hackage packages
+--------------------------------------
+
+    $ cabal update
+
+This command gets the latest list of packages from the hackage server.
+Currently this command has to be run manually occasionally, in particular if
+you want to install a newly released package. 
+
+
+    $ cabal install xmonad
+
+This is the eponymous command. It installs one or more named packages (and all
+their dependencies) from hackage.
+
+By default it installs the latest available version however you can optionally
+specify exact versions or version ranges. For example `cabal install alex-2.2`
+or `cabal install parsec < 3`.
+
+    $ cabal upgrade xmonad
+
+This is a variation on the `install` command. Both mean to install the latest
+version, the only difference is in the treatment of dependencies. The `install`
+command tries to use existing installed versions of dependent packages while
+the `upgrade` command tries to upgrade all the dependencies too.
+
+    $ cabal list xml
+
+This does a search of the installed and available packages. It does a
+case-insensitive substring match on the package name.
