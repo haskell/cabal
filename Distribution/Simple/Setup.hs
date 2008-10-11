@@ -65,6 +65,7 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
+  buildVerbose,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   MakefileFlags(..), emptyMakefileFlags, defaultMakefileFlags, makefileCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -1152,6 +1153,10 @@ data BuildFlags = BuildFlags {
     buildVerbosity   :: Flag Verbosity
   }
   deriving Show
+
+{-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
+buildVerbose :: BuildFlags -> Verbosity
+buildVerbose = fromFlagOrDefault normal . buildVerbosity
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
