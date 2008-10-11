@@ -23,7 +23,7 @@ module Distribution.Client.BuildReports.Anonymous (
     parse,
     parseList,
     show,
-    showList,
+--    showList,
   ) where
 
 import Distribution.Client.Types
