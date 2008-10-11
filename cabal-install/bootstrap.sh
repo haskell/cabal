@@ -6,8 +6,8 @@
 # HTTP packages. It then installs cabal-install itself.
 # It expects to be run inside the cabal-install directory.
 
-CABAL_VER="1.4.0.2"
-HTTP_VER="3001.0.4"
+CABAL_VER="1.6.0.1"
+HTTP_VER="3001.1.3"
 ZLIB_VER="0.4.0.4"
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
