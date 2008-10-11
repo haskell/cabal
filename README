@@ -72,12 +72,21 @@ Cabal now uses the `filepath` package so that must be installed first.
 GHC-6.6.1 and later come with `filepath` however earlier versions do not by
 default. If you do not already have `filepath` then you need to install it. You
 can use any existing version of Cabal to do that. If you have neither Cabal or
-filepath then it is slightly harder but still possible:
+filepath then it is slightly harder but still possible.
+
+Unpack Cabal and filepath into separate directories. For example:
+
+    tar -xzf filepath-1.1.0.0.tar.gz
+    tar -xzf Cabal-1.6.0.0.tar.gz
+
+    # rename to make the following instructions simpler:
+    mv filepath-1.1.0.0/ filepath/
+    mv Cabal-1.6.0.0/ Cabal/
 
     cd Cabal
-    ghc -i../filepath --make Setup.lhs -o ../filepath/setup
+    ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
     cd ../filepath/
-    ./setup configure
+    ./setup configure --user
     ./setup build
     ./setup install
 
