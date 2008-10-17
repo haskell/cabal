@@ -963,7 +963,9 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
     unless (fromFlag $ copyInPlace flags) $ do
         -- copy .hi files over:
         let verbosity = fromFlag (copyVerbosity flags)
-            copy src dst n = copyFileVerbose verbosity (src </> n) (dst </> n)
+            copy src dst n = do
+              createDirectoryIfMissingVerbose verbosity True dst
+              copyFileVerbose verbosity (src </> n) (dst </> n)
             copyModuleFiles ext =
                 smartCopySources verbosity [builtDir] targetDir
                                  (libModules pkg) [ext]
