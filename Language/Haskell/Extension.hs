@@ -60,8 +60,8 @@ import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 --
 -- * also to the 'knownExtensions' list below.
 --
--- * If the first character of the new extension is outside the range 'A' - 'U'
---   (ie 'V'-'Z' or any non-uppercase-alphabetical char) then update the bounds
+-- * If the first character of the new extension is outside the range 'A' - 'V'
+--   (ie 'W'-'Z' or any non-uppercase-alphabetical char) then update the bounds
 --   of the 'extensionTable' below.
 
 -- |This represents language extensions beyond Haskell 98 that are
@@ -130,6 +130,13 @@ data Extension
   -- > import "network" Network.Socket
   | PackageImports
 
+  | ImpredicativeTypes
+  | NewQualifiedOperators
+  | PostfixOperators
+  | QuasiQuotes
+  | TransformListComp
+  | ViewPatterns
+
   | UnknownExtension String
   deriving (Show, Read, Eq)
 
@@ -191,6 +198,12 @@ knownExtensions =
   , DeriveDataTypeable
   , ConstrainedClassMethods
   , PackageImports
+  , ImpredicativeTypes
+  , NewQualifiedOperators
+  , PostfixOperators
+  , QuasiQuotes
+  , TransformListComp
+  , ViewPatterns
   ]
 
 instance Text Extension where
@@ -220,7 +233,7 @@ classifyExtension string = UnknownExtension string
 
 extensionTable :: Array Char [(String, Extension)]
 extensionTable =
-  accumArray (flip (:)) [] ('A', 'U')
+  accumArray (flip (:)) [] ('A', 'V')
     [ (head str, (str, extension))
     | extension <- knownExtensions
     , let str = show extension ]
