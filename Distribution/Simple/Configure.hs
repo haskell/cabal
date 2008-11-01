@@ -583,11 +583,12 @@ configurePkgconfigPackages verbosity pkg_descr conf
       return exe { buildInfo = buildInfo exe `mappend` bi }
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
-    pkgconfigBuildInfo pkgdeps = do
-      let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
+    pkgconfigBuildInfo pkgdeps | null pkgs = return mempty
+                               | otherwise = do
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs"   : pkgs)
       return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))
+      where pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
 
 -- | Makes a 'BuildInfo' from C compiler and linker flags.
 --
