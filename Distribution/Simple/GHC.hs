@@ -636,7 +636,7 @@ build pkg_descr lbi verbosity = do
                          ++ constructGHCCmdLine lbi exeBi exeDir verbosity
                          ++ [exeDir </> x | x <- cObjs]
                          ++ [srcMainFile]
-                         ++ PD.ldOptions exeBi
+                         ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
                          ++ ["-l"++lib | lib <- extraLibs exeBi]
                          ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
                          ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
