@@ -21,7 +21,7 @@ module Distribution.Simple.Build.PathsModule (
 import Distribution.System
          ( OS(Windows), buildOS )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor )
+         ( CompilerFlavor(..), compilerFlavor, compilerVersion )
 import Distribution.Package
          ( packageName, packageVersion )
 import Distribution.PackageDescription
@@ -34,6 +34,8 @@ import Distribution.Simple.BuildPaths
          ( autogenModuleName )
 import Distribution.Text
          ( display )
+import Distribution.Version
+         ( Version(..), orLaterVersion, withinRange )
 
 import System.FilePath
          ( pathSeparator )
@@ -48,8 +50,9 @@ generate :: PackageDescription -> LocalBuildInfo -> String
 generate pkg_descr lbi =
    let pragmas
         | absolute || isHugs = ""
+        | supports_language_pragma =
+          "{-# LANGUAGE ForeignFunctionInterface #-}\n"
         | otherwise =
-          "{-# LANGUAGE ForeignFunctionInterface #-}\n" ++
           "{-# OPTIONS_GHC -fffi #-}\n"++
           "{-# OPTIONS_JHC -fffi #-}\n"
 
@@ -166,6 +169,11 @@ generate pkg_descr lbi =
           | otherwise = get_prefix_win32
 
         path_sep = show [pathSeparator]
+
+        supports_language_pragma =
+          compilerFlavor (compiler lbi) == GHC &&
+            (compilerVersion (compiler lbi)
+              `withinRange` orLaterVersion (Version [6,6,1] []))
 
 get_prefix_win32 :: String
 get_prefix_win32 =
