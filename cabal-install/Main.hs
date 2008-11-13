@@ -22,6 +22,7 @@ import Distribution.Client.Setup
          , ListFlags(..), listCommand
          , UploadFlags(..), uploadCommand
          , reportCommand
+         , unpackCommand, UnpackFlags(..)
          , parsePackageArgs, configPackageDB' )
 import Distribution.Simple.Setup
          ( BuildFlags(..), buildCommand
@@ -48,6 +49,7 @@ import Distribution.Client.Check as Check   (check)
 --import Distribution.Client.Clean            (clean)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
+import Distribution.Client.Unpack           (unpack)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Program (defaultProgramConfiguration)
@@ -114,6 +116,7 @@ mainWorker args =
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
       ,reportCommand          `commandAddAction` reportAction
+      ,unpackCommand          `commandAddAction` unpackAction
       ,wrapperAction (buildCommand defaultProgramConfiguration)
                      buildVerbosity    buildDistPref
       ,wrapperAction copyCommand
@@ -290,6 +293,13 @@ reportAction verbosityFlag extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
 
   Upload.report verbosity (globalRepos (savedGlobalFlags config))
+
+unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
+unpackAction flags extraArgs globalFlags = do
+  pkgs <- either die return (parsePackageArgs extraArgs)
+  let verbosity = fromFlag (unpackVerbosity flags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  unpack flags (globalRepos (savedGlobalFlags config)) pkgs
 
 win32SelfUpgradeAction :: [String] -> IO ()
 win32SelfUpgradeAction (pid:path:rest) =
