@@ -22,6 +22,7 @@ module Distribution.Client.Setup
     , checkCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand
+    , unpackCommand, UnpackFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -271,6 +272,46 @@ reportCommand = CommandUI {
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbosity id const]
   }
+
+-- ------------------------------------------------------------
+-- * Unpack flags
+-- ------------------------------------------------------------
+
+data UnpackFlags = UnpackFlags {
+      unpackDestDir :: Flag FilePath,
+      unpackVerbosity :: Flag Verbosity
+    }
+
+defaultUnpackFlags :: UnpackFlags
+defaultUnpackFlags = UnpackFlags {
+    unpackDestDir = mempty,
+    unpackVerbosity = toFlag normal
+   }
+
+unpackCommand :: CommandUI UnpackFlags
+unpackCommand = CommandUI {
+    commandName         = "unpack",
+    commandSynopsis     = "Unpacks packages for user inspection.",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "unpack",
+    commandDefaultFlags = mempty,
+    commandOptions      = \_ -> [
+        optionVerbosity unpackVerbosity (\v flags -> flags { unpackVerbosity = v })
+
+       ,option "d" ["destdir"]
+         "where to unpack the packages, defaults to the current directory."
+         unpackDestDir (\v flags -> flags { unpackDestDir = v })
+         (reqArgFlag "PATH")
+       ]
+  }
+
+instance Monoid UnpackFlags where
+  mempty = defaultUnpackFlags
+  mappend a b = UnpackFlags {
+     unpackDestDir = combine unpackDestDir
+    ,unpackVerbosity = combine unpackVerbosity
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * List flags
