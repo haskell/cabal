@@ -43,7 +43,7 @@ import Distribution.Package
 import Distribution.Version
          ( VersionRange(AnyVersion), orLaterVersion )
 import Distribution.Compiler
-         ( CompilerId )
+         ( CompilerId(..), CompilerFlavor(LHC) )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
@@ -155,7 +155,9 @@ dependencyResolver
   -> Progress String String InstallPlan
 dependencyResolver resolver os arch comp installed available pref deps =
   let installed' = hideBrokenPackages installed
-      available' = hideBasePackage available
+      available' = case comp of -- Ugly hack to support LHC.
+                     CompilerId LHC _ -> available
+                     _                -> hideBasePackage available
    in fmap toPlan
     $ resolver os arch comp installed' available' preference deps
 
