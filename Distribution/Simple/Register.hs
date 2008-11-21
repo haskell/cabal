@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            absoluteInstallDirs)
 import Distribution.Simple.BuildPaths (haddockName)
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
+         ( CompilerFlavor(..), compilerFlavor, compilerVersion, PackageDB(..) )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram)
@@ -80,6 +80,7 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
          , showInstalledPackageInfo )
+import qualified Distribution.Simple.LHC as LHC
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
@@ -174,6 +175,35 @@ register pkg_descr lbi regFlags
         createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
         copyFileVerbose verbosity (installedPkgConfigFile distPref)
             (libdir installDirs </> "package.conf")
+      LHC -> do
+        (globalDir, userDir) <- LHC.getLhcLibDirsFromVersion (Just (compilerVersion (compiler lbi)))
+        let config_flags = [ "--force", "--no-user-package-conf", "--global-conf="++globalDir </> "package.conf"
+                           , "--package-conf=" ++ case packageDB of
+                               SpecificPackageDB path -> path
+                               _ -> userDir </> "package.conf"]
+
+        let instConf | genPkgConf = genPkgConfigFile
+                     | inplace    = inplacePkgConfigFile distPref
+                     | otherwise  = installedPkgConfigFile distPref
+
+        when (genPkgConf || not genScript) $ do
+          info verbosity ("create " ++ instConf)
+          writeInstalledConfig distPref pkg_descr lbi inplace (Just instConf)
+
+        let register_flags   = let conf = if genScript && not isWindows
+                                             then ["-"]
+                                             else [instConf]
+                               in "update" : conf
+
+        let allFlags = config_flags ++ register_flags
+        let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
+
+        case () of
+          _ | genPkgConf -> return ()
+            | genScript ->
+              do cfg <- showInstalledConfig distPref pkg_descr lbi inplace
+                 rawSystemPipe pkgTool regScriptLocation cfg allFlags
+          _ -> rawSystemProgram verbosity pkgTool allFlags
       JHC -> notice verbosity "registering for JHC (nothing to do)"
       NHC -> notice verbosity "registering nhc98 (nothing to do)"
       _   -> die "only registering with GHC/Hugs/jhc/nhc98 is implemented"

@@ -331,6 +331,7 @@ configureOptions showOrParseArgs =
          (choiceOpt [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
                     , (Flag NHC, ([] , ["nhc98"]), "compile with NHC")
                     , (Flag JHC, ([] , ["jhc"]), "compile with JHC")
+                    , (Flag LHC, ([] , ["lhc"]), "compile with LHC")
                     , (Flag Hugs,([] , ["hugs"]), "compile with Hugs")])
 
       ,option "w" ["with-compiler"]

@@ -60,6 +60,7 @@ module Distribution.Simple.Build (
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
+import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
@@ -114,6 +115,7 @@ build pkg_descr lbi flags suffixes = do
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.build  pkg_descr lbi verbosity
     JHC  -> JHC.build  pkg_descr lbi verbosity
+    LHC  -> LHC.build  pkg_descr lbi verbosity
     Hugs -> Hugs.build pkg_descr lbi verbosity
     NHC  -> NHC.build  pkg_descr lbi verbosity
     _    -> die ("Building is not supported with this compiler.")

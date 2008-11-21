@@ -63,6 +63,7 @@ import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.JHC  as JHC
+import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad (when, unless)
@@ -162,6 +163,8 @@ install pkg_descr lbi flags = do
                   GHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
+     LHC  -> do withLib pkg_descr () $ LHC.installLib verbosity libPref buildPref pkg_descr
+                withExe pkg_descr $ LHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi

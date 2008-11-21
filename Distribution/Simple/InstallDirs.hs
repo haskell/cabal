@@ -217,7 +217,8 @@ type InstallDirTemplates = InstallDirs PathTemplate
 defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
 defaultInstallDirs comp userInstall hasLibs = do
   windowsProgramFilesDir <- getWindowsProgramFilesDir
-  userInstallPrefix <- getAppUserDataDirectory "cabal"
+  userInstallPrefix      <- getAppUserDataDirectory "cabal"
+  lhcPrefix              <- getAppUserDataDirectory "lhc"
   return $ fmap toPathTemplate $ InstallDirs {
       prefix       = if userInstall
                        then userInstallPrefix
@@ -227,10 +228,14 @@ defaultInstallDirs comp userInstall hasLibs = do
       bindir       = "$prefix" </> "bin",
       libdir       = case buildOS of
         Windows   -> "$prefix"
-        _other    -> "$prefix" </> "lib",
+        _other    -> case comp of
+                       LHC    -> if userInstall then lhcPrefix
+                                                else "/usr/local/lib"
+                       _other -> "$prefix" </> "lib",
       libsubdir    = case comp of
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
+           LHC    -> "$compiler"
            _other -> "$pkgid" </> "$compiler",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
