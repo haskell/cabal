@@ -116,6 +116,7 @@ import Distribution.Verbosity
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
+import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
@@ -340,6 +341,7 @@ configure (pkg_descr0, pbi) cfg
         dep_pkgs <- case flavor of
           GHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
           JHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
+          LHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
           _   -> return bogusDependencies
 
         packageDependsIndex <-
@@ -515,6 +517,7 @@ getInstalledPackages verbosity comp packageDb progconf = do
   case compilerFlavor comp of
     GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
     JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDb progconf
+    LHC -> Just `fmap` LHC.getInstalledPackages verbosity packageDb progconf
     _   -> return Nothing
 
 -- -----------------------------------------------------------------------------
@@ -631,6 +634,8 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
   case hcFlavor of
       GHC  -> GHC.configure  verbosity hcPath hcPkg conf
       JHC  -> JHC.configure  verbosity hcPath hcPkg conf
+      LHC  -> do (_,ghcConf) <- GHC.configure  verbosity Nothing hcPkg conf
+                 LHC.configure  verbosity hcPath Nothing ghcConf
       Hugs -> Hugs.configure verbosity hcPath hcPkg conf
       NHC  -> NHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
