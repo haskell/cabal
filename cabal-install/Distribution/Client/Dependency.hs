@@ -43,7 +43,7 @@ import Distribution.Package
 import Distribution.Version
          ( VersionRange(AnyVersion), orLaterVersion )
 import Distribution.Compiler
-         ( CompilerId(..), CompilerFlavor(LHC) )
+         ( CompilerId(..) )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Simple.Utils (comparing)
@@ -142,8 +142,11 @@ hideBrokenPackages index =
     check p x = assert (p x) x
 
 hideBasePackage :: Package p => PackageIndex p -> PackageIndex p
-hideBasePackage = PackageIndex.deletePackageName (PackageName "base")
+hideBasePackage = PackageIndex.deletePackageName basePackage
                 . PackageIndex.deletePackageName (PackageName "ghc-prim")
+
+basePackage :: PackageName
+basePackage = PackageName "base"
 
 dependencyResolver
   :: DependencyResolver
@@ -155,9 +158,16 @@ dependencyResolver
   -> Progress String String InstallPlan
 dependencyResolver resolver os arch comp installed available pref deps =
   let installed' = hideBrokenPackages installed
-      available' = case comp of -- Ugly hack to support LHC.
-                     CompilerId LHC _ -> available
-                     _                -> hideBasePackage available
+      -- If the user is not explicitly asking to upgrade base then lets
+      -- prevent that from happening accidentally since it is usually not what
+      -- you want and it probably does not work anyway. We do it by hiding the
+      -- available versions of it. That forces the dep solver to pick the
+      -- installed version(s).
+      available' | all (not . isBase) deps = hideBasePackage available
+                 | otherwise               = available
+        where isBase (UnresolvedDependency (Dependency pkg _) _) =
+                pkg == basePackage
+
    in fmap toPlan
     $ resolver os arch comp installed' available' preference deps
 
