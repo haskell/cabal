@@ -113,7 +113,7 @@ downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
 downloadIndex verbosity repo cacheDir = do
   let uri = (remoteRepoURI repo) {
               uriPath = uriPath (remoteRepoURI repo)
-	                  `FilePath.Posix.combine` "00-index.tar.gz"
+                          `FilePath.Posix.combine` "00-index.tar.gz"
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
