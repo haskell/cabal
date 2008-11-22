@@ -212,10 +212,10 @@ guessGhcPkgFromGhcPath ghcProg verbosity
 --
 configureToolchain :: ConfiguredProgram -> ProgramConfiguration
                                         -> ProgramConfiguration
-configureToolchain ghcProg = 
+configureToolchain ghcProg =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgram (baseDir </> "gcc.exe"),
-      programPostConf     = configureGcc 
+      programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
       programFindLocation = findProg ldProgram (libDir </> "ld.exe"),
@@ -862,7 +862,7 @@ makefile pkg_descr lbi flags = do
   hPutStrLn h $ unlines rules
    -- put the extra suffix rules *after* the suffix rules in the template.
    -- the suffix rules in the tempate handle source files that have been
-   -- preprocessed and generated into distdir, whereas the suffix rules 
+   -- preprocessed and generated into distdir, whereas the suffix rules
    -- here point to the source dir.  We want the distdir to override the
    -- source dir, just in case the user has left a preprocessed version
    -- of a source file lying around in the source dir.  Also this matches
@@ -894,17 +894,17 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
          createDirectoryIfMissingVerbose verbosity True binDir
          withExe pkg_descr $ \Executable { exeName = e } -> do
              let exeFileName = e <.> exeExtension
-		 exeDynFileName = e <.> "dyn" <.> exeExtension
+                 exeDynFileName = e <.> "dyn" <.> exeExtension
                  fixedExeBaseName = progprefix ++ e ++ progsuffix
                  installBinary dest = do
                      copyFileVerbose verbosity
                                      (buildPref </> e </> exeFileName) (dest <.> exeExtension)
-		     exists <- doesFileExist (buildPref </> e </> exeDynFileName)
-		     if exists then
-			   copyFileVerbose verbosity
-			    (buildPref </> e </> exeDynFileName) (dest <.> "dyn" <.> exeExtension)
-		        else
-			    return ()
+                     exists <- doesFileExist (buildPref </> e </> exeDynFileName)
+                     if exists then
+                           copyFileVerbose verbosity
+                            (buildPref </> e </> exeDynFileName) (dest <.> "dyn" <.> exeExtension)
+                        else
+                            return ()
                      stripExe verbosity lbi exeFileName (dest <.> exeExtension)
              if useWrapper
                  then do
