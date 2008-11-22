@@ -550,11 +550,11 @@ installUnpackedPackage verbosity scriptOptions miscOptions
       logFileHandle <- case useLogFile of
         Nothing          -> return Nothing
         Just mkLogFileName -> do
-	  let logFileName = mkLogFileName (packageId pkg)
-	      logDir      = takeDirectory logFileName
-	  unless (null logDir) $ createDirectoryIfMissing True logDir
-	  logFile <- openFile logFileName AppendMode
-	  return (Just logFile)
+          let logFileName = mkLogFileName (packageId pkg)
+              logDir      = takeDirectory logFileName
+          unless (null logDir) $ createDirectoryIfMissing True logDir
+          logFile <- openFile logFileName AppendMode
+          return (Just logFile)
 
       setupWrapper verbosity
         scriptOptions { useLoggingHandle = logFileHandle
