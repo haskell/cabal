@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.7.x (current development version)
+	* Support for LHC
+
 1.6.0.2 (next stable release)
 	* Added language extensions present in GHC-6.10
 	* Fix warnings in Path_pkgname.hs module on Windows
