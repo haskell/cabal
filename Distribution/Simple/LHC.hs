@@ -46,45 +46,38 @@ module Distribution.Simple.LHC (
  ) where
 
 import Distribution.PackageDescription as PD
-                                ( PackageDescription(..), BuildInfo(..),
-                                  withLib,
-                                  Executable(..), withExe, Library(..),
-                                  libModules, hcOptions )
+         ( PackageDescription(..), BuildInfo(..), hcOptions
+         , Executable(..), withExe, Library(..), withLib )
 import Distribution.InstalledPackageInfo
-                                ( InstalledPackageInfo, emptyInstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(package) )
+         ( InstalledPackageInfo )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-                                ( LocalBuildInfo(..) )
+         ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
-                                ( autogenModulesDir, exeExtension )
+         ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
          , PackageDB(..), Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Simple.Program     ( ConfiguredProgram(..), lhcProgram,
-                                  ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, lookupProgram, userSpecifyArgs,
-                                  rawSystemProgram, rawSystemProgramStdoutConf )
-import Distribution.Version     ( VersionRange(AnyVersion) )
-import Data.Version             ( Version(..) )
+import Distribution.Simple.Program
+         ( ConfiguredProgram(..), lhcProgram, ProgramConfiguration
+         , userMaybeSpecifyPath, requireProgram, lookupProgram
+         , userSpecifyArgs, rawSystemProgram )
+import Distribution.Version
+         ( Version(..), VersionRange(AnyVersion) )
 import Distribution.Package
          ( Package(..), packageName, packageVersion )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
-        , die, info, intercalate )
-import System.FilePath          ( (</>) )
-import System.Directory         ( getAppUserDataDirectory )
+        , info, intercalate )
 import Distribution.Verbosity
 import Distribution.Text
-         ( Text(parse), display )
-import Distribution.Compat.ReadP
-    ( readP_to_S, many, skipSpaces )
+         ( display )
 
+import System.FilePath          ( (</>) )
+import System.Directory         ( getAppUserDataDirectory )
 import Data.List                ( nub )
-import Data.Char                ( isSpace )
 
 import qualified Distribution.Simple.GHC as GHC
 
@@ -115,10 +108,12 @@ lhcLanguageExtensions =
     ,(CPP                        , "-fcpp")
     ]
 
+getLhcLibDirs :: Verbosity -> ProgramConfiguration -> IO (String, String)
 getLhcLibDirs verbosity conf
-    = do (lhc,conf') <- requireProgram verbosity lhcProgram AnyVersion conf
+    = do (lhc,_conf') <- requireProgram verbosity lhcProgram AnyVersion conf
          getLhcLibDirsFromVersion (programVersion lhc)
 
+getLhcLibDirsFromVersion :: Maybe Version -> IO (String, String)
 getLhcLibDirsFromVersion (Just (Version (x:y:_) tags))
     = do let v = Version [x,y] tags
          app <- getAppUserDataDirectory "lhc"
@@ -135,6 +130,7 @@ getInstalledPackages verbosity packagedb conf = do
                    , "--package-conf=" ++ case packagedb of
                        SpecificPackageDB path -> path
                        _ -> userDir </> "package.conf"]
+   --FIXME: surely this is wrong. Does LHC really use ghc-pkg?
    GHC.getInstalledPackages verbosity GlobalPackageDB $ userSpecifyArgs "ghc-pkg" extraArgs conf
 
 -- -----------------------------------------------------------------------------
