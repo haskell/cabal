@@ -131,7 +131,7 @@ getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
                     -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity packagedb conf = do
    (globalDir, userDir) <- getLhcLibDirs verbosity conf
-   let extraArgs = [ "--no-user-package-conf", "--global-conf="++globalDir </> "package.conf"
+   let extraArgs = [ "--global-conf="++globalDir </> "package.conf"
                    , "--package-conf=" ++ case packagedb of
                        SpecificPackageDB path -> path
                        _ -> userDir </> "package.conf"]

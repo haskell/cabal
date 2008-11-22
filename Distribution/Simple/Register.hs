@@ -177,7 +177,7 @@ register pkg_descr lbi regFlags
             (libdir installDirs </> "package.conf")
       LHC -> do
         (globalDir, userDir) <- LHC.getLhcLibDirsFromVersion (Just (compilerVersion (compiler lbi)))
-        let config_flags = [ "--force", "--no-user-package-conf", "--global-conf="++globalDir </> "package.conf"
+        let config_flags = [ "--force", "--global-conf="++globalDir </> "package.conf"
                            , "--package-conf=" ++ case packageDB of
                                SpecificPackageDB path -> path
                                _ -> userDir </> "package.conf"]
