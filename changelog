@@ -1,5 +1,14 @@
 -*-change-log-*-
 
+1.6.0.2 (next stable release)
+	* Added language extensions present in GHC-6.10
+	* Fix warnings in Path_pkgname.hs module on Windows
+	* Fix for exotic flags in ld-options field
+	* Fix for using pkg-config in a package with a lib and an executable
+
+1.6.0.1 Duncan Coutts <duncan@haskell.org> October 2008
+	* Export a compat function to help alex and happy
+
 1.6.0.0 Duncan Coutts <duncan@haskell.org> October 2008
 	* Support for ghc-6.10
 	* Source control repositories can now be specified in .cabal files
