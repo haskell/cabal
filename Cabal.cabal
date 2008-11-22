@@ -54,8 +54,10 @@ Library
                    pretty     >= 1   && < 1.1
   Build-Depends: filepath >= 1 && < 1.2
 
-  GHC-Options: -Wall
-  CPP-Options: "-DCABAL_VERSION=1,6,0,1"
+  ghc-options: -Wall
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
+  cpp-options: "-DCABAL_VERSION=1,7,0"
   nhc98-Options: -K4M
 
   Exposed-Modules:
