@@ -34,7 +34,9 @@ Executable cabal
     Main-Is:            Main.hs
     -- We want assertion checking on even if people build with -O
     -- although it is expensive, we want to catch problems early:
-    Ghc-Options:        -Wall -fno-ignore-asserts
+    ghc-options:        -Wall -fno-ignore-asserts
+    if impl(ghc >= 6.8)
+      ghc-options: -fwarn-tabs
     Other-Modules:
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
