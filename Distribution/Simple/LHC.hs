@@ -130,7 +130,7 @@ getInstalledPackages verbosity packagedb conf = do
                    , "--package-conf=" ++ case packagedb of
                        SpecificPackageDB path -> path
                        _ -> userDir </> "package.conf"]
-   --FIXME: surely this is wrong. Does LHC really use ghc-pkg?
+   -- Yes, LHC really does use ghc-pkg (with a different package.conf).
    GHC.getInstalledPackages verbosity GlobalPackageDB $ userSpecifyArgs "ghc-pkg" extraArgs conf
 
 -- -----------------------------------------------------------------------------
