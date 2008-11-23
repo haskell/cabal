@@ -229,9 +229,8 @@ defaultInstallDirs comp userInstall hasLibs = do
       libdir       = case buildOS of
         Windows   -> "$prefix"
         _other    -> case comp of
-                       LHC    -> if userInstall then lhcPrefix
-                                                else "/usr/local/lib"
-                       _other -> "$prefix" </> "lib",
+                       LHC | userInstall -> lhcPrefix
+                       _                 -> "$prefix" </> "lib",
       libsubdir    = case comp of
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
