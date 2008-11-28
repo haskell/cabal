@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.Version
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
+--                Duncan Coutts 2008
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
@@ -74,7 +75,7 @@ data VersionRange
   | ThisVersion            Version -- = version
   | LaterVersion           Version -- > version  (NB. not >=)
   | EarlierVersion         Version -- < version
-        -- ToDo: are these too general?
+  | WildcardVersion        Version -- == ver.*   (same as >= ver && < ver+1)
   | UnionVersionRanges      VersionRange VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
@@ -109,6 +110,11 @@ withinRange _  AnyVersion                = True
 withinRange v1 (ThisVersion v2)          = v1 == v2
 withinRange v1 (LaterVersion v2)         = v1 `laterVersion` v2
 withinRange v1 (EarlierVersion v2)       = v1 `earlierVersion` v2
+withinRange v1 (WildcardVersion v2)      = versionBranch v1 >= lowerBound
+                                        && versionBranch v1 <  upperBound
+  where
+    lowerBound = versionBranch v2
+    upperBound = init lowerBound ++ [last lowerBound + 1]
 withinRange v1 (UnionVersionRanges v2 v3)
    = v1 `withinRange` v2 || v1 `withinRange` v3
 withinRange v1 (IntersectVersionRanges v2 v3)
@@ -119,6 +125,10 @@ instance Text VersionRange where
   disp (ThisVersion    v)   = Disp.text "==" <> disp v
   disp (LaterVersion   v)   = Disp.char '>'  <> disp v
   disp (EarlierVersion v)   = Disp.char '<'  <> disp v
+  disp (WildcardVersion v)  =
+       Disp.hcat (Disp.punctuate (Disp.char '.')
+                                 (map Disp.int (versionBranch v)))
+    <> Disp.text ".*"
   disp (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
     | v1 == v2 = Disp.text ">=" <> disp v1
   disp (UnionVersionRanges (LaterVersion v2) (ThisVersion  v1))
@@ -129,11 +139,6 @@ instance Text VersionRange where
     | v1 == v2 = Disp.text "<=" <> disp v1
   disp (UnionVersionRanges r1 r2)
     = disp r1 <+> Disp.text "||" <+> disp r2
-  disp (IntersectVersionRanges
-          (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
-          (EarlierVersion v3))
-    | v1 == v2 && isWildcardRange (versionBranch v1) (versionBranch v3)
-    = Disp.text "==" <> disp (VersionWildcard (versionBranch v1))
   disp (IntersectVersionRanges r1 r2)
     = disp r1 <+> Disp.text "&&" <+> disp r2
 
@@ -158,44 +163,25 @@ instance Text VersionRange where
                                 : parseWildcardRange
                                 : map parseRangeOp rangeOps
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
-        parseWildcardRange = Parse.string "==" >> Parse.skipSpaces
-                                               >> fmap wildcardRange parse
+
+        parseWildcardRange = do
+          Parse.string "=="
+          Parse.skipSpaces
+          branch <- Parse.sepBy1 digits (Parse.char '.')
+          Parse.char '.'
+          Parse.char '*'
+          return (WildcardVersion (Version branch []))
+
+        digits = do
+          first <- Parse.satisfy Char.isDigit
+          if first == '0'
+            then return 0
+            else do rest <- Parse.munch Char.isDigit
+                    return (read (first : rest))
+
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
-
-newtype VersionWildcard = VersionWildcard [Int]
-
-instance Text VersionWildcard where
-  disp (VersionWildcard branch) =
-      Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
-   <> Disp.text ".*"
-  parse = do
-      branch <- Parse.sepBy1 digits (Parse.char '.')
-      Parse.char '.'
-      Parse.char '*'
-      return (VersionWildcard branch)
-    where
-      digits = do
-        first <- Parse.satisfy Char.isDigit
-        if first == '0'
-          then return 0
-          else do rest <- Parse.munch Char.isDigit
-                  return (read (first : rest))
-
--- | @x.y.*@  becomes  @>= x.y && < x.(y+1)@
-wildcardRange :: VersionWildcard -> VersionRange
-wildcardRange (VersionWildcard branch) = orLaterVersion lowerBound
-                `IntersectVersionRanges` EarlierVersion upperBound
-  where
-    lowerBound = Version branch []
-    upperBound = Version (init branch ++ [last branch + 1]) []
-
--- | isWildcardRange [x,y] [x,y+1] = True
-isWildcardRange :: [Int] -> [Int] -> Bool
-isWildcardRange (n:[]) (m:[]) | n+1 == m = True
-isWildcardRange (n:ns) (m:ms) | n   == m = isWildcardRange ns ms
-isWildcardRange _      _                 = False
