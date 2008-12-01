@@ -135,7 +135,7 @@ haddock pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True tmpDir
     createDirectoryIfMissingVerbose verbosity True $
         haddockPref distPref pkg_descr
-    preprocessSources pkg_descr lbi False verbosity suffixes
+    initialBuildSteps distPref pkg_descr lbi verbosity suffixes
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
 
@@ -195,9 +195,6 @@ haddock pkg_descr lbi suffixes flags = do
     let haddock2options bi preprocessDir = if isVersion2
           then ("-B" ++ ghcLibDir) : map ("--optghc=" ++) (ghcSimpleOptions lbi bi preprocessDir)
           else []
-
-    when isVersion2 $
-        initialBuildSteps distPref pkg_descr lbi verbosity suffixes
 
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
@@ -419,7 +416,7 @@ hscolour pkg_descr lbi suffixes flags = do
 
 getLibSourceFiles :: LocalBuildInfo -> Library -> IO [FilePath]
 getLibSourceFiles lbi lib = sequence
-  [ findFileWithExtension ["hs", "lhs"] (preprocessDir : hsSourceDirs bi)
+  [ findFileWithExtension ["hs", "lhs"] (autogenModulesDir lbi: preprocessDir : hsSourceDirs bi)
       (ModuleName.toFilePath module_) >>= maybe (notFound module_) (return . normalise)
   | module_ <- modules ]
   where
@@ -432,7 +429,7 @@ getExeSourceFiles :: LocalBuildInfo -> Executable -> IO [FilePath]
 getExeSourceFiles lbi exe = do
   srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
   moduleFiles <- sequence
-    [ findFileWithExtension ["hs", "lhs"] (preprocessDir : hsSourceDirs bi)
+    [ findFileWithExtension ["hs", "lhs"] (autogenModulesDir lbi : preprocessDir : hsSourceDirs bi)
         (ModuleName.toFilePath module_) >>= maybe (notFound module_) (return . normalise)
     | module_ <- modules ]
   return (srcMainPath : moduleFiles)
