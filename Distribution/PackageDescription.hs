@@ -367,11 +367,11 @@ instance Monoid BuildInfo where
   }
   mappend a b = BuildInfo {
     buildable         = buildable a && buildable b,
-    buildTools        = combineNub buildTools,
+    buildTools        = combine    buildTools,
     cppOptions        = combine    cppOptions,
     ccOptions         = combine    ccOptions,
     ldOptions         = combine    ldOptions,
-    pkgconfigDepends  = combineNub pkgconfigDepends,
+    pkgconfigDepends  = combine    pkgconfigDepends,
     frameworks        = combineNub frameworks,
     cSources          = combineNub cSources,
     hsSourceDirs      = combineNub hsSourceDirs,

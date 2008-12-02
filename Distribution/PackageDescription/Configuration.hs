@@ -81,7 +81,6 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
-import Data.List  ( nub )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as M
 import Data.Monoid
@@ -451,10 +450,10 @@ finalizePackageDescription userflags mpkgs os arch impl constraints
       Right ((mlib, exes'), deps, flagVals) ->
         Right ( pkg { library = mlib
                     , executables = exes'
-                    , buildDepends = nub deps
+                    , buildDepends = deps
                     }
               , flagVals )
-      Left missing -> Left $ nub missing
+      Left missing -> Left missing
   where
     -- Combine lib and exes into one list of @CondTree@s with tagged data
     condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
@@ -521,7 +520,7 @@ flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0) =
     pkg { library = mlib
         , executables = reverse exes
-        , buildDepends = nub $ ldeps ++ reverse edeps
+        , buildDepends = ldeps ++ reverse edeps
         }
   where
     (mlib, ldeps) = case mlib0 of
