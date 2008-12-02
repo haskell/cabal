@@ -47,13 +47,23 @@ module Distribution.Version (
   Version(..),
 
   -- * Version ranges
-  VersionRange(..), notThisVersion,
+  VersionRange(..),
+
+  -- ** Constructing
+  anyVersion, noVersion,
+  thisVersion, notThisVersion,
+  laterVersion, earlierVersion,
   orLaterVersion, orEarlierVersion,
+  unionVersionRanges, intersectVersionRanges,
   betweenVersionsInclusive,
+
+  -- ** General
   withinRange,
   isAnyVersion,
   isNoVersion,
-  simplify,
+  isSpecificVersion,
+  simplifyVersionRange,
+  foldVersionRange,
 
   -- * Version intervals view
   VersionIntervals(..),
@@ -91,6 +101,78 @@ data VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
 
+{-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED LaterVersion "use 'laterVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED EarlierVersion "use 'earlierVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED WildcardVersion "use 'anyVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED UnionVersionRanges "use 'unionVersionRanges', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED IntersectVersionRanges "use 'intersectVersionRanges', 'foldVersionRange' or 'toVersionIntervals'" #-}
+
+anyVersion :: VersionRange
+anyVersion = AnyVersion
+
+noVersion :: VersionRange
+noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
+  where v = Version [1] []
+
+thisVersion :: Version -> VersionRange
+thisVersion = ThisVersion
+
+notThisVersion :: Version -> VersionRange
+notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
+
+laterVersion :: Version -> VersionRange
+laterVersion = LaterVersion
+
+orLaterVersion :: Version -> VersionRange
+orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
+
+earlierVersion :: Version -> VersionRange
+earlierVersion = EarlierVersion
+
+orEarlierVersion :: Version -> VersionRange
+orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
+
+unionVersionRanges :: VersionRange -> VersionRange -> VersionRange
+unionVersionRanges = UnionVersionRanges
+
+intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
+intersectVersionRanges = IntersectVersionRanges
+
+betweenVersionsInclusive :: Version -> Version -> VersionRange
+betweenVersionsInclusive v1 v2 =
+  IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
+
+foldVersionRange :: a -> (Version -> a) -> (Version -> a) -> (Version -> a)
+                 -> (Version -> Version -> a)
+                 -> (a -> a -> a)  -> (a -> a -> a)
+                 -> VersionRange -> a
+foldVersionRange anyv this later earlier wildcard union intersect = fold
+  where
+    fold AnyVersion                     = anyv
+    fold (ThisVersion v)                = this v
+    fold (LaterVersion v)               = later v
+    fold (EarlierVersion v)             = earlier v
+    fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
+    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
+    fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
+
+-- | Does this version fall within the given range?
+--
+-- This is the evaluation function for the 'VersionRange' type.
+--
+withinRange :: Version -> VersionRange -> Bool
+withinRange v = foldVersionRange
+                   True
+                   (\v'  -> versionBranch v == versionBranch v')
+                   (\v'  -> versionBranch v >  versionBranch v')
+                   (\v'  -> versionBranch v <  versionBranch v')
+                   (\l u -> versionBranch v >= versionBranch l
+                         && versionBranch v <  versionBranch u)
+                   (||)
+                   (&&)
+
 -- | Does this 'VersionRange' place any restriction on the 'Version' or is it
 -- in fact equivalent to 'AnyVersion'.
 --
@@ -116,59 +198,24 @@ isNoVersion vr = case toVersionIntervals vr of
   VersionIntervals [] -> True
   _                   -> False
 
-noVersion :: VersionRange
-noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
-  where v = Version [1] []
-
-notThisVersion :: Version -> VersionRange
-notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
-
-orLaterVersion :: Version -> VersionRange
-orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
-
-orEarlierVersion :: Version -> VersionRange
-orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
-
-
-betweenVersionsInclusive :: Version -> Version -> VersionRange
-betweenVersionsInclusive v1 v2 =
-  IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
-
-foldVersionRange :: a -> (Version -> a) -> (Version -> a) -> (Version -> a)
-                 -> (Version -> Version -> a)
-                 -> (a -> a -> a)  -> (a -> a -> a)
-                 -> VersionRange -> a
-foldVersionRange anyv this later earlier wildcard union intersection = fold
-  where
-    fold AnyVersion                     = anyv
-    fold (ThisVersion v)                = this v
-    fold (LaterVersion v)               = later v
-    fold (EarlierVersion v)             = earlier v
-    fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
-    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
-    fold (IntersectVersionRanges v1 v2) = intersection (fold v1) (fold v2)
-
--- | Does this version fall within the given range?
+-- | Is this version range in fact just a specific version?
 --
--- This is the evaluation function for the 'VersionRange' type.
+-- For example the version range @\">= 3 && <= 3\"@ contains only the version
+-- @3@.
 --
-withinRange :: Version -> VersionRange -> Bool
-withinRange v = foldVersionRange
-                   True
-                   (\v'  -> versionBranch v == versionBranch v')
-                   (\v'  -> versionBranch v >  versionBranch v')
-                   (\v'  -> versionBranch v <  versionBranch v')
-                   (\l u -> versionBranch v >= versionBranch l
-                         && versionBranch v <  versionBranch u)
-                   (||)
-                   (&&)
+isSpecificVersion :: VersionRange -> Maybe Version
+isSpecificVersion vr = case toVersionIntervals vr of
+  VersionIntervals [(LowerBound v  InclusiveBound
+                    ,UpperBound v' InclusiveBound)]
+                   | v == v' -> Just v
+  _                          -> Nothing
 
 -- | Simplify a 'VersionRange' expression into a canonical form.
 --
 -- It just uses @fromVersionIntervals . toVersionIntervals@
 --
-simplify :: VersionRange -> VersionRange
-simplify = fromVersionIntervals . toVersionIntervals
+simplifyVersionRange :: VersionRange -> VersionRange
+simplifyVersionRange = fromVersionIntervals . toVersionIntervals
 
 ----------------------------
 -- Wildcard range utilities
@@ -290,7 +337,7 @@ fromVersionIntervals (VersionIntervals intervals) =
     interval (LowerBound v  InclusiveBound)
              (UpperBound v' ExclusiveBound) | isWildcardRange v v'
                  = WildcardVersion v
-    interval l u = lowerBound l `intersectVersionRanges` upperBound u
+    interval l u = lowerBound l `intersectVersionRanges'` upperBound u
 
     lowerBound NoLowerBound                  = AnyVersion
     lowerBound (LowerBound v InclusiveBound) = orLaterVersion v
@@ -300,9 +347,9 @@ fromVersionIntervals (VersionIntervals intervals) =
     upperBound (UpperBound v InclusiveBound) = orEarlierVersion v
     upperBound (UpperBound v ExclusiveBound) = EarlierVersion v
 
-    intersectVersionRanges vr AnyVersion = vr
-    intersectVersionRanges AnyVersion vr = vr
-    intersectVersionRanges vr vr'        = IntersectVersionRanges vr vr'
+    intersectVersionRanges' vr AnyVersion = vr
+    intersectVersionRanges' AnyVersion vr = vr
+    intersectVersionRanges' vr vr'        = IntersectVersionRanges vr vr'
 
 unionInterval :: VersionInterval -> VersionInterval
               -> Either (Maybe VersionInterval) (Maybe VersionInterval)
