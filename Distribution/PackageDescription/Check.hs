@@ -79,7 +79,7 @@ import Distribution.System
 import Distribution.License
          ( License(..) )
 import Distribution.Simple.Utils
-         ( cabalVersion, intercalate )
+         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..) )
 
 import Distribution.Version
          ( Version(..), VersionRange(..), orLaterVersion, withinRange )
@@ -596,7 +596,32 @@ checkCabalVersion pkg =
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatability "
         ++ "is important then use: " ++ commaSep
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- depsUsingWildcardSyntax]
+           | Dependency name versionRange <- depsUsingWildcardSyntax ]
+
+    -- check use of "data-files: data/*.txt" syntax
+  , checkVersion [1,6] (not (null dataFilesUsingGlobSyntax)) $
+      PackageDistInexcusable $
+           "Using wildcards like "
+        ++ commaSep (map quote $ take 3 dataFilesUsingGlobSyntax)
+        ++ " in the 'data-files' field requires 'cabal-version: >= 1.6'. "
+        ++ "Alternatively if you require compatability with earlier Cabal "
+        ++ "versions then list all the files explicitly."
+
+  , checkVersion [1,6] (not (null extraSrcFilesUsingGlobSyntax)) $
+      PackageDistInexcusable $
+           "Using wildcards like "
+        ++ commaSep (map quote $ take 3 extraSrcFilesUsingGlobSyntax)
+        ++ " in the 'data-files' field requires 'cabal-version: >= 1.6'. "
+        ++ "Alternatively if you require compatability with earlier Cabal "
+        ++ "versions then list all the files explicitly."
+
+    -- check use of "source-repository" section
+  , checkVersion [1,6] (not (null (sourceRepos pkg))) $
+      PackageDistInexcusable $
+           "The 'source-repository' section is new in Cabal-1.6. "
+        ++ "Unfortunately it messes up the parser in earlier Cabal versions "
+        ++ "so you need to specify 'cabal-version: >= 1.6'."
+
   ]
   where
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
@@ -613,6 +638,12 @@ checkCabalVersion pkg =
       AnyVersion  -> True
       --TODO: need a better version view that excludes the middle posibilities:
       _           -> False
+
+    dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
+    extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
+    usesGlobSyntax str = case parseFileGlob str of
+      Just (FileGlob _ _) -> True
+      _                   -> False
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
