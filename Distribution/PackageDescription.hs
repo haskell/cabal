@@ -100,7 +100,7 @@ import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
 import Distribution.ModuleName (ModuleName)
-import Distribution.Version  (Version(Version), VersionRange(AnyVersion))
+import Distribution.Version  (Version(Version), VersionRange, anyVersion)
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -161,7 +161,7 @@ emptyPackageDescription
                                                        (Version [] []),
                       license      = AllRightsReserved,
                       licenseFile  = "",
-                      descCabalVersion = AnyVersion,
+                      descCabalVersion = anyVersion,
                       buildType    = Nothing,
                       copyright    = "",
                       maintainer   = "",

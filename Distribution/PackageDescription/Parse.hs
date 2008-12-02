@@ -76,7 +76,7 @@ import Distribution.Package
          ( PackageName(..), PackageIdentifier(..), Dependency(..)
          , packageName, packageVersion )
 import Distribution.Version
-        ( VersionRange(AnyVersion), isAnyVersion, withinRange )
+        ( anyVersion, isAnyVersion, withinRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
@@ -472,7 +472,7 @@ parsePackageDescription file = do
           head $ [ versionRange
                  | Just versionRange <- [ simpleParse v
                                         | F _ "cabal-version" v <- fields0 ] ]
-              ++ [AnyVersion]
+              ++ [anyVersion]
 
     handleFutureVersionParseFailure cabalVersionNeeded $ do
 

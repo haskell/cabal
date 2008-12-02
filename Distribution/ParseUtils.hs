@@ -69,6 +69,7 @@ module Distribution.ParseUtils (
 import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
+         ( Version(..), VersionRange, anyVersion )
 import Distribution.Package     ( PackageName(..), Dependency(..) )
 import Distribution.ModuleName (ModuleName)
 import Distribution.Compat.ReadP as ReadP hiding (get)
@@ -568,7 +569,7 @@ parseFilePathQ = parseTokenQ
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ
                     skipSpaces
-                    ver <- parseVersionRangeQ <++ return AnyVersion
+                    ver <- parseVersionRangeQ <++ return anyVersion
                     skipSpaces
                     return $ Dependency name ver
 
@@ -589,7 +590,7 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
 parsePkgconfigDependency :: ReadP r Dependency
 parsePkgconfigDependency = do name <- munch1 (\c -> isAlphaNum c || c `elem` "+-._")
                               skipSpaces
-                              ver <- parseVersionRangeQ <++ return AnyVersion
+                              ver <- parseVersionRangeQ <++ return anyVersion
                               skipSpaces
                               return $ Dependency (PackageName name) ver
 
@@ -608,7 +609,7 @@ parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
   where tw = do compiler <- parseCompilerFlavorCompat
                 skipSpaces
-                version <- parse <++ return AnyVersion
+                version <- parse <++ return anyVersion
                 skipSpaces
                 return (compiler,version)
 

@@ -106,7 +106,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), VersionRange(..), orLaterVersion )
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
@@ -772,9 +772,9 @@ makefile pkg_descr lbi flags = do
       bi = libBuildInfo lib
 
       packageIdStr = display (packageId pkg_descr)
-  (arProg, _) <- requireProgram verbosity arProgram AnyVersion
+  (arProg, _) <- requireProgram verbosity arProgram anyVersion
                    (withPrograms lbi)
-  (ldProg, _) <- requireProgram verbosity ldProgram AnyVersion
+  (ldProg, _) <- requireProgram verbosity ldProgram anyVersion
                    (withPrograms lbi)
   let builddir = buildDir lbi
       Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
