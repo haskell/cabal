@@ -53,6 +53,15 @@ module Distribution.Version (
   withinRange,
   isAnyVersion,
 
+  -- * Version intervals view
+  VersionIntervals(..),
+  LowerBound(..),
+  UpperBound(..),
+  Bound(..),
+  toVersionIntervals,
+  fromVersionIntervals,
+  withinIntervals,
+
  ) where
 
 import Data.Version     ( Version(..) )
@@ -83,6 +92,10 @@ data VersionRange
 isAnyVersion :: VersionRange -> Bool
 isAnyVersion AnyVersion = True
 isAnyVersion _ = False
+
+noVersion :: VersionRange
+noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
+  where v = Version [1] []
 
 notThisVersion :: Version -> VersionRange
 notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
@@ -135,6 +148,195 @@ wildcardUpperBound :: Version -> Version
 wildcardUpperBound (Version lowerBound ts) = (Version upperBound ts)
   where
     upperBound = init lowerBound ++ [last lowerBound + 1]
+
+isWildcardRange :: Version -> Version -> Bool
+isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
+  where check (n:[]) (m:[]) | n+1 == m = True
+        check (n:ns) (m:ms) | n   == m = check ns ms
+        check _      _                 = False
+
+------------------
+-- Intervals view
+--
+
+-- | A complementary representation of a 'VersionRange'. Instead of a boolean
+-- version predicate it uses an increasing sequence of non-overlapping
+-- intervals.
+--
+-- The key point is that this representation gives a canonical representation
+-- for the semantics of 'VersionRange's. This makes it easier to check things
+-- like whether a version range is empty, covers all versions, or requires a
+-- certain minimum or maximum version. It also makes it easy to check equality
+-- or containment. It also makes it easier to identify \'simple\' version
+-- predicates for translation into foreign packaging systems that do not
+-- support complex version range expressions.
+--
+newtype VersionIntervals = VersionIntervals [VersionInterval]
+  deriving (Eq, Show)
+
+type VersionInterval = (LowerBound, UpperBound)
+data LowerBound = NoLowerBound | LowerBound Version !Bound deriving (Eq, Show)
+data UpperBound = NoUpperBound | UpperBound Version !Bound deriving (Eq, Show)
+data Bound      = ExclusiveBound | InclusiveBound          deriving (Eq, Show)
+
+instance Ord LowerBound where
+  NoLowerBound   <= _            = True
+  LowerBound _ _ <= NoLowerBound = False
+  LowerBound ver bound <= LowerBound ver' bound' = case compare ver ver' of
+    LT -> True
+    EQ -> not (bound == ExclusiveBound && bound' == InclusiveBound)
+    GT -> False
+
+instance Ord UpperBound where
+  _            <= NoUpperBound   = True
+  NoUpperBound <= UpperBound _ _ = False
+  UpperBound ver bound <= UpperBound ver' bound' = case compare ver ver' of
+    LT -> True
+    EQ -> not (bound == InclusiveBound && bound' == ExclusiveBound)
+    GT -> False
+
+-- | Test if a version falls within the version intervals.
+--
+-- It exists mostly for completeness. It satisfies the following properties:
+--
+-- > withinIntervals v (toVersionIntervals vr) = withinRange v vr
+-- > withinIntervals v ivs = withinRange v (fromVersionIntervals ivs)
+--
+withinIntervals :: Version -> VersionIntervals -> Bool
+withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
+  where
+    withinInterval (lowerBound, upperBound) = withinLower lowerBound
+                                           && withinUpper upperBound
+    withinLower NoLowerBound                   = True
+    withinLower (LowerBound v' ExclusiveBound) = v' <  v
+    withinLower (LowerBound v' InclusiveBound) = v' <= v
+
+    withinUpper NoUpperBound                   = True
+    withinUpper (UpperBound v' ExclusiveBound) = v  >  v'
+    withinUpper (UpperBound v' InclusiveBound) = v  >= v'
+
+-- | View a 'VersionRange' as a sequence of version intervals.
+--
+toVersionIntervals :: VersionRange -> VersionIntervals
+toVersionIntervals =
+    VersionIntervals
+  . foldVersionRange
+              [(NoLowerBound,                NoUpperBound)]
+    (\v    -> [(LowerBound v InclusiveBound, UpperBound v InclusiveBound)])
+    (\v    -> [(LowerBound v ExclusiveBound, NoUpperBound)])
+    (\v    -> [(NoLowerBound,                UpperBound v ExclusiveBound)])
+    (\v v' -> [(LowerBound v InclusiveBound, UpperBound v' ExclusiveBound)])
+    unionIntervals
+    intersectIntervals
+  where
+    unionIntervals is []  = is
+    unionIntervals [] is' = is'
+    unionIntervals (i:is) (i':is') = case unionInterval i i' of
+      Left  Nothing    -> i  : unionIntervals      is  (i' :is')
+      Left  (Just i'') ->      unionIntervals      is  (i'':is')
+      Right Nothing    -> i' : unionIntervals (i  :is)      is'
+      Right (Just i'') ->      unionIntervals (i'':is)      is'
+
+    intersectIntervals _  [] = []
+    intersectIntervals [] _  = []
+    intersectIntervals (i:is) (i':is') = case intersectInterval i i' of
+      Left  Nothing    ->       intersectIntervals is (i':is')
+      Left  (Just i'') -> i'' : intersectIntervals is (i':is')
+      Right Nothing    ->       intersectIntervals (i:is) is'
+      Right (Just i'') -> i'' : intersectIntervals (i:is) is'
+
+-- | Convert a 'VersionIntervals' value back into a 'VersionRange' expression
+-- representing the version intervals.
+--
+fromVersionIntervals :: VersionIntervals -> VersionRange
+fromVersionIntervals (VersionIntervals []) = noVersion
+fromVersionIntervals (VersionIntervals intervals) =
+    foldr1 UnionVersionRanges [ interval l u | (l, u) <- intervals ]
+
+  where
+    interval (LowerBound v  InclusiveBound)
+             (UpperBound v' InclusiveBound) | v == v'
+                 = ThisVersion v
+    interval (LowerBound v  InclusiveBound)
+             (UpperBound v' ExclusiveBound) | isWildcardRange v v'
+                 = WildcardVersion v
+    interval l u = lowerBound l `intersectVersionRanges` upperBound u
+
+    lowerBound NoLowerBound                  = AnyVersion
+    lowerBound (LowerBound v InclusiveBound) = orLaterVersion v
+    lowerBound (LowerBound v ExclusiveBound) = LaterVersion v
+
+    upperBound NoUpperBound                  = AnyVersion
+    upperBound (UpperBound v InclusiveBound) = orEarlierVersion v
+    upperBound (UpperBound v ExclusiveBound) = EarlierVersion v
+
+    intersectVersionRanges vr AnyVersion = vr
+    intersectVersionRanges AnyVersion vr = vr
+    intersectVersionRanges vr vr'        = IntersectVersionRanges vr vr'
+
+unionInterval :: VersionInterval -> VersionInterval
+              -> Either (Maybe VersionInterval) (Maybe VersionInterval)
+unionInterval (lower , upper ) (lower', upper')
+
+  -- Non-intersecting intervals with the left interval ending first
+  | upper `doesNotTouch` lower' = Left Nothing
+
+  -- Non-intersecting intervals with the right interval first
+  | upper' `doesNotTouch` lower = Right Nothing
+
+  -- Complete or partial overlap, with the left interval ending first
+  | upper <= upper' = lowerBound `seq`
+                      Left (Just (lowerBound, upper'))
+
+  -- Complete or partial overlap, with the left interval ending first
+  | otherwise = lowerBound `seq`
+                Right (Just (lowerBound, upper))
+  where
+    lowerBound = min lower lower'
+
+    -- Check an upper bound does not intersect, or even touch a lower bound:
+    --
+    --   ---|      or  ---)     but not  ---]     or  ---)     or  ---]
+    --       |---         (---              (---         [---         [---
+    --
+    doesNotTouch :: UpperBound -> LowerBound -> Bool
+    doesNotTouch NoUpperBound _ = False
+    doesNotTouch _ NoLowerBound = False
+    doesNotTouch (UpperBound u ub) (LowerBound l lb) =
+          u <  l
+      || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
+
+intersectInterval :: VersionInterval -> VersionInterval
+                  -> Either (Maybe VersionInterval) (Maybe VersionInterval)
+intersectInterval (lower , upper ) (lower', upper')
+
+  -- Non-intersecting intervals with the left interval ending first
+  | upper `doesNotIntersect` lower' = Left Nothing
+
+  -- Non-intersecting intervals with the right interval first
+  | upper' `doesNotIntersect` lower = Right Nothing
+
+  -- Complete or partial overlap, with the left interval ending first
+  | upper <= upper' = lowerBound `seq`
+                      Left (Just (lowerBound, upper))
+
+  -- Complete or partial overlap, with the right interval ending first
+  | otherwise = lowerBound `seq`
+                Right (Just (lowerBound, upper'))
+  where
+    lowerBound = max lower lower'
+
+    -- Check an upper bound does not intersect a lower bound:
+    --
+    --   ---|      or  ---)     or  ---]     or  ---)     but not  ---]
+    --       |---         (---         (---         [---              [---
+    --
+    doesNotIntersect :: UpperBound -> LowerBound -> Bool
+    doesNotIntersect NoUpperBound _ = False
+    doesNotIntersect _ NoLowerBound = False
+    doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
+          u <  l
+      || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
 
 -------------------------------
 -- Parsing and pretty printing
