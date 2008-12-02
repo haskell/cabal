@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.License
 -- Copyright   :  Isaac Jones 2003-2005
+--                Duncan Coutts 2008
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
@@ -47,14 +48,16 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.License (
-        License(..)
+    License(..),
+    knownLicenses,
   ) where
 
-import Distribution.Version (Version)
+import Distribution.Version (Version(Version))
 
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (isAlphaNum)
 
 -- |This datatype indicates the license under which your package is
@@ -68,24 +71,23 @@ import qualified Data.Char as Char (isAlphaNum)
 --
 data License =
 
---TODO: * deprecate BSD4
---      * add optional gpl versions
---      * add MIT license
+--TODO: * remove BSD4
 
     -- | GNU Public License. Source code must accompany alterations.
-    GPL --(Maybe Version)
+    GPL (Maybe Version)
 
     -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
-  | LGPL --(Maybe Version)
+  | LGPL (Maybe Version)
 
     -- | 3-clause BSD license, newer, no advertising clause. Very free license.
   | BSD3
 
-    -- | 4-clause BSD license, older, with advertising clause.
+    -- | 4-clause BSD license, older, with advertising clause. You almost
+    -- certainly want to use the BSD3 license instead.
   | BSD4
 
---    -- | The MIT license, similar to the BSD3. Very free license.
---  | MIT
+    -- | The MIT license, similar to the BSD3. Very free license.
+  | MIT
 
     -- | Holder makes no claim to ownership, least restrictive license.
   | PublicDomain
@@ -101,33 +103,36 @@ data License =
   | UnknownLicense String
   deriving (Read, Show, Eq)
 
---TODO: use knownLicenses to give a better parse error message
---knownLicenses :: [License]
---knownLicenses = [GPL Nothing, LGPL Nothing, BSD3, BSD4, MIT
---                ,PublicDomain, AllRightsReserved, OtherLicense]
+knownLicenses :: [License]
+knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
+                , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
+                , BSD3, BSD4, MIT
+                , PublicDomain, AllRightsReserved, OtherLicense]
+ where
+   unversioned = Nothing
+   version   v = Just (Version v [])
 
 instance Text License where
---disp (GPL  version)         = "GPL"  <> showOptionalVersion version
---disp (LGPL version)         = "LGPL" <> showOptionalVersion version
+  disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
+  disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
 
   parse = do
-    name    <- Parse.munch1 Char.isAlphaNum
+    name    <- Parse.munch1 (\c -> Char.isAlphaNum c && c /= '-')
     version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
-    -- We parse an optional version but do not yet allow it on any known
-    -- license. However parsing the version will allow forwards compatibility
-    -- for when we do introduce optional (L)GPL license versions.
-    return $ case (name, version :: Maybe Version) of
-      ("GPL",               Nothing) -> GPL
-      ("LGPL",              Nothing) -> LGPL
-  --  ("GPL",               version) -> GPL  version
-  --  ("LGPL",              version) -> LGPL version
+    return $! case (name, version :: Maybe Version) of
+      ("GPL",               _      ) -> GPL  version
+      ("LGPL",              _      ) -> LGPL version
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
-  --  ("MIT",               Nothing) -> MIT
+      ("MIT",               Nothing) -> MIT
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
       ("OtherLicense",      Nothing) -> OtherLicense
       _                              -> UnknownLicense $ name
                                      ++ maybe "" (('-':) . display) version
+
+dispOptVersion :: Maybe Version -> Disp.Doc
+dispOptVersion Nothing  = Disp.empty
+dispOptVersion (Just v) = Disp.char '-' <> disp v

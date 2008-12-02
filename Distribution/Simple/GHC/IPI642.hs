@@ -117,8 +117,8 @@ convertModuleName :: String -> ModuleName
 convertModuleName s = fromJust $ simpleParse s
 
 convertLicense :: License -> Current.License
-convertLicense GPL  = Current.GPL
-convertLicense LGPL = Current.LGPL
+convertLicense GPL  = Current.GPL  Nothing
+convertLicense LGPL = Current.LGPL Nothing
 convertLicense BSD3 = Current.BSD3
 convertLicense BSD4 = Current.BSD4
 convertLicense PublicDomain = Current.PublicDomain
