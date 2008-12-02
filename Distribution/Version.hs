@@ -52,6 +52,8 @@ module Distribution.Version (
   betweenVersionsInclusive,
   withinRange,
   isAnyVersion,
+  isNoVersion,
+  simplify,
 
   -- * Version intervals view
   VersionIntervals(..),
@@ -89,9 +91,30 @@ data VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
 
+-- | Does this 'VersionRange' place any restriction on the 'Version' or is it
+-- in fact equivalent to 'AnyVersion'.
+--
+-- Note this is a semantic check, not simply a syntactic check. So for example
+-- the following is @True@ (for all @v@).
+--
+-- > isAnyVersion (EarlierVersion v `UnionVersionRanges` orLaterVersion v)
+--
 isAnyVersion :: VersionRange -> Bool
-isAnyVersion AnyVersion = True
-isAnyVersion _ = False
+isAnyVersion vr = case toVersionIntervals vr of
+  VersionIntervals [(NoLowerBound, NoUpperBound)] -> True
+  _                                               -> False
+
+-- | This is the converse of 'isAnyVersion'. It check if the version range is
+-- empty, if there is no possible version that satisfies the version range.
+--
+-- For example this is @True@ (for all @v@):
+--
+-- > isNoVersion (EarlierVersion v `IntersectVersionRanges` LaterVersion v)
+--
+isNoVersion :: VersionRange -> Bool
+isNoVersion vr = case toVersionIntervals vr of
+  VersionIntervals [] -> True
+  _                   -> False
 
 noVersion :: VersionRange
 noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
@@ -139,6 +162,13 @@ withinRange v = foldVersionRange
                          && versionBranch v <  versionBranch u)
                    (||)
                    (&&)
+
+-- | Simplify a 'VersionRange' expression into a canonical form.
+--
+-- It just uses @fromVersionIntervals . toVersionIntervals@
+--
+simplify :: VersionRange -> VersionRange
+simplify = fromVersionIntervals . toVersionIntervals
 
 ----------------------------
 -- Wildcard range utilities
