@@ -454,7 +454,7 @@ matchFileGlob = matchDirFileGlob "."
 
 matchDirFileGlob :: FilePath -> FilePath -> IO [FilePath]
 matchDirFileGlob dir filepath = case parseFileGlob filepath of
-  Nothing -> die $ "invalid filepath '" ++ filepath
+  Nothing -> die $ "invalid file glob '" ++ filepath
                 ++ "'. Wildcards '*' are only allowed in place of the file"
                 ++ " name, not in the directory name or file extension."
                 ++ " If a wildcard is used it must be with an file extension."
