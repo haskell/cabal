@@ -71,7 +71,7 @@ import Distribution.Simple.Utils
         ( die, info, findFileWithExtension,
           createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
 import Distribution.Version
-        ( Version(..), VersionRange(..), orLaterVersion )
+        ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 import Distribution.Text
         ( display )
@@ -99,14 +99,14 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   (_hmakeProg, conf'') <- requireProgram verbosity hmakeProgram
                           (orLaterVersion (Version [3,13] [])) conf'
-  (_ldProg, conf''')   <- requireProgram verbosity ldProgram AnyVersion conf''
-  (_arProg, conf'''')  <- requireProgram verbosity arProgram AnyVersion conf'''
+  (_ldProg, conf''')   <- requireProgram verbosity ldProgram anyVersion conf''
+  (_arProg, conf'''')  <- requireProgram verbosity arProgram anyVersion conf'''
 
   --TODO: put this stuff in a monad so we can say just:
   -- requireProgram hmakeProgram (orLaterVersion (Version [3,13] []))
-  -- requireProgram ldProgram AnyVersion
-  -- requireProgram ldPrograrProgramam AnyVersion
-  -- unless (null (cSources bi)) $ requireProgram ccProgram AnyVersion
+  -- requireProgram ldProgram anyVersion
+  -- requireProgram ldPrograrProgramam anyVersion
+  -- unless (null (cSources bi)) $ requireProgram ccProgram anyVersion
 
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,

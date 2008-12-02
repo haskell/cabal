@@ -65,7 +65,7 @@ import Distribution.Simple.Program
          , userMaybeSpecifyPath, requireProgram, lookupProgram
          , userSpecifyArgs, rawSystemProgram )
 import Distribution.Version
-         ( Version(..), VersionRange(AnyVersion) )
+         ( Version(..), anyVersion )
 import Distribution.Package
          ( Package(..), packageName, packageVersion )
 import Distribution.Simple.Utils
@@ -89,7 +89,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (lhcProg, conf')  <- requireProgram verbosity lhcProgram AnyVersion
+  (lhcProg, conf')  <- requireProgram verbosity lhcProgram anyVersion
                          (userMaybeSpecifyPath "lhc" hcPath conf)
 
   let Just version = programVersion lhcProg
@@ -110,7 +110,7 @@ lhcLanguageExtensions =
 
 getLhcLibDirs :: Verbosity -> ProgramConfiguration -> IO (String, String)
 getLhcLibDirs verbosity conf
-    = do (lhc,_conf') <- requireProgram verbosity lhcProgram AnyVersion conf
+    = do (lhc,_conf') <- requireProgram verbosity lhcProgram anyVersion conf
          getLhcLibDirsFromVersion (programVersion lhc)
 
 getLhcLibDirsFromVersion :: Maybe Version -> IO (String, String)

@@ -110,7 +110,8 @@ import Distribution.Simple.Register
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
-    ( Version(..), VersionRange(..), orLaterVersion, withinRange )
+    ( Version(..)
+    , orLaterVersion, withinRange, isSpecificVersion, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -475,12 +476,11 @@ configure (pkg_descr0, pbi) cfg
 -- |Converts build dependencies to a versioned dependency.  only sets
 -- version information for exact versioned dependencies.
 inventBogusPackageId :: Dependency -> PackageIdentifier
-
--- if they specify the exact version, use that:
-inventBogusPackageId (Dependency s (ThisVersion v)) = PackageIdentifier s v
-
--- otherwise, just set it to empty
-inventBogusPackageId (Dependency s _) = PackageIdentifier s (Version [] [])
+inventBogusPackageId (Dependency s vr) = case isSpecificVersion vr of
+  -- if they specify the exact version, use that:
+  Just v -> PackageIdentifier s v
+  -- otherwise, just set it to empty
+  Nothing -> PackageIdentifier s (Version [] [])
 
 reportProgram :: Verbosity -> Program -> Maybe ConfiguredProgram -> IO ()
 reportProgram verbosity prog Nothing
@@ -573,8 +573,8 @@ configurePkgconfigPackages verbosity pkg_descr conf
                       ++ ": using version " ++ display v
 
         versionRequirement
-          | range == AnyVersion = ""
-          | otherwise           = " version " ++ display range
+          | isAnyVersion range = ""
+          | otherwise          = " version " ++ display range
 
     updateLibrary Nothing    = return Nothing
     updateLibrary (Just lib) = do
