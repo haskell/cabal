@@ -82,9 +82,10 @@ import Distribution.Simple.Utils
          ( cabalVersion, intercalate )
 
 import Distribution.Version
-         ( Version(..), withinRange )
+         ( Version(..), VersionRange(..), orLaterVersion, withinRange )
 import Distribution.Package
-         ( PackageName(PackageName), packageName, packageVersion )
+         ( PackageName(PackageName), packageName, packageVersion
+         , Dependency(..) )
 import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Extension(..))
@@ -171,6 +172,7 @@ checkConfiguredPackage pkg =
  ++ checkGhcOptions pkg
  ++ checkCCOptions pkg
  ++ checkPaths pkg
+ ++ checkCabalVersion pkg
 
 
 -- ------------------------------------------------------------
@@ -577,6 +579,68 @@ checkPaths pkg =
 
 --TODO: check for absolute and outside-of-tree paths in extra-src-files,
 -- data-files, hs-src-dirs, etc.
+
+-- | Check that if the package uses new syntax that it declares the
+-- @\"cabal-version: >= x.y\"@ version correctly.
+--
+checkCabalVersion :: PackageDescription -> [PackageCheck]
+checkCabalVersion pkg =
+  catMaybes [
+
+    -- check use of "build-depends: foo == 1.*" syntax
+    checkVersion [1,6] (not (null depsUsingWildcardSyntax)) $
+      PackageDistInexcusable $
+           "The package uses wildcard syntax in the 'build-depends' field: "
+        ++ commaSep (map display depsUsingWildcardSyntax)
+        ++ ". To use this new syntax the package need to specify at least "
+        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatability "
+        ++ "is important then use: " ++ commaSep
+           [ display (Dependency name (eliminateWildcardSyntax versionRange))
+           | Dependency name versionRange <- depsUsingWildcardSyntax]
+  ]
+  where
+    checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+    checkVersion ver cond pc
+      | packageName pkg == PackageName "Cabal" = Nothing
+      | notRequiresLaterVersion (Version ver [])
+     && cond      = Just pc
+      | otherwise = Nothing
+
+    notRequiresLaterVersion :: Version -> Bool
+    notRequiresLaterVersion ver = case descCabalVersion pkg of
+      UnionVersionRanges (ThisVersion v) (LaterVersion v')
+        | v == v' -> ver > v
+      AnyVersion  -> True
+      --TODO: need a better version view that excludes the middle posibilities:
+      _           -> False
+
+    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+                                    , usesWildcardSyntax vr ]
+
+    usesWildcardSyntax :: VersionRange -> Bool
+    usesWildcardSyntax versionRange = case versionRange of
+      UnionVersionRanges     v1 v2 -> usesWildcardSyntax v1
+                                   || usesWildcardSyntax v2
+      IntersectVersionRanges v1 v2 -> usesWildcardSyntax v1
+                                   || usesWildcardSyntax v2
+      WildcardVersion _            -> True
+      _                            -> False
+
+    eliminateWildcardSyntax :: VersionRange -> VersionRange
+    eliminateWildcardSyntax versionRange = case versionRange of
+      UnionVersionRanges     v1 v2 ->
+        UnionVersionRanges (eliminateWildcardSyntax v1)
+                           (eliminateWildcardSyntax v2)
+      IntersectVersionRanges v1 v2 ->
+        IntersectVersionRanges (eliminateWildcardSyntax v1)
+                               (eliminateWildcardSyntax v2)
+      WildcardVersion v ->
+        IntersectVersionRanges (orLaterVersion v) (EarlierVersion v')
+        where
+          v'         = Version upperBound []
+          lowerBound = versionBranch v
+          upperBound = init lowerBound ++ [last lowerBound + 1]
+      _ -> versionRange
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
