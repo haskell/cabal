@@ -84,6 +84,8 @@ module Distribution.Simple.Utils (
         -- * simple file globbing
         matchFileGlob,
         matchDirFileGlob,
+        parseFileGlob,
+        FileGlob(..),
 
         -- * temp files and dirs
         withTempFile,
