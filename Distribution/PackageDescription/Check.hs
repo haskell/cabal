@@ -607,13 +607,15 @@ checkCabalVersion pkg =
         ++ "Alternatively if you require compatability with earlier Cabal "
         ++ "versions then list all the files explicitly."
 
+    -- check use of "extra-source-files: mk/*.in" syntax
   , checkVersion [1,6] (not (null extraSrcFilesUsingGlobSyntax)) $
       PackageDistInexcusable $
            "Using wildcards like "
         ++ commaSep (map quote $ take 3 extraSrcFilesUsingGlobSyntax)
-        ++ " in the 'data-files' field requires 'cabal-version: >= 1.6'. "
-        ++ "Alternatively if you require compatability with earlier Cabal "
-        ++ "versions then list all the files explicitly."
+        ++ " in the 'extra-source-files' field requires "
+        ++ "'cabal-version: >= 1.6'. Alternatively if you require "
+        ++ "compatability with earlier Cabal versions then list all the files "
+        ++ "explicitly."
 
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
