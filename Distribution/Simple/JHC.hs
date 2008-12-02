@@ -67,7 +67,7 @@ import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, lookupProgram,
                                   rawSystemProgram, rawSystemProgramStdoutConf )
-import Distribution.Version     ( VersionRange(AnyVersion) )
+import Distribution.Version     ( anyVersion )
 import Distribution.Package
          ( Package(..) )
 import Distribution.Simple.Utils
@@ -92,7 +92,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (jhcProg, conf')  <- requireProgram verbosity jhcProgram AnyVersion
+  (jhcProg, conf')  <- requireProgram verbosity jhcProgram anyVersion
                          (userMaybeSpecifyPath "jhc" hcPath conf)
 
   let Just version = programVersion jhcProg

@@ -67,7 +67,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
-         ( VersionRange(..), withinRange )
+         ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
@@ -179,7 +179,7 @@ parseCondition = condOr
     oper s        = sp >> string s >> sp
     sp            = skipSpaces
     implIdent     = do i <- parse
-                       vr <- sp >> option AnyVersion parse
+                       vr <- sp >> option anyVersion parse
                        return $ Impl i vr
 
 ------------------------------------------------------------------------------
@@ -271,7 +271,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
       where tightenConstraint n c l =
                 case M.lookup n l of
                   Nothing -> l
-                  Just vr -> M.insert n (IntersectVersionRanges vr c) l
+                  Just vr -> M.insert n (intersectVersionRanges vr c) l
 
     -- @try@ recursively tries all possible flag assignments in the domain and
     -- either succeeds or returns a binary tree with the missing dependencies
@@ -320,7 +320,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
---   appropriate.  The monoid instance uses 'IntersectVersionRanges'.
+--   appropriate.  The monoid instance uses 'intersectVersionRanges'.
 newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName VersionRange }
 #if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
   deriving (Show, Read)
@@ -354,11 +354,11 @@ instance Read DependencyMap where
 instance Monoid DependencyMap where
     mempty = DependencyMap M.empty
     (DependencyMap a) `mappend` (DependencyMap b) =
-        DependencyMap (M.unionWith IntersectVersionRanges a b)
+        DependencyMap (M.unionWith intersectVersionRanges a b)
 
 toDepMap :: [Dependency] -> DependencyMap
 toDepMap ds =
-  DependencyMap $ fromListWith IntersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DependencyMap $ fromListWith intersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
 
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]

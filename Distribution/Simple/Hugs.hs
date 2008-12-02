@@ -54,7 +54,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgramConf,
                                   ffihugsProgram, hugsProgram )
-import Distribution.Version     ( Version(..), VersionRange(AnyVersion) )
+import Distribution.Version     ( Version(..), anyVersion )
 import Distribution.Simple.PreProcess   ( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
                                 ( unlit )
@@ -94,9 +94,9 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (_ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram AnyVersion
+  (_ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram anyVersion
                             (userMaybeSpecifyPath "ffihugs" hcPath conf)
-  (_hugsProg, conf'')   <- requireProgram verbosity hugsProgram AnyVersion conf'
+  (_hugsProg, conf'')   <- requireProgram verbosity hugsProgram anyVersion conf'
 
   let comp = Compiler {
         compilerId             = CompilerId Hugs (Version [] []),

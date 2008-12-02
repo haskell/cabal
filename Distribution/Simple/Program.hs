@@ -108,7 +108,7 @@ import qualified Data.Map as Map
 import Distribution.Simple.Utils
          (die, debug, warn, rawSystemExit, rawSystemStdout)
 import Distribution.Version
-         ( Version(..), VersionRange(AnyVersion), withinRange )
+         ( Version(..), VersionRange, isAnyVersion, withinRange )
 import Distribution.Text
          ( simpleParse, display )
 import Distribution.Verbosity
@@ -478,7 +478,7 @@ requireProgram verbosity prog range conf = do
   case lookupProgram prog conf' of
     Nothing                           -> die notFound
     Just configuredProg
-      | range == AnyVersion           -> return (configuredProg, conf')
+      | isAnyVersion range            -> return (configuredProg, conf')
     Just configuredProg@ConfiguredProgram { programLocation = location } ->
       case programVersion configuredProg of
         Just version
@@ -495,8 +495,8 @@ requireProgram verbosity prog range conf = do
                       ++ " is required but the version of "
                       ++ locationPath l ++ " could not be determined."
         versionRequirement
-          | range == AnyVersion = ""
-          | otherwise           = " version " ++ display range
+          | isAnyVersion range = ""
+          | otherwise          = " version " ++ display range
 
 -- ------------------------------------------------------------
 -- * Running programs

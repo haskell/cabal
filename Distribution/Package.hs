@@ -58,7 +58,7 @@ module Distribution.Package (
   ) where
 
 import Distribution.Version
-         ( Version(..), VersionRange(AnyVersion,ThisVersion), notThisVersion )
+         ( Version(..), VersionRange, anyVersion, thisVersion, notThisVersion )
 
 import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
@@ -117,13 +117,13 @@ instance Text Dependency where
 
   parse = do name <- parse
              Parse.skipSpaces
-             ver <- parse <++ return AnyVersion
+             ver <- parse <++ return anyVersion
              Parse.skipSpaces
              return (Dependency name ver)
 
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
-  Dependency n (ThisVersion v)
+  Dependency n (thisVersion v)
 
 notThisPackageVersion :: PackageIdentifier -> Dependency
 notThisPackageVersion (PackageIdentifier n v) =
