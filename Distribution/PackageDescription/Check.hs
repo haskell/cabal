@@ -272,17 +272,17 @@ checkFields pkg =
         PackageBuildWarning $
              quote unknown ++ " is not a known 'build-type'. "
           ++ "The known build types are: "
-          ++ intercalate ", " (map display knownBuildTypes)
+          ++ commaSep (map display knownBuildTypes)
       _ -> Nothing
 
   , check (not (null unknownCompilers)) $
       PackageBuildWarning $
-        "Unknown compiler " ++ intercalate ", " (map quote unknownCompilers)
+        "Unknown compiler " ++ commaSep (map quote unknownCompilers)
                             ++ " in 'tested-with' field."
 
   , check (not (null unknownExtensions)) $
       PackageBuildWarning $
-        "Unknown extensions: " ++ intercalate ", " unknownExtensions
+        "Unknown extensions: " ++ commaSep unknownExtensions
 
   , check (null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
@@ -686,17 +686,17 @@ checkConditionals pkg =
     check (not $ null unknownOSs) $
       PackageDistInexcusable $
            "Unknown operating system name "
-        ++ intercalate ", " (map quote unknownOSs)
+        ++ commaSep (map quote unknownOSs)
 
   , check (not $ null unknownArches) $
       PackageDistInexcusable $
            "Unknown architecture name "
-        ++ intercalate ", " (map quote unknownArches)
+        ++ commaSep (map quote unknownArches)
 
   , check (not $ null unknownImpls) $
       PackageDistInexcusable $
            "Unknown compiler name "
-        ++ intercalate ", " (map quote unknownImpls)
+        ++ commaSep (map quote unknownImpls)
   ]
   where
     unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
@@ -908,4 +908,4 @@ quote :: String -> String
 quote s = "'" ++ s ++ "'"
 
 commaSep :: [String] -> String
-commaSep = intercalate ","
+commaSep = intercalate ", "
