@@ -82,7 +82,11 @@ import Distribution.Simple.Utils
          ( cabalVersion, intercalate, parseFileGlob, FileGlob(..) )
 
 import Distribution.Version
-         ( Version(..), VersionRange(..), orLaterVersion, withinRange )
+         ( Version(..)
+         , VersionRange, withinRange, foldVersionRange
+         , anyVersion, thisVersion, laterVersion, earlierVersion
+         , orLaterVersion, unionVersionRanges, intersectVersionRanges
+         , VersionIntervals(..), LowerBound(..), toVersionIntervals )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
@@ -629,17 +633,15 @@ checkCabalVersion pkg =
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
       | packageName pkg == PackageName "Cabal" = Nothing
-      | notRequiresLaterVersion (Version ver [])
+      | not (requiresAtLeast (Version ver []))
      && cond      = Just pc
       | otherwise = Nothing
 
-    notRequiresLaterVersion :: Version -> Bool
-    notRequiresLaterVersion ver = case descCabalVersion pkg of
-      UnionVersionRanges (ThisVersion v) (LaterVersion v')
-        | v == v' -> ver > v
-      AnyVersion  -> True
-      --TODO: need a better version view that excludes the middle posibilities:
-      _           -> False
+    requiresAtLeast :: Version -> Bool
+    requiresAtLeast = case cabalVersionIntervals of
+      VersionIntervals ((LowerBound ver' _,_):_) -> (>= ver')
+      _                                          -> const False
+      where cabalVersionIntervals = toVersionIntervals (descCabalVersion pkg)
 
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
@@ -651,29 +653,19 @@ checkCabalVersion pkg =
                                     , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
-    usesWildcardSyntax versionRange = case versionRange of
-      UnionVersionRanges     v1 v2 -> usesWildcardSyntax v1
-                                   || usesWildcardSyntax v2
-      IntersectVersionRanges v1 v2 -> usesWildcardSyntax v1
-                                   || usesWildcardSyntax v2
-      WildcardVersion _            -> True
-      _                            -> False
+    usesWildcardSyntax =
+      foldVersionRange
+        False (const False)
+        (const False) (const False)
+        (\_ _ -> True) -- the wildcard case
+        (||) (||)
 
-    eliminateWildcardSyntax :: VersionRange -> VersionRange
-    eliminateWildcardSyntax versionRange = case versionRange of
-      UnionVersionRanges     v1 v2 ->
-        UnionVersionRanges (eliminateWildcardSyntax v1)
-                           (eliminateWildcardSyntax v2)
-      IntersectVersionRanges v1 v2 ->
-        IntersectVersionRanges (eliminateWildcardSyntax v1)
-                               (eliminateWildcardSyntax v2)
-      WildcardVersion v ->
-        IntersectVersionRanges (orLaterVersion v) (EarlierVersion v')
-        where
-          v'         = Version upperBound []
-          lowerBound = versionBranch v
-          upperBound = init lowerBound ++ [last lowerBound + 1]
-      _ -> versionRange
+    eliminateWildcardSyntax =
+      foldVersionRange
+        anyVersion thisVersion
+        laterVersion earlierVersion
+        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
+        intersectVersionRanges unionVersionRanges
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
