@@ -77,7 +77,7 @@ import Distribution.Compiler
 import Distribution.System
          ( OS(..), Arch(..) )
 import Distribution.License
-         ( License(..) )
+         ( License(..), knownLicenses )
 import Distribution.Simple.Utils
          ( cabalVersion, intercalate, parseFileGlob, FileGlob(..) )
 
@@ -320,7 +320,9 @@ checkLicense pkg =
   , case license pkg of
       UnknownLicense l -> Just $
         PackageBuildWarning $
-          quote ("license: " ++ l) ++ " is not a recognised license."
+             quote ("license: " ++ l) ++ " is not a recognised license. The "
+          ++ "known licenses are: "
+          ++ commaSep (map display knownLicenses)
       _ -> Nothing
 
   , check (license pkg == BSD4) $
@@ -329,12 +331,30 @@ checkLicense pkg =
         ++ "refers to the old 4-clause BSD license with the advertising "
         ++ "clause. 'BSD3' refers the new 3-clause BSD license."
 
+  , case unknownLicenseVersion (license pkg) of
+      Just knownVersions -> Just $
+        PackageDistSuspicious $
+             "'license: " ++ display (license pkg) ++ "' is not a known "
+          ++ "version of that license. The known versions are "
+          ++ commaSep (map display knownVersions)
+          ++ ". If this is not a mistake and you think it should be a known "
+          ++ "version then please file a ticket."
+      _ -> Nothing
+
   , check (license pkg `notElem` [AllRightsReserved, PublicDomain]
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
         && null (licenseFile pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
+  where
+    unknownLicenseVersion (GPL  (Just v))
+      | v `notElem` knownVersions = Just knownVersions
+      where knownVersions = [ v' | GPL  (Just v') <- knownLicenses ]
+    unknownLicenseVersion (LGPL (Just v))
+      | v `notElem` knownVersions = Just knownVersions
+      where knownVersions = [ v' | LGPL (Just v') <- knownLicenses ]
+    unknownLicenseVersion _ = Nothing
 
 checkSourceRepos :: PackageDescription -> [PackageCheck]
 checkSourceRepos pkg =
@@ -628,6 +648,14 @@ checkCabalVersion pkg =
         ++ "Unfortunately it messes up the parser in earlier Cabal versions "
         ++ "so you need to specify 'cabal-version: >= 1.6'."
 
+    -- check for new licenses
+  , checkVersion [1,4] (license pkg `notElem` compatLicenses) $
+      PackageDistInexcusable $
+           "Unfortunately the license " ++ quote (display (license pkg))
+        ++ " messes up the parser in earlier Cabal versions so you need to "
+        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "compatability with earlier Cabal versions then use 'OtherLicense'."
+
   ]
   where
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
@@ -666,6 +694,9 @@ checkCabalVersion pkg =
         laterVersion earlierVersion
         (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
         intersectVersionRanges unionVersionRanges
+
+    compatLicenses = [ GPL Nothing, LGPL Nothing, BSD3, BSD4
+                     , PublicDomain, AllRightsReserved, OtherLicense ]
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
