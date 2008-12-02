@@ -98,27 +98,47 @@ betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
 
-laterVersion :: Version -> Version -> Bool
-v1 `laterVersion`   v2 = versionBranch v1 > versionBranch v2
-
-earlierVersion :: Version -> Version -> Bool
-v1 `earlierVersion` v2 = versionBranch v1 < versionBranch v2
-
--- |Does this version fall within the given range?
-withinRange :: Version -> VersionRange -> Bool
-withinRange _  AnyVersion                = True
-withinRange v1 (ThisVersion v2)          = v1 == v2
-withinRange v1 (LaterVersion v2)         = v1 `laterVersion` v2
-withinRange v1 (EarlierVersion v2)       = v1 `earlierVersion` v2
-withinRange v1 (WildcardVersion v2)      = versionBranch v1 >= lowerBound
-                                        && versionBranch v1 <  upperBound
+foldVersionRange :: a -> (Version -> a) -> (Version -> a) -> (Version -> a)
+                 -> (Version -> Version -> a)
+                 -> (a -> a -> a)  -> (a -> a -> a)
+                 -> VersionRange -> a
+foldVersionRange anyv this later earlier wildcard union intersection = fold
   where
-    lowerBound = versionBranch v2
+    fold AnyVersion                     = anyv
+    fold (ThisVersion v)                = this v
+    fold (LaterVersion v)               = later v
+    fold (EarlierVersion v)             = earlier v
+    fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
+    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
+    fold (IntersectVersionRanges v1 v2) = intersection (fold v1) (fold v2)
+
+-- | Does this version fall within the given range?
+--
+-- This is the evaluation function for the 'VersionRange' type.
+--
+withinRange :: Version -> VersionRange -> Bool
+withinRange v = foldVersionRange
+                   True
+                   (\v'  -> versionBranch v == versionBranch v')
+                   (\v'  -> versionBranch v >  versionBranch v')
+                   (\v'  -> versionBranch v <  versionBranch v')
+                   (\l u -> versionBranch v >= versionBranch l
+                         && versionBranch v <  versionBranch u)
+                   (||)
+                   (&&)
+
+----------------------------
+-- Wildcard range utilities
+--
+
+wildcardUpperBound :: Version -> Version
+wildcardUpperBound (Version lowerBound ts) = (Version upperBound ts)
+  where
     upperBound = init lowerBound ++ [last lowerBound + 1]
-withinRange v1 (UnionVersionRanges v2 v3)
-   = v1 `withinRange` v2 || v1 `withinRange` v3
-withinRange v1 (IntersectVersionRanges v2 v3)
-   = v1 `withinRange` v2 && v1 `withinRange` v3
+
+-------------------------------
+-- Parsing and pretty printing
+--
 
 instance Text VersionRange where
   disp AnyVersion           = Disp.text "-any"
