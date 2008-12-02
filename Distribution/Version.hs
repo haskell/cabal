@@ -145,10 +145,10 @@ instance Text VersionRange where
   disp (ThisVersion    v)   = Disp.text "==" <> disp v
   disp (LaterVersion   v)   = Disp.char '>'  <> disp v
   disp (EarlierVersion v)   = Disp.char '<'  <> disp v
-  disp (WildcardVersion v)  =
-       Disp.hcat (Disp.punctuate (Disp.char '.')
-                                 (map Disp.int (versionBranch v)))
-    <> Disp.text ".*"
+  disp (WildcardVersion v)  = Disp.text "==" <> dispWild v
+    where dispWild (Version b _) =
+               Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+            <> Disp.text ".*"
   disp (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
     | v1 == v2 = Disp.text ">=" <> disp v1
   disp (UnionVersionRanges (LaterVersion v2) (ThisVersion  v1))
