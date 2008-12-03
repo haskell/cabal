@@ -81,7 +81,8 @@ downloadURI verbosity path uri = do
     Left err -> return (Just err)
     Right rsp
       | rspCode rsp == (2,0,0)
-     -> writeFileAtomic path (rspBody rsp)
+     -> do info verbosity ("Downloaded to " ++ path)
+           writeFileAtomic path (rspBody rsp)
      --FIXME: check the content-length header matches the body length.
      --TODO: stream the download into the file rather than buffering the whole
      --      thing in memory.
