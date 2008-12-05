@@ -664,13 +664,13 @@ checkCabalVersion pkg =
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
       | packageName pkg == PackageName "Cabal" = Nothing
-      | not (requiresAtLeast (Version ver []))
-     && cond      = Just pc
-      | otherwise = Nothing
+      | requiresAtLeast (Version ver []) = Nothing
+      | not cond  = Nothing
+      | otherwise = Just pc
 
     requiresAtLeast :: Version -> Bool
     requiresAtLeast = case cabalVersionIntervals of
-      (LowerBound ver' _,_):_ -> (>= ver')
+      (LowerBound ver' _,_):_ -> (ver' >=)
       _                       -> const False
       where cabalVersionIntervals = asVersionIntervals (descCabalVersion pkg)
 
