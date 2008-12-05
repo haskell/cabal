@@ -86,7 +86,7 @@ import Distribution.Version
          , VersionRange, withinRange, foldVersionRange
          , anyVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, unionVersionRanges, intersectVersionRanges
-         , VersionIntervals(..), LowerBound(..), toVersionIntervals )
+         , asVersionIntervals, LowerBound(..) )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
@@ -670,9 +670,9 @@ checkCabalVersion pkg =
 
     requiresAtLeast :: Version -> Bool
     requiresAtLeast = case cabalVersionIntervals of
-      VersionIntervals ((LowerBound ver' _,_):_) -> (>= ver')
-      _                                          -> const False
-      where cabalVersionIntervals = toVersionIntervals (descCabalVersion pkg)
+      (LowerBound ver' _,_):_ -> (>= ver')
+      _                       -> const False
+      where cabalVersionIntervals = asVersionIntervals (descCabalVersion pkg)
 
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
