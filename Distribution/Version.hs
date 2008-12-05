@@ -66,13 +66,23 @@ module Distribution.Version (
   foldVersionRange,
 
   -- * Version intervals view
-  VersionIntervals(..),
+  asVersionIntervals,
+  VersionInterval,
   LowerBound(..),
   UpperBound(..),
   Bound(..),
+
+  -- ** 'VersionIntervals' abstract type
+  -- | The 'VersionIntervals' type and the accompanying functions are exposed
+  -- primarily for completeness and testing purposes. In practice 
+  -- 'asVersionIntervals' is the main function to use to
+  -- view a 'VersionRange' as a bunch of 'VersionInterval's.
+  --
+  VersionIntervals,
   toVersionIntervals,
   fromVersionIntervals,
   withinIntervals,
+  versionIntervals,
 
  ) where
 
@@ -101,13 +111,13 @@ data VersionRange
   | IntersectVersionRanges  VersionRange VersionRange
   deriving (Show,Read,Eq)
 
-{-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED LaterVersion "use 'laterVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED EarlierVersion "use 'earlierVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED WildcardVersion "use 'anyVersion', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED UnionVersionRanges "use 'unionVersionRanges', 'foldVersionRange' or 'toVersionIntervals'" #-}
-{-# DEPRECATED IntersectVersionRanges "use 'intersectVersionRanges', 'foldVersionRange' or 'toVersionIntervals'" #-}
+{-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED LaterVersion "use 'laterVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED EarlierVersion "use 'earlierVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED WildcardVersion "use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED UnionVersionRanges "use 'unionVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED IntersectVersionRanges "use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
 
 anyVersion :: VersionRange
 anyVersion = AnyVersion
@@ -173,6 +183,31 @@ withinRange v = foldVersionRange
                    (||)
                    (&&)
 
+-- | View a 'VersionRange' as a union of intervals.
+--
+-- This provides a canonical view of the semantics of a 'VersionRange' as
+-- opposed to the syntax of the expression used to define it. For the syntactic
+-- view use 'foldVersionRange'.
+--
+-- Each interval is non-empty. The sequence is in increasing order and no
+-- intervals overlap or touch. Therefore only the first and last can be
+-- unbounded. The sequence can be empty if the range is empty
+-- (e.g. a range expression like @< 1 && > 2@).
+--
+-- Other checks are trivial to implement using this view. For example:
+--
+-- > isNoVersion vr | [] <- asVersionIntervals vr = True
+-- >                | otherwise                   = False
+--
+-- > isSpecificVersion vr
+-- >    | [(LowerBound v  InclusiveBound
+-- >       ,UpperBound v' InclusiveBound)] <- asVersionIntervals vr
+-- >    , v == v'   = Just v
+-- >    | otherwise = Nothing
+--
+asVersionIntervals :: VersionRange -> [VersionInterval]
+asVersionIntervals = versionIntervals . toVersionIntervals
+
 -- | Does this 'VersionRange' place any restriction on the 'Version' or is it
 -- in fact equivalent to 'AnyVersion'.
 --
@@ -182,9 +217,9 @@ withinRange v = foldVersionRange
 -- > isAnyVersion (EarlierVersion v `UnionVersionRanges` orLaterVersion v)
 --
 isAnyVersion :: VersionRange -> Bool
-isAnyVersion vr = case toVersionIntervals vr of
-  VersionIntervals [(NoLowerBound, NoUpperBound)] -> True
-  _                                               -> False
+isAnyVersion vr = case asVersionIntervals vr of
+  [(NoLowerBound, NoUpperBound)] -> True
+  _                              -> False
 
 -- | This is the converse of 'isAnyVersion'. It check if the version range is
 -- empty, if there is no possible version that satisfies the version range.
@@ -194,9 +229,9 @@ isAnyVersion vr = case toVersionIntervals vr of
 -- > isNoVersion (EarlierVersion v `IntersectVersionRanges` LaterVersion v)
 --
 isNoVersion :: VersionRange -> Bool
-isNoVersion vr = case toVersionIntervals vr of
-  VersionIntervals [] -> True
-  _                   -> False
+isNoVersion vr = case asVersionIntervals vr of
+  [] -> True
+  _  -> False
 
 -- | Is this version range in fact just a specific version?
 --
@@ -204,11 +239,11 @@ isNoVersion vr = case toVersionIntervals vr of
 -- @3@.
 --
 isSpecificVersion :: VersionRange -> Maybe Version
-isSpecificVersion vr = case toVersionIntervals vr of
-  VersionIntervals [(LowerBound v  InclusiveBound
-                    ,UpperBound v' InclusiveBound)]
-                   | v == v' -> Just v
-  _                          -> Nothing
+isSpecificVersion vr = case asVersionIntervals vr of
+  [(LowerBound v  InclusiveBound
+   ,UpperBound v' InclusiveBound)]
+    | v == v' -> Just v
+  _           -> Nothing
 
 -- | Simplify a 'VersionRange' expression into a canonical form.
 --
@@ -250,6 +285,11 @@ isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
 --
 newtype VersionIntervals = VersionIntervals [VersionInterval]
   deriving (Eq, Show)
+
+-- | Inspect the list of version intervals.
+--
+versionIntervals :: VersionIntervals -> [VersionInterval]
+versionIntervals (VersionIntervals is) = is
 
 type VersionInterval = (LowerBound, UpperBound)
 data LowerBound = NoLowerBound | LowerBound Version !Bound deriving (Eq, Show)
