@@ -59,10 +59,6 @@ import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 --   (where X is each compiler: GHC, JHC, Hugs, NHC)
 --
 -- * also to the 'knownExtensions' list below.
---
--- * If the first character of the new extension is outside the range 'A' - 'V'
---   (ie 'W'-'Z' or any non-uppercase-alphabetical char) then update the bounds
---   of the 'extensionTable' below.
 
 -- |This represents language extensions beyond Haskell 98 that are
 -- supported by some implementations, usually in some special mode.
@@ -216,7 +212,7 @@ instance Text Extension where
 
 -- | 'read' for 'Extension's is really really slow so for the Text instance
 -- what we do is make a simple table indexed off the first letter in the
--- extension name. The extension names actually cover the range @'A'-'U'@
+-- extension name. The extension names actually cover the range @'A'-'Z'@
 -- pretty densely and the biggest bucket is 7 so it's not too bad. We just do
 -- a linear search within each bucket.
 --
@@ -233,7 +229,7 @@ classifyExtension string = UnknownExtension string
 
 extensionTable :: Array Char [(String, Extension)]
 extensionTable =
-  accumArray (flip (:)) [] ('A', 'V')
+  accumArray (flip (:)) [] ('A', 'Z')
     [ (head str, (str, extension))
     | extension <- knownExtensions
     , let str = show extension ]
