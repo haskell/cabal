@@ -291,13 +291,16 @@ checkFields pkg =
   , check (null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
 
-  , check (null (description pkg)) $
-      PackageDistSuspicious "No 'description' field."
-
   , check (null (maintainer pkg)) $
       PackageDistSuspicious "No 'maintainer' field."
 
-  , check (null (synopsis pkg)) $
+  , check (null (synopsis pkg) && null (description pkg)) $
+      PackageDistInexcusable $ "No 'synopsis' or 'description' field."
+
+  , check (null (description pkg) && not (null (synopsis pkg))) $
+      PackageDistSuspicious "No 'description' field."
+
+  , check (null (synopsis pkg) && not (null (description pkg))) $
       PackageDistSuspicious "No 'synopsis' field."
 
   , check (length (synopsis pkg) >= 80) $
