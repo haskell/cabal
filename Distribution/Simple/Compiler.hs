@@ -136,13 +136,14 @@ flagToOptimisationLevel (Just s) = case reads s of
 unsupportedExtensions :: Compiler -> [Extension] -> [Extension]
 unsupportedExtensions comp exts =
   [ ext | ext <- exts
-        , isNothing $ lookup ext (compilerExtensions comp) ]
+        , isNothing (extensionToFlag comp ext) ]
 
 type Flag = String
 
 -- |For the given compiler, return the flags for the supported extensions.
 extensionsToFlags :: Compiler -> [Extension] -> [Flag]
-extensionsToFlags comp exts =
-  nub $ filter (not . null) $ catMaybes
-  [ lookup ext (compilerExtensions comp)
-  | ext <- exts ]
+extensionsToFlags comp = nub . filter (not . null)
+                       . catMaybes . map (extensionToFlag comp)
+
+extensionToFlag :: Compiler -> Extension -> Maybe Flag
+extensionToFlag comp ext = lookup ext (compilerExtensions comp)
