@@ -57,7 +57,7 @@ module Distribution.Version (
   unionVersionRanges, intersectVersionRanges,
   betweenVersionsInclusive,
 
-  -- ** General
+  -- ** Inspection
   withinRange,
   isAnyVersion,
   isNoVersion,
@@ -154,6 +154,11 @@ betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
 
+-- | Fold over the syntactic structure of a 'VersionRange'.
+--
+-- This provides a syntacic view of the expression defining the version range.
+-- For a semantic view use 'asVersionIntervals'.
+--
 foldVersionRange :: a -> (Version -> a) -> (Version -> a) -> (Version -> a)
                  -> (Version -> Version -> a)
                  -> (a -> a -> a)  -> (a -> a -> a)
@@ -272,8 +277,8 @@ isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
 --
 
 -- | A complementary representation of a 'VersionRange'. Instead of a boolean
--- version predicate it uses an increasing sequence of non-overlapping
--- intervals.
+-- version predicate it uses an increasing sequence of non-overlapping,
+-- non-empty intervals.
 --
 -- The key point is that this representation gives a canonical representation
 -- for the semantics of 'VersionRange's. This makes it easier to check things
@@ -314,7 +319,8 @@ instance Ord UpperBound where
 
 -- | Test if a version falls within the version intervals.
 --
--- It exists mostly for completeness. It satisfies the following properties:
+-- It exists mostly for completeness and testing. It satisfies the following
+-- properties:
 --
 -- > withinIntervals v (toVersionIntervals vr) = withinRange v vr
 -- > withinIntervals v ivs = withinRange v (fromVersionIntervals ivs)
@@ -322,8 +328,8 @@ instance Ord UpperBound where
 withinIntervals :: Version -> VersionIntervals -> Bool
 withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
   where
-    withinInterval (lowerBound, upperBound) = withinLower lowerBound
-                                           && withinUpper upperBound
+    withinInterval (lowerBound, upperBound)    = withinLower lowerBound
+                                              && withinUpper upperBound
     withinLower NoLowerBound                   = True
     withinLower (LowerBound v' ExclusiveBound) = v' <  v
     withinLower (LowerBound v' InclusiveBound) = v' <= v
@@ -332,7 +338,7 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
     withinUpper (UpperBound v' ExclusiveBound) = v  >  v'
     withinUpper (UpperBound v' InclusiveBound) = v  >= v'
 
--- | View a 'VersionRange' as a sequence of version intervals.
+-- | Convert a 'VersionRange' to a sequence of version intervals.
 --
 toVersionIntervals :: VersionRange -> VersionIntervals
 toVersionIntervals =
