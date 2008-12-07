@@ -63,7 +63,7 @@ module Distribution.PackageDescription.Check (
   ) where
 
 import Data.Maybe (isNothing, catMaybes, fromMaybe)
-import Data.List  (sort, group, isPrefixOf)
+import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Monad
          ( filterM, liftM )
 import qualified System.Directory as System
@@ -482,13 +482,7 @@ checkGhcOptions pkg =
                                   , Just extension <- [ghcExtension flag] ]
 
   , checkAlternatives "ghc-options" "extensions"
-      [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options
-                          , case simpleParse extension of
-                              Just (UnknownExtension _) -> True
-                              Just ext -> ext `elem` compatExtensions
-                                       || not (Version [1,1,6] []
-                                 `withinRange` descCabalVersion pkg)
-                              Nothing  -> False ]
+      [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
 
   , checkAlternatives "ghc-options" "cpp-options" $
          [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
@@ -536,23 +530,6 @@ checkGhcOptions pkg =
       _                             -> Nothing
     ghcExtension ('-':'c':"pp")     = Just CPP
     ghcExtension _                  = Nothing
-
-    -- the known extensions in Cabal-1.1.6 that came with ghc-6.6:
-    -- we can drop this test when Cabal-1.4+ is widely deployed because
-    -- from that point on we can add new extensions without worrying about
-    -- breaking old versions of cabal.
-    compatExtensions =
-      [ OverlappingInstances, UndecidableInstances, IncoherentInstances
-      , RecursiveDo, ParallelListComp, MultiParamTypeClasses
-      , NoMonomorphismRestriction, FunctionalDependencies, Rank2Types
-      , RankNTypes, PolymorphicComponents, ExistentialQuantification
-      , ScopedTypeVariables, ImplicitParams, FlexibleContexts
-      , FlexibleInstances, EmptyDataDecls, CPP, BangPatterns
-      , TypeSynonymInstances, TemplateHaskell, ForeignFunctionInterface
-      , Arrows, Generics, NoImplicitPrelude, NamedFieldPuns, PatternGuards
-      , GeneralizedNewtypeDeriving, ExtensibleRecords, RestrictedTypeSynonyms
-      , HereDocuments
-      ]
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
 checkCCOptions pkg =
@@ -659,6 +636,24 @@ checkCabalVersion pkg =
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatability with earlier Cabal versions then use 'OtherLicense'."
 
+    -- check for new language extensions
+  , checkVersion [1,2,3] (not (null usedExtensionsThatNeedCabal12)) $
+      PackageDistInexcusable $
+           "Unfortunately the language extensions "
+        ++ commaSep (map (quote . display) usedExtensionsThatNeedCabal12)
+        ++ " break the parser in earlier Cabal versions so you need to "
+        ++ "specify 'cabal-version: >= 1.2.3'. Alternatively if you require "
+        ++ "compatability with earlier Cabal versions then you may be able to "
+        ++ "use an equivalent compiler-specific flag."
+
+  , checkVersion [1,4] (not (null usedExtensionsThatNeedCabal14)) $
+      PackageDistInexcusable $
+           "Unfortunately the language extensions "
+        ++ commaSep (map (quote . display) usedExtensionsThatNeedCabal14)
+        ++ " break the parser in earlier Cabal versions so you need to "
+        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "compatability with earlier Cabal versions then you may be able to "
+        ++ "use an equivalent compiler-specific flag."
   ]
   where
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
@@ -700,6 +695,40 @@ checkCabalVersion pkg =
 
     compatLicenses = [ GPL Nothing, LGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved, OtherLicense ]
+
+    usedExtensions = [ ext | bi <- allBuildInfo pkg, ext <- extensions bi ]
+    usedExtensionsThatNeedCabal12 =
+      nub (filter (`elem` compatExtensionsExtra) usedExtensions)
+
+    -- As of Cabal-1.4 we can add new extensions without worrying about
+    -- breaking old versions of cabal.
+    usedExtensionsThatNeedCabal14 =
+      nub (filter (`notElem` compatExtensions) usedExtensions)
+
+    -- The known extensions in Cabal-1.2.3
+    compatExtensions =
+      [ OverlappingInstances, UndecidableInstances, IncoherentInstances
+      , RecursiveDo, ParallelListComp, MultiParamTypeClasses
+      , NoMonomorphismRestriction, FunctionalDependencies, Rank2Types
+      , RankNTypes, PolymorphicComponents, ExistentialQuantification
+      , ScopedTypeVariables, ImplicitParams, FlexibleContexts
+      , FlexibleInstances, EmptyDataDecls, CPP, BangPatterns
+      , TypeSynonymInstances, TemplateHaskell, ForeignFunctionInterface
+      , Arrows, Generics, NoImplicitPrelude, NamedFieldPuns, PatternGuards
+      , GeneralizedNewtypeDeriving, ExtensibleRecords, RestrictedTypeSynonyms
+      , HereDocuments
+      ] ++ compatExtensionsExtra
+
+    -- The extra known extensions in Cabal-1.2.3 vs Cabal-1.1.6
+    -- (Cabal-1.1.6 came with ghc-6.6. Cabal-1.2 came with ghc-6.8)
+    compatExtensionsExtra =
+      [ KindSignatures, MagicHash, TypeFamilies, StandaloneDeriving
+      , UnicodeSyntax, PatternSignatures, UnliftedFFITypes, LiberalTypeSynonyms
+      , TypeOperators, RecordWildCards, RecordPuns, DisambiguateRecordFields
+      , OverloadedStrings, GADTs, NoMonoPatBinds, RelaxedPolyRec
+      , ExtendedDefaultRules, UnboxedTuples, DeriveDataTypeable
+      , ConstrainedClassMethods
+      ]
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
