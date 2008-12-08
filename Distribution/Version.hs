@@ -83,6 +83,9 @@ module Distribution.Version (
   fromVersionIntervals,
   withinIntervals,
   versionIntervals,
+  mkVersionIntervals,
+  unionVersionIntervals,
+  intersectVersionIntervals,
 
  ) where
 
@@ -94,6 +97,7 @@ import Distribution.Compat.ReadP ((+++))
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>))
 import qualified Data.Char as Char (isDigit)
+import Control.Exception (assert)
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -317,6 +321,64 @@ instance Ord UpperBound where
     EQ -> not (bound == InclusiveBound && bound' == ExclusiveBound)
     GT -> False
 
+invariant :: VersionIntervals -> Bool
+invariant (VersionIntervals intervals) = all nonEmpty      intervals
+                                      && all doesNotTouch' adjacentIntervals
+  where
+    doesNotTouch' :: (VersionInterval, VersionInterval) -> Bool
+    doesNotTouch' ((_,u), (l',_)) = doesNotTouch u l'
+
+    adjacentIntervals :: [(VersionInterval, VersionInterval)]
+    adjacentIntervals
+      | null intervals = []
+      | otherwise      = zip intervals (tail intervals)
+
+checkInvariant :: VersionIntervals -> VersionIntervals
+checkInvariant is = assert (invariant is) is
+
+-- | Directly construct a 'VersionIntervals' from a list of intervals.
+--
+-- Each interval must be non-empty. The sequence must be in increasing order
+-- and no invervals may overlap or touch. If any of these conditions are not
+-- satisfied the function returns @Nothing@.
+--
+mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals
+mkVersionIntervals intervals
+  | invariant (VersionIntervals intervals) = Just (VersionIntervals intervals)
+  | otherwise                              = Nothing
+
+-- Check an interval is non-empty
+--
+nonEmpty :: VersionInterval -> Bool
+nonEmpty (NoLowerBound,    _              ) = True
+nonEmpty (_,               NoUpperBound   ) = True
+nonEmpty (LowerBound l lb, UpperBound u ub) =
+  (l < u) || (l == u && lb == InclusiveBound && ub == InclusiveBound)
+
+-- Check an upper bound does not intersect, or even touch a lower bound:
+--
+--   ---|      or  ---)     but not  ---]     or  ---)     or  ---]
+--       |---         (---              (---         [---         [---
+--
+doesNotTouch :: UpperBound -> LowerBound -> Bool
+doesNotTouch NoUpperBound _ = False
+doesNotTouch _ NoLowerBound = False
+doesNotTouch (UpperBound u ub) (LowerBound l lb) =
+      u <  l
+  || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
+
+-- | Check an upper bound does not intersect a lower bound:
+--
+--   ---|      or  ---)     or  ---]     or  ---)     but not  ---]
+--       |---         (---         (---         [---              [---
+--
+doesNotIntersect :: UpperBound -> LowerBound -> Bool
+doesNotIntersect NoUpperBound _ = False
+doesNotIntersect _ NoLowerBound = False
+doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
+      u <  l
+  || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
+
 -- | Test if a version falls within the version intervals.
 --
 -- It exists mostly for completeness and testing. It satisfies the following
@@ -341,32 +403,16 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
 -- | Convert a 'VersionRange' to a sequence of version intervals.
 --
 toVersionIntervals :: VersionRange -> VersionIntervals
-toVersionIntervals =
-    VersionIntervals
-  . foldVersionRange
-              [(NoLowerBound,                NoUpperBound)]
-    (\v    -> [(LowerBound v InclusiveBound, UpperBound v InclusiveBound)])
-    (\v    -> [(LowerBound v ExclusiveBound, NoUpperBound)])
-    (\v    -> [(NoLowerBound,                UpperBound v ExclusiveBound)])
-    (\v v' -> [(LowerBound v InclusiveBound, UpperBound v' ExclusiveBound)])
-    unionIntervals
-    intersectIntervals
+toVersionIntervals = foldVersionRange
+  (         chkIvl (NoLowerBound,                NoUpperBound))
+  (\v    -> chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound))
+  (\v    -> chkIvl (LowerBound v ExclusiveBound, NoUpperBound))
+  (\v    -> chkIvl (NoLowerBound,                UpperBound v ExclusiveBound))
+  (\v v' -> chkIvl (LowerBound v InclusiveBound, UpperBound v' ExclusiveBound))
+  unionVersionIntervals
+  intersectVersionIntervals
   where
-    unionIntervals is []  = is
-    unionIntervals [] is' = is'
-    unionIntervals (i:is) (i':is') = case unionInterval i i' of
-      Left  Nothing    -> i  : unionIntervals      is  (i' :is')
-      Left  (Just i'') ->      unionIntervals      is  (i'':is')
-      Right Nothing    -> i' : unionIntervals (i  :is)      is'
-      Right (Just i'') ->      unionIntervals (i'':is)      is'
-
-    intersectIntervals _  [] = []
-    intersectIntervals [] _  = []
-    intersectIntervals (i:is) (i':is') = case intersectInterval i i' of
-      Left  Nothing    ->       intersectIntervals is (i':is')
-      Left  (Just i'') -> i'' : intersectIntervals is (i':is')
-      Right Nothing    ->       intersectIntervals (i:is) is'
-      Right (Just i'') -> i'' : intersectIntervals (i:is) is'
+    chkIvl interval = checkInvariant (VersionIntervals [interval])
 
 -- | Convert a 'VersionIntervals' value back into a 'VersionRange' expression
 -- representing the version intervals.
@@ -397,6 +443,19 @@ fromVersionIntervals (VersionIntervals intervals) =
     intersectVersionRanges' AnyVersion vr = vr
     intersectVersionRanges' vr vr'        = IntersectVersionRanges vr vr'
 
+unionVersionIntervals :: VersionIntervals -> VersionIntervals
+                      -> VersionIntervals
+unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
+  checkInvariant (VersionIntervals (union is0 is'0))
+  where
+    union is []  = is
+    union [] is' = is'
+    union (i:is) (i':is') = case unionInterval i i' of
+      Left  Nothing    -> i  : union      is  (i' :is')
+      Left  (Just i'') ->      union      is  (i'':is')
+      Right Nothing    -> i' : union (i  :is)      is'
+      Right (Just i'') ->      union (i'':is)      is'
+
 unionInterval :: VersionInterval -> VersionInterval
               -> Either (Maybe VersionInterval) (Maybe VersionInterval)
 unionInterval (lower , upper ) (lower', upper')
@@ -417,17 +476,18 @@ unionInterval (lower , upper ) (lower', upper')
   where
     lowerBound = min lower lower'
 
-    -- Check an upper bound does not intersect, or even touch a lower bound:
-    --
-    --   ---|      or  ---)     but not  ---]     or  ---)     or  ---]
-    --       |---         (---              (---         [---         [---
-    --
-    doesNotTouch :: UpperBound -> LowerBound -> Bool
-    doesNotTouch NoUpperBound _ = False
-    doesNotTouch _ NoLowerBound = False
-    doesNotTouch (UpperBound u ub) (LowerBound l lb) =
-          u <  l
-      || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
+intersectVersionIntervals :: VersionIntervals -> VersionIntervals
+                          -> VersionIntervals
+intersectVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
+  checkInvariant (VersionIntervals (intersect is0 is'0))
+  where
+    intersect _  [] = []
+    intersect [] _  = []
+    intersect (i:is) (i':is') = case intersectInterval i i' of
+      Left  Nothing    ->       intersect is (i':is')
+      Left  (Just i'') -> i'' : intersect is (i':is')
+      Right Nothing    ->       intersect (i:is) is'
+      Right (Just i'') -> i'' : intersect (i:is) is'
 
 intersectInterval :: VersionInterval -> VersionInterval
                   -> Either (Maybe VersionInterval) (Maybe VersionInterval)
@@ -448,18 +508,6 @@ intersectInterval (lower , upper ) (lower', upper')
                 Right (Just (lowerBound, upper'))
   where
     lowerBound = max lower lower'
-
-    -- Check an upper bound does not intersect a lower bound:
-    --
-    --   ---|      or  ---)     or  ---]     or  ---)     but not  ---]
-    --       |---         (---         (---         [---              [---
-    --
-    doesNotIntersect :: UpperBound -> LowerBound -> Bool
-    doesNotIntersect NoUpperBound _ = False
-    doesNotIntersect _ NoLowerBound = False
-    doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
-          u <  l
-      || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
 
 -------------------------------
 -- Parsing and pretty printing
