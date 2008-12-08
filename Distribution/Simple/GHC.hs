@@ -154,20 +154,7 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
-  languageExtensions <-
-    if ghcVersion >= Version [6,7] []
-      then do exts <- rawSystemStdout verbosity (programPath ghcProg)
-                        ["--supported-languages"]
-              -- GHC has the annoying habit of inverting some of the extensions
-              -- so we have to try parsing ("No" ++ ghcExtensionName) first
-              let readExtension str = do
-                    ext <- simpleParse ("No" ++ str)
-                    case ext of
-                      UnknownExtension _ -> simpleParse str
-                      _                  -> return ext
-              return [ (ext, "-X" ++ display ext)
-                     | Just ext <- map readExtension (lines exts) ]
-      else return oldLanguageExtensions
+  languageExtensions <- getLanguageExtensions verbosity ghcProg
 
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
@@ -267,6 +254,27 @@ configureToolchain ghcProg =
       if ldx
         then return ["-x"]
         else return []
+
+getLanguageExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
+getLanguageExtensions verbosity ghcProg
+  | ghcVersion >= Version [6,7] [] = do
+
+    exts <- rawSystemStdout verbosity (programPath ghcProg)
+              ["--supported-languages"]
+    -- GHC has the annoying habit of inverting some of the extensions
+    -- so we have to try parsing ("No" ++ ghcExtensionName) first
+    let readExtension str = do
+          ext <- simpleParse ("No" ++ str)
+          case ext of
+            UnknownExtension _ -> simpleParse str
+            _                  -> return ext
+    return [ (ext, "-X" ++ display ext)
+           | Just ext <- map readExtension (lines exts) ]
+
+  | otherwise = return oldLanguageExtensions
+
+  where
+    Just ghcVersion = programVersion ghcProg
 
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
 oldLanguageExtensions :: [(Extension, Flag)]
