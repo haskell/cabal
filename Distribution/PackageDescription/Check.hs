@@ -79,7 +79,7 @@ import Distribution.System
 import Distribution.License
          ( License(..), knownLicenses )
 import Distribution.Simple.Utils
-         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..) )
+         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..), lowercase )
 
 import Distribution.Version
          ( Version(..)
@@ -591,22 +591,69 @@ checkAlternatives badField goodField flags =
 
 checkPaths :: PackageDescription -> [PackageCheck]
 checkPaths pkg =
-  [ PackageBuildWarning {
-     explanation = quote (kind ++ ": " ++ dir)
-                ++ " is a relative path outside of the source tree. "
-                ++ "This will not work when generating a tarball with 'sdist'."
-   }
+  [ PackageBuildWarning $
+         quote (kind ++ ": " ++ path)
+      ++ " is a relative path outside of the source tree. "
+      ++ "This will not work when generating a tarball with 'sdist'."
+  | (path, kind) <- relPaths ++ absPaths
+  , isOutsideTree path ]
+  ++
+  [ PackageDistInexcusable $
+      quote (kind ++ ": " ++ path) ++ " is an absolute directory."
+  | (path, kind) <- relPaths
+  , isAbsolute path ]
+  ++
+  [ PackageDistInexcusable $
+         quote (kind ++ ": " ++ path) ++ " points inside the 'dist' "
+      ++ "directory. This is not reliable because the location of this "
+      ++ "directory is configurable by the user (or package manager). In "
+      ++ "addition the layout of the 'dist' directory is subject to change "
+      ++ "in future versions of Cabal."
+  | (path, kind) <- relPaths ++ absPaths
+  , isInsideDist path ]
+  ++
+  [ PackageDistInexcusable $
+         "The 'ghc-options' contains the path '" ++ path ++ "' which points "
+      ++ "inside the 'dist' directory. This is not reliable because the "
+      ++ "location of this directory is configurable by the user (or package "
+      ++ "manager). In addition the layout of the 'dist' directory is subject "
+      ++ "to change in future versions of Cabal."
   | bi <- allBuildInfo pkg
-  , (dir, kind) <- [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
-                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
-                ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
-  , isOutsideTree dir ]
-  where isOutsideTree dir = case splitDirectories dir of
-                              "..":_ -> True
-                              _      -> False
+  , (GHC, flags) <- options bi
+  , path <- flags
+  , isInsideDist path ]
+  where
+    isOutsideTree path = case splitDirectories path of
+      "..":_     -> True
+      ".":"..":_ -> True
+      _          -> False
+    isInsideDist path = case map lowercase (splitDirectories path) of
+      "dist"    :_ -> True
+      ".":"dist":_ -> True
+      _            -> False
+    -- paths that must be relative
+    relPaths =
+         [ (path, "extra-src-files") | path <- extraSrcFiles pkg ]
+      ++ [ (path, "extra-tmp-files") | path <- extraTmpFiles pkg ]
+      ++ [ (path, "data-files")      | path <- dataFiles     pkg ]
+      ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
+      ++ concat
+         [    [ (path, "c-sources")        | path <- cSources        bi ]
+           ++ [ (path, "install-includes") | path <- installIncludes bi ]
+           ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]
+         | bi <- allBuildInfo pkg ]
+    -- paths that are allowed to be absolute
+    absPaths = concat
+      [    [ (path, "includes")         | path <- includes        bi ]
+        ++ [ (path, "include-dirs")     | path <- includeDirs     bi ]
+        ++ [ (path, "extra-lib-dirs")   | path <- extraLibDirs    bi ]
+      | bi <- allBuildInfo pkg ]
 
---TODO: check for absolute and outside-of-tree paths in extra-src-files,
--- data-files, hs-src-dirs, etc.
+--TODO: check sets of paths that would be interpreted differently between unix
+-- and windows, ie case-sensitive or insensitive. Things that might clash, or
+-- conversely be distinguished.
+
+--TODO: use the tar path checks on all the above paths
 
 -- | Check that if the package uses new syntax that it declares the
 -- @\"cabal-version: >= x.y\"@ version correctly.
