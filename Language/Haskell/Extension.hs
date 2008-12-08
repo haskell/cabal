@@ -40,7 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Language.Haskell.Extension (
         Extension(..),
-        knownExtensions
+        knownExtensions,
+        deprecatedExtensions
   ) where
 
 import Distribution.Text (Text(..))
@@ -135,6 +136,14 @@ data Extension
 
   | UnknownExtension String
   deriving (Show, Read, Eq)
+
+-- | Extensions that have been deprecated, possibly paired with another
+-- extension that replaces it.
+--
+deprecatedExtensions :: [(Extension, Maybe Extension)]
+deprecatedExtensions =
+  [ (RecordPuns, Just NamedFieldPuns)
+  ]
 
 knownExtensions :: [Extension]
 knownExtensions =
