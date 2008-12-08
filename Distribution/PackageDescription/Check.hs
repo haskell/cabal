@@ -563,12 +563,22 @@ checkCCOptions pkg =
 
   , checkAlternatives "ld-options" "extra-lib-dirs"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ldOptions ]
+
+  , checkCCFlags [ "-O", "-Os", "-O0", "-O1", "-O2", "-O3" ] $
+      PackageDistSuspicious $
+           "'cc-options: -O[n]' is generally not needed. When building with "
+        ++ " optimisations Cabal automatically adds '-O2' for C code. "
+        ++ "Setting it yourself interferes with the --disable-optimization "
+        ++ "flag."
   ]
 
   where all_ccOptions = [ opts | bi <- allBuildInfo pkg
                               , opts <- ccOptions bi ]
         all_ldOptions = [ opts | bi <- allBuildInfo pkg
                                , opts <- ldOptions bi ]
+
+        checkCCFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+        checkCCFlags flags = check (any (`elem` flags) all_ccOptions)
 
 checkAlternatives :: String -> String -> [(String, String)] -> Maybe PackageCheck
 checkAlternatives badField goodField flags =
