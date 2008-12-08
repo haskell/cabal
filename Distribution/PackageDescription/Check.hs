@@ -91,7 +91,8 @@ import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
 import Distribution.Text
-         ( display, simpleParse )
+         ( display )
+import qualified Language.Haskell.Extension as Extension
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath
          ( (</>), takeExtension, isRelative, isAbsolute
@@ -288,6 +289,15 @@ checkFields pkg =
       PackageBuildWarning $
         "Unknown extensions: " ++ commaSep unknownExtensions
 
+  , check (not (null deprecatedExtensions)) $
+      PackageDistSuspicious $
+           "Deprecated extensions: "
+        ++ commaSep (map (quote . display . fst) deprecatedExtensions)
+        ++ ". " ++ intercalate " "
+             [ "Instead of '" ++ display ext
+            ++ "' use '" ++ display replacement ++ "'."
+             | (ext, Just replacement) <- deprecatedExtensions ]
+
   , check (null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
 
@@ -311,6 +321,10 @@ checkFields pkg =
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
     unknownExtensions = [ name | bi <- allBuildInfo pkg
                                , UnknownExtension name <- extensions bi ]
+    deprecatedExtensions = nub $ catMaybes
+      [ find ((==ext) . fst) Extension.deprecatedExtensions
+      | bi <- allBuildInfo pkg
+      , ext <- extensions bi ]
 
 checkLicense :: PackageDescription -> [PackageCheck]
 checkLicense pkg =
