@@ -268,13 +268,22 @@ getLanguageExtensions verbosity ghcProg
           case ext of
             UnknownExtension _ -> simpleParse str
             _                  -> return ext
-    return [ (ext, "-X" ++ display ext)
-           | Just ext <- map readExtension (lines exts) ]
+    return $ extensionHacks
+          ++ [ (ext, "-X" ++ display ext)
+             | Just ext <- map readExtension (lines exts) ]
 
   | otherwise = return oldLanguageExtensions
 
   where
     Just ghcVersion = programVersion ghcProg
+
+    -- ghc-6.8 intorduced RecordPuns however it should have been
+    -- NamedFieldPuns. We now encourage packages to use NamedFieldPuns so for
+    -- compatability we fake support for it in ghc-6.8 by making it an alias
+    -- for the old RecordPuns extension.
+    extensionHacks = [ (NamedFieldPuns, "-XRecordPuns")
+                     | ghcVersion >= Version [6,8]  []
+                    && ghcVersion <  Version [6,10] [] ]
 
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
 oldLanguageExtensions :: [(Extension, Flag)]
