@@ -623,8 +623,12 @@ configCompilerAux :: ConfigFlags -> IO (Compiler, ProgramConfiguration)
 configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
                                        (flagToMaybe $ configHcPath cfg)
                                        (flagToMaybe $ configHcPkg cfg)
-                                       defaultProgramConfiguration
+                                       programsConfig
                                        (fromFlag (configVerbosity cfg))
+  where
+    programsConfig = userSpecifyArgss (configProgramArgs cfg)
+                   . userSpecifyPaths (configProgramPaths cfg)
+                   $ defaultProgramConfiguration
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramConfiguration -> Verbosity
