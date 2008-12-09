@@ -98,7 +98,8 @@ cppHeaderName = "cabal_macros.h"
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> ModuleName
 autogenModuleName pkg_descr =
-  ModuleName.simple $ "Paths_" ++ map fixchar (display (packageName pkg_descr))
+  ModuleName.fromString $
+    "Paths_" ++ map fixchar (display (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 
