@@ -124,40 +124,102 @@ data VersionRange
 {-# DEPRECATED UnionVersionRanges "use 'unionVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED IntersectVersionRanges "use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
 
+-- | The version range @-any@. That is, a version range containing all
+-- versions.
+--
+-- > withinRange v anyVersion = True
+--
 anyVersion :: VersionRange
 anyVersion = AnyVersion
 
+-- | The empty version range, that is a version range containing no versions.
+--
+-- This can be constructed using any unsatisfiable version range expression,
+-- for example @> 1 && < 1@.
+--
+-- > withinRange v anyVersion = False
+--
 noVersion :: VersionRange
 noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
   where v = Version [1] []
 
+-- | The version range @== v@
+--
+-- > withinRange v' (thisVersion v) = v' == v
+--
 thisVersion :: Version -> VersionRange
 thisVersion = ThisVersion
 
+-- | The version range @< v || > v@
+--
+-- > withinRange v' (notThisVersion v) = v' /= v
+--
 notThisVersion :: Version -> VersionRange
 notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
 
+-- | The version range @> v@
+--
+-- > withinRange v' (laterVersion v) = v' > v
+--
 laterVersion :: Version -> VersionRange
 laterVersion = LaterVersion
 
+-- | The version range @>= v@
+--
+-- > withinRange v' (orLaterVersion v) = v' >= v
+--
 orLaterVersion :: Version -> VersionRange
 orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
 
+-- | The version range @< v@
+--
+-- > withinRange v' (earlierVersion v) = v' < v
+--
 earlierVersion :: Version -> VersionRange
 earlierVersion = EarlierVersion
 
+-- | The version range @<= v@
+--
+-- > withinRange v' (orEarlierVersion v) = v' <= v
+--
 orEarlierVersion :: Version -> VersionRange
 orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
 
+-- | The version range @vr1 || vr2@
+--
+-- >   withinRange v' (unionVersionRanges vr1 vr2)
+-- > = withinRange v' vr1 || withinRange v' vr2
+--
 unionVersionRanges :: VersionRange -> VersionRange -> VersionRange
 unionVersionRanges = UnionVersionRanges
 
+-- | The version range @vr1 && vr2@
+--
+-- >   withinRange v' (intersectVersionRanges vr1 vr2)
+-- > = withinRange v' vr1 && withinRange v' vr2
+--
 intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
 intersectVersionRanges = IntersectVersionRanges
 
+-- | The version range @== v.*@.
+--
+-- For example, for version @1.2@, the version range @== 1.2.*@ is the same as
+-- @>= 1.2 && < 1.3@
+--
+-- > withinRange v' (laterVersion v) = v' >= v && v' < upper v
+-- >   where
+-- >     upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
+--
 withinVersion :: Version -> VersionRange
 withinVersion = WildcardVersion
 
+-- | The version range @>= v1 && <= v2@.
+--
+-- In practice this is not very useful because we normally use inclusive lower
+-- bounds and exclusive upper bounds.
+--
+-- > withinRange v' (laterVersion v) = v' > v
+--
 betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
@@ -266,6 +328,13 @@ isSpecificVersion vr = case asVersionIntervals vr of
 --
 -- It just uses @fromVersionIntervals . toVersionIntervals@
 --
+-- It satisfies the following properties:
+--
+-- > withinRange v (simplifyVersionRange r) = withinRange v r
+--
+-- >     withinRange v r = withinRange v r'
+-- > ==> simplifyVersionRange r = simplifyVersionRange r'
+--
 simplifyVersionRange :: VersionRange -> VersionRange
 simplifyVersionRange = fromVersionIntervals . toVersionIntervals
 
@@ -359,6 +428,7 @@ validVersion :: Version -> Bool
 validVersion (Version [] _) = False
 validVersion (Version vs _) = all (>=0) vs
 
+validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
   where
     validLower NoLowerBound     = True
