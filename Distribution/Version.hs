@@ -397,8 +397,8 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
     withinLower (LowerBound v' InclusiveBound) = v' <= v
 
     withinUpper NoUpperBound                   = True
-    withinUpper (UpperBound v' ExclusiveBound) = v  >  v'
-    withinUpper (UpperBound v' InclusiveBound) = v  >= v'
+    withinUpper (UpperBound v' ExclusiveBound) = v' >  v
+    withinUpper (UpperBound v' InclusiveBound) = v' >= v
 
 -- | Convert a 'VersionRange' to a sequence of version intervals.
 --
