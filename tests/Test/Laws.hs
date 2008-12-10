@@ -1,9 +1,24 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Test.Laws where
 
-import Prelude
-import Prelude (Functor(..))
+import Prelude hiding (Num((+), (*)))
 import Data.Monoid (Monoid(..), Endo(..))
 import qualified Data.Foldable as Foldable
+
+idempotent_unary  f x = f fx == fx where fx = f x
+
+-- Basic laws on binary operators
+
+idempotent_binary (+) x = x + x == x
+
+commutative (+) x y = x + y == y + x
+
+associative (+) x y z = (x + y) + z ==  x + (y + z)
+
+distributive_left  (*) (+) x y z = x * (y + z) == (x * y) + (x * z)
+
+distributive_right (*) (+) x y z = (y + z) * x == (y * x) + (z * x)
+
 
 -- | The first 'fmap' law
 --
