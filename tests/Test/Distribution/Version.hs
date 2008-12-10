@@ -252,12 +252,10 @@ newtype VersionIntervals' = VersionIntervals' [VersionInterval]
 
 instance Arbitrary VersionIntervals' where
   arbitrary = do
-    lbound <- arbitrary
     ubound <- arbitrary
     bounds <- arbitrary
     let intervals = mergeTouching
                   . map fixEmpty
-                  . replaceLower lbound
                   . replaceUpper ubound
                   . pairs
                   . sortBy (comparing fst)
@@ -268,9 +266,6 @@ instance Arbitrary VersionIntervals' where
       pairs ((l, lb):(u, ub):bs) = (LowerBound l lb, UpperBound u ub)
                                  : pairs bs
       pairs _                    = []
-
-      replaceLower NoLowerBound ((_,u):is) = (NoLowerBound, u) : is
-      replaceLower _                   is  =                     is
 
       replaceUpper NoUpperBound [(l,_)] = [(l, NoUpperBound)]
       replaceUpper NoUpperBound (i:is)  = i : replaceUpper NoUpperBound is
@@ -284,7 +279,6 @@ instance Arbitrary VersionIntervals' where
 
       doesNotTouch :: UpperBound -> LowerBound -> Bool
       doesNotTouch NoUpperBound _ = False
-      doesNotTouch _ NoLowerBound = False
       doesNotTouch (UpperBound u ub) (LowerBound l lb) =
             u <  l
         || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
@@ -300,8 +294,7 @@ instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
 
 instance Arbitrary LowerBound where
-  arbitrary = oneof [return NoLowerBound
-                    ,liftM2 LowerBound arbitrary arbitrary]
+  arbitrary = liftM2 LowerBound arbitrary arbitrary
 
 instance Arbitrary UpperBound where
   arbitrary = oneof [return NoUpperBound
