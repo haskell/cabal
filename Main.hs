@@ -151,52 +151,54 @@ wrapperAction command verbosityFlag distPrefFlag =
                  command (const flags) extraArgs
 
 configureAction :: ConfigFlags -> [String] -> GlobalFlags -> IO ()
-configureAction flags extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (configVerbosity flags)
+configureAction configFlags extraArgs globalFlags = do
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall flags)
-  let flags' = savedConfigureFlags config `mappend` flags
-  (comp, conf) <- configCompilerAux flags'
+                                 (configUserInstall configFlags)
+  let configFlags' = savedConfigureFlags config `mappend` configFlags
+  (comp, conf) <- configCompilerAux configFlags'
   let setupScriptOptions = defaultSetupScriptOptions {
         useCompiler      = Just comp,
         useProgramConfig = conf,
         useDistPref      = fromFlagOrDefault
                              (useDistPref defaultSetupScriptOptions)
-                             (configDistPref flags)
+                             (configDistPref configFlags')
       }
   setupWrapper verbosity setupScriptOptions Nothing
-    configureCommand (const flags') extraArgs
+    configureCommand (const configFlags') extraArgs
 
 installAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
-installAction (cflags,iflags) _ _globalFlags
-  | fromFlagOrDefault False (installOnly iflags)
-  = let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
+installAction (configFlags, installFlags) _ _globalFlags
+  | fromFlagOrDefault False (installOnly installFlags)
+  = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
-         installCommand mempty []
+         installCommand (const mempty) []
 
-installAction (cflags,iflags) extraArgs globalFlags = do
+installAction (configFlags, installFlags) extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
-  let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall cflags)
-  let cflags' = savedConfigureFlags config `mappend` cflags
-      iflags' = savedInstallFlags   config `mappend` iflags
-  (comp, conf) <- configCompilerAux cflags'
+                                 (configUserInstall configFlags)
+  let configFlags'  = savedConfigureFlags config `mappend` configFlags
+      installFlags' = savedInstallFlags   config `mappend` installFlags
+      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
+  (comp, conf) <- configCompilerAux configFlags'
   install verbosity
-          (configPackageDB' cflags') (globalRepos (savedGlobalFlags config))
-          comp conf cflags' iflags'
-          [ UnresolvedDependency pkg (configConfigurationsFlags cflags')
+          (configPackageDB' configFlags') (globalRepos globalFlags')
+          comp conf configFlags' installFlags'
+          [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  let flags = savedConfigureFlags config
-  (comp, conf) <- configCompilerAux flags
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags    config `mappend` globalFlags
+  (comp, conf) <- configCompilerAux configFlags
   list verbosity
-       (configPackageDB' flags)
-       (globalRepos (savedGlobalFlags config))
+       (configPackageDB' configFlags)
+       (globalRepos globalFlags')
        comp
        conf
        listFlags
@@ -208,21 +210,23 @@ updateAction verbosityFlag extraArgs globalFlags = do
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  update verbosity (globalRepos (savedGlobalFlags config))
+  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  update verbosity (globalRepos globalFlags')
 
 upgradeAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
-upgradeAction (cflags,iflags) extraArgs globalFlags = do
+upgradeAction (configFlags, installFlags) extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
-  let verbosity = fromFlagOrDefault normal (configVerbosity cflags)
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall cflags)
-  let cflags' = savedConfigureFlags config `mappend` cflags
-      iflags' = savedInstallFlags   config `mappend` iflags
-  (comp, conf) <- configCompilerAux cflags'
+                                 (configUserInstall configFlags)
+  let configFlags'  = savedConfigureFlags config `mappend` configFlags
+      installFlags' = savedInstallFlags   config `mappend` installFlags
+      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
+  (comp, conf) <- configCompilerAux configFlags'
   upgrade verbosity
-          (configPackageDB' cflags') (globalRepos (savedGlobalFlags config))
-          comp conf cflags' iflags'
-          [ UnresolvedDependency pkg (configConfigurationsFlags cflags')
+          (configPackageDB' configFlags') (globalRepos globalFlags')
+          comp conf configFlags' installFlags'
+          [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
 fetchAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
@@ -230,10 +234,11 @@ fetchAction verbosityFlag extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  let flags = savedConfigureFlags config
-  (comp, conf) <- configCompilerAux flags
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  (comp, conf) <- configCompilerAux configFlags
   fetch verbosity
-        (configPackageDB' flags) (globalRepos (savedGlobalFlags config))
+        (configPackageDB' configFlags) (globalRepos globalFlags')
         comp conf
         [ UnresolvedDependency pkg [] --TODO: flags?
         | pkg <- pkgs ]
@@ -243,13 +248,13 @@ uploadAction uploadFlags extraArgs globalFlags = do
   let verbosity = fromFlag (uploadVerbosity uploadFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
-  -- FIXME: check that the .tar.gz files exist and report friendly error message if not
-  let tarfiles = extraArgs
-  checkTarFiles tarfiles
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+      tarfiles     = extraArgs
+  checkTarFiles extraArgs
   if fromFlag (uploadCheck uploadFlags')
     then Upload.check  verbosity tarfiles
     else upload verbosity
-                (globalRepos (savedGlobalFlags config))
+                (globalRepos globalFlags')
                 (flagToMaybe $ uploadUsername uploadFlags')
                 (flagToMaybe $ uploadPassword uploadFlags')
                 tarfiles
@@ -291,8 +296,9 @@ reportAction verbosityFlag extraArgs globalFlags = do
 
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
 
-  Upload.report verbosity (globalRepos (savedGlobalFlags config))
+  Upload.report verbosity (globalRepos globalFlags')
 
 unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
 unpackAction flags extraArgs globalFlags = do
