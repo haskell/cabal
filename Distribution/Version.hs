@@ -297,8 +297,8 @@ asVersionIntervals = versionIntervals . toVersionIntervals
 --
 isAnyVersion :: VersionRange -> Bool
 isAnyVersion vr = case asVersionIntervals vr of
-  [(NoLowerBound, NoUpperBound)] -> True
-  _                              -> False
+  [(LowerBound v InclusiveBound, NoUpperBound)] | isVersion0 v -> True
+  _                                                            -> False
 
 -- | This is the converse of 'isAnyVersion'. It check if the version range is
 -- empty, if there is no possible version that satisfies the version range.
@@ -378,13 +378,18 @@ versionIntervals :: VersionIntervals -> [VersionInterval]
 versionIntervals (VersionIntervals is) = is
 
 type VersionInterval = (LowerBound, UpperBound)
-data LowerBound = NoLowerBound | LowerBound Version !Bound deriving (Eq, Show)
+data LowerBound =                LowerBound Version !Bound deriving (Eq, Show)
 data UpperBound = NoUpperBound | UpperBound Version !Bound deriving (Eq, Show)
 data Bound      = ExclusiveBound | InclusiveBound          deriving (Eq, Show)
 
+minLowerBound :: LowerBound
+minLowerBound = LowerBound (Version [0] []) InclusiveBound
+
+isVersion0 :: Version -> Bool
+isVersion0 (Version [0] _) = True
+isVersion0 _               = False
+
 instance Ord LowerBound where
-  NoLowerBound   <= _            = True
-  LowerBound _ _ <= NoLowerBound = False
   LowerBound ver bound <= LowerBound ver' bound' = case compare ver ver' of
     LT -> True
     EQ -> not (bound == ExclusiveBound && bound' == InclusiveBound)
@@ -431,7 +436,6 @@ validVersion (Version vs _) = all (>=0) vs
 validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
   where
-    validLower NoLowerBound     = True
     validLower (LowerBound v _) = validVersion v
     validUpper NoUpperBound     = True
     validUpper (UpperBound v _) = validVersion v
@@ -439,7 +443,6 @@ validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
 -- Check an interval is non-empty
 --
 nonEmpty :: VersionInterval -> Bool
-nonEmpty (NoLowerBound,    _              ) = True
 nonEmpty (_,               NoUpperBound   ) = True
 nonEmpty (LowerBound l lb, UpperBound u ub) =
   (l < u) || (l == u && lb == InclusiveBound && ub == InclusiveBound)
@@ -451,7 +454,6 @@ nonEmpty (LowerBound l lb, UpperBound u ub) =
 --
 doesNotTouch :: UpperBound -> LowerBound -> Bool
 doesNotTouch NoUpperBound _ = False
-doesNotTouch _ NoLowerBound = False
 doesNotTouch (UpperBound u ub) (LowerBound l lb) =
       u <  l
   || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
@@ -463,7 +465,6 @@ doesNotTouch (UpperBound u ub) (LowerBound l lb) =
 --
 doesNotIntersect :: UpperBound -> LowerBound -> Bool
 doesNotIntersect NoUpperBound _ = False
-doesNotIntersect _ NoLowerBound = False
 doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
       u <  l
   || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
@@ -481,7 +482,6 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
   where
     withinInterval (lowerBound, upperBound)    = withinLower lowerBound
                                               && withinUpper upperBound
-    withinLower NoLowerBound                   = True
     withinLower (LowerBound v' ExclusiveBound) = v' <  v
     withinLower (LowerBound v' InclusiveBound) = v' <= v
 
@@ -493,10 +493,11 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
 --
 toVersionIntervals :: VersionRange -> VersionIntervals
 toVersionIntervals = foldVersionRange
-  (         chkIvl (NoLowerBound,                NoUpperBound))
+  (         chkIvl (minLowerBound,               NoUpperBound))
   (\v    -> chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound))
   (\v    -> chkIvl (LowerBound v ExclusiveBound, NoUpperBound))
-  (\v    -> chkIvl (NoLowerBound,                UpperBound v ExclusiveBound))
+  (\v    -> if isVersion0 v then VersionIntervals [] else
+            chkIvl (minLowerBound,               UpperBound v ExclusiveBound))
   (\v v' -> chkIvl (LowerBound v InclusiveBound, UpperBound v' ExclusiveBound))
   unionVersionIntervals
   intersectVersionIntervals
@@ -520,8 +521,9 @@ fromVersionIntervals (VersionIntervals intervals) =
                  = WildcardVersion v
     interval l u = lowerBound l `intersectVersionRanges'` upperBound u
 
-    lowerBound NoLowerBound                  = AnyVersion
-    lowerBound (LowerBound v InclusiveBound) = orLaterVersion v
+    lowerBound (LowerBound v InclusiveBound)
+                              | isVersion0 v = AnyVersion
+                              | otherwise    = orLaterVersion v
     lowerBound (LowerBound v ExclusiveBound) = LaterVersion v
 
     upperBound NoUpperBound                  = AnyVersion
