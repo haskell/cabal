@@ -1,5 +1,5 @@
 Name:               cabal-install
-Version:            0.6.0
+Version:            0.6.1
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
