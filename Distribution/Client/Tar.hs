@@ -618,29 +618,37 @@ fill n c = replicate n c
 --
 
 unpack :: FilePath -> Entries -> IO ()
-unpack dir entries = extractLinks =<< extractFiles [] entries
+unpack baseDir entries = extractLinks =<< extractFiles [] entries
   where
     extractFiles _     (Fail err)            = Prelude.fail err
     extractFiles links Done                  = return links
     extractFiles links (Next entry entries') = case fileType entry of
-      NormalFile   -> BS.writeFile (dir </> fileName entry) (fileContent entry)
-                   >> extractFiles links entries'
-      HardLink     -> saveLink
-      SymbolicLink -> saveLink
-      Directory    -> createDirectoryIfMissing False (dir </> fileName entry)
-                   >> extractFiles links entries'
+      NormalFile   -> extractFile entry >> extractFiles links entries'
+      HardLink     -> extractFiles (saveLink entry links) entries'
+      SymbolicLink -> extractFiles (saveLink entry links) entries'
+      Directory    -> extractDir entry >> extractFiles links entries'
       _            -> extractFiles links entries' -- FIXME: warning?
+
+    extractFile entry = do
+      createDirectoryIfMissing False fileDir
+      BS.writeFile fullPath (fileContent entry)
       where
-        saveLink    = seq (length name)
-                    $ seq (length name)
-                    $ extractFiles (link:links) entries'
-          where
-            name    = fileName entry
-            target  = linkTarget entry
-            link    = (name, target)
+        fileDir  = baseDir </> FilePath.Native.takeDirectory (fileName entry)
+        fullPath = baseDir </> fileName entry
+
+    extractDir entry =
+      createDirectoryIfMissing False (baseDir </> fileName entry)
+
+    saveLink entry links = seq (length name)
+                         $ seq (length name)
+                         $ link:links
+      where
+        name    = fileName entry
+        target  = linkTarget entry
+        link    = (name, target)
 
     extractLinks = mapM_ $ \(name, target) ->
-      let path      = dir </> name
+      let path      = baseDir </> name
        in copyFile (FilePath.Native.takeDirectory path </> target) path
 
 --
