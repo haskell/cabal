@@ -322,7 +322,7 @@ instance Ord UpperBound where
     GT -> False
 
 invariant :: VersionIntervals -> Bool
-invariant (VersionIntervals intervals) = all nonEmpty      intervals
+invariant (VersionIntervals intervals) = all validInterval intervals
                                       && all doesNotTouch' adjacentIntervals
   where
     doesNotTouch' :: (VersionInterval, VersionInterval) -> Bool
@@ -346,6 +346,17 @@ mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals
 mkVersionIntervals intervals
   | invariant (VersionIntervals intervals) = Just (VersionIntervals intervals)
   | otherwise                              = Nothing
+
+validVersion :: Version -> Bool
+validVersion (Version [] _) = False
+validVersion (Version vs _) = all (>=0) vs
+
+validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
+  where
+    validLower NoLowerBound     = True
+    validLower (LowerBound v _) = validVersion v
+    validUpper NoUpperBound     = True
+    validUpper (UpperBound v _) = validVersion v
 
 -- Check an interval is non-empty
 --
