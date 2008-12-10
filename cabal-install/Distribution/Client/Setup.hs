@@ -260,7 +260,7 @@ checkCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = mempty
+    commandOptions      = \_ -> []
   }
 
 reportCommand :: CommandUI (Flag Verbosity)
