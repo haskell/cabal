@@ -55,6 +55,7 @@ module Distribution.Version (
   laterVersion, earlierVersion,
   orLaterVersion, orEarlierVersion,
   unionVersionRanges, intersectVersionRanges,
+  withinVersion,
   betweenVersionsInclusive,
 
   -- ** Inspection
@@ -154,9 +155,16 @@ unionVersionRanges = UnionVersionRanges
 intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
 intersectVersionRanges = IntersectVersionRanges
 
+withinVersion :: Version -> VersionRange
+withinVersion = WildcardVersion
+
 betweenVersionsInclusive :: Version -> Version -> VersionRange
 betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
+
+{-# DEPRECATED betweenVersionsInclusive
+    "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds"
+  #-}
 
 -- | Fold over the syntactic structure of a 'VersionRange'.
 --
