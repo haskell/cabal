@@ -61,7 +61,7 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-         , PackageDB, Flag, extensionsToFlags )
+         , PackageDB(..), PackageDBStack, Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
                                   ProgramConfiguration, userMaybeSpecifyPath,
@@ -111,9 +111,13 @@ jhcLanguageExtensions =
     ,(CPP                        , "-fcpp")
     ]
 
-getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                     -> IO (PackageIndex InstalledPackageInfo)
-getInstalledPackages verbosity _packagedb conf = do
+getInstalledPackages verbosity packageDBs conf = do
+   case packageDBs of
+     [GlobalPackageDB] -> return ()
+     _                 -> die "JHC does not yet support multiple package DBs"
+
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    case pCheck (readP_to_S (many (skipSpaces >> parse)) str) of
      [ps] -> return $ PackageIndex.fromList
