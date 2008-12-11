@@ -631,7 +631,7 @@ lhcProgram = (simpleProgram "lhc") {
     -- "lhc 0.3.20080208 (wubgipkamcep-2)
     -- compiled by ghc-6.8 on a x86_64 running linux"
       case words str of
-        (_:ver:_) -> reverse $ drop 1 $ dropWhile (/='.') $ reverse ver
+        (_:ver:_) -> ver
         _         -> ""
   }
 

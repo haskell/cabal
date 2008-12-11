@@ -92,7 +92,9 @@ configure verbosity hcPath _hcPkgPath conf = do
   (lhcProg, conf')  <- requireProgram verbosity lhcProgram anyVersion
                          (userMaybeSpecifyPath "lhc" hcPath conf)
 
-  let Just version = programVersion lhcProg
+  let Just (Version digits _)  = programVersion lhcProg
+      -- only the first three version digits are significant
+      version                  = Version (take 3 digits) []
       comp = Compiler {
         compilerId             = CompilerId LHC version,
         compilerExtensions     = lhcLanguageExtensions
