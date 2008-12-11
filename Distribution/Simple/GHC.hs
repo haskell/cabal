@@ -104,7 +104,8 @@ import Distribution.Simple.Program
          , gccProgram, stripProgram )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), Flag, extensionsToFlags )
+         , OptimisationLevel(..), PackageDB(..), PackageDBStack
+         , Flag, extensionsToFlags )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
@@ -333,13 +334,11 @@ oldLanguageExtensions =
     where
       fglasgowExts = "-fglasgow-exts"
 
-getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO (PackageIndex InstalledPackageInfo)
-getInstalledPackages verbosity packagedb conf = do
-  let packagedbs = case packagedb of
-        GlobalPackageDB -> [GlobalPackageDB]
-        _               -> [GlobalPackageDB, packagedb]
+getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' verbosity packagedbs conf
+  checkPackageDbStack packagedbs
   let pkgs = concatMap snd pkgss
       -- On Windows, various fields have $topdir/foo rather than full
       -- paths. We need to substitute the right value in so that when
@@ -353,6 +352,13 @@ getInstalledPackages verbosity packagedb conf = do
       rtsPackages' = map removeMingwIncludeDir rtsPackages
       pi2          = pi1 `merge` fromList rtsPackages'
   return pi2
+
+checkPackageDbStack :: PackageDBStack -> IO ()
+checkPackageDbStack (GlobalPackageDB:rest)
+  | GlobalPackageDB `notElem` rest = return ()
+checkPackageDbStack _ =
+  die $ "GHC.getInstalledPackages: the global package db must be "
+     ++ "specified first and cannot be specified multiple times"
 
 -- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
 -- breaks when you want to use a different gcc, so we need to filter

@@ -67,7 +67,7 @@ module Distribution.Simple.Configure (configure,
 
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
-    , showCompilerId, unsupportedExtensions, PackageDB(..) )
+    , showCompilerId, unsupportedExtensions, PackageDB(..), PackageDBStack )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
     , packageVersion, Package(..), Dependency(Dependency) )
@@ -291,9 +291,8 @@ configure (pkg_descr0, pbi) cfg
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
-        -- FIXME: currently only GHC has hc-pkg
         maybePackageSet <- getInstalledPackages (lessVerbose verbosity) comp
-                               packageDb programsConfig'
+                               (implicitPackageDbStack packageDb) programsConfig'
 
         (pkg_descr0', flags) <- case pkg_descr0 of
             Left ppd ->
@@ -510,15 +509,27 @@ configDependency verbosity index dep@(Dependency pkgname _) =
                                 ++ ": using " ++ display pkgid
                    return pkgid
 
-getInstalledPackages :: Verbosity -> Compiler -> PackageDB -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler
+                     -> PackageDBStack -> ProgramConfiguration
                      -> IO (Maybe (PackageIndex InstalledPackageInfo))
-getInstalledPackages verbosity comp packageDb progconf = do
+getInstalledPackages verbosity comp packageDBs progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDb progconf
-    JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDb progconf
-    LHC -> Just `fmap` LHC.getInstalledPackages verbosity packageDb progconf
+    GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDBs progconf
+    JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDBs progconf
+    LHC -> Just `fmap` LHC.getInstalledPackages verbosity packageDBs progconf
     _   -> return Nothing
+
+-- | Currently the user interface specifies the package dbs to use with just a
+-- single valued option, a 'PackageDB'. However internally we represent the
+-- stack of 'PackageDB's explictly as a list. This function converts encodes
+-- the package db stack implicit in a single packagedb.
+--
+implicitPackageDbStack :: PackageDB -> PackageDBStack
+implicitPackageDbStack packageDB = case packageDB of
+  GlobalPackageDB     -> [GlobalPackageDB]
+  UserPackageDB       -> [GlobalPackageDB, UserPackageDB]
+  SpecificPackageDB p -> [GlobalPackageDB, SpecificPackageDB p]
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies

@@ -58,7 +58,7 @@ import Distribution.Simple.BuildPaths
          ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-         , PackageDB(..), Flag, extensionsToFlags )
+         , PackageDB(..), PackageDBStack, Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), lhcProgram, ProgramConfiguration
@@ -78,6 +78,7 @@ import Distribution.Text
 import System.FilePath          ( (</>) )
 import System.Directory         ( getAppUserDataDirectory )
 import Data.List                ( nub )
+import Data.Maybe               ( catMaybes )
 
 import qualified Distribution.Simple.GHC as GHC
 
@@ -124,16 +125,28 @@ getLhcLibDirsFromVersion _
     = return ("","")
 
 
-getInstalledPackages :: Verbosity -> PackageDB -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                     -> IO (PackageIndex InstalledPackageInfo)
-getInstalledPackages verbosity packagedb conf = do
+getInstalledPackages verbosity packageDBs conf = do
    (globalDir, userDir) <- getLhcLibDirs verbosity conf
-   let extraArgs = [ "--global-conf="++globalDir </> "package.conf"
-                   , "--package-conf=" ++ case packagedb of
-                       SpecificPackageDB path -> path
-                       _ -> userDir </> "package.conf"]
+   let (extraArgs, packageDBs') = (\(a,b) -> (catMaybes a, catMaybes b))
+                                . unzip
+                                . map (fixPackageDB globalDir userDir)
+                                $ packageDBs
+
    -- Yes, LHC really does use ghc-pkg (with a different package.conf).
-   GHC.getInstalledPackages verbosity GlobalPackageDB $ userSpecifyArgs "ghc-pkg" extraArgs conf
+   GHC.getInstalledPackages verbosity packageDBs' $
+     userSpecifyArgs "ghc-pkg" extraArgs conf
+
+  where
+    fixPackageDB globalDir userDir packageDB = case packageDB of
+      GlobalPackageDB     -> (Just flag, Just packageDB)
+                               where flag = "--global-conf="
+                                         ++ globalDir </> "package.conf"
+      UserPackageDB       -> (Nothing, Just packageDB')
+                               where packageDB' = SpecificPackageDB
+                                                    (userDir </> "package.conf")
+      SpecificPackageDB _ -> (Nothing, Just packageDB)
 
 -- -----------------------------------------------------------------------------
 -- Building
