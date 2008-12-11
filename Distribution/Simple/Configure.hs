@@ -661,24 +661,3 @@ checkPackageProblems verbosity mgpkg pkg = do
     then mapM_ (warn verbosity) warnings
     else do mapM_ (hPutStrLn stderr . ("Error: " ++)) errors
             exitWith (ExitFailure 1)
-
--- -----------------------------------------------------------------------------
--- Tests
-
-{- Too specific:
-hunitTests :: [Test]
-hunitTests = []
-packageID = PackageIdentifier "Foo" (Version [1] [])
-    = [TestCase $
-       do let simonMarGHCLoc = "/usr/bin/ghc"
-          simonMarGHC <- configure emptyPackageDescription {package=packageID}
-                                       (Just GHC,
-                                       Just simonMarGHCLoc,
-                                       Nothing, Nothing)
-          assertEqual "finding ghc, etc on simonMar's machine failed"
-             (LocalBuildInfo "/usr" (Compiler GHC
-                            (Version [6,2,2] []) simonMarGHCLoc
-                            (simonMarGHCLoc ++ "-pkg")) [] [])
-             simonMarGHC
-      ]
--}
