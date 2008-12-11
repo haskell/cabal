@@ -8,6 +8,7 @@
 	* Fix warnings in Path_pkgname.hs module on Windows
 	* Fix for exotic flags in ld-options field
 	* Fix for using pkg-config in a package with a lib and an executable
+	* Fix for building haddock docs for exes that use the Paths module
 
 1.6.0.1 Duncan Coutts <duncan@haskell.org> October 2008
 	* Export a compat function to help alex and happy
