@@ -16,14 +16,15 @@ module Distribution.Client.Dependency.Bogus (
   ) where
 
 import Distribution.Client.Types
-         ( UnresolvedDependency(..), AvailablePackage(..), ConfiguredPackage(..) )
+         ( AvailablePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, Progress(..)
          , PackageConstraint(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Package
-         ( PackageName, PackageIdentifier(..), Dependency(..), Package(..) )
+         ( PackageName, PackageIdentifier(..), Dependency(..)
+         , Package(..), packageVersion )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), CondTree(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
@@ -55,8 +56,8 @@ bogusResolver (Platform arch os) comp _ available _ constraints targets =
   resolveFromAvailable [] (combineConstraints constraints targets)
   where
     resolveFromAvailable chosen [] = Done chosen
-    resolveFromAvailable chosen (UnresolvedDependency dep flags : deps) =
-      case latestAvailableSatisfying available dep of
+    resolveFromAvailable chosen ((name, verConstraint, flags): deps) =
+      case latestAvailableSatisfying available name verConstraint of
         Nothing  -> Fail ("Unresolved dependency: " ++ display dep)
         Just apkg@(AvailablePackage _ pkg _) ->
           case finalizePackageDescription flags none os arch comp [] pkg of
@@ -69,6 +70,8 @@ bogusResolver (Platform arch os) comp _ available _ constraints targets =
           where
             none :: Maybe (PackageIndex PackageIdentifier)
             none = Nothing
+      where
+        dep = Dependency name verConstraint
 
 fudgeChosenPackage :: AvailablePackage -> FlagAssignment -> ConfiguredPackage
 fudgeChosenPackage (AvailablePackage pkgid pkg source) flags =
@@ -94,9 +97,9 @@ fudgeChosenPackage (AvailablePackage pkgid pkg source) flags =
 
 combineConstraints :: [PackageConstraint]
                    -> [PackageName]
-                   -> [UnresolvedDependency]
+                   -> [(PackageName, VersionRange, FlagAssignment)]
 combineConstraints constraints targets =
-  [ UnresolvedDependency (Dependency name ver) flags
+  [ (name, ver, flags)
   | name <- targets
   , let ver   = fromMaybe AnyVersion (Map.lookup name versionConstraints)
         flags = fromMaybe []         (Map.lookup name flagsConstraints) ]
@@ -111,9 +114,12 @@ combineConstraints constraints targets =
 
 -- | Gets the latest available package satisfying a dependency.
 latestAvailableSatisfying :: PackageIndex AvailablePackage
-                          -> Dependency
+                          -> PackageName -> VersionRange
                           -> Maybe AvailablePackage
-latestAvailableSatisfying index dep =
+latestAvailableSatisfying index name versionConstraint =
   case PackageIndex.lookupDependency index dep of
     []   -> Nothing
-    pkgs -> Just (maximumBy (comparing (pkgVersion . packageId)) pkgs)
+    pkgs -> Just (maximumBy best pkgs)
+  where
+    dep  = Dependency name versionConstraint
+    best = comparing packageVersion
