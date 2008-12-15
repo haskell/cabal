@@ -25,8 +25,8 @@ import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, PackagePreference(..)
-         , PackageInstalledPreference(..)
+         ( DependencyResolver
+         , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -86,7 +86,7 @@ data SearchSpace inherited pkg
 -- * Traverse a search tree
 -- ------------------------------------------------------------
 
-explore :: (PackageName -> PackagePreference)
+explore :: (PackageName -> PackagePreferences)
         -> SearchSpace (SelectedPackages, Constraints, SelectionChanges)
                        SelectablePackage
         -> Progress Log Failure (SelectedPackages, Constraints)
@@ -116,7 +116,7 @@ explore pref (ChoiceNode _ choices)  =
         isInstalled (AvailableOnly _) = False
         isInstalled _                 = True
         isPreferred p = packageVersion p `withinRange` preferredVersions
-        (PackagePreference packageInstalledPreference preferredVersions)
+        (PackagePreferences preferredVersions packageInstalledPreference)
           = pref pkgname
 
     logInfo node = Select selected discarded
@@ -209,7 +209,7 @@ constrainDeps pkg (dep:deps) cs discard =
 -- ------------------------------------------------------------
 
 search :: ConfigurePackage
-       -> (PackageName -> PackagePreference)
+       -> (PackageName -> PackagePreferences)
        -> Constraints
        -> Set PackageName
        -> Progress Log Failure (SelectedPackages, Constraints)
@@ -234,7 +234,7 @@ topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
 topDownResolver' :: Platform -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
-                 -> (PackageName -> PackagePreference)
+                 -> (PackageName -> PackagePreferences)
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage]
 topDownResolver' platform comp installed available pref deps =
@@ -400,7 +400,7 @@ selectNeededSubset installed available = select mempty mempty
 -- * Post processing the solution
 -- ------------------------------------------------------------
 
-finaliseSelectedPackages :: (PackageName -> PackagePreference)
+finaliseSelectedPackages :: (PackageName -> PackagePreferences)
                          -> SelectedPackages
                          -> Constraints
                          -> [PlanPackage]
@@ -440,7 +440,7 @@ finaliseSelectedPackages pref selected constraints =
         -- Is this package a preferred version acording to the hackage or
         -- user's suggested version constraints
         isPreferred p = packageVersion p `withinRange` preferredVersions
-          where (PackagePreference _ preferredVersions) = pref (packageName p)
+          where (PackagePreferences preferredVersions _) = pref (packageName p)
 
 -- | Improve an existing installation plan by, where possible, swapping
 -- packages we plan to install with ones that are already installed.
