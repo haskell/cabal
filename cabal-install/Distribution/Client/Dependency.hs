@@ -35,7 +35,7 @@ import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver
-         , PackagePreference(..), PackageInstalledPreference(..)
+         , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
@@ -187,17 +187,22 @@ dependencyResolver resolver platform comp installed available pref deps =
 --
 interpretPackagesPreference :: Set PackageName
                             -> PackagesPreference
-                            -> (PackageName -> PackagePreference)
+                            -> (PackageName -> PackagePreferences)
 interpretPackagesPreference selected
   (PackagesPreference installPref versionPref) = case installPref of
-    PreferAllLatest    -> PackagePreference PreferLatest    . versionPref
-    PreferAllInstalled -> PackagePreference PreferInstalled . versionPref
-    PreferLatestForSelected -> \pkgname ->
-      -- When you say cabal install foo, what you really mean is, prefer the
-      -- latest version of foo, but the installed version of everything else:
-      if pkgname `Set.member` selected
-        then PackagePreference PreferLatest    (versionPref pkgname)
-        else PackagePreference PreferInstalled (versionPref pkgname)
+
+  PreferAllLatest         -> \pkgname ->
+    PackagePreferences (versionPref pkgname) PreferLatest
+
+  PreferAllInstalled      -> \pkgname ->
+    PackagePreferences (versionPref pkgname) PreferInstalled
+
+  PreferLatestForSelected -> \pkgname ->
+    -- When you say cabal install foo, what you really mean is, prefer the
+    -- latest version of foo, but the installed version of everything else:
+    if pkgname `Set.member` selected
+      then PackagePreferences (versionPref pkgname) PreferLatest
+      else PackagePreferences (versionPref pkgname) PreferInstalled
 
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
