@@ -238,16 +238,16 @@ topDownResolver' :: Platform -> CompilerId
                  -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
 topDownResolver' platform comp installed available
-                 userPreferences userConstraints targets =
+                 preferences constraints targets =
       fmap (uncurry finalise)
-    . (\cs -> search configure userPreferences cs initialPkgNames)
-  =<< constrainTopLevelDeps userConstraints constraints
+    . (\cs -> search configure preferences cs initialPkgNames)
+  =<< addTopLevelConstraints constraints constraintSet
 
   where
     configure   = configurePackage platform comp
-    constraints = Constraints.empty
-      (annotateInstalledPackages                 topSortNumber installed')
-      (annotateAvailablePackages userConstraints topSortNumber available')
+    constraintSet = Constraints.empty
+      (annotateInstalledPackages             topSortNumber installed')
+      (annotateAvailablePackages constraints topSortNumber available')
     (installed', available') = selectNeededSubset installed available
                                                   initialPkgNames
     topSortNumber = topologicalSortNumbering installed' available'
@@ -257,20 +257,24 @@ topDownResolver' platform comp installed available
     finalise selected = PackageIndex.allPackages
                       . improvePlan installed'
                       . PackageIndex.fromList
-                      . finaliseSelectedPackages userPreferences selected
+                      . finaliseSelectedPackages preferences selected
 
-constrainTopLevelDeps :: [PackageConstraint] -> Constraints
-                      -> Progress a Failure Constraints
-constrainTopLevelDeps []                                      cs = Done cs
-constrainTopLevelDeps (PackageFlagsConstraint   _   _  :deps) cs =
-  constrainTopLevelDeps deps cs
-constrainTopLevelDeps (PackageVersionConstraint pkg ver:deps) cs =
+addTopLevelConstraints :: [PackageConstraint] -> Constraints
+                       -> Progress a Failure Constraints
+addTopLevelConstraints []                                      cs = Done cs
+addTopLevelConstraints (PackageFlagsConstraint   _   _  :deps) cs =
+  addTopLevelConstraints deps cs
+
+addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
   case addTopLevelVersionConstraint pkg ver cs of
-    Satisfiable cs' _       -> constrainTopLevelDeps deps cs'
-    Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
-    ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
-  where
-    dep = Dependency pkg ver
+    Satisfiable cs' _       ->
+      addTopLevelConstraints deps cs'
+
+    Unsatisfiable           ->
+      Fail (TopLevelVersionConstraintUnsatisfiable pkg ver)
+
+    ConflictsWith conflicts ->
+      Fail (TopLevelVersionConstraintConflict pkg ver conflicts)
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
 configurePackage (Platform arch os) comp available spkg = case spkg of
@@ -497,8 +501,8 @@ addPackageSelectConstraint pkgid constraints =
     reason = SelectedOther pkgid
 
 addPackageExcludeConstraint :: PackageIdentifier -> Constraints
-                     -> Satisfiable Constraints
-                          [PackageIdentifier] ExclusionReason
+                            -> Satisfiable Constraints
+                                 [PackageIdentifier] ExclusionReason
 addPackageExcludeConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
@@ -581,11 +585,11 @@ data Failure
    | DependencyConflict
        SelectedPackage TaggedDependency
        [(PackageIdentifier, [ExclusionReason])]
-   | TopLevelDependencyConflict
-       Dependency
+   | TopLevelVersionConstraintConflict
+       PackageName VersionRange
        [(PackageIdentifier, [ExclusionReason])]
-   | TopLevelDependencyUnsatisfiable
-       Dependency
+   | TopLevelVersionConstraintUnsatisfiable
+       PackageName VersionRange
 
 showLog :: Log -> String
 showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
@@ -639,13 +643,13 @@ showFailure (DependencyConflict pkg (TaggedDependency _ dep) conflicts) =
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
-showFailure (TopLevelDependencyConflict dep conflicts) =
-     "dependencies conflict: "
-  ++ "top level dependency " ++ display dep ++ " however\n"
+showFailure (TopLevelVersionConstraintConflict name ver conflicts) =
+     "constraints conflict: "
+  ++ "top level constraint " ++ display (Dependency name ver) ++ " however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
-showFailure (TopLevelDependencyUnsatisfiable (Dependency name ver)) =
+showFailure (TopLevelVersionConstraintUnsatisfiable name ver) =
      "There is no available version of " ++ display name
       ++ " that satisfies " ++ display ver
 
