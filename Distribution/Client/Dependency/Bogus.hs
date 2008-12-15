@@ -19,7 +19,7 @@ import Distribution.Client.Types
          ( AvailablePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, Progress(..)
-         , PackageConstraint(..) )
+         , PackageConstraint(..), PackagePreferences(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Package
@@ -32,7 +32,7 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Version
-         ( VersionRange(AnyVersion, IntersectVersionRanges) )
+         ( VersionRange(AnyVersion, IntersectVersionRanges), withinRange )
 import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Text
@@ -52,12 +52,14 @@ import qualified Data.Map as Map
 -- We just pretend that everything is installed and hope for the best.
 --
 bogusResolver :: DependencyResolver
-bogusResolver (Platform arch os) comp _ available _ constraints targets =
-  resolveFromAvailable [] (combineConstraints constraints targets)
+bogusResolver (Platform arch os) comp _ available
+              preferences constraints targets =
+    resolveFromAvailable []
+      (combineConstraints preferences constraints targets)
   where
     resolveFromAvailable chosen [] = Done chosen
-    resolveFromAvailable chosen ((name, verConstraint, flags): deps) =
-      case latestAvailableSatisfying available name verConstraint of
+    resolveFromAvailable chosen ((name, verConstraint, flags, verPref): deps) =
+      case latestAvailableSatisfying available name verConstraint verPref of
         Nothing  -> Fail ("Unresolved dependency: " ++ display dep)
         Just apkg@(AvailablePackage _ pkg _) ->
           case finalizePackageDescription flags none os arch comp [] pkg of
@@ -95,14 +97,16 @@ fudgeChosenPackage (AvailablePackage pkgid pkg source) flags =
       where
         g (cnd, t, me) = (cnd, mapTreeConstrs f t, fmap (mapTreeConstrs f) me)
 
-combineConstraints :: [PackageConstraint]
+combineConstraints :: (PackageName -> PackagePreferences)
+                   -> [PackageConstraint]
                    -> [PackageName]
-                   -> [(PackageName, VersionRange, FlagAssignment)]
-combineConstraints constraints targets =
-  [ (name, ver, flags)
+                   -> [(PackageName, VersionRange, FlagAssignment, VersionRange)]
+combineConstraints preferences constraints targets =
+  [ (name, ver, flags, pref)
   | name <- targets
   , let ver   = fromMaybe AnyVersion (Map.lookup name versionConstraints)
-        flags = fromMaybe []         (Map.lookup name flagsConstraints) ]
+        flags = fromMaybe []         (Map.lookup name flagsConstraints)
+        PackagePreferences pref _ = preferences name ]
   where
     versionConstraints = Map.fromListWith IntersectVersionRanges
       [ (name, versionRange)
@@ -112,14 +116,16 @@ combineConstraints constraints targets =
       [ (name, flags)
       | PackageFlagsConstraint name flags <- constraints ]
 
--- | Gets the latest available package satisfying a dependency.
+-- | Gets the best available package satisfying a dependency.
+--
 latestAvailableSatisfying :: PackageIndex AvailablePackage
-                          -> PackageName -> VersionRange
+                          -> PackageName -> VersionRange -> VersionRange
                           -> Maybe AvailablePackage
-latestAvailableSatisfying index name versionConstraint =
+latestAvailableSatisfying index name versionConstraint versionPreference =
   case PackageIndex.lookupDependency index dep of
     []   -> Nothing
     pkgs -> Just (maximumBy best pkgs)
   where
     dep  = Dependency name versionConstraint
-    best = comparing packageVersion
+    best = comparing (\p -> (isPreferred p, packageVersion p))
+    isPreferred p = packageVersion p `withinRange` versionPreference
