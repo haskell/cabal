@@ -48,7 +48,7 @@ import Distribution.Simple.Utils
          ( die, notice, info, debug, setupMessage
          , copyFileVerbose, writeFileAtomic )
 import Distribution.System
-         ( buildOS, buildArch )
+         ( buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -163,7 +163,7 @@ fetch verbosity packageDB repos comp conf deps = do
           [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
   let  progress = resolveDependenciesWithProgress
-                   buildOS buildArch (compilerId comp)
+                   buildPlatform (compilerId comp)
                    installed' available
                    (packagesPreference PreferLatestForSelected versionPref)
                    deps'

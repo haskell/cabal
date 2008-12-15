@@ -99,7 +99,7 @@ import Distribution.Simple.Utils as Utils
 import Distribution.Client.Utils
          ( inDir, mergeBy, MergeResult(..) )
 import Distribution.System
-         ( OS(Windows), buildOS, Arch, buildArch )
+         ( Platform(Platform), buildPlatform, OS(Windows), buildOS )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -179,12 +179,11 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
 
       unless dryRun $ do
         logsDir <- defaultLogsDir
-        let os     = InstallPlan.planOS installPlan
-            arch   = InstallPlan.planArch installPlan
-            compid = InstallPlan.planCompiler installPlan
+        let platform = InstallPlan.planPlatform installPlan
+            compid   = InstallPlan.planCompiler installPlan
         installPlan' <-
           executeInstallPlan installPlan $ \cpkg ->
-            installConfiguredPackage os arch compid configFlags
+            installConfiguredPackage platform compid configFlags
                                      cpkg $ \configFlags' src pkg ->
               installAvailablePackage verbosity (packageId pkg) src $ \mpath ->
                 installUnpackedPackage verbosity (setupScriptOptions installed)
@@ -286,7 +285,7 @@ planLocalPackage verbosity comp configFlags installed
         depFlags   = Cabal.configConfigurationsFlags configFlags
       }
 
-  return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
+  return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available'
              (packagesPreference PreferLatestForSelected versionPrefs)
              [localPkgDep]
@@ -302,7 +301,7 @@ planRepoPackages installedPref comp installFlags deps installed
         | Cabal.fromFlagOrDefault False (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
-  return $ resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
+  return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available
              (packagesPreference installedPref versionPrefs)
              deps'
@@ -314,7 +313,7 @@ planRepoPackages installedPref comp installFlags deps installed
 planUpgradePackages :: Compiler -> Planner
 planUpgradePackages comp (Just installed)
   (AvailablePackageDb available versionPrefs) = return $
-  resolveDependenciesWithProgress buildOS buildArch (compilerId comp)
+  resolveDependenciesWithProgress buildPlatform (compilerId comp)
     (Just installed) available
     (packagesPreference PreferAllLatest versionPrefs)
     [ UnresolvedDependency dep []
@@ -443,12 +442,12 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
 -- versioned package dependencies. So we ignore any previous partial flag
 -- assignment or dependency constraints and use the new ones.
 --
-installConfiguredPackage :: OS -> Arch -> CompilerId
+installConfiguredPackage :: Platform -> CompilerId
                          ->  Cabal.ConfigFlags -> ConfiguredPackage
                          -> (Cabal.ConfigFlags -> AvailablePackageSource
                                                -> PackageDescription -> a)
                          -> a
-installConfiguredPackage os arch comp configFlags
+installConfiguredPackage (Platform arch os) comp configFlags
   (ConfiguredPackage (AvailablePackage _ gpkg source) flags deps)
   installPkg = installPkg configFlags {
     Cabal.configConfigurationsFlags = flags,

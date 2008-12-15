@@ -46,7 +46,7 @@ import Distribution.Version
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
-         ( OS, Arch )
+         ( Platform(Platform) )
 import Distribution.Simple.Utils
          ( equating, comparing )
 import Distribution.Text
@@ -224,26 +224,26 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
+topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
 
 -- | The native resolver with detailed structured logging and failure types.
 --
-topDownResolver' :: OS -> Arch -> CompilerId
+topDownResolver' :: Platform -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
                  -> (PackageName -> PackagePreference)
                  -> [UnresolvedDependency]
                  -> Progress Log Failure [PlanPackage]
-topDownResolver' os arch comp installed available pref deps =
+topDownResolver' platform comp installed available pref deps =
       fmap (uncurry finalise)
     . (\cs -> search configure pref cs initialPkgNames)
   =<< constrainTopLevelDeps deps constraints
 
   where
-    configure   = configurePackage os arch comp
+    configure   = configurePackage platform comp
     constraints = Constraints.empty
                     (annotateInstalledPackages      topSortNumber installed')
                     (annotateAvailablePackages deps topSortNumber available')
@@ -268,8 +268,8 @@ constrainTopLevelDeps (UnresolvedDependency dep _:deps) cs =
     Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
     ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
 
-configurePackage :: OS -> Arch -> CompilerId -> ConfigurePackage
-configurePackage os arch comp available spkg = case spkg of
+configurePackage :: Platform -> CompilerId -> ConfigurePackage
+configurePackage (Platform arch os) comp available spkg = case spkg of
   InstalledOnly         ipkg      -> Right (InstalledOnly ipkg)
   AvailableOnly              apkg -> fmap AvailableOnly (configure apkg)
   InstalledAndAvailable ipkg apkg -> fmap (InstalledAndAvailable ipkg)
