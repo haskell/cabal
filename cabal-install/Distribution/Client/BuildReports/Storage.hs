@@ -35,7 +35,7 @@ import Distribution.Client.Config
          ( defaultLogsDir )
 
 import Distribution.System
-         ( OS, Arch )
+         ( Platform(Platform) )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.Simple.Utils
@@ -94,24 +94,23 @@ storeLocal reports = do
 
 fromInstallPlan :: InstallPlan -> [(BuildReport, Repo)]
 fromInstallPlan plan = catMaybes
-                     . map (fromPlanPackage os' arch' comp)
+                     . map (fromPlanPackage platform comp)
                      . InstallPlan.toList
                      $ plan
-  where os'   = InstallPlan.planOS plan
-        arch' = InstallPlan.planArch plan
-        comp  = InstallPlan.planCompiler plan
+  where platform = InstallPlan.planPlatform plan
+        comp     = InstallPlan.planCompiler plan
 
-fromPlanPackage :: OS -> Arch -> CompilerId
+fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Repo)
-fromPlanPackage os' arch' comp planPackage = case planPackage of
+fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 
   InstallPlan.Installed pkg@(ConfiguredPackage (AvailablePackage {
                           packageSource = RepoTarballPackage repo }) _ _) result
-    -> Just $ (BuildReport.new os' arch' comp pkg (Right result), repo)
+    -> Just $ (BuildReport.new os arch comp pkg (Right result), repo)
 
   InstallPlan.Failed pkg@(ConfiguredPackage (AvailablePackage {
                        packageSource = RepoTarballPackage repo }) _ _) result
-    -> Just $ (BuildReport.new os' arch' comp pkg (Left result), repo)
+    -> Just $ (BuildReport.new os arch comp pkg (Left result), repo)
 
   _ -> Nothing

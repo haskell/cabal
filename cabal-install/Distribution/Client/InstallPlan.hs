@@ -24,8 +24,7 @@ module Distribution.Client.InstallPlan (
   failed,
 
   -- ** Query functions
-  planOS,
-  planArch,
+  planPlatform,
   planCompiler,
 
   -- * Checking valididy of plans
@@ -66,7 +65,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Text
          ( display )
 import Distribution.System
-         ( OS, Arch )
+         ( Platform(Platform) )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.Client.Utils
@@ -148,32 +147,30 @@ data InstallPlan = InstallPlan {
     planGraphRev :: Graph,
     planPkgOf    :: Graph.Vertex -> PlanPackage,
     planVertexOf :: PackageIdentifier -> Graph.Vertex,
-    planOS       :: OS,
-    planArch     :: Arch,
+    planPlatform :: Platform,
     planCompiler :: CompilerId
   }
 
 invariant :: InstallPlan -> Bool
 invariant plan =
-  valid (planOS plan) (planArch plan) (planCompiler plan) (planIndex plan)
+  valid (planPlatform plan) (planCompiler plan) (planIndex plan)
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: OS -> Arch -> CompilerId -> PackageIndex PlanPackage
+new :: Platform -> CompilerId -> PackageIndex PlanPackage
     -> Either [PlanProblem] InstallPlan
-new os arch compiler index =
-  case problems os arch compiler index of
+new platform compiler index =
+  case problems platform compiler index of
     [] -> Right InstallPlan {
             planIndex    = index,
             planGraph    = graph,
             planGraphRev = Graph.transposeG graph,
             planPkgOf    = vertexToPkgId,
             planVertexOf = fromMaybe noSuchPkgId . pkgIdToVertex,
-            planOS       = os,
-            planArch     = arch,
+            planPlatform = platform,
             planCompiler = compiler
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
@@ -279,8 +276,8 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: OS -> Arch -> CompilerId -> PackageIndex PlanPackage -> Bool
-valid os arch comp index = null (problems os arch comp index)
+valid :: Platform -> CompilerId -> PackageIndex PlanPackage -> Bool
+valid platform comp index = null (problems platform comp index)
 
 data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
@@ -329,12 +326,12 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: OS -> Arch -> CompilerId
+problems :: Platform -> CompilerId
          -> PackageIndex PlanPackage -> [PlanProblem]
-problems os arch comp index =
+problems platform comp index =
      [ PackageInvalid pkg packageProblems
      | Configured pkg <- PackageIndex.allPackages index
-     , let packageProblems = configuredPackageProblems os arch comp pkg
+     , let packageProblems = configuredPackageProblems platform comp pkg
      , not (null packageProblems) ]
 
   ++ [ PackageMissingDeps pkg missingDeps
@@ -416,9 +413,9 @@ stateDependencyRelation _               _               = False
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 --
-configuredPackageValid :: OS -> Arch -> CompilerId -> ConfiguredPackage -> Bool
-configuredPackageValid os arch comp pkg =
-  null (configuredPackageProblems os arch comp pkg)
+configuredPackageValid :: Platform -> CompilerId -> ConfiguredPackage -> Bool
+configuredPackageValid platform comp pkg =
+  null (configuredPackageProblems platform comp pkg)
 
 data PackageProblem = DuplicateFlag FlagName
                     | MissingFlag   FlagName
@@ -456,9 +453,9 @@ showPackageProblem (InvalidDep dep pkgid) =
   ++ " but the configuration specifies " ++ display pkgid
   ++ " which does not satisfy the dependency."
 
-configuredPackageProblems :: OS -> Arch -> CompilerId
+configuredPackageProblems :: Platform -> CompilerId
                           -> ConfiguredPackage -> [PackageProblem]
-configuredPackageProblems os arch comp
+configuredPackageProblems (Platform arch os) comp
   (ConfiguredPackage pkg specifiedFlags specifiedDeps) =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]

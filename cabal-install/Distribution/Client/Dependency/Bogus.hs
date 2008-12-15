@@ -36,6 +36,8 @@ import Distribution.Simple.Utils
          ( equating, comparing )
 import Distribution.Text
          ( display )
+import Distribution.System
+         ( Platform(Platform) )
 
 import Data.List
          ( maximumBy, sortBy, groupBy )
@@ -46,7 +48,7 @@ import Data.List
 -- We just pretend that everything is installed and hope for the best.
 --
 bogusResolver :: DependencyResolver
-bogusResolver os arch comp _ available _ = resolveFromAvailable []
+bogusResolver (Platform arch os) comp _ available _ = resolveFromAvailable []
                                          . combineDependencies
   where
     resolveFromAvailable chosen [] = Done chosen

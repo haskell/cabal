@@ -45,7 +45,7 @@ import Distribution.Version
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.System
-         ( OS, Arch )
+         ( Platform )
 import Distribution.Simple.Utils (comparing)
 import Distribution.Client.Utils (mergeBy, MergeResult(..))
 
@@ -105,31 +105,29 @@ data PackagesInstalledPreference =
      --
    | PreferLatestForSelected
 
-resolveDependencies :: OS
-                    -> Arch
+resolveDependencies :: Platform
                     -> CompilerId
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex AvailablePackage
                     -> PackagesPreference
                     -> [UnresolvedDependency]
                     -> Either String InstallPlan
-resolveDependencies os arch comp installed available pref deps =
+resolveDependencies platform comp installed available pref deps =
   foldProgress (flip const) Left Right $
-    resolveDependenciesWithProgress os arch comp installed available pref deps
+    resolveDependenciesWithProgress platform comp installed available pref deps
 
-resolveDependenciesWithProgress :: OS
-                                -> Arch
+resolveDependenciesWithProgress :: Platform
                                 -> CompilerId
                                 -> Maybe (PackageIndex InstalledPackageInfo)
                                 -> PackageIndex AvailablePackage
                                 -> PackagesPreference
                                 -> [UnresolvedDependency]
                                 -> Progress String String InstallPlan
-resolveDependenciesWithProgress os arch comp (Just installed) =
-  dependencyResolver defaultResolver os arch comp installed
+resolveDependenciesWithProgress platform comp (Just installed) =
+  dependencyResolver defaultResolver platform comp installed
 
-resolveDependenciesWithProgress os arch comp Nothing =
-  dependencyResolver bogusResolver os arch comp mempty
+resolveDependenciesWithProgress platform comp Nothing =
+  dependencyResolver bogusResolver platform comp mempty
 
 hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
 hideBrokenPackages index =
@@ -150,13 +148,13 @@ basePackage = PackageName "base"
 
 dependencyResolver
   :: DependencyResolver
-  -> OS -> Arch -> CompilerId
+  -> Platform -> CompilerId
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
   -> PackagesPreference
   -> [UnresolvedDependency]
   -> Progress String String InstallPlan
-dependencyResolver resolver os arch comp installed available pref deps =
+dependencyResolver resolver platform comp installed available pref deps =
   let installed' = hideBrokenPackages installed
       -- If the user is not explicitly asking to upgrade base then lets
       -- prevent that from happening accidentally since it is usually not what
@@ -169,11 +167,11 @@ dependencyResolver resolver os arch comp installed available pref deps =
                 pkg == basePackage
 
    in fmap toPlan
-    $ resolver os arch comp installed' available' preference deps
+    $ resolver platform comp installed' available' preference deps
 
   where
     toPlan pkgs =
-      case InstallPlan.new os arch comp (PackageIndex.fromList pkgs) of
+      case InstallPlan.new platform comp (PackageIndex.fromList pkgs) of
         Right plan     -> plan
         Left  problems -> error $ unlines $
             "internal error: could not construct a valid install plan."

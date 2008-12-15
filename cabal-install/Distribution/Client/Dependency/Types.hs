@@ -37,7 +37,7 @@ import Distribution.Version
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
-         ( OS, Arch )
+         ( Platform )
 
 import Prelude hiding (fail)
 
@@ -49,8 +49,7 @@ import Prelude hiding (fail)
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver = OS
-                       -> Arch
+type DependencyResolver = Platform
                        -> CompilerId
                        -> PackageIndex InstalledPackageInfo
                        -> PackageIndex AvailablePackage
