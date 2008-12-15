@@ -41,7 +41,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( VersionRange, withinRange )
+         ( VersionRange(AnyVersion), withinRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -275,6 +275,16 @@ addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
 
     ConflictsWith conflicts ->
       Fail (TopLevelVersionConstraintConflict pkg ver conflicts)
+
+addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
+  case addTopLevelInstalledConstraint pkg cs of
+    Satisfiable cs' _       -> addTopLevelConstraints deps cs'
+
+    Unsatisfiable           ->
+      Fail (TopLevelInstallConstraintUnsatisfiable pkg)
+
+    ConflictsWith conflicts ->
+      Fail (TopLevelInstallConstraintConflict pkg conflicts)
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
 configurePackage (Platform arch os) comp available spkg = case spkg of
@@ -529,6 +539,17 @@ addTopLevelVersionConstraint pkg ver constraints =
     taggedDep = TaggedDependency NoInstalledConstraint dep
     reason    = ExcludedByTopLevelDependency dep
 
+addTopLevelInstalledConstraint :: PackageName
+                               -> Constraints
+                               -> Satisfiable Constraints
+                                    [PackageIdentifier] ExclusionReason
+addTopLevelInstalledConstraint pkg constraints =
+  Constraints.constrain taggedDep reason constraints
+  where
+    dep       = Dependency pkg AnyVersion
+    taggedDep = TaggedDependency InstalledConstraint dep
+    reason    = ExcludedByTopLevelDependency dep
+
 -- ------------------------------------------------------------
 -- * Reasons for constraints
 -- ------------------------------------------------------------
@@ -590,6 +611,11 @@ data Failure
        [(PackageIdentifier, [ExclusionReason])]
    | TopLevelVersionConstraintUnsatisfiable
        PackageName VersionRange
+   | TopLevelInstallConstraintConflict
+       PackageName
+       [(PackageIdentifier, [ExclusionReason])]
+   | TopLevelInstallConstraintUnsatisfiable
+       PackageName
 
 showLog :: Log -> String
 showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
@@ -652,6 +678,15 @@ showFailure (TopLevelVersionConstraintConflict name ver conflicts) =
 showFailure (TopLevelVersionConstraintUnsatisfiable name ver) =
      "There is no available version of " ++ display name
       ++ " that satisfies " ++ display ver
+
+showFailure (TopLevelInstallConstraintConflict name conflicts) =
+     "constraints conflict: "
+  ++ "top level constraint " ++ display name ++ "-installed however\n"
+  ++ unlines [ showExclusionReason (packageId pkg') reason
+             | (pkg', reasons) <- conflicts, reason <- reasons ]
+
+showFailure (TopLevelInstallConstraintUnsatisfiable name) =
+     "There is no installed version of " ++ display name
 
 -- ------------------------------------------------------------
 -- * Utils
