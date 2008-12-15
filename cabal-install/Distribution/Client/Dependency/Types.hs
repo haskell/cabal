@@ -11,7 +11,6 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
-    PackageName,
     DependencyResolver,
 
     PackagePreference(..),

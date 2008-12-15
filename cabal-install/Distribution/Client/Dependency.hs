@@ -34,7 +34,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageName, DependencyResolver
+         ( DependencyResolver
          , PackagePreference(..), PackageInstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package

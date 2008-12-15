@@ -25,7 +25,7 @@ import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageName, DependencyResolver, PackagePreference(..)
+         ( DependencyResolver, PackagePreference(..)
          , PackageInstalledPreference(..)
          , Progress(..), foldProgress )
 
