@@ -22,10 +22,9 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
-         ( UnresolvedDependency(..), AvailablePackage(..)
-         , ConfiguredPackage(..) )
+         ( AvailablePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver
+         ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
@@ -224,7 +223,7 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver = (((((mapMessages .).).).).) . topDownResolver'
+topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
@@ -235,9 +234,10 @@ topDownResolver' :: Platform -> CompilerId
                  -> PackageIndex InstalledPackageInfo
                  -> PackageIndex AvailablePackage
                  -> (PackageName -> PackagePreferences)
-                 -> [UnresolvedDependency]
+                 -> [PackageConstraint]
+                 -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
-topDownResolver' platform comp installed available pref deps =
+topDownResolver' platform comp installed available pref deps targets =
       fmap (uncurry finalise)
     . (\cs -> search configure pref cs initialPkgNames)
   =<< constrainTopLevelDeps deps constraints
@@ -251,22 +251,25 @@ topDownResolver' platform comp installed available pref deps =
                                                   initialPkgNames
     topSortNumber = topologicalSortNumbering installed' available'
 
-    initialDeps     = [ dep  | UnresolvedDependency dep _ <- deps ]
-    initialPkgNames = Set.fromList [ name | Dependency name _ <- initialDeps ]
+    initialPkgNames = Set.fromList targets
 
     finalise selected = PackageIndex.allPackages
                       . improvePlan installed'
                       . PackageIndex.fromList
                       . finaliseSelectedPackages pref selected
 
-constrainTopLevelDeps :: [UnresolvedDependency] -> Constraints
+constrainTopLevelDeps :: [PackageConstraint] -> Constraints
                       -> Progress a Failure Constraints
-constrainTopLevelDeps []                                cs = Done cs
-constrainTopLevelDeps (UnresolvedDependency dep _:deps) cs =
+constrainTopLevelDeps []                                      cs = Done cs
+constrainTopLevelDeps (PackageFlagsConstraint   _   _  :deps) cs =
+  constrainTopLevelDeps deps cs
+constrainTopLevelDeps (PackageVersionConstraint pkg ver:deps) cs =
   case addTopLevelDependencyConstraint dep cs of
     Satisfiable cs' _       -> constrainTopLevelDeps deps cs'
     Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
     ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
+  where
+    dep = Dependency pkg ver
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
 configurePackage (Platform arch os) comp available spkg = case spkg of
@@ -300,11 +303,11 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
 -- | Annotate each available packages with its topological sort number and any
 -- user-supplied partial flag assignment.
 --
-annotateAvailablePackages :: [UnresolvedDependency]
+annotateAvailablePackages :: [PackageConstraint]
                           -> (PackageName -> TopologicalSortNumber)
                           -> PackageIndex AvailablePackage
                           -> PackageIndex UnconfiguredPackage
-annotateAvailablePackages deps dfsNumber available = PackageIndex.fromList
+annotateAvailablePackages constraints dfsNumber available = PackageIndex.fromList
   [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name)
   | pkg <- PackageIndex.allPackages available
   , let name = packageName pkg ]
@@ -312,7 +315,7 @@ annotateAvailablePackages deps dfsNumber available = PackageIndex.fromList
     flagsFor = fromMaybe [] . flip Map.lookup flagsMap
     flagsMap = Map.fromList
       [ (name, flags)
-      | UnresolvedDependency (Dependency name _) flags <- deps ]
+      | PackageFlagsConstraint name flags <- constraints ]
 
 -- | One of the heuristics we use when guessing which path to take in the
 -- search space is an ordering on the choices we make. It's generally better

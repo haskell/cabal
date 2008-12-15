@@ -34,7 +34,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver
+         ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Package
@@ -166,8 +166,16 @@ dependencyResolver resolver platform comp installed available pref deps =
         where isBase (UnresolvedDependency (Dependency pkg _) _) =
                 pkg == basePackage
 
+      preferences = interpretPackagesPreference (Set.fromList targets) pref
+      constraints = [ PackageVersionConstraint name range
+                    | UnresolvedDependency (Dependency name range) _ <- deps ]
+                 ++ [ PackageFlagsConstraint name flags
+                    | UnresolvedDependency (Dependency name _) flags <- deps ]
+      targets     = [ name
+                    | UnresolvedDependency (Dependency name _) _ <- deps ]
    in fmap toPlan
-    $ resolver platform comp installed' available' preference deps
+    $ resolver platform comp installed' available'
+               preferences constraints targets
 
   where
     toPlan pkgs =
@@ -177,10 +185,6 @@ dependencyResolver resolver platform comp installed available pref deps =
             "internal error: could not construct a valid install plan."
           : "The proposed (invalid) plan contained the following problems:"
           : map InstallPlan.showPlanProblem problems
-
-    preference = interpretPackagesPreference initialPkgNames pref
-    initialPkgNames = Set.fromList
-      [ name | UnresolvedDependency (Dependency name _) _ <- deps ]
 
 -- | Give an interpretation to the global 'PackagesPreference' as
 --  specific per-package 'PackageVersionPreference'.
