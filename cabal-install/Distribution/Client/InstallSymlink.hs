@@ -59,6 +59,8 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.System
+         ( Platform(Platform) )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, readSymbolicLink
@@ -160,8 +162,7 @@ symlinkBinaries configFlags installFlags plan =
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
-    os   = InstallPlan.planOS plan
-    arch = InstallPlan.planArch plan
+    (Platform arch os) = InstallPlan.planPlatform plan
     compilerId@(CompilerId compilerFlavor _) = InstallPlan.planCompiler plan
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
