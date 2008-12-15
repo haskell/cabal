@@ -13,9 +13,8 @@
 module Distribution.Client.Dependency.Types (
     DependencyResolver,
 
-    PackagePreference(..),
-    PackageVersionPreference,
-    PackageInstalledPreference(..),
+    PackagePreferences(..),
+    InstalledPreference(..),
 
     Progress(..),
     foldProgress,
@@ -52,13 +51,13 @@ type DependencyResolver = Platform
                        -> CompilerId
                        -> PackageIndex InstalledPackageInfo
                        -> PackageIndex AvailablePackage
-                       -> (PackageName -> PackagePreference)
+                       -> (PackageName -> PackagePreferences)
                        -> [UnresolvedDependency]
                        -> Progress String String [InstallPlan.PlanPackage]
 
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of
--- a 'PackageInstalledPreference' which says if we prefer versions of packages
+-- a 'InstalledPreference' which says if we prefer versions of packages
 -- that are already installed. It also hase a 'PackageVersionPreference' which
 -- is a suggested constraint on the version number. The resolver should try to
 -- use package versions that satisfy the suggested version constraint.
@@ -66,19 +65,12 @@ type DependencyResolver = Platform
 -- It is not specified if preferences on some packages are more important than
 -- others.
 --
-data PackagePreference = PackagePreference
-       PackageInstalledPreference
-       PackageVersionPreference
-
--- | A suggested constraint on the version number. The resolver should try to
--- use package versions that satisfy the suggested version constraint.
---
-type PackageVersionPreference = VersionRange
+data PackagePreferences = PackagePreferences VersionRange InstalledPreference
 
 -- | Wether we prefer an installed version of a package or simply the latest
 -- version.
 --
-data PackageInstalledPreference = PreferInstalled | PreferLatest
+data InstalledPreference = PreferInstalled | PreferLatest
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
