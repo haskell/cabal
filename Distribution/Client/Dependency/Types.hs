@@ -66,6 +66,7 @@ type DependencyResolver = Platform
 --
 data PackageConstraint
    = PackageVersionConstraint   PackageName VersionRange
+   | PackageInstalledConstraint PackageName
    | PackageFlagsConstraint     PackageName FlagAssignment
 
 -- | A per-package preference on the version. It is a soft constraint that the
