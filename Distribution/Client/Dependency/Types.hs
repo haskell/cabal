@@ -13,6 +13,7 @@
 module Distribution.Client.Dependency.Types (
     DependencyResolver,
 
+    PackageConstraint(..),
     PackagePreferences(..),
     InstalledPreference(..),
 
@@ -21,11 +22,13 @@ module Distribution.Client.Dependency.Types (
   ) where
 
 import Distribution.Client.Types
-         ( UnresolvedDependency(..), AvailablePackage(..) )
+         ( AvailablePackage(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
+import Distribution.PackageDescription
+         ( FlagAssignment )
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import Distribution.Package
@@ -52,8 +55,18 @@ type DependencyResolver = Platform
                        -> PackageIndex InstalledPackageInfo
                        -> PackageIndex AvailablePackage
                        -> (PackageName -> PackagePreferences)
-                       -> [UnresolvedDependency]
+                       -> [PackageConstraint]
+                       -> [PackageName]
                        -> Progress String String [InstallPlan.PlanPackage]
+
+-- | Per-package constraints. Package constraints must be respected by the
+-- solver. Multiple constraints for each package can be given, though obviously
+-- it is possible to construct conflicting constraints (eg impossible version
+-- range or inconsistent flag assignment).
+--
+data PackageConstraint
+   = PackageVersionConstraint   PackageName VersionRange
+   | PackageFlagsConstraint     PackageName FlagAssignment
 
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of
