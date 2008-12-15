@@ -41,7 +41,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( withinRange )
+         ( VersionRange, withinRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -237,16 +237,17 @@ topDownResolver' :: Platform -> CompilerId
                  -> [PackageConstraint]
                  -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
-topDownResolver' platform comp installed available pref deps targets =
+topDownResolver' platform comp installed available
+                 userPreferences userConstraints targets =
       fmap (uncurry finalise)
-    . (\cs -> search configure pref cs initialPkgNames)
-  =<< constrainTopLevelDeps deps constraints
+    . (\cs -> search configure userPreferences cs initialPkgNames)
+  =<< constrainTopLevelDeps userConstraints constraints
 
   where
     configure   = configurePackage platform comp
     constraints = Constraints.empty
-                    (annotateInstalledPackages      topSortNumber installed')
-                    (annotateAvailablePackages deps topSortNumber available')
+      (annotateInstalledPackages                 topSortNumber installed')
+      (annotateAvailablePackages userConstraints topSortNumber available')
     (installed', available') = selectNeededSubset installed available
                                                   initialPkgNames
     topSortNumber = topologicalSortNumbering installed' available'
@@ -256,7 +257,7 @@ topDownResolver' platform comp installed available pref deps targets =
     finalise selected = PackageIndex.allPackages
                       . improvePlan installed'
                       . PackageIndex.fromList
-                      . finaliseSelectedPackages pref selected
+                      . finaliseSelectedPackages userPreferences selected
 
 constrainTopLevelDeps :: [PackageConstraint] -> Constraints
                       -> Progress a Failure Constraints
@@ -264,7 +265,7 @@ constrainTopLevelDeps []                                      cs = Done cs
 constrainTopLevelDeps (PackageFlagsConstraint   _   _  :deps) cs =
   constrainTopLevelDeps deps cs
 constrainTopLevelDeps (PackageVersionConstraint pkg ver:deps) cs =
-  case addTopLevelDependencyConstraint dep cs of
+  case addTopLevelVersionConstraint pkg ver cs of
     Satisfiable cs' _       -> constrainTopLevelDeps deps cs'
     Unsatisfiable           -> Fail (TopLevelDependencyUnsatisfiable dep)
     ConflictsWith conflicts -> Fail (TopLevelDependencyConflict dep conflicts)
@@ -513,14 +514,16 @@ addPackageDependencyConstraint pkgid dep constraints =
   where
     reason = ExcludedByPackageDependency pkgid dep
 
-addTopLevelDependencyConstraint :: Dependency -> Constraints
-                                -> Satisfiable Constraints
-                                     [PackageIdentifier] ExclusionReason
-addTopLevelDependencyConstraint dep constraints =
+addTopLevelVersionConstraint :: PackageName -> VersionRange
+                             -> Constraints
+                             -> Satisfiable Constraints
+                                  [PackageIdentifier] ExclusionReason
+addTopLevelVersionConstraint pkg ver constraints =
   Constraints.constrain taggedDep reason constraints
   where
+    dep       = Dependency pkg ver
     taggedDep = TaggedDependency NoInstalledConstraint dep
-    reason = ExcludedByTopLevelDependency dep
+    reason    = ExcludedByTopLevelDependency dep
 
 -- ------------------------------------------------------------
 -- * Reasons for constraints
