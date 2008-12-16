@@ -130,16 +130,16 @@ install verbosity packageDB repos comp conf configFlags installFlags deps =
     planner :: Planner
     planner | null deps = planLocalPackage verbosity comp configFlags
             | otherwise = planRepoPackages PreferLatestForSelected
-                            comp installFlags deps
+                            comp configFlags installFlags deps
 
 upgrade verbosity packageDB repos comp conf configFlags installFlags deps =
   installWithPlanner planner
         verbosity packageDB repos comp conf configFlags installFlags
   where
     planner :: Planner
-    planner | null deps = planUpgradePackages comp
+    planner | null deps = planUpgradePackages comp configFlags
             | otherwise = planRepoPackages PreferAllLatest
-                            comp installFlags deps
+                            comp configFlags installFlags deps
 
 type Planner = Maybe (PackageIndex InstalledPackageInfo)
             -> AvailablePackageDb
@@ -285,6 +285,8 @@ planLocalPackage verbosity comp configFlags installed
                        (ThisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
                        (Cabal.configConfigurationsFlags configFlags)]
+                 ++ [ PackageVersionConstraint name ver
+                    | Dependency name ver <- Cabal.configConstraints configFlags ]
 
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available'
@@ -293,27 +295,31 @@ planLocalPackage verbosity comp configFlags installed
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
-planRepoPackages :: PackagesInstalledPreference -> Compiler -> InstallFlags
+planRepoPackages :: PackagesInstalledPreference -> Compiler
+                 -> Cabal.ConfigFlags -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
-planRepoPackages installedPref comp installFlags deps installed
+planRepoPackages installedPref comp configFlags installFlags deps installed
   (AvailablePackageDb available versionPrefs) = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
         | Cabal.fromFlagOrDefault False (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
+      targets     = dependencyTargets deps'
+      constraints = dependencyConstraints deps'
+                 ++ [ PackageVersionConstraint name ver
+                    | Dependency name ver <- Cabal.configConstraints configFlags ]
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available
              (packagesPreference installedPref versionPrefs)
-             (dependencyConstraints deps')
-             (dependencyTargets deps')
+             constraints targets
   where
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
-planUpgradePackages :: Compiler -> Planner
-planUpgradePackages comp (Just installed)
+planUpgradePackages :: Compiler -> Cabal.ConfigFlags -> Planner
+planUpgradePackages comp configFlags (Just installed)
   (AvailablePackageDb available versionPrefs) = return $
   resolveDependenciesWithProgress buildPlatform (compilerId comp)
     (Just installed) available
@@ -323,9 +329,11 @@ planUpgradePackages comp (Just installed)
     deps        = upgradableDependencies installed available
     constraints = [ PackageVersionConstraint name ver
                   | Dependency name ver <- deps ]
+               ++ [ PackageVersionConstraint name ver
+                  | Dependency name ver <- Cabal.configConstraints configFlags ]
     targets     = [ name | Dependency name _ <- deps ]
 
-planUpgradePackages comp _ _ =
+planUpgradePackages comp _ _ _ =
   die $ display (compilerId comp)
      ++ " does not track installed packages so cabal cannot figure out what"
      ++ " packages need to be upgraded."
