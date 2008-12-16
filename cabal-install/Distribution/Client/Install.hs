@@ -34,9 +34,10 @@ import System.IO.Error
 
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
+         , PackageConstraint(..), dependencyConstraints, dependencyTargets
          , packagesPreference, PackagesInstalledPreference(..)
-         , upgradableDependencies )
-import Distribution.Client.Dependency.Types (Progress(..), foldProgress)
+         , upgradableDependencies
+         , Progress(..), foldProgress, )
 import Distribution.Client.Fetch (fetchPackage)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
@@ -280,15 +281,15 @@ planLocalPackage verbosity comp configFlags installed
         Available.packageDescription = pkg,
         packageSource                = LocalUnpackedPackage
       }
-      localPkgDep = UnresolvedDependency {
-        dependency = thisPackageVersion (packageId localPkg),
-        depFlags   = Cabal.configConfigurationsFlags configFlags
-      }
+      constraints = [PackageVersionConstraint (packageName pkg)
+                       (ThisVersion (packageVersion pkg))
+                    ,PackageFlagsConstraint   (packageName pkg)
+                       (Cabal.configConfigurationsFlags configFlags)]
 
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available'
              (packagesPreference PreferLatestForSelected versionPrefs)
-             [localPkgDep]
+             constraints [packageName pkg]
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
@@ -304,7 +305,8 @@ planRepoPackages installedPref comp installFlags deps installed
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available
              (packagesPreference installedPref versionPrefs)
-             deps'
+             (dependencyConstraints deps')
+             (dependencyTargets deps')
   where
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
@@ -316,8 +318,13 @@ planUpgradePackages comp (Just installed)
   resolveDependenciesWithProgress buildPlatform (compilerId comp)
     (Just installed) available
     (packagesPreference PreferAllLatest versionPrefs)
-    [ UnresolvedDependency dep []
-    | dep <- upgradableDependencies installed available ]
+    constraints targets
+  where
+    deps        = upgradableDependencies installed available
+    constraints = [ PackageVersionConstraint name ver
+                  | Dependency name ver <- deps ]
+    targets     = [ name | Dependency name _ <- deps ]
+
 planUpgradePackages comp _ _ =
   die $ display (compilerId comp)
      ++ " does not track installed packages so cabal cannot figure out what"
