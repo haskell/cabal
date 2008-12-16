@@ -13,8 +13,12 @@
 -- Top level interface to dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency (
+    module Distribution.Client.Dependency.Types,
     resolveDependencies,
     resolveDependenciesWithProgress,
+
+    dependencyConstraints,
+    dependencyTargets,
 
     PackagesPreference(..),
     packagesPreference,
@@ -41,7 +45,7 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
-         ( VersionRange(AnyVersion), orLaterVersion )
+         ( VersionRange(AnyVersion), orLaterVersion, isAnyVersion )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.System
@@ -81,6 +85,20 @@ packagesPreference installedPref versionPrefs =
 --
 type PackagesVersionPreference = PackageName -> VersionRange
 
+dependencyConstraints :: [UnresolvedDependency] -> [PackageConstraint]
+dependencyConstraints deps =
+     [ PackageVersionConstraint name versionRange
+     | UnresolvedDependency (Dependency name versionRange) _ <- deps
+     , not (isAnyVersion versionRange) ]
+
+  ++ [ PackageFlagsConstraint name flags
+     | UnresolvedDependency (Dependency name _) flags <- deps
+     , not (null flags) ]
+
+dependencyTargets :: [UnresolvedDependency] -> [PackageName]
+dependencyTargets deps =
+  [ name | UnresolvedDependency (Dependency name _) _ <- deps ]
+
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
 --
@@ -110,18 +128,22 @@ resolveDependencies :: Platform
                     -> Maybe (PackageIndex InstalledPackageInfo)
                     -> PackageIndex AvailablePackage
                     -> PackagesPreference
-                    -> [UnresolvedDependency]
+                    -> [PackageConstraint]
+                    -> [PackageName]
                     -> Either String InstallPlan
-resolveDependencies platform comp installed available pref deps =
+resolveDependencies platform comp installed available
+                    preferences constraints targets =
   foldProgress (flip const) Left Right $
-    resolveDependenciesWithProgress platform comp installed available pref deps
+    resolveDependenciesWithProgress platform comp installed available
+                                    preferences constraints targets
 
 resolveDependenciesWithProgress :: Platform
                                 -> CompilerId
                                 -> Maybe (PackageIndex InstalledPackageInfo)
                                 -> PackageIndex AvailablePackage
                                 -> PackagesPreference
-                                -> [UnresolvedDependency]
+                                -> [PackageConstraint]
+                                -> [PackageName]
                                 -> Progress String String InstallPlan
 resolveDependenciesWithProgress platform comp (Just installed) =
   dependencyResolver defaultResolver platform comp installed
@@ -152,27 +174,21 @@ dependencyResolver
   -> PackageIndex InstalledPackageInfo
   -> PackageIndex AvailablePackage
   -> PackagesPreference
-  -> [UnresolvedDependency]
+  -> [PackageConstraint]
+  -> [PackageName]
   -> Progress String String InstallPlan
-dependencyResolver resolver platform comp installed available pref deps =
+dependencyResolver resolver platform comp installed available
+                            pref constraints targets =
   let installed' = hideBrokenPackages installed
       -- If the user is not explicitly asking to upgrade base then lets
       -- prevent that from happening accidentally since it is usually not what
       -- you want and it probably does not work anyway. We do it by hiding the
       -- available versions of it. That forces the dep solver to pick the
       -- installed version(s).
-      available' | all (not . isBase) deps = hideBasePackage available
-                 | otherwise               = available
-        where isBase (UnresolvedDependency (Dependency pkg _) _) =
-                pkg == basePackage
+      available' | all (/=basePackage) targets = hideBasePackage available
+                 | otherwise                   = available
 
       preferences = interpretPackagesPreference (Set.fromList targets) pref
-      constraints = [ PackageVersionConstraint name range
-                    | UnresolvedDependency (Dependency name range) _ <- deps ]
-                 ++ [ PackageFlagsConstraint name flags
-                    | UnresolvedDependency (Dependency name _) flags <- deps ]
-      targets     = [ name
-                    | UnresolvedDependency (Dependency name _) _ <- deps ]
    in fmap toPlan
     $ resolver platform comp installed' available'
                preferences constraints targets
