@@ -26,8 +26,9 @@ import Distribution.Client.Types
          , AvailablePackageSource(..), AvailablePackageDb(..)
          , Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.Dependency
-         ( resolveDependenciesWithProgress, packagesPreference
-         , PackagesInstalledPreference(..) )
+         ( resolveDependenciesWithProgress
+         , dependencyConstraints, dependencyTargets
+         , packagesPreference, PackagesInstalledPreference(..) )
 import Distribution.Client.Dependency.Types
          ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
@@ -166,7 +167,8 @@ fetch verbosity packageDB repos comp conf deps = do
                    buildPlatform (compilerId comp)
                    installed' available
                    (packagesPreference PreferLatestForSelected versionPref)
-                   deps'
+                   (dependencyConstraints deps')
+                   (dependencyTargets deps')
   notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
                             (return . Left) (return . Right) progress
