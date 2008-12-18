@@ -377,7 +377,8 @@ data InstallFlags = InstallFlags {
     installCabalVersion :: Flag Version,
     installLogFile      :: Flag FilePath,
     installBuildReports :: Flag Bool,
-    installSymlinkBinDir:: Flag FilePath
+    installSymlinkBinDir:: Flag FilePath,
+    installPreferences  :: [Dependency]
   }
 
 defaultInstallFlags :: InstallFlags
@@ -390,7 +391,8 @@ defaultInstallFlags = InstallFlags {
     installCabalVersion = mempty,
     installLogFile      = mempty,
     installBuildReports = Flag False,
-    installSymlinkBinDir= mempty
+    installSymlinkBinDir= mempty,
+    installPreferences  = mempty
   }
 
 installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
@@ -449,6 +451,13 @@ installOptions showOrParseArgs =
           installBuildReports (\v flags -> flags { installBuildReports = v })
           trueArg
 
+      , option [] ["preference"]
+          "Specify preferences (soft constraints) on the version of a package"
+          installPreferences (\v flags -> flags { installPreferences = v })
+          (reqArg "DEPENDENCY"
+            (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
+                                            (map (\x -> display x)))
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -468,7 +477,8 @@ instance Monoid InstallFlags where
     installCabalVersion = mempty,
     installLogFile      = mempty,
     installBuildReports = mempty,
-    installSymlinkBinDir= mempty
+    installSymlinkBinDir= mempty,
+    installPreferences  = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
@@ -479,7 +489,8 @@ instance Monoid InstallFlags where
     installCabalVersion = combine installCabalVersion,
     installLogFile      = combine installLogFile,
     installBuildReports = combine installBuildReports,
-    installSymlinkBinDir= combine installSymlinkBinDir
+    installSymlinkBinDir= combine installSymlinkBinDir,
+    installPreferences  = combine installPreferences
   }
     where combine field = field a `mappend` field b
 

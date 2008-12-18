@@ -28,7 +28,8 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
          , dependencyConstraints, dependencyTargets
-         , packagesPreference, PackagesPreferenceDefault(..) )
+         , PackagesPreference(..), PackagesPreferenceDefault(..)
+         , PackagePreference(..) )
 import Distribution.Client.Dependency.Types
          ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
@@ -55,6 +56,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
+import qualified Data.Map as Map
 import Control.Monad
          ( when, filterM )
 import System.Directory
@@ -150,7 +152,7 @@ fetch :: Verbosity
       -> IO ()
 fetch verbosity packageDB repos comp conf deps = do
   installed <- getInstalledPackages verbosity comp packageDB conf
-  AvailablePackageDb available versionPref
+  AvailablePackageDb available availablePrefs
             <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
@@ -166,7 +168,9 @@ fetch verbosity packageDB repos comp conf deps = do
   let  progress = resolveDependenciesWithProgress
                    buildPlatform (compilerId comp)
                    installed' available
-                   (packagesPreference PreferLatestForSelected versionPref)
+                   (PackagesPreference PreferLatestForSelected
+                     [ PackageVersionPreference name ver
+                     | (name, ver) <- Map.toList availablePrefs ])
                    (dependencyConstraints deps')
                    (dependencyTargets deps')
   notice verbosity "Resolving dependencies..."
