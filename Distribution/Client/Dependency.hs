@@ -22,8 +22,8 @@ module Distribution.Client.Dependency (
 
     PackagesPreference(..),
     packagesPreference,
-    PackagesVersionPreference,
-    PackagesInstalledPreference(..),
+    PackagesPreferenceDefault(..),
+    PackagePreference(..),
 
     upgradableDependencies,
   ) where
@@ -68,22 +68,15 @@ defaultResolver = topDownResolver
 -- | Global policy for the versions of all packages.
 --
 data PackagesPreference = PackagesPreference
-       PackagesInstalledPreference
-       PackagesVersionPreference
+       PackagesPreferenceDefault
+       [PackagePreference]
 
-packagesPreference :: PackagesInstalledPreference
+packagesPreference :: PackagesPreferenceDefault
                    -> Map PackageName VersionRange
                    -> PackagesPreference
-packagesPreference installedPref versionPrefs =
-  PackagesPreference installedPref versionPrefs'
-  where
-    versionPrefs' :: PackageName -> VersionRange
-    versionPrefs' pkgname =
-      fromMaybe AnyVersion (Map.lookup pkgname versionPrefs)
-
--- | An optional suggested version for each package.
---
-type PackagesVersionPreference = PackageName -> VersionRange
+packagesPreference defaultPref versionPrefs =
+  PackagesPreference defaultPref [ PackageVersionPreference name ver
+                                 | (name, ver) <- Map.toList versionPrefs ]
 
 dependencyConstraints :: [UnresolvedDependency] -> [PackageConstraint]
 dependencyConstraints deps =
@@ -102,7 +95,7 @@ dependencyTargets deps =
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
 --
-data PackagesInstalledPreference =
+data PackagesPreferenceDefault =
 
      -- | Always prefer the latest version irrespective of any existing
      -- installed version.
@@ -122,6 +115,10 @@ data PackagesInstalledPreference =
      -- * This is the standard policy for install.
      --
    | PreferLatestForSelected
+
+data PackagePreference
+   = PackageVersionPreference   PackageName VersionRange
+   | PackageInstalledPreference PackageName InstalledPreference
 
 resolveDependencies :: Platform
                     -> CompilerId
@@ -208,21 +205,29 @@ dependencyResolver resolver platform comp installed available
 interpretPackagesPreference :: Set PackageName
                             -> PackagesPreference
                             -> (PackageName -> PackagePreferences)
-interpretPackagesPreference selected
-  (PackagesPreference installPref versionPref) = case installPref of
+interpretPackagesPreference selected (PackagesPreference defaultPref prefs) =
+  \pkgname -> PackagePreferences (versionPref pkgname) (installPref pkgname)
 
-  PreferAllLatest         -> \pkgname ->
-    PackagePreferences (versionPref pkgname) PreferLatest
+  where
+    versionPref pkgname =
+      fromMaybe AnyVersion (Map.lookup pkgname versionPrefs)
+    versionPrefs = Map.fromList
+      [ (pkgname, pref)
+      | PackageVersionPreference pkgname pref <- prefs ]
 
-  PreferAllInstalled      -> \pkgname ->
-    PackagePreferences (versionPref pkgname) PreferInstalled
-
-  PreferLatestForSelected -> \pkgname ->
-    -- When you say cabal install foo, what you really mean is, prefer the
-    -- latest version of foo, but the installed version of everything else:
-    if pkgname `Set.member` selected
-      then PackagePreferences (versionPref pkgname) PreferLatest
-      else PackagePreferences (versionPref pkgname) PreferInstalled
+    installPref pkgname =
+      fromMaybe (installPrefDefault pkgname) (Map.lookup pkgname installPrefs)
+    installPrefs = Map.fromList
+      [ (pkgname, pref)
+      | PackageInstalledPreference pkgname pref <- prefs ]
+    installPrefDefault = case defaultPref of
+      PreferAllLatest         -> \_       -> PreferLatest
+      PreferAllInstalled      -> \_       -> PreferInstalled
+      PreferLatestForSelected -> \pkgname ->
+        -- When you say cabal install foo, what you really mean is, prefer the
+        -- latest version of foo, but the installed version of everything else
+        if pkgname `Set.member` selected then PreferLatest
+                                         else PreferInstalled
 
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.

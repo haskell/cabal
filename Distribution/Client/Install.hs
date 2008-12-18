@@ -35,7 +35,7 @@ import System.IO.Error
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
          , PackageConstraint(..), dependencyConstraints, dependencyTargets
-         , packagesPreference, PackagesInstalledPreference(..)
+         , packagesPreference, PackagesPreferenceDefault(..)
          , upgradableDependencies
          , Progress(..), foldProgress, )
 import Distribution.Client.Fetch (fetchPackage)
@@ -295,10 +295,10 @@ planLocalPackage verbosity comp configFlags installed
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
-planRepoPackages :: PackagesInstalledPreference -> Compiler
+planRepoPackages :: PackagesPreferenceDefault -> Compiler
                  -> Cabal.ConfigFlags -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
-planRepoPackages installedPref comp configFlags installFlags deps installed
+planRepoPackages defaultPref comp configFlags installFlags deps installed
   (AvailablePackageDb available versionPrefs) = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
@@ -311,7 +311,7 @@ planRepoPackages installedPref comp configFlags installFlags deps installed
                     | Dependency name ver <- Cabal.configConstraints configFlags ]
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available
-             (packagesPreference installedPref versionPrefs)
+             (packagesPreference defaultPref versionPrefs)
              constraints targets
   where
     hideGivenDeps pkgs index =

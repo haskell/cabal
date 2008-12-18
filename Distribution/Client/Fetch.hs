@@ -28,7 +28,7 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
          , dependencyConstraints, dependencyTargets
-         , packagesPreference, PackagesInstalledPreference(..) )
+         , packagesPreference, PackagesPreferenceDefault(..) )
 import Distribution.Client.Dependency.Types
          ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
