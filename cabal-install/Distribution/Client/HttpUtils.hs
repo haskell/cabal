@@ -101,9 +101,17 @@ parseHttpProxy str = join
   where
     parseHttpURI str' = case parseAbsoluteURI str' of
       Just uri@URI { uriAuthority = Just _ }
-         -> Just uri
+         -> Just (fixUserInfo uri)
       _  -> Nothing
 
+fixUserInfo :: URI -> URI
+fixUserInfo uri = uri{ uriAuthority = f `fmap` uriAuthority uri }
+    where
+      f a@URIAuth{ uriUserInfo = s } =
+          a{ uriUserInfo = case reverse s of
+                             '@':s' -> reverse s'
+                             _      -> s
+           }
 uri2proxy :: URI -> Maybe Proxy
 uri2proxy uri@URI{ uriScheme = "http:"
                  , uriAuthority = Just (URIAuth auth' host port)
