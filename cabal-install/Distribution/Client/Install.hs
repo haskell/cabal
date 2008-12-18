@@ -19,6 +19,7 @@ import Data.List
          ( unfoldr, find, nub, sort )
 import Data.Maybe
          ( isJust, fromMaybe )
+import qualified Data.Map as Map
 import Control.Exception as Exception
          ( handle, handleJust, Exception(IOException) )
 import Control.Monad
@@ -35,7 +36,8 @@ import System.IO.Error
 import Distribution.Client.Dependency
          ( resolveDependenciesWithProgress
          , PackageConstraint(..), dependencyConstraints, dependencyTargets
-         , packagesPreference, PackagesPreferenceDefault(..)
+         , PackagesPreference(..), PackagesPreferenceDefault(..)
+         , PackagePreference(..)
          , upgradableDependencies
          , Progress(..), foldProgress, )
 import Distribution.Client.Fetch (fetchPackage)
@@ -81,7 +83,7 @@ import Distribution.Simple.InstallDirs
          ( fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion
+         ( PackageName, PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
          , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -128,7 +130,8 @@ install verbosity packageDB repos comp conf configFlags installFlags deps =
         verbosity packageDB repos comp conf configFlags installFlags
   where
     planner :: Planner
-    planner | null deps = planLocalPackage verbosity comp configFlags
+    planner | null deps = planLocalPackage verbosity
+                            comp configFlags installFlags
             | otherwise = planRepoPackages PreferLatestForSelected
                             comp configFlags installFlags deps
 
@@ -137,7 +140,7 @@ upgrade verbosity packageDB repos comp conf configFlags installFlags deps =
         verbosity packageDB repos comp conf configFlags installFlags
   where
     planner :: Planner
-    planner | null deps = planUpgradePackages comp configFlags
+    planner | null deps = planUpgradePackages comp configFlags installFlags
             | otherwise = planRepoPackages PreferAllLatest
                             comp configFlags installFlags deps
 
@@ -266,9 +269,10 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
 --
-planLocalPackage :: Verbosity -> Compiler -> Cabal.ConfigFlags -> Planner
-planLocalPackage verbosity comp configFlags installed
-  (AvailablePackageDb available versionPrefs) = do
+planLocalPackage :: Verbosity -> Compiler
+                 -> Cabal.ConfigFlags -> InstallFlags -> Planner
+planLocalPackage verbosity comp configFlags installFlags installed
+  (AvailablePackageDb available availablePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   let -- The trick is, we add the local package to the available index and
       -- remove it from the installed index. Then we ask to resolve a
@@ -281,17 +285,18 @@ planLocalPackage verbosity comp configFlags installed
         Available.packageDescription = pkg,
         packageSource                = LocalUnpackedPackage
       }
+      targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
                        (ThisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
                        (Cabal.configConfigurationsFlags configFlags)]
                  ++ [ PackageVersionConstraint name ver
                     | Dependency name ver <- Cabal.configConstraints configFlags ]
+      preferences = mergePackagePrefs PreferLatestForSelected
+                                      availablePrefs installFlags
 
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
-             installed' available'
-             (packagesPreference PreferLatestForSelected versionPrefs)
-             constraints [packageName pkg]
+             installed' available' preferences constraints targets
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
@@ -299,7 +304,7 @@ planRepoPackages :: PackagesPreferenceDefault -> Compiler
                  -> Cabal.ConfigFlags -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
 planRepoPackages defaultPref comp configFlags installFlags deps installed
-  (AvailablePackageDb available versionPrefs) = do
+  (AvailablePackageDb available availablePrefs) = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
         | Cabal.fromFlagOrDefault False (installReinstall installFlags)
@@ -309,34 +314,45 @@ planRepoPackages defaultPref comp configFlags installFlags deps installed
       constraints = dependencyConstraints deps'
                  ++ [ PackageVersionConstraint name ver
                     | Dependency name ver <- Cabal.configConstraints configFlags ]
+      preferences = mergePackagePrefs defaultPref availablePrefs installFlags
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
-             installed' available
-             (packagesPreference defaultPref versionPrefs)
-             constraints targets
+             installed' available preferences constraints targets
   where
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
-planUpgradePackages :: Compiler -> Cabal.ConfigFlags -> Planner
-planUpgradePackages comp configFlags (Just installed)
-  (AvailablePackageDb available versionPrefs) = return $
+planUpgradePackages :: Compiler -> Cabal.ConfigFlags -> InstallFlags -> Planner
+planUpgradePackages comp configFlags installFlags (Just installed)
+  (AvailablePackageDb available availablePrefs) = return $
   resolveDependenciesWithProgress buildPlatform (compilerId comp)
-    (Just installed) available
-    (packagesPreference PreferAllLatest versionPrefs)
-    constraints targets
+    (Just installed) available preferences constraints targets
   where
     deps        = upgradableDependencies installed available
+    preferences = mergePackagePrefs PreferAllLatest availablePrefs installFlags
     constraints = [ PackageVersionConstraint name ver
                   | Dependency name ver <- deps ]
                ++ [ PackageVersionConstraint name ver
                   | Dependency name ver <- Cabal.configConstraints configFlags ]
     targets     = [ name | Dependency name _ <- deps ]
 
-planUpgradePackages comp _ _ _ =
+planUpgradePackages comp _ _ _ _ =
   die $ display (compilerId comp)
      ++ " does not track installed packages so cabal cannot figure out what"
      ++ " packages need to be upgraded."
+
+mergePackagePrefs :: PackagesPreferenceDefault
+                  -> Map.Map PackageName VersionRange
+                  -> InstallFlags
+                  -> PackagesPreference
+mergePackagePrefs defaultPref availablePrefs installFlags =
+  PackagesPreference defaultPref $
+       -- The preferences that come from the hackage index
+       [ PackageVersionPreference name ver
+       | (name, ver) <- Map.toList availablePrefs ]
+       -- additional preferences from the config file or command line
+    ++ [ PackageVersionPreference name ver
+       | Dependency name ver <- installPreferences installFlags ]
 
 printDryRun :: Verbosity -> Maybe (PackageIndex InstalledPackageInfo)
             -> InstallPlan -> IO ()
