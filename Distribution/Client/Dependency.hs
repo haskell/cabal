@@ -21,7 +21,6 @@ module Distribution.Client.Dependency (
     dependencyTargets,
 
     PackagesPreference(..),
-    packagesPreference,
     PackagesPreferenceDefault(..),
     PackagePreference(..),
 
@@ -57,7 +56,6 @@ import Data.List (maximumBy)
 import Data.Monoid (Monoid(mempty))
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
-import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Exception (assert)
@@ -70,13 +68,6 @@ defaultResolver = topDownResolver
 data PackagesPreference = PackagesPreference
        PackagesPreferenceDefault
        [PackagePreference]
-
-packagesPreference :: PackagesPreferenceDefault
-                   -> Map PackageName VersionRange
-                   -> PackagesPreference
-packagesPreference defaultPref versionPrefs =
-  PackagesPreference defaultPref [ PackageVersionPreference name ver
-                                 | (name, ver) <- Map.toList versionPrefs ]
 
 dependencyConstraints :: [UnresolvedDependency] -> [PackageConstraint]
 dependencyConstraints deps =
