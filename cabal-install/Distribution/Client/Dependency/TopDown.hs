@@ -54,7 +54,7 @@ import Distribution.Text
 import Data.List
          ( foldl', maximumBy, minimumBy, nub, sort, groupBy )
 import Data.Maybe
-         ( fromJust, fromMaybe )
+         ( fromJust, fromMaybe, catMaybes )
 import Data.Monoid
          ( Monoid(mempty) )
 import Control.Monad
@@ -254,10 +254,11 @@ topDownResolver' platform comp installed available
 
     initialPkgNames = Set.fromList targets
 
-    finalise selected = PackageIndex.allPackages
-                      . improvePlan installed'
-                      . PackageIndex.fromList
-                      . finaliseSelectedPackages preferences selected
+    finalise selected' constraints' =
+        PackageIndex.allPackages
+      . fst . improvePlan installed' constraints'
+      . PackageIndex.fromList
+      $ finaliseSelectedPackages preferences selected' constraints'
 
 addTopLevelConstraints :: [PackageConstraint] -> Constraints
                        -> Progress a Failure Constraints
@@ -462,35 +463,62 @@ finaliseSelectedPackages pref selected constraints =
 
 -- | Improve an existing installation plan by, where possible, swapping
 -- packages we plan to install with ones that are already installed.
+-- This may add additional constraints due to the dependencies of installed
+-- packages on other installed packages.
 --
 improvePlan :: PackageIndex InstalledPackageInfo
+            -> Constraints
             -> PackageIndex PlanPackage
-            -> PackageIndex PlanPackage
-improvePlan installed selected = foldl' improve selected
-                               $ reverseTopologicalOrder selected
+            -> (PackageIndex PlanPackage, Constraints)
+improvePlan installed constraints0 selected0 =
+  foldl' improve (selected0, constraints0) (reverseTopologicalOrder selected0)
   where
-    improve selected' = maybe selected' (flip PackageIndex.insert selected')
-                      . improvePkg selected'
+    improve (selected, constraints) = fromMaybe (selected, constraints)
+                                    . improvePkg selected constraints
 
     -- The idea is to improve the plan by swapping a configured package for
     -- an equivalent installed one. For a particular package the condition is
     -- that the package be in a configured state, that a the same version be
     -- already installed with the exact same dependencies and all the packages
     -- in the plan that it depends on are in the installed state
-    improvePkg selected' pkgid = do
-      Configured pkg  <- PackageIndex.lookupPackageId selected' pkgid
+    improvePkg selected constraints pkgid = do
+      Configured pkg  <- PackageIndex.lookupPackageId selected  pkgid
       ipkg            <- PackageIndex.lookupPackageId installed pkgid
-      guard $ sort (depends pkg) == nub (sort (depends ipkg))
-      guard $ all (isInstalled selected') (depends pkg)
-      return (PreExisting ipkg)
+      guard $ all (isInstalled selected) (depends pkg)
+      tryInstalled selected constraints [ipkg]
 
-    isInstalled selected' pkgid =
-      case PackageIndex.lookupPackageId selected' pkgid of
+    isInstalled selected pkgid =
+      case PackageIndex.lookupPackageId selected pkgid of
         Just (PreExisting _) -> True
         _                    -> False
 
-    reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg
-                            -> [PackageIdentifier]
+    tryInstalled :: PackageIndex PlanPackage -> Constraints
+                 -> [InstalledPackageInfo]
+                 -> Maybe (PackageIndex PlanPackage, Constraints)
+    tryInstalled selected constraints [] = Just (selected, constraints)
+    tryInstalled selected constraints (pkg:pkgs) =
+      case constraintsOk (packageId pkg) (depends pkg) constraints of
+        Nothing           -> Nothing
+        Just constraints' -> tryInstalled selected' constraints' pkgs'
+          where
+            selected' = PackageIndex.insert (PreExisting pkg) selected
+            pkgs'      = catMaybes (map notSelected (depends pkg)) ++ pkgs
+            notSelected pkgid =
+              case (PackageIndex.lookupPackageId installed pkgid
+                   ,PackageIndex.lookupPackageId selected  pkgid) of
+                (Just pkg', Nothing) -> Just pkg'
+                _                    -> Nothing
+
+    constraintsOk _     []              constraints = Just constraints
+    constraintsOk pkgid (pkgid':pkgids) constraints =
+      case addPackageDependencyConstraint pkgid dep constraints of
+        Satisfiable constraints' _ -> constraintsOk pkgid pkgids constraints'
+        _                          -> Nothing
+      where
+        dep = TaggedDependency InstalledConstraint (thisPackageVersion pkgid')
+
+    reverseTopologicalOrder :: PackageFixedDeps pkg
+                            => PackageIndex pkg -> [PackageIdentifier]
     reverseTopologicalOrder index = map (packageId . toPkg)
                                   . Graph.topSort
                                   . Graph.transposeG
