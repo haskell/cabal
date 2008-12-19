@@ -149,13 +149,6 @@ hideBrokenPackages index =
   where
     check p x = assert (p x) x
 
-hideBasePackage :: Package p => PackageIndex p -> PackageIndex p
-hideBasePackage = PackageIndex.deletePackageName basePackage
-                . PackageIndex.deletePackageName (PackageName "ghc-prim")
-
-basePackage :: PackageName
-basePackage = PackageName "base"
-
 dependencyResolver
   :: DependencyResolver
   -> Platform -> CompilerId
@@ -170,16 +163,17 @@ dependencyResolver resolver platform comp installed available
   let installed' = hideBrokenPackages installed
       -- If the user is not explicitly asking to upgrade base then lets
       -- prevent that from happening accidentally since it is usually not what
-      -- you want and it probably does not work anyway. We do it by hiding the
-      -- available versions of it. That forces the dep solver to pick the
-      -- installed version(s).
-      available' | all (/=basePackage) targets = hideBasePackage available
-                 | otherwise                   = available
-
+      -- you want and it probably does not work anyway. We do it by adding a
+      -- constraint to only pick an installed version of base and ghc-prim.
+      extraConstraints
+        | all (/=PackageName "base") targets
+        = [ PackageInstalledConstraint (PackageName "base")
+          , PackageInstalledConstraint (PackageName "ghc-prim") ]
+        | otherwise = []
       preferences = interpretPackagesPreference (Set.fromList targets) pref
    in fmap toPlan
-    $ resolver platform comp installed' available'
-               preferences constraints targets
+    $ resolver platform comp installed' available
+               preferences (extraConstraints ++ constraints) targets
 
   where
     toPlan pkgs =
