@@ -15,7 +15,7 @@ module Distribution.Client.Dependency.TopDown.Constraints (
   empty,
   choices,
   isPaired,
-  
+
   constrain,
   Satisfiable(..),
   conflicting,
@@ -55,13 +55,17 @@ data (Package installed, Package available)
 
        -- Remaining available choices
        (PackageIndex (InstalledOrAvailable installed available))
-       
+
        -- Paired choices
        (Map PackageName (Version, Version))
 
        -- Choices that we have excluded for some reason
        -- usually by applying constraints
        (PackageIndex (ExcludedPackage PackageIdentifier reason))
+
+       -- Purely for the invariant, we keep a copy of the original index
+       (PackageIndex (InstalledOrAvailable installed available))
+
 
 data ExcludedPackage pkg reason
    = ExcludedPackage pkg [reason] -- reasons for excluding just the available
@@ -70,25 +74,63 @@ data ExcludedPackage pkg reason
 instance Package pkg => Package (ExcludedPackage pkg reason) where
   packageId (ExcludedPackage p _ _) = packageId p
 
--- | The intersection between the two indexes is empty
+-- | There is a conservation of packages property. Packages are never gained or
+-- lost, they just transfer from the remaining pot to the excluded pot.
+--
 invariant :: (Package installed, Package available)
           => Constraints installed available a -> Bool
-invariant (Constraints available _ excluded) =
-  all (uncurry ok) [ (a, e) | InBoth a e <- merged ]
+invariant (Constraints available _ excluded original) = all check merged
   where
-    merged = mergeBy (\a b -> packageId a `compare` packageId b)
-                     (PackageIndex.allPackages available)
-                     (PackageIndex.allPackages excluded)
-    ok (InstalledOnly _) (ExcludedPackage _ _ []) = True
-    ok _                 _                        = False
+    merged = mergeBy (\a b -> packageId a `compare` mergedPackageId b)
+                     (PackageIndex.allPackages original)
+                     (mergeBy (\a b -> packageId a `compare` packageId b)
+                              (PackageIndex.allPackages available)
+                              (PackageIndex.allPackages excluded))
+      where
+        mergedPackageId (OnlyInLeft  p  ) = packageId p
+        mergedPackageId (OnlyInRight   p) = packageId p
+        mergedPackageId (InBoth      p _) = packageId p
+
+    check (InBoth (InstalledOnly _) cur) = case cur of
+      -- If the package was originally installed only then
+      -- now it's either still remaining as installed only
+      -- or it has been excluded in which case we excluded both
+      -- installed and available since it was only installed
+      OnlyInLeft  (InstalledOnly _)            -> True
+      OnlyInRight (ExcludedPackage _ [] (_:_)) -> True
+      _                                        -> False
+
+    check (InBoth (AvailableOnly _) cur) = case cur of
+      -- If the package was originally available only then
+      -- now it's either still remaining as available only
+      -- or it has been excluded in which case we excluded both
+      -- installed and available since it was only available
+      OnlyInLeft  (AvailableOnly   _)          -> True
+      OnlyInRight (ExcludedPackage _ [] (_:_)) -> True
+      _                                        -> True
+
+    -- If the package was originally installed and available
+    -- then there are three cases.
+    check (InBoth (InstalledAndAvailable _ _) cur) = case cur of
+      -- We can have both remaining:
+      OnlyInLeft                    (InstalledAndAvailable _ _)  -> True
+      -- both excluded, in particular it can have had the available excluded
+      -- and later had both excluded so we do not mind if the available excluded
+      -- is empty or non-empty.
+      OnlyInRight                   (ExcludedPackage _ _  (_:_)) -> True
+      -- the installed remaining and the available excluded:
+      InBoth      (InstalledOnly _) (ExcludedPackage _ (_:_) []) -> True
+      _                                                          -> False
+
+    check _ = False
 
 -- | An update to the constraints can move packages between the two piles
 -- but not gain or loose packages.
 transitionsTo :: (Package installed, Package available)
               => Constraints installed available a
               -> Constraints installed available a -> Bool
-transitionsTo constraints @(Constraints available  _ excluded )
-              constraints'@(Constraints available' _ excluded') =
+transitionsTo constraints @(Constraints available  _ excluded  _)
+              constraints'@(Constraints available' _ excluded' _) =
      invariant constraints && invariant constraints'
   && null availableGained  && null excludedLost
   && map packageId availableLost == map packageId excludedGained
@@ -119,7 +161,7 @@ empty :: (PackageFixedDeps installed, Package available)
       => PackageIndex installed
       -> PackageIndex available
       -> Constraints installed available reason
-empty installed available = Constraints pkgs pairs mempty
+empty installed available = Constraints pkgs pairs mempty pkgs
   where
     pkgs = PackageIndex.fromList
          . map toInstalledOrAvailable
@@ -145,12 +187,12 @@ empty installed available = Constraints pkgs pairs mempty
 choices :: (Package installed, Package available)
         => Constraints installed available reason
         -> PackageIndex (InstalledOrAvailable installed available)
-choices (Constraints available _ _) = available
+choices (Constraints available _ _ _) = available
 
 isPaired :: (Package installed, Package available)
          => Constraints installed available reason
          -> PackageIdentifier -> Maybe PackageIdentifier
-isPaired (Constraints _ pairs _) (PackageIdentifier name version) =
+isPaired (Constraints _ pairs _ _) (PackageIdentifier name version) =
   case Map.lookup name pairs of
     Just (v1, v2)
       | version == v1 -> Just (PackageIdentifier name v2)
@@ -169,14 +211,14 @@ constrain :: (Package installed, Package available)
           -> Satisfiable (Constraints installed available reason)
                          [PackageIdentifier] reason
 constrain (TaggedDependency installedConstraint (Dependency name versionRange))
-          reason constraints@(Constraints available paired excluded)
+          reason constraints@(Constraints available paired excluded original)
 
   | not anyRemaining
   = if null conflicts then Unsatisfiable
                       else ConflictsWith conflicts
 
-  | otherwise 
-  = let constraints' = Constraints available' paired excluded'
+  | otherwise
+  = let constraints' = Constraints available' paired excluded' original
      in assert (constraints `transitionsTo` constraints') $
         Satisfiable constraints' (map packageId newExcluded)
 
@@ -268,7 +310,7 @@ conflicting :: (Package installed, Package available)
             => Constraints installed available reason
             -> Dependency
             -> [(PackageIdentifier, [reason])]
-conflicting (Constraints _ _ excluded) dep =
+conflicting (Constraints _ _ excluded _) dep =
   [ (pkgid, reasonsAvail ++ reasonsAll) --TODO
   | ExcludedPackage pkgid reasonsAvail reasonsAll <-
       PackageIndex.lookupDependency excluded dep ]
