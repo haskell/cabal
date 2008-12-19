@@ -102,6 +102,9 @@ transitionsTo constraints @(Constraints available  _ excluded )
     availableGained = [ pkg | OnlyInRight pkg <- availableChange ]
     excludedLost    = [ pkg | OnlyInLeft  pkg <- excludedChange  ]
     excludedGained  = [ pkg | OnlyInRight pkg <- excludedChange  ]
+                   ++ [ pkg | InBoth (ExcludedPackage _ (_:_) [])
+                                 pkg@(ExcludedPackage _ (_:_) (_:_))
+                                              <- excludedChange  ]
     availableChange = mergeBy (\a b -> packageId a `compare` packageId b)
                               (PackageIndex.allPackages available)
                               (PackageIndex.allPackages available')
@@ -199,7 +202,7 @@ constrain (TaggedDependency installedConstraint (Dependency name versionRange))
                = id
     update pkg = case pkg of
       InstalledOnly         _   -> id
-      AvailableOnly           _ -> error "impossible" -- PackageIndex.deletePackageId (packageId pkg)
+      AvailableOnly           _ -> PackageIndex.deletePackageId (packageId pkg)
       InstalledAndAvailable i _ -> PackageIndex.insert (InstalledOnly i)
 
   -- Applying the constraint means adding exclusions for the packages that
@@ -215,7 +218,7 @@ constrain (TaggedDependency installedConstraint (Dependency name versionRange))
       = Nothing
       | otherwise = case pkg of
       InstalledOnly         _   -> Nothing
-      AvailableOnly           _ -> Just (ExcludedPackage pkgid [reason] [])
+      AvailableOnly           _ -> Just (ExcludedPackage pkgid [] [reason])
       InstalledAndAvailable _ _ ->
         case PackageIndex.lookupPackageId excluded pkgid of
           Just (ExcludedPackage _ avail both)
