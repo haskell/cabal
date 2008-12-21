@@ -206,7 +206,15 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
-      usePackageIndex  = if packageDB == UserPackageDB then index else Nothing,
+      -- Hack: we typically want to allow the UserPackageDB for finding the
+      -- Cabal lib when compiling any Setup.hs even if we're doing a global
+      -- install. However we also allow looking in a specific package db.
+      -- TODO: if we specify a specific db then we do not look in the user
+      --       package db but we probably should ie [global, user, specific]
+      usePackageDB     = if packageDB == GlobalPackageDB then UserPackageDB
+                                                         else packageDB,
+      usePackageIndex  = if packageDB == GlobalPackageDB then Nothing
+                                                         else index,
       useProgramConfig = conf,
       useDistPref      = Cabal.fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)
