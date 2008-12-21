@@ -73,6 +73,7 @@ import Data.Char         ( isSpace )
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
     useCompiler      :: Maybe Compiler,
+    usePackageDB     :: PackageDB,
     usePackageIndex  :: Maybe (PackageIndex InstalledPackageInfo),
     useProgramConfig :: ProgramConfiguration,
     useDistPref      :: FilePath,
@@ -84,6 +85,7 @@ defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion  = AnyVersion,
     useCompiler      = Nothing,
+    usePackageDB     = UserPackageDB,
     usePackageIndex  = Nothing,
     useProgramConfig = emptyProgramConfiguration,
     useDistPref      = defaultDistPref,
@@ -202,8 +204,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     index <- case usePackageIndex options' of
       Just index -> return index
       Nothing    -> fromMaybe mempty
-             `fmap` getInstalledPackages verbosity comp UserPackageDB conf
-                    -- user packages are *allowed* here, no portability problem
+             `fmap` getInstalledPackages verbosity
+                      comp (usePackageDB options') conf
 
     let cabalDep = Dependency (PackageName "Cabal") (useCabalVersion options)
     case PackageIndex.lookupDependency index cabalDep of
@@ -279,7 +281,12 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           ghcVerbosityOptions verbosity
        ++ ["--make", setupHsFile, "-o", setupProgFile
           ,"-odir", setupDir, "-hidir", setupDir
-	  ,"-i", "-i" ++ workingDir ]
+          ,"-i", "-i" ++ workingDir ]
+       ++ (case usePackageDB options' of
+             GlobalPackageDB      -> ["-no-user-package-conf"]
+             UserPackageDB        -> []
+             SpecificPackageDB db -> ["-no-user-package-conf"
+                                     ,"-package-conf", db])
        ++ if packageName pkg == PackageName "Cabal"
             then []
             else ["-package", display cabalPkgid]
