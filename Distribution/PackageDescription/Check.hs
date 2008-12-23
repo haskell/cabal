@@ -457,6 +457,10 @@ checkGhcOptions pkg =
       PackageDistInexcusable $
            "'ghc-options: -hide-package' is never needed. Cabal hides all packages."
 
+  , checkFlags ["--make"] $
+      PackageDistInexcusable $
+        "'ghc-options: --make' is never needed. Cabal uses this automatically."
+
   , checkFlags ["-main-is"] $
       PackageDistSuspicious $
            "'ghc-options: -main-is' is not portable."
