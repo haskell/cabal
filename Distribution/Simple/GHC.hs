@@ -218,9 +218,11 @@ configureToolchain ghcProg =
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
     findProg :: Program -> FilePath -> Verbosity -> IO (Maybe FilePath)
-    findProg prog location | isWindows = \_ -> do
+    findProg prog location | isWindows = \verbosity -> do
         exists <- doesFileExist location
-        if exists then return (Just location) else return Nothing
+        if exists then return (Just location)
+                  else do warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
+                          programFindLocation prog verbosity
       | otherwise = programFindLocation prog
 
     configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
