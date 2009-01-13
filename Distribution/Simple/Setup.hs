@@ -205,19 +205,20 @@ defaultGlobalFlags  = GlobalFlags {
   }
 
 globalCommand :: CommandUI GlobalFlags
-globalCommand = makeCommand name shortDesc longDesc defaultGlobalFlags options
-  where
-    name       = ""
-    shortDesc  = ""
-    longDesc   = Just $ \pname ->
-         "Typical steps for installing Cabal packages:\n"
-      ++ unlines [ "  " ++ pname ++ " " ++ x
-                 | x <- ["configure", "build", "install"]]
-      ++ "\nFor more information about a command, try '"
-          ++ pname ++ " COMMAND --help'."
-      ++ "\nThis Setup program uses the Haskell Cabal Infrastructure."
-      ++ "\nSee http://www.haskell.org/cabal/ for more information.\n"
-    options _  =
+globalCommand = CommandUI {
+    commandName         = "",
+    commandSynopsis     = "",
+    commandUsage        = \_ ->
+         "This Setup program uses the Haskell Cabal Infrastructure.\n"
+      ++ "See http://www.haskell.org/cabal/ for more information.\n",
+    commandDescription  = Just $ \pname ->
+         "For more information about a command use\n"
+      ++ "  " ++ pname ++ " COMMAND --help\n\n"
+      ++ "Typical steps for installing Cabal packages:\n"
+      ++ concat [ "  " ++ pname ++ " " ++ x ++ "\n"
+                | x <- ["configure", "build", "install"]],
+    commandDefaultFlags = defaultGlobalFlags,
+    commandOptions      = \_ ->
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -227,6 +228,7 @@ globalCommand = makeCommand name shortDesc longDesc defaultGlobalFlags options
          globalNumericVersion (\v flags -> flags { globalNumericVersion = v })
          trueArg
       ]
+  }
 
 emptyGlobalFlags :: GlobalFlags
 emptyGlobalFlags = mempty
