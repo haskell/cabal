@@ -98,16 +98,17 @@ globalCommand :: CommandUI GlobalFlags
 globalCommand = CommandUI {
     commandName         = "",
     commandSynopsis     = "",
+    commandUsage        = \_ ->
+         "This program is the command line interface "
+           ++ "to the Haskell Cabal infrastructure.\n"
+      ++ "See http://www.haskell.org/cabal/ for more information.\n",
     commandDescription  = Just $ \pname ->
-         "Typical step for installing Cabal packages:\n"
-      ++ "  " ++ pname ++ " install [PACKAGES]\n"
-      ++ "\nOccasionally you need to update the list of available packages:\n"
-      ++ "  " ++ pname ++ " update\n"
-      ++ "\nFor more information about a command, try '"
-          ++ pname ++ " COMMAND --help'."
-      ++ "\nThis program is the command line interface to the Haskell Cabal Infrastructure."
-      ++ "\nSee http://www.haskell.org/cabal/ for more information.\n",
-    commandUsage        = \_ -> [],
+         "For more information about a command use:\n"
+      ++ "  " ++ pname ++ " COMMAND --help\n\n"
+      ++ "To install Cabal packages from hackage use:\n"
+      ++ "  " ++ pname ++ " install foo [--dry-run]\n\n"
+      ++ "Occasionally you need to update the list of available packages:\n"
+      ++ "  " ++ pname ++ " update\n",
     commandDefaultFlags = defaultGlobalFlags,
     commandOptions      = \showOrParseArgs ->
       (case showOrParseArgs of ShowArgs -> take 2; ParseArgs -> id)
@@ -405,7 +406,7 @@ installCommand = configureCommand {
           Just desc -> desc pname ++ "\n"
           Nothing   -> ""
      in original
-     ++ "Examples: \n"
+     ++ "Examples:\n"
      ++ "  " ++ pname ++ " install                 "
      ++ "    Package in the current directory\n"
      ++ "  " ++ pname ++ " install foo             "
