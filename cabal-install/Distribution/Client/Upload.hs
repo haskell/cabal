@@ -73,9 +73,11 @@ upload verbosity repos mUsername mPassword paths = do
       putStr "Hackage password: "
       hFlush stdout
       -- save/restore the terminal echoing status
-      bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
+      passwd <- bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
         hSetEcho stdin False  -- no echoing for entering the password
         fmap Password getLine
+      putStrLn ""
+      return passwd
 
 report :: Verbosity -> [Repo] -> IO ()
 report verbosity repos
