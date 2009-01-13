@@ -400,6 +400,20 @@ installCommand = configureCommand {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
   commandUsage        = usagePackages "install",
+  commandDescription  = Just $ \pname ->
+    let original = case commandDescription configureCommand of
+          Just desc -> desc pname ++ "\n"
+          Nothing   -> ""
+     in original
+     ++ "Examples: \n"
+     ++ "  " ++ pname ++ " install                 "
+     ++ "    Package in the current directory\n"
+     ++ "  " ++ pname ++ " install foo             "
+     ++ "    Package from the hackage server\n"
+     ++ "  " ++ pname ++ " install foo-1.0         "
+     ++ "    Specific version of a package\n"
+     ++ "  " ++ pname ++ " install 'foo < 2'       "
+     ++ "    Constrained package version\n",
   commandDefaultFlags = (mempty, mempty),
   commandOptions      = \showOrParseArgs ->
     liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
