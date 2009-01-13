@@ -101,14 +101,7 @@ data License =
     -- | Not a recognised license.
     -- Allows us to deal with future extensions more gracefully.
   | UnknownLicense String
-  deriving Eq
-
-instance Show License where
-    show = display
-
-instance Read License where
-    readsPrec _ = Parse.readP_to_S $ do Parse.skipSpaces
-                                        parse
+  deriving (Read, Show, Eq)
 
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
@@ -122,13 +115,8 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
 instance Text License where
   disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
   disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
-  disp BSD3                   = Disp.text "BSD3"
-  disp BSD4                   = Disp.text "BSD4"
-  disp MIT                    = Disp.text "MIT"
-  disp PublicDomain           = Disp.text "PublicDomain"
-  disp AllRightsReserved      = Disp.text "AllRightsReserved"
-  disp OtherLicense           = Disp.text "OtherLicense"
   disp (UnknownLicense other) = Disp.text other
+  disp other                  = Disp.text (show other)
 
   parse = do
     name    <- Parse.munch1 (\c -> Char.isAlphaNum c && c /= '-')
