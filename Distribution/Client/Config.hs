@@ -19,6 +19,7 @@ module Distribution.Client.Config (
     parseConfig,
 
     defaultCabalDir,
+    defaultConfigFile,
     defaultCacheDir,
     defaultLogsDir,
   ) where
