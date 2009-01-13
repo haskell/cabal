@@ -40,7 +40,7 @@ import Distribution.Client.Types
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
-         ( SavedConfig(..), loadConfig )
+         ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.List             (list)
 import Distribution.Client.Install          (install, upgrade)
 import Distribution.Client.Update           (update)
@@ -93,7 +93,12 @@ mainWorker args =
         CommandReadyToGo action        -> action globalflags
 
   where
-    printHelp help = getProgName >>= putStr . help
+    printHelp help = do
+      pname <- getProgName
+      configFile <- defaultConfigFile
+      putStr (help pname)
+      putStr $ "\nYou can edit the cabal configuration file to set defaults:\n"
+            ++ "  " ++ configFile ++ "\n"
     printOptionsList = putStr . unlines
     printErrors errs = do
       putStr (concat (intersperse "\n" errs))
