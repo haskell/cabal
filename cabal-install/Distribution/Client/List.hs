@@ -93,7 +93,6 @@ data PackageDisplayInfo = PackageDisplayInfo {
     installedVersions :: [Version],
     availableVersions :: [Version],
     homepage          :: String,
-    category          :: String,
     synopsis          :: String,
     license           :: License
   }
@@ -113,7 +112,6 @@ showPackageInfo pkg =
          [] -> text "[ Not installed ]"
          vs -> disp (maximum vs)
      , maybeShow (homepage pkg) "Homepage:" text
-     , maybeShow (category pkg) "Category:" text
      , maybeShow (synopsis pkg) "Synopsis:" reflowParas
      , text "License: " <+> text (show (license pkg))
      ])
@@ -147,8 +145,6 @@ mergePackageInfo installed available =
     availableVersions = map (pkgVersion . packageId) available,
     homepage          = combine Available.homepage latestAvailableDesc
                                 Installed.homepage latestInstalled,
-    category          = combine Available.category latestAvailableDesc
-                                Installed.category latestInstalled,
     synopsis          = combine Available.synopsis latestAvailableDesc
                                 Installed.description latestInstalled,
     license           = combine Available.license  latestAvailableDesc
