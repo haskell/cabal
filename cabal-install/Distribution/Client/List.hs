@@ -104,12 +104,14 @@ showPackageInfo pkg =
      text " *" <+> disp (name pkg)
      $+$
      (nest 6 $ vcat [
-       maybeShow (availableVersions pkg)
-         "Latest version available:"
-         (disp . maximum)
-     , maybeShow (installedVersions pkg)
-         "Latest version installed:"
-         (disp . maximum)
+       text "Latest version available:" <+>
+       case availableVersions pkg of
+         [] -> text "[ Not available from server ]"
+         vs -> disp (maximum vs)
+     , text "Latest version installed:" <+>
+       case installedVersions pkg of
+         [] -> text "[ Not installed ]"
+         vs -> disp (maximum vs)
      , maybeShow (homepage pkg) "Homepage:" text
      , maybeShow (category pkg) "Category:" text
      , maybeShow (synopsis pkg) "Synopsis:" reflowParas
