@@ -165,11 +165,11 @@ dependencyResolver resolver platform comp installed available
       -- prevent that from happening accidentally since it is usually not what
       -- you want and it probably does not work anyway. We do it by adding a
       -- constraint to only pick an installed version of base and ghc-prim.
-      extraConstraints
+      extraConstraints =
+        [ PackageInstalledConstraint pkgname
         | all (/=PackageName "base") targets
-        = [ PackageInstalledConstraint (PackageName "base")
-          , PackageInstalledConstraint (PackageName "ghc-prim") ]
-        | otherwise = []
+        , pkgname <-  [ PackageName "base", PackageName "ghc-prim" ]
+        , not (null (PackageIndex.lookupPackageName installed pkgname)) ]
       preferences = interpretPackagesPreference (Set.fromList targets) pref
    in fmap toPlan
     $ resolver platform comp installed' available
