@@ -39,8 +39,13 @@ die () {
 grep -e "cabal-install" ./cabal-install.cabal > /dev/null \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
+GHC_VER=$(${GHC} --numeric-version)
+GHC_PKG_VER=$(${GHC_PKG} --version | cut -d' ' -f 5)
+[ ${GHC_VER} = ${GHC_PKG_VER} ] \
+  || die "Version mismatch between ${GHC} and ${GHC_PKG}"
+
 # Cache the list of packages:
-echo "Checking installed packages..."
+echo "Checking installed packages for ghc-${GHC_VER}..."
 ${GHC_PKG} list > ghc-pkg.list \
   || die "running '${GHC_PKG} list' failed"
 
@@ -93,14 +98,15 @@ fetch_pkg () {
   URL=${HACKAGE_URL}/${PKG}/${VER}/${PKG}-${VER}.tar.gz
   if which ${CURL} > /dev/null
   then
-    ${CURL} -O ${URL} || die "Failed to download ${PKG}."
+    ${CURL} -C - -O ${URL} || die "Failed to download ${PKG}."
   elif which ${WGET} > /dev/null
   then
     ${WGET} -c ${URL} || die "Failed to download ${PKG}."
   else
     die "Failed to find a downloader. 'wget' or 'curl' is required."
   fi
-  #TODO check that ./${PKG}-${VER}.tar.gz exists
+  [ -f "${PKG}-${VER}.tar.gz" ] \
+    || die "Downloading ${URL} did not create ${PKG}-${VER}.tar.gz"
 }
 
 unpack_pkg () {
@@ -119,10 +125,15 @@ unpack_pkg () {
 install_pkg () {
   PKG=$1
 
-  rm -f Setup
-  ${GHC} --make Setup -o Setup
+  [ -x Setup ] && ./Setup clean
+  [ -f Setup ] && rm Setup
+
+  ${GHC} --make Setup -o Setup \
+    || die "Compiling the Setup script failed"
+  [ -x Setup ] || die "The Setup script does not exist or cannot be run"
 
   ./Setup configure --user "--prefix=${HOME}/.cabal" \
+    --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
     ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
 
