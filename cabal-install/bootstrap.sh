@@ -39,8 +39,8 @@ die () {
 grep -e "cabal-install" ./cabal-install.cabal > /dev/null \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
-GHC_VER=$(${GHC} --numeric-version)
-GHC_PKG_VER=$(${GHC_PKG} --version | cut -d' ' -f 5)
+GHC_VER=`${GHC} --numeric-version`
+GHC_PKG_VER=`${GHC_PKG} --version | cut -d' ' -f 5`
 [ ${GHC_VER} = ${GHC_PKG_VER} ] \
   || die "Version mismatch between ${GHC} and ${GHC_PKG}"
 
