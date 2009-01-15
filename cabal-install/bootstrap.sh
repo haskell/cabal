@@ -6,55 +6,182 @@
 # HTTP packages. It then installs cabal-install itself.
 # It expects to be run inside the cabal-install directory.
 
-CABAL_VER="1.6.0.1"
-HTTP_VER="3001.1.3"
-ZLIB_VER="0.4.0.4"
+# install settings, you can override these by setting environment vars
+PREFIX=${PREFIX:-${HOME}/.cabal}
+#VERBOSE
+#EXTRA_CONFIGURE_OPTS
+
+# programs, you can override these by setting environment vars
+GHC=${GHC:-ghc}
+GHC_PKG=${GHC_PKG:-ghc-pkg}
+WGET=${WGET:-wget}
+CURL=${CURL:-curl}
+TAR=${TAR:-tar}
+GUNZIP=${GUNZIP:-gunzip}
+
+
+# Versions of the packages to install.
+# The version regex says what existing installed versions are ok.
+CABAL_VER="1.6.0.1"; CABAL_VER_REGEXP="1\.6\."   # == 1.6.*
+HTTP_VER="3001.1.5"; HTTP_VER_REGEXP="300[01]\." # >= 3000 && < 3002
+ZLIB_VER="0.5.0.0";  ZLIB_VER_REGEXP="0\.[45]\." # >= 0.4  && < 0.6
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
-CABAL_URL=${HACKAGE_URL}/Cabal/${CABAL_VER}/Cabal-${CABAL_VER}.tar.gz
-HTTP_URL=${HACKAGE_URL}/HTTP/${HTTP_VER}/HTTP-${HTTP_VER}.tar.gz
-ZLIB_URL=${HACKAGE_URL}/zlib/${ZLIB_VER}/zlib-${ZLIB_VER}.tar.gz
 
-case `which wget curl` in
-  *curl)
-    curl -O ${CABAL_URL} -O ${HTTP_URL} -O ${ZLIB_URL}
-    ;;
-  *wget)
-    wget -c ${CABAL_URL} ${HTTP_URL} ${ZLIB_URL}
-    ;;
-  *)
-    echo "Failed to find a downloader. 'wget' or 'curl' is required." >&2
-    exit 2
-    ;;
-esac
+die () {
+  echo
+  echo "Error:"
+  echo $1 >&2
+  exit 2
+}
 
-tar -zxf Cabal-${CABAL_VER}.tar.gz
-cd Cabal-${CABAL_VER}
-ghc --make Setup
-./Setup configure --user && ./Setup build && ./Setup install
-cd ..
+# Check we're in the right directory:
+grep -e "cabal-install" ./cabal-install.cabal > /dev/null \
+  || die "The bootstrap.sh script must be run in the cabal-install directory"
 
-tar -zxf HTTP-${HTTP_VER}.tar.gz
-cd HTTP-${HTTP_VER}
-runghc Setup configure --user && runghc Setup build && runghc Setup install
-cd ..
+# Cache the list of packages:
+echo "Checking installed packages..."
+${GHC_PKG} list > ghc-pkg.list \
+  || die "running '${GHC_PKG} list' failed"
 
-tar -zxf zlib-${ZLIB_VER}.tar.gz
-cd zlib-${ZLIB_VER}
-runghc Setup configure --user && runghc Setup build && runghc Setup install
-cd ..
+# Will we need to install this package, or is a suitable version installed?
+need_pkg () {
+  PKG=$1
+  VER_MATCH=$2
+  if grep -e " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null
+  then
+    return 1
+  else
+    return 0
+  fi
+}
 
-runghc Setup configure --user && runghc Setup build && runghc Setup install
+info_pkg () {
+  PKG=$1
+  VER=$2
+  VER_MATCH=$3
 
-CABAL_BIN="$HOME/.cabal/bin"
+  if need_pkg ${PKG} ${VER_MATCH}
+  then
+    echo "${PKG}-${VER} will be downloaded and installed."
+  else
+    echo "${PKG} is already installed and the version is ok."
+  fi
+}
+
+dep_pkg () {
+  PKG=$1
+  VER_MATCH=$2
+  if need_pkg ${PKG} ${VER_MATCH}
+  then
+    echo
+    echo "The Haskell package '${PKG}' is required but it is not installed."
+    echo "If you are using a ghc package provided by your operating system"
+    echo "then install the corresponding packages for 'parsec' and 'network'."
+    echo "If you built ghc from source with only the core libraries then you"
+    echo "should install these extra packages. You can get them from hackage."
+    die "The Haskell package '${PKG}' is required but it is not installed."
+  else
+    echo "${PKG} is already installed and the version is ok."
+  fi
+}
+
+fetch_pkg () {
+  PKG=$1
+  VER=$2
+
+  URL=${HACKAGE_URL}/${PKG}/${VER}/${PKG}-${VER}.tar.gz
+  if which ${CURL} > /dev/null
+  then
+    ${CURL} -O ${URL} || die "Failed to download ${PKG}."
+  elif which ${WGET} > /dev/null
+  then
+    ${WGET} -c ${URL} || die "Failed to download ${PKG}."
+  else
+    die "Failed to find a downloader. 'wget' or 'curl' is required."
+  fi
+  #TODO check that ./${PKG}-${VER}.tar.gz exists
+}
+
+unpack_pkg () {
+  PKG=$1
+  VER=$2
+
+  rm -rf "${PKG}-${VER}.tar" "${PKG}-${VER}"/
+  ${GUNZIP} -f "${PKG}-${VER}.tar.gz" \
+    || die "Failed to gunzip ${PKG}-${VER}.tar.gz"
+  ${TAR} -xf "${PKG}-${VER}.tar" \
+    || die "Failed to untar ${PKG}-${VER}.tar.gz"
+  [ -d "${PKG}-${VER}" ] \
+    || die "Unpacking ${PKG}-${VER}.tar.gz did not create ${PKG}-${VER}/"
+}
+
+install_pkg () {
+  PKG=$1
+
+  rm -f Setup
+  ${GHC} --make Setup -o Setup
+
+  ./Setup configure --user "--prefix=${HOME}/.cabal" \
+    ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
+    || die "Configuring the ${PKG} package failed"
+
+  ./Setup build ${VERBOSE} \
+    || die "Building the ${PKG} package failed"
+
+  ./Setup install ${VERBOSE} \
+    || die "Installing the ${PKG} package failed"
+}
+
+do_pkg () {
+  PKG=$1
+  VER=$2
+  VER_MATCH=$3
+
+  if need_pkg ${PKG} ${VER_MATCH}
+  then
+    echo
+    echo "Downloading ${PKG}-${VER}..."
+    fetch_pkg ${PKG} ${VER}
+    unpack_pkg ${PKG} ${VER}
+    cd "${PKG}-${VER}"
+    install_pkg ${PKG} ${VER}
+    cd ..
+  fi
+}
+
+# Actually do something!
+
+dep_pkg "parsec" "2\."
+dep_pkg "network" "[12]\."
+
+info_pkg "Cabal" ${CABAL_VER} ${CABAL_VER_REGEXP}
+info_pkg "HTTP"  ${HTTP_VER}  ${HTTP_VER_REGEXP}
+info_pkg "zlib"  ${ZLIB_VER}  ${ZLIB_VER_REGEXP}
+
+do_pkg "Cabal" ${CABAL_VER} ${CABAL_VER_REGEXP}
+do_pkg "HTTP"  ${HTTP_VER}  ${HTTP_VER_REGEXP}
+do_pkg "zlib"  ${ZLIB_VER}  ${ZLIB_VER_REGEXP}
+
+install_pkg "cabal-install"
+
 echo
-
+echo "==========================================="
+CABAL_BIN="$PREFIX/bin"
 if [ -x "$CABAL_BIN/cabal" ]
 then
-    echo "cabal successfully installed in $CABAL_BIN."
-    echo "You may want to add $CABAL_BIN to your PATH."
+    echo "The 'cabal' program has been installed in $CABAL_BIN/"
+    echo "You should either add $CABAL_BIN to your PATH"
+    echo "or copy the cabal program to a directory that is on your PATH."
+    echo
+    echo "By default cabal will install programs to $HOME/.cabal/bin"
+    echo "If you do not want to add this directory to your PATH then"
+    echo "you can change the setting in the config file $HOME/.cabal/config"
+    echo "For example you could use:"
+    echo "symlink-bindir: $HOME/bin"
 else
     echo "Sorry, something went wrong."
 fi
-
 echo
+
+rm ghc-pkg.list
