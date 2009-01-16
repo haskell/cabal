@@ -25,6 +25,10 @@ It requires three other Haskell packages that are not always installed:
 
 All of these are available from [Hackage](http://hackage.haskell.org).
 
+Note that on some Unix systems you may need to install an additional zlib
+development package using your system package manager. This is because the
+Haskell zlib package uses the system zlib C library and header files.
+
 In future, cabal-install will be part of the Haskell Platform so will not need
 to be installed separately. In the mean time however you have to install it
 manually. Since it is just an ordinary Cabal package it can be built in the
