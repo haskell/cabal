@@ -46,6 +46,8 @@ import Distribution.ParseUtils
          , simpleField, listField, parseFilePathQ, showFilePath, parseTokenQ )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
+import qualified Distribution.Text as Text
+         ( Text(..) )
 import Distribution.ReadE
          ( readP_to_E )
 import Distribution.Simple.Command
@@ -74,7 +76,7 @@ import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
 import qualified Text.PrettyPrint.HughesPJ as Disp
-         ( Doc, render, text, colon, vcat, isEmpty, nest )
+         ( Doc, render, text, colon, vcat, empty, isEmpty, nest )
 import Text.PrettyPrint.HughesPJ
          ( (<>), (<+>), ($$), ($+$) )
 import System.Directory
@@ -296,6 +298,13 @@ configFieldDescriptions =
        (configureOptions ParseArgs)
        (["scratchdir", "configure-option"] ++ map fieldName installDirsFields)
 
+      --FIXME: this is only here because viewAsFieldDescr gives us a parser
+      -- that only recognises 'ghc' etc, the case-sensitive flag names, not
+      -- what the normal case-insensitive parser gives us.
+  ++ [liftConfigFlag $ simpleField "compiler"
+       (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
+       configHcFlavor (\v flags -> flags { configHcFlavor = v })]
+
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
        ["verbose", "check"]
@@ -306,6 +315,7 @@ configFieldDescriptions =
       | opt <- options
       , let field = viewAsFieldDescr opt
       , fieldName field `notElem` excluded ]
+    optional = Parse.option mempty . fmap toFlag
 
 -- TODO: next step, make the deprecated fields elicit a warning.
 --
