@@ -80,20 +80,23 @@ mainWorker :: [String] -> IO ()
 mainWorker ("win32selfupgrade":args) = win32SelfUpgradeAction args
 mainWorker args =
   case commandsRun globalCommand commands args of
-    CommandHelp   help                 -> printHelp help
+    CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
     CommandReadyToGo (globalflags, commandParse)  ->
       case commandParse of
         _ | fromFlag (globalVersion globalflags)        -> printVersion
           | fromFlag (globalNumericVersion globalflags) -> printNumericVersion
-        CommandHelp     help           -> printHelp help
+        CommandHelp     help           -> printCommandHelp help
         CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> action globalflags
 
   where
-    printHelp help = do
+    printCommandHelp help = do
+      pname <- getProgName
+      putStr (help pname)
+    printGlobalHelp help = do
       pname <- getProgName
       configFile <- defaultConfigFile
       putStr (help pname)
