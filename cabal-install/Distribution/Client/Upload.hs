@@ -21,6 +21,7 @@ import Network.Browser
 import Network.HTTP
          ( Header(..), HeaderName(..), findHeader
          , Request(..), RequestMethod(..), Response(..) )
+import Network.TCP (HandleStream)
 import Network.URI (URI(uriPath), parseURI)
 
 import Data.Char        (intToDigit)
@@ -104,7 +105,8 @@ check verbosity paths = do
             notice verbosity $ "Checking " ++ path ++ "... "
             handlePackage verbosity checkURI (return ()) path
 
-handlePackage :: Verbosity -> URI -> BrowserAction () -> FilePath -> IO ()
+handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream String) ()
+              -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
      p   <- proxy verbosity
@@ -126,7 +128,7 @@ handlePackage verbosity uri auth path =
                        Just "text/plain" -> notice verbosity $ rspBody resp
                        _                 -> debug verbosity $ rspBody resp
 
-mkRequest :: URI -> FilePath -> IO Request
+mkRequest :: URI -> FilePath -> IO (Request String)
 mkRequest uri path = 
     do pkg <- readBinaryFile path
        boundary <- genBoundary
