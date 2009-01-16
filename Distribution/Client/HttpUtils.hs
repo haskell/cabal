@@ -15,6 +15,8 @@ import Network.Browser
          , setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad
          ( mplus, join )
+import qualified Data.ByteString.Lazy as ByteString
+import Data.ByteString.Lazy (ByteString)
 #ifdef WIN32
 import System.Win32.Types
          ( DWORD, HKEY )
@@ -125,15 +127,15 @@ uri2proxy uri@URI{ uriScheme = "http:"
                        _      -> pwd'
 uri2proxy _ = Nothing
 
-mkRequest :: URI -> Request
+mkRequest :: URI -> Request ByteString
 mkRequest uri = Request{ rqURI     = uri
                        , rqMethod  = GET
                        , rqHeaders = [Header HdrUserAgent userAgent]
-                       , rqBody    = "" }
+                       , rqBody    = ByteString.empty }
   where userAgent = "cabal-install/" ++ display Paths_cabal_install.version
 
 -- |Carry out a GET request, using the local proxy settings
-getHTTP :: Verbosity -> URI -> IO (Result Response)
+getHTTP :: Verbosity -> URI -> IO (Result (Response ByteString))
 getHTTP verbosity uri = do
                  p   <- proxy verbosity
                  let req = mkRequest uri

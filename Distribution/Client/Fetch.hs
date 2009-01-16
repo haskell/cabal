@@ -36,6 +36,8 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
+import Distribution.Client.Utils
+         ( writeFileAtomic )
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
@@ -48,7 +50,7 @@ import Distribution.Simple.Configure
          ( getInstalledPackages )
 import Distribution.Simple.Utils
          ( die, notice, info, debug, setupMessage
-         , copyFileVerbose, writeFileAtomic )
+         , copyFileVerbose )
 import Distribution.System
          ( buildPlatform )
 import Distribution.Text
@@ -68,7 +70,9 @@ import qualified System.FilePath.Posix as FilePath.Posix
 import Network.URI
          ( URI(uriPath, uriScheme) )
 import Network.HTTP
-         ( ConnError(..), Response(..) )
+         ( Response(..) )
+import Network.Stream
+         ( ConnError(..) )
 
 
 downloadURI :: Verbosity
