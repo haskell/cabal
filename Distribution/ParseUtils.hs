@@ -143,7 +143,8 @@ runE :: LineNo -> String -> ReadE a -> String -> ParseResult a
 runE line fieldname p s =
     case runReadE p s of
       Right a -> ParseOk (utf8Warnings line fieldname s) a
-      Left  e -> syntaxError line ("Parse of field '"++fieldname++"' failed ("++e++"): " )
+      Left  e -> syntaxError line $
+        "Parse of field '" ++ fieldname ++ "' failed (" ++ e ++ "): " ++ s
 
 utf8Warnings :: LineNo -> String -> String -> [PWarning]
 utf8Warnings line fieldname s =
