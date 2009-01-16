@@ -43,11 +43,11 @@ import Distribution.ParseUtils
          ( FieldDescr(..), liftField
          , ParseResult(..), locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, parseFilePathQ, parseTokenQ )
+         , simpleField, listField, parseFilePathQ, showFilePath, parseTokenQ )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import Distribution.ReadE
-         ( succeedReadE )
+         ( readP_to_E )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
          , viewAsFieldDescr, OptionField, option, reqArg )
@@ -368,7 +368,9 @@ parseConfig initial = \str -> do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
   config <- parse others
-  (user, global) <- foldM parseSections (mempty, mempty) knownSections
+  let user0   = savedUserInstallDirs config
+      global0 = savedGlobalInstallDirs config
+  (user, global) <- foldM parseSections (user0, global0) knownSections
   return config {
     savedUserInstallDirs   = user,
     savedGlobalInstallDirs = global
@@ -506,4 +508,6 @@ installDirsOptions =
       reqArgFlag "DIR" _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
 
-    reqArgFlag ad = reqArg ad (succeedReadE toFlag) flagToList
+    reqArgFlag ad = reqArg ad (fmap toFlag (readP_to_E err parseFilePathQ))
+                              (map (show . showFilePath) . flagToList)
+      where err _ = "paths with spaces must use Haskell String syntax"
