@@ -466,7 +466,7 @@ checkGhcOptions pkg =
            "'ghc-options: -main-is' is not portable."
 
   , checkFlags ["-O0", "-Onot"] $
-      PackageDistInexcusable $
+      PackageDistSuspicious $
         "'ghc-options: -O0' is not needed. Use the --disable-optimization configure flag."
 
   , checkFlags [ "-O", "-O1"] $
