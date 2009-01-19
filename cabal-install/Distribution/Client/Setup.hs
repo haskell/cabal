@@ -17,7 +17,7 @@ module Distribution.Client.Setup
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
-    , infoCommand
+    , infoCommand, InfoFlags(..)
     , fetchCommand
     , checkCommand
     , uploadCommand, UploadFlags(..)
@@ -244,16 +244,6 @@ cleanCommand = makeCommand name shortDesc longDesc emptyFlags options
     options _  = []
 -}
 
-infoCommand  :: CommandUI (Flag Verbosity)
-infoCommand = CommandUI {
-    commandName         = "info",
-    commandSynopsis     = "Emit some info about dependency resolution",
-    commandDescription  = Nothing,
-    commandUsage        = usagePackages "info",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbosity id const]
-  }
-
 checkCommand  :: CommandUI (Flag Verbosity)
 checkCommand = CommandUI {
     commandName         = "check",
@@ -334,7 +324,7 @@ defaultListFlags = ListFlags {
 listCommand  :: CommandUI ListFlags
 listCommand = CommandUI {
     commandName         = "list",
-    commandSynopsis     = "List available packages on the server (cached).",
+    commandSynopsis     = "List packages matching a search string.",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "list",
     commandDefaultFlags = defaultListFlags,
@@ -360,6 +350,38 @@ instance Monoid ListFlags where
     listInstalled = combine listInstalled,
     listSimpleOutput = combine listSimpleOutput,
     listVerbosity = combine listVerbosity
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Info flags
+-- ------------------------------------------------------------
+
+data InfoFlags = InfoFlags {
+    infoVerbosity :: Flag Verbosity
+  }
+
+defaultInfoFlags :: InfoFlags
+defaultInfoFlags = InfoFlags {
+    infoVerbosity = toFlag normal
+  }
+
+infoCommand  :: CommandUI InfoFlags
+infoCommand = CommandUI {
+    commandName         = "info",
+    commandSynopsis     = "Display detailed information about a particular package.",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "info",
+    commandDefaultFlags = defaultInfoFlags,
+    commandOptions      = \_ -> [
+        optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
+        ]
+  }
+
+instance Monoid InfoFlags where
+  mempty = defaultInfoFlags
+  mappend a b = InfoFlags {
+    infoVerbosity = combine infoVerbosity
   }
     where combine field = field a `mappend` field b
 
