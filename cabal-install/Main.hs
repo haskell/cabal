@@ -20,6 +20,7 @@ import Distribution.Client.Setup
          , fetchCommand, checkCommand
          , updateCommand
          , ListFlags(..), listCommand
+         , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..)
@@ -41,7 +42,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
-import Distribution.Client.List             (list)
+import Distribution.Client.List             (list, info)
 import Distribution.Client.Install          (install, upgrade)
 import Distribution.Client.Update           (update)
 import Distribution.Client.Fetch            (fetch)
@@ -117,6 +118,7 @@ mainWorker args =
       [configureCommand       `commandAddAction` configureAction
       ,installCommand         `commandAddAction` installAction
       ,listCommand            `commandAddAction` listAction
+      ,infoCommand            `commandAddAction` infoAction
       ,updateCommand          `commandAddAction` updateAction
       ,upgradeCommand         `commandAddAction` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
@@ -211,6 +213,22 @@ listAction listFlags extraArgs globalFlags = do
        conf
        listFlags
        extraArgs
+
+infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
+infoAction infoFlags extraArgs globalFlags = do
+  pkgs <- either die return (parsePackageArgs extraArgs)
+  let verbosity = fromFlag (infoVerbosity infoFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags    config `mappend` globalFlags
+  (comp, conf) <- configCompilerAux configFlags
+  info verbosity
+       (configPackageDB' configFlags)
+       (globalRepos globalFlags')
+       comp
+       conf
+       infoFlags
+       [ UnresolvedDependency pkg []  | pkg <- pkgs ]
 
 updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 updateAction verbosityFlag extraArgs globalFlags = do
