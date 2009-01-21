@@ -1583,7 +1583,7 @@ else
         </itemizedlist>
 	      </para>
 	      <para>
-	        You can specify on kind or the other or both. As an example here are
+	        You can specify one kind or the other or both. As an example here are
 	        the repositories for the Cabal library. Note that the
 	        <literal>this</literal> kind of repo specifies a tag.
   	      <programlisting>
