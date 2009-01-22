@@ -116,6 +116,10 @@ openNewBinaryFile dir template = do
          h <-
 #if __GLASGOW_HASKELL__ >= 609
               fdToHandle fd
+#elif __GLASGOW_HASKELL__ <= 606 && defined(mingw32_HOST_OS)
+              -- fdToHandle is borked on Windows with ghc-6.6.x
+              openFd (fromIntegral fd) Nothing False filepath
+                                       ReadWriteMode True
 #else
               fdToHandle (fromIntegral fd)
 #endif
