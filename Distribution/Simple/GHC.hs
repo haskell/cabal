@@ -631,6 +631,20 @@ build pkg_descr lbi verbosity = do
                                     buildInfo = exeBi } -> do
                  info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
+                 -- Filter the "-threaded" flag when profiling as it does not
+                 -- work with ghc-6.8 and older.
+                 let mustFilterThreaded = compilerVersion (compiler lbi)
+                                        < Version [6, 10] []
+                                       && withProfExe lbi
+                     exeBi' | not mustFilterThreaded = exeBi
+                            | otherwise              = exeBi {
+                         options = [ (hc, filter (/= "-threaded") opts)
+                                   | (hc, opts) <- options exeBi ]
+                       }
+                 when mustFilterThreaded $ warn verbosity $
+                      "The ghc flag '-threaded' is not compatible with "
+                   ++ "profiling in ghc-6.8 and older. It will be disabled."
+
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
                  let exeNameReal = exeName' <.>
                                    (if null $ takeExtension exeName' then exeExtension else "")
@@ -658,7 +672,7 @@ build pkg_descr lbi verbosity = do
                             (if linkExe
                                 then ["-o", targetDir </> exeNameReal]
                                 else ["-c"])
-                         ++ constructGHCCmdLine lbi exeBi exeDir verbosity
+                         ++ constructGHCCmdLine lbi exeBi' exeDir verbosity
                          ++ [exeDir </> x | x <- cObjs]
                          ++ [srcMainFile]
                          ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
