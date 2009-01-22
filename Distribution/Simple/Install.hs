@@ -176,21 +176,25 @@ install pkg_descr lbi flags = do
   -- register step should be performed by caller.
 
 -- | Install the files listed in install-includes
+--
 installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbosity PackageDescription{library=Just l} incdir
- = do
-   incs <- mapM (findInc relincdirs) (installIncludes lbi)
-   unless (null incs) $ do
-     createDirectoryIfMissingVerbose verbosity True incdir
-     sequence_ [ copyFileVerbose verbosity path (incdir </> f)
-               | (f,path) <- incs ]
+installIncludeFiles verbosity
+  PackageDescription { library = Just lib } destIncludeDir = do
+
+  incs <- mapM (findInc relincdirs) (installIncludes lbi)
+  sequence_
+    [ do createDirectoryIfMissingVerbose verbosity True destDir
+         copyFileVerbose verbosity srcFile destFile
+    | (relFile, srcFile) <- incs
+    , let destFile = destIncludeDir </> relFile
+          destDir  = takeDirectory destFile ]
   where
    relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
-   lbi = libBuildInfo l
+   lbi = libBuildInfo lib
 
-   findInc [] f = die ("can't find include file " ++ f)
-   findInc (d:ds) f = do
-     let path = (d </> f)
-     b <- doesFileExist path
-     if b then return (f,path) else findInc ds f
+   findInc []         file = die ("can't find include file " ++ file)
+   findInc (dir:dirs) file = do
+     let path = dir </> file
+     exists <- doesFileExist path
+     if exists then return (file, path) else findInc dirs file
 installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"
