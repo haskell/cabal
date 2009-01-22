@@ -113,14 +113,9 @@ install pkg_descr lbi flags = do
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
-  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
-      let srcDataDir = dataDir pkg_descr
-      files <- matchDirFileGlob srcDataDir file
-      let dir = takeDirectory file
-      createDirectoryIfMissingVerbose verbosity True (dataPref </> dir)
-      sequence_ [ copyFileVerbose verbosity (srcDataDir </> file')
-                                            (dataPref </> file')
-                | file' <- files ]
+
+  installDataFiles verbosity pkg_descr dataPref
+
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       copyDirectoryRecursiveVerbose verbosity
@@ -174,6 +169,19 @@ install pkg_descr lbi flags = do
      _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
   -- register step should be performed by caller.
+
+-- | Install the files listed in data-files
+--
+installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
+installDataFiles verbosity pkg_descr destDataDir =
+  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
+    let srcDataDir = dataDir pkg_descr
+    files <- matchDirFileGlob srcDataDir file
+    let dir = takeDirectory file
+    createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
+    sequence_ [ copyFileVerbose verbosity (srcDataDir  </> file')
+                                          (destDataDir </> file')
+              | file' <- files ]
 
 -- | Install the files listed in install-includes
 --
