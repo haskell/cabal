@@ -2,6 +2,11 @@
 
 1.7.x (current development version)
 	* Support for LHC
+	* Added new known license MIT and versioned GPL and LGPL
+	* Deprecate RecordPuns extension in favour of NamedFieldPuns
+	* New VersionRange semantic view as a sequence of intervals
+	* Improved package quality checks
+	* Beginnings of a unit level testsuite using QuickCheck
 
 1.6.0.2 (next stable release)
 	* Added language extensions present in ghc-6.10
