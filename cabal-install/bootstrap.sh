@@ -23,7 +23,8 @@ GUNZIP=${GUNZIP:-gunzip}
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
 CABAL_VER="1.6.0.1"; CABAL_VER_REGEXP="1\.6\."   # == 1.6.*
-HTTP_VER="3001.1.5"; HTTP_VER_REGEXP="300[01]\." # >= 3000 && < 3002
+HTTP_VER="4000.0.4"; HTTP_VER_REGEXP="4000\.0\.[3456789]"
+                                                 # >= 4000.0.3 && < 4000.0.10
 ZLIB_VER="0.5.0.0";  ZLIB_VER_REGEXP="0\.[45]\." # >= 0.4  && < 0.6
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
