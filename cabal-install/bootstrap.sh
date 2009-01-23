@@ -36,7 +36,7 @@ die () {
 }
 
 # Check we're in the right directory:
-grep -e "cabal-install" ./cabal-install.cabal > /dev/null \
+grep "cabal-install" ./cabal-install.cabal > /dev/null \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
 GHC_VER=`${GHC} --numeric-version`
@@ -53,7 +53,7 @@ ${GHC_PKG} list > ghc-pkg.list \
 need_pkg () {
   PKG=$1
   VER_MATCH=$2
-  if grep -e " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null
+  if grep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null
   then
     return 1
   else
