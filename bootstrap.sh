@@ -39,10 +39,14 @@ die () {
 grep "cabal-install" ./cabal-install.cabal > /dev/null \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
+${GHC} --numeric-version > /dev/null \
+  || die "${GHC} not found (or could not be run). If ghc is installed make sure it is on your PATH or set the GHC and GHC_PKG vars."
+${GHC_PKG} --version     > /dev/null \
+  || die "${GHC_PKG} not found."
 GHC_VER=`${GHC} --numeric-version`
 GHC_PKG_VER=`${GHC_PKG} --version | cut -d' ' -f 5`
 [ ${GHC_VER} = ${GHC_PKG_VER} ] \
-  || die "Version mismatch between ${GHC} and ${GHC_PKG}"
+  || die "Version mismatch between ${GHC} and ${GHC_PKG} If you set the GHC variable then set GHC_PKG too"
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
