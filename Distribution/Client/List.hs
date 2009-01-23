@@ -1,57 +1,66 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.Install
+-- Module      :  Distribution.Client.List
 -- Copyright   :  (c) David Himmelstrup 2005
+--                    Duncan Coutts 2008-2009
 -- License     :  BSD-like
 --
--- Maintainer  :  lemmih@gmail.com
--- Stability   :  provisional
--- Portability :  portable
+-- Maintainer  :  cabal-devel@haskell.org
 --
--- High level interface to package installation.
+-- Search for and print information about packages
 -----------------------------------------------------------------------------
 module Distribution.Client.List (
   list, info
   ) where
 
-import Data.List (sortBy, groupBy, sort, nub, intersperse, maximumBy)
-import Data.Maybe (listToMaybe, fromJust, fromMaybe)
-import Control.Monad (MonadPlus(mplus), join)
-import Control.Exception (assert)
-
-import Text.PrettyPrint.HughesPJ as Disp
-import Distribution.Text
-         ( Text(disp), display )
-
 import Distribution.Package
-         ( PackageName(..), Package(..), packageName, packageVersion
+         ( PackageName(..), packageName, packageVersion
          , Dependency(..), thisPackageVersion )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
-import qualified Distribution.PackageDescription as Available
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.PackageDescription   as Available
 import Distribution.PackageDescription
          ( Flag(..), FlagName(..) )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Distribution.InstalledPackageInfo as Installed
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Version (Version)
-import Distribution.Verbosity (Verbosity)
 
-import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies )
-import Distribution.Client.Setup (ListFlags(..), InfoFlags(..))
-import Distribution.Client.Types
-         ( AvailablePackage(..), Repo, AvailablePackageDb(..)
-         , UnresolvedDependency(..) )
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler (Compiler,PackageDB)
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Version   (Version)
+import Distribution.Verbosity (Verbosity)
+import Distribution.Text
+         ( Text(disp), display )
 
-import Distribution.Client.Utils (mergeBy, MergeResult(..))
+import Distribution.Client.Types
+         ( AvailablePackage(..), Repo, AvailablePackageDb(..)
+         , UnresolvedDependency(..) )
+import Distribution.Client.Setup
+         ( ListFlags(..), InfoFlags(..) )
+import Distribution.Client.Utils
+         ( mergeBy, MergeResult(..) )
+import Distribution.Client.IndexUtils as IndexUtils
+         ( getAvailablePackages, disambiguateDependencies )
+import Distribution.Client.Fetch
+         ( isFetched )
+
+import Data.List
+         ( sortBy, groupBy, sort, nub, intersperse, maximumBy )
+import Data.Maybe
+         ( listToMaybe, fromJust, fromMaybe, isJust, isNothing )
+import Control.Monad
+         ( MonadPlus(mplus), join )
+import Control.Exception
+         ( assert )
+import Text.PrettyPrint.HughesPJ as Disp
+import System.Directory
+         ( doesDirectoryExist )
+
 
 -- |Show information about packages
 list :: Verbosity
@@ -110,7 +119,7 @@ info verbosity packageDB repos comp conf _listFlags deps = do
              ,concatMap (PackageIndex.lookupPackageName available) deps'')
       pkgsinfo = map (uncurry mergePackageInfo)
                $ uncurry mergePackages pkgs
-  
+
   pkgsinfo' <- mapM updateFileSystemPackageDetails pkgsinfo
   putStr $ unlines (map showPackageDetailedInfo pkgsinfo')
 
@@ -119,8 +128,10 @@ info verbosity packageDB repos comp conf _listFlags deps = do
 --
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgname           :: PackageName,
-    installedVersions :: [Version],
-    availableVersions :: [Version],
+    allInstalled      :: [InstalledPackageInfo],
+    allAvailable      :: [AvailablePackage],
+    latestInstalled   :: Maybe InstalledPackageInfo,
+    latestAvailable   :: Maybe AvailablePackage,
     homepage          :: String,
     bugReports        :: String,
     sourceRepo        :: String,
@@ -133,29 +144,37 @@ data PackageDisplayInfo = PackageDisplayInfo {
     maintainer        :: String,
     dependencies      :: [Dependency],
     flags             :: [Flag],
+    hasLib            :: Bool,
+    hasExe            :: Bool,
     executables       :: [String],
     modules           :: [ModuleName],
     haddockHtml       :: FilePath,
     haveTarball       :: Bool
   }
 
+installedVersions :: PackageDisplayInfo -> [Version]
+installedVersions = map packageVersion . allInstalled
+
+availableVersions :: PackageDisplayInfo -> [Version]
+availableVersions = map packageVersion . allAvailable
+
 showPackageSummaryInfo :: PackageDisplayInfo -> String
-showPackageSummaryInfo pkg =
+showPackageSummaryInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-     char '*' <+> disp (pkgname pkg)
+     char '*' <+> disp (pkgname pkginfo)
      $+$
      (nest 4 $ vcat [
-       text "Latest version available:" <+>
-       case availableVersions pkg of
-         [] -> text "[ Not available from server ]"
-         vs -> disp (maximum vs)
+       maybeShow (synopsis pkginfo) "Synopsis:" reflowParagraphs
+     , text "Latest version available:" <+>
+       case latestAvailable pkginfo of
+         Nothing  -> text "[ Not available from server ]"
+         Just pkg -> disp (packageVersion pkg)
      , text "Latest version installed:" <+>
-       case installedVersions pkg of
-         [] -> text "[ Not installed ]"
-         vs -> disp (maximum vs)
-     , maybeShow (homepage pkg) "Homepage:" text
-     , maybeShow (synopsis pkg) "Synopsis:" reflowParagraphs
-     , text "License: " <+> text (show (license pkg))
+       case latestInstalled pkginfo of
+         Nothing  -> text "[ Not installed ]"
+         Just pkg -> disp (packageVersion pkg)
+     , maybeShow (homepage pkginfo) "Homepage:" text
+     , text "License: " <+> text (show (license pkginfo))
      ])
      $+$ text ""
   where
@@ -163,36 +182,41 @@ showPackageSummaryInfo pkg =
     maybeShow l  s f = text s <+> (f l)
 
 showPackageDetailedInfo :: PackageDisplayInfo -> String
-showPackageDetailedInfo pkg =
+showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-   char '*' <+> disp (pkgname pkg)
+   char '*' <+> disp (pkgname pkginfo)
+            <+> text (replicate (16 - length (display (pkgname pkginfo))) ' ')
+            <>  parens pkgkind
    $+$
    (nest 4 $ vcat [
-     entry "Latest version available" availableVersions
-           (altText "[ Not available from server ]")
-           (disp . maximum)
-   , entry "Latest version installed" installedVersions
-           (altText "[ Not installed ]") --FIXME: unknown for non-libs
-           (disp . maximum)
-   , entry "Homepage"      homepage     orNotSpecified text             
-   , entry "Bug reports"   bugReports   orNotSpecified text             
-   , entry "Description"   description  alwaysShow     reflowParagraphs 
-   , entry "Category"      category     hideIfNull     text             
+     entry "Synopsis"      synopsis     alwaysShow     reflowParagraphs
+   , entry "Latest version available" latestAvailable
+           (altText isNothing "[ Not available from server ]")
+           (disp . packageVersion . fromJust)
+   , entry "Latest version installed" latestInstalled
+           (altText isNothing (if hasLib pkginfo then "[ Not installed ]"
+                                                 else "[ Unknown ]"))
+           (disp . packageVersion . fromJust)
+   , entry "Homepage"      homepage     orNotSpecified text
+   , entry "Bug reports"   bugReports   orNotSpecified text
+   , entry "Description"   description  alwaysShow     reflowParagraphs
+   , entry "Category"      category     hideIfNull     text
    , entry "License"       license      alwaysShow     disp
-   , entry "Author"        author       hideIfNull     reflowLines      
-   , entry "Maintainer"    maintainer   hideIfNull     reflowLines      
-   , entry "Source repo"   sourceRepo   orNotSpecified text             
-   , entry "Executables"   executables  hideIfNull     (commaSep text)  
+   , entry "Author"        author       hideIfNull     reflowLines
+   , entry "Maintainer"    maintainer   hideIfNull     reflowLines
+   , entry "Source repo"   sourceRepo   orNotSpecified text
+   , entry "Executables"   executables  hideIfNull     (commaSep text)
    , entry "Flags"         flags        hideIfNull     (commaSep dispFlag)
    , entry "Dependencies"  dependencies hideIfNull     (commaSep disp)
    , entry "Documentation" haddockHtml  showIfInstalled text
-   , entry "Downloaded"    haveTarball  alwaysShow     dispYesNo
-   , text "Modules:" $+$ nest 4 (vcat (map disp . sort . modules $ pkg))
+   , entry "Cached"        haveTarball  alwaysShow     dispYesNo
+   , if not (hasLib pkginfo) then empty else
+     text "Modules:" $+$ nest 4 (vcat (map disp . sort . modules $ pkginfo))
    ])
    $+$ text ""
   where
-    entry fname field cond format = case cond (field pkg) of
-      Nothing           -> label <+> format (field pkg)
+    entry fname field cond format = case cond (field pkginfo) of
+      Nothing           -> label <+> format (field pkginfo)
       Just Nothing      -> empty
       Just (Just other) -> label <+> text other
       where
@@ -202,24 +226,30 @@ showPackageDetailedInfo pkg =
     normal      = Nothing
     hide        = Just Nothing
     replace msg = Just (Just msg)
-    
+
     alwaysShow = const normal
     hideIfNull v = if null v then hide else normal
     showIfInstalled v
       | not isInstalled = hide
       | null v          = replace "[ Not installed ]"
       | otherwise       = normal
-    altText msg v = if null v then replace msg else normal
-    orNotSpecified = altText "[ Not specified ]"
-    
+    altText nul msg v = if nul v then replace msg else normal
+    orNotSpecified = altText null "[ Not specified ]"
+
     commaSep f = Disp.fsep . Disp.punctuate (Disp.char ',') . map f
     dispFlag f = case flagName f of FlagName n -> text n
     dispYesNo True  = text "Yes"
     dispYesNo False = text "No"
 
-    isInstalled = not (null (installedVersions pkg))
---    hasLibs = --TODO
---    hasExes = --TODO
+    isInstalled = not (null (installedVersions pkginfo))
+    hasExes = length (executables pkginfo) >= 2
+    --TODO: exclude non-buildable exes
+    pkgkind | hasLib pkginfo && hasExes        = text "programs and library"
+            | hasLib pkginfo && hasExe pkginfo = text "program and library"
+            | hasLib pkginfo                   = text "library"
+            | hasExes                          = text "programs"
+            | hasExe pkginfo                   = text "program"
+            | otherwise                        = empty
 
 reflowParagraphs :: String -> Doc
 reflowParagraphs =
@@ -243,55 +273,61 @@ reflowLines = vcat . map text . lines
 mergePackageInfo :: [InstalledPackageInfo]
                  -> [AvailablePackage]
                  -> PackageDisplayInfo
-mergePackageInfo installed available =
-  assert (length installed + length available > 0) $
+mergePackageInfo installedPkgs availablePkgs =
+  assert (length installedPkgs + length availablePkgs > 0) $
   PackageDisplayInfo {
-    pkgname      = combine packageName latestAvailable
-                           packageName latestInstalled,
-    installedVersions = map packageVersion installed,
-    availableVersions = map packageVersion available,
-    license      = combine Available.license  latestAvailableDesc
-                           Installed.license latestInstalled,
-    maintainer   = combine Available.maintainer latestAvailableDesc
-                           Installed.maintainer latestInstalled,
-    author       = combine Available.author latestAvailableDesc
-                           Installed.author latestInstalled,
-    homepage     = combine Available.homepage latestAvailableDesc
-                           Installed.homepage latestInstalled,
-    bugReports   = maybe "" Available.bugReports latestAvailableDesc,
+    pkgname      = combine packageName available
+                           packageName installed,
+    allInstalled = installedPkgs,
+    allAvailable = availablePkgs,
+    latestInstalled = latest installedPkgs,
+    latestAvailable = latest availablePkgs,
+    license      = combine Available.license    available
+                           Installed.license    installed,
+    maintainer   = combine Available.maintainer available
+                           Installed.maintainer installed,
+    author       = combine Available.author     available
+                           Installed.author     installed,
+    homepage     = combine Available.homepage   available
+                           Installed.homepage   installed,
+    bugReports   = maybe "" Available.bugReports available,
     sourceRepo   = fromMaybe "" . join
                  . fmap (uncons Nothing Available.repoLocation
                        . sortBy (comparing Available.repoKind)
                        . Available.sourceRepos)
-                 $ latestAvailableDesc,
-    synopsis     = combine Available.synopsis latestAvailableDesc
-                           Installed.description latestInstalled,
-    description  = combine Available.description latestAvailableDesc
-                           Installed.description latestInstalled,
-    category     = combine Available.category latestAvailableDesc
-                           Installed.category latestInstalled,
-    flags        = maybe [] Available.genPackageFlags latestAvailable,
-    executables  = map fst (maybe [] Available.condExecutables latestAvailable),
-    modules      = combine Installed.exposedModules latestInstalled
+                 $ available,
+    synopsis     = combine Available.synopsis    available
+                           Installed.description installed,
+    description  = combine Available.description available
+                           Installed.description installed,
+    category     = combine Available.category    available
+                           Installed.category    installed,
+    flags        = maybe [] Available.genPackageFlags availableGeneric,
+    hasLib       = isJust installed
+                || fromMaybe False
+                   (fmap (isJust . Available.condLibrary) availableGeneric),
+    hasExe       = fromMaybe False
+                   (fmap (not . null . Available.condExecutables) availableGeneric),
+    executables  = map fst (maybe [] Available.condExecutables availableGeneric),
+    modules      = combine Installed.exposedModules installed
                            (maybe [] Available.exposedModules
-                               . Available.library) latestAvailableDesc,
-    dependencies = combine Available.buildDepends latestAvailableDesc
+                                   . Available.library) available,
+    dependencies = combine Available.buildDepends available
                            (map thisPackageVersion
-                             . Installed.depends) latestInstalled,
+                             . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
-                 $ latestInstalled,
+                 $ installed,
     haveTarball  = False
   }
   where
-    combine f x g y = fromJust (fmap f x `mplus` fmap g y)
-    latestInstalled = latestOf installed
-    latestAvailable = packageDescription `fmap` latestOf available
-    latestAvailableDesc = fmap flattenPackageDescription latestAvailable
-    latestOf :: Package pkg => [pkg] -> Maybe pkg
-    latestOf []   = Nothing
-    latestOf pkgs = Just (maximumBy (comparing packageVersion) pkgs)
-    
+    combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
+    installed        = latest installedPkgs
+    availableGeneric = fmap packageDescription (latest availablePkgs)
+    available        = fmap flattenPackageDescription availableGeneric
+    latest []        = Nothing
+    latest pkgs      = Just (maximumBy (comparing packageVersion) pkgs)
+
     uncons :: b -> (a -> b) -> [a] -> b
     uncons z _ []    = z
     uncons _ f (x:_) = f x
@@ -301,7 +337,13 @@ mergePackageInfo installed available =
 -- check if the tarball has indeed been fetched.
 --
 updateFileSystemPackageDetails :: PackageDisplayInfo -> IO PackageDisplayInfo
-updateFileSystemPackageDetails = return --FIXME
+updateFileSystemPackageDetails pkginfo = do
+  fetched   <- maybe (return False) isFetched (latestAvailable pkginfo)
+  docsExist <- doesDirectoryExist (haddockHtml pkginfo)
+  return pkginfo {
+    haveTarball = fetched,
+    haddockHtml = if docsExist then haddockHtml pkginfo else ""
+  }
 
 -- | Rearrange installed and available packages into groups referring to the
 -- same package by name. In the result pairs, the lists are guaranteed to not
