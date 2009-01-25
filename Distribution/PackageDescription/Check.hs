@@ -495,6 +495,11 @@ checkGhcOptions pkg =
       PackageDistSuspicious $
         "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use the 'extensions' field."
 
+  , check ("-threaded" `elem` lib_ghc_options) $
+      PackageDistSuspicious $
+           "'ghc-options: -threaded' has no effect for libraries. It should "
+        ++ "only be used for executables."
+
   , checkAlternatives "ghc-options" "extensions"
       [ (flag, display extension) | flag <- all_ghc_options
                                   , Just extension <- [ghcExtension flag] ]
@@ -525,6 +530,7 @@ checkGhcOptions pkg =
     ghc_options = [ strs | bi <- allBuildInfo pkg
                          , (GHC, strs) <- options bi ]
     all_ghc_options = concat ghc_options
+    lib_ghc_options = maybe [] (hcOptions GHC . libBuildInfo) (library pkg)
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
