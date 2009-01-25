@@ -477,8 +477,11 @@ build pkg_descr lbi verbosity = do
   -- Build lib
   withLib pkg_descr () $ \lib -> do
       info verbosity "Building library..."
-      let libBi = libBuildInfo lib
-          libTargetDir = pref
+
+      libBi <- hackThreadedFlag verbosity
+                 (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
+
+      let libTargetDir = pref
           forceVanillaLib = TemplateHaskell `elem` extensions libBi
           -- TH always needs vanilla libs, even when building for profiling
 
@@ -627,23 +630,11 @@ build pkg_descr lbi verbosity = do
         ifSharedLib $ runGhcProg ghcSharedLinkArgs
 
   -- build any executables
-  withExe pkg_descr $ \Executable { exeName = exeName', modulePath = modPath,
-                                    buildInfo = exeBi } -> do
+  withExe pkg_descr $ \exe@Executable { exeName = exeName', modulePath = modPath } -> do
                  info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
-                 -- Filter the "-threaded" flag when profiling as it does not
-                 -- work with ghc-6.8 and older.
-                 let mustFilterThreaded = compilerVersion (compiler lbi)
-                                        < Version [6, 10] []
-                                       && withProfExe lbi
-                     exeBi' | not mustFilterThreaded = exeBi
-                            | otherwise              = exeBi {
-                         options = [ (hc, filter (/= "-threaded") opts)
-                                   | (hc, opts) <- options exeBi ]
-                       }
-                 when mustFilterThreaded $ warn verbosity $
-                      "The ghc flag '-threaded' is not compatible with "
-                   ++ "profiling in ghc-6.8 and older. It will be disabled."
+                 exeBi <- hackThreadedFlag verbosity
+                            (compiler lbi) (withProfExe lbi) (buildInfo exe)
 
                  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
                  let exeNameReal = exeName' <.>
@@ -672,7 +663,7 @@ build pkg_descr lbi verbosity = do
                             (if linkExe
                                 then ["-o", targetDir </> exeNameReal]
                                 else ["-c"])
-                         ++ constructGHCCmdLine lbi exeBi' exeDir verbosity
+                         ++ constructGHCCmdLine lbi exeBi exeDir verbosity
                          ++ [exeDir </> x | x <- cObjs]
                          ++ [srcMainFile]
                          ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
@@ -696,6 +687,20 @@ build pkg_descr lbi verbosity = do
 
                  runGhcProg (binArgs True (withProfExe lbi))
 
+-- | Filter the "-threaded" flag when profiling as it does not
+--   work with ghc-6.8 and older.
+hackThreadedFlag :: Verbosity -> Compiler -> Bool -> BuildInfo -> IO BuildInfo
+hackThreadedFlag verbosity comp prof bi
+  | not mustFilterThreaded = return bi
+  | otherwise              = do
+    warn verbosity $ "The ghc flag '-threaded' is not compatible with "
+                  ++ "profiling in ghc-6.8 and older. It will be disabled."
+    return bi {
+      options = [ (hc, filter (/= "-threaded") opts)
+                | (hc, opts) <- options bi ]
+    }
+  where
+    mustFilterThreaded = prof && compilerVersion comp < Version [6, 10] []
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
