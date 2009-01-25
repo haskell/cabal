@@ -44,6 +44,7 @@ import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.List             (list, info)
 import Distribution.Client.Install          (install, upgrade)
+import Distribution.Client.Configure        (configure)
 import Distribution.Client.Update           (update)
 import Distribution.Client.Fetch            (fetch)
 import Distribution.Client.Check as Check   (check)
@@ -165,17 +166,13 @@ configureAction configFlags extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
-  let configFlags' = savedConfigureFlags config `mappend` configFlags
+  let configFlags'  = savedConfigureFlags config `mappend` configFlags
+      installFlags' = savedInstallFlags   config --TODO: `mappend` installFlags
+      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
-  let setupScriptOptions = defaultSetupScriptOptions {
-        useCompiler      = Just comp,
-        useProgramConfig = conf,
-        useDistPref      = fromFlagOrDefault
-                             (useDistPref defaultSetupScriptOptions)
-                             (configDistPref configFlags')
-      }
-  setupWrapper verbosity setupScriptOptions Nothing
-    configureCommand (const configFlags') extraArgs
+  configure verbosity
+            (configPackageDB' configFlags') (globalRepos globalFlags')
+            comp conf configFlags' installFlags' extraArgs
 
 installAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
 installAction (configFlags, installFlags) _ _globalFlags
