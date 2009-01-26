@@ -40,11 +40,10 @@ import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), PackageDB(..) )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Configure (getInstalledPackages)
-import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.Setup
+         ( ConfigFlags(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.Simple.Setup
-         ( flagToMaybe )
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import Distribution.Package
@@ -74,7 +73,7 @@ configure :: Verbosity
           -> [Repo]
           -> Compiler
           -> ProgramConfiguration
-          -> Cabal.ConfigFlags
+          -> ConfigFlags
           -> InstallFlags
           -> [String]
           -> IO ()
@@ -108,7 +107,7 @@ configure verbosity packageDB repos comp conf configFlags installFlags extraArgs
   where
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe AnyVersion ThisVersion
-                         (Cabal.flagToMaybe (installCabalVersion installFlags)),
+                         (flagToMaybe (installCabalVersion installFlags)),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
@@ -120,9 +119,9 @@ configure verbosity packageDB repos comp conf configFlags installFlags extraArgs
       usePackageIndex  = if packageDB == GlobalPackageDB then Nothing
                                                          else index,
       useProgramConfig = conf,
-      useDistPref      = Cabal.fromFlagOrDefault
+      useDistPref      = fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)
-                           (Cabal.configDistPref configFlags),
+                           (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
@@ -131,7 +130,7 @@ configure verbosity packageDB repos comp conf configFlags installFlags extraArgs
 -- and all its dependencies.
 --
 planLocalPackage :: Verbosity -> Compiler
-                 -> Cabal.ConfigFlags -> InstallFlags
+                 -> ConfigFlags -> InstallFlags
                  -> Maybe (PackageIndex InstalledPackageInfo)
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
@@ -153,9 +152,9 @@ planLocalPackage verbosity comp configFlags installFlags installed
       constraints = [PackageVersionConstraint (packageName pkg)
                        (ThisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
-                       (Cabal.configConfigurationsFlags configFlags)]
+                       (configConfigurationsFlags configFlags)]
                  ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- Cabal.configConstraints configFlags ]
+                    | Dependency name ver <- configConstraints configFlags ]
       preferences = mergePackagePrefs PreferLatestForSelected
                                       availablePrefs installFlags
 
@@ -185,7 +184,7 @@ mergePackagePrefs defaultPref availablePrefs installFlags =
 configurePackage :: Verbosity
                  -> Platform -> CompilerId
                  -> SetupScriptOptions
-                 -> Cabal.ConfigFlags
+                 -> ConfigFlags
                  -> ConfiguredPackage
                  -> [String]
                  -> IO ()
@@ -197,9 +196,9 @@ configurePackage verbosity (Platform arch os) comp scriptOptions configFlags
 
   where
     configureFlags   = filterConfigureFlags configFlags {
-      Cabal.configConfigurationsFlags = flags,
-      Cabal.configConstraints         = map thisPackageVersion deps,
-      Cabal.configVerbosity           = Cabal.toFlag verbosity
+      configConfigurationsFlags = flags,
+      configConstraints         = map thisPackageVersion deps,
+      configVerbosity           = toFlag verbosity
     }
 
     pkg = case finalizePackageDescription flags
