@@ -29,7 +29,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages )
 import Distribution.Client.Setup
-         ( InstallFlags(..), configureCommand, filterConfigureFlags )
+         ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Available
          ( AvailablePackage(..), AvailablePackageSource(..), Repo(..)
          , AvailablePackageDb(..), ConfiguredPackage(..) )
@@ -74,14 +74,16 @@ configure :: Verbosity
           -> Compiler
           -> ProgramConfiguration
           -> ConfigFlags
-          -> InstallFlags
+          -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDB repos comp conf configFlags installFlags extraArgs = do
+configure verbosity packageDB repos comp conf
+  configFlags configExFlags extraArgs = do
+
   installed <- getInstalledPackages verbosity comp packageDB conf
   available <- getAvailablePackages verbosity repos
 
-  progress <- planLocalPackage verbosity comp configFlags installFlags
+  progress <- planLocalPackage verbosity comp configFlags configExFlags
                                installed available
 
   notice verbosity "Resolving dependencies..."
@@ -107,7 +109,7 @@ configure verbosity packageDB repos comp conf configFlags installFlags extraArgs
   where
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe AnyVersion ThisVersion
-                         (flagToMaybe (installCabalVersion installFlags)),
+                         (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
@@ -130,11 +132,11 @@ configure verbosity packageDB repos comp conf configFlags installFlags extraArgs
 -- and all its dependencies.
 --
 planLocalPackage :: Verbosity -> Compiler
-                 -> ConfigFlags -> InstallFlags
+                 -> ConfigFlags -> ConfigExFlags
                  -> Maybe (PackageIndex InstalledPackageInfo)
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
-planLocalPackage verbosity comp configFlags installFlags installed
+planLocalPackage verbosity comp configFlags configExFlags installed
   (AvailablePackageDb _ availablePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   let -- The trick is, we add the local package to the available index and
@@ -156,7 +158,7 @@ planLocalPackage verbosity comp configFlags installFlags installed
                  ++ [ PackageVersionConstraint name ver
                     | Dependency name ver <- configConstraints configFlags ]
       preferences = mergePackagePrefs PreferLatestForSelected
-                                      availablePrefs installFlags
+                                      availablePrefs configExFlags
 
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available' preferences constraints targets
@@ -164,16 +166,16 @@ planLocalPackage verbosity comp configFlags installFlags installed
 
 mergePackagePrefs :: PackagesPreferenceDefault
                   -> Map.Map PackageName VersionRange
-                  -> InstallFlags
+                  -> ConfigExFlags
                   -> PackagesPreference
-mergePackagePrefs defaultPref availablePrefs installFlags =
+mergePackagePrefs defaultPref availablePrefs configExFlags =
   PackagesPreference defaultPref $
        -- The preferences that come from the hackage index
        [ PackageVersionPreference name ver
        | (name, ver) <- Map.toList availablePrefs ]
        -- additional preferences from the config file or command line
     ++ [ PackageVersionPreference name ver
-       | Dependency name ver <- installPreferences installFlags ]
+       | Dependency name ver <- configPreferences configExFlags ]
 
 -- | Call an installer for an 'AvailablePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the

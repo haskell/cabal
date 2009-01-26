@@ -168,13 +168,13 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
-  let configFlags'  = savedConfigureFlags config `mappend` configFlags
-      installFlags' = savedInstallFlags   config --TODO: `mappend` installFlags
-      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
   configure verbosity
             (configPackageDB' configFlags') (globalRepos globalFlags')
-            comp conf configFlags' installFlags' extraArgs
+            comp conf configFlags' configExFlags' extraArgs
 
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
               -> [String] -> GlobalFlags -> IO ()
@@ -190,13 +190,14 @@ installAction (configFlags, configExFlags, installFlags)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
-  let configFlags'  = savedConfigureFlags config `mappend` configFlags
-      installFlags' = savedInstallFlags   config `mappend` installFlags
-      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      installFlags'  = savedInstallFlags     config `mappend` installFlags
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf configFlags' installFlags'
+          comp conf configFlags' configExFlags' installFlags'
           [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
@@ -248,13 +249,14 @@ upgradeAction (configFlags, configExFlags, installFlags)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
-  let configFlags'  = savedConfigureFlags config `mappend` configFlags
-      installFlags' = savedInstallFlags   config `mappend` installFlags
-      globalFlags'  = savedGlobalFlags    config `mappend` globalFlags
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      installFlags'  = savedInstallFlags     config `mappend` installFlags
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf configFlags' installFlags'
+          comp conf configFlags' configExFlags' installFlags'
           [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
