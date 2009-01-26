@@ -13,6 +13,8 @@
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), globalRepos
     , configureCommand, ConfigFlags(..), filterConfigureFlags, configPackageDB'
+    , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
+                        , configureExOptions
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -186,6 +188,9 @@ configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandDefaultFlags = mempty
   }
 
+configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
+configureOptions = commandOptions configureCommand
+
 configPackageDB' :: ConfigFlags -> PackageDB
 configPackageDB' config =
   fromFlagOrDefault defaultDB (configPackageDB config)
@@ -200,6 +205,61 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion >= Version [1,3,10] [] = flags
     -- older Cabal does not grok the constraints flag:
   | otherwise = flags { configConstraints = [] }
+
+
+-- ------------------------------------------------------------
+-- * Config extra flags
+-- ------------------------------------------------------------
+
+-- | cabal configure takes some extra flags beyond runghc Setup configure
+--
+data ConfigExFlags = ConfigExFlags {
+    configCabalVersion :: Flag Version,
+    configPreferences  :: [Dependency]
+  }
+
+defaultConfigExFlags :: ConfigExFlags
+defaultConfigExFlags = mempty
+
+configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
+configureExCommand = configureCommand {
+    commandDefaultFlags = (mempty, defaultConfigExFlags),
+    commandOptions      = \showOrParseArgs ->
+         liftOptions fst setFst (configureOptions   showOrParseArgs)
+      ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+configureExOptions ::  ShowOrParseArgs -> [OptionField ConfigExFlags]
+configureExOptions _showOrParseArgs =
+  [ option [] ["cabal-lib-version"]
+      ("Select which version of the Cabal lib to use to build packages "
+      ++ "(useful for testing).")
+      configCabalVersion (\v flags -> flags { configCabalVersion = v })
+      (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
+                                    (fmap toFlag parse))
+                        (map display . flagToList))
+
+  , option [] ["preference"]
+      "Specify preferences (soft constraints) on the version of a package"
+      configPreferences (\v flags -> flags { configPreferences = v })
+      (reqArg "DEPENDENCY"
+        (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
+                                        (map (\x -> display x)))
+  ]
+
+instance Monoid ConfigExFlags where
+  mempty = ConfigExFlags {
+    configCabalVersion = mempty,
+    configPreferences  = mempty
+  }
+  mappend a b = ConfigExFlags {
+    configCabalVersion = combine configCabalVersion,
+    configPreferences  = combine configPreferences
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * Other commands
@@ -615,6 +675,10 @@ liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
 
 liftOptionsSnd :: [OptionField b] -> [OptionField (a,b)]
 liftOptionsSnd = map (liftOption snd (\b (a,_) -> (a,b)))
+
+liftOptions :: (b -> a) -> (a -> b -> b)
+            -> [OptionField a] -> [OptionField b]
+liftOptions get set = map (liftOption get set)
 
 usagePackages :: String -> String -> String
 usagePackages name pname =
