@@ -285,13 +285,13 @@ updateCommand = CommandUI {
     commandOptions      = \_ -> [optionVerbosity id const]
   }
 
-upgradeCommand  :: CommandUI (ConfigFlags, InstallFlags)
+upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "Upgrades installed packages to the latest available version",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
-    commandDefaultFlags = (mempty, defaultInstallFlags),
+    commandDefaultFlags = (mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -480,8 +480,8 @@ defaultInstallFlags = InstallFlags {
     installPreferences  = mempty
   }
 
-installCommand :: CommandUI (ConfigFlags, InstallFlags)
-installCommand = configureCommand {
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
+installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
   commandUsage        = usagePackages "install",
@@ -499,11 +499,16 @@ installCommand = configureCommand {
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
      ++ "    Constrained package version\n",
-  commandDefaultFlags = (mempty, mempty),
+  commandDefaultFlags = (mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
-    liftOptionsFst (commandOptions configureCommand showOrParseArgs) ++
-    liftOptionsSnd (installOptions showOrParseArgs)
+       liftOptions get1 set1 (configureOptions   showOrParseArgs)
+    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
+    ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
   }
+  where
+    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
+    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
+    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
 installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]
 installOptions showOrParseArgs =
@@ -669,12 +674,6 @@ boolOpt  = Command.boolOpt  flagToMaybe Flag
 reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
               (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
-
-liftOptionsFst :: [OptionField a] -> [OptionField (a,b)]
-liftOptionsFst = map (liftOption fst (\a (_,b) -> (a,b)))
-
-liftOptionsSnd :: [OptionField b] -> [OptionField (a,b)]
-liftOptionsSnd = map (liftOption snd (\b (a,_) -> (a,b)))
 
 liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]

@@ -15,7 +15,8 @@ module Main where
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
-         , ConfigFlags(..), configureCommand
+         , ConfigFlags(..)
+         , ConfigExFlags(..), configureExCommand
          , InstallFlags(..), installCommand, upgradeCommand
          , fetchCommand, checkCommand
          , updateCommand
@@ -116,7 +117,7 @@ mainWorker args =
                                   ++ " of the Cabal library "
 
     commands =
-      [configureCommand       `commandAddAction` configureAction
+      [configureExCommand     `commandAddAction` configureAction
       ,installCommand         `commandAddAction` installAction
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
@@ -161,8 +162,9 @@ wrapperAction command verbosityFlag distPrefFlag =
     setupWrapper verbosity setupScriptOptions Nothing
                  command (const flags) extraArgs
 
-configureAction :: ConfigFlags -> [String] -> GlobalFlags -> IO ()
-configureAction configFlags extraArgs globalFlags = do
+configureAction :: (ConfigFlags, ConfigExFlags)
+                -> [String] -> GlobalFlags -> IO ()
+configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
@@ -174,14 +176,16 @@ configureAction configFlags extraArgs globalFlags = do
             (configPackageDB' configFlags') (globalRepos globalFlags')
             comp conf configFlags' installFlags' extraArgs
 
-installAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, installFlags) _ _globalFlags
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
+              -> [String] -> GlobalFlags -> IO ()
+installAction (configFlags, _, installFlags) _ _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
   = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
          installCommand (const mempty) []
 
-installAction (configFlags, installFlags) extraArgs globalFlags = do
+installAction (configFlags, configExFlags, installFlags)
+              extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
@@ -236,8 +240,10 @@ updateAction verbosityFlag extraArgs globalFlags = do
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   update verbosity (globalRepos globalFlags')
 
-upgradeAction :: (ConfigFlags, InstallFlags) -> [String] -> GlobalFlags -> IO ()
-upgradeAction (configFlags, installFlags) extraArgs globalFlags = do
+upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
+              -> [String] -> GlobalFlags -> IO ()
+upgradeAction (configFlags, configExFlags, installFlags)
+              extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
