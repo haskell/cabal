@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), globalRepos
-    , configureCommand, Cabal.ConfigFlags(..), filterConfigureFlags, configPackageDB'
+    , configureCommand, ConfigFlags(..), filterConfigureFlags, configPackageDB'
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -38,7 +38,9 @@ import Distribution.Simple.Program
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
-         ( ConfigFlags(..), configureCommand )
+         ( configureCommand )
+import Distribution.Simple.Setup
+         ( ConfigFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe, fromFlagOrDefault
          , optionVerbosity, trueArg )
@@ -179,25 +181,25 @@ globalRepos globalFlags = remoteRepos ++ localRepos
 -- * Config flags
 -- ------------------------------------------------------------
 
-configureCommand :: CommandUI Cabal.ConfigFlags
+configureCommand :: CommandUI ConfigFlags
 configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
     commandDefaultFlags = mempty
   }
 
-configPackageDB' :: Cabal.ConfigFlags -> PackageDB
+configPackageDB' :: ConfigFlags -> PackageDB
 configPackageDB' config =
-  fromFlagOrDefault defaultDB (Cabal.configPackageDB config)
+  fromFlagOrDefault defaultDB (configPackageDB config)
   where
-    defaultDB = case Cabal.configUserInstall config of
+    defaultDB = case configUserInstall config of
       NoFlag     -> UserPackageDB
       Flag True  -> UserPackageDB
       Flag False -> GlobalPackageDB
 
-filterConfigureFlags :: Cabal.ConfigFlags -> Version -> Cabal.ConfigFlags
+filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion >= Version [1,3,10] [] = flags
     -- older Cabal does not grok the constraints flag:
-  | otherwise = flags { Cabal.configConstraints = [] }
+  | otherwise = flags { configConstraints = [] }
 
 -- ------------------------------------------------------------
 -- * Other commands
@@ -223,7 +225,7 @@ updateCommand = CommandUI {
     commandOptions      = \_ -> [optionVerbosity id const]
   }
 
-upgradeCommand  :: CommandUI (Cabal.ConfigFlags, InstallFlags)
+upgradeCommand  :: CommandUI (ConfigFlags, InstallFlags)
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "Upgrades installed packages to the latest available version",
@@ -418,7 +420,7 @@ defaultInstallFlags = InstallFlags {
     installPreferences  = mempty
   }
 
-installCommand :: CommandUI (Cabal.ConfigFlags, InstallFlags)
+installCommand :: CommandUI (ConfigFlags, InstallFlags)
 installCommand = configureCommand {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",

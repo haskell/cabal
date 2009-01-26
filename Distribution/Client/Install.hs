@@ -47,7 +47,8 @@ import Distribution.Client.IndexUtils as IndexUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
-         ( InstallFlags(..), configureCommand, filterConfigureFlags )
+         ( ConfigFlags(..), configureCommand, filterConfigureFlags
+         , InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultLogsDir, defaultCabalDir )
 import Distribution.Client.Tar (extractTarGzFile)
@@ -72,11 +73,14 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
-         ( flagToMaybe )
+         ( haddockCommand, HaddockFlags(..), emptyHaddockFlags
+         , buildCommand, BuildFlags(..), emptyBuildFlags
+         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
+import qualified Distribution.Simple.Setup as Cabal
+         ( installCommand, InstallFlags(..), emptyInstallFlags )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, rawSystemExit, withTempDirectory, comparing )
 import Distribution.Simple.InstallDirs
@@ -121,7 +125,7 @@ install, upgrade
   -> [Repo]
   -> Compiler
   -> ProgramConfiguration
-  -> Cabal.ConfigFlags
+  -> ConfigFlags
   -> InstallFlags
   -> [UnresolvedDependency]
   -> IO ()
@@ -156,7 +160,7 @@ installWithPlanner ::
         -> [Repo]
         -> Compiler
         -> ProgramConfiguration
-        -> Cabal.ConfigFlags
+        -> ConfigFlags
         -> InstallFlags
         -> IO ()
 installWithPlanner planner verbosity packageDB repos comp conf configFlags installFlags = do
@@ -216,30 +220,30 @@ installWithPlanner planner verbosity packageDB repos comp conf configFlags insta
       usePackageIndex  = if packageDB == GlobalPackageDB then Nothing
                                                          else index,
       useProgramConfig = conf,
-      useDistPref      = Cabal.fromFlagOrDefault
+      useDistPref      = fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)
-                           (Cabal.configDistPref configFlags),
+                           (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    useDetailedBuildReports = Cabal.fromFlagOrDefault False (installBuildReports installFlags)
+    useDetailedBuildReports = fromFlagOrDefault False (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
       where
         logFileTemplate
           | useDetailedBuildReports = Just $ logsDir </> "$pkgid" <.> "log"
-          | otherwise = Cabal.flagToMaybe (installLogFile installFlags)
+          | otherwise = flagToMaybe (installLogFile installFlags)
     substLogFileName path pkg = fromPathTemplate
                               . substPathTemplate env
                               . toPathTemplate
                               $ path
       where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
-    dryRun       = Cabal.fromFlagOrDefault False (installDryRun installFlags)
+    dryRun       = fromFlagOrDefault False (installDryRun installFlags)
     miscOptions  = InstallMisc {
-      rootCmd    = if Cabal.fromFlag (Cabal.configUserInstall configFlags)
+      rootCmd    = if fromFlag (configUserInstall configFlags)
                      then Nothing      -- ignore --root-cmd if --user.
-                     else Cabal.flagToMaybe (installRootCmd installFlags),
-      libVersion = Cabal.flagToMaybe (installCabalVersion installFlags)
+                     else flagToMaybe (installRootCmd installFlags),
+      libVersion = flagToMaybe (installCabalVersion installFlags)
     }
 
 storeDetailedBuildReports :: Verbosity -> FilePath
@@ -278,7 +282,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
 -- and all its dependencies.
 --
 planLocalPackage :: Verbosity -> Compiler
-                 -> Cabal.ConfigFlags -> InstallFlags -> Planner
+                 -> ConfigFlags -> InstallFlags -> Planner
 planLocalPackage verbosity comp configFlags installFlags installed
   (AvailablePackageDb available availablePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
@@ -297,9 +301,9 @@ planLocalPackage verbosity comp configFlags installFlags installed
       constraints = [PackageVersionConstraint (packageName pkg)
                        (ThisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
-                       (Cabal.configConfigurationsFlags configFlags)]
+                       (configConfigurationsFlags configFlags)]
                  ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- Cabal.configConstraints configFlags ]
+                    | Dependency name ver <- configConstraints configFlags ]
       preferences = mergePackagePrefs PreferLatestForSelected
                                       availablePrefs installFlags
 
@@ -309,19 +313,19 @@ planLocalPackage verbosity comp configFlags installFlags installed
 -- | Make an 'InstallPlan' for the given dependencies.
 --
 planRepoPackages :: PackagesPreferenceDefault -> Compiler
-                 -> Cabal.ConfigFlags -> InstallFlags
+                 -> ConfigFlags -> InstallFlags
                  -> [UnresolvedDependency] -> Planner
 planRepoPackages defaultPref comp configFlags installFlags deps installed
   (AvailablePackageDb available availablePrefs) = do
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
-        | Cabal.fromFlagOrDefault False (installReinstall installFlags)
+        | fromFlagOrDefault False (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
       targets     = dependencyTargets deps'
       constraints = dependencyConstraints deps'
                  ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- Cabal.configConstraints configFlags ]
+                    | Dependency name ver <- configConstraints configFlags ]
       preferences = mergePackagePrefs defaultPref availablePrefs installFlags
   return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available preferences constraints targets
@@ -330,7 +334,7 @@ planRepoPackages defaultPref comp configFlags installFlags deps installed
       foldr PackageIndex.deletePackageName index
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
-planUpgradePackages :: Compiler -> Cabal.ConfigFlags -> InstallFlags -> Planner
+planUpgradePackages :: Compiler -> ConfigFlags -> InstallFlags -> Planner
 planUpgradePackages comp configFlags installFlags (Just installed)
   (AvailablePackageDb available availablePrefs) = return $
   resolveDependenciesWithProgress buildPlatform (compilerId comp)
@@ -341,7 +345,7 @@ planUpgradePackages comp configFlags installFlags (Just installed)
     constraints = [ PackageVersionConstraint name ver
                   | Dependency name ver <- deps ]
                ++ [ PackageVersionConstraint name ver
-                  | Dependency name ver <- Cabal.configConstraints configFlags ]
+                  | Dependency name ver <- configConstraints configFlags ]
     targets     = [ name | Dependency name _ <- deps ]
 
 planUpgradePackages comp _ _ _ _ =
@@ -405,7 +409,7 @@ printDryRun verbosity minstalled plan = case unfoldr next plan of
     changed _                        = True
 
 symlinkBinaries :: Verbosity
-                -> Cabal.ConfigFlags
+                -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan -> IO ()
 symlinkBinaries verbosity configFlags installFlags plan = do
@@ -428,7 +432,7 @@ symlinkBinaries verbosity configFlags installFlags plan = do
         ++ "manually if you wish. The executable files have been installed at "
         ++ intercalate ", " [ path | (_, _, path) <- exes ]
   where
-    bindir = Cabal.fromFlag (installSymlinkBinDir installFlags)
+    bindir = fromFlag (installSymlinkBinDir installFlags)
 
 printBuildFailures :: InstallPlan -> IO ()
 printBuildFailures plan =
@@ -482,15 +486,15 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
 -- assignment or dependency constraints and use the new ones.
 --
 installConfiguredPackage :: Platform -> CompilerId
-                         ->  Cabal.ConfigFlags -> ConfiguredPackage
-                         -> (Cabal.ConfigFlags -> AvailablePackageSource
-                                               -> PackageDescription -> a)
+                         ->  ConfigFlags -> ConfiguredPackage
+                         -> (ConfigFlags -> AvailablePackageSource
+                                         -> PackageDescription -> a)
                          -> a
 installConfiguredPackage (Platform arch os) comp configFlags
   (ConfiguredPackage (AvailablePackage _ gpkg source) flags deps)
   installPkg = installPkg configFlags {
-    Cabal.configConfigurationsFlags = flags,
-    Cabal.configConstraints = map thisPackageVersion deps
+    configConfigurationsFlags = flags,
+    configConstraints = map thisPackageVersion deps
   } source pkg
   where
     pkg = case finalizePackageDescription flags
@@ -526,7 +530,7 @@ installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
 installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
                    -> InstallMisc
-                   -> Cabal.ConfigFlags
+                   -> ConfigFlags
                    -> InstallFlags
                    -> CompilerId
                    -> PackageDescription
@@ -543,12 +547,12 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   -- Build phase
     onFailure BuildFailed $ do
-      setup buildCommand buildFlags
+      setup buildCommand' buildFlags
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
         then Exception.handle (\_ -> return DocsFailed) $ do
-               setup Cabal.haddockCommand haddockFlags
+               setup haddockCommand haddockFlags
                return DocsOk
         else return DocsNotTried
 
@@ -565,22 +569,22 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   where
     configureFlags   = filterConfigureFlags configFlags {
-      Cabal.configVerbosity = Cabal.toFlag verbosity'
+      configVerbosity = toFlag verbosity'
     } 
-    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
-    buildFlags   _   = Cabal.emptyBuildFlags {
-      Cabal.buildDistPref  = Cabal.configDistPref configFlags,
-      Cabal.buildVerbosity = Cabal.toFlag verbosity'
+    buildCommand'    = buildCommand defaultProgramConfiguration
+    buildFlags   _   = emptyBuildFlags {
+      buildDistPref  = configDistPref configFlags,
+      buildVerbosity = toFlag verbosity'
     }
-    shouldHaddock    = Cabal.fromFlagOrDefault False
+    shouldHaddock    = fromFlagOrDefault False
                          (installDocumentation installConfigFlags)
-    haddockFlags _   = Cabal.emptyHaddockFlags {
-      Cabal.haddockDistPref  = Cabal.configDistPref configFlags,
-      Cabal.haddockVerbosity = Cabal.toFlag verbosity'
+    haddockFlags _   = emptyHaddockFlags {
+      haddockDistPref  = configDistPref configFlags,
+      haddockVerbosity = toFlag verbosity'
     }
     installFlags _   = Cabal.emptyInstallFlags {
-      Cabal.installDistPref  = Cabal.configDistPref configFlags,
-      Cabal.installVerbosity = Cabal.toFlag verbosity'
+      Cabal.installDistPref  = configDistPref configFlags,
+      Cabal.installVerbosity = toFlag verbosity'
     }
     verbosity' | isJust useLogFile = max Verbosity.verbose verbosity
                | otherwise         = verbosity
@@ -618,7 +622,7 @@ onFailure result = Exception.handle (return . Left . result)
 
 
 withWin32SelfUpgrade :: Verbosity
-                     -> Cabal.ConfigFlags
+                     -> ConfigFlags
                      -> CompilerId
                      -> PackageDescription
                      -> IO a -> IO a
@@ -627,7 +631,7 @@ withWin32SelfUpgrade verbosity configFlags compid pkg action = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
                    compilerFlavor
-                   (Cabal.fromFlag (Cabal.configUserInstall configFlags))
+                   (fromFlag (configUserInstall configFlags))
                    (PackageDescription.hasLibs pkg)
 
   Win32SelfUpgrade.possibleSelfUpgrade verbosity
@@ -645,11 +649,11 @@ withWin32SelfUpgrade verbosity configFlags compid pkg action = do
             prefix  = substTemplate prefixTemplate
             suffix  = substTemplate suffixTemplate ]
       where
-        fromFlagTemplate = Cabal.fromFlagOrDefault (InstallDirs.toPathTemplate "")
-        prefixTemplate = fromFlagTemplate (Cabal.configProgPrefix configFlags)
-        suffixTemplate = fromFlagTemplate (Cabal.configProgSuffix configFlags)
-        templateDirs   = InstallDirs.combineInstallDirs Cabal.fromFlagOrDefault
-                           defaultDirs (Cabal.configInstallDirs configFlags)
+        fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
+        prefixTemplate = fromFlagTemplate (configProgPrefix configFlags)
+        suffixTemplate = fromFlagTemplate (configProgSuffix configFlags)
+        templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
+                           defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
                            pkgid compid InstallDirs.NoCopyDest templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
