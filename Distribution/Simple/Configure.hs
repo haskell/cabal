@@ -92,7 +92,7 @@ import Distribution.Simple.Program
     , ProgramConfiguration, defaultProgramConfiguration
     , configureAllKnownPrograms, knownPrograms
     , userSpecifyArgss, userSpecifyPaths
-    , lookupKnownProgram, requireProgram, pkgConfigProgram
+    , lookupKnownProgram, requireProgram, pkgConfigProgram, gccProgram
     , rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -104,7 +104,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, comparing, cabalVersion, cabalBootstrapping
-    , withFileContents, writeFileAtomic )
+    , withFileContents, writeFileAtomic 
+    , withTempFile )
 import Distribution.Simple.Register
     ( removeInstalledConfig )
 import Distribution.System
@@ -122,7 +123,7 @@ import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad
-    ( when, unless, foldM )
+    ( when, unless, foldM, filterM )
 import Data.List
     ( nub, partition, isPrefixOf, maximumBy )
 import Data.Maybe
@@ -130,7 +131,7 @@ import Data.Maybe
 import Data.Monoid
     ( Monoid(..) )
 import System.Directory
-    ( doesFileExist, getModificationTime, createDirectoryIfMissing )
+    ( doesFileExist, getModificationTime, createDirectoryIfMissing, getTemporaryDirectory )
 import System.Exit
     ( ExitCode(..), exitWith )
 import System.FilePath
@@ -138,7 +139,7 @@ import System.FilePath
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
-    ( hPutStrLn, stderr )
+    ( hPutStrLn, stderr, hClose )
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
@@ -405,6 +406,7 @@ configure (pkg_descr0, pbi) cfg
                                          ("this compiler does not support " ++
                                           "--enable-split-objs; ignoring")
                                     return False
+        checkForeignDeps pkg_descr' programsConfig''' verbosity
 
         let lbi = LocalBuildInfo{
                     installDirTemplates = installDirs,
@@ -655,6 +657,43 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       NHC  -> NHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
 
+
+checkForeignDeps :: PackageDescription -> ProgramConfiguration -> Verbosity -> IO ()
+checkForeignDeps pkg progCfg verbosity = do
+  missingHdrs <- findMissing PD.includes headerExists
+  missingLibs <- findMissing PD.extraLibs libExists
+  explainErrors missingHdrs missingLibs
+      where
+        findMissing field p = filterM (\v -> not `fmap` p v) (collectField field)
+
+        headerExists hdr = compilesAndLinks cppArgs $
+                           "#include \""  ++ hdr ++ "\"\n" ++
+                           "int main(int argc, char** argv) { return 0; }\n"
+            where cppArgs = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+
+        libExists lib = compilesAndLinks ldArgs "int main(int argc, char** argv) { return 0; }\n"
+            where ldArgs = ("-l"++lib):[ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
+
+        bi = allBuildInfo pkg
+        collectField f = nub $ concatMap f bi
+
+        compilesAndLinks args program = do
+            tempDir <- getTemporaryDirectory
+            withTempFile tempDir ".c" $ \fname hd ->
+              do
+                hPutStrLn hd program
+                hClose hd
+                rawSystemProgramStdoutConf verbosity gccProgram progCfg (fname:args)
+                return True
+           `catchIO`   (\_ -> return False)
+           `catchExit` (\_ -> return False)
+
+        -- TODO: make error messages more user-friendly
+        -- (guess the most probable causes of the problems,
+        -- e.g. suggest that *-dev package is probably missing etc)
+        explainErrors hdrs libs = do
+            mapM_ (warn verbosity) $ map ("Required C header not found: " ++) hdrs
+            mapM_ (warn verbosity) $ map ("Required C library not found: " ++) libs
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
