@@ -459,11 +459,9 @@ data InstallFlags = InstallFlags {
     installReinstall    :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
-    installCabalVersion :: Flag Version,
     installLogFile      :: Flag FilePath,
     installBuildReports :: Flag Bool,
-    installSymlinkBinDir:: Flag FilePath,
-    installPreferences  :: [Dependency]
+    installSymlinkBinDir:: Flag FilePath
   }
 
 defaultInstallFlags :: InstallFlags
@@ -473,11 +471,9 @@ defaultInstallFlags = InstallFlags {
     installReinstall    = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
-    installCabalVersion = mempty,
     installLogFile      = mempty,
     installBuildReports = Flag False,
-    installSymlinkBinDir= mempty,
-    installPreferences  = mempty
+    installSymlinkBinDir= mempty
   }
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
@@ -537,14 +533,6 @@ installOptions showOrParseArgs =
            installSymlinkBinDir (\v flags -> flags { installSymlinkBinDir = v })
            (reqArgFlag "DIR")
 
-      , option [] ["cabal-lib-version"]
-          ("Select which version of the Cabal lib to use to build packages "
-          ++ "(useful for testing).")
-          installCabalVersion (\v flags -> flags { installCabalVersion = v })
-          (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
-                                        (fmap toFlag parse))
-                            (map display . flagToList))
-
       , option [] ["log-builds"]
           "Log all builds to file (name template can use $pkgid, $compiler, $os, $arch)"
           installLogFile (\v flags -> flags { installLogFile = v })
@@ -554,13 +542,6 @@ installOptions showOrParseArgs =
           "Generate detailed build reports. (overrides --log-builds)"
           installBuildReports (\v flags -> flags { installBuildReports = v })
           trueArg
-
-      , option [] ["preference"]
-          "Specify preferences (soft constraints) on the version of a package"
-          installPreferences (\v flags -> flags { installPreferences = v })
-          (reqArg "DEPENDENCY"
-            (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
-                                            (map (\x -> display x)))
 
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
@@ -578,11 +559,9 @@ instance Monoid InstallFlags where
     installReinstall    = mempty,
     installOnly         = mempty,
     installRootCmd      = mempty,
-    installCabalVersion = mempty,
     installLogFile      = mempty,
     installBuildReports = mempty,
-    installSymlinkBinDir= mempty,
-    installPreferences  = mempty
+    installSymlinkBinDir= mempty
   }
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
@@ -590,11 +569,9 @@ instance Monoid InstallFlags where
     installReinstall    = combine installReinstall,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
-    installCabalVersion = combine installCabalVersion,
     installLogFile      = combine installLogFile,
     installBuildReports = combine installBuildReports,
-    installSymlinkBinDir= combine installSymlinkBinDir,
-    installPreferences  = combine installPreferences
+    installSymlinkBinDir= combine installSymlinkBinDir
   }
     where combine field = field a `mappend` field b
 
