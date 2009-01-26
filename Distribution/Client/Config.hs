@@ -29,6 +29,7 @@ import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
+         , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
          , showRepo, parseRepo )
@@ -96,6 +97,7 @@ data SavedConfig = SavedConfig {
     savedGlobalFlags       :: GlobalFlags,
     savedInstallFlags      :: InstallFlags,
     savedConfigureFlags    :: ConfigFlags,
+    savedConfigureExFlags  :: ConfigExFlags,
     savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
     savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
     savedUploadFlags       :: UploadFlags
@@ -106,6 +108,7 @@ instance Monoid SavedConfig where
     savedGlobalFlags       = mempty,
     savedInstallFlags      = mempty,
     savedConfigureFlags    = mempty,
+    savedConfigureExFlags  = mempty,
     savedUserInstallDirs   = mempty,
     savedGlobalInstallDirs = mempty,
     savedUploadFlags       = mempty
@@ -114,6 +117,7 @@ instance Monoid SavedConfig where
     savedGlobalFlags       = combine savedGlobalFlags,
     savedInstallFlags      = combine savedInstallFlags,
     savedConfigureFlags    = combine savedConfigureFlags,
+    savedConfigureExFlags  = combine savedConfigureExFlags,
     savedUserInstallDirs   = combine savedUserInstallDirs,
     savedGlobalInstallDirs = combine savedGlobalInstallDirs,
     savedUploadFlags       = combine savedUploadFlags
@@ -273,6 +277,7 @@ commentSavedConfig = do
   return SavedConfig {
     savedGlobalFlags       = commandDefaultFlags globalCommand,
     savedInstallFlags      = defaultInstallFlags,
+    savedConfigureExFlags  = defaultConfigExFlags,
     savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
       configUserInstall    = toFlag defaultUserInstall
     },
@@ -297,6 +302,10 @@ configFieldDescriptions =
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
        (["scratchdir", "configure-option"] ++ map fieldName installDirsFields)
+
+  ++ toSavedConfig liftConfigExFlag
+       (configureExOptions ParseArgs)
+       []
 
       --FIXME: this is only here because viewAsFieldDescr gives us a parser
       -- that only recognises 'ghc' etc, the case-sensitive flag names, not
@@ -364,6 +373,10 @@ liftGlobalFlag = liftField
 liftConfigFlag :: FieldDescr ConfigFlags -> FieldDescr SavedConfig
 liftConfigFlag = liftField
   savedConfigureFlags (\flags conf -> conf { savedConfigureFlags = flags })
+
+liftConfigExFlag :: FieldDescr ConfigExFlags -> FieldDescr SavedConfig
+liftConfigExFlag = liftField
+  savedConfigureExFlags (\flags conf -> conf { savedConfigureExFlags = flags })
 
 liftInstallFlag :: FieldDescr InstallFlags -> FieldDescr SavedConfig
 liftInstallFlag = liftField
