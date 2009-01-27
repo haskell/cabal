@@ -50,6 +50,8 @@ import Distribution.PackageDescription as PD
          , Executable(..), withExe, Library(..), withLib )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as Installed
+         ( InstalledPackageInfo_(..) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -181,8 +183,12 @@ constructLHCCmdLine lbi bi _odir verbosity =
      ++ ["--ho-dir",buildDir lbi]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenModulesDir lbi]
+     ++ concat [["-I", dir] | dir <- PD.includeDirs bi]
+     ++ concat [["-I", opt] | pkg <- pkgs, opt <- Installed.includeDirs pkg ]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (concat [ ["-p", display pkg] | pkg <- packageDeps lbi ])
+    where
+      pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
 
 lhcPkgConf :: PackageDescription -> String
 lhcPkgConf pd =
