@@ -126,6 +126,8 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
 import Distribution.Compat.Permissions (copyPermissions)
+import Distribution.Compat.CopyFile
+         ( copyExecutableFile )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -928,7 +930,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
 		 exeDynFileName = e <.> "dyn" <.> exeExtension
                  fixedExeBaseName = progprefix ++ e ++ progsuffix
                  installBinary dest = do
-                     copyFileVerbose verbosity
+                     copyExe verbosity
                                      (buildPref </> e </> exeFileName) (dest <.> exeExtension)
 		     exists <- doesFileExist (buildPref </> e </> exeDynFileName)
 		     if exists then
@@ -964,6 +966,11 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                      copyPermissions absExeFileName wrapperFileName
                  else do
                      installBinary (binDir </> fixedExeBaseName)
+
+copyExe :: Verbosity -> FilePath -> FilePath -> IO ()
+copyExe verbosity src dest = do
+  info verbosity ("copy " ++ src ++ " to " ++ dest)
+  copyExecutableFile src dest
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $

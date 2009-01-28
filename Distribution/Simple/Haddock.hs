@@ -94,8 +94,9 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist,
-                        removeDirectoryRecursive, copyFile)
-
+                        removeDirectoryRecursive)
+import Distribution.Compat.CopyFile
+         ( copyFile )
 import Control.Monad ( when, unless )
 import Data.Maybe    ( isJust, fromJust, listToMaybe )
 import Data.Char     (isSpace)
