@@ -105,6 +105,7 @@ Library
   Other-Modules:
         Distribution.GetOpt,
         Distribution.Compat.Exception,
+        Distribution.Compat.CopyFile,
         Distribution.Compat.Permissions,
         Distribution.Compat.TempFile,
         Distribution.Simple.GHC.Makefile,

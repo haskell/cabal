@@ -13,7 +13,7 @@ all: build
 
 # build the library itself
 
-SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs Distribution/Simple/Build/*.hs
+SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs Distribution/Simple/Build/*.hs Distribution/Compat/*.hs
 CONFIG_STAMP=dist/setup-config
 BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
 HADDOCK_STAMP=dist/doc/html/Cabal/index.html
