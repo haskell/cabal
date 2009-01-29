@@ -85,7 +85,7 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
 import Distribution.Simple.Utils
          ( die, warn, notice, intercalate, setupMessage
-         , createDirectoryIfMissingVerbose, withTempFile
+         , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
          , findFileWithExtension, findFile )
 import Distribution.Text
          ( display, simpleParse )
@@ -94,7 +94,7 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist,
-                        removeDirectoryRecursive, copyFile)
+                        removeDirectoryRecursive)
 
 import Control.Monad ( when, unless )
 import Data.Maybe    ( isJust, fromJust, listToMaybe )
@@ -290,12 +290,12 @@ haddock pkg_descr lbi suffixes flags = do
                  -- Run unlit first, then CPP
                  if (targetFileExt == ".lhs")
                      then runSimplePreProcessor ppUnlit file hsFile verbosity
-                     else copyFile file hsFile
+                     else copyFileVerbose verbosity file hsFile
                  when (needsCpp bi) $ do
                      runSimplePreProcessor (ppCpp' inputArgs bi lbi)
                        hsFile cppOutput verbosity
                      removeFile hsFile
-                     copyFile cppOutput hsFile
+                     copyFileVerbose verbosity cppOutput hsFile
                      removeFile cppOutput
         needsCpp :: BuildInfo -> Bool
         needsCpp bi = CPP `elem` extensions bi
@@ -408,7 +408,7 @@ hscolour pkg_descr lbi suffixes flags = do
                     rawSystemProgram verbosity hscolourProg
                       ["-print-css", "-o" ++ dir </> "hscolour.css"]
                   | otherwise -> return ()
-          Just s -> copyFile s (dir </> "hscolour.css")
+          Just s -> copyFileVerbose verbosity s (dir </> "hscolour.css")
         doExes     = fromFlag (hscolourExecutables flags)
         stylesheet = flagToMaybe (hscolourCSS flags)
         verbosity  = fromFlag (hscolourVerbosity flags)

@@ -65,7 +65,7 @@ import Distribution.Simple.BuildPaths
                                   dllExtension )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, installOrdinaryFiles
-         , withUTF8FileContents, writeFileAtomic
+         , withUTF8FileContents, writeFileAtomic, copyFileVerbose
          , findFile, findFileWithExtension, findModuleFiles
          , die, info, notice )
 import Language.Haskell.Extension
@@ -138,8 +138,8 @@ build pkg_descr lbi verbosity = do
     let pref = scratchDir lbi
     createDirectoryIfMissingVerbose verbosity True pref
     withLib pkg_descr () $ \ l -> do
-        copyFile (autogenModulesDir lbi </> paths_modulename)
-                (pref </> paths_modulename)
+        copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
+                                  (pref </> paths_modulename)
         compileBuildInfo pref [] (libModules pkg_descr) (libBuildInfo l)
     withExe pkg_descr $ compileExecutable (pref </> "programs")
   where
@@ -156,8 +156,8 @@ build pkg_descr lbi verbosity = do
             let destMainFile = exeDir </> hugsMainFilename exe
             copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
             let destPathsFile = exeDir </> paths_modulename
-            copyFile (autogenModulesDir lbi </> paths_modulename)
-                     destPathsFile
+            copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
+                                      destPathsFile
             compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
             compileFiles bi exeDir [destMainFile, destPathsFile]
 
@@ -197,7 +197,7 @@ build pkg_descr lbi verbosity = do
                 runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
                 return ()
               else
-                copyFile srcFile destFile
+                copyFileVerbose verbosity srcFile destFile
 
         compileFiles :: BuildInfo -> FilePath -> [FilePath] -> IO ()
         compileFiles bi modDir fileList = do
