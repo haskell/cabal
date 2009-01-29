@@ -348,7 +348,7 @@ configureOptions showOrParseArgs =
       ]
    ++ map liftInstallDirs installDirsOptions
    ++ [option "b" ["scratchdir"]
-         "directory to receive the built package [dist/scratch]"
+         "directory to receive the built package (hugs-only)"
          configScratchDir (\v flags -> flags { configScratchDir = v })
          (reqArgFlag "DIR")
 
