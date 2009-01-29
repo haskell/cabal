@@ -236,7 +236,7 @@ getModulePaths lbi bi modules = sequence
 -- -----------------------------------------------------------------------------
 -- Installing
 
--- |Install executables for GHC.
+-- |Install executables for NHC.
 installExe :: Verbosity -- ^verbosity
            -> FilePath  -- ^install location
            -> FilePath  -- ^Build location
