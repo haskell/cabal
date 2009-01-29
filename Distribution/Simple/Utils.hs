@@ -151,7 +151,7 @@ import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( try, isDoesNotExistError )
+    ( isDoesNotExistError )
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
@@ -524,25 +524,13 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
                     ++ "' does not match any files."
       matches -> return matches
 
--- |Copy the source files into the right directory.  Looks in the
--- build prefix for files that look like the input modules, based on
--- the input search suffixes.  It copies the files into the target
--- directory.
-
-smartCopySources :: Verbosity -- ^verbosity
-            -> [FilePath] -- ^build prefix (location of objects)
-            -> FilePath -- ^Target directory
-            -> [ModuleName] -- ^Modules
-            -> [String] -- ^search suffixes
-            -> IO ()
-smartCopySources verbosity srcDirs targetDir sources searchSuffixes
-    = mapM moduleToFPErr sources >>= copyFiles verbosity targetDir
-
-    where moduleToFPErr m
-              = findFileWithExtension' searchSuffixes srcDirs (ModuleName.toFilePath m)
-            >>= maybe notFound return
-            where notFound = die $ "Error: Could not find module: " ++ display m
-                                ++ " with any suffix: " ++ show searchSuffixes
+{-# DEPRECATED smartCopySources
+      "Use findModuleFiles and copyFiles or installOrdinaryFiles" #-}
+smartCopySources :: Verbosity -> [FilePath] -> FilePath
+                 -> [ModuleName] -> [String] -> IO ()
+smartCopySources verbosity searchPath targetDir moduleNames extensions =
+      findModuleFiles searchPath extensions moduleNames
+  >>= copyFiles verbosity targetDir
 
 createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
 createDirectoryIfMissingVerbose verbosity parentsToo dir = do
@@ -618,28 +606,13 @@ installDirectoryContents verbosity srcDir destDir = do
   srcFiles <- getDirectoryContentsRecursive srcDir
   installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
 
--- adaptation of removeDirectoryRecursive
+{-# DEPRECATED copyDirectoryRecursiveVerbose
+      "You probably want installDirectoryContents instead" #-}
 copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
-  let aux src dest =
-         let cp :: FilePath -> IO ()
-             cp f = let srcFile  = src  </> f
-                        destFile = dest </> f
-                    in  do success <- try (copyFileVerbose verbosity srcFile destFile)
-                           case success of
-                              Left e  -> do isDir <- doesDirectoryExist srcFile
-                                            -- If f is not a directory, re-throw the error
-                                            unless isDir $ ioError e
-                                            aux srcFile destFile
-                              Right _ -> return ()
-         in  do createDirectoryIfMissingVerbose verbosity False dest
-                getDirectoryContentsWithoutSpecial src >>= mapM_ cp
-   in aux srcDir destDir
-
-  where getDirectoryContentsWithoutSpecial =
-            fmap (filter (not . flip elem [".", ".."]))
-          . getDirectoryContents
+  srcFiles <- getDirectoryContentsRecursive srcDir
+  copyFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
 
 -- | Use a temporary filename that doesn't already exist.
 --
