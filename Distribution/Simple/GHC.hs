@@ -1004,8 +1004,8 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
               createDirectoryIfMissingVerbose verbosity True dst
               installOrdinaryFile verbosity (src </> n) (dst </> n)
             copyModuleFiles ext =
-                smartCopySources verbosity [builtDir] targetDir
-                                 (libModules pkg) [ext]
+              findModuleFiles [builtDir] [ext] (libModules pkg)
+                >>= installOrdinaryFiles verbosity targetDir
         ifVanilla $ copyModuleFiles "hi"
         ifProf    $ copyModuleFiles "p_hi"
 
