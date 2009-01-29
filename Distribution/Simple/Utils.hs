@@ -146,7 +146,7 @@ import System.FilePath
     ( normalise, (</>), (<.>), takeDirectory, splitFileName
     , splitExtension, splitExtensions )
 import System.Directory
-    ( copyFile, createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
+    ( createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
 import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
@@ -176,7 +176,7 @@ import System.Directory (getTemporaryDirectory)
 #endif
 
 import Distribution.Compat.CopyFile
-         ( copyOrdinaryFile, copyExecutableFile )
+         ( copyFile, copyOrdinaryFile, copyExecutableFile )
 import Distribution.Compat.TempFile (openTempFile,
                                      openNewBinaryFile)
 import Distribution.Compat.Exception (catchIO, onException)
