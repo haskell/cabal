@@ -70,6 +70,12 @@ module Distribution.Simple.Utils (
         copyDirectoryRecursiveVerbose,
         copyFiles,
 
+        -- * installing files
+        installOrdinaryFile,
+        installExecutableFile,
+        installOrdinaryFiles,
+        installDirectoryContents,
+
         -- * file names
         currentDir,
 
@@ -77,6 +83,9 @@ module Distribution.Simple.Utils (
         findFile,
         findFileWithExtension,
         findFileWithExtension',
+        findModuleFile,
+        findModuleFiles,
+        getDirectoryContentsRecursive,
 
         -- * simple file globbing
         matchFileGlob,
@@ -143,6 +152,8 @@ import System.IO
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( try, isDoesNotExistError )
+import System.IO.Unsafe
+    ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
 
 import Distribution.Text
@@ -164,6 +175,8 @@ import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
 #endif
 
+import Distribution.Compat.CopyFile
+         ( copyOrdinaryFile, copyExecutableFile )
 import Distribution.Compat.TempFile (openTempFile,
                                      openNewBinaryFile)
 import Distribution.Compat.Exception (catchIO, onException)
@@ -427,6 +440,51 @@ findFirstFile file = findFirst
                                 then return (Just x)
                                 else findFirst xs
 
+findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
+                -> [String]     -- ^ search suffixes
+                -> [ModuleName] -- ^ modules
+                -> IO [(FilePath, FilePath)]
+findModuleFiles searchPath extensions moduleNames =
+  mapM (findModuleFile searchPath extensions) moduleNames
+
+findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
+               -> [String]    -- ^ search suffixes
+               -> ModuleName  -- ^ module
+               -> IO (FilePath, FilePath)
+findModuleFile searchPath extensions moduleName =
+      maybe notFound return
+  =<< findFileWithExtension' extensions searchPath
+                             (ModuleName.toFilePath moduleName)
+  where
+    notFound = die $ "Error: Could not find module: " ++ display moduleName
+                  ++ " with any suffix: " ++ show extensions
+                  ++ " in the search path: " ++ show searchPath
+
+getDirectoryContentsRecursive :: FilePath -> IO [FilePath]
+getDirectoryContentsRecursive topdir = recurseDirectories [""]
+  where
+    recurseDirectories :: [FilePath] -> IO [FilePath]
+    recurseDirectories []         = return []
+    recurseDirectories (dir:dirs) = unsafeInterleaveIO $ do
+      (files, dirs') <- collect [] [] =<< getDirectoryContents (topdir </> dir)
+      files' <- recurseDirectories (dirs' ++ dirs)
+      return (files ++ files')
+
+      where
+        collect files dirs' []              = return (reverse files, reverse dirs')
+        collect files dirs' (entry:entries) | ignore entry
+                                            = collect files dirs' entries
+        collect files dirs' (entry:entries) = do
+          let dirEntry = dir </> entry
+          isDirectory <- doesDirectoryExist (topdir </> dirEntry)
+          if isDirectory
+            then collect files (dirEntry:dirs') entries
+            else collect (dirEntry:files) dirs' entries
+
+        ignore ['.']      = True
+        ignore ['.', '.'] = True
+        ignore _          = False
+
 data FileGlob
    -- | No glob at all, just an ordinary file
    = NoGlob FilePath
@@ -497,6 +555,16 @@ copyFileVerbose verbosity src dest = do
   info verbosity ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
+installOrdinaryFile :: Verbosity -> FilePath -> FilePath -> IO ()
+installOrdinaryFile verbosity src dest = do
+  info verbosity ("Installing " ++ src ++ " to " ++ dest)
+  copyOrdinaryFile src dest
+
+installExecutableFile :: Verbosity -> FilePath -> FilePath -> IO ()
+installExecutableFile verbosity src dest = do
+  info verbosity ("Installing executable " ++ src ++ " to " ++ dest)
+  copyExecutableFile src dest
+
 -- | Copies a bunch of files to a target directory, preserving the directory
 -- structure in the target location. The target directories are created if they
 -- do not exist.
@@ -530,6 +598,25 @@ copyFiles verbosity targetDir srcFiles = do
                   dest = targetDir </> srcFile
                in copyFileVerbose verbosity src dest
             | (srcBase, srcFile) <- srcFiles ]
+
+installOrdinaryFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
+installOrdinaryFiles verbosity targetDir srcFiles = do
+
+  -- Create parent directories for everything
+  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
+  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+
+  -- Copy all the files
+  sequence_ [ let src  = srcBase   </> srcFile
+                  dest = targetDir </> srcFile
+               in installOrdinaryFile verbosity src dest
+            | (srcBase, srcFile) <- srcFiles ]
+
+installDirectoryContents :: Verbosity -> FilePath -> FilePath -> IO ()
+installDirectoryContents verbosity srcDir destDir = do
+  info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
+  srcFiles <- getDirectoryContentsRecursive srcDir
+  installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
 
 -- adaptation of removeDirectoryRecursive
 copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
