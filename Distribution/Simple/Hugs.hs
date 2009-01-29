@@ -82,9 +82,9 @@ import Data.Char                ( isSpace )
 import Data.Maybe               ( mapMaybe, catMaybes )
 import Control.Monad            ( unless, when, filterM )
 import Data.List                ( nub, sort, isSuffixOf )
-import System.Directory         ( Permissions(..), getPermissions,
-                                  setPermissions, copyFile,
-                                  removeDirectoryRecursive )
+import System.Directory         ( removeDirectoryRecursive )
+import Distribution.Compat.CopyFile
+         ( setFileExecutable )
 import Distribution.Compat.Exception
 
 -- -----------------------------------------------------------------------------
@@ -394,8 +394,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
                              in unlines ["#! /bin/sh",
                                          unwords ("runhugs" : args)]
         writeFileAtomic exeFile script
-        perms <- getPermissions exeFile
-        setPermissions exeFile perms { executable = True, readable = True }
+        setFileExecutable exeFile
 
 hugsInstallSuffixes :: [String]
 hugsInstallSuffixes = [".hs", ".lhs", dllExtension]
