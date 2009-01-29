@@ -142,11 +142,6 @@ check True  pc = Just pc
 -- * Standard checks
 -- ------------------------------------------------------------
 
--- TODO:
---
---  * check for unknown 'OS's and 'Arch's. This requires checking the
---    'GenericPackageDescription' which we do not currently get passed.
-
 -- | Check for common mistakes and problems in package descriptions.
 --
 -- This is the standard collection of checks covering all apsects except
