@@ -61,7 +61,7 @@ copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
 copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
 setFileOrdinary,  setFileExecutable  :: FilePath -> IO ()
-#if defined(__GLASGOW_HASKELL__) && !defined(mingw32_HOST_OS)
+#ifndef mingw32_HOST_OS
 setFileOrdinary   path = setFileMode path 0o644 -- file perms -rw-r--r--
 setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
