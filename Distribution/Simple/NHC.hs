@@ -68,8 +68,9 @@ import Distribution.Simple.Program
           nhcProgram, hmakeProgram, ldProgram, arProgram,
           rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, info, findFileWithExtension,
-          createDirectoryIfMissingVerbose, copyFileVerbose, smartCopySources )
+        ( die, info, findFileWithExtension
+        , installOrdinaryFile, installExecutableFile
+        , createDirectoryIfMissingVerbose, smartCopySources )
 import Distribution.Version
         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
@@ -247,8 +248,9 @@ installExe verbosity pref buildPref (progprefix,progsuffix) exe
          let exeBaseName = exeName exe
              exeFileName = exeBaseName <.> exeExtension
              fixedExeFileName = (progprefix ++ exeBaseName ++ progsuffix) <.> exeExtension
-         copyFileVerbose verbosity (buildPref </> exeBaseName </> exeFileName)
-                                   (pref </> fixedExeFileName)
+         installExecutableFile verbosity
+           (buildPref </> exeBaseName </> exeFileName)
+           (pref </> fixedExeFileName)
 
 -- |Install for nhc98: .hi and .a files
 installLib    :: Verbosity -- ^verbosity
@@ -262,4 +264,4 @@ installLib verbosity pref buildPref pkgid lib
              modules = exposedModules lib ++ otherModules bi
          smartCopySources verbosity [buildPref] pref modules ["hi"]
          let libName = mkLibName pkgid
-         copyFileVerbose verbosity (buildPref </> libName) (pref </> libName)
+         installOrdinaryFile verbosity (buildPref </> libName) (pref </> libName)
