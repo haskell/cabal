@@ -8,7 +8,9 @@
 module Distribution.Compat.CopyFile (
   copyFile,
   copyOrdinaryFile,
-  copyExecutableFile
+  copyExecutableFile,
+  setFileOrdinary,
+  setFileExecutable,
   ) where
 
 #ifdef __GLASGOW_HASKELL__
@@ -43,23 +45,21 @@ import Foreign.C
 
 
 copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
+copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
+copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
+setFileOrdinary,  setFileExecutable  :: FilePath -> IO ()
 #if defined(__GLASGOW_HASKELL__) && !defined(mingw32_HOST_OS)
-copyOrdinaryFile fromFPath toFPath = do
-  copyFile fromFPath toFPath
-  setFileMode toFPath 0o644 -- file perms -rw-r--r--
-
-copyExecutableFile fromFPath toFPath = do
-  copyFile fromFPath toFPath
-  setFileMode toFPath 0o755 -- file perms -rwxr-xr-x
+setFileOrdinary   path = setFileMode path 0o644 -- file perms -rw-r--r--
+setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
 setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
   withCString name $ \s -> do
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
 #else
-copyOrdinaryFile   = copyFile
-copyExecutableFile = copyFile
+setFileOrdinary   = return ()
+setFileExecutable = return ()
 #endif
 
 copyFile :: FilePath -> FilePath -> IO ()
