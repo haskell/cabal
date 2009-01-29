@@ -83,7 +83,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.Simple.LHC as LHC
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
+         ( createDirectoryIfMissingVerbose, installOrdinaryFile, writeFileAtomic
          , die, info, notice, setupMessage )
 import Distribution.System
          ( OS(..), buildOS )
@@ -173,8 +173,8 @@ register pkg_descr lbi regFlags
         when inplace $ die "--inplace is not supported with Hugs"
         let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
         createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
-        copyFileVerbose verbosity (installedPkgConfigFile distPref)
-            (libdir installDirs </> "package.conf")
+        installOrdinaryFile verbosity (installedPkgConfigFile distPref)
+                                      (libdir installDirs </> "package.conf")
       LHC -> do
         (globalDir, userDir) <- LHC.getLhcLibDirsFromVersion (Just (compilerVersion (compiler lbi)))
         let config_flags = [ "--force", "--global-conf="++globalDir </> "package.conf"

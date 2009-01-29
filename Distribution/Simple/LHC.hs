@@ -71,7 +71,8 @@ import Distribution.Version
 import Distribution.Package
          ( Package(..), packageName, packageVersion )
 import Distribution.Simple.Utils
-        ( createDirectoryIfMissingVerbose, copyFileVerbose, writeFileAtomic
+        ( createDirectoryIfMissingVerbose, writeFileAtomic
+        , installOrdinaryFile, installExecutableFile
         , info, intercalate )
 import Distribution.Verbosity
 import Distribution.Text
@@ -205,7 +206,7 @@ installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library
 installLib verb dest build_dir pkg_descr _ = do
     let p = display (packageId pkg_descr)++".hl"
     createDirectoryIfMissingVerbose verb True dest
-    copyFileVerbose verb (build_dir </> p) (dest </> p)
+    installOrdinaryFile verb (build_dir </> p) (dest </> p)
 
 installExe :: Verbosity -> FilePath -> FilePath -> (FilePath,FilePath) -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
@@ -213,5 +214,4 @@ installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
         src = exe_name </> exeExtension
         out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension
     createDirectoryIfMissingVerbose verb True dest
-    copyFileVerbose verb (build_dir </> src) (dest </> out)
-
+    installExecutableFile verb (build_dir </> src) (dest </> out)

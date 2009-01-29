@@ -941,8 +941,9 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
              let exeFileName = e <.> exeExtension
                  fixedExeBaseName = progprefix ++ e ++ progsuffix
                  installBinary dest = do
-                     copyFileVerbose verbosity
-                                     (buildPref </> e </> exeFileName) (dest <.> exeExtension)
+                     installExecutableFile verbosity
+                       (buildPref </> e </> exeFileName)
+                       (dest <.> exeExtension)
                      stripExe verbosity lbi exeFileName (dest <.> exeExtension)
              if useWrapper
                  then do
@@ -1001,7 +1002,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
         let verbosity = fromFlag (copyVerbosity flags)
             copy src dst n = do
               createDirectoryIfMissingVerbose verbosity True dst
-              copyFileVerbose verbosity (src </> n) (dst </> n)
+              installOrdinaryFile verbosity (src </> n) (dst </> n)
             copyModuleFiles ext =
                 smartCopySources verbosity [builtDir] targetDir
                                  (libModules pkg) [ext]
