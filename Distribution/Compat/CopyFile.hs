@@ -15,13 +15,18 @@ module Distribution.Compat.CopyFile (
 
 #ifdef __GLASGOW_HASKELL__
 
-import Prelude hiding ( catch )
 import Control.Monad
          ( when )
 import Control.Exception
-         ( throw, try, catch, bracket, bracketOnError, Exception(IOException) )
+         ( bracket, bracketOnError )
+import Distribution.Compat.Exception
+         ( catchIO )
+#if __GLASGOW_HASKELL__ >= 608
+import Distribution.Compat.Exception
+         ( throwIOIO )
 import System.IO.Error
          ( ioeSetLocation )
+#endif
 import System.Directory
          ( renameFile, removeFile )
 import Distribution.Compat.TempFile
@@ -39,7 +44,14 @@ import System.Posix.Types
 import System.Posix.Internals
          ( c_chmod )
 import Foreign.C
-         ( withCString, throwErrnoPathIfMinus1_ )
+         ( withCString )
+#if __GLASGOW_HASKELL__ >= 608
+import Foreign.C
+         ( throwErrnoPathIfMinus1_ )
+#else
+import Foreign.C
+         ( throwErrnoIfMinus1_ )
+#endif
 #endif
 #endif
 
@@ -56,7 +68,11 @@ setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
   withCString name $ \s -> do
+#if __GLASGOW_HASKELL__ >= 608
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
+#else
+    throwErrnoIfMinus1_                   name (c_chmod s m)
+#endif
 #else
 setFileOrdinary   = return ()
 setFileExecutable = return ()
@@ -65,18 +81,19 @@ setFileExecutable = return ()
 copyFile :: FilePath -> FilePath -> IO ()
 #ifdef __GLASGOW_HASKELL__
 copyFile fromFPath toFPath =
-    copy `catch` (\e -> case e of
-                        IOException ioe ->
-                            throw $ IOException $ ioeSetLocation ioe "copyFile"
-                        _ -> throw e)
+  copy
+#if __GLASGOW_HASKELL__ >= 608
+    `catchIO` (\ioe -> throwIOIO (ioeSetLocation ioe "copyFile"))
+#endif
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
                     hClose hTmp
                     renameFile tmpFPath toFPath
           openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
-          cleanTmp (tmpFPath, hTmp) = do try $ hClose hTmp
-                                         try $ removeFile tmpFPath
+          cleanTmp (tmpFPath, hTmp) = do
+            hClose hTmp          `catchIO` \_ -> return ()
+            removeFile tmpFPath  `catchIO` \_ -> return ()
           bufferSize = 4096
 
           copyContents hFrom hTo buffer = do
