@@ -64,9 +64,9 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose
+         ( createDirectoryIfMissingVerbose, installOrdinaryFiles
          , withUTF8FileContents, writeFileAtomic
-         , findFile, findFileWithExtension, smartCopySources
+         , findFile, findFileWithExtension, findModuleFiles
          , die, info, notice )
 import Language.Haskell.Extension
                                 ( Extension(..) )
@@ -362,7 +362,8 @@ install
     -> IO ()
 install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
     removeDirectoryRecursive libDir `catchIO` \_ -> return ()
-    smartCopySources verbosity [buildPref] libDir (libModules pkg_descr) hugsInstallSuffixes
+    findModuleFiles [buildPref] hugsInstallSuffixes (libModules pkg_descr)
+      >>= installOrdinaryFiles verbosity libDir
     let buildProgDir = buildPref </> "programs"
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissingVerbose verbosity True binDir
@@ -371,10 +372,10 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
         let installDir = installProgDir </> exeName exe
         let targetDir = targetProgDir </> exeName exe
         removeDirectoryRecursive installDir `catchIO` \_ -> return ()
-        smartCopySources verbosity [theBuildDir] installDir
-            (ModuleName.main : autogenModuleName pkg_descr
-                             : otherModules (buildInfo exe))
-            hugsInstallSuffixes
+        findModuleFiles [theBuildDir] hugsInstallSuffixes
+                        (ModuleName.main : autogenModuleName pkg_descr
+                                         : otherModules (buildInfo exe))
+          >>= installOrdinaryFiles verbosity installDir
         let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
         -- FIX (HUGS): use extensions, and options from file too?
         -- see http://hackage.haskell.org/trac/hackage/ticket/43
