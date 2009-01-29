@@ -54,7 +54,7 @@ import Distribution.Simple.LocalBuildInfo (
         substPathTemplate)
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, copyDirectoryRecursiveVerbose
+         ( createDirectoryIfMissingVerbose, installDirectoryContents
          , installOrdinaryFile, die, info, notice, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
@@ -118,7 +118,7 @@ install pkg_descr lbi flags = do
 
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
-      copyDirectoryRecursiveVerbose verbosity
+      installDirectoryContents verbosity
           (haddockPref distPref pkg_descr) htmlPref
       -- setPermissionsRecursive [Read] htmlPref
       -- The haddock interface file actually already got installed

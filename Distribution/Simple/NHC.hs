@@ -68,9 +68,9 @@ import Distribution.Simple.Program
           nhcProgram, hmakeProgram, ldProgram, arProgram,
           rawSystemProgramConf )
 import Distribution.Simple.Utils
-        ( die, info, findFileWithExtension
-        , installOrdinaryFile, installExecutableFile
-        , createDirectoryIfMissingVerbose, smartCopySources )
+        ( die, info, findFileWithExtension, findModuleFiles
+        , installOrdinaryFile, installExecutableFile, installOrdinaryFiles
+        , createDirectoryIfMissingVerbose )
 import Distribution.Version
         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
@@ -262,6 +262,7 @@ installLib    :: Verbosity -- ^verbosity
 installLib verbosity pref buildPref pkgid lib
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
-         smartCopySources verbosity [buildPref] pref modules ["hi"]
+         findModuleFiles [buildPref] ["hi"] modules
+           >>= installOrdinaryFiles verbosity pref
          let libName = mkLibName pkgid
          installOrdinaryFile verbosity (buildPref </> libName) (pref </> libName)
