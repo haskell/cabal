@@ -126,7 +126,8 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
-import Distribution.Compat.Permissions (copyPermissions)
+import Distribution.Compat.CopyFile
+         ( setFileExecutable )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -947,8 +948,6 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                  then do
                      let libExecDir = libexecdir installDirs
                          pretendLibExecDir = libexecdir pretendInstallDirs
-                         absExeFileName =
-                             libExecDir </> fixedExeBaseName <.> exeExtension
                          pretendAbsExeFileName =
                              pretendLibExecDir </> fixedExeBaseName <.> exeExtension
                          wrapperFileName = binDir </> fixedExeBaseName
@@ -967,7 +966,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                                  $ substPathTemplate env
                                  $ toPathTemplate wrapperTemplate
                      writeFileAtomic wrapperFileName wrapper
-                     copyPermissions absExeFileName wrapperFileName
+                     setFileExecutable wrapperFileName
                  else do
                      installBinary (binDir </> fixedExeBaseName)
 
