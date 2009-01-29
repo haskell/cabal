@@ -55,7 +55,7 @@ import Distribution.Simple.LocalBuildInfo (
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, copyDirectoryRecursiveVerbose
-         , copyFileVerbose, die, info, notice, matchDirFileGlob )
+         , installOrdinaryFile, die, info, notice, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
@@ -133,13 +133,13 @@ install pkg_descr lbi flags = do
       exists <- doesFileExist haddockInterfaceFileSrc
       when exists $ do
         createDirectoryIfMissingVerbose verbosity True interfacePref
-        copyFileVerbose verbosity haddockInterfaceFileSrc
-                                  haddockInterfaceFileDest
+        installOrdinaryFile verbosity haddockInterfaceFileSrc
+                                      haddockInterfaceFileDest
 
   let lfile = licenseFile pkg_descr
   unless (null lfile) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
-    copyFileVerbose verbosity lfile (docPref </> takeFileName lfile)
+    installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
@@ -179,8 +179,8 @@ installDataFiles verbosity pkg_descr destDataDir =
     files <- matchDirFileGlob srcDataDir file
     let dir = takeDirectory file
     createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
-    sequence_ [ copyFileVerbose verbosity (srcDataDir  </> file')
-                                          (destDataDir </> file')
+    sequence_ [ installOrdinaryFile verbosity (srcDataDir  </> file')
+                                              (destDataDir </> file')
               | file' <- files ]
 
 -- | Install the files listed in install-includes
@@ -192,7 +192,7 @@ installIncludeFiles verbosity
   incs <- mapM (findInc relincdirs) (installIncludes lbi)
   sequence_
     [ do createDirectoryIfMissingVerbose verbosity True destDir
-         copyFileVerbose verbosity srcFile destFile
+         installOrdinaryFile verbosity srcFile destFile
     | (relFile, srcFile) <- incs
     , let destFile = destIncludeDir </> relFile
           destDir  = takeDirectory destFile ]
