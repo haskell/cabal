@@ -37,6 +37,7 @@ import System.IO
          ( openBinaryFile, IOMode(ReadMode), hClose, hGetBuf, hPutBuf )
 import Foreign
          ( allocaBytes )
+#endif /* __GLASGOW_HASKELL__ */
 
 #ifndef mingw32_HOST_OS
 import System.Posix.Types
@@ -52,9 +53,7 @@ import Foreign.C
 import Foreign.C
          ( throwErrnoIfMinus1_ )
 #endif
-#endif
-#endif
-
+#endif /* mingw32_HOST_OS */
 
 copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
 copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
