@@ -125,7 +125,7 @@ import qualified Distribution.Simple.Hugs as Hugs
 import Control.Monad
     ( when, unless, foldM, filterM )
 import Data.List
-    ( nub, partition, isPrefixOf, maximumBy )
+    ( nub, partition, isPrefixOf, maximumBy, inits )
 import Data.Maybe
     ( fromMaybe, isNothing )
 import Data.Monoid
@@ -660,24 +660,55 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
 
 checkForeignDeps :: PackageDescription -> ProgramConfiguration -> Verbosity -> IO ()
 checkForeignDeps pkg progCfg verbosity = do
-  missingHdrs <- findMissing PD.includes headerExists
-  missingLibs <- findMissing PD.extraLibs libExists
-  explainErrors missingHdrs missingLibs
+  ifBuildsWith allHeaders (commonCppArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+           (return ())
+           (do missingLibs <- findMissingLibs
+               missingHdr  <- findOffendingHdr 
+               explainErrors missingHdr missingLibs)
       where
-        findMissing field p = filterM (\v -> not `fmap` p v) (collectField field)
+        allHeaders = collectField PD.includes
+        allLibs    = collectField PD.extraLibs
 
-        headerExists hdr = compilesAndLinks cppArgs $
-                           "#include \""  ++ hdr ++ "\"\n" ++
-                           "int main(int argc, char** argv) { return 0; }\n"
-            where cppArgs = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+        ifBuildsWith headers args success failure = do
+            ok <- builds (makeProgram headers) args
+            if ok then success else failure
 
-        libExists lib = compilesAndLinks ldArgs "int main(int argc, char** argv) { return 0; }\n"
-            where ldArgs = ("-l"++lib):[ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
+        -- NOTE: if some package-local header has errors,
+        -- we will report that this header is missing. 
+        -- Maybe additional tests for local headers are needed 
+        -- for better diagnostics
+        findOffendingHdr =
+            ifBuildsWith allHeaders cppArgs
+                         (return Nothing)
+                         (go . tail . inits $ allHeaders)
+            where
+              go [] = return Nothing       -- cannot happen
+              go (hdrs:hdrsInits) = do
+                    ifBuildsWith hdrs cppArgs
+                                 (go hdrsInits)
+                                 (return . Just . last $ hdrs) 
 
-        bi = allBuildInfo pkg
+              cppArgs = "-c":commonCppArgs -- don't try to link
+
+        findMissingLibs = ifBuildsWith [] (makeLdArgs allLibs)
+                                       (return [])
+                                       (filterM (fmap not . libExists) allLibs)
+                       
+        libExists lib = builds (makeProgram []) (makeLdArgs [lib])
+
+        commonCppArgs = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+        commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
+        
+        makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
+
+        makeProgram hdrs = unlines $
+                           [ "#include \""  ++ hdr ++ "\"" | hdr <- hdrs ] ++
+                           ["int main(int argc, char** argv) { return 0; }"]
+        
         collectField f = nub $ concatMap f bi
+            where bi = allBuildInfo pkg
 
-        compilesAndLinks args program = do
+        builds program args = do
             tempDir <- getTemporaryDirectory
             withTempFile tempDir ".c" $ \fname hd ->
               do
@@ -691,8 +722,10 @@ checkForeignDeps pkg progCfg verbosity = do
         -- TODO: make error messages more user-friendly
         -- (guess the most probable causes of the problems,
         -- e.g. suggest that *-dev package is probably missing etc)
-        explainErrors hdrs libs = do
-            mapM_ (warn verbosity) $ map ("Required C header not found: " ++) hdrs
+        explainErrors hdr libs = do
+            case hdr of
+              Just h -> warn verbosity $ "Required C header not found: " ++ h
+              _      -> return ()
             mapM_ (warn verbosity) $ map ("Required C library not found: " ++) libs
 
 -- | Output package check warnings and errors. Exit if any errors.
